@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>picard</groupId>
+    <artifactId>picard</artifactId>
+    <version>1.126</version>
+    <name>picard</name>
+    <dependencies>
+        <dependency>
+            <groupId>samtools</groupId>
+            <artifactId>htsjdk</artifactId>
+            <version>1.126</version>
+        </dependency>
+        <!-- TODO: Picard is using a custom zip with just ant's BZip2 classes. See also: http://www.kohsuke.org/bzip2 -->
+        <dependency>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
+            <version>1.8.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.ant</groupId>
+                    <artifactId>ant-launcher</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.sun</groupId>
+            <artifactId>tools.jar</artifactId>
+            <version>1.5</version>
+            <scope>system</scope>
+            <systemPath>${java.home}/../lib/tools.jar</systemPath>
+        </dependency>
+    </dependencies>
+</project>
