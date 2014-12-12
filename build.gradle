@@ -1,0 +1,70 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'application'
+
+
+mainClassName = "org.broadinstitute.gatk.Main"
+
+repositories {
+    mavenCentral()
+    maven {
+    	  url 'file:/' + file('localrepo')
+    }
+}
+
+//NOTE: we ignore contracts for now
+compileJava {
+  options.compilerArgs = ['-proc:none']
+}
+compileTestJava { 
+  options.compilerArgs = ['-proc:none']
+}
+
+build.dependsOn installApp
+
+dependencies {
+    compile files("${System.properties['java.home']}/../lib/tools.jar")
+
+    compile 'picard:picard:1.126'
+    compile 'samtools:htsjdk:1.126'
+
+    testCompile 'org.testng:testng:6.8.8'
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+version = '1.0'
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Hellbender-tools',
+                'Implementation-Version': version, 
+                'Main-Class': 'org.broadinstitute.gatk.Main'
+    }
+}
+
+test {
+    // enable TestNG support (default is JUnit)
+    useTestNG()
+
+    // show standard out and standard error of the test JVM(s) on the console
+    testLogging.showStandardStreams = true
+
+    // set heap size for the test JVM(s)
+    minHeapSize = "1G"
+    maxHeapSize = "2G"
+
+    // listen to events in the test execution lifecycle
+    beforeTest { descriptor ->
+        logger.lifecycle("Running test: " + descriptor)
+    }
+
+    // listen to standard out and standard error of the test JVM(s)
+    onOutput { descriptor, event ->
+        logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.2.1'
+}
