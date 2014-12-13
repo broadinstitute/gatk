@@ -1,7 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'application'
-
+apply plugin: "jacoco"
 
 mainClassName = "org.broadinstitute.gatk.Main"
 
@@ -10,6 +10,17 @@ repositories {
     maven {
     	  url 'file:/' + file('localrepo')
     }
+}
+
+jacocoTestReport {
+    dependsOn test
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+}
+
+jacoco {
+    toolVersion = "0.7.1.201405082137"
 }
 
 //NOTE: we ignore contracts for now
