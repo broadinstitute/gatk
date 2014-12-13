@@ -127,7 +127,7 @@ public class Main {
         String missingAnnotationClasses = "";
 
         final Map<String, Class<?>> simpleNameToClass = new HashMap<String, Class<?>>();
-        for (final Class clazz : classFinder.getClasses()) {
+        for (final Class<?> clazz : classFinder.getClasses()) {
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (!clazz.isInterface() && !clazz.isSynthetic() && !clazz.isPrimitive() && !clazz.isLocalClass()
                     && !Modifier.isAbstract(clazz.getModifiers())) {
@@ -158,7 +158,7 @@ public class Main {
                 printUsage(classes, commandLineName);
             } else {
                 if (simpleNameToClass.containsKey(args[0])) {
-                    final Class clazz = simpleNameToClass.get(args[0]);
+                    final Class<?> clazz = simpleNameToClass.get(args[0]);
                     try {
                         return (CommandLineProgram) clazz.newInstance();
                     } catch (final InstantiationException e) {
@@ -174,13 +174,13 @@ public class Main {
         return null;
     }
 
-    public static CommandLineProgramProperties getProgramProperty(Class clazz) {
-        return (CommandLineProgramProperties) clazz.getAnnotation(CommandLineProgramProperties.class);
+    public static CommandLineProgramProperties getProgramProperty(Class<?> clazz) {
+        return clazz.getAnnotation(CommandLineProgramProperties.class);
     }
 
-    private static class SimpleNameComparator implements Comparator<Class> {
+    private static class SimpleNameComparator implements Comparator<Class<?>> {
         @Override
-        public int compare(final Class aClass, final Class bClass) {
+        public int compare(final Class<?> aClass, final Class<?> bClass) {
             return aClass.getSimpleName().compareTo(bClass.getSimpleName());
         }
     }
@@ -192,9 +192,9 @@ public class Main {
 
         /** Group CommandLinePrograms by CommandLineProgramGroup **/
         final Map<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup> programGroupClassToProgramGroupInstance = new HashMap<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup>();
-        final Map<CommandLineProgramGroup, List<Class>> programsByGroup = new TreeMap<CommandLineProgramGroup, List<Class>>(CommandLineProgramGroup.comparator);
-        final Map<Class, CommandLineProgramProperties> programsToProperty = new HashMap<Class, CommandLineProgramProperties>();
-        for (final Class clazz : classes) {
+        final Map<CommandLineProgramGroup, List<Class<?>>> programsByGroup = new TreeMap<CommandLineProgramGroup, List<Class<?>>>(CommandLineProgramGroup.comparator);
+        final Map<Class<?>, CommandLineProgramProperties> programsToProperty = new HashMap<Class<?>, CommandLineProgramProperties>();
+        for (final Class<?> clazz : classes) {
             // Get the command line property for this command line program
             final CommandLineProgramProperties property = getProgramProperty(clazz);
             if (null == property) {
@@ -214,25 +214,25 @@ public class Main {
                 }
                 programGroupClassToProgramGroupInstance.put(property.programGroup(), programGroup);
             }
-            List<Class> programs = programsByGroup.get(programGroup);
+            List<Class<?>> programs = programsByGroup.get(programGroup);
             if (null == programs) {
-                programsByGroup.put(programGroup, programs = new ArrayList<Class>());
+                programsByGroup.put(programGroup, programs = new ArrayList<Class<?>>());
             }
             programs.add(clazz);
         }
 
         /** Print out the programs in each group **/
-        for (final Map.Entry<CommandLineProgramGroup, List<Class>> entry : programsByGroup.entrySet()) {
+        for (final Map.Entry<CommandLineProgramGroup, List<Class<?>>> entry : programsByGroup.entrySet()) {
             final CommandLineProgramGroup programGroup = entry.getKey();
 
             builder.append(KWHT + "--------------------------------------------------------------------------------------\n" + KNRM);
             builder.append(String.format("%s%-48s %-45s%s\n", KRED, programGroup.getName() + ":", programGroup.getDescription(), KNRM));
 
-            final List<Class> sortedClasses = new ArrayList<Class>();
+            final List<Class<?>> sortedClasses = new ArrayList<Class<?>>();
             sortedClasses.addAll(entry.getValue());
             Collections.sort(sortedClasses, new SimpleNameComparator());
 
-            for (final Class clazz : sortedClasses) {
+            for (final Class<?> clazz : sortedClasses) {
                 final CommandLineProgramProperties property = programsToProperty.get(clazz);
                 if (null == property) {
                     throw new RuntimeException(String.format("Unexpected error: did not find the CommandLineProgramProperties annotation for '%s'", clazz.getSimpleName()));
@@ -259,13 +259,13 @@ public class Main {
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *
      */
     public static void printUnknown(final Set<Class<?>> classes, final String command) {
-        final Map<Class, Integer> distances = new HashMap<Class, Integer>();
+        final Map<Class<?>, Integer> distances = new HashMap<Class<?>, Integer>();
 
         int bestDistance = Integer.MAX_VALUE;
         int bestN = 0;
 
         // Score against all classes
-        for (final Class clazz : classes) {
+        for (final Class<?> clazz : classes) {
             final String name = clazz.getSimpleName();
             final int distance;
             if (name.equals(command)) {
@@ -295,7 +295,7 @@ public class Main {
         System.err.println(String.format("'%s' is not a valid command. See Main --help for more information.", command));
         if (bestDistance < HELP_SIMILARITY_FLOOR) {
             System.err.println(String.format("Did you mean %s?", (bestN < 2) ? "this" : "one of these"));
-            for (final Class clazz : classes) {
+            for (final Class<?> clazz : classes) {
                 if (bestDistance == distances.get(clazz)) {
                     System.err.println(String.format("        %s", clazz.getSimpleName()));
                 }
