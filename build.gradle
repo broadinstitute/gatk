@@ -14,13 +14,14 @@ repositories {
 
 //NOTE: we ignore contracts for now
 compileJava {
-  options.compilerArgs = ['-proc:none']
+  options.compilerArgs = ['-proc:none', '-Xlint:all']
 }
 compileTestJava { 
-  options.compilerArgs = ['-proc:none']
+  options.compilerArgs = ['-proc:none', '-Xlint:all']
 }
 
 build.dependsOn installApp
+check.dependsOn installApp
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
