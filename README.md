@@ -3,9 +3,11 @@
 Hellbender
 ================
 
-The (eventually public) parts of the next generation of GATK
+The (eventually public) parts of the next generation of GATK/Picard/Prometheus methods engine and tools.
 
 
 To build, run `gradle build`.
 
 To run the main program, run `build/install/hellbender/bin/hellbender`.
+
+Note to devs: untested code is consider **non existent** and thus is subject to removal at any time (exception is main methods). New code without tests should not be accepted at pull requests.
