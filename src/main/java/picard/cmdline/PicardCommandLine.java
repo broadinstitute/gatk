@@ -69,7 +69,7 @@ public class PicardCommandLine {
 
     /** The packages we wish to include in our command line **/
     protected static List<String> getPackageList() {
-        final List<String> packageList = new ArrayList<String>();
+        final List<String> packageList = new ArrayList<>();
         packageList.add("picard");
         return packageList;
     }
@@ -108,7 +108,7 @@ public class PicardCommandLine {
         }
         String missingAnnotationClasses = "";
 
-        final Map<String, Class<?>> simpleNameToClass = new HashMap<String, Class<?>>();
+        final Map<String, Class<?>> simpleNameToClass = new HashMap<>();
         for (final Class clazz : classFinder.getClasses()) {
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (!clazz.isInterface() && !clazz.isSynthetic() && !clazz.isPrimitive() && !clazz.isLocalClass()
@@ -131,7 +131,7 @@ public class PicardCommandLine {
             throw new RuntimeException("The following classes are missing the required CommandLineProgramProperties annotation: " + missingAnnotationClasses);
         }
 
-        final Set<Class<?>> classes = new HashSet<Class<?>>();
+        final Set<Class<?>> classes = new HashSet<>();
         classes.addAll(simpleNameToClass.values());
 
         if (args.length < 1) {
@@ -174,9 +174,9 @@ public class PicardCommandLine {
         builder.append(KBLDRED + "Available Programs:\n" + KNRM);
 
         /** Group CommandLinePrograms by CommandLineProgramGroup **/
-        final Map<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup> programGroupClassToProgramGroupInstance = new HashMap<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup>();
-        final Map<CommandLineProgramGroup, List<Class>> programsByGroup = new TreeMap<CommandLineProgramGroup, List<Class>>(CommandLineProgramGroup.comparator);
-        final Map<Class, CommandLineProgramProperties> programsToProperty = new HashMap<Class, CommandLineProgramProperties>();
+        final Map<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup> programGroupClassToProgramGroupInstance = new HashMap<>();
+        final Map<CommandLineProgramGroup, List<Class>> programsByGroup = new TreeMap<>(CommandLineProgramGroup.comparator);
+        final Map<Class, CommandLineProgramProperties> programsToProperty = new HashMap<>();
         for (final Class clazz : classes) {
             // Get the command line property for this command line program
             final CommandLineProgramProperties property = getProgramProperty(clazz);
@@ -199,7 +199,7 @@ public class PicardCommandLine {
             }
             List<Class> programs = programsByGroup.get(programGroup);
             if (null == programs) {
-                programsByGroup.put(programGroup, programs = new ArrayList<Class>());
+                programsByGroup.put(programGroup, programs = new ArrayList<>());
             }
             programs.add(clazz);
         }
@@ -211,7 +211,7 @@ public class PicardCommandLine {
             builder.append(KWHT + "--------------------------------------------------------------------------------------\n" + KNRM);
             builder.append(String.format("%s%-48s %-45s%s\n", KRED, programGroup.getName() + ":", programGroup.getDescription(), KNRM));
 
-            final List<Class> sortedClasses = new ArrayList<Class>();
+            final List<Class> sortedClasses = new ArrayList<>();
             sortedClasses.addAll(entry.getValue());
             Collections.sort(sortedClasses, new SimpleNameComparator());
 
@@ -239,7 +239,7 @@ public class PicardCommandLine {
 
     /** When a command does not match any known command, searches for similar commands, using the same method as GIT **/
     public static void printUnknown(final Set<Class<?>> classes, final String command) {
-        final Map<Class, Integer> distances = new HashMap<Class, Integer>();
+        final Map<Class, Integer> distances = new HashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;
         int bestN = 0;

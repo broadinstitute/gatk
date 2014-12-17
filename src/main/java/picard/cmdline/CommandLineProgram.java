@@ -74,7 +74,7 @@ import java.util.Map;
 public abstract class CommandLineProgram {
 
     @Option(common=true, optional=true)
-    public List<File> TMP_DIR = new ArrayList<File>();
+    public List<File> TMP_DIR = new ArrayList<>();
 
     @Option(doc = "Control verbosity of logging.", common=true)
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
@@ -110,7 +110,7 @@ public abstract class CommandLineProgram {
     */
     private CommandLineParser commandLineParser;
 
-    private final List<Header> defaultHeaders = new ArrayList<Header>();
+    private final List<Header> defaultHeaders = new ArrayList<>();
 
     /**
     * The reconstructed commandline used to run this program. Used for logging
@@ -135,7 +135,7 @@ public abstract class CommandLineProgram {
         }
 
         // Provide one temp directory if the caller didn't
-        if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<File>();
+        if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
         if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtil.getDefaultTmpDir());
 
         // Build the default headers
@@ -212,7 +212,7 @@ public abstract class CommandLineProgram {
     * to be written to the appropriate place.
     */
     protected String[] customCommandLineValidation() {
-        final List<String> ret = new ArrayList<String>();
+        final List<String> ret = new ArrayList<>();
         for (final Object childOptionsObject : getNestedOptions().values()) {
             if (childOptionsObject instanceof CommandLineProgram) {
                 final CommandLineProgram childClp = (CommandLineProgram)childOptionsObject;
@@ -255,7 +255,7 @@ public abstract class CommandLineProgram {
 
     /** Gets a MetricsFile with default headers already written into it. */
     protected <A extends MetricBase,B extends Comparable<?>> MetricsFile<A,B> getMetricsFile() {
-        final MetricsFile<A,B> file = new MetricsFile<A,B>();
+        final MetricsFile<A,B> file = new MetricsFile<>();
         for (final Header h : this.defaultHeaders) {
             file.addHeader(h);
         }

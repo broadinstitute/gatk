@@ -97,7 +97,7 @@ public class CommandLineParser {
             {"--version", null, "Displays program version."}
     };
 
-    private final Set<String> optionsThatCannotBeOverridden = new HashSet<String>();
+    private final Set<String> optionsThatCannotBeOverridden = new HashSet<>();
 
     /**
      * A typical command line program will call this to get the beginning of the usage message,
@@ -106,7 +106,7 @@ public class CommandLineParser {
      * \@Usage
      * public String USAGE = CommandLineParser.getStandardUsagePreamble(getClass()) + "Frobnicates the freebozzle."
      */
-    public static String getStandardUsagePreamble(final Class mainClass) {
+    public static String getStandardUsagePreamble(final Class<?> mainClass) {
         return "USAGE: " + mainClass.getSimpleName() + " [options]\n\n" +
                 (hasWebDocumentation(mainClass) ?
                         "Documentation: http://broadinstitute.github.io/picard/command-line-overview.html#" +
@@ -120,7 +120,7 @@ public class CommandLineParser {
      * @param clazz
      * @return true if the class has web documentation, false otherwise
      */
-    public static boolean hasWebDocumentation(final Class clazz) {
+    public static boolean hasWebDocumentation(final Class<?> clazz) {
         for (final String pkg : PACKAGES_WITH_WEB_DOCUMENTATION) {
             if (clazz.getPackage().getName().startsWith(pkg)) {
                 return true;
@@ -143,7 +143,7 @@ public class CommandLineParser {
      */
     static Map<String, Object> getNestedOptions(final Object callerOptions) {
         // LinkedHashMap so usage message is generated in order of declaration
-        final Map<String, Object> ret = new LinkedHashMap<String, Object>();
+        final Map<String, Object> ret = new LinkedHashMap<>();
         final Class<?> clazz = callerOptions.getClass();
         for (final Field field : getAllFields(clazz)) {
             if (field.getAnnotation(NestedOptions.class) != null) {
@@ -174,19 +174,19 @@ public class CommandLineParser {
     private int maxPositionalArguments;
 
     // List of all the data members with @Option annotation
-    private final List<OptionDefinition> optionDefinitions = new ArrayList<OptionDefinition>();
+    private final List<OptionDefinition> optionDefinitions = new ArrayList<>();
 
     // Maps long name, and short name, if present, to an option definition that is
     // also in the optionDefinitions list.
-    private final Map<String, OptionDefinition> optionMap = new HashMap<String, OptionDefinition>();
+    private final Map<String, OptionDefinition> optionMap = new HashMap<>();
 
     // Maps child options prefix to CommandLineParser for the child object.
     // Key: option prefix.
-    private final Map<String, CommandLineParser> childOptionsMap = new LinkedHashMap<String, CommandLineParser>();
+    private final Map<String, CommandLineParser> childOptionsMap = new LinkedHashMap<>();
 
     // Holds the command-line arguments for a child option parser.
     // Key: option prefix.  Value: List of arguments for child corresponding to that prefix (with prefix stripped).
-    private final MultiMap<String, ChildOptionArg> childOptionArguments = new MultiMap<String, ChildOptionArg>();
+    private final MultiMap<String, ChildOptionArg> childOptionArguments = new MultiMap<>();
 
     // For printing error messages when parsing command line.
     private PrintStream messageStream;
@@ -269,7 +269,7 @@ public class CommandLineParser {
     }
 
     private static List<Field> getAllFields(Class clazz) {
-        final List<Field> ret = new ArrayList<Field>();
+        final List<Field> ret = new ArrayList<>();
         do {
             ret.addAll(Arrays.asList(clazz.getDeclaredFields()));
             clazz = clazz.getSuperclass();
@@ -331,7 +331,7 @@ public class CommandLineParser {
     private Collection<CommandLineParser> getChildParsersForHelp() {
         final Collection<CommandLineParser> childClps;
         if (isCommandLineProgram()) {
-            childClps = new ArrayList<CommandLineParser>();
+            childClps = new ArrayList<>();
             for (final Map.Entry<String, Object> entry :
                     ((CommandLineProgram) callerOptions).getNestedOptionsForHelp().entrySet()) {
                 if (entry.getKey().contains(".")) {
@@ -1107,7 +1107,7 @@ public class CommandLineParser {
                 this.defaultValue = "null";
             }
             this.isCommon = isCommon;
-            this.mutuallyExclusive = new HashSet<String>(Arrays.asList(mutuallyExclusive));
+            this.mutuallyExclusive = new HashSet<>(Arrays.asList(mutuallyExclusive));
         }
     }
 

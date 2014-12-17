@@ -53,7 +53,7 @@ public class CommandLineParserTest {
     class FrobnicateOptions {
 
         @PositionalArguments(minElements=2, maxElements=2)
-        public List<File> positionalArguments = new ArrayList<File>();
+        public List<File> positionalArguments = new ArrayList<>();
 
         @Option(shortName="T", doc="Frobnication threshold setting.")
         public Integer FROBNICATION_THRESHOLD = 20;
@@ -62,7 +62,7 @@ public class CommandLineParserTest {
         public FrobnicationFlavor FROBNICATION_FLAVOR;
 
         @Option(doc="Allowed shmiggle types.", minElements=1, maxElements = 3)
-        public List<String> SHMIGGLE_TYPE = new ArrayList<String>();
+        public List<String> SHMIGGLE_TYPE = new ArrayList<>();
 
         @Option
         public Boolean TRUTHINESS;
@@ -75,7 +75,7 @@ public class CommandLineParserTest {
     class FrobnicateOptionsWithNullList {
 
         @PositionalArguments(minElements=2, maxElements=2)
-        public List<File> positionalArguments = new ArrayList<File>();
+        public List<File> positionalArguments = new ArrayList<>();
 
         @Option(shortName="T", doc="Frobnication threshold setting.")
         public Integer FROBNICATION_THRESHOLD = 20;
@@ -84,7 +84,7 @@ public class CommandLineParserTest {
         public FrobnicationFlavor FROBNICATION_FLAVOR;
 
         @Option(doc="Allowed shmiggle types.", minElements=0, maxElements = 3)
-        public List<String> SHMIGGLE_TYPE = new ArrayList<String>();
+        public List<String> SHMIGGLE_TYPE = new ArrayList<>();
 
         @Option
         public Boolean TRUTHINESS;
@@ -103,7 +103,7 @@ public class CommandLineParserTest {
         public FrobnicationFlavor FROBNICATION_FLAVOR;
 
         @Option(doc="Allowed shmiggle types.", minElements=1, maxElements = 3)
-        public List<String> SHMIGGLE_TYPE = new ArrayList<String>();
+        public List<String> SHMIGGLE_TYPE = new ArrayList<>();
 
         @Option
         public Boolean TRUTHINESS;
@@ -627,7 +627,7 @@ public class CommandLineParserTest {
         final String[] outerShmiggle = {"shmiggle1", "shmiggle2"};
         final String[] innerShmiggle = {"inner1", "inner2", "inner3"};
 
-        final List<String> args = new ArrayList<String>();
+        final List<String> args = new ArrayList<>();
         args.add("AN_INT=" + outerInt);
         args.add("A_STRING=" + outerString);
         args.add("frob.truThIness=" + outerTruthiness);
@@ -665,7 +665,7 @@ public class CommandLineParserTest {
         final boolean outerTruthiness = true;
         final String[] outerShmiggle = {"shmiggle1", "shmiggle2"};
 
-        final List<String> args = new ArrayList<String>();
+        final List<String> args = new ArrayList<>();
         args.add("AN_INT=" + outerInt);
         args.add("A_STRING=" + outerString);
         Assert.assertFalse(clp.parseOptions(System.err, args.toArray(new String[args.size()])));
@@ -691,7 +691,7 @@ public class CommandLineParserTest {
 
         @Override
         public Map<String, Object> getNestedOptions() {
-            final Map<String, Object> ret = new LinkedHashMap<String, Object>();
+            final Map<String, Object> ret = new LinkedHashMap<>();
             ret.put("CLP_NESTED", NESTED);
             ret.put("FRAB", FROB);
             return ret;
@@ -699,7 +699,7 @@ public class CommandLineParserTest {
 
         @Override
         public Map<String, Object> getNestedOptionsForHelp() {
-            final Map<String, Object> ret = new LinkedHashMap<String, Object>();
+            final Map<String, Object> ret = new LinkedHashMap<>();
             ret.put("CLP_NESTED", NESTED);
             return ret;
         }
@@ -721,7 +721,7 @@ public class CommandLineParserTest {
 
         @Override
         public Map<String, Object> getNestedOptions() {
-            final Map<String, Object> ret = new LinkedHashMap<String, Object>();
+            final Map<String, Object> ret = new LinkedHashMap<>();
             ret.put("FROB_NESTED", FROB);
             return ret;
         }
@@ -746,7 +746,7 @@ public class CommandLineParserTest {
         final List<String> innerShmiggleType = Arrays.asList("innershmiggle1", "skeezwitz");
         final boolean innerTruthiness = false;
 
-        final List<String> args = new ArrayList<String>();
+        final List<String> args = new ArrayList<>();
         args.add("AN_INT=" + outerInt);
         args.add("A_STRING=" + outerString);
         args.add("FRAB.FROBNICATION_THRESHOLD=" + outerThreshold);
@@ -832,7 +832,7 @@ public class CommandLineParserTest {
         clp.usage(System.out, false);
         clp.htmlUsage(System.out, "testStaticPropagation", false);
 
-        final List<String> args = new ArrayList<String>();
+        final List<String> args = new ArrayList<>();
         args.add("STRING3=String3Parent");
         args.add("CHILD.STRING4=String4Child");
         args.add("STRING5=String5Parent");
@@ -884,7 +884,7 @@ public class CommandLineParserTest {
 
         @Override
         public Map<String, Object> getNestedOptions() {
-            final Map<String, Object> ret = new HashMap<String, Object>();
+            final Map<String, Object> ret = new HashMap<>();
             ret.put("CHILD", CHILD);
             return ret;
         }
@@ -894,7 +894,7 @@ public class CommandLineParserTest {
     public void testDynamicPropagation() {
         final DynamicPropagationParent o = new DynamicPropagationParent();
 
-        final List<String> args = new ArrayList<String>();
+        final List<String> args = new ArrayList<>();
         args.add("STRING3=String3Parent");
         args.add("CHILD.STRING4=String4Child");
         args.add("STRING5=String5Parent");

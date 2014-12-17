@@ -42,7 +42,7 @@ import java.util.zip.ZipFile;
  * @author Tim Fennell
  */
 public class ClassFinder {
-    private final Set<Class<?>> classes = new HashSet<Class<?>>();
+    private final Set<Class<?>> classes = new HashSet<>();
     private final ClassLoader loader;
     private Class<?> parentType;
     // If not null, only look for classes in this jar
