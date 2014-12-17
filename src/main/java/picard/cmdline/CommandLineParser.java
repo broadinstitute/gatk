@@ -268,7 +268,7 @@ public class CommandLineParser {
         return callerOptions instanceof CommandLineProgram;
     }
 
-    private static List<Field> getAllFields(Class clazz) {
+    private static List<Field> getAllFields(Class<?> clazz) {
         final List<Field> ret = new ArrayList<>();
         do {
             ret.addAll(Arrays.asList(clazz.getDeclaredFields()));
@@ -493,6 +493,7 @@ public class CommandLineParser {
                     return false;
                 }
                 if (optionDefinition.isCollection) {
+                    @SuppressWarnings("rawtypes")
                     final Collection c = (Collection) optionDefinition.field.get(callerOptions);
                     if (c.size() < optionDefinition.minElements) {
                         messageStream.println("ERROR: Option '" + fullName + "' must be specified at least " +
@@ -513,6 +514,7 @@ public class CommandLineParser {
 
             }
             if (positionalArguments != null) {
+                @SuppressWarnings("rawtypes")
                 final Collection c = (Collection) positionalArguments.get(callerOptions);
                 if (c.size() < minPositionalArguments) {
                     messageStream.println("ERROR: At least " + minPositionalArguments +
@@ -560,6 +562,7 @@ public class CommandLineParser {
             messageStream.println("ERROR: " + e.getMessage());
             return false;
         }
+        @SuppressWarnings("rawtypes")
         final Collection c;
         try {
             c = (Collection) positionalArguments.get(callerOptions);
@@ -653,6 +656,7 @@ public class CommandLineParser {
         }
         try {
             if (optionDefinition.isCollection) {
+                @SuppressWarnings("rawtypes")
                 final Collection c = (Collection) optionDefinition.field.get(callerOptions);
                 if (value == null) {
                     //user specified this arg=null which is interpreted as empty list
@@ -977,7 +981,7 @@ public class CommandLineParser {
             field.set(callerOptions, field.getType().newInstance());
         } catch (final Exception ex) {
             try {
-                field.set(callerOptions, new ArrayList());
+                field.set(callerOptions, new ArrayList<>());
             } catch (final IllegalArgumentException e) {
                 throw new CommandLineParserDefinitionException("In collection " + annotationType +
                         " member " + field.getName() +
@@ -993,7 +997,7 @@ public class CommandLineParser {
      * the case of primitive fields it will return the wrapper type so that String
      * constructors can be found.
      */
-    private Class getUnderlyingType(final Field field) {
+    private Class<?> getUnderlyingType(final Field field) {
         if (isCollectionField(field)) {
             final ParameterizedType clazz = (ParameterizedType) (field.getGenericType());
             final Type[] genericTypes = clazz.getActualTypeArguments();
@@ -1001,10 +1005,10 @@ public class CommandLineParser {
                 throw new CommandLineParserDefinitionException("Strange collection type for field " +
                         field.getName());
             }
-            return (Class) genericTypes[0];
+            return (Class<?>) genericTypes[0];
 
         } else {
-            final Class type = field.getType();
+            final Class<?> type = field.getType();
             if (type == Byte.TYPE) return Byte.class;
             if (type == Short.TYPE) return Short.class;
             if (type == Integer.TYPE) return Integer.class;
@@ -1018,7 +1022,7 @@ public class CommandLineParser {
     }
 
     // True if clazz is an enum, or if it has a ctor that takes a single String argument.
-    private boolean canBeMadeFromString(final Class clazz) {
+    private boolean canBeMadeFromString(final Class<?> clazz) {
         if (clazz.isEnum()) {
             return true;
         }
@@ -1040,7 +1044,7 @@ public class CommandLineParser {
                             clazz.getSimpleName() + ".", e);
                 }
             }
-            final Constructor ctor = clazz.getConstructor(String.class);
+            final Constructor<?> ctor = clazz.getConstructor(String.class);
             return ctor.newInstance(s);
         } catch (final NoSuchMethodException e) {
             // Shouldn't happen because we've checked for presence of ctor
