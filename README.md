@@ -12,4 +12,12 @@ To run the main program, run `build/install/hellbender/bin/hellbender`.
 
 To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`.
 
-Note to devs: untested code is consider **non existent** and thus is subject to removal at any time (exception is main methods). New code without tests should not be accepted at pull requests.
+----------------
+Notes to devs
+
+* Untested code is considered **non existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or toString code). New code without tests should not be accepted at pull requests. 
+
+* Don't use toString for anything other than human consumption (ie dont base your code on it.)
+
+* Do use Java 8 features liberally, in particular streams, functional programming etc.
+
