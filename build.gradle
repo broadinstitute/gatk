@@ -37,8 +37,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
-    compile 'picard:picard:1.126'
-    compile 'samtools:htsjdk:1.126'
+    compile 'samtools:htsjdk:1.127'
 
     testCompile 'org.testng:testng:6.8.8'
 }
