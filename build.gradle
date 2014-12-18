@@ -3,7 +3,7 @@ apply plugin: 'idea'
 apply plugin: 'application'
 apply plugin: "jacoco"
 
-mainClassName = "org.broadinstitute.gatk.Main"
+mainClassName = "org.broadinstitute.hellbender.Main"
 
 repositories {
     mavenCentral()
@@ -37,8 +37,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
-    compile 'picard:picard:1.126'
-    compile 'samtools:htsjdk:1.126'
+    compile 'samtools:htsjdk:1.127'
 
     testCompile 'org.testng:testng:6.8.8'
 }
@@ -51,7 +50,7 @@ jar {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-tools',
                 'Implementation-Version': version, 
-                'Main-Class': 'org.broadinstitute.gatk.Main'
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
 }
 
