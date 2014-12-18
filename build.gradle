@@ -3,7 +3,7 @@ apply plugin: 'idea'
 apply plugin: 'application'
 apply plugin: "jacoco"
 
-mainClassName = "org.broadinstitute.gatk.Main"
+mainClassName = "org.broadinstitute.hellbender.Main"
 
 repositories {
     mavenCentral()
@@ -50,7 +50,7 @@ jar {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-tools',
                 'Implementation-Version': version, 
-                'Main-Class': 'org.broadinstitute.gatk.Main'
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
 }
 
