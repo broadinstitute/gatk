@@ -41,10 +41,7 @@ import htsjdk.samtools.util.zip.DeflaterFactory;
 import java.io.File;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Abstract class to facilitate writing command-line programs.
@@ -57,9 +54,9 @@ import java.util.Map;
  * 2. If there is any custom command-line validation, override customCommandLineValidation().  When this method is
  * called, the command line has been parsed and set into the data members of the concrete class.
  *
- * 3. Implement a method doWork().  This is called after successful command-line processing.  The value it returns is
- * the exit status of the program.  It is assumed that the concrete class emits any appropriate error message before
- * returning non-zero.  doWork() may throw unchecked exceptions, which are caught and reported appropriately.
+ * 3. Implement a method doWork().  This is called after successful command-line processing.
+ * The doWork() method may return null or a result object (they are not interpreted by the toolkit and passed onto the caller).
+ * doWork() may throw unchecked exceptions, which are NOT caught and passed onto the VM.
  *
  * 4. Implement the following static method in the concrete class:
  *
@@ -119,17 +116,13 @@ public abstract class CommandLineProgram {
     /**
     * Do the work after command line has been parsed. RuntimeException may be
     * thrown by this method, and are reported appropriately.
-    * @return program exit status.
+    * @return the return value or null is there is none.
     */
-    protected abstract int doWork();
+    protected abstract Object doWork();
 
-    public void instanceMainWithExit(final String[] argv) {
-        System.exit(instanceMain(argv));
-    }
-
-    public int instanceMain(final String[] argv) {
+    public Object instanceMain(final String[] argv) {
         if (!parseArgs(argv)) {
-            return 1;
+            throw new CommandLineParseException(Arrays.toString(argv));
         }
 
         // Provide one temp directory if the caller didn't
@@ -156,7 +149,7 @@ public abstract class CommandLineProgram {
         SAMFileWriterFactory.setDefaultCreateMd5File(CREATE_MD5_FILE);
 
         for (final File f : TMP_DIR) {
-            // Intentially not checking the return values, because it may be that the program does not
+            // Intentionally not checking the return values, because it may be that the program does not
             // need a tmp_dir. If this fails, the problem will be discovered downstream.
             if (!f.exists()) f.mkdirs();
             f.setReadable(true, false);
@@ -180,25 +173,18 @@ public abstract class CommandLineProgram {
             catch (Exception e) { /* Unpossible! */ }
         }
 
-        int ret = -1;
         try {
-            ret = doWork();
+            return doWork();
         } finally {
-            try {
-                // Emit the time even if program throws
-                if (!QUIET) {
-                    final Date endDate = new Date();
-                    final double elapsedMinutes = (endDate.getTime() - startDate.getTime()) / (1000d * 60d);
-                    final String elapsedString  = new DecimalFormat("#,##0.00").format(elapsedMinutes);
-                    System.err.println("[" + endDate + "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
-                    System.err.println("Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory());
-                }
-            }
-            catch (Throwable e) {
-                // do nothing
+            // Emit the time even if program throws
+            if (!QUIET) {
+                final Date endDate = new Date();
+                final double elapsedMinutes = (endDate.getTime() - startDate.getTime()) / (1000d * 60d);
+                final String elapsedString  = new DecimalFormat("#,##0.00").format(elapsedMinutes);
+                System.err.println("[" + endDate + "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
+                System.err.println("Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory());
             }
         }
-        return ret;
     }
 
     /**

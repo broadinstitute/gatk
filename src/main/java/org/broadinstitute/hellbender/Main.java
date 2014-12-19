@@ -92,9 +92,9 @@ public class Main {
      * on the command line.
      * *
      */
-    protected int instanceMain(final String[] args, final List<String> packageList, final String commandLineName) {
+    protected Object instanceMain(final String[] args, final List<String> packageList, final String commandLineName) {
         final CommandLineProgram program = extractCommandLineProgram(args, packageList, commandLineName);
-        if (null == program) return 1; // no program found!
+        if (null == program) return null; // no program found!
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
@@ -104,7 +104,7 @@ public class Main {
     /**
      * For testing *
      */
-    protected int instanceMain(final String[] args) {
+    protected Object instanceMain(final String[] args) {
         return instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
     }
 
@@ -112,7 +112,7 @@ public class Main {
      * Override this if you want to include different java packages to search for classes that extend CommandLineProgram. *
      */
     public static void main(final String[] args) {
-        System.exit(new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME));
+        new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
     }
 
     /**

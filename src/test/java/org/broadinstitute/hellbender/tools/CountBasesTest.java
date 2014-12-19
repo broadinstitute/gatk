@@ -23,27 +23,30 @@
  */
 package org.broadinstitute.hellbender.tools;
 
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class CountBasesTest {
-    @Test
-    public void testSamCountBases() throws Exception {
-        final CountBases countBases = new CountBases();
-        countBases.INPUT = new File("src/test/resources/org/broadinstitute/hellbender/tools/count_bases.sam");
+public class CountBasesTest extends CommandLineProgramTest {
 
-        final long l = countBases.countBases();
-        Assert.assertEquals(l, 808);
+    @Test(dataProvider = "filenames")
+    public void testCountBases(String fileIn) throws Exception {
+        final File ORIG_BAM = new File(getTestDataDir(), fileIn);
+        final String[] args = new String[]{
+                "INPUT=" + ORIG_BAM.getAbsolutePath(),
+        };
+        final Object res = this.runCommandLine(args);
+        Assert.assertEquals(res, 808l);
     }
 
-    @Test
-    public void testBamCountBases() throws Exception {
-        final CountBases countBases = new CountBases();
-        countBases.INPUT = new File("src/test/resources/org/broadinstitute/hellbender/tools/count_bases.bam");
-
-        final long l = countBases.countBases();
-        Assert.assertEquals(l, 808);
+    @DataProvider(name="filenames")
+    public Object[][] filenames() {
+        return new String[][]{
+                {"count_bases.sam"},
+                {"count_bases.bam"},
+        };
     }
 }

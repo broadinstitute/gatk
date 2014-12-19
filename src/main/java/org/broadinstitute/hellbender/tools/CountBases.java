@@ -23,15 +23,11 @@ public class CountBases extends CommandLineProgram {
     @Option(shortName= StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM file to count bases.")
     public File INPUT;
 
-    public static void main(final String[] args) {
-        new CountBases().instanceMain(args);
-    }
-
     @Override
-    protected int doWork() {
-        long count = countBases();
+    protected Long doWork() {
+        final long count = countBases();
         System.out.println(count + " bases");
-        return 0;
+        return count;
     }
 
     /**
