@@ -29,7 +29,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.util.Arrays;
 
 public class PrintReadsTest extends CommandLineProgramTest{

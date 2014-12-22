@@ -35,6 +35,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Rudimentary SAM comparer.  Compares headers, and if headers are compatible enough, compares SAMRecords,
@@ -43,7 +44,7 @@ import java.util.Map;
  * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = "USAGE: CompareSAMS <SAMFile1> <SAMFile2>\n" +
+        usage = "USAGE: CompareSAMs <SAMFile1> <SAMFile2>\n" +
                 "Compares the headers of the two input SAM or BAM files, and, if possible, the SAMRecords. " +
                 "For SAMRecords, compares only the readUnmapped flag, reference name, start position and strand. " +
                 "Reports the number of SAMRecords that match, differ in alignment, are mapped in only one input, " +
@@ -67,10 +68,6 @@ public class CompareSAMs extends CommandLineProgram {
     private int missingRight = 0;
     private boolean areEqual;
 
-    public static void main(String[] argv) {
-        new CompareSAMs().instanceMainWithExit(argv);
-    }
-
     /**
      * Do the work after command line has been parsed. RuntimeException may be
      * thrown by this method, and are reported appropriately.
@@ -79,16 +76,17 @@ public class CompareSAMs extends CommandLineProgram {
      */
     @Override
     protected int doWork() {
+        SamReaderFactory factory = SamReaderFactory.makeDefault();
         for (int i = 0; i < samFiles.size(); ++i) {
-            samReaders[i] = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(i));
+            samReaders[i] = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(i));
         }
         areEqual = compareHeaders();
         areEqual = compareAlignments() && areEqual;
         printReport();
-        if (!areEqual) {
-            System.out.println("SAM files differ.");
-        } else {
+        if (areEqual) {
             System.out.println("SAM files match.");
+        } else {
+            System.out.println("SAM files differ.");
         }
         CloserUtil.close(samReaders);
         return 0;
@@ -451,22 +449,13 @@ public class CompareSAMs extends CommandLineProgram {
     }
 
     private <T> boolean compareValues(final T v1, final T v2, final String label) {
-        if (v1 == null) {
-            if (v2 == null) {
-                return true;
-            }
+        boolean eq = Objects.equals(v1, v2);
+        if (eq) {
+            return true;
+        } else {
             reportDifference(v1, v2, label);
             return false;
         }
-        if (v2 == null) {
-            reportDifference(v1, v2, label);
-            return false;
-        }
-        if (!v1.equals(v2)) {
-            reportDifference(v1, v2, label);
-            return false;
-        }
-        return true;
     }
 
     private void reportDifference(final String s1, final String s2, final String label) {

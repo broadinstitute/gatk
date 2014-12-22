@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 
 import java.io.File;
-import java.util.Map;
 
 @CommandLineProgramProperties(
 	usage = "Prints reads from the input to the output.",
@@ -38,10 +37,7 @@ public class PrintReads extends CommandLineProgram {
         System.out.print(outputHeader);
 
         final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_SEQUENCE);
-
-        for (final SAMRecord rec : in) {
-            outputWriter.addAlignment(rec);
-        }
+        in.forEach(outputWriter::addAlignment);
         CloserUtil.close(in);
         CloserUtil.close(outputWriter);
         return 0;
