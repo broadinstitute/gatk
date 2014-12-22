@@ -46,6 +46,13 @@ import java.lang.annotation.Target;
 public @interface Option {
 
     /**
+     * The full name of the command-line argument.  Full names should be
+     * prefixed on the command-line with a double dash (--).
+     * @return Selected full name, or "" to use the default.
+     */
+    String fullName() default "";
+
+    /**
      * Specified short name of the command.  Short names should be prefixed
      * with a single dash.  Argument values can directly abut single-char
      * short names or be separated from them by a space.
@@ -62,7 +69,7 @@ public @interface Option {
 
     /**
      * If set to false, an exception will be thrown if the option is not specified.
-     * If 2 options are mutually exclusive and both have optional=false it will be
+     * If 2 options are mutually exclusive and both are required it will be
      * interpreted as one or the other is required and an exception will only be thrown if
      * neither are specified.
      */
