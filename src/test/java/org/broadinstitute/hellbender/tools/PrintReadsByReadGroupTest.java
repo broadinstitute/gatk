@@ -33,8 +33,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.Callable;
 import java.util.stream.Stream;
 
 public class PrintReadsByReadGroupTest {
@@ -44,7 +46,8 @@ public class PrintReadsByReadGroupTest {
 
     @DataProvider(name = "printReadsByReadGroupData", parallel = true)
     public Object[][] getPrintReadsByReadGroupData() {
-        return Stream.of(SamReader.Type.SAM_TYPE, SamReader.Type.BAM_TYPE, SamReader.Type.CRAM_TYPE)
+        return getSamReaderTypes()
+                .filter(t -> t != SamReader.Type.CRAM_TYPE) // https://github.com/samtools/htsjdk/issues/148
                 .map(t -> new Object[]{t, t == SamReader.Type.CRAM_TYPE})
                 .toArray(Object[][]::new);
     }
@@ -79,5 +82,23 @@ public class PrintReadsByReadGroupTest {
         }
         CloserUtil.close(in);
         return count;
+    }
+
+    private static Stream<SamReader.Type> getSamReaderTypes() {
+        return Stream
+                .of(SamReader.Type.class.getFields())
+                .filter(f -> Modifier.isStatic(f.getModifiers()))
+                .filter(f -> f.getType().isAssignableFrom(SamReader.Type.class))
+                .map(f -> orNull(() -> f.get(null)))
+                .filter(v -> v instanceof SamReader.Type)
+                .map(v -> (SamReader.Type) v);
+    }
+
+    private static <V> V orNull(final Callable<V> callable) {
+        try {
+            return callable.call();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
