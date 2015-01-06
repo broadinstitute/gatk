@@ -1,5 +1,7 @@
 .idea/
 hellbender.iml
+*.ipr
+*.iws
 .gradle
 gradle/
 build/
