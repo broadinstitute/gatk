@@ -26,6 +26,7 @@ package org.broadinstitute.hellbender.cmdline;
 import org.broadinstitute.hellbender.exceptions.ReviewedHellbenderException;
 
 public class CommandLineParserDefinitionException extends ReviewedHellbenderException {
+    private static final long serialVersionUID = 0L;
     public CommandLineParserDefinitionException(final String s) {
         super(s);
     }

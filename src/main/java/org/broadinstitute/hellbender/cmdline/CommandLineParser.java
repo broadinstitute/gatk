@@ -465,6 +465,7 @@ public class CommandLineParser {
 
     }
 
+    @SuppressWarnings("unchecked")
     private boolean parsePositionalArgument(final String stringValue) {
         if (positionalArguments == null) {
             messageStream.println("ERROR: Invalid argument '" + stringValue + "'.");
@@ -497,6 +498,7 @@ public class CommandLineParser {
         return parseOption(key, stringValue, optionsFile, false);
     }
 
+    @SuppressWarnings("unchecked")
     private boolean parseOption(String key, final String stringValue, final boolean optionsFile,
                                 boolean precedenceSet) {
         key = key.toUpperCase();
@@ -942,6 +944,7 @@ public class CommandLineParser {
         }
     }
 
+    @SuppressWarnings({"unchecked","rawtypes"})
     private Object constructFromString(final Class clazz, final String s) {
         try {
             if (clazz.isEnum()) {
