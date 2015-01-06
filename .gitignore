@@ -1,7 +1,5 @@
-.idea/misc.xml
-.idea/workspace.xml
-.idea/tasks.xml
-prometheus-utils.iml
+.idea/
+hellbender.iml
 .gradle
 gradle/
 build/
