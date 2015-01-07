@@ -26,7 +26,8 @@ package org.broadinstitute.hellbender.cmdline;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil.MultiMap;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.hellbender.exceptions.ReviewedHellbenderException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -280,7 +281,7 @@ public class CommandLineParser {
             try {
                 fileField = getClass().getField("IGNORE_THIS_PROPERTY");
             } catch (final NoSuchFieldException e) {
-                throw new ReviewedHellbenderException("Should never happen", e);
+                throw new GATKException("Should never happen", e);
             }
             final OptionDefinition optionsFileOptionDefinition =
                     new OptionDefinition(fileField, OPTIONS_FILE, "",
@@ -474,7 +475,7 @@ public class CommandLineParser {
         final Object value;
         try {
             value = constructFromString(getUnderlyingType(positionalArguments), stringValue);
-        } catch (final CommandLineParseException e) {
+        } catch (final GATKException.CommandLineParserInternalException e) {
             messageStream.println("ERROR: " + e.getMessage());
             return false;
         }
@@ -567,7 +568,7 @@ public class CommandLineParser {
                 value = constructFromString(getUnderlyingType(optionDefinition.field), stringValue);
             }
 
-        } catch (final CommandLineParseException e) {
+        } catch (final GATKException.CommandLineParserInternalException e) {
             messageStream.println("ERROR: " + e.getMessage());
             return false;
         }
@@ -643,7 +644,7 @@ public class CommandLineParser {
             return true;
 
         } catch (final IOException e) {
-            throw new ReviewedHellbenderException("I/O error loading OPTIONS_FILE=" + optionsFile, e);
+            throw new UserException("I/O error loading OPTIONS_FILE=" + optionsFile, e);
         } finally {
             CloserUtil.close(reader);
         }
@@ -751,8 +752,8 @@ public class CommandLineParser {
                 final OptionDefinition mutextOptionDefinition = optionMap.get(option);
 
                 if (mutextOptionDefinition == null) {
-                    throw new ReviewedHellbenderException("Invalid option definition in source code.  " + option +
-                            " doesn't match any known option.");
+                    throw new GATKException("Invalid option definition in source code.  " + option +
+                                                  " doesn't match any known option.");
                 }
 
                 sb.append(" ").append(mutextOptionDefinition.name);
@@ -779,11 +780,11 @@ public class CommandLineParser {
             final boolean isCollection = isCollectionField(field);
             if (isCollection) {
                 if (optionAnnotation.maxElements() == 0) {
-                    throw new CommandLineParserDefinitionException("@Option member " + field.getName() +
+                    throw new GATKException.CommandLineParserInternalException("@Option member " + field.getName() +
                             "has maxElements = 0");
                 }
                 if (optionAnnotation.minElements() > optionAnnotation.maxElements()) {
-                    throw new CommandLineParserDefinitionException("In @Option member " + field.getName() +
+                    throw new GATKException.CommandLineParserInternalException("In @Option member " + field.getName() +
                             ", minElements cannot be > maxElements");
                 }
                 if (field.get(callerOptions) == null) {
@@ -791,7 +792,7 @@ public class CommandLineParser {
                 }
             }
             if (!canBeMadeFromString(getUnderlyingType(field))) {
-                throw new CommandLineParserDefinitionException("@Option member " + field.getName() +
+                throw new GATKException.CommandLineParserInternalException("@Option member " + field.getName() +
                         " must have a String ctor or be an enum");
             }
 
@@ -810,12 +811,12 @@ public class CommandLineParser {
                 }
             }
             if (!optionDefinition.overridable && optionMap.containsKey(optionDefinition.name)) {
-                throw new CommandLineParserDefinitionException(optionDefinition.name + " has already been used.");
+                throw new GATKException.CommandLineParserInternalException(optionDefinition.name + " has already been used.");
             }
             if (optionDefinition.shortName.length() > 0) {
                 if (optionMap.containsKey(optionDefinition.shortName)) {
                     if (!optionDefinition.overridable) {
-                        throw new CommandLineParserDefinitionException(optionDefinition.shortName +
+                        throw new GATKException.CommandLineParserInternalException(optionDefinition.shortName +
                                 " has already been used");
                     }
                 } else {
@@ -828,24 +829,24 @@ public class CommandLineParser {
                 optionMap.put(optionDefinition.name, optionDefinition);
             }
         } catch (final IllegalAccessException e) {
-            throw new CommandLineParserDefinitionException(field.getName() +
+            throw new GATKException.CommandLineParserInternalException(field.getName() +
                     " must have public visibility to have @Option annotation");
         }
     }
 
     private void handlePositionalArgumentAnnotation(final Field field) {
         if (positionalArguments != null) {
-            throw new CommandLineParserDefinitionException
+            throw new GATKException.CommandLineParserInternalException
                     ("@PositionalArguments cannot be used more than once in an option class.");
         }
         field.setAccessible(true);
         positionalArguments = field;
         if (!isCollectionField(field)) {
-            throw new CommandLineParserDefinitionException("@PositionalArguments must be applied to a Collection");
+            throw new GATKException.CommandLineParserInternalException("@PositionalArguments must be applied to a Collection");
         }
 
         if (!canBeMadeFromString(getUnderlyingType(field))) {
-            throw new CommandLineParserDefinitionException("@PositionalParameters member " + field.getName() +
+            throw new GATKException.CommandLineParserInternalException("@PositionalParameters member " + field.getName() +
                     "does not have a String ctor");
         }
 
@@ -853,14 +854,14 @@ public class CommandLineParser {
         minPositionalArguments = positionalArgumentsAnnotation.minElements();
         maxPositionalArguments = positionalArgumentsAnnotation.maxElements();
         if (minPositionalArguments > maxPositionalArguments) {
-            throw new CommandLineParserDefinitionException("In @PositionalArguments, minElements cannot be > maxElements");
+            throw new GATKException.CommandLineParserInternalException("In @PositionalArguments, minElements cannot be > maxElements");
         }
         try {
             if (field.get(callerOptions) == null) {
                 createCollection(field, callerOptions, "@PositionalParameters");
             }
         } catch (final IllegalAccessException e) {
-            throw new CommandLineParserDefinitionException(field.getName() +
+            throw new GATKException.CommandLineParserInternalException(field.getName() +
                     " must have public visibility to have @PositionalParameters annotation");
 
         }
@@ -872,7 +873,7 @@ public class CommandLineParser {
             childOptionsMap.put(field.getName(),
                     new CommandLineParser(field.get(this.callerOptions), prefixDot + field.getName()));
         } catch (final IllegalAccessException e) {
-            throw new CommandLineParserDefinitionException("Should never happen.", e);
+            throw new GATKException.CommandLineParserInternalException("Should never happen.", e);
         }
     }
 
@@ -893,7 +894,7 @@ public class CommandLineParser {
             try {
                 field.set(callerOptions, new ArrayList<>());
             } catch (final IllegalArgumentException e) {
-                throw new CommandLineParserDefinitionException("In collection " + annotationType +
+                throw new GATKException.CommandLineParserInternalException("In collection " + annotationType +
                         " member " + field.getName() +
                         " cannot be constructed or auto-initialized with ArrayList, so collection must be initialized explicitly.");
             }
@@ -912,7 +913,7 @@ public class CommandLineParser {
             final ParameterizedType clazz = (ParameterizedType) (field.getGenericType());
             final Type[] genericTypes = clazz.getActualTypeArguments();
             if (genericTypes.length != 1) {
-                throw new CommandLineParserDefinitionException("Strange collection type for field " +
+                throw new GATKException.CommandLineParserInternalException("Strange collection type for field " +
                         field.getName());
             }
             return (Class<?>) genericTypes[0];
@@ -951,7 +952,7 @@ public class CommandLineParser {
                 try {
                     return Enum.valueOf(clazz, s);
                 } catch (final IllegalArgumentException e) {
-                    throw new CommandLineParseException("'" + s + "' is not a valid value for " +
+                    throw new GATKException.CommandLineParserInternalException("'" + s + "' is not a valid value for " +
                             clazz.getSimpleName() + ".", e);
                 }
             }
@@ -959,15 +960,15 @@ public class CommandLineParser {
             return ctor.newInstance(s);
         } catch (final NoSuchMethodException e) {
             // Shouldn't happen because we've checked for presence of ctor
-            throw new CommandLineParseException("Cannot find string ctor for " + clazz.getName(), e);
+            throw new GATKException.CommandLineParserInternalException("Cannot find string ctor for " + clazz.getName(), e);
         } catch (final InstantiationException e) {
-            throw new CommandLineParseException("Abstract class '" + clazz.getSimpleName() +
+            throw new GATKException.CommandLineParserInternalException("Abstract class '" + clazz.getSimpleName() +
                     "'cannot be used for an option value type.", e);
         } catch (final IllegalAccessException e) {
-            throw new CommandLineParseException("String constructor for option value type '" + clazz.getSimpleName() +
+            throw new GATKException.CommandLineParserInternalException("String constructor for option value type '" + clazz.getSimpleName() +
                     "' must be public.", e);
         } catch (final InvocationTargetException e) {
-            throw new CommandLineParseException("Problem constructing " + clazz.getSimpleName() +
+            throw new GATKException.CommandLineParserInternalException("Problem constructing " + clazz.getSimpleName() +
                     " from the string '" + s + "'.", e.getCause());
         }
     }
