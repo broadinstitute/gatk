@@ -32,6 +32,8 @@ package org.broadinstitute.hellbender.exceptions;
  * This exception allows us to filter out exceptions that come from us.
  */
 public class HellbenderException extends RuntimeException {
+    private static final long serialVersionUID = 0L;
+
     public HellbenderException(String msg) {
         super(msg);
     }

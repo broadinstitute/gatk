@@ -31,6 +31,8 @@ package org.broadinstitute.hellbender.exceptions;
  * is now just a catch all for lazy users.
  */
 public class ReviewedHellbenderException extends HellbenderException {
+    private static final long serialVersionUID = 0L;
+
     public ReviewedHellbenderException(String msg) {
         super(msg);
     }
