@@ -29,7 +29,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PositionalArguments;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.exceptions.ReviewedHellbenderException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.File;
 import java.util.HashMap;
@@ -312,7 +312,7 @@ public class CompareSAMs extends CommandLineProgram {
 
     private boolean tallyAlignmentRecords(final SAMRecord s1, final SAMRecord s2) {
         if (!s1.getReadName().equals(s2.getReadName())) {
-            throw new ReviewedHellbenderException("Read names do not match: " + s1.getReadName() + " : " + s2.getReadName());
+            throw new GATKException("Read names do not match: " + s1.getReadName() + " : " + s2.getReadName());
         }
         if (s1.getReadUnmappedFlag() && s2.getReadUnmappedFlag()) {
             ++unmappedBoth;

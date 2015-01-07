@@ -27,19 +27,41 @@ package org.broadinstitute.hellbender.exceptions;
 
 /**
  * <p/>
- * Class HellbenderException.
+ * Class GATKException.
  * <p/>
- * This exception allows us to filter out exceptions that come from us.
+ * This exception is for errors that are beyond the user's control, such as internal pre/post condition failures
+ * and "this should never happen" kinds of scenarios.
  */
-public class HellbenderException extends RuntimeException {
+public class GATKException extends RuntimeException {
     private static final long serialVersionUID = 0L;
 
-    public HellbenderException(String msg) {
+    public GATKException( String msg ) {
         super(msg);
     }
 
-    public HellbenderException(String message, Throwable throwable) {
+    public GATKException( String message, Throwable throwable ) {
         super(message, throwable);
+    }
+
+    /**
+     * Subtypes of GATKException for common kinds of errors
+     */
+
+    /**
+     * <p/>
+     * Class GATKException.CommandLineParserInternalException
+     * <p/>
+     * For internal errors in the command line parser not related to syntax errors in the command line itself.
+     */
+    public static class CommandLineParserInternalException extends GATKException {
+        private static final long serialVersionUID = 0L;
+        public CommandLineParserInternalException( final String s ) {
+            super(s);
+        }
+
+        public CommandLineParserInternalException( final String s, final Throwable throwable ) {
+            super(s, throwable);
+        }
     }
 }
 

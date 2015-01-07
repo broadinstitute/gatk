@@ -24,6 +24,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.CollectionUtil;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -393,7 +394,7 @@ public class CommandLineParserTest {
         Assert.assertFalse(clp.parseOptions(System.err, args));
     }
 
-    @Test(expectedExceptions = CommandLineParserDefinitionException.class)
+    @Test(expectedExceptions = GATKException.CommandLineParserInternalException.class)
     public void testOptionDefinitionCaseClash() {
         final OptionsWithCaseClash options = new OptionsWithCaseClash();
         new CommandLineParser(options);
@@ -551,7 +552,7 @@ public class CommandLineParserTest {
         public Set<String> SET;
     }
 
-    @Test(expectedExceptions = CommandLineParserDefinitionException.class)
+    @Test(expectedExceptions = GATKException.CommandLineParserInternalException.class)
     public void testCollectionThatCannotBeAutoInitialized() {
         final UninitializedCollectionThatCannotBeAutoInitializedOptions o = new UninitializedCollectionThatCannotBeAutoInitializedOptions();
         new CommandLineParser(o);
