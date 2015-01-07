@@ -58,8 +58,10 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     protected static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
+    public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
+
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
-    public static final String exampleReference = publicTestDir + "hg19mini.fasta";
+    public static final String exampleReference = hg19MiniReference;
     public static final String exampleIntervalFile = publicTestDir + "hg19mini.interval_list";
 
     /**
