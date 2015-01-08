@@ -60,6 +60,8 @@ public class UserException extends RuntimeException {
      * For generic errors opening/reading from input files
      */
     public static class CouldNotReadInputFile extends UserException {
+        private static final long serialVersionUID = 0L;
+
         public CouldNotReadInputFile(String message, Exception e) {
             super(String.format("Couldn't read file because %s caused by %s", message, getMessage(e)));
         }
@@ -96,6 +98,8 @@ public class UserException extends RuntimeException {
      * For generic errors writing to output files
      */
     public static class CouldNotCreateOutputFile extends UserException {
+        private static final long serialVersionUID = 0L;
+
         public CouldNotCreateOutputFile(File file, String message, Exception e) {
             super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)));
         }
@@ -124,6 +128,8 @@ public class UserException extends RuntimeException {
      * For errors parsing files
      */
     public static class MalformedFile extends UserException {
+        private static final long serialVersionUID = 0L;
+
         public MalformedFile(String message) {
             super(String.format("Unknown file is malformed: %s", message));
         }
