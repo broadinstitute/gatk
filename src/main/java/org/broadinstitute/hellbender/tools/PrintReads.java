@@ -21,16 +21,12 @@ public class PrintReads extends CommandLineProgram {
     @Option(fullName = "output", shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
 
-    @Override
-    public int doWork() {
-        printReads();
-        return 0;
-    }
-
     /**
-     * This is factored out of doWork only for unit testing.
+     * Does the work of the tool, ie prints the reads from the inout to the output.
+     * Returns null.
      */
-    protected int printReads() {
+    @Override
+    public Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
         final SAMFileHeader outputHeader = in.getFileHeader().clone();
@@ -40,6 +36,7 @@ public class PrintReads extends CommandLineProgram {
         in.forEach(outputWriter::addAlignment);
         CloserUtil.close(in);
         CloserUtil.close(outputWriter);
-        return 0;
+        return null;
     }
+
 }

@@ -51,7 +51,7 @@ public class PrintReadsTest extends CommandLineProgramTest{
                 "INPUT=" + ORIG_BAM.getAbsolutePath(),
                 "OUTPUT=" + outFile.getAbsolutePath()
         };
-        Assert.assertEquals(runCommandLine(args), 0);
+        Assert.assertEquals(runCommandLine(args), null);
 
         final CompareSAMs compareSAMs = new CompareSAMs();
         compareSAMs.samFiles = Arrays.asList(ORIG_BAM, outFile);

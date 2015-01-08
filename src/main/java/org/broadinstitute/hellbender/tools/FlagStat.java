@@ -26,22 +26,18 @@ public class FlagStat extends CommandLineProgram {
     @Option(shortName= StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM or CRAM file.")
     public File INPUT;
 
-    public static void main(final String[] args) {
-        new FlagStat().instanceMain(args);
-    }
-
     @Override
-    protected int doWork() {
-        FlagStatus sum = countReads();
+    protected FlagStatus doWork() {
+        final FlagStatus sum = countReads();
         System.out.println(sum);
-        return 0;
+        return sum;
     }
 
     /**
      * This is factored out of doWork only for unit testing.
      */
     FlagStatus countReads() {
-        FlagStatus sum = new FlagStatus();
+        final FlagStatus sum = new FlagStatus();
         IOUtil.assertFileIsReadable(INPUT);
         final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
         for (final SAMRecord rec : in) {
@@ -128,6 +124,47 @@ public class FlagStat extends CommandLineProgram {
             }
 
             return this;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            FlagStatus that = (FlagStatus) o;
+
+            if (QC_failure != that.QC_failure) return false;
+            if (duplicates != that.duplicates) return false;
+            if (mapped != that.mapped) return false;
+            if (paired_in_sequencing != that.paired_in_sequencing) return false;
+            if (properly_paired != that.properly_paired) return false;
+            if (read1 != that.read1) return false;
+            if (read2 != that.read2) return false;
+            if (readCount != that.readCount) return false;
+            if (singletons != that.singletons) return false;
+            if (with_itself_and_mate_mapped != that.with_itself_and_mate_mapped) return false;
+            if (with_mate_mapped_to_a_different_chr != that.with_mate_mapped_to_a_different_chr) return false;
+            if (with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 != that.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5)
+                return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = (int) (readCount ^ (readCount >>> 32));
+            result = 31 * result + (int) (QC_failure ^ (QC_failure >>> 32));
+            result = 31 * result + (int) (duplicates ^ (duplicates >>> 32));
+            result = 31 * result + (int) (mapped ^ (mapped >>> 32));
+            result = 31 * result + (int) (paired_in_sequencing ^ (paired_in_sequencing >>> 32));
+            result = 31 * result + (int) (read1 ^ (read1 >>> 32));
+            result = 31 * result + (int) (read2 ^ (read2 >>> 32));
+            result = 31 * result + (int) (properly_paired ^ (properly_paired >>> 32));
+            result = 31 * result + (int) (with_itself_and_mate_mapped ^ (with_itself_and_mate_mapped >>> 32));
+            result = 31 * result + (int) (singletons ^ (singletons >>> 32));
+            result = 31 * result + (int) (with_mate_mapped_to_a_different_chr ^ (with_mate_mapped_to_a_different_chr >>> 32));
+            result = 31 * result + (int) (with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 ^ (with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 >>> 32));
+            return result;
         }
     }
 }

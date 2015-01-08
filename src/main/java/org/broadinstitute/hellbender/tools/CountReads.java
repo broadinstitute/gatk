@@ -23,15 +23,11 @@ public class CountReads extends CommandLineProgram {
     @Option(shortName= StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM file to count reads.")
     public File INPUT;
 
-    public static void main(final String[] args) {
-        new CountReads().instanceMain(args);
-    }
-
     @Override
-    protected int doWork() {
-        long count = countReads();
+    protected Long doWork() {
+        final long count = countReads();
         System.out.println(count + " reads");
-        return 0;
+        return count;
     }
 
     /**

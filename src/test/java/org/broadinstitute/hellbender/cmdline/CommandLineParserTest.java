@@ -705,7 +705,7 @@ public class CommandLineParserTest {
         }
 
         @Override
-        protected int doWork() {
+        protected Integer doWork() {
             return 0;
         }
     }
@@ -727,7 +727,7 @@ public class CommandLineParserTest {
         }
 
         @Override
-        protected int doWork() {
+        protected Integer doWork() {
             return 0;
         }
     }
@@ -877,7 +877,7 @@ public class CommandLineParserTest {
         public PropagationChild CHILD = new PropagationChild();
 
         @Override
-        protected int doWork() {
+        protected Integer doWork() {
             return 0;
         }
 

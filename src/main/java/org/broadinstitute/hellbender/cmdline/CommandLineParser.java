@@ -305,8 +305,9 @@ public class CommandLineParser {
         final Collection<CommandLineParser> childClps;
         if (isCommandLineProgram()) {
             childClps = new ArrayList<>();
+            final CommandLineProgram clp = (CommandLineProgram) callerOptions;
             for (final Map.Entry<String, Object> entry :
-                    ((CommandLineProgram) callerOptions).getNestedOptionsForHelp().entrySet()) {
+                    clp.getNestedOptionsForHelp().entrySet()) {
                 if (entry.getKey().contains(".")) {
                     throw new IllegalArgumentException("Prefix for nested options should not contain period: " + entry.getKey());
                 }
