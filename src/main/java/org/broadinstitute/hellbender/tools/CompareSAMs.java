@@ -68,14 +68,8 @@ public class CompareSAMs extends CommandLineProgram {
     private int missingRight = 0;
     private boolean areEqual;
 
-    /**
-     * Do the work after command line has been parsed. RuntimeException may be
-     * thrown by this method, and are reported appropriately.
-     *
-     * @return program exit status.
-     */
     @Override
-    protected int doWork() {
+    protected Object doWork() {
         SamReaderFactory factory = SamReaderFactory.makeDefault();
         for (int i = 0; i < samFiles.size(); ++i) {
             samReaders[i] = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(i));
@@ -89,7 +83,7 @@ public class CompareSAMs extends CommandLineProgram {
             System.out.println("SAM files differ.");
         }
         CloserUtil.close(samReaders);
-        return 0;
+        return null;
     }
 
     private void printReport() {

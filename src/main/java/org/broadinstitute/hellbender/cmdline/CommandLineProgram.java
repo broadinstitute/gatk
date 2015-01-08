@@ -23,11 +23,7 @@
  */
 package org.broadinstitute.hellbender.cmdline;
 
-import htsjdk.samtools.Defaults;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMFileWriterImpl;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
@@ -37,6 +33,7 @@ import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -122,7 +119,7 @@ public abstract class CommandLineProgram {
 
     public Object instanceMain(final String[] argv) {
         if (!parseArgs(argv)) {
-            throw new CommandLineParseException(Arrays.toString(argv));
+            throw new UserException.CommandLineParseException(Arrays.toString(argv));
         }
 
         // Provide one temp directory if the caller didn't
