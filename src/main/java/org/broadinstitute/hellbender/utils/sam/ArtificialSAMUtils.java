@@ -26,13 +26,11 @@ package org.broadinstitute.hellbender.utils.sam;
 */
 
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.GATKSAMIterator;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class ArtificialSAMUtils {
     public static final int DEFAULT_READ_LENGTH = 50;
@@ -220,6 +218,60 @@ public class ArtificialSAMUtils {
         return ArtificialSAMUtils.createArtificialRead(cigar);
     }
 
+    public static SAMRecord createRandomRead(int length, boolean allowNs) {
+        byte[] quals = createRandomReadQuals(length);
+        byte[] bbases = createRandomReadBases(length, allowNs);
+        return ArtificialSAMUtils.createArtificialRead(bbases, quals, bbases.length + "M");
+    }
+
+    /**
+     * Create random read qualities
+     *
+     * @param length the length of the read
+     * @return an array with randomized base qualities between 0 and 50
+     */
+    public static byte[] createRandomReadQuals(int length) {
+        Random random = Utils.getRandomGenerator();
+        byte[] quals = new byte[length];
+        for (int i = 0; i < length; i++)
+            quals[i] = (byte) random.nextInt(50);
+        return quals;
+    }
+
+    /**
+     * Create random read qualities
+     *
+     * @param length  the length of the read
+     * @param allowNs whether or not to allow N's in the read
+     * @return an array with randomized bases (A-N) with equal probability
+     */
+    public static byte[] createRandomReadBases(int length, boolean allowNs) {
+        Random random = Utils.getRandomGenerator();
+        int numberOfBases = allowNs ? 5 : 4;
+        byte[] bases = new byte[length];
+        for (int i = 0; i < length; i++) {
+            switch (random.nextInt(numberOfBases)) {
+                case 0:
+                    bases[i] = 'A';
+                    break;
+                case 1:
+                    bases[i] = 'C';
+                    break;
+                case 2:
+                    bases[i] = 'G';
+                    break;
+                case 3:
+                    bases[i] = 'T';
+                    break;
+                case 4:
+                    bases[i] = 'N';
+                    break;
+                default:
+                    throw new GATKException("Something went wrong, this is just impossible");
+            }
+        }
+        return bases;
+    }
     /**
      * create an iterator containing the specified read piles
      *

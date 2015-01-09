@@ -26,6 +26,7 @@
 package org.broadinstitute.hellbender.utils.sam;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.BaseTest;
@@ -336,5 +337,28 @@ public class ReadUtilsUnitTest extends BaseTest {
     @Test(dataProvider = "HasWellDefinedFragmentSizeData")
     private void testHasWellDefinedFragmentSize(final String name, final SAMRecord read, final boolean expected) {
         Assert.assertEquals(ReadUtils.hasWellDefinedFragmentSize(read), expected);
+    }
+
+    @Test
+    public void testReadGroupSetAndGet() {
+        int readLength = 100;
+        SAMRecord read = ArtificialSAMUtils.createRandomRead(readLength);
+
+        String id= "MY.ID";
+        SAMReadGroupRecord rg = new SAMReadGroupRecord(id);
+        ReadUtils.setReadGroup(read, rg);
+
+        Assert.assertNotNull(read.getHeader(), "header");
+
+        final SAMReadGroupRecord readGroupFromHD = read.getHeader().getReadGroup(id);
+        Assert.assertNotNull(readGroupFromHD, "read group from header");
+        Assert.assertEquals(readGroupFromHD, rg, "read group from header");
+
+        Assert.assertNotNull(read.getReadGroup(), "read group from read");
+        Assert.assertEquals(read.getReadGroup(), rg, "read group from read");
+
+        String pl = "illumina";
+        read.getReadGroup().setPlatform(pl);
+        Assert.assertEquals(read.getReadGroup().getPlatform(), pl, "platform");
     }
 }

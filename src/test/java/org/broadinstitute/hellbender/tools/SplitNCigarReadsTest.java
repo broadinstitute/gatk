@@ -51,14 +51,17 @@
 
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.*;
-
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.OverhangFixingManager;
 import org.broadinstitute.hellbender.utils.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -92,7 +95,7 @@ public class SplitNCigarReadsTest extends CommandLineProgramTest {
 
     @BeforeClass
     public void setup() throws FileNotFoundException {
-        referenceReader = new IndexedFastaSequenceFile(REFERENCE_FASTA);
+        referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_FASTA);
         genomeLocParser = new GenomeLocParser(referenceReader.getSequenceDictionary());
     }
 

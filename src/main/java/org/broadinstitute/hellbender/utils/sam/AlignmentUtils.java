@@ -213,6 +213,7 @@ public final class AlignmentUtils {
      * @param readSeq the bases of the read sequence
      * @return the number of bases that differ between refSeq and readSeq
      */
+    @SuppressWarnings("fallthrough")
     public static int calcNumDifferentBases(final Cigar cigar, final byte[] refSeq, final byte[] readSeq) {
         int refIndex = 0, readIdx = 0, delta = 0;
 
@@ -276,6 +277,7 @@ public final class AlignmentUtils {
      * @param nReadBases          the number of bases after (but including) startOnRead that we check
      * @return non-null object representing the mismatch count
      */
+    @SuppressWarnings("fallthrough")
     public static MismatchCount getMismatchCount(SAMRecord r, byte[] refSeq, int refIndex, int startOnRead, int nReadBases) {
         if ( r == null ) throw new IllegalArgumentException("attempting to calculate the mismatch count from a read that is null");
         if ( refSeq == null ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a reference sequence that is null");
@@ -541,6 +543,7 @@ public final class AlignmentUtils {
      * @param read             the read's base array
      * @return a non-null array of bases (bytes)
      */
+    @SuppressWarnings("fallthrough")
     public static byte[] readToAlignmentByteArray(final Cigar cigar, final byte[] read) {
         if ( cigar == null ) throw new IllegalArgumentException("attempting to generate an alignment from a CIGAR that is null");
         if ( read == null ) throw new IllegalArgumentException("attempting to generate an alignment from a read sequence that is null");
@@ -1020,6 +1023,7 @@ public final class AlignmentUtils {
      * @param byReference should start and end be intrepreted as position in the reference or the read to trim to/from?
      * @return a non-null cigar
      */
+    @SuppressWarnings("fallthrough")
     private static Cigar trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
         final List<CigarElement> newElements = new LinkedList<CigarElement>();
 

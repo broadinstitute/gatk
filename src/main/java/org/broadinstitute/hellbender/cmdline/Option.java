@@ -37,8 +37,6 @@ import java.lang.annotation.Target;
  * will be inferred from the type of the field or from the generic type of the collection
  * if this option is allowed more than once. The type must be an enum or
  * have a constructor with a single String parameter.
- *
- * @author Alec Wysoker
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

@@ -23,7 +23,7 @@
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package org.broadinstitute.hellbender.utils.report.text;
+package org.broadinstitute.hellbender.utils.text;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 

@@ -355,9 +355,12 @@ public class Utils {
      * @param elts a varargs vector for elts to append in order to left
      * @return A newly allocated linked list containing left followed by elts
      */
+    @SafeVarargs
     public static <T> List<T> append(final List<T> left, T ... elts) {
         final List<T> l = new LinkedList<T>(left);
-        l.addAll(Arrays.asList(elts));
+	for (T t : elts){
+	    l.add(t);
+	}
         return l;
     }
 
@@ -680,6 +683,37 @@ public class Utils {
      */
     public static String formattedRatio(final long num, final long denom) {
         return denom == 0 ? "NA" : String.format("%.2f", num / (1.0 * denom));
+    }
+
+    /**
+     * Adds element from an array into a collection.
+     *
+     * In the event of exception being throw due to some element, <code>dest</code> might have been modified by
+     * the successful addition of element before that one.
+     *
+     * @param dest the destination collection which cannot be <code>null</code> and should be able to accept
+     *             the input elements.
+     * @param elements the element to add to <code>dest</code>
+     * @param <T>  collection type element.
+     * @throws UnsupportedOperationException if the <tt>add</tt> operation
+     *         is not supported by <code>dest</code>.
+     * @throws ClassCastException if the class of any of the elements
+     *         prevents it from being added to <code>dest</code>.
+     * @throws NullPointerException if any of the elements is <code>null</code> and <code>dest</code>
+     *         does not permit <code>null</code> elements
+     * @throws IllegalArgumentException if some property of any of the elements
+     *         prevents it from being added to this collection
+     * @throws IllegalStateException if any of the elements cannot be added at this
+     *         time due to insertion restrictions.
+     * @return <code>true</code> if the collection was modified as a result.
+     */
+    @SafeVarargs
+    public static <T> boolean addAll(Collection<T> dest, T ... elements) {
+        boolean result = false;
+        for (final T e : elements) {
+            result = dest.add(e) | result;
+        }
+        return result;
     }
 
     /**

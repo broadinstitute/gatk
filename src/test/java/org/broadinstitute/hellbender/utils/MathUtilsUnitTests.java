@@ -531,6 +531,7 @@ public class MathUtilsUnitTests {
     }
 
     @Test(dataProvider = "MedianData")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public void testMedian(final List<Comparable> values, final Comparable expected) {
         final Comparable actual = MathUtils.median(values);
         Assert.assertEquals(actual, expected, "Failed with " + values);
@@ -605,7 +606,7 @@ public class MathUtilsUnitTests {
             if ( this.state == 1 ) {
                 while ( 2 * x <= y ) {
                     this.a.set(k,x);
-                    this.y -= (int) x;
+                    this.y -= x;
                     this.k++;
                 }
                 this.l = 1+this.k;

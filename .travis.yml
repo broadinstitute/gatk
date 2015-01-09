@@ -6,5 +6,15 @@ env:
   - TERM=dumb
   global:
     secure: RA4LKD82cW+0xPayPVAWSpYqJu5uoPcz7oXXYtYNVuilFmS8PGYx0g/BXs4QMvQsGMt6aMLN8m7lMAPN5XTH/8JSeM3VmQ3mdpgNdP+p3CVlwrapZ2lTq27Wb/E8J1CGEHOg76z716t//FUElyC/gdhS+tfBmXk3YanM5fMXEHs=
+before_install:
+  - wget https://services.gradle.org/distributions/gradle-2.2.1-bin.zip
+  - unzip gradle-2.2.1-bin.zip
+  - "export PATH=`pwd`/gradle-2.2.1/bin:$PATH"
+  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+  - sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu precise/"
+  - sudo apt-get update
+  - sudo apt-get install -y r-base-dev=3.0.2-1precise0
+  - sudo apt-get install -y --force-yes r-base-core=3.0.2-1precise0
+  - R --version
 after_success:
 - gradle jacocoTestReport coveralls

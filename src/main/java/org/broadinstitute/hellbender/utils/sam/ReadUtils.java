@@ -30,10 +30,11 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.*;
 
@@ -1020,4 +1021,44 @@ public class ReadUtils {
         }
         return quals;
     }
+
+    public static void setReadGroup(SAMRecord read, SAMReadGroupRecord readGroup) {
+        final SAMFileHeader header= read.getHeader();
+        header.addReadGroup(readGroup);
+        read.setHeader(header);
+        read.setAttribute(SAMTag.RG.name(), readGroup.getId());
+    }
+
+    public static byte[] getBaseQualities( final SAMRecord read, final EventType errorModel ) {
+        switch( errorModel ) {
+            case BASE_SUBSTITUTION:
+                return read.getBaseQualities();
+            case BASE_INSERTION:
+                return getBaseInsertionQualities(read);
+            case BASE_DELETION:
+                return getBaseDeletionQualities(read);
+            default:
+                throw new GATKException("Unrecognized Base Recalibration type: " + errorModel );
+        }
+    }
+
+    /**
+     * Setters and Accessors for base insertion and base deletion quality scores
+     */
+    public static void setBaseQualities( final SAMRecord read, final byte[] quals, final EventType errorModel ) {
+        switch( errorModel ) {
+            case BASE_SUBSTITUTION:
+                read.setBaseQualities(quals);
+                break;
+            case BASE_INSERTION:
+                read.setAttribute(BQSR_BASE_INSERTION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals));
+                break;
+            case BASE_DELETION:
+                read.setAttribute(BQSR_BASE_DELETION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals) );
+                break;
+            default:
+                throw new GATKException("Unrecognized Base Recalibration type: " + errorModel );
+        }
+    }
+
 }

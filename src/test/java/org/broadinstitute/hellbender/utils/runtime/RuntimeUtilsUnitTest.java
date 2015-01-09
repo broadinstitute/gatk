@@ -23,25 +23,20 @@
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package org.broadinstitute.hellbender.utils.report.commandline;
+package org.broadinstitute.hellbender.utils.runtime;
 
-import java.io.File;
-import java.util.List;
+import org.broadinstitute.hellbender.utils.BaseTest;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
-/**
- * Combines a list of files into a single output.
- */
-public abstract class Gatherer {
-    /**
-     * Gathers a list of files into a single output.
-     * @param inputs Files to combine.
-     * @param output Path to output file.
-     */
-    public abstract void gather(List<File> inputs, File output);
+public class RuntimeUtilsUnitTest extends BaseTest {
+    @Test
+    public void testWhichExists() {
+        Assert.assertNotNull(RuntimeUtils.which("ls"), "Unable to locate ls");
+    }
 
-    /**
-     * Returns true if the caller should wait for the input files to propagate over NFS before running gather().
-     * @return true if the caller should wait for the input files to propagate over NFS before running gather().
-     */
-    public boolean waitForInputs() { return true; }
+    @Test
+    public void testWhichNotExists() {
+        Assert.assertNull(RuntimeUtils.which("does_not_exist"), "Found nonexistent binary: does_not_exist");
+    }
 }

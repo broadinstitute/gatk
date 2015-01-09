@@ -36,6 +36,7 @@ package org.broadinstitute.hellbender.utils;
  *
  * WARNING: SHOULD BE USED ONLY BY EXPERT USERS WHO KNOW WHAT THEY ARE DOING!
  */
+@SuppressWarnings("serial")
 public class UnvalidatingGenomeLoc extends GenomeLoc {
 
     public UnvalidatingGenomeLoc(String contigName, int contigIndex, int start, int stop) {

@@ -27,7 +27,6 @@ package org.broadinstitute.hellbender.utils;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -80,7 +79,7 @@ public final class MathUtils {
          * #get(n) is guaranteed to return without causing a cache expansion
          * @param n desired value to be precomputed
          */
-        public static synchronized void ensureCacheContains(final int n) {
+        public static void ensureCacheContains(final int n) {
             if (n < cache.length)
                 return;
             final double[] newCache = new double[n + 1];
@@ -119,7 +118,7 @@ public final class MathUtils {
             return cache[index];
         }
 
-        private static synchronized void initialize() {
+        private static void initialize() {
             if (cache == null) {
                 final int tableSize = (int) (MAX_TOLERANCE / TABLE_STEP) + 1;
                 cache = new double[tableSize];
@@ -1425,7 +1424,7 @@ public final class MathUtils {
             return cache[n];
         }
 
-        private static synchronized void initialize() {
+        private static void initialize() {
             if (cache == null) {
                 Log10Cache.ensureCacheContains(CACHE_SIZE);
                 cache = new double[CACHE_SIZE];

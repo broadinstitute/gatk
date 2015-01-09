@@ -40,8 +40,6 @@ import java.util.Objects;
 /**
  * Rudimentary SAM comparer.  Compares headers, and if headers are compatible enough, compares SAMRecords,
  * looking only at basic alignment info.  Summarizes the number of alignments that match, mismatch, are missing, etc.
- *
- * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
         usage = "USAGE: CompareSAMs <SAMFile1> <SAMFile2>\n" +

@@ -70,6 +70,7 @@ public final class LIBS_position {
     /**
      * Steps forward on the genome.  Returns false when done reading the read, true otherwise.
      */
+    @SuppressWarnings("fallthrough")
     public boolean stepForwardOnGenome() {
         if ( currentOperatorIndex == numOperators )
             return false;

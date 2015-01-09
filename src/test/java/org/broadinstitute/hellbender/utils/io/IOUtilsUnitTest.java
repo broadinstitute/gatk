@@ -27,7 +27,6 @@ package org.broadinstitute.hellbender.utils.io;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseTest;
-import org.broadinstitute.hellbender.utils.IOUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

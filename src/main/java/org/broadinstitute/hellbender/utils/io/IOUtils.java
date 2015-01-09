@@ -23,13 +23,15 @@
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package org.broadinstitute.hellbender.utils;
+package org.broadinstitute.hellbender.utils.io;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.LineIterator;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.*;
@@ -227,7 +229,7 @@ public class IOUtils {
             newPath = absolutePath(file);
         else
             newPath = absolutePath(new File(parent, file.getPath()));
-        return replacePath(newPath);
+        return replacePath(file, newPath);
     }
 
     /**
@@ -238,7 +240,7 @@ public class IOUtils {
      * @return the absolute path to the file.
      */
     public static File absolute(File file) {
-        return replacePath(absolutePath(file));
+        return replacePath(file, absolutePath(file));
     }
 
     private static String absolutePath(File file) {
@@ -276,10 +278,41 @@ public class IOUtils {
         return ("/" + StringUtils.join(names, "/"));
     }
 
-    private static File replacePath(String path) {
+    private static File replacePath(File file, String path) {
+        if (file instanceof FileExtension)
+            return ((FileExtension)file).withPath(path);
+        if (!File.class.equals(file.getClass()))
+            throw new GATKException("Sub classes of java.io.File must also implement FileExtension");
         return new File(path);
     }
 
+    /**
+     * Returns the last lines of the file.
+     * NOTE: This is only safe to run on smaller files!
+     *
+     * @param file  File to read.
+     * @param count Maximum number of lines to return.
+     * @return The last count lines from file.
+     * @throws java.io.IOException When unable to read the file.
+     */
+    public static List<String> tail(File file, int count) throws IOException {
+        LinkedList<String> tailLines = new LinkedList<String>();
+        FileReader reader = new FileReader(file);
+        try {
+            LineIterator iterator = org.apache.commons.io.IOUtils.lineIterator(reader);
+            int lineCount = 0;
+            while (iterator.hasNext()) {
+                String line = iterator.nextLine();
+                lineCount++;
+                if (lineCount > count)
+                    tailLines.removeFirst();
+                tailLines.offer(line);
+            }
+        } finally {
+            org.apache.commons.io.IOUtils.closeQuietly(reader);
+        }
+        return tailLines;
+    }
 
     /**
      * Tries to delete a file. Emits a warning if the file
@@ -299,6 +332,44 @@ public class IOUtils {
         else if (file.exists())
             logger.warn("Unable to delete " + file);
         return deleted;
+    }
+
+    /**
+     * Writes the an embedded resource to a temp file.
+     * File is not scheduled for deletion and must be cleaned up by the caller.
+     * @param resource Embedded resource.
+     * @return Path to the temp file with the contents of the resource.
+     */
+    public static File writeTempResource(Resource resource) {
+        File temp;
+        try {
+            temp = File.createTempFile(FilenameUtils.getBaseName(resource.getPath()) + ".", "." + FilenameUtils.getExtension(resource.getPath()));
+        } catch (IOException e) {
+            throw new UserException.BadTmpDir(e.getMessage());
+        }
+        writeResource(resource, temp);
+        return temp;
+    }
+
+    /**
+     * Writes the an embedded resource to a file.
+     * File is not scheduled for deletion and must be cleaned up by the caller.
+     * @param resource Embedded resource.
+     * @param file File path to write.
+     */
+    public static void writeResource(Resource resource, File file) {
+        String path = resource.getPath();
+        InputStream inputStream = resource.getResourceContentsAsStream();
+        OutputStream outputStream = null;
+        try {
+            outputStream = FileUtils.openOutputStream(file);
+            org.apache.commons.io.IOUtils.copy(inputStream, outputStream);
+        } catch (IOException e) {
+            throw new GATKException(String.format("Unable to copy resource '%s' to '%s'", path, file), e);
+        } finally {
+            org.apache.commons.io.IOUtils.closeQuietly(inputStream);
+            org.apache.commons.io.IOUtils.closeQuietly(outputStream);
+        }
     }
 
     /**
@@ -352,7 +423,7 @@ public class IOUtils {
      */
     public static byte[] readFileIntoByteArray ( File source, int readBufferSize ) {
         if ( source == null ) {
-            throw new IllegalArgumentException("Source file was null");
+            throw new GATKException("Source file was null");
         }
 
         byte[] fileContents;
@@ -392,7 +463,8 @@ public class IOUtils {
     public static byte[] readStreamIntoByteArray ( InputStream in, int readBufferSize ) {
         if ( in == null ) {
             throw new IllegalArgumentException("Input stream was null");
-        } else if ( readBufferSize <= 0 ) {
+        }
+        else if ( readBufferSize <= 0 ) {
             throw new IllegalArgumentException("Read buffer size must be > 0");
         }
 
@@ -472,7 +544,7 @@ public class IOUtils {
      */
     public static int getGZIPFileUncompressedSize ( File gzipFile ) {
         if ( gzipFile == null ) {
-            throw new IllegalArgumentException("GZIP file to examine was null");
+            throw new GATKException("GZIP file to examine was null");
         }
 
         try {

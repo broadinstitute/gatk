@@ -26,7 +26,7 @@
 package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.report.commandline.Gatherer;
+import org.broadinstitute.hellbender.utils.commandline.Gatherer;
 
 import java.io.File;
 import java.io.FileNotFoundException;

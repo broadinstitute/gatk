@@ -26,9 +26,9 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -49,7 +49,7 @@ public class GenomeLocUnitTest extends BaseTest{
     @BeforeClass
     public void init() throws FileNotFoundException {
         // sequence
-        seq = new IndexedFastaSequenceFile(new File(exampleReference));
+        seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
         genomeLocParser = new GenomeLocParser(seq);
     }
 
