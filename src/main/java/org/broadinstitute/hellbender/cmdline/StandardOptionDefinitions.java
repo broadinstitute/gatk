@@ -28,6 +28,11 @@ package org.broadinstitute.hellbender.cmdline;
  * is the standard long Option name, and the value of the constant is the standard shortName.
  */
 public class StandardOptionDefinitions {
+
+    public static final String INPUT_LONG_NAME = "input";
+    public static final String OUTPUT_LONG_NAME = "output";
+    public static final String REFERENCE_LONG_NAME = "reference";
+
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
     public static final String REFERENCE_SHORT_NAME = "R";

@@ -54,6 +54,11 @@ dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
     compile 'samtools:htsjdk:1.127'
+    compile 'org.apache.logging.log4j:log4j-api:2.1'
+    compile 'org.apache.logging.log4j:log4j-core:2.1'
+    compile 'org.apache.commons:commons-lang3:3.3.2'
+    compile 'org.apache.commons:commons-math3:3.4'
+    compile 'commons-io:commons-io:2.4'
 
     testCompile 'org.testng:testng:6.8.8'
 }
@@ -81,9 +86,17 @@ test {
     minHeapSize = "1G"
     maxHeapSize = "2G"
 
-    // listen to events in the test execution lifecycle
-    beforeTest { descriptor ->
-        logger.lifecycle("Running test: " + descriptor)
+    String CI = "$System.env.CI"
+    if (CI == "true") {
+        int count = 0
+        // listen to events in the test execution lifecycle
+        beforeTest { descriptor ->
+            logger.lifecycle(Integer.toString(count++))
+        }
+    } else {
+        beforeTest { descriptor ->
+            logger.lifecycle("Running Test: " + descriptor)
+        }
     }
 
     // listen to standard out and standard error of the test JVM(s)

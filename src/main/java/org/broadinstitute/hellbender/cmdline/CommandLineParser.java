@@ -492,6 +492,7 @@ public class CommandLineParser {
                     " positional arguments may be specified on the command line.");
             return false;
         }
+
         c.add(value);
         return true;
     }
@@ -946,7 +947,7 @@ public class CommandLineParser {
         }
     }
 
-    @SuppressWarnings({"unchecked","rawtypes"})
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private Object constructFromString(final Class clazz, final String s) {
         try {
             if (clazz.isEnum()) {

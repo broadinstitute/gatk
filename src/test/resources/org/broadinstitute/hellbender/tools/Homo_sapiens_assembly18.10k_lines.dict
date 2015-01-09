@@ -1,0 +1,3 @@
+@HD	VN:1.4	SO:unsorted
+@SQ	SN:chrM	LN:16571	M5:d2ed829b8a1628d16cbeee88e88e39eb	UR:file:/Users/akiezun/IdeaProjects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/Homo_sapiens_assembly18.10k_lines.fasta
+@SQ	SN:chr1	LN:33300	M5:6c98d91dd01d51602ac207d0ddf256a3	UR:file:/Users/akiezun/IdeaProjects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/Homo_sapiens_assembly18.10k_lines.fasta
