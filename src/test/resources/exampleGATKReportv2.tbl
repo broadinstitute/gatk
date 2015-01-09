@@ -1,0 +1,36 @@
+#:GATKReport.v1.1:5
+#:GATKTable:11:3:%s:%s:%s:%s:%s:%s:%s:%s:%.2f:%s:%.2f
+#:GATKTable:CompOverlap:The overlap between eval and comp sites
+CompOverlap  CompRod  EvalRod  JexlExpression  Novelty  nEvalVariants  novelSites  nVariantsAtComp  compRate  nConcordant  concordantRate
+CompOverlap  dbsnp    eval     none            all                481          12              469     97.51          468           99.79
+CompOverlap  dbsnp    eval     none            known              469           0              469    100.00          468           99.79
+CompOverlap  dbsnp    eval     none            novel               12          12                0      0.00            0            0.00
+
+#:GATKTable:30:3:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%.2e:%.2f:%.2f:%.2e:%.2f:%.2f
+#:GATKTable:CountVariants:Counts different classes of variants in the sample
+CountVariants  CompRod  EvalRod  JexlExpression  Novelty  nProcessedLoci  nCalledLoci  nRefLoci  nVariantLoci  variantRate            variantRatePerBp  nSNPs  nMNPs  nInsertions  nDeletions  nComplex  nSymbolic  nMixed  nNoCalls  nHets  nHomRef  nHomVar  nSingletons  nHomDerived  heterozygosity  heterozygosityPerBp  hetHomRatio  indelRate  indelRatePerBp  deletionInsertionRatio
+CountVariants  dbsnp    eval     none            all            63025520          481         0           481    7.63182913841885E-6          131030.0    481      0            0           0         0          0       0         0    298        0      183          298            0        4.73e-06            211495.00         1.63   0.00e+00            0.00                    0.00
+CountVariants  dbsnp    eval     none            known          63025520          469         0           469   7.441430074674513E-6          134382.0    469      0            0           0         0          0       0         0    288        0      181          288            0        4.57e-06            218838.00         1.59   0.00e+00            0.00                    0.00
+CountVariants  dbsnp    eval     none            novel          63025520           12         0            12  1.9039906374433722E-7         5252126.0     12      0            0           0         0          0       0         0     10        0        2           10            0        1.59e-07           6302552.00         5.00   0.00e+00            0.00                    0.00
+
+#:GATKTable:14:3:%s:%s:%s:%s:%s:%s:%s:%.2f:%s:%s:%.2f:%s:%s:%.2f
+#:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
+TiTvVariantEvaluator  CompRod  EvalRod  JexlExpression  Novelty  nTi  nTv  tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
+TiTvVariantEvaluator  dbsnp    eval     none            all      382   99       3.86     203506      85497               2.38           0           0              0.00
+TiTvVariantEvaluator  dbsnp    eval     none            known    374   95       3.94        360         91               3.96           0           0              0.00
+TiTvVariantEvaluator  dbsnp    eval     none            novel      8    4       2.00     203146      85406               2.38           0           0              0.00
+
+#:GATKTable:24:3:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%.2f:%.2f:%.2f:%.2f:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s
+#:GATKTable:ValidationReport:Assess site accuracy and sensitivity of callset against follow-up validation assay
+ValidationReport  CompRod  EvalRod  JexlExpression  Novelty  nComp   TP   FP  FN      TN  sensitivity  specificity  PPV     FDR   CompMonoEvalNoCall  CompMonoEvalFiltered  CompMonoEvalMono  CompMonoEvalPoly  CompPolyEvalNoCall  CompPolyEvalFiltered  CompPolyEvalMono  CompPolyEvalPoly  CompFiltered  nDifferentAlleleSites
+ValidationReport  dbsnp    eval     none            all      369102  469   0  368633   0         0.13       100.00  100.00  0.00                   0                     0                 0                 0              368633                     0                 0               469             0                      0
+ValidationReport  dbsnp    eval     none            known       469  469   0       0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0               469             0                      0
+ValidationReport  dbsnp    eval     none            novel    368633    0   0  368633   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0              368633                     0                 0                 0             0                      0
+
+#:GATKTable:20:3:%s:%s:%s:%s:%s:%s:%s:%s:%.2f:%s:%s:%.2f:%.1f:%s:%s:%s:%.1f:%s:%s:%s
+#:GATKTable:VariantSummary:1000 Genomes Phase I summary of variants table
+VariantSummary  CompRod  EvalRod  JexlExpression  Novelty  nSamples  nProcessedLoci  nSNPs  TiTvRatio  SNPNoveltyRate  nSNPsPerSample  TiTvRatioPerSample  SNPDPPerSample  nIndels  IndelNoveltyRate  nIndelsPerSample  IndelDPPerSample  nSVs  SVNoveltyRate  nSVsPerSample
+VariantSummary  dbsnp    eval     none            all             1        63025520    481       3.86            0.02             481                3.86           481.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp    eval     none            known           1        63025520    469       3.94            0.00             469                3.94           469.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp    eval     none            novel           1        63025520     12       2.00            1.00              12                2.00            12.0        0                NA                 0               0.0     0             NA              0
+

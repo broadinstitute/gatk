@@ -10,3 +10,4 @@ build/
 hellbender-engine/repos/
 hellbender-tools/repos/
 .DS_Store
+testSortingFile.txt
