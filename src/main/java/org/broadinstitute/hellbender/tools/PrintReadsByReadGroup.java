@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Option;
@@ -29,16 +30,12 @@ public class PrintReadsByReadGroup extends CommandLineProgram {
 
     @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
             doc = "The directory to write SAM or BAM or CRAM files by read group.")
-    public Path OUTPUT_DIRECTORY = Paths.get("");
-
-    public static void main(final String[] args) {
-        new PrintReadsByReadGroup().instanceMain(args);
-    }
+    public File OUTPUT_DIRECTORY = new File("");
 
     @Override
-    protected int doWork() {
+    protected Object doWork() {
         printReadsByReadGroup();
-        return 0;
+        return null;
     }
 
     /**
@@ -46,6 +43,7 @@ public class PrintReadsByReadGroup extends CommandLineProgram {
      */
     protected void printReadsByReadGroup() {
         IOUtil.assertFileIsReadable(INPUT);
+        IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
         Map<String, SAMFileWriter> outs = createWriters(in);
         for (final SAMRecord rec : in) {
@@ -59,12 +57,9 @@ public class PrintReadsByReadGroup extends CommandLineProgram {
         final Map<String, SAMFileWriter> outs = new HashMap<>();
 
         final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
-        samFileWriterFactory.setCreateIndex(true);
-        samFileWriterFactory.setUseAsyncIo(true);
 
         final SAMFileHeader samFileHeaderIn = in.getFileHeader();
-        final String[] tokens = INPUT.getName().split("\\.");
-        final String extension = tokens[tokens.length - 1];
+        final String extension = FilenameUtils.getExtension(INPUT.getName());
 
         samFileHeaderIn.getReadGroups().forEach(samReadGroupRecord -> {
             final SAMFileHeader samFileHeaderOut = samFileHeaderIn.clone();
@@ -72,7 +67,7 @@ public class PrintReadsByReadGroup extends CommandLineProgram {
 
             final String sample = samReadGroupRecord.getSample();
             final String readGroupId = samReadGroupRecord.getReadGroupId();
-            final File outFile = OUTPUT_DIRECTORY.resolve(sample + "." + readGroupId + "." + extension).toFile();
+            final File outFile = new File(OUTPUT_DIRECTORY, sample + "." + readGroupId + "." + extension);
 
             outs.put(readGroupId, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, REFERENCE_SEQUENCE));
         });

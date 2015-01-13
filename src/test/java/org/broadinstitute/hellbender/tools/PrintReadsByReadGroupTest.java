@@ -28,6 +28,8 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -36,13 +38,20 @@ import java.io.File;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
 
-public class PrintReadsByReadGroupTest {
-    private static final String TEST_DATA_PREFIX =
-            "src/test/resources/org/broadinstitute/hellbender/tools/print_reads_by_read_group.";
-    private static final File REFERENCE_SEQUENCE = new File(TEST_DATA_PREFIX + "fasta");
+public class PrintReadsByReadGroupTest extends CommandLineProgramTest {
+
+
+    private static final String TEST_DATA_PREFIX = "print_reads_by_read_group.";
+    private static final String REFERENCE_SEQUENCE = TEST_DATA_PREFIX + "fasta";
+
+    private File getReferenceSequence() {
+        return new File(getTestDataDir(), REFERENCE_SEQUENCE);
+    }
 
     @DataProvider(name = "printReadsByReadGroupData", parallel = true)
     public Object[][] getPrintReadsByReadGroupData() {
@@ -55,19 +64,30 @@ public class PrintReadsByReadGroupTest {
     @Test(dataProvider = "printReadsByReadGroupData")
     public void testPrintReadsByReadGroup(final SamReader.Type type, final boolean useReference) throws Exception {
         final String fileExtension = type.fileExtension();
-        final PrintReadsByReadGroup printReadsByReadGroup = new PrintReadsByReadGroup();
-        printReadsByReadGroup.INPUT = new File(TEST_DATA_PREFIX + fileExtension);
-        printReadsByReadGroup.OUTPUT_DIRECTORY = Files.createTempDirectory("printReadsByReadGroupData.");
-        if (useReference)
-            printReadsByReadGroup.REFERENCE_SEQUENCE = REFERENCE_SEQUENCE;
-        printReadsByReadGroup.printReadsByReadGroup();
+        final List<String> args = new ArrayList<>();
+
+        Path outputDir = Files.createTempDirectory("printReadsByReadGroupData.");
+        outputDir.toFile().deleteOnExit();
+
+        args.add(StandardOptionDefinitions.INPUT_SHORT_NAME + "=");
+        args.add(getTestDataDir() + "/" + TEST_DATA_PREFIX + fileExtension);
+
+        args.add(StandardOptionDefinitions.OUTPUT_SHORT_NAME + "=");
+        args.add(outputDir.toString());
+
+        if (useReference) {
+            args.add(StandardOptionDefinitions.REFERENCE_SHORT_NAME + "=");
+            args.add(getTestDataDir()+ "/" + REFERENCE_SEQUENCE);
+        }
+
+        Assert.assertEquals(runCommandLine(args), null);
 
         Assert.assertEquals(
-                getReadCounts(printReadsByReadGroup.OUTPUT_DIRECTORY, "Momma.0", fileExtension),
+                getReadCounts(outputDir, "Momma.0", fileExtension),
                 17,
                 "expected read group 0 count for " + fileExtension);
         Assert.assertEquals(
-                getReadCounts(printReadsByReadGroup.OUTPUT_DIRECTORY, "Poppa.1", fileExtension),
+                getReadCounts(outputDir, "Poppa.1", fileExtension),
                 2,
                 "expected read group 1 count for " + fileExtension);
     }
@@ -76,7 +96,7 @@ public class PrintReadsByReadGroupTest {
         final File path = tempDirectory.resolve(readGroupInfo + "." + fileExtension).toFile();
         int count = 0;
         IOUtil.assertFileIsReadable(path);
-        final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(path);
+        final SamReader in = SamReaderFactory.makeDefault().referenceSequence(getReferenceSequence()).open(path);
         for (@SuppressWarnings("unused") final SAMRecord rec : in) {
             count++;
         }
