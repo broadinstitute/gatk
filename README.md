@@ -24,4 +24,7 @@ Notes to devs
 
 * Don't override `clone()` unless you really know what you're doing. If you do override it, document thoroughly to show that you do know what you're doing. 
 
+* Do not put private or restricted data into the repo.
+
+* Keep datafiles under 100kb in size.
 
