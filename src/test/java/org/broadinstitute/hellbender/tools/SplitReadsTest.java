@@ -38,35 +38,65 @@ import java.io.File;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
-public class PrintReadsByReadGroupTest extends CommandLineProgramTest {
+public class SplitReadsTest extends CommandLineProgramTest {
 
-
-    private static final String TEST_DATA_PREFIX = "print_reads_by_read_group.";
-    private static final String REFERENCE_SEQUENCE = TEST_DATA_PREFIX + "fasta";
+    private static final String TEST_DATA_PREFIX = "split_reads";
+    private static final String REFERENCE_SEQUENCE = TEST_DATA_PREFIX + ".fasta";
 
     private File getReferenceSequence() {
         return new File(getTestDataDir(), REFERENCE_SEQUENCE);
     }
 
-    @DataProvider(name = "printReadsByReadGroupData", parallel = true)
-    public Object[][] getPrintReadsByReadGroupData() {
+    private boolean isReferenceRequired(final SamReader.Type type) {
+        return type == SamReader.Type.CRAM_TYPE;
+    }
+
+    @DataProvider(name = "splitReadsData", parallel = true)
+    public Object[][] getSplitReadsData() {
+        final Map<String, Integer> byNone = new TreeMap<>();
+        byNone.put("", 19);
+
+        final Map<String, Integer> bySample = new TreeMap<>();
+        bySample.put(".Momma", 17);
+        bySample.put(".Poppa", 2);
+
+        final Map<String, Integer> byRG = new TreeMap<>();
+        byRG.put(".0", 17);
+        byRG.put(".1", 2);
+
+        final Map<String, Integer> bySampleAndRG = new TreeMap<>();
+        bySampleAndRG.put(".Momma.0", 17);
+        bySampleAndRG.put(".Poppa.1", 2);
+
+        final Function<SamReader.Type, Stream<Object[]>> argTests = t -> Stream.of(
+                new Object[]{t, Collections.<String>emptyList(), byNone},
+                new Object[]{t, Collections.singletonList(SplitReads.SAMPLE_SHORT_NAME), bySample},
+                new Object[]{t, Collections.singletonList(SplitReads.READ_GROUP_SHORT_NAME), byRG},
+                new Object[]{t, Arrays.asList(SplitReads.SAMPLE_SHORT_NAME, SplitReads.READ_GROUP_SHORT_NAME), bySampleAndRG}
+        );
+
         return getSamReaderTypes()
-                .filter(t -> t != SamReader.Type.CRAM_TYPE) // https://github.com/samtools/htsjdk/issues/148
-                .map(t -> new Object[]{t, t == SamReader.Type.CRAM_TYPE})
+                .filter(t -> t != SamReader.Type.CRAM_TYPE) // https://github.com/samtools/htsjdk/issues/148 && https://github.com/samtools/htsjdk/issues/153
+                .map(argTests)
+                .flatMap(Function.identity())
                 .toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "printReadsByReadGroupData")
-    public void testPrintReadsByReadGroup(final SamReader.Type type, final boolean useReference) throws Exception {
-        final String fileExtension = type.fileExtension();
+    @Test(dataProvider = "splitReadsData")
+    public void testSplitReadsByReadGroup(final SamReader.Type type,
+                                          final List<String> splitArgs,
+                                          final Map<String, Integer> splitCounts) throws Exception {
+        final String fileExtension = "." + type.fileExtension();
         final List<String> args = new ArrayList<>();
 
-        Path outputDir = Files.createTempDirectory("printReadsByReadGroupData.");
+        Path outputDir = Files.createTempDirectory(
+                splitArgs.stream().reduce(TEST_DATA_PREFIX, (acc, arg) -> acc + "." + arg) + fileExtension + "."
+        );
         outputDir.toFile().deleteOnExit();
 
         args.add(StandardOptionDefinitions.INPUT_SHORT_NAME + "=");
@@ -75,28 +105,32 @@ public class PrintReadsByReadGroupTest extends CommandLineProgramTest {
         args.add(StandardOptionDefinitions.OUTPUT_SHORT_NAME + "=");
         args.add(outputDir.toString());
 
-        if (useReference) {
+        if (isReferenceRequired(type)) {
             args.add(StandardOptionDefinitions.REFERENCE_SHORT_NAME + "=");
             args.add(getTestDataDir()+ "/" + REFERENCE_SEQUENCE);
         }
 
-        Assert.assertEquals(runCommandLine(args), null);
+        splitArgs.forEach(arg -> {
+            args.add(arg + "=");
+            args.add("true");
+        });
 
-        Assert.assertEquals(
-                getReadCounts(outputDir, "Momma.0", fileExtension),
-                17,
-                "expected read group 0 count for " + fileExtension);
-        Assert.assertEquals(
-                getReadCounts(outputDir, "Poppa.1", fileExtension),
-                2,
-                "expected read group 1 count for " + fileExtension);
+        Assert.assertNull(runCommandLine(args));
+
+        for (final Map.Entry<String, Integer> splitCount: splitCounts.entrySet()) {
+            final String outputFileName = TEST_DATA_PREFIX + splitCount.getKey() + fileExtension;
+            Assert.assertEquals(
+                    getReadCounts(outputDir, outputFileName),
+                    (int)splitCount.getValue(),
+                    "unexpected read count for " + outputFileName);
+        }
     }
 
-    private int getReadCounts(final Path tempDirectory, final String readGroupInfo, final String fileExtension) {
-        final File path = tempDirectory.resolve(readGroupInfo + "." + fileExtension).toFile();
-        int count = 0;
+    private int getReadCounts(final Path tempDirectory, final String fileName) {
+        final File path = tempDirectory.resolve(fileName).toFile();
         IOUtil.assertFileIsReadable(path);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(getReferenceSequence()).open(path);
+        int count = 0;
         for (@SuppressWarnings("unused") final SAMRecord rec : in) {
             count++;
         }
