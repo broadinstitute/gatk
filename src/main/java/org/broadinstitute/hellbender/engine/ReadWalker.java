@@ -21,10 +21,10 @@ import java.util.List;
  */
 public abstract class ReadWalker extends GATKTool {
 
-    @Option(fullName = StandardOptionDefinitions.INPUT_LONG_NAME, shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "One or more BAM/SAM/CRAM files containing reads", common = false, optional = false, overridable = true, minElements = 1)
+    @Option(fullName = StandardOptionDefinitions.INPUT_LONG_NAME, shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "One or more BAM/SAM/CRAM files containing reads", common = false, optional = false, minElements = 1)
     public List<File> READS_FILES;
 
-    @Option(fullName = StandardOptionDefinitions.REFERENCE_LONG_NAME, shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence", common = false, optional = true, overridable = true)
+    @Option(fullName = StandardOptionDefinitions.REFERENCE_LONG_NAME, shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence", common = false, optional = true)
     public File REFERENCE_FILE;
 
     private ReadsDataSource reads = null;

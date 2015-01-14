@@ -96,7 +96,7 @@ public class SplitNCigarReads extends CommandLineProgram {
     protected File OUTPUT;
 
     @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
-            common = true, optional = true, overridable = true)
+            common = true, optional = true)
     public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     /**

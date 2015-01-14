@@ -27,6 +27,7 @@ package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,7 +39,7 @@ import java.util.*;
  * Testing framework for general purpose utilities class.
  *
  */
-public class UtilsUnitTest extends BaseTest{
+public class UtilsUnitTest extends BaseTest {
 
     @Test
     public void testAppend() {

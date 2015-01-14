@@ -23,11 +23,7 @@
  */
 package org.broadinstitute.hellbender.cmdline;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * Used to annotate a field in a CommandLineProgram that holds a instance containing @Option-annotated
@@ -36,8 +32,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 @Documented
-public @interface NestedOptions {
+@Inherited
+public @interface ArgumentCollection {
     /** Text that appears for this group of options in text describing usage of the command line program. */
     String doc() default "";
-
 }

@@ -57,14 +57,16 @@ public class SamFormatConverterTest extends CommandLineProgramTest {
 
 
     private void convertFile(final File inputFile, final File fileToCompare, final String extension) throws IOException {
-        final List<String> samFileConverterArgs = new ArrayList<String>();
-        samFileConverterArgs.add("INPUT=" + inputFile);
+        final List<String> samFileConverterArgs = new ArrayList<>();
+        samFileConverterArgs.add("--INPUT");
+        samFileConverterArgs.add(inputFile.getAbsolutePath());
         final File converterOutput = File.createTempFile("SamFileConverterTest." + inputFile.getName(), extension);
-        samFileConverterArgs.add("OUTPUT=" + converterOutput);
+        samFileConverterArgs.add("--OUTPUT");
+        samFileConverterArgs.add(converterOutput.getAbsolutePath());
         Assert.assertEquals(runCommandLine(samFileConverterArgs), null);
 
         ValidateSamFile validator = new ValidateSamFile();
-        String[] validatorArgs = new String[]{"INPUT=" + converterOutput};
+        String[] validatorArgs = new String[]{"--INPUT", converterOutput.getAbsolutePath()};
         Assert.assertEquals(validator.instanceMain(validatorArgs), true);
 
         // TODO this is a bit silly - since doWork is package-protected, we have to call instanceMain;

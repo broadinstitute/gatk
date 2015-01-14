@@ -59,10 +59,11 @@ public class AddCommentsToBamTest extends CommandLineProgramTest {
 
     private void runIt(final File inputFile, final File outputFile, final String[] commentList) {
         final List<String> args = new ArrayList<String>(Arrays.asList(
-                "INPUT=" + inputFile.getAbsolutePath(),
-                "OUTPUT=" + outputFile.getAbsolutePath()));
+                "--INPUT", inputFile.getAbsolutePath(),
+                "--OUTPUT", outputFile.getAbsolutePath()));
         for (final String comment : commentList) {
-            args.add("COMMENT=" + comment);
+            args.add("--COMMENT");
+            args.add(comment);
         }
         runCommandLine(args);
     }

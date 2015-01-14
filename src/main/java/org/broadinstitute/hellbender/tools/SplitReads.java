@@ -29,7 +29,9 @@ public class SplitReads extends ReadWalker {
     public static final String SAMPLE_SHORT_NAME = "SM";
     public static final String READ_GROUP_SHORT_NAME = "RG";
 
+
     @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardOptionDefinitions.OUTPUT_LONG_NAME,
             doc = "The directory to output SAM or BAM or CRAM files.")
     public File OUTPUT_DIRECTORY = new File("");
 

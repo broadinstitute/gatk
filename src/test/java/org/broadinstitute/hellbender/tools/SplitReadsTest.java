@@ -99,20 +99,19 @@ public class SplitReadsTest extends CommandLineProgramTest {
         );
         outputDir.toFile().deleteOnExit();
 
-        args.add(StandardOptionDefinitions.INPUT_SHORT_NAME + "=");
+        args.add("-"+StandardOptionDefinitions.INPUT_SHORT_NAME);
         args.add(getTestDataDir() + "/" + TEST_DATA_PREFIX + fileExtension);
 
-        args.add(StandardOptionDefinitions.OUTPUT_SHORT_NAME + "=");
+        args.add("-"+StandardOptionDefinitions.OUTPUT_SHORT_NAME );
         args.add(outputDir.toString());
 
         if (isReferenceRequired(type)) {
-            args.add(StandardOptionDefinitions.REFERENCE_SHORT_NAME + "=");
+            args.add("-" + StandardOptionDefinitions.REFERENCE_SHORT_NAME );
             args.add(getTestDataDir()+ "/" + REFERENCE_SEQUENCE);
         }
 
         splitArgs.forEach(arg -> {
-            args.add(arg + "=");
-            args.add("true");
+            args.add("-" + arg );
         });
 
         Assert.assertNull(runCommandLine(args));

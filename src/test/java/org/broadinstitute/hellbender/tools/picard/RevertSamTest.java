@@ -5,6 +5,7 @@ import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -35,26 +36,26 @@ public class RevertSamTest extends CommandLineProgramTest {
 
         final File output = File.createTempFile("reverted", ".sam");
         final RevertSam reverter = new RevertSam();
-        final String args[] = new String[5 + (so != null ? 1 : 0) + attributesToClear.size() + (sample != null ? 1 : 0) + (library != null ? 1 : 0)];
+        final ArgumentsBuilder args = new ArgumentsBuilder();
         int index = 0;
-        args[index++] = "INPUT=" + basicSamToRevert;
-        args[index++] = "OUTPUT=" + output.getAbsolutePath();
+        args.add("INPUT=" + basicSamToRevert);
+        args.add("OUTPUT=" + output.getAbsolutePath());
         if (so != null) {
-            args[index++] = "SORT_ORDER=" + so.name();
+            args.add("SORT_ORDER=" + so.name());
         }
-        args[index++] = "REMOVE_DUPLICATE_INFORMATION=" + removeDuplicates;
-        args[index++] = "REMOVE_ALIGNMENT_INFORMATION=" + removeAlignmentInfo;
-        args[index++] = "RESTORE_ORIGINAL_QUALITIES=" + restoreOriginalQualities;
+        args.add("REMOVE_DUPLICATE_INFORMATION=" + removeDuplicates);
+        args.add("REMOVE_ALIGNMENT_INFORMATION=" + removeAlignmentInfo);
+        args.add("RESTORE_ORIGINAL_QUALITIES=" + restoreOriginalQualities);
         if (sample != null) {
-            args[index++] = "SAMPLE_ALIAS=" + sample;
+            args.add("SAMPLE_ALIAS=" + sample);
         }
         if (library != null) {
-            args[index++] = "LIBRARY_NAME=" + library;
+            args.add("LIBRARY_NAME=" + library);
         }
         for (final String attr : attributesToClear) {
-            args[index++] = "ATTRIBUTE_TO_CLEAR=" + attr;
+            args.add("ATTRIBUTE_TO_CLEAR=" + attr);
         }
-        Assert.assertEquals(runCommandLine(args), null);
+        Assert.assertEquals(runCommandLine(args.getArgsList()), null);
 
         final SamReader reader = SamReaderFactory.makeDefault().open(output);
         final SAMFileHeader header = reader.getFileHeader();
@@ -121,17 +122,17 @@ public class RevertSamTest extends CommandLineProgramTest {
 
         final File output = File.createTempFile("bad", ".sam");
         final RevertSam reverter = new RevertSam();
-        final String args[] = new String[2 + (sample != null ? 1 : 0) + (library != null ? 1 : 0)];
+        final ArgumentsBuilder args = new ArgumentsBuilder();
         int index = 0;
-        args[index++] = "INPUT=" + negativeTestSamToRevert;
-        args[index++] = "OUTPUT=" + output.getAbsolutePath();
+        args.add("INPUT=" + negativeTestSamToRevert);
+        args.add("OUTPUT=" + output.getAbsolutePath());
         if (sample != null) {
-            args[index++] = "SAMPLE_ALIAS=" + sample;
+            args.add("SAMPLE_ALIAS=" + sample);
         }
         if (library != null) {
-            args[index++] = "LIBRARY_NAME=" + library;
+            args.add("LIBRARY_NAME=" + library);
         }
-        runCommandLine(args);
+        runCommandLine(args.getArgsList());
         Assert.fail("Negative test should have thrown an exception and didn't");
     }
 

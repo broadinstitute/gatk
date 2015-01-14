@@ -26,7 +26,7 @@
 package org.broadinstitute.hellbender.utils.R;
 
 import org.apache.commons.io.FileUtils;
-import org.broadinstitute.hellbender.utils.BaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;

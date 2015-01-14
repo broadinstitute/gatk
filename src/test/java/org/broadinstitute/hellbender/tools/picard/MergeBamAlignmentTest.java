@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.sam.mergealignment.BestMapqPrimaryAlignmentSelectionStrategy;
 import org.broadinstitute.hellbender.utils.sam.mergealignment.SamAlignmentMerger;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -1286,60 +1287,60 @@ public class MergeBamAlignmentTest extends CommandLineProgramTest {
                                   final String attributesToRetain,
                                   final Boolean includeSecondary) {
 
-        final List<String> args = new ArrayList<String>(Arrays.asList(
-                "UNMAPPED_BAM=" + unmappedBam.getAbsolutePath(),
-                "ALIGNED_READS_ONLY=" + alignReadsOnly,
-                "CLIP_ADAPTERS=" + clipAdapters,
-                "IS_BISULFITE_SEQUENCE=" + isBisulfiteSequence,
-                "MAX_INSERTIONS_OR_DELETIONS=" + maxInsOrDels));
+        final List<String> args = new ArrayList<>(Arrays.asList(
+                "--UNMAPPED_BAM", unmappedBam.getAbsolutePath(),
+                "--ALIGNED_READS_ONLY", String.valueOf(alignReadsOnly),
+                "--CLIP_ADAPTERS", String.valueOf(clipAdapters),
+                "--IS_BISULFITE_SEQUENCE", String.valueOf(isBisulfiteSequence),
+                "--MAX_INSERTIONS_OR_DELETIONS", String.valueOf(maxInsOrDels)));
         if (alignedBams != null) {
             for (final File alignedBam : alignedBams) {
-                args.add("ALIGNED_BAM=" + alignedBam.getAbsolutePath());
+                args.add("--ALIGNED_BAM"); args.add( alignedBam.getAbsolutePath());
             }
         }
         if (read1AlignedBams != null) {
             for (final File alignedBam : read1AlignedBams) {
-                args.add("READ1_ALIGNED_BAM=" + alignedBam.getAbsolutePath());
+                args.add("--READ1_ALIGNED_BAM"); args.add(  alignedBam.getAbsolutePath());
             }
         }
         if (read2AlignedBams != null) {
             for (final File alignedBam : read2AlignedBams) {
-                args.add("READ2_ALIGNED_BAM=" + alignedBam.getAbsolutePath());
+                args.add("--READ2_ALIGNED_BAM"); args.add(  alignedBam.getAbsolutePath());
             }
         }
         if (read1Trim != null) {
-            args.add("READ1_TRIM=" + read1Trim);
+            args.add("--READ1_TRIM"); args.add(String.valueOf(read1Trim));
         }
         if (read2Trim != null) {
-            args.add("READ2_TRIM=" + read2Trim);
+            args.add("--READ2_TRIM"); args.add(String.valueOf(read2Trim));
         }
         if (progRecordId != null) {
-            args.add("PROGRAM_RECORD_ID=" + progRecordId);
+            args.add("--PROGRAM_RECORD_ID"); args.add( progRecordId);
         }
         if (progGroupVersion != null) {
-            args.add("PROGRAM_GROUP_VERSION=" + progGroupVersion);
+            args.add("--PROGRAM_GROUP_VERSION"); args.add(progGroupVersion);
         }
         if (progGroupCommandLine != null) {
-            args.add("PROGRAM_GROUP_COMMAND_LINE=" + progGroupCommandLine);
+            args.add("--PROGRAM_GROUP_COMMAND_LINE"); args.add(progGroupCommandLine);
         }
         if (progGroupName != null) {
-            args.add("PROGRAM_GROUP_NAME=" + progGroupName);
+            args.add("--PROGRAM_GROUP_NAME");args.add(progGroupName);
         }
-        args.add("PAIRED_RUN=" + pairedRun);
-        args.add("REFERENCE_SEQUENCE=" + refSeq.getAbsolutePath());
-        args.add("OUTPUT=" + output.getAbsolutePath());
+        args.add("--PAIRED_RUN"); args.add(String.valueOf(pairedRun));
+        args.add("--REFERENCE_SEQUENCE"); args.add(refSeq.getAbsolutePath());
+        args.add("--OUTPUT"); args.add( output.getAbsolutePath());
 
         if (expectedOrientation != null) {
-            args.add("EXPECTED_ORIENTATIONS=" + expectedOrientation);
+            args.add("--EXPECTED_ORIENTATIONS"); args.add(expectedOrientation.toString());
         }
         if (primaryAlignmentStrategy != null) {
-            args.add("PRIMARY_ALIGNMENT_STRATEGY=" + primaryAlignmentStrategy);
+            args.add("--PRIMARY_ALIGNMENT_STRATEGY"); args.add( primaryAlignmentStrategy.toString());
         }
         if (attributesToRetain != null) {
-            args.add("ATTRIBUTES_TO_RETAIN=" + attributesToRetain);
+            args.add("--ATTRIBUTES_TO_RETAIN"); args.add(attributesToRetain);
         }
         if (includeSecondary != null) {
-            args.add("INCLUDE_SECONDARY_ALIGNMENTS=" + includeSecondary);
+            args.add("--INCLUDE_SECONDARY_ALIGNMENTS"); args.add(String.valueOf(includeSecondary));
         }
         Assert.assertEquals(runCommandLine(args), null, "Merge did not succeed");
     }

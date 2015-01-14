@@ -29,6 +29,7 @@ import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;

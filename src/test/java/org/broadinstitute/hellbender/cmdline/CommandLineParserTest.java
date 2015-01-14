@@ -28,19 +28,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.broadinstitute.hellbender.cmdline.programgroups.Testing;
+import sun.tools.jar.CommandLine;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class CommandLineParserTest {
     enum FrobnicationFlavor {
@@ -52,6 +44,8 @@ public class CommandLineParserTest {
             usageShort = "Read input-file, frobnicate it, and write frobnicated results to output-file"
     )
     class FrobnicateOptions {
+        @ArgumentCollection
+        SpecialArgumentsCollection specialArgs = new SpecialArgumentsCollection();
 
         @PositionalArguments(minElements=2, maxElements=2)
         public List<File> positionalArguments = new ArrayList<>();
@@ -66,29 +60,7 @@ public class CommandLineParserTest {
         public List<String> SHMIGGLE_TYPE = new ArrayList<>();
 
         @Option
-        public Boolean TRUTHINESS;
-    }
-
-    @CommandLineProgramProperties(
-            usage = "Usage: frobnicate [options] input-file output-file\n\nRead input-file, frobnicate it, and write frobnicated results to output-file\n",
-            usageShort = "Read input-file, frobnicate it, and write frobnicated results to output-file"
-    )
-    class FrobnicateOptionsWithNullList {
-
-        @PositionalArguments(minElements=2, maxElements=2)
-        public List<File> positionalArguments = new ArrayList<>();
-
-        @Option(shortName="T", doc="Frobnication threshold setting.")
-        public Integer FROBNICATION_THRESHOLD = 20;
-
-        @Option
-        public FrobnicationFlavor FROBNICATION_FLAVOR;
-
-        @Option(doc="Allowed shmiggle types.", minElements=0, maxElements = 3)
-        public List<String> SHMIGGLE_TYPE = new ArrayList<>();
-
-        @Option
-        public Boolean TRUTHINESS;
+        public Boolean TRUTHINESS = false;
     }
 
     @CommandLineProgramProperties(
@@ -110,13 +82,6 @@ public class CommandLineParserTest {
         public Boolean TRUTHINESS;
     }
 
-    class OptionsWithCaseClash {
-        @Option
-        public String FROB;
-        @Option
-        public String frob;
-    }
-    
     class MutexOptions {
         @Option(mutex={"M", "N", "Y", "Z"})
         public String A;
@@ -165,11 +130,11 @@ public class CommandLineParserTest {
     @Test
     public void testPositive() {
         final String[] args = {
-                "T=17",
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=shmiggle2",
+                "-T","17",
+                "-FROBNICATION_FLAVOR","BAR",
+                "-TRUTHINESS",
+                "-SHMIGGLE_TYPE","shmiggle1",
+                "-SHMIGGLE_TYPE","shmiggle2",
                 "positional1",
                 "positional2",
         };
@@ -184,88 +149,37 @@ public class CommandLineParserTest {
         Assert.assertEquals(fo.SHMIGGLE_TYPE.size(), 2);
         final String[] expectedShmiggleTypes = {"shmiggle1", "shmiggle2"};
         Assert.assertEquals(fo.SHMIGGLE_TYPE.toArray(), expectedShmiggleTypes);
-        Assert.assertFalse(fo.TRUTHINESS);
+        Assert.assertTrue(fo.TRUTHINESS);
     }
 
-    /**
-     * Allow a whitespace btw equal sign and option value.
-     */
     @Test
-    public void testPositiveWithSpaces() {
+    public void testGetCommandLine() {
         final String[] args = {
-                "T=", "17",
-                "FROBNICATION_FLAVOR=", "BAR",
-                "TRUTHINESS=", "False",
-                "SHMIGGLE_TYPE=", "shmiggle1",
-                "SHMIGGLE_TYPE=", "shmiggle2",
+                "-T","17",
+                "-FROBNICATION_FLAVOR","BAR",
+                "-TRUTHINESS",
+                "-SHMIGGLE_TYPE","shmiggle1",
+                "-SHMIGGLE_TYPE","shmiggle2",
                 "positional1",
                 "positional2",
         };
         final FrobnicateOptions fo = new FrobnicateOptions();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertTrue(clp.parseOptions(System.err, args));
-        Assert.assertEquals(fo.positionalArguments.size(), 2);
-        final File[] expectedPositionalArguments = { new File("positional1"), new File("positional2")};
-        Assert.assertEquals(fo.positionalArguments.toArray(), expectedPositionalArguments);
-        Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 17);
-        Assert.assertEquals(fo.FROBNICATION_FLAVOR, FrobnicationFlavor.BAR);
-        Assert.assertEquals(fo.SHMIGGLE_TYPE.size(), 2);
-        final String[] expectedShmiggleTypes = {"shmiggle1", "shmiggle2"};
-        Assert.assertEquals(fo.SHMIGGLE_TYPE.toArray(), expectedShmiggleTypes);
-        Assert.assertFalse(fo.TRUTHINESS);
+        Assert.assertTrue(clp.parseOptions(System.err,args));
+        Assert.assertEquals(clp.getCommandLine(),
+                "org.broadinstitute.hellbender.cmdline.CommandLineParserTest$FrobnicateOptions  " +
+                        "positional1 positional2 --FROBNICATION_THRESHOLD 17 --FROBNICATION_FLAVOR BAR " +
+                        "--SHMIGGLE_TYPE [shmiggle1, shmiggle2] --TRUTHINESS true    --help false --version false");
     }
 
-    @Test
-    public void testPositiveWithoutPositional() {
-        final String[] args = {
-                "T=17",
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=shmiggle2",
-        };
-        final OptionsWithoutPositional fo = new OptionsWithoutPositional();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertTrue(clp.parseOptions(System.err, args));
-        Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 17);
-        Assert.assertEquals(fo.FROBNICATION_FLAVOR, FrobnicationFlavor.BAR);
-        Assert.assertEquals(fo.SHMIGGLE_TYPE.size(), 2);
-        final String[] expectedShmiggleTypes = {"shmiggle1", "shmiggle2"};
-        Assert.assertEquals(fo.SHMIGGLE_TYPE.toArray(), expectedShmiggleTypes);
-        Assert.assertFalse(fo.TRUTHINESS);
-    }
-
-    /**
-     * If last character of command line is the equal sign in an option=value pair,
-     * make sure no crash, and that the value is empty string.
-     */
-    @Test
-    public void testPositiveTerminalEqualSign() {
-        final String[] args = {
-                "T=17",
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=",
-        };
-        final OptionsWithoutPositional fo = new OptionsWithoutPositional();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertTrue(clp.parseOptions(System.err, args));
-        Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 17);
-        Assert.assertEquals(fo.FROBNICATION_FLAVOR, FrobnicationFlavor.BAR);
-        Assert.assertEquals(fo.SHMIGGLE_TYPE.size(), 2);
-        final String[] expectedShmiggleTypes = {"shmiggle1", ""};
-        Assert.assertEquals(fo.SHMIGGLE_TYPE.toArray(), expectedShmiggleTypes);
-        Assert.assertFalse(fo.TRUTHINESS);
-    }
 
     @Test
     public void testDefault() {
         final String[] args = {
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=shmiggle2",
+                "--FROBNICATION_FLAVOR","BAR",
+                "--TRUTHINESS",
+                "--SHMIGGLE_TYPE","shmiggle1",
+                "--SHMIGGLE_TYPE","shmiggle2",
                 "positional1",
                 "positional2",
         };
@@ -278,9 +192,9 @@ public class CommandLineParserTest {
     @Test
     public void testMissingRequiredArgument() {
         final String[] args = {
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=shmiggle2",
+                "--TRUTHINESS","False",
+                "--SHMIGGLE_TYPE","shmiggle1",
+                "--SHMIGGLE_TYPE","shmiggle2",
                 "positional1",
                 "positional2",
         };
@@ -292,11 +206,11 @@ public class CommandLineParserTest {
     @Test
     public void testBadValue() {
         final String[] args = {
-                "FROBNICATION_THRESHOLD=ABC",
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=shmiggle2",
+                "--FROBNICATION_THRESHOLD","ABC",
+                "--FROBNICATION_FLAVOR","BAR",
+                "--TRUTHINESS","False",
+                "--SHMIGGLE_TYPE","shmiggle1",
+                "--SHMIGGLE_TYPE","shmiggle2",
                 "positional1",
                 "positional2",
         };
@@ -308,10 +222,10 @@ public class CommandLineParserTest {
     @Test
     public void testBadEnumValue() {
         final String[] args = {
-                "FROBNICATION_FLAVOR=HiMom",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
-                "SHMIGGLE_TYPE=shmiggle2",
+                "--FROBNICATION_FLAVOR","HiMom",
+                "--TRUTHINESS","False",
+                "--SHMIGGLE_TYPE","shmiggle1",
+                "--SHMIGGLE_TYPE","shmiggle2",
                 "positional1",
                 "positional2",
         };
@@ -394,18 +308,11 @@ public class CommandLineParserTest {
         Assert.assertFalse(clp.parseOptions(System.err, args));
     }
 
-    @Test(expectedExceptions = GATKException.CommandLineParserInternalException.class)
-    public void testOptionDefinitionCaseClash() {
-        final OptionsWithCaseClash options = new OptionsWithCaseClash();
-        new CommandLineParser(options);
-        Assert.fail("Should not be reached.");
-    }
-
     @Test
-    public void testOptionUseCaseClash() {
+    public void testOptionUseClash() {
         final String[] args = {
-                "FROBNICATION_FLAVOR=BAR",
-                "FrOBNICATION_fLAVOR=BAR",
+                "--FROBNICATION_FLAVOR", "BAR",
+                "--FROBNICATION_FLAVOR", "BAR",
         };
         final FrobnicateOptions fo = new FrobnicateOptions();
         final CommandLineParser clp = new CommandLineParser(fo);
@@ -413,60 +320,24 @@ public class CommandLineParserTest {
     }
 
     @Test
-    public void testNullValue() {
-    	final String[] args = {
-    			"FROBNICATION_THRESHOLD=null",  
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=null",                
-                "positional1",
-                "positional2",
-        };
-    	
-        final FrobnicateOptionsWithNullList fownl = new FrobnicateOptionsWithNullList();
-        fownl.SHMIGGLE_TYPE.add("shmiggle1"); //providing null value should clear this list
-        
-        final CommandLineParser clp = new CommandLineParser(fownl);
-        Assert.assertTrue(clp.parseOptions(System.err, args));
-        Assert.assertEquals(fownl.positionalArguments.size(), 2);
-        final File[] expectedPositionalArguments = { new File("positional1"), new File("positional2")};
-        Assert.assertEquals(fownl.positionalArguments.toArray(), expectedPositionalArguments);
-        Assert.assertEquals(fownl.FROBNICATION_THRESHOLD, null); //test null value         
-        Assert.assertEquals(fownl.SHMIGGLE_TYPE.size(), 0); //test null value for list        
-        Assert.assertFalse(fownl.TRUTHINESS);
-     
-        //verify that required arg can't be set to null
-        args[2] = "TRUTHINESS=null"; 
-        final CommandLineParser clp2 = new CommandLineParser(fownl);
-        Assert.assertFalse(clp2.parseOptions(System.err, args));
-
-        //verify that positional arg can't be set to null
-        args[2] = "TRUTHINESS=False"; 
-        args[4] = "null";
-        final CommandLineParser clp3 = new CommandLineParser(fownl);
-        Assert.assertFalse(clp3.parseOptions(System.err, args));
-        
-    }
-
-
-    @Test
     public void testOptionsFile() throws Exception {
         final File optionsFile = File.createTempFile("clp.", ".options");
         optionsFile.deleteOnExit();
         final PrintWriter writer = new PrintWriter(optionsFile);
-        writer.println("T=18");
-        writer.println("TRUTHINESS=True");
-        writer.println("SHMIGGLE_TYPE=shmiggle0");
-        writer.println("STRANGE_OPTION=shmiggle0");
+        writer.println("-T 18");
+        writer.println("--TRUTHINESS");
+        writer.println("--SHMIGGLE_TYPE shmiggle0");
+        writer.println("--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME + " " +optionsFile.getPath());
+        //writer.println("--STRANGE_OPTION shmiggle0");
         writer.close();
         final String[] args = {
-                "OPTIONS_FILE=" + optionsFile.getPath(),
+                "--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME, optionsFile.getPath(),
                 // Multiple options files are allowed
-                "OPTIONS_FILE=" + optionsFile.getPath(),
-                "T=17",
-                "FROBNICATION_FLAVOR=BAR",
-                "TRUTHINESS=False",
-                "SHMIGGLE_TYPE=shmiggle1",
+                "--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME, optionsFile.getPath(),
+                "--FROBNICATION_FLAVOR","BAR",
+                "--TRUTHINESS",
+                "--SHMIGGLE_TYPE","shmiggle0",
+                "--SHMIGGLE_TYPE","shmiggle1",
                 "positional1",
                 "positional2",
         };
@@ -476,12 +347,12 @@ public class CommandLineParserTest {
         Assert.assertEquals(fo.positionalArguments.size(), 2);
         final File[] expectedPositionalArguments = { new File("positional1"), new File("positional2")};
         Assert.assertEquals(fo.positionalArguments.toArray(), expectedPositionalArguments);
-        Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 17);
+        Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 18);
         Assert.assertEquals(fo.FROBNICATION_FLAVOR, FrobnicationFlavor.BAR);
         Assert.assertEquals(fo.SHMIGGLE_TYPE.size(), 3);
         final String[] expectedShmiggleTypes = {"shmiggle0", "shmiggle0", "shmiggle1"};
         Assert.assertEquals(fo.SHMIGGLE_TYPE.toArray(), expectedShmiggleTypes);
-        Assert.assertFalse(fo.TRUTHINESS);
+        Assert.assertTrue(fo.TRUTHINESS);
     }
 
 
@@ -508,11 +379,11 @@ public class CommandLineParserTest {
     @DataProvider(name="mutexScenarios")
     public Object[][] mutexScenarios() {
         return new Object[][] {
-                { "pass", new String[] {"A=1", "B=2"}, true },
+                { "pass", new String[] {"-A","1", "-B","2"}, true },
                 { "no args", new String[0], false },
-                { "1 of group required", new String[] {"A=1"}, false },
-                { "mutex", new String[]  {"A=1", "Y=3"}, false },
-                { "mega mutex", new String[]  {"A=1", "B=2", "Y=3", "Z=1", "M=2", "N=3"}, false }
+                { "1 of group required", new String[] {"-A","1"}, false },
+                { "mutex", new String[]  {"-A","1", "-Y","3"}, false },
+                { "mega mutex", new String[]  {"-A","1", "-B","2", "-Y","3", "-Z","1", "-M","2", "-N","3"}, false }
         };
     }
     
@@ -539,7 +410,7 @@ public class CommandLineParserTest {
     public void testUninitializedCollections() {
         final UninitializedCollectionOptions o = new UninitializedCollectionOptions();
         final CommandLineParser clp = new CommandLineParser(o);
-        final String[] args = {"LIST=L1", "LIST=L2", "ARRAY_LIST=S1", "HASH_SET=HS1", "P1", "P2"};
+        final String[] args = {"--LIST","L1", "--LIST","L2", "--ARRAY_LIST","S1", "--HASH_SET","HS1", "P1", "P2"};
         Assert.assertTrue(clp.parseOptions(System.err, args));
         Assert.assertEquals(o.LIST.size(), 2);
         Assert.assertEquals(o.ARRAY_LIST.size(), 1);
@@ -568,7 +439,7 @@ public class CommandLineParserTest {
     public void testClearDefaultValuesFromListOption() {
         final CollectionWithDefaultValuesOptions o = new CollectionWithDefaultValuesOptions();
         final CommandLineParser clp = new CommandLineParser(o);
-        final String[] args = {"LIST=null"};
+        final String[] args = {"--LIST","null"};
         Assert.assertTrue(clp.parseOptions(System.err, args));
         Assert.assertEquals(o.LIST.size(), 0);
     }
@@ -577,7 +448,7 @@ public class CommandLineParserTest {
     public void testClearDefaultValuesFromListOptionAndAddNew() {
         final CollectionWithDefaultValuesOptions o = new CollectionWithDefaultValuesOptions();
         final CommandLineParser clp = new CommandLineParser(o);
-        final String[] args = {"LIST=null", "LIST=baz", "LIST=frob"};
+        final String[] args = {"--LIST","null", "--LIST","baz", "--LIST","frob"};
         Assert.assertTrue(clp.parseOptions(System.err, args));
         Assert.assertEquals(o.LIST, CollectionUtil.makeList("baz", "frob"));
     }
@@ -586,352 +457,137 @@ public class CommandLineParserTest {
     public void testAddToDefaultValuesListOption() {
         final CollectionWithDefaultValuesOptions o = new CollectionWithDefaultValuesOptions();
         final CommandLineParser clp = new CommandLineParser(o);
-        final String[] args = {"LIST=baz", "LIST=frob"};
+        final String[] args = {"--LIST","baz", "--LIST","frob"};
         Assert.assertTrue(clp.parseOptions(System.err, args));
         Assert.assertEquals(o.LIST, CollectionUtil.makeList("foo", "bar", "baz", "frob"));
     }
 
-    @CommandLineProgramProperties(
-            usage = "Class with nested option",
-            usageShort = "Class with nested option"
-    )
-    class OptionsWithNested {
-        @Option
-        public Integer AN_INT;
-        @NestedOptions(doc="Doc for FROB")
-        public OptionsWithoutPositional FROB = new OptionsWithoutPositional();
-        @NestedOptions
-        public OptionsWithNestedAgain NESTED = new OptionsWithNestedAgain();
-        @Option
-        public String A_STRING;
+    @Test
+    public void testCommandLineToolTest() {
+        final CollectionWithDefaultValuesOptions o = new CollectionWithDefaultValuesOptions();
+        final CommandLineParser clp = new CommandLineParser(o);
+        final String[] args = {"--LIST","baz", "--LIST","frob"};
+        Assert.assertTrue(clp.parseOptions(System.err, args));
+        Assert.assertEquals(o.LIST, CollectionUtil.makeList("foo", "bar", "baz", "frob"));
     }
 
-    class OptionsWithNestedAgain {
-        @NestedOptions(doc="Doc for inner FROB")
+    class OptionsWithArgumentCollectionAgain {
+        @ArgumentCollection(doc="Doc for inner FROB")
         public OptionsWithoutPositional FROB = new OptionsWithoutPositional();
     }
 
 
-    @Test
-    public void testStaticNestedOptions() {
-        final OptionsWithNested o = new OptionsWithNested();
-        final CommandLineParser clp = new CommandLineParser(o);
-        clp.usage(System.out, false);
-        final int outerInt = 123;
-        final String outerString = "outerString";
-        final FrobnicationFlavor outerFlavor = FrobnicationFlavor.BAR;
-        final FrobnicationFlavor innerFlavor = FrobnicationFlavor.BAZ;
-        final boolean outerTruthiness = true;
-        final boolean innerTruthiness = false;
-        final int innerThreshold = 10;
-        final String[] outerShmiggle = {"shmiggle1", "shmiggle2"};
-        final String[] innerShmiggle = {"inner1", "inner2", "inner3"};
-
-        final List<String> args = new ArrayList<>();
-        args.add("AN_INT=" + outerInt);
-        args.add("A_STRING=" + outerString);
-        args.add("frob.truThIness=" + outerTruthiness);
-        args.add("FrOb.FROBNICATION_FLAVOR=" + outerFlavor);
-        for (final String shmiggle : outerShmiggle) {
-            args.add("FROB.SHMIGGLE_TYPE=" + shmiggle);
-        }
-        args.add("NeStEd.Frob.FROBNICATION_THRESHOLD=" + innerThreshold);
-        args.add("NeStEd.Frob.FROBNICATION_FLAVOR=" + innerFlavor);
-        args.add("NeStEd.Frob.truthIness=" + innerTruthiness);
-        for (final String shmiggle : innerShmiggle) {
-            args.add("NESTED.FROB.SHMIGGLE_TYPE=");
-            args.add(shmiggle);
-        }
-        Assert.assertTrue(clp.parseOptions(System.err, args.toArray(new String[args.size()])));
-        System.out.println(clp.getCommandLine());
-        Assert.assertEquals(o.AN_INT.intValue(), outerInt);
-        Assert.assertEquals(o.A_STRING, outerString);
-        Assert.assertEquals(o.FROB.FROBNICATION_FLAVOR, outerFlavor);
-        Assert.assertEquals(o.FROB.FROBNICATION_THRESHOLD.intValue(), OptionsWithoutPositional.DEFAULT_FROBNICATION_THRESHOLD);
-        Assert.assertEquals(o.FROB.SHMIGGLE_TYPE, Arrays.asList(outerShmiggle));
-        Assert.assertEquals(o.FROB.TRUTHINESS.booleanValue(), outerTruthiness);
-        Assert.assertEquals(o.NESTED.FROB.SHMIGGLE_TYPE, Arrays.asList(innerShmiggle));
-        Assert.assertEquals(o.NESTED.FROB.FROBNICATION_THRESHOLD.intValue(), innerThreshold);
-        Assert.assertEquals(o.NESTED.FROB.FROBNICATION_FLAVOR, innerFlavor);
-        Assert.assertEquals(o.NESTED.FROB.TRUTHINESS.booleanValue(), innerTruthiness);
-    }
-
-    @Test void testStaticNestedNegative() {
-        final OptionsWithNested o = new OptionsWithNested();
-        final CommandLineParser clp = new CommandLineParser(o);
-        final int outerInt = 123;
-        final String outerString = "outerString";
-        final FrobnicationFlavor outerFlavor = FrobnicationFlavor.BAR;
-        final boolean outerTruthiness = true;
-        final String[] outerShmiggle = {"shmiggle1", "shmiggle2"};
-
-        final List<String> args = new ArrayList<>();
-        args.add("AN_INT=" + outerInt);
-        args.add("A_STRING=" + outerString);
-        Assert.assertFalse(clp.parseOptions(System.err, args.toArray(new String[args.size()])));
-        System.out.println(clp.getCommandLine());
-    }
-
-    @CommandLineProgramProperties(
-            usage = "Class with nested options.",
-            usageShort = "Class with nested options",
-            programGroup = Testing.class,
-            omitFromCommandLine = true
-    )
-    class ClpOptionsWithNested extends CommandLineProgram {
+    class FlagCollection{
         @Option
-        public Integer AN_INT;
-        @NestedOptions(doc="This will be ignored")
-        public OptionsWithoutPositional FROB = new OptionsWithoutPositional();
+        public boolean flag1 = false;
 
         @Option
-        public String A_STRING;
+        public boolean flag2 = true;
 
-        private final ClpOptionsWithNestedAgain NESTED = new ClpOptionsWithNestedAgain();
+        @ArgumentCollection
+        SpecialArgumentsCollection special = new SpecialArgumentsCollection();
 
-        @Override
-        public Map<String, Object> getNestedOptions() {
-            final Map<String, Object> ret = new LinkedHashMap<>();
-            ret.put("CLP_NESTED", NESTED);
-            ret.put("FRAB", FROB);
-            return ret;
-        }
-
-        @Override
-        public Map<String, Object> getNestedOptionsForHelp() {
-            final Map<String, Object> ret = new LinkedHashMap<>();
-            ret.put("CLP_NESTED", NESTED);
-            return ret;
-        }
-
-        @Override
-        protected Integer doWork() {
-            return 0;
-        }
-    }
-
-    @CommandLineProgramProperties(
-            usage = "Class with nested options again.",
-            usageShort = "Class with nested options again",
-            programGroup = Testing.class,
-            omitFromCommandLine = true
-    )
-    class ClpOptionsWithNestedAgain extends CommandLineProgram {
-        private final OptionsWithoutPositional FROB = new OptionsWithoutPositional();
-
-        @Override
-        public Map<String, Object> getNestedOptions() {
-            final Map<String, Object> ret = new LinkedHashMap<>();
-            ret.put("FROB_NESTED", FROB);
-            return ret;
-        }
-
-        @Override
-        protected Integer doWork() {
-            return 0;
-        }
     }
 
     @Test
-    public void testDynamicNestedOptions() {
-        final ClpOptionsWithNested o = new ClpOptionsWithNested();
-        final int outerInt = 123;
-        final String outerString = "aString";
-        final int outerThreshold = 456;
-        final FrobnicationFlavor outerFlavor = FrobnicationFlavor.FOO;
-        final List<String> outerShmiggleType = Arrays.asList("shmiggle1");
-        final boolean outerTruthiness = true;
-        final int innerThreshold = -1000;
-        final FrobnicationFlavor innerFlavor = FrobnicationFlavor.BAZ;
-        final List<String> innerShmiggleType = Arrays.asList("innershmiggle1", "skeezwitz");
-        final boolean innerTruthiness = false;
-
-        final List<String> args = new ArrayList<>();
-        args.add("AN_INT=" + outerInt);
-        args.add("A_STRING=" + outerString);
-        args.add("FRAB.FROBNICATION_THRESHOLD=" + outerThreshold);
-        args.add("FRAB.FROBNICATION_FLAVOR=" + outerFlavor);
-        args.add("FRAB.SHMIGGLE_TYPE=" + outerShmiggleType.get(0));
-        args.add("FRAB.TRUTHINESS=" + outerTruthiness);
-        args.add("CLP_NESTED.FROB_NESTED.FROBNICATION_THRESHOLD=" + innerThreshold);
-        args.add("CLP_NESTED.FROB_NESTED.FROBNICATION_FLAVOR=" + innerFlavor);
-        for (final String ist : innerShmiggleType) {
-            args.add("CLP_NESTED.FROB_NESTED.SHMIGGLE_TYPE=" + ist);
-        }
-        args.add("CLP_NESTED.FROB_NESTED.TRUTHINESS=" + innerTruthiness);
-
-        Assert.assertTrue(o.parseArgs(args.toArray(new String[args.size()])));
-        System.out.println(o.getCommandLine());
-        Assert.assertEquals(o.AN_INT.intValue(), outerInt);
-        Assert.assertEquals(o.A_STRING, outerString);
-        Assert.assertEquals(o.FROB.FROBNICATION_THRESHOLD.intValue(), outerThreshold);
-        Assert.assertEquals(o.FROB.FROBNICATION_FLAVOR, outerFlavor);
-        Assert.assertEquals(o.FROB.SHMIGGLE_TYPE, outerShmiggleType);
-        Assert.assertEquals(o.FROB.TRUTHINESS.booleanValue(), outerTruthiness);
-        Assert.assertEquals(o.NESTED.FROB.FROBNICATION_THRESHOLD.intValue(), innerThreshold);
-        Assert.assertEquals(o.NESTED.FROB.FROBNICATION_FLAVOR, innerFlavor);
-        Assert.assertEquals(o.NESTED.FROB.SHMIGGLE_TYPE, innerShmiggleType);
-        Assert.assertEquals(o.NESTED.FROB.TRUTHINESS.booleanValue(), innerTruthiness);
-        Assert.assertFalse(new ClpOptionsWithNested().parseArgs(new String[]{"-h"}));
-        new CommandLineParser(o).usage(System.err, false);
-    }
-
-    class StaticPropagationParent {
-        @Option
-        public String STRING1 = "String1ParentDefault";
-
-        @Option
-        public String STRING2 = "String2ParentDefault";
-
-        @Option
-        public String STRING3 = "String3ParentDefault";
-
-        @Option
-        public String STRING4 = "String4ParentDefault";
-
-        @Option
-        public String STRING5;
-
-        @Option
-        public List<String> COLLECTION;
-
-        @NestedOptions
-        public PropagationChild CHILD = new PropagationChild();
-    }
-
-    class PropagationChild {
-        // Parent has default, child does not, should propagate
-        @Option
-        public String STRING1;
-
-        // Parent and child have default, should not propagate
-        @Option
-        public String STRING2 = "String2ChildDefault";
-
-        // Parent has explicitly set value, child has default, should propagate
-        @Option
-        public String STRING3 = "String3ChildDefault";
-
-        // Parent has default, child has explicitly set value, should not propagate
-        @Option
-        public String STRING4;
-
-        // Parent and child have explicitly set value, should not propagate
-        @Option
-        public String STRING5;
-
-        // Parent has explicitly set value, but collection should not propagate
-        @Option
-        public List<String> COLLECTION;
+       public void testFlagNoArgument(){
+        final FlagCollection o = new FlagCollection();
+        final CommandLineParser clp = new CommandLineParser(o);
+        Assert.assertTrue(clp.parseOptions(System.err, new String[]{"--flag1"}));
+        Assert.assertTrue(o.flag1);
     }
 
     @Test
-    public void testStaticPropagation() {
-        final StaticPropagationParent o = new StaticPropagationParent();
+    public void testFlagsWithArguments(){
+        final FlagCollection o = new FlagCollection();
         final CommandLineParser clp = new CommandLineParser(o);
-        clp.usage(System.out, false);
-
-        final List<String> args = new ArrayList<>();
-        args.add("STRING3=String3Parent");
-        args.add("CHILD.STRING4=String4Child");
-        args.add("STRING5=String5Parent");
-        args.add("CHILD.STRING5=String5Child");
-        args.add("COLLECTION=CollectionParent");
-
-        Assert.assertTrue(clp.parseOptions(System.err, args.toArray(new String[args.size()])));
-        System.out.println(clp.getCommandLine());
-
-        Assert.assertEquals(o.CHILD.STRING1, "String1ParentDefault");
-        Assert.assertEquals(o.CHILD.STRING2, "String2ChildDefault");
-        Assert.assertEquals(o.CHILD.STRING3, "String3Parent");
-        Assert.assertEquals(o.CHILD.STRING4, "String4Child");
-        Assert.assertEquals(o.CHILD.STRING5, "String5Child");
-        Assert.assertEquals(o.CHILD.COLLECTION, new ArrayList<String>());
+        Assert.assertTrue(clp.parseOptions(System.err, new String[]{"--flag1", "false", "--flag2", "false"}));
+        Assert.assertFalse(o.flag1);
+        Assert.assertFalse(o.flag2);
     }
 
-    @CommandLineProgramProperties(
-            usage = "",
-            usageShort = "",
-            programGroup = Testing.class,
-            omitFromCommandLine = true
-    )
-    class DynamicPropagationParent extends CommandLineProgram {
-        @Option
-        public String STRING1 = "String1ParentDefault";
+    class ArgsCollection {
+        @Option(fullName = "arg1")
+        public int Arg1;
+    }
 
-        @Option
-        public String STRING2 = "String2ParentDefault";
+    class ArgsCollectionHaver{
 
-        @Option
-        public String STRING3 = "String3ParentDefault";
+        public ArgsCollectionHaver(){}
 
-        @Option
-        public String STRING4 = "String4ParentDefault";
+        @ArgumentCollection
+        public ArgsCollection default_args = new ArgsCollection();
 
-        @Option
-        public String STRING5;
-
-        @Option
-        public List<String> COLLECTION;
-
-        public PropagationChild CHILD = new PropagationChild();
-
-        @Override
-        protected Integer doWork() {
-            return 0;
-        }
-
-        @Override
-        public Map<String, Object> getNestedOptions() {
-            final Map<String, Object> ret = new HashMap<>();
-            ret.put("CHILD", CHILD);
-            return ret;
-        }
+        @Option(fullName = "somenumber",shortName = "n")
+        public int someNumber = 0;
     }
 
     @Test
-    public void testDynamicPropagation() {
-        final DynamicPropagationParent o = new DynamicPropagationParent();
-
-        final List<String> args = new ArrayList<>();
-        args.add("STRING3=String3Parent");
-        args.add("CHILD.STRING4=String4Child");
-        args.add("STRING5=String5Parent");
-        args.add("CHILD.STRING5=String5Child");
-        args.add("COLLECTION=CollectionParent");
-
-        Assert.assertTrue(o.parseArgs(args.toArray(new String[args.size()])));
-        System.out.println(o.getCommandLine());
-        Assert.assertFalse(new DynamicPropagationParent().parseArgs(new String[]{"-h"}));
-        new CommandLineParser(o).usage(System.err, false);
-
-        Assert.assertEquals(o.CHILD.STRING1, "String1ParentDefault");
-        Assert.assertEquals(o.CHILD.STRING2, "String2ChildDefault");
-        Assert.assertEquals(o.CHILD.STRING3, "String3Parent");
-        Assert.assertEquals(o.CHILD.STRING4, "String4Child");
-        Assert.assertEquals(o.CHILD.STRING5, "String5Child");
-        Assert.assertEquals(o.CHILD.COLLECTION, new ArrayList<String>());
-    }
-
-    class NegativePropagationParent {
-        @Option
-        public int STRING1 = 1;
-
-
-        @Option
-        public List<String> COLLECTION;
-
-        @NestedOptions
-        public PropagationChild CHILD = new PropagationChild();
-    }
-
-    /** parent and child option of the same name are not type-compatible. */
-    @Test(expectedExceptions = {IllegalArgumentException.class})
-    public void testStaticPropagationNegative() {
-        final NegativePropagationParent o = new NegativePropagationParent();
+    public void testArgumentCollection(){
+        final ArgsCollectionHaver o = new ArgsCollectionHaver();
         final CommandLineParser clp = new CommandLineParser(o);
-        clp.usage(System.out, false);
 
-        clp.parseOptions(System.err, new String[0]);
+        String[] args = {"--arg1", "42", "--somenumber", "12"};
+        Assert.assertTrue(clp.parseOptions(System.err, args));
+        Assert.assertEquals(o.someNumber, 12);
+        Assert.assertEquals(o.default_args.Arg1, 42);
+
+    }
+
+    class BooleanFlags{
+        @Option
+        public Boolean flag1 = false;
+
+        @Option
+        public boolean flag2 = true;
+
+        @Option
+        public boolean flag3 = false;
+    }
+
+    @Test
+    public void testCombinationOfFlags(){
+        final BooleanFlags o = new BooleanFlags();
+        final CommandLineParser clp = new CommandLineParser(o);
+
+        clp.parseOptions(System.err, new String[]{"--flag1", "false", "--flag2"});
+        Assert.assertFalse(o.flag1);
+        Assert.assertTrue(o.flag2);
+        Assert.assertFalse(o.flag3);
+    }
+
+    class WithBadField{
+        @Option
+        @ArgumentCollection
+        public boolean badfield;
+    }
+
+    @Test(expectedExceptions = GATKException.CommandLineParserInternalException.class)
+    public void testBadFieldCausesException(){
+        WithBadField o = new WithBadField();
+        final CommandLineParser clp = new CommandLineParser(o);
+        Assert.fail(); //shouldn't reach here
+    }
+
+    class PrivateOption{
+        @Option
+        private boolean privateOption = false;
+
+        @Option
+        private List<Integer> privateCollection = new ArrayList<>();
+
+        @ArgumentCollection
+        private BooleanFlags booleanFlags= new BooleanFlags();
+    }
+
+    @Test
+    public void testPrivateOption(){
+        PrivateOption o = new PrivateOption();
+        final CommandLineParser clp = new CommandLineParser(o);
+        Assert.assertTrue(clp.parseOptions(System.err, new String[]{"--privateOption",
+                "--privateCollection" ,"1", "--privateCollection", "2", "--flag1"}));
+        Assert.assertTrue(o.privateOption);
+        Assert.assertEquals(o.privateCollection, Arrays.asList(1,2));
+        Assert.assertTrue(o.booleanFlags.flag1);
     }
 }

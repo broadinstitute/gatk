@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 public class CountReads extends ReadWalker {
 
     private long count = 0;
-
     @Override
     public void apply( SAMRecord read, ReferenceContext referenceContext ) {
         ++count;

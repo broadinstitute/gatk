@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.sam.testers.CleanSamTester;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,10 +24,10 @@ public class CleanSamTest extends CommandLineProgramTest {
     public void testCleanSam(final String samFile, final String expectedCigar) throws IOException {
         final File cleanedFile = File.createTempFile(samFile + ".", ".sam");
         cleanedFile.deleteOnExit();
-        final String[] args = new String[]{
+        final String[] args = new ArgumentsBuilder(new Object[]{
                 "INPUT=" + new File(TEST_DATA_DIR, samFile).getAbsolutePath(),
                 "OUTPUT=" + cleanedFile.getAbsolutePath()
-        };
+        }).getArgsArray();
         Assert.assertEquals(runCommandLine(args), null);
 
         final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);

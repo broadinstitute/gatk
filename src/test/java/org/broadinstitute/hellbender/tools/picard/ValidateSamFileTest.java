@@ -33,8 +33,8 @@ public class ValidateSamFileTest extends CommandLineProgramTest {
     public void testNoOutputFile(String input, String mode, boolean expectedValidity) throws Exception {
         final File testFile = new File(TEST_DATA_DIR, input);
         final String[] args = new String[] {
-            "INPUT=" + testFile,
-            "MODE=" + mode
+            "--INPUT", testFile.getPath(),
+            "--MODE", mode
         };
         Assert.assertEquals(runCommandLine(args), expectedValidity);
     }

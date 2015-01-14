@@ -26,6 +26,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;

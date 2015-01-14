@@ -58,12 +58,15 @@ public abstract class CommandLineProgram {
     @Option(common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
 
+    @ArgumentCollection(doc="Special Options that have meaning to the argument parsing system.  " +
+            "It is unlikely these will ever need to be accessed by the command line program")
+    public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
+
     @Option(doc = "Control verbosity of logging.", common=true)
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
     @Option(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
-
     private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
 
     /**
@@ -165,21 +168,6 @@ public abstract class CommandLineProgram {
     * to be written to the appropriate place.
     */
     protected String[] customCommandLineValidation() {
-        final List<String> ret = new ArrayList<>();
-        for (final Object childOptionsObject : getNestedOptions().values()) {
-            if (childOptionsObject instanceof CommandLineProgram) {
-                final CommandLineProgram childClp = (CommandLineProgram)childOptionsObject;
-                final String[] childErrors = childClp.customCommandLineValidation();
-                if (childErrors != null) {
-                    for (final String error: childErrors) {
-                        ret.add(error);
-                    }
-                }
-            }
-        }
-        if (!ret.isEmpty()) {
-            ret.toArray(new String[ret.size()]);
-        }
         return null;
     }
 
@@ -245,21 +233,4 @@ public abstract class CommandLineProgram {
         return this.defaultHeaders;
     }
 
-    /**
-     * @return Map of nested options, where the key is the prefix to be used when specifying Options inside of a nested
-     * options object, and the value is the nested options object itself.  Default implementation is to return a
-     * map of all the fields annotated with @NestedOptions, with key being the field name.
-     */
-    public Map<String, Object> getNestedOptions() {
-        return CommandLineParser.getNestedOptions(this);
-    }
-
-    /**
-     * @return Map of nested options, where the key is the prefix to be used when specifying Options inside of a nested
-     * options object, and the value is the nested options object itself, for the purpose of generating help.
-     * Default implementation is to return the same map as getNestedOptions().
-     */
-    public Map<String, Object> getNestedOptionsForHelp() {
-        return getNestedOptions();
-    }
 }

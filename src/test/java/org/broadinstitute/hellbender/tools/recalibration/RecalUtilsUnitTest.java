@@ -51,7 +51,7 @@
 
 package org.broadinstitute.hellbender.tools.recalibration;
 
-import org.broadinstitute.hellbender.utils.BaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.testng.Assert;

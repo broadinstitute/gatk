@@ -28,7 +28,7 @@ public abstract class PicardCommandLineProgram extends CommandLineProgram {
     @Option(doc="Whether to create an MD5 digest for any BAM or FASTQ files created.  ", common=true)
     public boolean CREATE_MD5_FILE = Defaults.CREATE_MD5;
 
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true, overridable = true)
+    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true)
     public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     @Override
