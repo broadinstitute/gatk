@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Option;
 import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
@@ -40,6 +42,26 @@ public abstract class ReadWalker extends GATKTool {
         // Need to delay initialization of members until after the argument-parsing system has injected argument values
         reads = new ReadsDataSource(READS_FILES);
         reference = REFERENCE_FILE != null ? new ReferenceDataSource(REFERENCE_FILE) : null;
+    }
+
+    /**
+     * Returns the SAM header for this reads traversal. Will be a merged header if there are multiple inputs for
+     * the reads. If there is only a single input, returns its header directly.
+     *
+     * @return SAM header for this reads traversal
+     */
+    public SAMFileHeader getHeaderForReads() {
+        return reads.getHeader();
+    }
+
+    /**
+     * Returns the sequence dictionary for the reference, if a reference is present. If there is no
+     * reference, returns null.
+     *
+     * @return sequence dictionary for the reference, or null if there is no reference
+     */
+    public SAMSequenceDictionary getReferenceDictionary() {
+        return reference != null ? reference.getSequenceDictionary() : null;
     }
 
     /**

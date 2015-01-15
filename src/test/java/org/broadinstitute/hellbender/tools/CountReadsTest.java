@@ -35,7 +35,7 @@ public class CountReadsTest extends CommandLineProgramTest {
     public void testCountBases(String fileIn) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final String[] args = new String[]{
-                "INPUT=" + ORIG_BAM.getAbsolutePath(),
+                "I=" + ORIG_BAM.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
         Assert.assertEquals(res, 8l);

@@ -9,6 +9,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Option;
 import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
@@ -24,14 +27,10 @@ import java.util.stream.Collectors;
         usageShort = "Outputs reads by read group, etc.",
         programGroup = ReadProgramGroup.class
 )
-public class SplitReads extends CommandLineProgram {
+public class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";
     public static final String READ_GROUP_SHORT_NAME = "RG";
-
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME,
-            doc = "The SAM or BAM or CRAM file to be split.")
-    public File INPUT;
 
     @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
             doc = "The directory to output SAM or BAM or CRAM files.")
@@ -45,45 +44,50 @@ public class SplitReads extends CommandLineProgram {
             doc = "Split file by read group.")
     public boolean READ_GROUP;
 
-    @Override
-    protected Object doWork() {
-        splitReader();
-        return null;
-    }
 
-    protected void splitReader() {
-        IOUtil.assertFileIsReadable(INPUT);
+    private List<ReaderSplitter<?>> splitters = new ArrayList<>();
+    private Map<String, SAMFileWriter> outs = null;
+
+    @Override
+    public void onTraversalStart() {
         IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
-        final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
-        final List<ReaderSplitter<?>> splitters = new ArrayList<>();
+        if ( READS_FILES.size() != 1 ) {
+            throw new UserException("This tool only accepts a single SAM/BAM as input");
+        }
+
         if (SAMPLE) {
             splitters.add(new SampleNameSplitter());
         }
         if (READ_GROUP) {
             splitters.add(new ReadGroupIdSplitter());
         }
-        Map<String, SAMFileWriter> outs = createWriters(in, splitters);
-        for (final SAMRecord rec : in) {
-            outs.get(getKey(splitters, rec)).addAlignment(rec);
-        }
-        CloserUtil.close(in);
+        outs = createWriters(splitters);
+    }
+
+    @Override
+    public void apply( SAMRecord read, ReferenceContext referenceContext ) {
+        outs.get(getKey(splitters, read)).addAlignment(read);
+    }
+
+    @Override
+    public Object onTraversalDone() {
         outs.values().forEach(CloserUtil::close);
+        return null;
     }
 
     /**
      * Creates SAMFileWriter instances for the reader splitters based on the input file.
-     * @param in Input sam, bam, or cram.
      * @param splitters Reader splitters.
      * @return A map of file name keys to SAMFileWriter.
      */
-    private Map<String, SAMFileWriter> createWriters(final SamReader in, final List<ReaderSplitter<?>> splitters) {
+    private Map<String, SAMFileWriter> createWriters(final List<ReaderSplitter<?>> splitters) {
         final Map<String, SAMFileWriter> outs = new HashMap<>();
 
         final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
 
-        final SAMFileHeader samFileHeaderIn = in.getFileHeader();
-        final String base = FilenameUtils.getBaseName(INPUT.getName());
-        final String extension = "." + FilenameUtils.getExtension(INPUT.getName());
+        final SAMFileHeader samFileHeaderIn = getHeaderForReads();
+        final String base = FilenameUtils.getBaseName(READS_FILES.get(0).getName());
+        final String extension = "." + FilenameUtils.getExtension(READS_FILES.get(0).getName());
 
         // Build up a list of key options at each level.
         final List<List<?>> splitKeys = splitters.stream()
@@ -94,7 +98,7 @@ public class SplitReads extends CommandLineProgram {
         addKey(splitKeys, 0, "", key -> {
             final SAMFileHeader samFileHeaderOut = samFileHeaderIn.clone();
             final File outFile = new File(OUTPUT_DIRECTORY, base + key + extension);
-            outs.put(key, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, REFERENCE_SEQUENCE));
+            outs.put(key, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, REFERENCE_FILE));
         });
 
         return outs;

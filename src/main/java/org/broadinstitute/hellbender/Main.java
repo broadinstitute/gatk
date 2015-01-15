@@ -112,7 +112,8 @@ public class Main {
      * Override this if you want to include different java packages to search for classes that extend CommandLineProgram. *
      */
     public static void main(final String[] args) {
-        new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
+        Object result = new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
+        System.out.println("Tool returned:\n" + result);
     }
 
     /**

@@ -1,17 +1,11 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 
-import java.io.File;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 
@@ -19,32 +13,19 @@ import java.text.NumberFormat;
 	usage = "Walks over all input data, accumulating statistics such as total number of read\n" +
             "reads with QC failure flag set, number of duplicates, percentage mapped, etc.",
 	usageShort = "A reimplementation of the 'samtools flagstat' subcommand.",
-        programGroup = ReadProgramGroup.class
+    programGroup = ReadProgramGroup.class
 )
-public class FlagStat extends CommandLineProgram {
+public class FlagStat extends ReadWalker {
 
-    @Option(shortName= StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM or CRAM file.")
-    public File INPUT;
+    private FlagStatus sum = new FlagStatus();
 
     @Override
-    protected FlagStatus doWork() {
-        final FlagStatus sum = countReads();
-        System.out.println(sum);
-        return sum;
+    public void apply( SAMRecord read, ReferenceContext referenceContext ) {
+        sum.add(read);
     }
 
-    /**
-     * This is factored out of doWork only for unit testing.
-     */
-    FlagStatus countReads() {
-        final FlagStatus sum = new FlagStatus();
-        IOUtil.assertFileIsReadable(INPUT);
-        final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
-        for (final SAMRecord rec : in) {
-            sum.add(rec);
-
-        }
-        CloserUtil.close(in);
+    @Override
+    public Object onTraversalDone() {
         return sum;
     }
 
