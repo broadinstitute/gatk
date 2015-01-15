@@ -111,11 +111,23 @@ public abstract class CommandLineProgram {
     private String commandLine;
 
     /**
+     * Perform initialization/setup after command-line argument parsing but before doWork() is invoked.
+     * Default implementation does nothing.
+     */
+    protected void onStartup() {}
+
+    /**
     * Do the work after command line has been parsed. RuntimeException may be
     * thrown by this method, and are reported appropriately.
     * @return the return value or null is there is none.
     */
     protected abstract Object doWork();
+
+    /**
+     * Perform cleanup after doWork() is finished. Always executes even if an exception is thrown during the run.
+     * Default implementation does nothing.
+     */
+    protected void onShutdown() {}
 
     public Object instanceMain(final String[] argv) {
         if (!parseArgs(argv)) {
@@ -171,8 +183,11 @@ public abstract class CommandLineProgram {
         }
 
         try {
+            onStartup();
             return doWork();
         } finally {
+            onShutdown();
+
             // Emit the time even if program throws
             if (!QUIET) {
                 final Date endDate = new Date();

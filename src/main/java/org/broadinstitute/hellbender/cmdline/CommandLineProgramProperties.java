@@ -26,10 +26,7 @@ package org.broadinstitute.hellbender.cmdline;
 import org.broadinstitute.hellbender.cmdline.programgroups.MiscProgramGroup;
 
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.annotation.ElementType;
+import java.lang.annotation.*;
 
 /**
  * Annotates a command line program with various properties, such as usage (short and long),
@@ -39,6 +36,7 @@ import java.lang.annotation.ElementType;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Inherited
 public @interface CommandLineProgramProperties {
     String usage();
     String usageShort();
