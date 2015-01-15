@@ -45,8 +45,25 @@ public class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(expectedExceptions = UserException.class)
-    public void testHandleUnindexedFile() {
+    public void testHandleUnindexedFileWithIntervals() {
+        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
+        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
+        refDataSource.close();
+
+        // Cannot initialize a reads source with intervals unless all files are indexed
+        ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"),
+                                                          Arrays.asList(parser.createGenomeLoc("1", 1, 5)));
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testHandleUnindexedFileQuery() {
+        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
+        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
+        refDataSource.close();
+
+        // Construction should succeed, since we don't pass in any intervals, but the query should throw.
         ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
+        readsSource.query(parser.createGenomeLoc("1", 1, 5));
     }
 
     @DataProvider(name = "SingleFileCompleteTraversalData")

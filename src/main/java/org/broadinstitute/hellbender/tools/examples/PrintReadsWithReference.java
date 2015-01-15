@@ -48,8 +48,10 @@ public class PrintReadsWithReference extends ReadWalker {
     }
 
     @Override
-    public void onTraversalDone() {
+    public Object onTraversalDone() {
         if ( outputStream != null )
             outputStream.close();
+
+        return null;
     }
 }

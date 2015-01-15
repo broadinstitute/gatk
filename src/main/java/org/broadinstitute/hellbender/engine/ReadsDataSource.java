@@ -55,6 +55,11 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
     private MergingSamRecordIterator mergingIterator;
 
     /**
+     * Are indices available for all files?
+     */
+    private boolean indicesAvailable;
+
+    /**
      * Initialize this data source with a single SAM/BAM file, and no intervals to restrict iteration
      *
      * @param samFile SAM/BAM file, not null. Must be indexed.
@@ -97,7 +102,12 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
             throw new IllegalArgumentException("ReadsDataSource cannot be created from empty file list");
         }
 
+        // Treat null and empty interval lists the same
+        this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
+        preparedIntervals = this.intervals != null ? prepareIntervalsForTraversal() : null;
+
         readers = new LinkedHashMap<>(samFiles.size() * 2);
+        indicesAvailable = true;
 
         for ( File samFile : samFiles ) {
             // Ensure each file can be read
@@ -113,15 +123,13 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
 
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {
-                throw new UserException("File " + samFile.getAbsolutePath() + " has no index. Please index this file (can be done using \"samtools index\")");
+                indicesAvailable = false;
+                if ( this.intervals != null )
+                    throw new UserException("File " + samFile.getAbsolutePath() + " has no index, and traversal by intervals was requested. Please index this file (can be done using \"samtools index\")");
             }
 
             readers.put(reader, null);
         }
-
-        // Treat null and empty interval lists the same
-        this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
-        preparedIntervals = this.intervals != null ? prepareIntervalsForTraversal() : null;
 
         // Prepare a header merger only if we have multiple readers
         headerMerger = samFiles.size() > 1 ? createHeaderMerger() : null;
@@ -147,8 +155,21 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
      */
     @Override
     public Iterator<SAMRecord> query( final GenomeLoc interval ) {
+        if ( ! indicesAvailable )
+            throw new UserException("Cannot query reads data source by interval unless all files are indexed");
+
         final QueryInterval[] queryInterval = { new QueryInterval(interval.getContigIndex(), interval.getStart(), interval.getStop()) };
         return prepareIteratorsForTraversal(queryInterval);
+    }
+
+    /**
+     * Returns the SAM header for this data source. Will be a merged header if there are multiple readers.
+     * If there is only a single reader, returns its header directly.
+     *
+     * @return SAM header for this data source
+     */
+    public SAMFileHeader getHeader() {
+        return headerMerger != null ? headerMerger.getMergedHeader() : readers.entrySet().iterator().next().getKey().getFileHeader();
     }
 
     /**
