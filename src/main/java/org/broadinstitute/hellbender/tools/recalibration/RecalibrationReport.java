@@ -97,7 +97,7 @@ public class RecalibrationReport {
         ArrayList<Covariate> requiredCovariates = covariates.getLeft();
         ArrayList<Covariate> optionalCovariates = covariates.getRight();
         requestedCovariates = new Covariate[requiredCovariates.size() + optionalCovariates.size()];
-        optionalCovariateIndexes = new HashMap<String, Integer>(optionalCovariates.size());
+        optionalCovariateIndexes = new HashMap<>(optionalCovariates.size());
         int covariateIndex = 0;
         for (final Covariate covariate : requiredCovariates)
             requestedCovariates[covariateIndex++] = covariate;
@@ -108,8 +108,9 @@ public class RecalibrationReport {
             covariateIndex++;
         }
 
-        for (Covariate cov : requestedCovariates)
+        for (Covariate cov : requestedCovariates) {
             cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
+        }
 
         recalibrationTables = new RecalibrationTables(requestedCovariates, allReadGroups.size());
 
@@ -330,7 +331,7 @@ public class RecalibrationReport {
                 value = null; // generic translation of null values that were printed out as strings | todo -- add this capability to the GATKReport
 
             if (argument.equals("covariate") && value != null)
-                RAC.COVARIATES = value.toString().split(",");
+                RAC.COVARIATES = Arrays.asList(value.toString().split(","));
 
             else if (argument.equals("standard_covs"))
                 RAC.DO_NOT_USE_STANDARD_COVARIATES = Boolean.parseBoolean((String) value);

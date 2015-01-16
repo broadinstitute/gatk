@@ -29,6 +29,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadTransformer;
 
 /**
  * A read transformer that refactor NDN cigar elements to one N element.
@@ -44,10 +45,6 @@ import htsjdk.samtools.SAMRecord;
  *     The engine parameter that activate this read transformer is --refactor_NDN_cigar_string or -fixNDN
  *  </p>
  *
- *
- *
- * @author ami
- * @since 04/22/14
  */
 
 public final class NDNCigarReadTransformer implements ReadTransformer {

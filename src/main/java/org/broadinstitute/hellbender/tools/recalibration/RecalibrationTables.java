@@ -60,7 +60,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
- * Utility class to facilitate on-the-fly base quality score recalibration.
+ * Utility class to facilitate base quality score recalibration.
  */
 
 public final class RecalibrationTables {

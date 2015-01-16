@@ -38,6 +38,8 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class IOUtils {
     private static Logger logger = LogManager.getLogger(IOUtils.class);
@@ -570,6 +572,74 @@ public class IOUtils {
         }
         catch ( IOException e ) {
             throw new UserException.CouldNotReadInputFile(gzipFile, e);
+        }
+    }
+
+    /**
+     * Un-gzips the input file to the output file.
+     */
+    public static void gunzip(File input, File output) {
+        try {
+            try (GZIPInputStream in = new GZIPInputStream(new FileInputStream(input));
+                 OutputStream out = new FileOutputStream(output)) {
+
+                byte[] buf = new byte[4096];
+                int len;
+                while ((len = in.read(buf)) > 0) {
+                    out.write(buf, 0, len);
+                }
+            }
+        } catch (IOException e){
+            throw new GATKException("Exception while unzipping a file:" + input + " to:" + output, e);
+        }
+    }
+
+    /**
+     * Un-gzips the input file to a output file but only if the file's name ends with '.gz'.
+     * In this case the new temp file is masked for deletion on exit and returned from this method.
+     * Otherwise, that is if the argument is not a gzipped file, this method just returns the argument.
+     */
+    public static File gunzipToTempIfNeeded(File maybeGzipedFile) {
+        if (! maybeGzipedFile.getPath().endsWith(".gz")) {
+              return maybeGzipedFile;
+        }
+        try {
+            final File result = File.createTempFile("unzippedFile", "tmp");
+            result.deleteOnExit();
+            gunzip(maybeGzipedFile, result);
+            return result;
+        } catch (IOException e) {
+            throw new GATKException("cannot create a temporary file", e);
+        }
+    }
+
+    /**
+     * Makes a reader for a file, unzipping if the file's name ends with '.gz'.
+     */
+    public static Reader makeReaderMaybeGzipped(File file) {
+        try {
+            if (file.getPath().endsWith(".gz")) {
+                return new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
+            } else {
+                return new FileReader(file);
+            }
+        } catch (IOException e){
+            throw new GATKException("Cannot open file " + file, e);
+        }
+    }
+
+    /**
+     * Makes a print stream for a file, gzipping on the fly if the file's name ends with '.gz'.
+     */
+    public static PrintStream makePrintStreamMaybeGzipped(File file) {
+        try {
+            if (file.getPath().endsWith(".gz")) {
+                return new PrintStream(new GZIPOutputStream(new FileOutputStream(file)));
+            } else {
+                return new PrintStream(file);
+            }
+        } catch (IOException e){
+            throw new GATKException("Cannot open file " + file, e);
         }
     }
 }

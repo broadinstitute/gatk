@@ -89,7 +89,7 @@ public class ReferenceContext {
     }
 
     /**
-     * Get all reference bases in this context
+     * Get all reference bases in this context. The results are cached in this object for future queries.
      *
      * Call {@link #setWindow} before calling this method if you want to configure the amount of extra reference context
      * to include around the current interval

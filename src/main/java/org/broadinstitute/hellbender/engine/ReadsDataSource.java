@@ -100,7 +100,7 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
             }
 
             // TODO: allow SamReader settings to be customized by the client
-            SamReader reader = SamReaderFactory.makeDefault().open(samFile);
+            SamReader reader = SamReaderFactory.makeDefault().validationStringency(getValidationStringency()).open(samFile);
 
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {
@@ -114,6 +114,10 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
         // Prepare a header merger only if we have multiple readers
         headerMerger = samFiles.size() > 1 ? createHeaderMerger() : null;
         mergingIterator = null;
+    }
+
+    private ValidationStringency getValidationStringency() {
+        return ValidationStringency.SILENT;
     }
 
     /**

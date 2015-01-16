@@ -25,13 +25,13 @@
 
 package org.broadinstitute.hellbender.exceptions;
 
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 
 /**
  * <p/>
@@ -334,6 +334,47 @@ public class UserException extends RuntimeException {
         }
     }
 
+    public static class MisencodedBAM extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public MisencodedBAM(SAMRecord read, String message) {
+            this(read, read.getFileSource() != null ? read.getFileSource().getReader().toString() : "(none)", message);
+        }
+
+        public MisencodedBAM(SAMRecord read, String source, String message) {
+            super(read, String.format("SAM/BAM file %s appears to be using the wrong encoding for quality scores: %s; please see the GATK --help documentation for options related to this error", source, message));
+        }
+    }
+
+    public static class ReadMissingReadGroup extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public ReadMissingReadGroup(final SAMRecord read) {
+            super(read, String.format("Read %s is missing the read group (RG) tag, which is required by the GATK.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getReadName()));
+        }
+    }
+
+    public static class ReadHasUndefinedReadGroup extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public ReadHasUndefinedReadGroup(final SAMRecord read, final String rgID) {
+            super(read, String.format("Read %s uses a read group (%s) that is not defined in the BAM header, which is not valid.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getReadName(), rgID));
+        }
+    }
+
+    public static class UnsupportedCigarOperatorException extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public UnsupportedCigarOperatorException(final CigarOperator co, final SAMRecord read, final String message) {
+            super(read, String.format(
+                    "Unsupported CIGAR operator %s in read %s at %s:%d. %s",
+                    co,
+                    read.getReadName(),
+                    read.getReferenceName(),
+                    read.getAlignmentStart(),
+                    message));
+        }
+    }
 
 }
 
