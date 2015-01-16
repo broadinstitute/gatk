@@ -4,10 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -43,7 +40,6 @@ public class SplitReads extends ReadWalker {
     @Option(shortName = READ_GROUP_SHORT_NAME,
             doc = "Split file by read group.")
     public boolean READ_GROUP;
-
 
     private List<ReaderSplitter<?>> splitters = new ArrayList<>();
     private Map<String, SAMFileWriter> outs = null;

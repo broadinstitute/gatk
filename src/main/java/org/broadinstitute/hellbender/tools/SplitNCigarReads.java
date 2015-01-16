@@ -55,9 +55,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
@@ -68,13 +66,13 @@ import org.broadinstitute.hellbender.utils.OverhangFixingManager;
 import org.broadinstitute.hellbender.utils.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
+import static org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions.*;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.StreamSupport;
-
-import static org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions.*;
 
 /**
  *
@@ -96,6 +94,10 @@ public class SplitNCigarReads extends CommandLineProgram {
 
     @Option(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
     protected File OUTPUT;
+
+    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
+            common = true, optional = true, overridable = true)
+    public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     /**
      * This flag tells GATK to refactor cigar string with NDN elements to one element. It intended primarily for use in
