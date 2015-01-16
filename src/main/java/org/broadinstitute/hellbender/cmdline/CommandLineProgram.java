@@ -23,13 +23,10 @@
  */
 package org.broadinstitute.hellbender.cmdline;
 
-import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
-import htsjdk.samtools.util.BlockCompressedOutputStream;
-import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
@@ -55,13 +52,6 @@ import java.util.*;
  * The doWork() method may return null or a result object (they are not interpreted by the toolkit and passed onto the caller).
  * doWork() may throw unchecked exceptions, which are NOT caught and passed onto the VM.
  *
- * 4. Implement the following static method in the concrete class:
- *
- *     public static void main(String[] argv) {
-        new MyConcreteClass().instanceMain(argv);
-    }
-
-
  */
 public abstract class CommandLineProgram {
 
@@ -73,26 +63,6 @@ public abstract class CommandLineProgram {
 
     @Option(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
-
-    @Option(doc = "Validation stringency for all SAM files read by this program.  Setting stringency to SILENT " +
-            "can improve performance when processing a BAM file in which variable-length data (read, qualities, tags) " +
-            "do not otherwise need to be decoded.", common=true)
-    public ValidationStringency VALIDATION_STRINGENCY = ValidationStringency.DEFAULT_STRINGENCY;
-
-    @Option(doc = "Compression level for all compressed files created (e.g. BAM and GELI).", common=true)
-    public int COMPRESSION_LEVEL = BlockCompressedStreamConstants.DEFAULT_COMPRESSION_LEVEL;
-
-    @Option(doc = "When writing SAM files that need to be sorted, this will specify the number of records stored in RAM before spilling to disk. Increasing this number reduces the number of file handles needed to sort a SAM file, and increases the amount of RAM needed.", optional=true, common=true)
-    public Integer MAX_RECORDS_IN_RAM = SAMFileWriterImpl.getDefaultMaxRecordsInRam();
-
-    @Option(doc = "Whether to create a BAM index when writing a coordinate-sorted BAM file.", common=true)
-    public Boolean CREATE_INDEX = Defaults.CREATE_INDEX;
-
-    @Option(doc="Whether to create an MD5 digest for any BAM or FASTQ files created.  ", common=true)
-    public boolean CREATE_MD5_FILE = Defaults.CREATE_MD5;
-
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true, overridable = true)
-    public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
 
@@ -144,18 +114,6 @@ public abstract class CommandLineProgram {
         this.defaultHeaders.add(new StringHeader("Started on: " + startDate));
 
         Log.setGlobalLogLevel(VERBOSITY);
-        SamReaderFactory.setDefaultValidationStringency(VALIDATION_STRINGENCY);
-        BlockCompressedOutputStream.setDefaultCompressionLevel(COMPRESSION_LEVEL);
-
-        if (MAX_RECORDS_IN_RAM != null) {
-            SAMFileWriterImpl.setDefaultMaxRecordsInRam(MAX_RECORDS_IN_RAM);
-        }
-
-        if (CREATE_INDEX){
-            SAMFileWriterFactory.setDefaultCreateIndexWhileWriting(true);
-        }
-
-        SAMFileWriterFactory.setDefaultCreateMd5File(CREATE_MD5_FILE);
 
         for (final File f : TMP_DIR) {
             // Intentionally not checking the return values, because it may be that the program does not

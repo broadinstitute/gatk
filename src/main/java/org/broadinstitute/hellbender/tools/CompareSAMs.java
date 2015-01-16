@@ -25,9 +25,7 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.PositionalArguments;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
@@ -51,6 +49,9 @@ import java.util.Objects;
         programGroup = ReadProgramGroup.class
 )
 public class CompareSAMs extends CommandLineProgram {
+
+    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true, overridable = true)
+    public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     @PositionalArguments(minElements = 2, maxElements = 2)
     public List<File> samFiles;
