@@ -1,15 +1,12 @@
 package org.broadinstitute.hellbender.utils.sam;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMProgramRecord;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SecondaryOrSupplementarySkippingIterator;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Rudimentary SAM comparer.  Compares headers, and if headers are compatible enough, compares SAMRecords,

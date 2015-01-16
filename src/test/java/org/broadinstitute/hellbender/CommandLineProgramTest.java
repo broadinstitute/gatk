@@ -1,18 +1,20 @@
 package org.broadinstitute.hellbender;
 
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+
 import java.io.File;
 import java.util.*;
 
 /**
  * Utility class for CommandLine Program testing.
  */
-public abstract class CommandLineProgramTest {
+public abstract class CommandLineProgramTest extends BaseTest {
 
     /**
      * Returns the location of the resource directory. The default implementation points to the common directory for tools.
      * Override if needed.
      */
-    protected File getTestDataDir(){
+    public static File getTestDataDir(){
         return new File("src/test/resources/org/broadinstitute/hellbender/tools/");
     }
 

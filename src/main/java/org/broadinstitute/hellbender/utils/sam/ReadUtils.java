@@ -34,6 +34,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.*;
@@ -1061,4 +1062,13 @@ public class ReadUtils {
         }
     }
 
+    /**
+     * is the read a SOLiD read?
+     *
+     * @param read the read to test
+     * @return checks the read group tag PL for the default SOLiD tag
+     */
+    public static boolean isSOLiDRead(SAMRecord read) {
+        return NGSPlatform.fromRead(read) == NGSPlatform.SOLID;
+    }
 }

@@ -30,6 +30,8 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 
+import java.util.function.Function;
+
 /**
  * A read transformer that refactor NDN cigar elements to one N element.
  *
@@ -44,13 +46,9 @@ import htsjdk.samtools.SAMRecord;
  *     The engine parameter that activate this read transformer is --refactor_NDN_cigar_string or -fixNDN
  *  </p>
  *
- *
- *
- * @author ami
- * @since 04/22/14
  */
 
-public final class NDNCigarReadTransformer implements ReadTransformer {
+public final class NDNCigarReadTransformer implements Function<SAMRecord, SAMRecord> {
 
     @Override
     public SAMRecord apply(final SAMRecord read) {

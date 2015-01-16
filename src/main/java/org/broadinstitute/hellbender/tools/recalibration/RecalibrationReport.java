@@ -330,7 +330,7 @@ public class RecalibrationReport {
                 value = null; // generic translation of null values that were printed out as strings | todo -- add this capability to the GATKReport
 
             if (argument.equals("covariate") && value != null)
-                RAC.COVARIATES = value.toString().split(",");
+                RAC.COVARIATES = Arrays.asList(value.toString().split(","));
 
             else if (argument.equals("standard_covs"))
                 RAC.DO_NOT_USE_STANDARD_COVARIATES = Boolean.parseBoolean((String) value);

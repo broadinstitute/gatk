@@ -55,7 +55,7 @@ import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.ClippingRepresentation;
-import org.broadinstitute.hellbender.utils.ReadClipper;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;

@@ -270,12 +270,21 @@ public class CommandLineParser {
             }
         }
 
+        //Print help and stop?
         if(parsedArguments.has(SpecialArgumentsCollection.HELP_FULLNAME)){
-            usage(messageStream, true);
-            return true;
-        } else if (parsedArguments.has(SpecialArgumentsCollection.VERSION_FULLNAME)) {
-            messageStream.println(getVersion());
-            return true;
+            Object val = parsedArguments.valueOf(SpecialArgumentsCollection.HELP_FULLNAME);
+            if (Boolean.TRUE.equals(Boolean.valueOf(String.valueOf(val)))) {  //Note: works even if val is null
+                usage(messageStream, true);
+                return false;
+            }
+        }
+
+        //Print version?
+        if (parsedArguments.has(SpecialArgumentsCollection.VERSION_FULLNAME)) {
+            Object val = parsedArguments.valueOf(SpecialArgumentsCollection.VERSION_FULLNAME);
+            if (Boolean.TRUE.equals(Boolean.valueOf(String.valueOf(val)))) { //Note: works even if val is null
+                messageStream.println(getVersion());
+            }
         }
 
         for (OptionSpec<?> optSpec : parsedArguments.asMap().keySet()){

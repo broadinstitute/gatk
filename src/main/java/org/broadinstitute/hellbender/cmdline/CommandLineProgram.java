@@ -35,7 +35,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import java.io.File;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Abstract class to facilitate writing command-line programs.
@@ -102,6 +105,18 @@ public abstract class CommandLineProgram {
      */
     protected void onShutdown() {}
 
+    /**
+     * Template method that runs the startup hook, doWork and then the shutdown hook.
+     */
+    public final Object runTool(){
+        try {
+            onStartup();
+            return doWork();
+        } finally {
+            onShutdown();
+        }
+    }
+
     public Object instanceMain(final String[] argv) {
         if (!parseArgs(argv)) {
             throw new UserException.CommandLineParseException(Arrays.toString(argv));
@@ -144,11 +159,8 @@ public abstract class CommandLineProgram {
         }
 
         try {
-            onStartup();
-            return doWork();
+            return runTool();
         } finally {
-            onShutdown();
-
             // Emit the time even if program throws
             if (!QUIET) {
                 final Date endDate = new Date();

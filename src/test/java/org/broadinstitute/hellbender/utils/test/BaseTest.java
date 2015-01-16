@@ -62,7 +62,7 @@ public abstract class BaseTest {
 
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
-    protected static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
+    public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
     public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
 

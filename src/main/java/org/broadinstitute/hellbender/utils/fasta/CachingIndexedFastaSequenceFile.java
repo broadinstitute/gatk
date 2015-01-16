@@ -45,8 +45,6 @@ import java.util.Arrays;
 /**
  * A caching version of the IndexedFastaSequenceFile that avoids going to disk as often as the raw indexer.
  *
- * Thread-safe!  Uses a thread-local cache.
- *
  * Automatically upper-cases the bases coming in, unless the flag preserveCase is explicitly set.
  * Automatically converts IUPAC bases to Ns, unless the flag preserveIUPAC is explicitly set.
  */
@@ -88,17 +86,7 @@ public class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
         ReferenceSequence seq = null;
     }
 
-    /**
-     * Thread local cache to allow multi-threaded use of this class
-     */
-    private ThreadLocal<Cache> cache;
-    {
-        cache = new ThreadLocal<Cache> () {
-            @Override protected Cache initialValue() {
-                return new Cache();
-            }
-        };
-    }
+    private Cache cache = new Cache();
 
     /**
      * Same as general constructor but allows one to override the default cacheSize
@@ -310,7 +298,6 @@ public class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
     @Override
     public ReferenceSequence getSubsequenceAt( final String contig, long start, final long stop ) {
         final ReferenceSequence result;
-        final Cache myCache = cache.get();
 
         if ( (stop - start) >= cacheSize ) {
             cacheMisses++;
@@ -322,30 +309,30 @@ public class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
             SAMSequenceRecord contigInfo = super.getSequenceDictionary().getSequence(contig);
 
             if (stop > contigInfo.getSequenceLength())
-                throw new SAMException("Query asks for data past end of contig");
+                throw new SAMException("Query asks for data past end of contig. Query contig " + contig + " start:" + start + " stop:" + stop + " contigLength:" +  contigInfo.getSequenceLength());
 
-            if ( start < myCache.start || stop > myCache.stop || myCache.seq == null || myCache.seq.getContigIndex() != contigInfo.getSequenceIndex() ) {
+            if ( start < cache.start || stop > cache.stop || cache.seq == null || cache.seq.getContigIndex() != contigInfo.getSequenceIndex() ) {
                 cacheMisses++;
-                myCache.start = Math.max(start - cacheMissBackup, 0);
-                myCache.stop  = Math.min(start + cacheSize + cacheMissBackup, contigInfo.getSequenceLength());
-                myCache.seq   = super.getSubsequenceAt(contig, myCache.start, myCache.stop);
+                cache.start = Math.max(start - cacheMissBackup, 0);
+                cache.stop  = Math.min(start + cacheSize + cacheMissBackup, contigInfo.getSequenceLength());
+                cache.seq   = super.getSubsequenceAt(contig, cache.start, cache.stop);
 
                 // convert all of the bases in the sequence to upper case if we aren't preserving cases
-                if ( ! preserveCase ) StringUtil.toUpperCase(myCache.seq.getBases());
-                if ( ! preserveIUPAC ) BaseUtils.convertIUPACtoN(myCache.seq.getBases(), true, myCache.start == 0);
+                if ( ! preserveCase ) StringUtil.toUpperCase(cache.seq.getBases());
+                if ( ! preserveIUPAC ) BaseUtils.convertIUPACtoN(cache.seq.getBases(), true, cache.start == 0);
             } else {
                 cacheHits++;
             }
 
             // at this point we determine where in the cache we want to extract the requested subsequence
-            final int cacheOffsetStart = (int)(start - myCache.start);
+            final int cacheOffsetStart = (int)(start - cache.start);
             final int cacheOffsetStop = (int)(stop - start + cacheOffsetStart + 1);
 
             try {
-                result = new ReferenceSequence(myCache.seq.getName(), myCache.seq.getContigIndex(), Arrays.copyOfRange(myCache.seq.getBases(), cacheOffsetStart, cacheOffsetStop));
+                result = new ReferenceSequence(cache.seq.getName(), cache.seq.getContigIndex(), Arrays.copyOfRange(cache.seq.getBases(), cacheOffsetStart, cacheOffsetStop));
             } catch ( ArrayIndexOutOfBoundsException e ) {
                 throw new GATKException(String.format("BUG: bad array indexing.  Cache start %d and end %d, request start %d end %d, offset start %d and end %d, base size %d",
-                        myCache.start, myCache.stop, start, stop, cacheOffsetStart, cacheOffsetStop, myCache.seq.getBases().length), e);
+                        cache.start, cache.stop, start, stop, cacheOffsetStart, cacheOffsetStop, cache.seq.getBases().length), e);
             }
         }
 

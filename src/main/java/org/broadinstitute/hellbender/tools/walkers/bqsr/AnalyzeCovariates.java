@@ -248,7 +248,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
     protected File csvFile = null;
 
     /**
-     * Enables on-the-fly recalibrate of base qualities, intended primarily for use with BaseRecalibrator and PrintReads
+     * Enables recalibration of base qualities, intended primarily for use with BaseRecalibrator and ApplyBQSR
      * (see Best Practices workflow documentation). The covariates tables are produced by the BaseRecalibrator tool.
      * Please be aware that you should only run recalibration with the covariates file created on the same input bam(s).
      */

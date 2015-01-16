@@ -100,7 +100,7 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
             }
 
             // TODO: allow SamReader settings to be customized by the client
-            SamReader reader = SamReaderFactory.makeDefault().open(samFile);
+            SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(samFile);
 
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {

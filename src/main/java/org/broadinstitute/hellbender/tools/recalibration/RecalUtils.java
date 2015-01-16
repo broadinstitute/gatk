@@ -56,19 +56,21 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.QualityScoreCovariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.ReadGroupCovariate;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.classloader.JVMUtils;
-import org.broadinstitute.hellbender.utils.classloader.PluginManager;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.*;
 import java.util.*;
@@ -126,12 +128,12 @@ public class RecalUtils {
      * @return a pair of ordered lists : required covariates (first) and optional covariates (second)
      */
     public static Pair<ArrayList<Covariate>, ArrayList<Covariate>> initializeCovariates(RecalibrationArgumentCollection argumentCollection) {
-        final List<Class<? extends Covariate>> covariateClasses = new PluginManager<Covariate>(Covariate.class).getPlugins();
-        final List<Class<? extends RequiredCovariate>> requiredClasses = new PluginManager<RequiredCovariate>(RequiredCovariate.class).getPlugins();
-        final List<Class<? extends StandardCovariate>> standardClasses = new PluginManager<StandardCovariate>(StandardCovariate.class).getPlugins();
+        final List<Class<? extends Covariate>> covariateClasses = argumentCollection.getAllCovariateClasses();
+        final List<Class<? extends Covariate>> requiredClasses = argumentCollection.getRequiredCovariateClasses();
+        final List<Class<? extends Covariate>> standardClasses = argumentCollection.getStandardCovariateClasses();
 
         final ArrayList<Covariate> requiredCovariates = addRequiredCovariatesToList(requiredClasses); // add the required covariates
-        ArrayList<Covariate> optionalCovariates = new ArrayList<Covariate>();
+        ArrayList<Covariate> optionalCovariates = new ArrayList<>();
         if (!argumentCollection.DO_NOT_USE_STANDARD_COVARIATES)
             optionalCovariates = addStandardCovariatesToList(standardClasses); // add the standard covariates if -standard was specified by the user
 
@@ -176,7 +178,7 @@ public class RecalUtils {
      * @param classes list of classes to add to the covariate list
      * @return the covariate list
      */
-    private static ArrayList<Covariate> addRequiredCovariatesToList(List<Class<? extends RequiredCovariate>> classes) {
+    private static ArrayList<Covariate> addRequiredCovariatesToList(List<Class<? extends Covariate>> classes) {
         ArrayList<Covariate> dest = new ArrayList<>(classes.size());
         if (classes.size() != 2)
             throw new GATKException("The number of required covariates has changed, this is a hard change in the code and needs to be inspected");
@@ -192,7 +194,7 @@ public class RecalUtils {
      * @param classes list of classes to add to the covariate list
      * @return the covariate list
      */
-    private static ArrayList<Covariate> addStandardCovariatesToList(List<Class<? extends StandardCovariate>> classes) {
+    private static ArrayList<Covariate> addStandardCovariatesToList(List<Class<? extends Covariate>> classes) {
         ArrayList<Covariate> dest = new ArrayList<>(classes.size());
         for (Class<?> covClass : classes) {
             try {
@@ -203,18 +205,6 @@ public class RecalUtils {
             }
         }
         return dest;
-    }
-
-    /**
-     * Print a list of all available covariates to logger as info
-     *
-     * @param logger
-     */
-    public static void listAvailableCovariates(final Logger logger) {
-        logger.info("Available covariates:");
-        for (final Class<? extends Covariate> covClass : new PluginManager<Covariate>(Covariate.class).getPlugins()) {
-            logger.info(String.format("\t%30s\t%s", covClass.getSimpleName(), JVMUtils.classInterfaces(covClass)));
-        }
     }
 
     /**
@@ -560,10 +550,11 @@ public class RecalUtils {
      * Write recalibration plots into a file
      *
      * @param csvFile location of the intermediary file
-     * @param exampleReportFile where the report arguments are collected from.
+     * @param maybeGzipedExampleReportFile where the report arguments are collected from.
      * @param output result plot file name.
      */
-    public static void generatePlots(final File csvFile, final File exampleReportFile, final File output) {
+    public static void generatePlots(final File csvFile, final File maybeGzipedExampleReportFile, final File output) {
+        final File exampleReportFile = IOUtils.gunzipToTempIfNeeded(maybeGzipedExampleReportFile);
         final RScriptExecutor executor = new RScriptExecutor();
         executor.setExceptOnError(true);
         executor.addScript(new Resource(SCRIPT_FILE, RecalUtils.class));
@@ -572,50 +563,6 @@ public class RecalUtils {
         executor.addArgs(output.getAbsolutePath());
         LogManager.getLogger(RecalUtils.class).debug("R command line: " + executor.getApproximateCommandLine());
         executor.exec();
-    }
-
-    private static void outputRecalibrationPlot(final File csvFile, final RecalibrationArgumentCollection RAC) {
-
-        final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new Resource(SCRIPT_FILE, RecalUtils.class));
-        executor.addArgs(csvFile.getAbsolutePath());
-        executor.addArgs(RAC.RECAL_TABLE_FILE.getAbsolutePath());
-        executor.exec();
-    }
-
-    /**
-     * Please use {@link #generateCsv(java.io.File, java.util.Map)} and {@link #generatePlots(java.io.File, java.io.File, java.io.File)} instead.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public static void generateRecalibrationPlot(final RecalibrationArgumentCollection RAC, final RecalibrationTables original, final Covariate[] requestedCovariates) {
-        generateRecalibrationPlot(RAC, original, null, requestedCovariates);
-    }
-
-    /**
-     * Please use {@link #generateCsv(java.io.File, java.util.Map)} and {@link #generatePlots(java.io.File, java.io.File, java.io.File)} instead.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public static void generateRecalibrationPlot(final RecalibrationArgumentCollection RAC, final RecalibrationTables original, final RecalibrationTables recalibrated, final Covariate[] requestedCovariates) {
-        final PrintStream csvStream;
-        final File csvTempFile = null;
-        try {
-            File csvTmpFile = File.createTempFile("BQSR", ".csv");
-            csvTmpFile.deleteOnExit();
-            csvStream = new PrintStream(csvTmpFile);
-        } catch (IOException e) {
-            throw new UserException("Could not create temporary csv file", e);
-        }
-
-        if ( recalibrated != null )
-            writeCSV(csvStream, recalibrated, "RECALIBRATED", requestedCovariates, true);
-        writeCSV(csvStream, original, "ORIGINAL", requestedCovariates, recalibrated == null);
-        csvStream.close();
-        outputRecalibrationPlot(csvTempFile, RAC);
-        csvTempFile.delete();
     }
 
     private static void writeCSV(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final Covariate[] requestedCovariates, final boolean printHeader) {
@@ -806,6 +753,64 @@ public class RecalUtils {
                 throw new UserException.MalformedBAM(read, "Unrecognized color space in SOLID read, color = " + (char) color +
                         " Unfortunately this bam file can not be recalibrated without full color space information because of potential reference bias.");
         }
+    }
+
+    /**
+     * Parse through the color space of the read and add a new tag to the SAMRecord that says which bases are
+     * inconsistent with the color space. If there is a no call in the color space, this method returns false meaning
+     * this read should be skipped
+     *
+     * @param strategy the strategy used for SOLID no calls
+     * @param read     The SAMRecord to parse
+     * @return true if this read is consistent or false if this read should be skipped
+     */
+    public static boolean isColorSpaceConsistent(final SOLID_NOCALL_STRATEGY strategy, final SAMRecord read) {
+        if (!ReadUtils.isSOLiDRead(read)) // If this is a SOLID read then we have to check if the color space is inconsistent. This is our only sign that SOLID has inserted the reference base
+            return true;
+
+        // Haven't calculated the inconsistency array yet for this read
+        if (read.getAttribute(RecalUtils.COLOR_SPACE_INCONSISTENCY_TAG) == null) {
+            final Object attr = read.getAttribute(RecalUtils.COLOR_SPACE_ATTRIBUTE_TAG);
+            if (attr != null) {
+                byte[] colorSpace;
+                if (attr instanceof String)
+                    colorSpace = ((String) attr).getBytes();
+                else
+                    throw new UserException.MalformedBAM(read, String.format("Value encoded by %s in %s isn't a string!", RecalUtils.COLOR_SPACE_ATTRIBUTE_TAG, read.getReadName()));
+
+                final boolean badColor = hasNoCallInColorSpace(colorSpace);
+                if (badColor) {
+                    if (strategy == SOLID_NOCALL_STRATEGY.LEAVE_READ_UNRECALIBRATED) {
+                        return false; // can't recalibrate a SOLiD read with no calls in the color space, and the user wants to skip over them
+                    }
+                    else if (strategy == SOLID_NOCALL_STRATEGY.PURGE_READ) {
+                        read.setReadFailsVendorQualityCheckFlag(true);
+                        return false;
+                    }
+                }
+
+                byte[] readBases = read.getReadBases(); // Loop over the read and calculate first the inferred bases from the color and then check if it is consistent with the read
+                if (read.getReadNegativeStrandFlag())
+                    readBases = BaseUtils.simpleReverseComplement(read.getReadBases());
+
+                final byte[] inconsistency = new byte[readBases.length];
+                int i;
+                byte prevBase = colorSpace[0]; // The sentinel
+                for (i = 0; i < readBases.length; i++) {
+                    final byte thisBase = getNextBaseFromColor(read, prevBase, colorSpace[i + 1]);
+                    inconsistency[i] = (byte) (thisBase == readBases[i] ? 0 : 1);
+                    prevBase = readBases[i];
+                }
+                read.setAttribute(RecalUtils.COLOR_SPACE_INCONSISTENCY_TAG, inconsistency);
+            }
+            else if (strategy == SOLID_NOCALL_STRATEGY.THROW_EXCEPTION) // if the strategy calls for an exception, throw it
+                throw new UserException.MalformedBAM(read, "Unable to find color space information in SOLiD read. First observed at read with name = " + read.getReadName() + " Unfortunately this .bam file can not be recalibrated without color space information because of potential reference bias.");
+
+            else
+                return false; // otherwise, just skip the read
+        }
+
+        return true;
     }
 
     /**

@@ -60,11 +60,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.ClippingRepresentation;
-import org.broadinstitute.hellbender.utils.ReadClipper;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 
 import java.util.ArrayList;
 
-public class ContextCovariate implements StandardCovariate {
+public class ContextCovariate implements Covariate {
     private final static Logger logger = LogManager.getLogger(ContextCovariate.class);
 
     private int mismatchesContextSize;

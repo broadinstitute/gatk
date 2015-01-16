@@ -57,6 +57,7 @@ import htsjdk.samtools.SAMRecordCoordinateComparator;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.util.*;

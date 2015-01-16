@@ -38,6 +38,8 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class IOUtils {
     private static Logger logger = LogManager.getLogger(IOUtils.class);
@@ -570,6 +572,48 @@ public class IOUtils {
         }
         catch ( IOException e ) {
             throw new UserException.CouldNotReadInputFile(gzipFile, e);
+        }
+    }
+
+    public static void gunzip(File input, File output) throws IOException{
+        try ( GZIPInputStream in = new GZIPInputStream(new FileInputStream(input));
+              OutputStream out = new FileOutputStream(output)) {
+
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+        }
+    }
+
+    public static File gunzipToTempIfNeeded(File maybeGzipedExampleReportFile) {
+        if (! maybeGzipedExampleReportFile.getPath().endsWith(".gz")) {
+              return maybeGzipedExampleReportFile;
+        }
+        try {
+            final File result = File.createTempFile("unzippedFile", "tmp");
+            result.deleteOnExit();
+            gunzip(maybeGzipedExampleReportFile, result);
+            return result;
+        } catch (IOException e) {
+            throw new GATKException("cannot create a temporary file", e);
+        }
+    }
+
+    public static Reader makeReaderMaybeGzipped(File file) throws IOException {
+        if (file.getPath().endsWith(".gz")) {
+            return new InputStreamReader(new GZIPInputStream(new FileInputStream(file)));
+        } else {
+            return new FileReader(file);
+        }
+    }
+
+    public static PrintStream makePrintStreamMaybeGzipped(File file) throws IOException {
+        if (file.getPath().endsWith(".gz")) {
+            return new PrintStream(new GZIPOutputStream(new FileOutputStream(file)));
+        } else {
+            return new PrintStream(file);
         }
     }
 }

@@ -58,7 +58,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.CigarUtils;
+import org.broadinstitute.hellbender.utils.sam.CigarUtils;
 import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
 
 import java.io.File;

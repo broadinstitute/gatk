@@ -57,34 +57,12 @@ public final class GenomeLocParser {
     //
     // --------------------------------------------------------------------------------------------------------------
 
-    /**
-     * This single variable holds the underlying SamSequenceDictionary used by the GATK.  We assume
-     * it is thread safe.
-     */
-    final private SAMSequenceDictionary SINGLE_MASTER_SEQUENCE_DICTIONARY;
-
-    /**
-     * A thread-local CachingSequenceDictionary
-     */
-    private final ThreadLocal<MRUCachingSAMSequenceDictionary> contigInfoPerThread =
-            new ThreadLocal<MRUCachingSAMSequenceDictionary>() {
-                @Override
-                protected MRUCachingSAMSequenceDictionary initialValue() {
-                    return new MRUCachingSAMSequenceDictionary(SINGLE_MASTER_SEQUENCE_DICTIONARY);
-                }
-            };
+    private final MRUCachingSAMSequenceDictionary contigInfo;
 
     /**
      * How much validation are we doing at runtime with this GenomeLocParser?
      */
     private final ValidationLevel validationLevel;
-
-    /**
-     * @return a caching sequence dictionary appropriate for this thread
-     */
-    private MRUCachingSAMSequenceDictionary getContigInfo() {
-        return contigInfoPerThread.get();
-    }
 
     /**
      * set our internal reference contig order
@@ -116,7 +94,7 @@ public final class GenomeLocParser {
         }
 
         this.validationLevel = validationLevel;
-        this.SINGLE_MASTER_SEQUENCE_DICTIONARY = seqDict;
+        this.contigInfo = new MRUCachingSAMSequenceDictionary(seqDict);
         if ( logger.isDebugEnabled() ) {
             logger.debug(String.format("Prepared reference sequence contig dictionary"));
             for (SAMSequenceRecord contig : seqDict.getSequences()) {
@@ -133,7 +111,7 @@ public final class GenomeLocParser {
      * @return True if the contig is valid.  False otherwise.
      */
     public final boolean contigIsInDictionary(final String contig) {
-        return contig != null && getContigInfo().hasContig(contig);
+        return contig != null && contigInfo.hasContig(contig);
     }
 
     /**
@@ -146,7 +124,7 @@ public final class GenomeLocParser {
     public final SAMSequenceRecord getContigInfo(final String contig) {
         if ( contig == null || ! contigIsInDictionary(contig) )
             throw new UserException.MalformedGenomeLoc(String.format("Contig %s given as location, but this contig isn't present in the Fasta sequence dictionary", contig));
-        return getContigInfo().getSequence(contig);
+        return contigInfo.getSequence(contig);
     }
 
     /**
@@ -161,9 +139,9 @@ public final class GenomeLocParser {
     }
 
     protected int getContigIndexWithoutException(final String contig) {
-        if ( contig == null || ! getContigInfo().hasContig(contig) )
+        if ( contig == null || ! contigInfo.hasContig(contig) )
             return -1;
-        return getContigInfo().getSequenceIndex(contig);
+        return contigInfo.getSequenceIndex(contig);
     }
 
     /**
@@ -171,7 +149,7 @@ public final class GenomeLocParser {
      * @return
      */
     public final SAMSequenceDictionary getSequenceDictionary() {
-        return getContigInfo().getDictionary();
+        return contigInfo.getDictionary();
     }
 
     // --------------------------------------------------------------------------------------------------------------
@@ -266,7 +244,7 @@ public final class GenomeLocParser {
             if (stop < start)
                 vglHelper(String.format("The stop position %d is less than start %d in contig %s", stop, start, contig));
 
-            final SAMSequenceRecord contigInfo = getContigInfo().getSequence(contig);
+            final SAMSequenceRecord contigInfo = this.contigInfo.getSequence(contig);
             if ( contigInfo.getSequenceIndex() != contigIndex )
                 vglHelper(String.format("The contig index %d is bad, doesn't equal the contig index %d of the contig from a string %s",
                         contigIndex, contigInfo.getSequenceIndex(), contig));
@@ -463,7 +441,7 @@ public final class GenomeLocParser {
      * @return A locus spanning the entire contig.
      */
     public GenomeLoc createOverEntireContig(final String contigName) {
-        SAMSequenceRecord contig = getContigInfo().getSequence(contigName);
+        SAMSequenceRecord contig = contigInfo.getSequence(contigName);
         return createGenomeLoc(contigName,contig.getSequenceIndex(),1,contig.getSequenceLength(), true);
     }
 
@@ -477,7 +455,7 @@ public final class GenomeLocParser {
         if (GenomeLoc.isUnmapped(loc))
             return null;
         final String contigName = loc.getContig();
-        final SAMSequenceRecord contig = getContigInfo().getSequence(contigName);
+        final SAMSequenceRecord contig = contigInfo.getSequence(contigName);
         final int contigIndex = contig.getSequenceIndex();
 
         int start = loc.getStart() - maxBasePairs;
@@ -514,7 +492,7 @@ public final class GenomeLocParser {
         if (GenomeLoc.isUnmapped(loc))
             return null;
         String contigName = loc.getContig();
-        SAMSequenceRecord contig = getContigInfo().getSequence(contigName);
+        SAMSequenceRecord contig = contigInfo.getSequence(contigName);
         int contigIndex = contig.getSequenceIndex();
         int contigLength = contig.getSequenceLength();
 
@@ -549,7 +527,7 @@ public final class GenomeLocParser {
      * @return a valid genome loc over contig, or null if a meaningful genome loc cannot be created
      */
     public GenomeLoc createGenomeLocOnContig(final String contig, final int contigIndex, final int start, final int stop) {
-        final int contigLength = getContigInfo().getSequence(contigIndex).getSequenceLength();
+        final int contigLength = contigInfo.getSequence(contigIndex).getSequenceLength();
         final int boundedStart = Math.max(1, start);
         final int boundedStop = Math.min(contigLength, stop);
 
