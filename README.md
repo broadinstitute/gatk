@@ -47,7 +47,7 @@ Creating a Hellbender project in the IntelliJ IDE:
 
 * Select "Import project from external model", then "Gradle", then "Next"
 
-* Ensure that "Grade project" points to the build.gradle file in the root of your Hellbender clone
+* Ensure that "Gradle project" points to the build.gradle file in the root of your Hellbender clone
 
 * Select "Use local gradle distribution", and enter your Gradle home directory in the "Gradle home" box. This will be the directory that contains the `bin` directory where the **actual** gradle executable (**not** merely a symlink to it!) lives. For example, if the actual gradle executable is `/usr/local/Cellar/gradle/2.2.1/libexec/bin/gradle`, you would enter `/usr/local/Cellar/gradle/2.2.1/libexec/` as your gradle home directory.
 
