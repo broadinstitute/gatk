@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils;
+package org.broadinstitute.hellbender.utils.interval;
 
 /*
 * Copyright (c) 2012 The Broad Institute
@@ -28,11 +28,9 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.tribble.Feature;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;

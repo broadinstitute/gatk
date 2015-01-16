@@ -58,8 +58,6 @@ import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Option;
-import static org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions.*;
-
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
@@ -68,12 +66,15 @@ import org.broadinstitute.hellbender.utils.CigarUtils;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.OverhangFixingManager;
 import org.broadinstitute.hellbender.utils.ReadClipper;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.StreamSupport;
+
+import static org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions.*;
 
 /**
  *
@@ -159,7 +160,7 @@ public class SplitNCigarReads extends CommandLineProgram {
         final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_SEQUENCE);
 
         try {
-            final IndexedFastaSequenceFile referenceReader = new IndexedFastaSequenceFile(REFERENCE_SEQUENCE);
+            final IndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_SEQUENCE);
             GenomeLocParser genomeLocParser= new GenomeLocParser(referenceReader.getSequenceDictionary());
             overhangManager = new OverhangFixingManager(outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs);
             return outputWriter;

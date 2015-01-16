@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender;
+package org.broadinstitute.hellbender.utils.text;
 
 /*
 * Copyright (c) 2012 The Broad Institute

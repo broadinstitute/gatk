@@ -26,6 +26,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -36,10 +37,7 @@ import java.util.*;
 /**
  * Testing framework for general purpose utilities class.
  *
- * @author hanna
- * @version 0.1
  */
-
 public class UtilsUnitTest extends BaseTest{
 
     @Test
@@ -218,11 +216,11 @@ public class UtilsUnitTest extends BaseTest{
             Assert.assertNotNull(list);
             Assert.assertEquals(list.size(),values.length);
             for (int i = 0; i < values.length; i++)
-                Assert.assertEquals((double) list.get(i),values[i]);
+                Assert.assertEquals(list.get(i),values[i]);
             for (int i = 0; i < values.length; i++)
                 valuesClone[rdn.nextInt(values.length)] = rdn.nextDouble() * 1000;
             for (int i = 0; i < values.length; i++)
-                Assert.assertEquals((double) list.get(i),valuesClone[i]);
+                Assert.assertEquals(list.get(i),valuesClone[i]);
         }
     }
 

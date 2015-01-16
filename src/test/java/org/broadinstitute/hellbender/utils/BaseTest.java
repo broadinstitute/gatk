@@ -93,20 +93,20 @@ public abstract class BaseTest {
      * This class magically tracks created objects of this
      */
     public static class TestDataProvider {
-        private static final Map<Class, List<Object>> tests = new HashMap<>();
+        private static final Map<Class<?>, List<Object>> tests = new HashMap<>();
         protected String name;
 
         /**
          * Create a new TestDataProvider instance bound to the class variable C
          */
-        public TestDataProvider(Class c, String name) {
+        public TestDataProvider(Class<?> c, String name) {
             if ( ! tests.containsKey(c) )
                 tests.put(c, new ArrayList<>());
             tests.get(c).add(this);
             this.name = name;
         }
 
-        public TestDataProvider(Class c) {
+        public TestDataProvider(Class<?> c) {
             this(c, "");
         }
 
@@ -119,8 +119,8 @@ public abstract class BaseTest {
          * @param c
          * @return
          */
-        public static Object[][] getTests(Class c) {
-            List<Object[]> params2 = new ArrayList<Object[]>();
+        public static Object[][] getTests(Class<?> c) {
+            List<Object[]> params2 = new ArrayList<>();
             for ( Object x : tests.get(c) ) params2.add(new Object[]{x});
             return params2.toArray(new Object[][]{});
         }

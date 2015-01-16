@@ -26,7 +26,6 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
@@ -34,11 +33,11 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.XReadLines;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 
@@ -753,11 +752,7 @@ public class IntervalUtils {
     }
 
     private static ReferenceSequenceFile createReference(final File fastaFile) {
-        try {
-            return new IndexedFastaSequenceFile(fastaFile);
-        } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotReadInputFile(fastaFile, e);
-        }
+            return CachingIndexedFastaSequenceFile.checkAndCreate(fastaFile);
     }
 
     private static LinkedHashMap<String, List<GenomeLoc>> splitByContig(List<GenomeLoc> sorted) {

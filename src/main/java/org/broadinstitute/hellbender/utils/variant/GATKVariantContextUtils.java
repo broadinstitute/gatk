@@ -1343,6 +1343,7 @@ public class GATKVariantContextUtils {
     /**
      * Cached NO_CALL immutable lists where the position ith contains the list with i elements.
      */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private static List<Allele>[] NOCALL_LISTS = new List[] {
             Collections.emptyList(),
             Collections.singletonList(Allele.NO_CALL),
@@ -1350,10 +1351,10 @@ public class GATKVariantContextUtils {
     };
 
     /**
-     * Synchronized code to ensure that {@link #NOCALL_LISTS} has enough entries beyod the requested ploidy
+     * Code to ensure that {@link #NOCALL_LISTS} has enough entries beyond the requested ploidy
      * @param capacity the requested ploidy.
      */
-    private static synchronized void ensureNoCallListsCapacity(final int capacity) {
+    private static void ensureNoCallListsCapacity(final int capacity) {
         final int currentCapacity = NOCALL_LISTS.length - 1;
         if (currentCapacity >= capacity)
             return;
@@ -1757,6 +1758,8 @@ public class GATKVariantContextUtils {
     }
 
     private static class CompareByPriority implements Comparator<VariantContext>, Serializable {
+        private static final long serialVersionUID = 0L;
+
         List<String> priorityListOfVCs;
         public CompareByPriority(List<String> priorityListOfVCs) {
             this.priorityListOfVCs = priorityListOfVCs;

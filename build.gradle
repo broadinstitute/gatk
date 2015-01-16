@@ -1,3 +1,19 @@
+buildscript {
+    repositories {
+        mavenCentral()
+     }
+
+    dependencies {
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.0.1'
+    }
+}
+
+plugins {
+    id "de.undercouch.download" version "1.2"
+}
+
+import de.undercouch.gradle.tasks.download.Download
+
 apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'application'
@@ -6,14 +22,10 @@ apply plugin: 'com.github.kt3k.coveralls'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.0.1'
-    }
+task downloadGsaLibFile(type: Download) {
+    src 'http://cran.r-project.org/src/contrib/gsalib_2.1.tar.gz'
+    dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
+    overwrite true
 }
 
 repositories {
@@ -47,6 +59,7 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all']
 }
 
+compileJava.dependsOn downloadGsaLibFile
 build.dependsOn installApp
 check.dependsOn installApp
 
@@ -58,7 +71,9 @@ dependencies {
     compile 'org.apache.logging.log4j:log4j-core:2.1'
     compile 'org.apache.commons:commons-lang3:3.3.2'
     compile 'org.apache.commons:commons-math3:3.4'
+    compile 'org.apache.commons:commons-collections4:4.0'
     compile 'commons-io:commons-io:2.4'
+    compile 'org.reflections:reflections:0.9.9'
 
     testCompile 'org.testng:testng:6.8.8'
 }

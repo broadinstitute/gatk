@@ -111,6 +111,8 @@ public class GATKVariantContextUtilsUnitTest extends BaseTest {
         List<List<Allele>> inputs;
         List<Allele> expected;
 
+        @SafeVarargs
+        @SuppressWarnings("varargs")
         private MergeAllelesTest(List<Allele>... arg) {
             super(MergeAllelesTest.class);
             LinkedList<List<Allele>> all = new LinkedList<>(Arrays.asList(arg));
@@ -1084,7 +1086,8 @@ public class GATKVariantContextUtilsUnitTest extends BaseTest {
 
         final GATKVariantContextUtils.AlleleMapper alleleMapper = new GATKVariantContextUtils.AlleleMapper(alleleMap);
 
-        final GenotypesContext originalGC = createGenotypesContext(numGenotypes, new ArrayList(alleleMap.keySet()));
+        @SuppressWarnings("unchecked")
+        final GenotypesContext originalGC = createGenotypesContext(numGenotypes, new ArrayList<>(alleleMap.keySet()));
 
         final GenotypesContext remappedGC = GATKVariantContextUtils.updateGenotypesWithMappedAlleles(originalGC, alleleMapper);
 

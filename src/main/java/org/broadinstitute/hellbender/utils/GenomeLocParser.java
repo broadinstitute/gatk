@@ -299,7 +299,7 @@ public final class GenomeLocParser {
         try {
             validateGenomeLoc(contig, getContigIndexWithoutException(contig), start, stop, mustBeOnReference);
             return true;
-        } catch ( GATKException e) {
+        } catch ( UserException.MalformedGenomeLoc | GATKException e) {
             return false;
         }
     }
@@ -361,7 +361,7 @@ public final class GenomeLocParser {
                     stop = parsePosition(str.substring(dashIndex + 1));
                 }
             } catch(Exception e) {
-                throw new UserException("Failed to parse Genome Location string: " + str, e);
+                throw new UserException.MalformedGenomeLoc("Failed to parse Genome Location string: " + str, e);
             }
         }
 

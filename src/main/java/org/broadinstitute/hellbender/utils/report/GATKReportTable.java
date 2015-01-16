@@ -26,7 +26,7 @@
 package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.report.text.TextFormattingUtils;
+import org.broadinstitute.hellbender.utils.text.TextFormattingUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
