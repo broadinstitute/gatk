@@ -15,8 +15,10 @@ import java.util.Iterator;
  * not to examine contextual information from the reference.
  *
  * The reference interval can be optionally expanded by a configurable number of bases in each direction.
- * A windowStartOffset and windowStopOffset of [-3, 5] means 3 bases of extra context before
- * the start of the interval and 5 bases of extra context after the end of the interval.
+ * windowLeadingBases = 3 and windowTrailingBases = 5 means 3 bases of extra reference context before
+ * the start of the interval and 5 bases of extra reference context after the end of the interval.
+ *
+ * Window boundaries can be set either at construction time or afterwards via {@link #setWindow}.
  */
 public class ReferenceContext {
 
@@ -27,6 +29,7 @@ public class ReferenceContext {
 
     /**
      * Reference bases spanning this interval/window if a query has been performed. Null if we haven't been queried yet.
+     * Cache is cleared if the window size changes between queries.
      */
     private ReferenceSequence cachedSequence;
 
@@ -36,22 +39,13 @@ public class ReferenceContext {
     private GenomeLoc interval;
 
     /**
-     * Reference interval optionally expanded by requested window to produce the true query interval
+     * Reference interval optionally expanded by configurable amount to produce the true query interval
      */
     private GenomeLoc window;
 
     /**
-     * Offset from the interval start representing extra bases to include in the query. Must be negative.
-     */
-    private int windowStartOffset;
-
-    /**
-     * Offset from the interval stop representing extra bases to include in the query. Must be positive.
-     */
-    private int windowStopOffset;
-
-    /**
-     * Create a windowless ReferenceContext set up to lazily query the provided interval
+     * Create a windowless ReferenceContext set up to lazily query the bases spanning just
+     * the provided interval (with no extra bases of context)
      *
      * @param dataSource backing reference data source
      * @param interval interval to query, if we are accessed by a client
@@ -62,16 +56,16 @@ public class ReferenceContext {
 
     /**
      * Create a windowed ReferenceContext set up to lazily query the provided interval,
-     * expanded according to the window start/stop offsets.
+     * expanded by the specified number of bases in each direction.
      *
      * Window boundaries are cropped at contig boundaries, if necessary.
      *
      * @param dataSource backing reference data source
      * @param interval our location on the reference
-     * @param windowStartOffset Offset from the interval start representing extra bases to include in the context. Must be negative.
-     * @param windowStopOffset Offset from the interval stop representing extra bases to include in the context. Must be positive.
+     * @param windowLeadingBases Number of extra reference bases to include before the start of our interval. Must be >= 0.
+     * @param windowTrailingBases Number of extra reference bases to include after the end of our interval. Must be >= 0.
      */
-    public ReferenceContext( final ReferenceDataSource dataSource, final GenomeLoc interval, final int windowStartOffset, final int windowStopOffset ) {
+    public ReferenceContext( final ReferenceDataSource dataSource, final GenomeLoc interval, final int windowLeadingBases, final int windowTrailingBases ) {
         if ( dataSource == null || interval == null ) {
             throw new IllegalArgumentException("dataSource/interval must be non-null");
         }
@@ -79,11 +73,14 @@ public class ReferenceContext {
         this.dataSource = dataSource;
         cachedSequence = null;
         this.interval = interval;
-        setWindow(windowStartOffset, windowStopOffset);
+        setWindow(windowLeadingBases, windowTrailingBases);
     }
 
     /**
      * Get an iterator over the reference bases in this context
+     *
+     * Call {@link #setWindow} before calling this method if you want to configure the amount of extra reference context
+     * to include around the current interval
      *
      * @return iterator over the reference bases in this context
      */
@@ -93,6 +90,9 @@ public class ReferenceContext {
 
     /**
      * Get all reference bases in this context
+     *
+     * Call {@link #setWindow} before calling this method if you want to configure the amount of extra reference context
+     * to include around the current interval
      *
      * @return reference bases in this context, as a byte array
      */
@@ -105,7 +105,8 @@ public class ReferenceContext {
     }
 
     /**
-     * Get the location on the reference represented by this context
+     * Get the location on the reference represented by this context, without including
+     * any extra bases of requested context around this interval.
      *
      * @return location on the reference represented by this context as a GenomeLoc
      */
@@ -114,7 +115,11 @@ public class ReferenceContext {
     }
 
     /**
-     * Get the full expanded window of bases spanned by this context
+     * Get the full expanded window of bases spanned by this context, including any extra
+     * bases of requested context around the current interval.
+     *
+     * Note that the true window size may be smaller than originally requested due to cropping
+     * at contig boundaries.
      *
      * @return full expanded window of bases spanned by this context as a GenomeLoc
      */
@@ -123,63 +128,81 @@ public class ReferenceContext {
     }
 
     /**
-     * Get the number of extra bases of context before the start of our interval
+     * Set expanded window boundaries, subject to cropping at contig boundaries
      *
-     * @return number of extra bases of context before the start of our interval
-     */
-    public int getLeadingWindowSize() {
-        return interval.getStart() - window.getStart();
-    }
-
-    /**
-     * Get the number of extra bases of context after the end of our interval
+     * Allows the client to request a specific number of extra reference bases to include before
+     * and after the bases within our interval. These extra bases will be returned by calls to
+     * {@link #getBases} and {@link #getBasesIterator} in addition to the bases spanning our
+     * actual interval.
      *
-     * @return number of extra bases of context after the end of our interval
-     */
-    public int getTrailingWindowSize() {
-        return window.getStop() - interval.getStop();
-    }
-
-    /**
-     * Set expanded window boundaries, subject to validation
+     * Note that the true window size may be smaller than requested due to cropping at contig boundaries.
+     * Call {@link @numWindowLeadingBases} and {@link @numWindowTrailingBases} to get the actual
+     * window dimensions.
      *
-     * @param windowStartOffset Offset from interval start at which to start the window. Must be negative.
-     * @param windowStopOffset Offset from interval stop at which to stop the window. Must be positive.
+     * @param windowLeadingBases Number of extra reference bases to include before the start of our interval. Must be >= 0.
+     * @param windowTrailingBases Number of extra reference bases to include after the end of our interval. Must be >= 0.
      */
-    private void setWindow( final int windowStartOffset, final int windowStopOffset ) {
-        if( windowStartOffset > 0 ) throw new GATKException("Reference window starts after the current locus");
-        if( windowStopOffset < 0 ) throw new GATKException("Reference window ends before the current locus");
+    public void setWindow( final int windowLeadingBases, final int windowTrailingBases ) {
+        if( windowLeadingBases < 0 ) throw new GATKException("Reference window starts after the current interval");
+        if( windowTrailingBases < 0 ) throw new GATKException("Reference window ends before the current interval");
 
-        this.windowStartOffset = windowStartOffset;
-        this.windowStopOffset = windowStopOffset;
-
-        if ( windowStartOffset == 0 && windowStopOffset == 0 ) {
+        if ( windowLeadingBases == 0 && windowTrailingBases == 0 ) {
             // the "windowless" case
             window = interval;
         }
         else {
-            window = new GenomeLocParser(dataSource.getSequenceDictionary()).createGenomeLoc(interval.getContig(), getWindowStart(interval), getWindowStop(interval), true);
+            window = new GenomeLocParser(dataSource.getSequenceDictionary()).createGenomeLoc(interval.getContig(),
+                                         calculateWindowStart(interval, windowLeadingBases), calculateWindowStop(interval, windowTrailingBases), true);
         }
+
+        // Changing the window size invalidates our cached query result
+        cachedSequence = null;
     }
 
     /**
-     * Gets the start of the expanded window, bounded if necessary by the contig.
+     * Get the number of extra bases of context before the start of our interval, as configured
+     * by a call to {@link #setWindow} or at construction time.
+     *
+     * Actual number of bases may be less than originally requested if the interval is near a contig boundary.
+     *
+     * @return number of extra bases of context before the start of our interval
+     */
+    public int numWindowLeadingBases() {
+        return interval.getStart() - window.getStart();
+    }
+
+    /**
+     * Get the number of extra bases of context after the end of our interval, as configured
+     * by a call to {@link #setWindow} or at construction time.
+     *
+     * Actual number of bases may be less than originally requested if the interval is near a contig boundary.
+     *
+     * @return number of extra bases of context after the end of our interval
+     */
+    public int numWindowTrailingBases() {
+        return window.getStop() - interval.getStop();
+    }
+
+    /**
+     * Determines the start of the expanded reference window, bounded if necessary by the contig.
      *
      * @param locus The locus to expand.
+     * @param windowLeadingBases number of bases to attempt to expand relative to the locus start (>= 0)
      * @return The start of the expanded window.
      */
-    private int getWindowStart( final GenomeLoc locus ) {
-        return Math.max(locus.getStart() + windowStartOffset, 1);
+    private int calculateWindowStart( final GenomeLoc locus, final int windowLeadingBases ) {
+        return Math.max(locus.getStart() - windowLeadingBases, 1);
     }
 
     /**
-     * Gets the stop of the expanded window, bounded if necessary by the contig.
+     * Determines the stop of the expanded reference window, bounded if necessary by the contig.
      *
      * @param locus The locus to expand.
+     * @param windowTrailingBases number of bases to attempt to expand relative to the locus end (>= 0)
      * @return The end of the expanded window.
      */
-    private int getWindowStop( final GenomeLoc locus ) {
+    private int calculateWindowStop( final GenomeLoc locus, final int windowTrailingBases ) {
         final int sequenceLength = dataSource.getSequenceDictionary().getSequence(locus.getContigIndex()).getSequenceLength();
-        return Math.min(locus.getStop() + windowStopOffset, sequenceLength);
+        return Math.min(locus.getStop() + windowTrailingBases, sequenceLength);
     }
 }
