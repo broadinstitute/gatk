@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWaterman;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Stack;
 
@@ -258,5 +259,38 @@ public class CigarUtils {
         if( result.getReferenceLength() != cigar.getReferenceLength() )
             throw new IllegalStateException("leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
         return result;
+    }
+
+    public static Cigar unclipCigar(Cigar cigar) {
+        ArrayList<CigarElement> elements = new ArrayList<>(cigar.numCigarElements());
+        for ( CigarElement ce : cigar.getCigarElements() ) {
+            if ( !isClipOperator(ce.getOperator()) )
+                elements.add(ce);
+        }
+        return new Cigar(elements);
+    }
+
+    private static boolean isClipOperator(CigarOperator op) {
+        return op == CigarOperator.S || op == CigarOperator.H || op == CigarOperator.P;
+    }
+
+    public static Cigar reclipCigar(Cigar cigar, SAMRecord read) {
+        ArrayList<CigarElement> elements = new ArrayList<>();
+
+        int i = 0;
+        int n = read.getCigar().numCigarElements();
+        while ( i < n && isClipOperator(read.getCigar().getCigarElement(i).getOperator()) )
+            elements.add(read.getCigar().getCigarElement(i++));
+
+        elements.addAll(cigar.getCigarElements());
+
+        i++;
+        while ( i < n && !isClipOperator(read.getCigar().getCigarElement(i).getOperator()) )
+            i++;
+
+        while ( i < n && isClipOperator(read.getCigar().getCigarElement(i).getOperator()) )
+            elements.add(read.getCigar().getCigarElement(i++));
+
+        return new Cigar(elements);
     }
 }
