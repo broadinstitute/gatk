@@ -78,3 +78,10 @@ Setting up debugging in IntelliJ
 * Set breakpoints, etc., as desired, then select "Run" -> "Debug" -> "Hellbender debug" to start your debugging session
 
 * In future debugging sessions, you can simply adjust the "Program Arguments" in the "Hellbender debug" configuration as needed
+
+Updating the Intellij project when dependencies change
+-------------------
+If there are dependency changes in `build.gradle` it is necessary to refresh the gradle project. This is easily done with the following steps.
+
+* Open the gradle tool window  ( "View" -> "Tool Windows" -> "Gradle" )
+* Click the refresh button in the Gradle tool window.  It is in the top left of the gradle view and is represented by two blue arrows.
