@@ -89,7 +89,9 @@ public abstract class ReadWalker extends GATKTool {
      * TODO: discourage statefulness in walkers, but how this value should be handled is TBD.
      *
      * @param read current read
-     * @param referenceContext reference bases spanning the current read (null if no reference was specified)
+     * @param referenceContext Reference bases spanning the current read (null if no reference was specified).
+     *                         Can request extra bases of context around the current read's interval by invoking
+     *                         {@link ReferenceContext#setWindow} on this object before calling {@link ReferenceContext#getBases}
      */
     public abstract void apply(final SAMRecord read, final ReferenceContext referenceContext);
 
