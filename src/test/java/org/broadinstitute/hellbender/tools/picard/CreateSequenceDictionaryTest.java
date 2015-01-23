@@ -29,7 +29,6 @@ public class CreateSequenceDictionaryTest extends CommandLineProgramTest {
         final String[] argv = {
                 "REFERENCE=" + BASIC_FASTA,
                 "OUTPUT=" + outputDict,
-                "TRUNCATE_NAMES_AT_WHITESPACE=false"
         };
         Assert.assertEquals(runCommandLine(new ArgumentsBuilder(argv).getArgsArray()), null);
     }
@@ -45,7 +44,6 @@ public class CreateSequenceDictionaryTest extends CommandLineProgramTest {
         final String[] argv = {
                 "REFERENCE=" + DUPLICATE_FASTA,
                 "OUTPUT=" + outputDict,
-                "TRUNCATE_NAMES_AT_WHITESPACE=false"
         };
         Assert.assertEquals(runCommandLine(new ArgumentsBuilder(argv).getArgsArray()), null);
         Assert.fail("Exception should have been thrown.");

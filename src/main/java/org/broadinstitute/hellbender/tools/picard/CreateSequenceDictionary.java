@@ -43,10 +43,6 @@ public class CreateSequenceDictionary extends PicardCommandLineProgram {
     @Option(doc = "Put into SP field of sequence dictionary entry", optional = true)
     public String SPECIES;
 
-    @Option(doc = "Make sequence name the first word from the > line in the fasta file.  " +
-            "By default the entire contents of the > line is used, excluding leading and trailing whitespace.")
-    public boolean TRUNCATE_NAMES_AT_WHITESPACE = true;
-
     @Option(doc = "Stop after writing this many sequences.  For testing.")
     public int NUM_SEQUENCES = Integer.MAX_VALUE;
 
@@ -83,7 +79,7 @@ public class CreateSequenceDictionary extends PicardCommandLineProgram {
      */
     SAMSequenceDictionary makeSequenceDictionary(final File referenceFile) {
         final ReferenceSequenceFile refSeqFile =
-                ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile, TRUNCATE_NAMES_AT_WHITESPACE);
+                ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile, true);
         ReferenceSequence refSeq;
         final List<SAMSequenceRecord> ret = new ArrayList<SAMSequenceRecord>();
         final Set<String> sequenceNames = new HashSet<String>();
