@@ -1,0 +1,42 @@
+@HD	VN:1.4	SO:coordinate
+@SQ	SN:chrM	LN:16299	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:11c8af2a2528b25f2c080ab7da42edda	SP:Mus musculus
+@SQ	SN:chr1	LN:197195432	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:f05d753079c455c0e57af88eeda24493	SP:Mus musculus
+@SQ	SN:chr2	LN:181748087	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:9b9d64dc89ecc73d3288eb38af3f94bd	SP:Mus musculus
+@SQ	SN:chr3	LN:159599783	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:0a692666a1b8526e1d1e799beb71b6d0	SP:Mus musculus
+@SQ	SN:chr4	LN:155630120	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:f5993a04396a06ed6b28fa42b2429be0	SP:Mus musculus
+@SQ	SN:chr5	LN:152537259	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:f90804fb8fe9cb06076d51a710fb4563	SP:Mus musculus
+@SQ	SN:chr6	LN:149517037	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:258a37e20815bb7e3f2e974b9d4dd295	SP:Mus musculus
+@SQ	SN:chr7	LN:152524553	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:e0d6cea6f72cb4d9f8d0efc1d29dd180	SP:Mus musculus
+@SQ	SN:chr8	LN:131738871	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:5f217cb8a9685b9879add3ae110cabd7	SP:Mus musculus
+@SQ	SN:chr9	LN:124076172	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:dde08574942fc18050195618cc3f35af	SP:Mus musculus
+@SQ	SN:chr10	LN:129993255	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:be7e6a13cc6b9da7c1da7b7fc32c5506	SP:Mus musculus
+@SQ	SN:chr11	LN:121843856	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:e0099550b3d3943fb9bb7af6fa6952c1	SP:Mus musculus
+@SQ	SN:chr12	LN:121257530	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:1f9c11dc6f288f93e9fab56772a36e85	SP:Mus musculus
+@SQ	SN:chr13	LN:120284312	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:a7b4bb418aa21e0ec59d9e2a1fe1810b	SP:Mus musculus
+@SQ	SN:chr14	LN:125194864	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:09d1c8449706a17d40934302a0a3b671	SP:Mus musculus
+@SQ	SN:chr15	LN:103494974	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:e41c8b42b0921378b1fdd5172f6be067	SP:Mus musculus
+@SQ	SN:chr16	LN:98319150	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:e051b3930c2557ade21d67db41f3a518	SP:Mus musculus
+@SQ	SN:chr17	LN:95272651	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:47eede15e5761fb9c2267627f18211e7	SP:Mus musculus
+@SQ	SN:chr18	LN:90772031	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:9f9d41cfdb9d91b62b928a3eb4eb6928	SP:Mus musculus
+@SQ	SN:chr19	LN:61342430	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:591f8486f82c22442bb8463595a18e0a	SP:Mus musculus
+@SQ	SN:chrX	LN:166650296	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:3d0d9df898d2c830b858f91255d8a1eb	SP:Mus musculus
+@SQ	SN:chrY	LN:15902555	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:5ff564f9fbc8cb87bcad6cfa6874902b	SP:Mus musculus
+@SQ	SN:chr1_random	LN:1231697	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:801e0bcd6ae33eeddfe2a4e6fc9f3d36	SP:Mus musculus
+@SQ	SN:chr3_random	LN:41899	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:d6340e90da5796b7069708735f82ae3e	SP:Mus musculus
+@SQ	SN:chr4_random	LN:160594	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:af94651d419f27e242d0f82d6d5dbe67	SP:Mus musculus
+@SQ	SN:chr5_random	LN:357350	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:c2db94dc571b1a7cd12eb98564c9fd1e	SP:Mus musculus
+@SQ	SN:chr7_random	LN:362490	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:b1f2189dd882e9c21cdbbf57ba85f4fe	SP:Mus musculus
+@SQ	SN:chr8_random	LN:849593	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:3b0dfe8c89728afd327e229037570f6e	SP:Mus musculus
+@SQ	SN:chr9_random	LN:449403	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:b9845732324c3c38b767a7652410068f	SP:Mus musculus
+@SQ	SN:chr13_random	LN:400311	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:0ef638f43ade721b3aed0386dc8aa4cf	SP:Mus musculus
+@SQ	SN:chr16_random	LN:3994	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:eb0fc598242fe03d53021929cea74c6b	SP:Mus musculus
+@SQ	SN:chr17_random	LN:628739	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:f5a3fcd550c795e0a1bc3f355bb54577	SP:Mus musculus
+@SQ	SN:chrX_random	LN:1785075	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:3a45dd9ba2fbba51c13d600585ebed09	SP:Mus musculus
+@SQ	SN:chrY_random	LN:58682461	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:5cbfdcc893c1417a651fc2f3c5732e6a	SP:Mus musculus
+@SQ	SN:chrUn_random	LN:5900358	UR:ftp://hgdownload.cse.ucsc.edu/goldenPath/Mus_musculus_assembly9/bigZips/chromFa.tar.gz	AS:mm9	M5:933191e84e50e31ea6943a88e8bc6f61	SP:Mus musculus
+@RG	ID:00001.3	PL:illumina	PU:00001ABXX101026.3.TTGAGCCT	LB:Solexa-45924	DT:2010-10-26T00:00:00-0400	SM:stat2_120	CN:BI
+@PG	ID:00001ABXX.3	VN:0.7.1-9	CL:/seq/software/picard/current/3rd_party/maq/maq map
+00001ABXX101026:3:1:6530:123586	65	chrX	113054885	64	68M	=	113054885	1	AGCCCTTTTTAAATACTGTAGATCACAAAGCAAAAAATAAAACTAAACATTAGGAAAAGAAAATGATA	HHHHHHHHHHHHEHHHFCDC>B?EEEHE@HF;EEE@D@D@<9DEEB>E<FBD;@@<;C(?55?<B;6?	MC:Z:68M	PG:Z:00001ABXX.3	RG:Z:00001.3	NM:i:0	MQ:i:10	UQ:i:0	DS:i:136
+00001ABXX101026:3:1:6530:123586	129	chrX	113054885	10	68M	=	113054885	-1	AGCCCTTTTTTTTTACTGTAGATCACAAAGGTAATTCTATAGTGTCTTTTCAGGATTCAAAGTCTTAG	HHHHHGHGHHHFEHHHBEFEHEBCDEHEEBB5E=EHBHF=FF:FECF;BA?B@GCCGGGFFGCGF6EE	MC:Z:68M	PG:Z:00001ABXX.3	RG:Z:00001.3	NM:i:29	MQ:i:64	UQ:i:984	DS:i:136
+00001ABXX101026:3:1:6533:123569	1089	chrX	113054885	67	68M	=	113054885	1	AGCCCTTTTTAAATACTGTAGATCACAAAGCAAAAAATAAAACTAAACATTAGGAAAAGAAAATGATA	/HFHHHHFEFFHHHHHHHHHHHDHHHHHHHHHEHHHGHHHGHHFG?DHHHFHHFD@FFG?@EG@BHFG	MC:Z:68M	PG:Z:00001ABXX.3	RG:Z:00001.3	NM:i:0	MQ:i:10	UQ:i:0	DS:i:136
+00001ABXX101026:3:1:6533:123569	1153	chrX	113054885	10	68M	=	113054885	-1	AGCCCTTTTTTTTTACTGTAGATCACAAAGGTAATTCTATAGTGTCTTTTCAGGATTCAAAGTCTTAG	HHHHHHEHHHHHHG@=FGDBFDFDFFHFHFGCBC;DFCCEFD1C+D<D<?EB8FDEFCG.FGCFEB=D	MC:Z:68M	PG:Z:00001ABXX.3	RG:Z:00001.3	NM:i:29	MQ:i:67	UQ:i:964	DS:i:136

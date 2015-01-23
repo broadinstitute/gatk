@@ -465,7 +465,6 @@ public class MergeBamAlignmentTest extends CommandLineProgramTest {
     }
 
     private void assertSamValid(final File sam) throws IOException {
-        //new ValidateSamTester().assertSamValid(sam);
         final SamReader samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(sam);
         final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
         validator.setIgnoreWarnings(true);
