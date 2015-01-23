@@ -170,7 +170,7 @@ public final class GenomeLocParser {
      * Return the master sequence dictionary used within this GenomeLocParser
      * @return
      */
-    public final SAMSequenceDictionary getContigs() {
+    public final SAMSequenceDictionary getSequenceDictionary() {
         return getContigInfo().getDictionary();
     }
 

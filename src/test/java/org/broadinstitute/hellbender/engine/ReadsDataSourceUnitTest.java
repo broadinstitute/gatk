@@ -51,8 +51,9 @@ public class ReadsDataSourceUnitTest extends BaseTest {
         refDataSource.close();
 
         // Cannot initialize a reads source with intervals unless all files are indexed
-        ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"),
-                                                          Arrays.asList(parser.createGenomeLoc("1", 1, 5)));
+        ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
+        readsSource.setIntervalsForTraversal(Arrays.asList(parser.createGenomeLoc("1", 1, 5)));
+
     }
 
     @Test(expectedExceptions = UserException.class)
@@ -133,7 +134,8 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
     public void testSingleFileTraversalWithIntervals( final File samFile, final List<GenomeLoc> intervals, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFile, intervals);
+        ReadsDataSource readsSource = new ReadsDataSource(samFile);
+        readsSource.setIntervalsForTraversal(intervals);
 
         List<SAMRecord> reads = new ArrayList<SAMRecord>();
         for ( SAMRecord read : readsSource ) {
@@ -275,7 +277,8 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
     public void testMultipleFilesTraversalWithIntervals( final List<File> samFiles, final List<GenomeLoc> intervals, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFiles, intervals);
+        ReadsDataSource readsSource = new ReadsDataSource(samFiles);
+        readsSource.setIntervalsForTraversal(intervals);
 
         List<SAMRecord> reads = new ArrayList<SAMRecord>();
         for ( SAMRecord read : readsSource ) {

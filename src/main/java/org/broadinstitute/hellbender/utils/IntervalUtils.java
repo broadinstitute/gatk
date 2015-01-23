@@ -40,6 +40,7 @@ import org.broadinstitute.hellbender.utils.text.XReadLines;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Parse text representations of interval strings that
@@ -47,6 +48,27 @@ import java.util.*;
  */
 public class IntervalUtils {
     private static Logger logger = LogManager.getLogger(IntervalUtils.class);
+
+    public static GenomeLocSortedSet loadIntervals(
+            final List<String> intervalStrings,
+            final IntervalSetRule intervalSetRule,
+            final IntervalMergingRule intervalMergingRule,
+            final int padding,
+            final GenomeLocParser genomeLocParser) {
+        List<GenomeLoc> allIntervals = new ArrayList<>();
+        for ( String intervalString : intervalStrings) {
+            List<GenomeLoc> intervals = parseIntervalArguments(genomeLocParser, intervalString);
+
+            if ( padding > 0 ) {
+                intervals = getIntervalsWithFlanks(genomeLocParser, intervals, padding);
+            }
+
+            allIntervals = mergeListsBySetOperator(intervals, allIntervals, intervalSetRule);
+        }
+
+        return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
+    }
+
 
     /**
      * Turns a set of strings describing intervals into a parsed set of intervals.  Valid string elements can be files,
@@ -59,7 +81,7 @@ public class IntervalUtils {
      * @return an unsorted, unmerged representation of the given intervals.  Null is used to indicate that all intervals should be used.
      */
     public static List<GenomeLoc> parseIntervalArguments(GenomeLocParser parser, List<String> argList) {
-        List<GenomeLoc> rawIntervals = new ArrayList<GenomeLoc>();    // running list of raw GenomeLocs
+        List<GenomeLoc> rawIntervals = new ArrayList<>();    // running list of raw GenomeLocs
 
         if (argList != null) { // now that we can be in this function if only the ROD-to-Intervals was provided, we need to
             // ensure that the arg list isn't null before looping.
@@ -80,9 +102,9 @@ public class IntervalUtils {
                     "interval or an interval file instead.");
         }
 
-        // if any argument is 'unmapped', "parse" it to a null entry.  A null in this case means 'all the intervals with no alignment data'.
         if (isUnmapped(arg))
-            rawIntervals.add(GenomeLoc.UNMAPPED);
+            throw new UserException.BadArgumentValue("-L/-XL", arg, "Currently the only way to view unmapped intervals " +
+                    "is to perform a traversal of the entire file without specifying any intervals");
             // if it's a file, add items to raw interval list
         else if (isIntervalFile(arg)) {
             try {
@@ -92,7 +114,7 @@ public class IntervalUtils {
                 throw e;
             }
             catch ( Exception e ) {
-                throw new UserException.MalformedFile(arg, "Interval file could not be parsed in any supported format.", e);
+                throw new UserException.MalformedFile(new File(arg), "Interval file could not be parsed in any supported format.", e);
             }
         }
         // otherwise treat as an interval -> parse and add to raw interval list
@@ -114,7 +136,7 @@ public class IntervalUtils {
     public static List<GenomeLoc> intervalFileToList(final GenomeLocParser glParser, final String file_name) {
         // try to open file
         File inputFile = new File(file_name);
-        List<GenomeLoc> ret = new ArrayList<GenomeLoc>();
+        List<GenomeLoc> ret = new ArrayList<>();
 
         // case: BED file
         if ( file_name.toUpperCase().endsWith(".BED") ) {
@@ -166,6 +188,10 @@ public class IntervalUtils {
             }
         }
 
+        if ( ret.isEmpty() ) {
+            throw new UserException.MalformedFile(new File(file_name), "It contains no intervals.");
+        }
+
         return ret;
     }
 
@@ -191,7 +217,7 @@ public class IntervalUtils {
             return Collections.unmodifiableList((setOne == null || setOne.size() == 0) ? setTwo : setOne);
 
         // our master list, since we can't guarantee removal time in a generic list
-        LinkedList<GenomeLoc> retList = new LinkedList<GenomeLoc>();
+        LinkedList<GenomeLoc> retList = new LinkedList<>();
 
         // if we're set to UNION, just add them all
         if (rule == null || rule == IntervalSetRule.UNION) {
@@ -221,7 +247,7 @@ public class IntervalUtils {
 
         //if we have an empty list, throw an exception.  If they specified intersection and there are no items, this is bad.
         if (retList.size() == 0)
-            throw new UserException.BadInput("The INTERSECTION of your -L options produced no intervals.");
+            throw new UserException.EmptyIntersection("There was an empty intersection");
 
         // we don't need to add the rest of remaining locations, since we know they don't overlap. return what we have
         return Collections.unmodifiableList(retList);
@@ -239,7 +265,7 @@ public class IntervalUtils {
      */
     public static GenomeLocSortedSet sortAndMergeIntervals(GenomeLocParser parser, List<GenomeLoc> intervals, IntervalMergingRule mergingRule) {
         // Make a copy of the (potentially unmodifiable) list to be sorted
-        intervals = new ArrayList<GenomeLoc>(intervals);
+        intervals = new ArrayList<>(intervals);
         // sort raw interval list
         Collections.sort(intervals);
         // now merge raw interval list
@@ -263,8 +289,8 @@ public class IntervalUtils {
      * @return null string if there are no difference, otherwise a string describing the difference
      */
     public static String equateIntervals(List<GenomeLoc> masterArg, List<GenomeLoc> testArg) {
-        LinkedList<GenomeLoc> master = new LinkedList<GenomeLoc>(masterArg);
-        LinkedList<GenomeLoc> test = new LinkedList<GenomeLoc>(testArg);
+        LinkedList<GenomeLoc> master = new LinkedList<>(masterArg);
+        LinkedList<GenomeLoc> test = new LinkedList<>(testArg);
 
         while ( ! master.isEmpty() ) { // there's still unchecked bases in master
             final GenomeLoc masterHead = master.pop();
@@ -273,9 +299,7 @@ public class IntervalUtils {
             if ( testHead.overlapsP(masterHead) ) {
                 // remove the parts of test that overlap master, and push the remaining
                 // parts onto master for further comparison.
-                for ( final GenomeLoc masterPart : Utils.reverse(masterHead.subtract(testHead)) ) {
-                    master.push(masterPart);
-                }
+                Utils.reverse(masterHead.subtract(testHead)).forEach(master::push);
             } else {
                 // testHead is incompatible with masterHead, so we must have extra bases in testHead
                 // that aren't in master
@@ -339,7 +363,7 @@ public class IntervalUtils {
     public static Map<String, Integer> getContigSizes(File reference) {
         final ReferenceSequenceFile referenceSequenceFile = createReference(reference);
         List<GenomeLoc> locs = GenomeLocSortedSet.createSetFromSequenceDictionary(referenceSequenceFile.getSequenceDictionary()).toList();
-        Map<String, Integer> lengths = new LinkedHashMap<String, Integer>();
+        Map<String, Integer> lengths = new LinkedHashMap<>();
         for (GenomeLoc loc: locs)
             lengths.put(loc.getContig(), loc.size());
         return lengths;
@@ -368,7 +392,7 @@ public class IntervalUtils {
             throw new UserException.BadInput(String.format("Genome region is too short (%d bases) to split into %d parts", totalBases, scatterParts.size()));
 
         // Find the indices in locs where we switch from one contig to the next.
-        ArrayList<Integer> contigStartLocs = new ArrayList<Integer>();
+        ArrayList<Integer> contigStartLocs = new ArrayList<>();
         String prevContig = null;
 
         for(int i = 0; i < locs.size(); ++i) {
@@ -451,9 +475,9 @@ public class IntervalUtils {
      */
     public static List<List<GenomeLoc>> splitIntervalsToSubLists(List<GenomeLoc> locs, List<Integer> splits) {
         int start = 0;
-        List<List<GenomeLoc>> sublists = new ArrayList<List<GenomeLoc>>(splits.size());
+        List<List<GenomeLoc>> sublists = new ArrayList<>(splits.size());
         for (Integer stop: splits) {
-            List<GenomeLoc> curList = new ArrayList<GenomeLoc>();
+            List<GenomeLoc> curList = new ArrayList<>();
             for (int i = start; i < stop; i++)
                 curList.add(locs.get(i));
             start = stop;
@@ -494,7 +518,7 @@ public class IntervalUtils {
         if (locs.size() < numParts)
             throw new UserException.BadArgumentValue("scatterParts", String.format("Cannot scatter %d locs into %d parts.", locs.size(), numParts));
         final long locsSize = intervalSize(locs);
-        final List<Integer> splitPoints = new ArrayList<Integer>();
+        final List<Integer> splitPoints = new ArrayList<>();
         addFixedSplit(splitPoints, locs, locsSize, 0, locs.size(), numParts);
         Collections.sort(splitPoints);
         splitPoints.add(locs.size());
@@ -519,13 +543,13 @@ public class IntervalUtils {
         //      push both pieces onto locs, continue
         // The last split is special -- when you have only one split left, it gets all of the remaining locs
         // to deal with rounding issues
-        final List<List<GenomeLoc>> splits = new ArrayList<List<GenomeLoc>>(numParts);
+        final List<List<GenomeLoc>> splits = new ArrayList<>(numParts);
 
-        LinkedList<GenomeLoc> locsLinkedList = new LinkedList<GenomeLoc>(locs);
+        LinkedList<GenomeLoc> locsLinkedList = new LinkedList<>(locs);
         while ( ! locsLinkedList.isEmpty() ) {
             if ( splits.size() + 1 == numParts ) {
                 // the last one gets all of the remaining parts
-                splits.add(new ArrayList<GenomeLoc>(locsLinkedList));
+                splits.add(new ArrayList<>(locsLinkedList));
                 locsLinkedList.clear();
             } else {
                 final SplitLocusRecursive one = splitLocusIntervals1(locsLinkedList, idealSplitSize);
@@ -538,7 +562,7 @@ public class IntervalUtils {
     }
 
     static SplitLocusRecursive splitLocusIntervals1(LinkedList<GenomeLoc> remaining, long idealSplitSize) {
-        final List<GenomeLoc> split = new ArrayList<GenomeLoc>();
+        final List<GenomeLoc> split = new ArrayList<>();
         long size = 0;
 
         while ( ! remaining.isEmpty() ) {
@@ -576,9 +600,9 @@ public class IntervalUtils {
     }
 
     public static List<GenomeLoc> flattenSplitIntervals(List<List<GenomeLoc>> splits) {
-        final List<GenomeLoc> locs = new ArrayList<GenomeLoc>();
-        for ( final List<GenomeLoc> split : splits )
-            locs.addAll(split);
+        final List<GenomeLoc> locs = new ArrayList<>();
+        splits.forEach(locs::addAll);
+
         return locs;
     }
 
@@ -631,7 +655,7 @@ public class IntervalUtils {
         if (raw.size() <= 1)
             return Collections.unmodifiableList(raw);
         else {
-            ArrayList<GenomeLoc> merged = new ArrayList<GenomeLoc>();
+            ArrayList<GenomeLoc> merged = new ArrayList<>();
             Iterator<GenomeLoc> it = raw.iterator();
             GenomeLoc prev = it.next();
             while (it.hasNext()) {
@@ -693,7 +717,7 @@ public class IntervalUtils {
             return Collections.emptyList();
 
         LinkedHashMap<String, List<GenomeLoc>> locsByContig = splitByContig(sorted);
-        List<GenomeLoc> expanded = new ArrayList<GenomeLoc>();
+        List<GenomeLoc> expanded = new ArrayList<>();
         for (Map.Entry<String, List<GenomeLoc>> contig: locsByContig.entrySet()) {
             List<GenomeLoc> contigLocs = contig.getValue();
             int contigLocsSize = contigLocs.size();
@@ -743,10 +767,9 @@ public class IntervalUtils {
         if (locs.size() == 0)
             return Collections.emptyList();
 
-        final List<GenomeLoc> expanded = new ArrayList<GenomeLoc>();
-        for ( final GenomeLoc loc : locs ) {
-            expanded.add(parser.createPaddedGenomeLoc(loc, basePairs));
-        }
+        final List<GenomeLoc> expanded = locs.stream()
+                .map(loc -> parser.createPaddedGenomeLoc(loc, basePairs))
+                .collect(Collectors.toList());
 
         return sortAndMergeIntervals(parser, expanded, IntervalMergingRule.ALL).toList();
     }
@@ -756,14 +779,14 @@ public class IntervalUtils {
     }
 
     private static LinkedHashMap<String, List<GenomeLoc>> splitByContig(List<GenomeLoc> sorted) {
-        LinkedHashMap<String, List<GenomeLoc>> splits = new LinkedHashMap<String, List<GenomeLoc>>();
+        LinkedHashMap<String, List<GenomeLoc>> splits = new LinkedHashMap<>();
         GenomeLoc last = null;
         List<GenomeLoc> contigLocs = null;
         for (GenomeLoc loc: sorted) {
             if (GenomeLoc.isUnmapped(loc))
                 continue;
             if (last == null || !last.onSameContig(loc)) {
-                contigLocs = new ArrayList<GenomeLoc>();
+                contigLocs = new ArrayList<>();
                 splits.put(loc.getContig(), contigLocs);
             }
             contigLocs.add(loc);
