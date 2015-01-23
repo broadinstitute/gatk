@@ -22,7 +22,7 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-package org.broadinstitute.hellbender.utils;
+package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;

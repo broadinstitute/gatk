@@ -29,10 +29,6 @@ import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
 public class CreateSequenceDictionary extends PicardCommandLineProgram {
 
     // The following attributes define the command-line arguments
-
-    @Option(doc = "Input reference fasta or fasta.gz", shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME)
-    public File REFERENCE;
-
     @Option(doc = "Output SAM or BAM file containing only the sequence dictionary",
             shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
@@ -59,7 +55,7 @@ public class CreateSequenceDictionary extends PicardCommandLineProgram {
      */
     protected String[] customCommandLineValidation() {
         if (URI == null) {
-            URI = "file:" + REFERENCE.getAbsolutePath();
+            URI = "file:" + REFERENCE_SEQUENCE.getAbsolutePath();
         }
         return null;
     }
@@ -72,7 +68,7 @@ public class CreateSequenceDictionary extends PicardCommandLineProgram {
         if (OUTPUT.exists()) {
             throw new UserException(OUTPUT.getAbsolutePath() + " already exists.  Delete this file and try again, or specify a different output file.");
         }
-        final SAMSequenceDictionary sequences = makeSequenceDictionary(REFERENCE);
+        final SAMSequenceDictionary sequences = makeSequenceDictionary(REFERENCE_SEQUENCE);
         final SAMFileHeader samHeader = new SAMFileHeader();
         samHeader.setSequenceDictionary(sequences);
         final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(samHeader, false, OUTPUT);
@@ -93,7 +89,7 @@ public class CreateSequenceDictionary extends PicardCommandLineProgram {
         final Set<String> sequenceNames = new HashSet<String>();
         for (int numSequences = 0; numSequences < NUM_SEQUENCES && (refSeq = refSeqFile.nextSequence()) != null; ++numSequences) {
             if (sequenceNames.contains(refSeq.getName())) {
-                throw new UserException("Sequence name appears more than once in reference: " + refSeq.getName());
+                throw new UserException.MalformedFile(referenceFile, "Sequence name appears more than once in reference: " + refSeq.getName());
             }
             sequenceNames.add(refSeq.getName());
             ret.add(makeSequenceRecord(refSeq));

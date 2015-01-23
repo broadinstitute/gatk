@@ -36,7 +36,7 @@ public class FlagStatTest extends CommandLineProgramTest{
     public void testSamCount(String fileIn) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final String[] args = new String[]{
-                "I=" + ORIG_BAM.getAbsolutePath(),
+                "--input" , ORIG_BAM.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
 

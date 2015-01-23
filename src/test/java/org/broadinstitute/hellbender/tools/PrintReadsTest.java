@@ -48,8 +48,8 @@ public class PrintReadsTest extends CommandLineProgramTest{
         outFile.deleteOnExit();
         File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
         final String[] args = new String[]{
-                "I=" + ORIG_BAM.getAbsolutePath(),
-                "O=" + outFile.getAbsolutePath()
+                "--input" , ORIG_BAM.getAbsolutePath(),
+                "--output", outFile.getAbsolutePath()
         };
         Assert.assertEquals(runCommandLine(args), null);
 

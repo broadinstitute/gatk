@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -30,22 +31,23 @@ public class CreateSequenceDictionaryTest extends CommandLineProgramTest {
                 "OUTPUT=" + outputDict,
                 "TRUNCATE_NAMES_AT_WHITESPACE=false"
         };
-        Assert.assertEquals(runCommandLine(argv), null);
+        Assert.assertEquals(runCommandLine(new ArgumentsBuilder(argv).getArgsArray()), null);
     }
 
     /**
-     * Should throw an exception because with TRUNCATE_NAMES_AT_WHITESPACE, sequence names are not unique.
+     * Should throw an exception because sequence names are not unique.
      */
-    @Test(expectedExceptions = {UserException.class, GATKException.class})
+    @Test(expectedExceptions = {UserException.MalformedFile.class})
     public void testNonUniqueSequenceName() throws Exception {
         final File outputDict = File.createTempFile("CreateSequenceDictionaryTest.", ".dict");
+        outputDict.delete();
         outputDict.deleteOnExit();
         final String[] argv = {
                 "REFERENCE=" + DUPLICATE_FASTA,
                 "OUTPUT=" + outputDict,
-                "TRUNCATE_NAMES_AT_WHITESPACE=true"
+                "TRUNCATE_NAMES_AT_WHITESPACE=false"
         };
-        Assert.assertEquals(runCommandLine(argv), null);
+        Assert.assertEquals(runCommandLine(new ArgumentsBuilder(argv).getArgsArray()), null);
         Assert.fail("Exception should have been thrown.");
     }
 }

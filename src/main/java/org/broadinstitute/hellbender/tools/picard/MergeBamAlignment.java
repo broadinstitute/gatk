@@ -64,10 +64,6 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
             doc = "Merged SAM or BAM file to write to.")
     public File OUTPUT;
 
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME,
-            doc = "Path to the fasta file for the reference sequence.")
-    public File REFERENCE_SEQUENCE;
-
     @Option(shortName = StandardOptionDefinitions.PROGRAM_RECORD_ID_SHORT_NAME,
             doc = "The program group ID of the aligner (if not supplied by the aligned file).",
             optional = true)

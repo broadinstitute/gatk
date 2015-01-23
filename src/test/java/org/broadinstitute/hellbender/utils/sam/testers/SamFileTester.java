@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 
 import java.io.File;
@@ -24,7 +25,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private int readNameCounter = 0;
     private boolean noMateCigars = false;
     private boolean deleteOnExit = true;
-    private final ArrayList<String> args = new ArrayList<String>();
+    private final ArgumentsBuilder args = new ArgumentsBuilder();
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy) {
         this.deleteOnExit = deleteOnExit;
@@ -71,8 +72,8 @@ public abstract class SamFileTester extends CommandLineProgramTest {
         args.add(arg);
     }
 
-    public ArrayList<String> getArgs() {
-        return args;
+    public List<String> getArgs() {
+        return args.getArgsList();
     }
 
     public File getOutputDir() {
@@ -279,7 +280,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
         output = new File(outputDir, "output.sam");
         args.add("INPUT=" + input.getAbsoluteFile());
         args.add("OUTPUT=" + output.getAbsoluteFile());
-        Assert.assertEquals(runCommandLine(args), null);
+        Assert.assertEquals(runCommandLine(args.getArgsList()), null);
         test();
     }
 

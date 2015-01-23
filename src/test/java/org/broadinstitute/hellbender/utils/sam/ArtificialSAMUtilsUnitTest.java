@@ -26,7 +26,7 @@
 package org.broadinstitute.hellbender.utils.sam;
 
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.utils.BaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.iterators.GATKSAMIterator;
 import org.testng.annotations.Test;
 

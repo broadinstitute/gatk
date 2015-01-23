@@ -28,7 +28,7 @@ package org.broadinstitute.hellbender.utils.haplotype;
 
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.utils.BaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.broadinstitute.hellbender.utils.Utils;

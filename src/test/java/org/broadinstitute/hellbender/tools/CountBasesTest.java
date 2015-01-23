@@ -36,7 +36,8 @@ public class CountBasesTest extends CommandLineProgramTest {
     public void testCountBases(String fileIn) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final String[] args = new String[]{
-                "I=" + ORIG_BAM.getAbsolutePath(),
+            "--input" ,  ORIG_BAM.getAbsolutePath(),
+
         };
         final Object res = this.runCommandLine(args);
         Assert.assertEquals(res, 808l);

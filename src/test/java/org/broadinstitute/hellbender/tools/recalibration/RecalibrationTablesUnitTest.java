@@ -52,7 +52,7 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.BaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.testng.Assert;

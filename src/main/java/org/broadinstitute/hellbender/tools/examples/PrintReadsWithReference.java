@@ -24,7 +24,7 @@ import java.io.PrintStream;
 )
 public class PrintReadsWithReference extends ReadWalker {
 
-    @Option(fullName = StandardOptionDefinitions.OUTPUT_LONG_NAME, shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true, overridable = true)
+    @Option(fullName = StandardOptionDefinitions.OUTPUT_LONG_NAME, shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
     public File OUTPUT_FILE = null;
 
     private PrintStream outputStream = null;

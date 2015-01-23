@@ -94,8 +94,11 @@ public @interface Option {
     boolean common() default false;
 
     /**
-     * This boolean determines if this annotation overrides a parent annotation. If that is the case then
-     * the options of the parent annotation are overridden with this annotation.
+     * Does this option have special treatment in the argument parsing system.
+     * Some examples are arguments_file and help, which have special behavior in the parser.
+     * This is intended for documenting these options.
      */
-    boolean overridable() default false;
+    boolean special() default false;
+
+
 }

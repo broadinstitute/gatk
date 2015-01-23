@@ -63,5 +63,20 @@ public class GATKException extends RuntimeException {
             super(s, throwable);
         }
     }
+
+    /**
+     * <p/>
+     * For wrapping errors that are believed to never be reachable
+     */
+    public static class ShouldNeverReachHereException extends GATKException {
+        private static final long serialVersionUID = 0L;
+        public ShouldNeverReachHereException( final String s ) {
+            super(s);
+        }
+        public ShouldNeverReachHereException( final String s, final Throwable throwable ) {
+            super(s, throwable);
+        }
+
+    }
 }
 

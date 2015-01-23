@@ -6,6 +6,7 @@ import htsjdk.samtools.util.FastqQualityFormat;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -152,7 +153,7 @@ public class FastqToSamTest extends CommandLineProgramTest {
         final File fastq2 = (fastqFilename2 != null) ? new File(TEST_DATA_DIR, fastqFilename2) : null;
         final File samFile = newTempSamFile(fastq1.getName());
 
-        final List<String> args =new ArrayList<String>();
+        final ArgumentsBuilder args =new ArgumentsBuilder();
 
         args.add("FASTQ=" + fastq1.getAbsolutePath());
         args.add("OUTPUT=" + samFile.getAbsolutePath());
@@ -163,7 +164,7 @@ public class FastqToSamTest extends CommandLineProgramTest {
         if(fastqFilename2 != null) args.add("FASTQ2=" + fastq2.getAbsolutePath());
         if(permissiveFormat) args.add("ALLOW_AND_IGNORE_EMPTY_LINES=true");
 
-        Assert.assertEquals(runCommandLine(args), null);
+        Assert.assertEquals(runCommandLine(args.getArgsList()), null);
         return samFile;
     }
 

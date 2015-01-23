@@ -30,6 +30,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -42,7 +43,7 @@ import java.util.*;
 /**
  * Basic unit test for GenomeLoc
  */
-public class GenomeLocUnitTest extends BaseTest{
+public class GenomeLocUnitTest extends BaseTest {
     private static ReferenceSequenceFile seq;
     private GenomeLocParser genomeLocParser;
 

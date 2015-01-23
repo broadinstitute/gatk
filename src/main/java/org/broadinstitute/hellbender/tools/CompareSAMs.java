@@ -50,7 +50,7 @@ import java.util.Objects;
 )
 public class CompareSAMs extends CommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true, overridable = true)
+    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true)
     public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     @PositionalArguments(minElements = 2, maxElements = 2)

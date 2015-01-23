@@ -26,7 +26,7 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.utils.BaseTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
