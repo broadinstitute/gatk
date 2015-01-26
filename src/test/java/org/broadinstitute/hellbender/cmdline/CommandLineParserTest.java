@@ -28,7 +28,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import sun.tools.jar.CommandLine;
 
 import java.io.File;
 import java.io.PrintWriter;
