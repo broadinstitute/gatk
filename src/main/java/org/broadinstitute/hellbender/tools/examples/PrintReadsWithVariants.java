@@ -1,0 +1,97 @@
+package org.broadinstitute.hellbender.tools.examples;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Example/toy program that prints reads from the provided file or files along with overlapping variants
+ * (if a source of variants is provided). Intended to show how to implement the ReadWalker interface.
+ */
+@CommandLineProgramProperties(
+        usage = "Prints reads from the provided file(s) along with overlapping variants (if a source of variants is provided) to the specified output file (or STDOUT if none specified)",
+        usageShort = "Print reads with overlapping variants",
+        programGroup = VariantProgramGroup.class
+)
+public class PrintReadsWithVariants extends ReadWalker {
+
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more VCF/BCF files", optional = true)
+    List<FeatureInput<VariantContext>> variants;
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
+    public File outputFile;
+
+    @Argument(fullName = "groupVariantsBySource", shortName = "groupVariantsBySource", doc = "If true, group overlapping variants by their source when outputting them", optional = true)
+    public boolean groupVariantsBySource = false;
+
+    private PrintStream outputStream = null;
+
+    @Override
+    public void onTraversalStart() {
+        try {
+            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
+        }
+        catch ( FileNotFoundException e ) {
+            throw new UserException.CouldNotReadInputFile(outputFile, e);
+        }
+    }
+
+    @Override
+    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+        outputStream.printf("Read at %s:%d-%d:\n%s\n", read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd(), read.getReadString());
+
+        // The featureContext will be absent if we didn't provide any sources of variants on the command line
+        if ( featureContext.isPresent() ) {
+
+            if ( groupVariantsBySource ) {
+                // We can keep the variants from each source separate by passing in the FeatureInputs
+                // individually to featureContext.getValues()
+                for ( FeatureInput<VariantContext> featureSource : variants ) {
+                    outputStream.println("From source " + featureSource.getName());
+
+                    for ( VariantContext variant : featureContext.get().getValues(featureSource) ) {
+                        outputStream.printf("\t");
+                        printOverlappingVariant(variant);
+                    }
+                }
+            }
+            else {
+                // Passing in all FeatureInputs at once to featureContext.getValues() lets us get
+                // all overlapping variants without regard to source
+                for ( VariantContext variant : featureContext.get().getValues(variants) ) {
+                    printOverlappingVariant(variant);
+                }
+            }
+        }
+
+        outputStream.println();
+    }
+
+    private void printOverlappingVariant( final VariantContext variant ) {
+        outputStream.printf("Overlapping variant at %s:%d-%d: Ref: %s Alt(s): %s\n",
+                            variant.getChr(), variant.getStart(), variant.getEnd(),
+                            variant.getReference(), variant.getAlternateAlleles());
+    }
+
+    @Override
+    public Object onTraversalDone() {
+        if ( outputStream != null )
+            outputStream.close();
+
+        return null;
+    }
+}

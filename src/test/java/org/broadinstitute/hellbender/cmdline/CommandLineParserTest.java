@@ -24,6 +24,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.CollectionUtil;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -33,6 +34,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.util.*;
 
 public class CommandLineParserTest {
@@ -621,11 +623,288 @@ public class CommandLineParserTest {
         Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--version", "true"}));
     }
 
+    /***************************************************************************************
+     * Start of tests and helper classes for CommandLineParser.gatherArgumentValuesOfType()
+     ***************************************************************************************/
 
+    /**
+     * Classes and argument collections for use with CommandLineParser.gatherArgumentValuesOfType() tests below.
+     *
+     * Structured to ensure that we test support for:
+     *
+     * -distinguishing between arguments of the target type, and arguments not of the target type
+     * -distinguishing between annotated and unannotated fields of the target type
+     * -gathering arguments that are a subtype of the target type
+     * -gathering multi-valued arguments of the target type within Collection types
+     * -gathering arguments of the target type that are not specified on the command line
+     * -gathering arguments of the target type from superclasses of our tool
+     * -gathering arguments of the target type from argument collections
+     * -gathering arguments when the target type is itself a parameterized type (eg., FeatureInput<VariantContext>)
+     */
 
+    private static class GatherArgumentValuesTestSourceParent {
+        @Argument(fullName = "parentSuperTypeTarget", shortName = "parentSuperTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSuperType parentSuperTypeTarget;
 
+        @Argument(fullName = "parentSubTypeTarget", shortName = "parentSubTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSubType parentSubTypeTarget;
 
+        @Argument(fullName = "parentListSuperTypeTarget", shortName = "parentListSuperTypeTarget", doc = "")
+        private List<GatherArgumentValuesTargetSuperType> parentListSuperTypeTarget;
 
+        @Argument(fullName = "parentListSubTypeTarget", shortName = "parentListSubTypeTarget", doc = "")
+        private List<GatherArgumentValuesTargetSubType> parentListSubTypeTarget;
 
+        @Argument(fullName = "uninitializedParentTarget", shortName = "uninitializedParentTarget", optional = true, doc = "")
+        private GatherArgumentValuesTargetSuperType uninitializedParentTarget;
 
+        @Argument(fullName = "parentNonTargetArgument", shortName = "parentNonTargetArgument", doc = "")
+        private int parentNonTargetArgument;
+
+        private GatherArgumentValuesTargetSuperType parentUnannotatedTarget;
+
+        @ArgumentCollection
+        private GatherArgumentValuesTestSourceParentCollection parentCollection = new GatherArgumentValuesTestSourceParentCollection();
+    }
+
+    private static class GatherArgumentValuesTestSourceChild extends GatherArgumentValuesTestSourceParent {
+        @Argument(fullName = "childSuperTypeTarget", shortName = "childSuperTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSuperType childSuperTypeTarget;
+
+        @Argument(fullName = "childSubTypeTarget", shortName = "childSubTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSubType childSubTypeTarget;
+
+        @Argument(fullName = "childListSuperTypeTarget", shortName = "childListSuperTypeTarget", doc = "")
+        private List<GatherArgumentValuesTargetSuperType> childListSuperTypeTarget;
+
+        @Argument(fullName = "childListSubTypeTarget", shortName = "childListSubTypeTarget", doc = "")
+        private List<GatherArgumentValuesTargetSubType> childListSubTypeTarget;
+
+        @Argument(fullName = "uninitializedChildTarget", shortName = "uninitializedChildTarget", optional = true, doc = "")
+        private GatherArgumentValuesTargetSuperType uninitializedChildTarget;
+
+        @Argument(fullName = "uninitializedChildListTarget", shortName = "uninitializedChildListTarget", optional = true, doc = "")
+        private List<GatherArgumentValuesTargetSuperType> uninitializedChildListTarget;
+
+        @Argument(fullName = "childNonTargetArgument", shortName = "childNonTargetArgument", doc = "")
+        private int childNonTargetArgument;
+
+        @Argument(fullName = "childNonTargetListArgument", shortName = "childNonTargetListArgument", doc = "")
+        private List<Integer> childNonTargetListArgument;
+
+        private GatherArgumentValuesTargetSuperType childUnannotatedTarget;
+
+        @ArgumentCollection
+        private GatherArgumentValuesTestSourceChildCollection childCollection = new GatherArgumentValuesTestSourceChildCollection();
+    }
+
+    private static class GatherArgumentValuesTestSourceParentCollection implements ArgumentCollectionDefinition {
+        @Argument(fullName = "parentCollectionSuperTypeTarget", shortName = "parentCollectionSuperTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSuperType parentCollectionSuperTypeTarget;
+
+        @Argument(fullName = "parentCollectionSubTypeTarget", shortName = "parentCollectionSubTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSubType parentCollectionSubTypeTarget;
+
+        @Argument(fullName = "uninitializedParentCollectionTarget", shortName = "uninitializedParentCollectionTarget", optional = true, doc = "")
+        private GatherArgumentValuesTargetSuperType uninitializedParentCollectionTarget;
+
+        @Argument(fullName = "parentCollectionNonTargetArgument", shortName = "parentCollectionNonTargetArgument", doc = "")
+        private int parentCollectionNonTargetArgument;
+
+        private GatherArgumentValuesTargetSuperType parentCollectionUnannotatedTarget;
+    }
+
+    private static class GatherArgumentValuesTestSourceChildCollection implements ArgumentCollectionDefinition {
+        @Argument(fullName = "childCollectionSuperTypeTarget", shortName = "childCollectionSuperTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSuperType childCollectionSuperTypeTarget;
+
+        @Argument(fullName = "childCollectionSubTypeTarget", shortName = "childCollectionSubTypeTarget", doc = "")
+        private GatherArgumentValuesTargetSubType childCollectionSubTypeTarget;
+
+        @Argument(fullName = "childCollectionListSuperTypeTarget", shortName = "childCollectionListSuperTypeTarget", doc = "")
+        private List<GatherArgumentValuesTargetSuperType> childCollectionListSuperTypeTarget;
+
+        @Argument(fullName = "uninitializedChildCollectionTarget", shortName = "uninitializedChildCollectionTarget", optional = true, doc = "")
+        private GatherArgumentValuesTargetSuperType uninitializedChildCollectionTarget;
+
+        @Argument(fullName = "childCollectionNonTargetArgument", shortName = "childCollectionNonTargetArgument", doc = "")
+        private int childCollectionNonTargetArgument;
+
+        private GatherArgumentValuesTargetSuperType childCollectionUnannotatedTarget;
+    }
+
+    /**
+     * Our tests will search for argument values of this type, subtypes of this type, and Collections of
+     * this type or its subtypes. Has a String constructor so that the argument parsing system can correctly
+     * initialize it.
+     */
+    private static class GatherArgumentValuesTargetSuperType {
+        private String value;
+
+        public GatherArgumentValuesTargetSuperType( String s ) {
+            value = s;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    private static class GatherArgumentValuesTargetSubType extends GatherArgumentValuesTargetSuperType {
+        public GatherArgumentValuesTargetSubType( String s ) {
+            super(s);
+        }
+    }
+
+    @DataProvider(name = "gatherArgumentValuesOfTypeDataProvider")
+    public Object[][] gatherArgumentValuesOfTypeDataProvider() {
+        // Non-Collection arguments of the target type
+        final List<String> targetScalarArguments = Arrays.asList("childSuperTypeTarget", "childSubTypeTarget",
+                                                                 "parentSuperTypeTarget", "parentSubTypeTarget",
+                                                                 "childCollectionSuperTypeTarget", "childCollectionSubTypeTarget",
+                                                                 "parentCollectionSuperTypeTarget", "parentCollectionSubTypeTarget");
+        // Collection arguments of the target type
+        final List<String> targetListArguments = Arrays.asList("childListSuperTypeTarget", "childListSubTypeTarget",
+                                                               "parentListSuperTypeTarget", "parentListSubTypeTarget",
+                                                               "childCollectionListSuperTypeTarget");
+        // Arguments of the target type that we won't specify on our command line
+        final List<String> uninitializedTargetArguments = Arrays.asList("uninitializedChildTarget", "uninitializedChildListTarget",
+                                                                        "uninitializedParentTarget", "uninitializedChildCollectionTarget",
+                                                                        "uninitializedParentCollectionTarget");
+        // Arguments not of the target type
+        final List<String> nonTargetArguments = Arrays.asList("childNonTargetArgument", "parentNonTargetArgument",
+                                                              "childCollectionNonTargetArgument", "parentCollectionNonTargetArgument",
+                                                              "childNonTargetListArgument");
+
+        List<String> commandLineArguments = new ArrayList<>();
+        List<Pair<String, String>> sortedExpectedGatheredValues = new ArrayList<>();
+
+        for ( String targetScalarArgument : targetScalarArguments ) {
+            final String argumentValue = targetScalarArgument + "Value";
+
+            commandLineArguments.add("--" + targetScalarArgument);
+            commandLineArguments.add(argumentValue);
+            sortedExpectedGatheredValues.add(Pair.of(targetScalarArgument, argumentValue));
+        }
+
+        // Give each list argument multiple values
+        for ( String targetListArgument : targetListArguments ) {
+            for ( int argumentNum = 1; argumentNum <= 3; ++argumentNum ) {
+                final String argumentValue = targetListArgument + "Value" + argumentNum;
+
+                commandLineArguments.add("--" + targetListArgument);
+                commandLineArguments.add(argumentValue);
+                sortedExpectedGatheredValues.add(Pair.of(targetListArgument, argumentValue));
+            }
+        }
+
+        // Make sure the uninitialized args of the target type not included on the command line are
+        // represented in the expected output
+        for ( String uninitializedTargetArgument : uninitializedTargetArguments ) {
+            sortedExpectedGatheredValues.add(Pair.of(uninitializedTargetArgument, null));
+        }
+
+        // The non-target args are all of type int, so give them an arbitrary int value on the command line.
+        // These should not be gathered at all, so are not added to the expected output.
+        for ( String nonTargetArgument : nonTargetArguments ) {
+            commandLineArguments.add("--" + nonTargetArgument);
+            commandLineArguments.add("1");
+        }
+
+        Collections.sort(sortedExpectedGatheredValues);
+
+        return new Object[][] {{
+            commandLineArguments, sortedExpectedGatheredValues
+        }};
+    }
+
+    @Test(dataProvider = "gatherArgumentValuesOfTypeDataProvider")
+    public void testGatherArgumentValuesOfType( final List<String> commandLineArguments, final List<Pair<String, String>> sortedExpectedGatheredValues ) {
+        GatherArgumentValuesTestSourceChild argumentSource = new GatherArgumentValuesTestSourceChild();
+
+        // Parse the command line, and inject values into our test instance
+        CommandLineParser clp = new CommandLineParser(argumentSource);
+        clp.parseArguments(System.err, commandLineArguments.toArray(new String[commandLineArguments.size()]));
+
+        // Gather all argument values of type GatherArgumentValuesTargetSuperType (or Collection<GatherArgumentValuesTargetSuperType>),
+        // including subtypes.
+        List<Pair<Field, GatherArgumentValuesTargetSuperType>> gatheredArguments =
+                CommandLineParser.gatherArgumentValuesOfType(GatherArgumentValuesTargetSuperType.class, argumentSource);
+
+        // Make sure we gathered the expected number of argument values
+        Assert.assertEquals(gatheredArguments.size(), sortedExpectedGatheredValues.size(), "Gathered the wrong number of arguments");
+
+        // Make sure actual gathered argument values match expected values
+        List<Pair<String, String>> sortedActualGatheredArgumentValues = new ArrayList<>();
+        for ( Pair<Field, GatherArgumentValuesTargetSuperType> gatheredArgument : gatheredArguments ) {
+            Assert.assertNotNull(gatheredArgument.getKey().getAnnotation(Argument.class), "Gathered argument is not annotated with an @Argument annotation");
+
+            String argumentName = gatheredArgument.getKey().getAnnotation(Argument.class).fullName();
+            GatherArgumentValuesTargetSuperType argumentValue = gatheredArgument.getValue();
+
+            sortedActualGatheredArgumentValues.add(Pair.of(argumentName, argumentValue != null ? argumentValue.getValue() : null));
+        }
+        Collections.sort(sortedActualGatheredArgumentValues);
+
+        Assert.assertEquals(sortedActualGatheredArgumentValues, sortedExpectedGatheredValues,
+                            "One or more gathered argument values not correct");
+
+    }
+
+    /**
+     * Nonsensical parameterized class, just to ensure that CommandLineParser.gatherArgumentValuesOfType()
+     * can gather argument values of a generic type
+     *
+     * @param <T> meaningless type parameter
+     */
+    private static class GatherArgumentValuesParameterizedTargetType<T> {
+        private String value;
+        private T foo;
+
+        public GatherArgumentValuesParameterizedTargetType( String s ) {
+            value = s;
+            foo = null;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    private static class GatherArgumentValuesParameterizedTypeSource {
+        @Argument(fullName = "parameterizedTypeArgument", shortName = "parameterizedTypeArgument", doc = "")
+        private GatherArgumentValuesParameterizedTargetType<Integer> parameterizedTypeArgument;
+
+        @Argument(fullName = "parameterizedTypeListArgument", shortName = "parameterizedTypeListArgument", doc = "")
+        private List<GatherArgumentValuesParameterizedTargetType<Integer>> parameterizedTypeListArgument;
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void testGatherArgumentValuesOfTypeWithParameterizedType() {
+        GatherArgumentValuesParameterizedTypeSource argumentSource = new GatherArgumentValuesParameterizedTypeSource();
+
+        // Parse the command line, and inject values into our test instance
+        CommandLineParser clp = new CommandLineParser(argumentSource);
+        clp.parseArguments(System.err, new String[]{"--parameterizedTypeArgument", "parameterizedTypeArgumentValue",
+                                                    "--parameterizedTypeListArgument", "parameterizedTypeListArgumentValue"});
+
+        // Gather argument values of the raw type GatherArgumentValuesParameterizedTargetType, and make
+        // sure that we match fully-parameterized declarations
+        List<Pair<Field, GatherArgumentValuesParameterizedTargetType>> gatheredArguments =
+                CommandLineParser.gatherArgumentValuesOfType(GatherArgumentValuesParameterizedTargetType.class, argumentSource);
+
+        Assert.assertEquals(gatheredArguments.size(), 2, "Wrong number of arguments gathered");
+
+        Assert.assertNotNull(gatheredArguments.get(0).getKey().getAnnotation(Argument.class), "Gathered argument is not annotated with an @Argument annotation");
+        Assert.assertEquals(gatheredArguments.get(0).getKey().getAnnotation(Argument.class).fullName(), "parameterizedTypeArgument", "Wrong argument gathered");
+        Assert.assertEquals(gatheredArguments.get(0).getValue().getValue(), "parameterizedTypeArgumentValue", "Wrong value for gathered argument");
+        Assert.assertNotNull(gatheredArguments.get(1).getKey().getAnnotation(Argument.class), "Gathered argument is not annotated with an @Argument annotation");
+        Assert.assertEquals(gatheredArguments.get(1).getKey().getAnnotation(Argument.class).fullName(), "parameterizedTypeListArgument", "Wrong argument gathered");
+        Assert.assertEquals(gatheredArguments.get(1).getValue().getValue(), "parameterizedTypeListArgumentValue", "Wrong value for gathered argument");
+    }
+
+    /***************************************************************************************
+     * End of tests and helper classes for CommandLineParser.gatherArgumentValuesOfType()
+     ***************************************************************************************/
 }

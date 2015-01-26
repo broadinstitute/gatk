@@ -28,6 +28,7 @@ import htsjdk.samtools.util.Log;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLDecoder;
@@ -179,5 +180,32 @@ public class ClassFinder {
     /** Fetches the set of classes discovered so far. */
     public Set<Class<?>> getClasses() {
         return this.classes;
+    }
+
+    /**
+     * Fetches the set of classes discovered so far, subsetted down to concrete (non-abstract/interface) classes only
+     *
+     * @return subset of classes discovered so far including only concrete (non-abstract/interface) classes
+     */
+    public Set<Class<?>> getConcreteClasses() {
+        Set<Class<?>> concreteClassSet = new HashSet<>();
+
+        for ( Class<?> clazz : classes ) {
+            if ( isConcrete(clazz) ) {
+                concreteClassSet.add(clazz);
+            }
+        }
+
+        return concreteClassSet;
+    }
+
+    /**
+     * Determines whether or not the specified class is concrete (ie., non-abstract and non-interface)
+     *
+     * @param clazz class to check
+     * @return true if the class is neither abstract nor an interface, otherwise false
+     */
+    public static boolean isConcrete( final Class<?> clazz ) {
+        return ! Modifier.isAbstract(clazz.getModifiers()) && ! Modifier.isInterface(clazz.getModifiers());
     }
 }

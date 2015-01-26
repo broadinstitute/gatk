@@ -56,12 +56,15 @@ import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.sam.CigarUtils;
 import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
 
 import java.io.File;
+import java.util.Optional;
 
 /**
  * Left-aligns indels from reads in a bam file.
@@ -107,11 +110,15 @@ public class LeftAlignIndels extends ReadWalker {
     @Override
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = getHeaderForReads().clone();
+
+        if ( ! referenceIsPresent() ) {
+            throw new UserException("This tool requires a reference");
+        }
         outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_FILE);
     }
 
     @Override
-    public void apply(SAMRecord read, ReferenceContext ref) {
+    public void apply( SAMRecord read, Optional<ReferenceContext> ref, Optional<FeatureContext> featureContext ) {
         // we can not deal with screwy records
         if ( read.getReadUnmappedFlag() || read.getCigar().numCigarElements() == 0 ) {
             outputWriter.addAlignment(read);
@@ -121,7 +128,8 @@ public class LeftAlignIndels extends ReadWalker {
         // move existing indels (for 1 indel reads only) to leftmost position within identical sequence
         int numBlocks = AlignmentUtils.getNumAlignmentBlocks(read);
         if ( numBlocks == 2 ) {
-            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.unclipCigar(read.getCigar()), ref.getBases(), read.getReadBases(), 0, 0, true);
+            // We checked in onTraversalStart() that a reference is present, so ref.get() is safe
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.unclipCigar(read.getCigar()), ref.get().getBases(), read.getReadBases(), 0, 0, true);
             newCigar = CigarUtils.reclipCigar(newCigar, read);
             read.setCigar(newCigar);
         }

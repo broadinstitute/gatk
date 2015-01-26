@@ -61,10 +61,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.HACKRefMetaDataTracker;
-import org.broadinstitute.hellbender.engine.ReadWalker;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -72,7 +69,6 @@ import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
@@ -83,9 +79,7 @@ import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
@@ -224,7 +218,7 @@ public class BaseRecalibrator extends ReadWalker {
         if (RAC.FORCE_PLATFORM != null)
             RAC.DEFAULT_PLATFORM = RAC.FORCE_PLATFORM;
 
-        if (RAC.knownSitesVCF == null && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
+        if (RAC.knownSites.isEmpty() && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
             throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
 
         requestedCovariates = getCovariatesArray();
@@ -243,7 +237,11 @@ public class BaseRecalibrator extends ReadWalker {
 
         initializeRecalibrationEngine();
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
-        referenceDataSource = REFERENCE_FILE != null ? new ReferenceDataSource(REFERENCE_FILE) : null;
+
+        if ( ! referenceIsPresent() ) {
+            throw new UserException("This tool requires a reference");
+        }
+        referenceDataSource = new ReferenceDataSource(REFERENCE_FILE);
     }
 
     private Covariate[] getCovariatesArray() {
@@ -326,7 +324,7 @@ public class BaseRecalibrator extends ReadWalker {
      * whether or not the base matches the reference at this particular location
      */
     @Override
-    public void apply( final SAMRecord originalRead, final ReferenceContext ref) {
+    public void apply( SAMRecord originalRead, Optional<ReferenceContext> ref, Optional<FeatureContext> featureContext ) {
         ReadTransformer transform = makeReadTransform();
         final SAMRecord read = transform.apply(originalRead);
 
@@ -337,11 +335,8 @@ public class BaseRecalibrator extends ReadWalker {
             return; // skip this read completely
         }
 
-        //temporary HACK for the RMD tracker
-        GenomeLocParser glp = new GenomeLocParser(getReferenceDictionary());
-        final HACKRefMetaDataTracker metaDataTracker = new HACKRefMetaDataTracker(glp);
-
-        final int[] isSNP = calculateIsSNP(read, ref, originalRead);
+        // We've checked in onTraversalStart() that we have a reference, so ref.get() is safe
+        final int[] isSNP = calculateIsSNP(read, ref.get(), originalRead);
         final int[] isInsertion = calculateIsIndel(read, EventType.BASE_INSERTION);
         final int[] isDeletion = calculateIsIndel(read, EventType.BASE_DELETION);
         final int nErrors = nEvents(isSNP, isInsertion, isDeletion);
@@ -352,7 +347,7 @@ public class BaseRecalibrator extends ReadWalker {
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
             final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
-            final boolean[] skip = calculateSkipArray(read, metaDataTracker); // skip known sites of variation as well as low quality and non-regular bases
+            final boolean[] skip = calculateSkipArray(read, featureContext); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
             final double[] deletionErrors = calculateFractionalErrorArray(isDeletion, baqArray);
@@ -381,10 +376,10 @@ public class BaseRecalibrator extends ReadWalker {
         return n;
     }
 
-    private boolean[] calculateSkipArray( final SAMRecord read, final HACKRefMetaDataTracker metaDataTracker) {
+    private boolean[] calculateSkipArray( final SAMRecord read, final Optional<FeatureContext> featureContext ) {
         final byte[] bases = read.getReadBases();
         final boolean[] skip = new boolean[bases.length];
-        final boolean[] knownSites = calculateKnownSites(read, metaDataTracker.getValues(RAC.knownSitesVCF, read));
+        final boolean[] knownSites = calculateKnownSites(read, featureContext.isPresent() ? featureContext.get().getValues(RAC.knownSites) : Collections.<Feature>emptyList());
         for( int iii = 0; iii < bases.length; iii++ ) {
             skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSites[iii] || badSolidOffset(read, iii);
         }
@@ -395,7 +390,7 @@ public class BaseRecalibrator extends ReadWalker {
         return ReadUtils.isSOLiDRead(read) && RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
-    protected boolean[] calculateKnownSites( final SAMRecord read, final List<Feature> features) {
+    protected boolean[] calculateKnownSites( final SAMRecord read, final List<? extends Feature> features) {
         final int readLength = read.getReadBases().length;
         final boolean[] knownSites = new boolean[readLength];
         Arrays.fill(knownSites, false);

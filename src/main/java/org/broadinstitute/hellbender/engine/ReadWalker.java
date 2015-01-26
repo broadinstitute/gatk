@@ -6,11 +6,12 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
@@ -34,6 +35,7 @@ public abstract class ReadWalker extends GATKTool {
 
     private ReadsDataSource reads = null;
     private ReferenceDataSource reference = null;
+    private FeatureManager features = null;
 
     /**
      * Create the reads and reference data sources.
@@ -48,11 +50,24 @@ public abstract class ReadWalker extends GATKTool {
         reads = new ReadsDataSource(READS_FILES);
         reference = REFERENCE_FILE != null ? new ReferenceDataSource(REFERENCE_FILE) : null;
 
+        features = new FeatureManager(this);
+        if ( features.isEmpty() ) // No available sources of Features for this tool
+            features = null;
+
         if(intervalArgumentCollection.intervalsSpecified()){
-            SAMSequenceDictionary sequenceDict = reference != null ? reference.getSequenceDictionary() : reads.getSequenceDictionary();
-            reads.setIntervalsForTraversal(intervalArgumentCollection.getIntervals(sequenceDict));
+            reads.setIntervalsForTraversal(intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()));
         }
     }
+
+    /**
+     * Returns true if a reference was provided for this traversal, otherwise false
+     *
+     * @return true if a reference was provided for this traversal, otherwise false
+     */
+    public boolean referenceIsPresent() {
+        return REFERENCE_FILE != null;
+    }
+
     /**
      * Returns the SAM header for this reads traversal. Will be a merged header if there are multiple inputs for
      * the reads. If there is only a single input, returns its header directly.
@@ -64,13 +79,13 @@ public abstract class ReadWalker extends GATKTool {
     }
 
     /**
-     * Returns the sequence dictionary for the reference, if a reference is present. If there is no
-     * reference, returns null.
+     * Returns the "best available" sequence dictionary. This will be the reference sequence dictionary if
+     * there is a reference, otherwise it will be the sequence dictionary constructed from the reads.
      *
-     * @return sequence dictionary for the reference, or null if there is no reference
+     * @return best available sequence dictionary given our inputs (never null)
      */
-    public SAMSequenceDictionary getReferenceDictionary() {
-        return reference != null ? reference.getSequenceDictionary() : null;
+    public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+        return reference != null ? reference.getSequenceDictionary() : reads.getSequenceDictionary();
     }
 
     /**
@@ -83,7 +98,7 @@ public abstract class ReadWalker extends GATKTool {
      */
     @Override
     public void traverse() {
-        final GenomeLocParser genomeLocParser = reference != null ? new GenomeLocParser(reference.getSequenceDictionary()) : null;
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
 
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
@@ -91,8 +106,10 @@ public abstract class ReadWalker extends GATKTool {
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(filter)
                 .forEach(read -> {
-                    final ReferenceContext refContext = reference == null ? null : new ReferenceContext(reference, genomeLocParser.createGenomeLoc(read));
-                    apply(read, refContext);
+                    final GenomeLoc readInterval = genomeLocParser.createGenomeLoc(read);
+                    apply(read,
+                          reference == null ? Optional.empty() : Optional.of(new ReferenceContext(reference, readInterval)),
+                          features == null  ? Optional.empty() : Optional.of(new FeatureContext(features, readInterval)));
                 });
     }
 
@@ -117,13 +134,13 @@ public abstract class ReadWalker extends GATKTool {
      * TODO: Determine whether and to what degree the GATK engine should provide a reduce operation
      * TODO: to complement this operation. At a minimum, we should make apply() return a value to
      * TODO: discourage statefulness in walkers, but how this value should be handled is TBD.
-     *
      * @param read current read
-     * @param referenceContext Reference bases spanning the current read (null if no reference was specified).
+     * @param referenceContext Reference bases spanning the current read (Optional.empty() if no reference was specified).
      *                         Can request extra bases of context around the current read's interval by invoking
      *                         {@link ReferenceContext#setWindow} on this object before calling {@link ReferenceContext#getBases}
+     * @param featureContext Features spanning the current read (Optional.empty() if no Feature inputs were specified for this tool)
      */
-    public abstract void apply(final SAMRecord read, final ReferenceContext referenceContext);
+    public abstract void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext );
 
     /**
      * Close the reads and reference data sources.
@@ -139,5 +156,8 @@ public abstract class ReadWalker extends GATKTool {
 
         if ( reference != null )
             reference.close();
+
+        if ( features != null )
+            features.close();
     }
 }
