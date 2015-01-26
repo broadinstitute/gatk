@@ -7,7 +7,7 @@ Hellbender
 The (eventually public) parts of the next generation of GATK/Picard/Prometheus methods engine and tools.
 
 
-To build, run `gradle install`.
+To build, run `gradle install` (gradle 2.2.1 recommended).
 
 To run the main program, run `build/install/hellbender/bin/hellbender`.
 
