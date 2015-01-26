@@ -151,7 +151,7 @@ public abstract class BaseTest {
     public static File createTempFile(final String name, final String extension) {
         try {
             final File file = File.createTempFile(name, extension);
-            //file.deleteOnExit();
+            file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
             new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
