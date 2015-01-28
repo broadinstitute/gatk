@@ -107,7 +107,7 @@ public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
         while (iterator.hasNext()) {
             final SAMRecord rec = iterator.next();
             if (!rec.isSecondaryOrSupplementary()) {
-                final String library = libraryIdGenerator.getLibraryName(header, rec);
+                final String library = LibraryIdGenerator.getLibraryName(header, rec);
                 DuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
                 if (metrics == null) {
                     metrics = new DuplicationMetrics();

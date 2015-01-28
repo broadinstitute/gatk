@@ -114,7 +114,7 @@ public class OpticalDuplicateFinder {
      */
     public boolean addLocationInformation(final String readName, final PhysicalLocation loc) {
         // Optimized version if using the default read name regex (== used on purpose):
-        if (this.readNameRegex == this.DEFAULT_READ_NAME_REGEX) {
+        if (this.readNameRegex == OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX) {
             final int fields = getRapidDefaultReadNameRegexSplit(readName, ':', tmpLocationFields);
             if (!(fields == 5 || fields == 7)) {
                 if (null != log && !this.warnedAboutRegexNotMatching) {

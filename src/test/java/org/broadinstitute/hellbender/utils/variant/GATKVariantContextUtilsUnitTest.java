@@ -1162,7 +1162,7 @@ public class GATKVariantContextUtilsUnitTest extends BaseTest {
 
         // uninformative test case
         final Genotype uninformativeGT = new GenotypeBuilder(base).alleles(CC).PL(uninformative).GQ(0).make();
-        final Genotype emptyGT = new GenotypeBuilder(base).alleles(GATKVariantContextUtils.NO_CALL_ALLELES).noPL().noGQ().make();
+        final Genotype emptyGT = new GenotypeBuilder(base).alleles(GATKVariantContextUtils.noCallAlleles(2)).noPL().noGQ().make();
         tests.add(new Object[]{new VariantContextBuilder(vcBase).genotypes(uninformativeGT).make(), AC, Arrays.asList(emptyGT)});
 
         // actually subsetting down from multiple alt values
@@ -1244,7 +1244,7 @@ public class GATKVariantContextUtilsUnitTest extends BaseTest {
 
         for ( final List<Allele> alleles : allSubsetAlleles ) {
             for ( final double[] pls : allPLs ) {
-                tests.add(new Object[]{GATKVariantContextUtils.GenotypeAssignmentMethod.SET_TO_NO_CALL, pls, AA, alleles, GATKVariantContextUtils.NO_CALL_ALLELES});
+                tests.add(new Object[]{GATKVariantContextUtils.GenotypeAssignmentMethod.SET_TO_NO_CALL, pls, AA, alleles, GATKVariantContextUtils.noCallAlleles(2)});
             }
         }
 
@@ -1363,7 +1363,7 @@ public class GATKVariantContextUtilsUnitTest extends BaseTest {
         // uninformative test cases
         final Genotype uninformativeGT = new GenotypeBuilder(base).alleles(CC).noAD().PL(uninformative).GQ(0).make();
         tests.add(new Object[]{new VariantContextBuilder(vcBase).genotypes(uninformativeGT).make(), new VariantContextBuilder(vcBase).alleles(AC).make(), Arrays.asList(uninformativeGT)});
-        final Genotype emptyGT = new GenotypeBuilder(base).alleles(GATKVariantContextUtils.NO_CALL_ALLELES).noAD().noPL().noGQ().make();
+        final Genotype emptyGT = new GenotypeBuilder(base).alleles(GATKVariantContextUtils.noCallAlleles(2)).noAD().noPL().noGQ().make();
         tests.add(new Object[]{new VariantContextBuilder(vcBase).genotypes(emptyGT).make(), new VariantContextBuilder(vcBase).alleles(AC).make(), Arrays.asList(emptyGT)});
 
         // actually subsetting down from multiple alt values
