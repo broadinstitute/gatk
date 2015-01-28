@@ -183,7 +183,7 @@ public class BaseUtilsUnitTest extends BaseTest {
     }
 
     private void compareRCStringToExpected(String fw, String rcExp) {
-        String rcObs = BaseUtils.simpleReverseComplement(fw);
+        String rcObs = new String(BaseUtils.simpleReverseComplement(fw.getBytes()));
 
         Assert.assertTrue(rcObs.equals(rcExp));
     }

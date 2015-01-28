@@ -47,7 +47,7 @@ public class MarkDuplicatesWithMateCigarIterator implements SAMRecordIterator {
      * duplicate marking flag.  By definition, any record in the toMarkQueue will also be in the outputBuffer,
      * so we can omit checking the size of the toMarkQueue in some cases.
      */
-    private SamRecordTrackingBuffer outputBuffer = null;
+    private SamRecordTrackingBuffer<SamRecordWithOrdinalAndSetDuplicateReadFlag> outputBuffer = null;
 
     /**
      * The queue that stores the records that currently are not marked as duplicates.  These need to be kept until

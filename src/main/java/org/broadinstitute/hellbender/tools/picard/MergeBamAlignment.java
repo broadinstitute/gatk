@@ -169,10 +169,10 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
         BestEndMapq(BestEndMapqPrimaryAlignmentStrategy.class),
         MostDistant(MostDistantPrimaryAlignmentSelectionStrategy.class);
 
-        private final Class<PrimaryAlignmentSelectionStrategy> clazz;
+        private final Class<? extends PrimaryAlignmentSelectionStrategy> clazz;
 
-        PrimaryAlignmentStrategy(final Class<?> clazz) {
-            this.clazz = (Class<PrimaryAlignmentSelectionStrategy>) clazz;
+        PrimaryAlignmentStrategy(final Class<? extends PrimaryAlignmentSelectionStrategy> clazz) {
+            this.clazz = clazz;
         }
 
         PrimaryAlignmentSelectionStrategy newInstance() {
