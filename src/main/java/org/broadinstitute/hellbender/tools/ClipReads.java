@@ -314,7 +314,6 @@ public final class ClipReads extends ReadWalker {
      *
      * @param ref  the reference bases that correspond to our read, if a reference was provided
      * @param read the read itself, as a GATKSAMRecord
-     * @return the ReadClipper object describing what should be done to clip this read
      */
     @Override
     public void apply(SAMRecord read, ReferenceContext ref) {
@@ -348,7 +347,7 @@ public final class ClipReads extends ReadWalker {
      * @param bases
      */
     private void addSeqToClip(String name, byte[] bases) {
-        SeqToClip clip = new SeqToClip(name, StringUtil.bytesToString(bases));
+        SeqToClip clip = new SeqToClip(name, bases);
         sequencesToClip.add(clip);
         logger.info(String.format("Creating sequence clipper %s: %s/%s", clip.name, clip.seq, clip.revSeq));
     }
@@ -491,7 +490,7 @@ public final class ClipReads extends ReadWalker {
         if (outputBam != null) {
             outputBam.addAlignment(clippedRead);
         } else {
-            out.println(clippedRead.format());
+            out.println(clippedRead.getSAMString());
         }
 
         accumulator.nTotalReads++;
@@ -513,11 +512,11 @@ public final class ClipReads extends ReadWalker {
         String seq, revSeq;
         Pattern fwdPat, revPat;
 
-        public SeqToClip(String name, String seq) {
+        public SeqToClip(String name, byte[] bytez) {
             this.name = name;
-            this.seq = seq;
+            this.seq = new String(bytez);
             this.fwdPat = Pattern.compile(seq, Pattern.CASE_INSENSITIVE);
-            this.revSeq = BaseUtils.simpleReverseComplement(seq);
+            this.revSeq = new String(BaseUtils.simpleReverseComplement(bytez));
             this.revPat = Pattern.compile(revSeq, Pattern.CASE_INSENSITIVE);
         }
     }
