@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.markduplicates;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.iterators.MarkDuplicatesWithMateCigarIterator;
 import org.broadinstitute.hellbender.utils.sam.markduplicates.AbstractMarkDuplicatesCommandLineProgram;
@@ -39,14 +39,14 @@ import java.util.Set;
 public class MarkDuplicatesWithMateCigar extends AbstractMarkDuplicatesCommandLineProgram {
     private final Log log = Log.getInstance(MarkDuplicatesWithMateCigar.class);
 
-    @Option(doc = "The minimum distance to buffer records to account for clipping on the 5' end of the records." +
+    @Argument(doc = "The minimum distance to buffer records to account for clipping on the 5' end of the records." +
             "Set this number to -1 to use twice the first read's read length (or 100, whichever is smaller).", optional = true)
     public int MINIMUM_DISTANCE = -1;
 
-    @Option(doc = "Skip record pairs with no mate cigar and include them in the output.")
+    @Argument(doc = "Skip record pairs with no mate cigar and include them in the output.")
     boolean SKIP_PAIRS_WITH_NO_MATE_CIGAR = true;
 
-    @Option(doc = "The block size for use in the coordinate-sorted record buffer.", optional = true)
+    @Argument(doc = "The block size for use in the coordinate-sorted record buffer.", optional = true)
     public int BLOCK_SIZE = 100000;
 
     /** Warnings that will only be emitted once */

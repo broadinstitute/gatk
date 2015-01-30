@@ -20,10 +20,10 @@ public class CleanSam extends PicardCommandLineProgram {
 
     static final String USAGE = "Cleans the provided SAM/BAM, soft-clipping beyond-end-of-reference alignments and setting MAPQ to 0 for unmapped reads";
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "Input SAM to be cleaned.")
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM to be cleaned.")
     public File INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Where to write cleaned SAM.")
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Where to write cleaned SAM.")
     public File OUTPUT;
 
     /**

@@ -21,41 +21,41 @@ import java.util.Arrays;
 )
 public class AddOrReplaceReadGroups extends PicardCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam).")
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam).")
     public File INPUT = null;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (bam or sam).")
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (bam or sam).")
     public File OUTPUT = null;
 
-    @Option(shortName = StandardOptionDefinitions.SORT_ORDER_SHORT_NAME, optional = true,
+    @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, optional = true,
             doc = "Optional sort order to output in. If not supplied OUTPUT is in the same order as INPUT.")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
-    @Option(shortName = "ID", doc = "Read Group ID")
+    @Argument(shortName = "ID", doc = "Read Group ID")
     public String RGID = "1";
 
-    @Option(shortName = "LB", doc = "Read Group Library")
+    @Argument(shortName = "LB", doc = "Read Group Library")
     public String RGLB;
 
-    @Option(shortName = "PL", doc = "Read Group platform (e.g. illumina, solid)")
+    @Argument(shortName = "PL", doc = "Read Group platform (e.g. illumina, solid)")
     public String RGPL;
 
-    @Option(shortName = "PU", doc = "Read Group platform unit (eg. run barcode)")
+    @Argument(shortName = "PU", doc = "Read Group platform unit (eg. run barcode)")
     public String RGPU;
 
-    @Option(shortName = "SM", doc = "Read Group sample name")
+    @Argument(shortName = "SM", doc = "Read Group sample name")
     public String RGSM;
 
-    @Option(shortName = "CN", doc = "Read Group sequencing center name", optional = true)
+    @Argument(shortName = "CN", doc = "Read Group sequencing center name", optional = true)
     public String RGCN;
 
-    @Option(shortName = "DS", doc = "Read Group description", optional = true)
+    @Argument(shortName = "DS", doc = "Read Group description", optional = true)
     public String RGDS;
 
-    @Option(shortName = "DT", doc = "Read Group run date", optional = true)
+    @Argument(shortName = "DT", doc = "Read Group run date", optional = true)
     public Iso8601Date RGDT;
 
-    @Option(shortName = "PI", doc = "Read Group predicted insert size", optional = true)
+    @Argument(shortName = "PI", doc = "Read Group predicted insert size", optional = true)
     public Integer RGPI;
 
     private final Log log = Log.getInstance(AddOrReplaceReadGroups.class);

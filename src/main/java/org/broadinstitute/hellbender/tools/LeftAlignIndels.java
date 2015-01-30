@@ -54,7 +54,7 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -99,7 +99,7 @@ import java.io.File;
 )
 public class LeftAlignIndels extends ReadWalker {
 
-    @Option(doc="Output BAM")
+    @Argument(doc="Output BAM")
     private File OUTPUT;
 
     private SAMFileWriter outputWriter = null;

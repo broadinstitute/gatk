@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.examples;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -24,7 +24,7 @@ import java.io.PrintStream;
 )
 public class PrintReadsWithReference extends ReadWalker {
 
-    @Option(fullName = StandardOptionDefinitions.OUTPUT_LONG_NAME, shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
     public File OUTPUT_FILE = null;
 
     private PrintStream outputStream = null;

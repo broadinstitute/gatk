@@ -14,13 +14,13 @@ public class SpecialArgumentsCollection implements ArgumentCollectionDefinition 
     public static final String VERSION_FULLNAME = "version";
     public static final String ARGUMENTS_FILE_FULLNAME = "arguments_file";
 
-    @Option(shortName = "h", fullName = HELP_FULLNAME, doc= "display the help message", special = true)
+    @Argument(shortName = "h", fullName = HELP_FULLNAME, doc= "display the help message", special = true)
     public boolean HELP = false;
 
-    @Option(fullName = VERSION_FULLNAME, doc="display the version number for this tool", special = true)
+    @Argument(fullName = VERSION_FULLNAME, doc="display the version number for this tool", special = true)
     public boolean VERSION = false;
 
-    @Option(fullName = ARGUMENTS_FILE_FULLNAME, doc="read one or more arguments files and add them to the command line", special = true)
+    @Argument(fullName = ARGUMENTS_FILE_FULLNAME, doc="read one or more arguments files and add them to the command line", special = true)
     public List<File> ARGUMENTS_FILE = new ArrayList<>();
 
 }

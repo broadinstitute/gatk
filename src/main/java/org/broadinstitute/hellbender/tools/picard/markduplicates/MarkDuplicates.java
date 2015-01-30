@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.markduplicates;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.sam.markduplicates.*;
@@ -34,17 +34,17 @@ public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
      * be enough file handles.
      */
 
-    @Option(shortName = "MAX_SEQS",
+    @Argument(shortName = "MAX_SEQS",
             doc = "This option is obsolete. ReadEnds will always be spilled to disk.")
     public int MAX_SEQUENCES_FOR_DISK_READ_ENDS_MAP = 50000;
 
-    @Option(shortName = "MAX_FILE_HANDLES",
+    @Argument(shortName = "MAX_FILE_HANDLES",
             doc = "Maximum number of file handles to keep open when spilling read ends to disk. " +
                     "Set this number a little lower than the per-process maximum number of file that may be open. " +
                     "This number can be found by executing the 'ulimit -n' command on a Unix system.")
     public int MAX_FILE_HANDLES_FOR_READ_ENDS_MAP = 8000;
 
-    @Option(doc = "This number, plus the maximum RAM available to the JVM, determine the memory footprint used by " +
+    @Argument(doc = "This number, plus the maximum RAM available to the JVM, determine the memory footprint used by " +
             "some of the sorting collections.  If you are running out of memory, try reducing this number.")
     public double SORTING_COLLECTION_SIZE_RATIO = 0.25;
 

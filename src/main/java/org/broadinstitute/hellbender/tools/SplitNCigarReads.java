@@ -66,7 +66,7 @@ import org.broadinstitute.hellbender.utils.OverhangFixingManager;
 import org.broadinstitute.hellbender.utils.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
-import static org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions.*;
+import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -89,13 +89,13 @@ import java.util.stream.StreamSupport;
 )
 public class SplitNCigarReads extends CommandLineProgram {
 
-    @Option(fullName = INPUT_LONG_NAME, shortName= INPUT_SHORT_NAME, doc="The SAM/BAM/CRAM file to read from.")
+    @Argument(fullName = INPUT_LONG_NAME, shortName= INPUT_SHORT_NAME, doc="The SAM/BAM/CRAM file to read from.")
     public File INPUT;
 
-    @Option(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
+    @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
     protected File OUTPUT;
 
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
+    @Argument(shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
             common = true, optional = true)
     public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
@@ -104,7 +104,7 @@ public class SplitNCigarReads extends CommandLineProgram {
      * a RNAseq pipeline since the problem might come up when using RNAseq aligner such as Tophat2 with provided transcriptoms.
      * You should only use this if you know that your reads have that problem.
      */
-    @Option(fullName = "refactor_NDN_cigar_string", shortName = "fixNDN", doc = "refactor cigar string with NDN elements to one element", optional = true)
+    @Argument(fullName = "refactor_NDN_cigar_string", shortName = "fixNDN", doc = "refactor cigar string with NDN elements to one element", optional = true)
     public boolean REFACTOR_NDN_CIGAR_READS = false;
 
     /**
@@ -112,7 +112,7 @@ public class SplitNCigarReads extends CommandLineProgram {
      * overhang fixing in regions with too much coverage.  Just make sure to give Java enough memory!  4Gb should be
      * enough with the default value.
      */
-    @Option(fullName="maxReadsInMemory", shortName="maxInMemory", doc="max reads allowed to be kept in memory at a time by the BAM writer", optional=true)
+    @Argument(fullName="maxReadsInMemory", shortName="maxInMemory", doc="max reads allowed to be kept in memory at a time by the BAM writer", optional=true)
     protected int MAX_RECORDS_IN_MEMORY = 150000;
 
     /**
@@ -120,16 +120,16 @@ public class SplitNCigarReads extends CommandLineProgram {
      * It is still possible in some cases that the overhang could get clipped if the number of mismatches do not exceed this
      * value, e.g. if most of the overhang mismatches.
      */
-    @Option(fullName="maxMismatchesInOverhang", shortName="maxMismatches", doc="max number of mismatches allowed in the overhang", optional=true)
+    @Argument(fullName="maxMismatchesInOverhang", shortName="maxMismatches", doc="max number of mismatches allowed in the overhang", optional=true)
     protected int MAX_MISMATCHES_IN_OVERHANG = 1;
 
     /**
      * If there are more than this many bases in the overhang, we won't try to hard-clip them out
      */
-    @Option(fullName="maxBasesInOverhang", shortName="maxOverhang", doc="max number of bases allowed in the overhang", optional=true)
+    @Argument(fullName="maxBasesInOverhang", shortName="maxOverhang", doc="max number of bases allowed in the overhang", optional=true)
     protected int MAX_BASES_TO_CLIP = 40;
 
-    @Option(fullName="doNotFixOverhangs", shortName="doNotFixOverhangs", doc="do not have the walker hard-clip overhanging sections of the reads", optional=true)
+    @Argument(fullName="doNotFixOverhangs", shortName="doNotFixOverhangs", doc="do not have the walker hard-clip overhanging sections of the reads", optional=true)
     protected boolean doNotFixOverhangs = false;
 
     /**

@@ -20,7 +20,7 @@ import java.io.IOException;
 public class CheckTerminatorBlock extends PicardCommandLineProgram {
     static final String USAGE = "Returns true if the gzip file's (e.g., BAM) last block is well-formed; false otherwise";
 
-    @Option(shortName= StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The block compressed file to check.")
+    @Argument(shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The block compressed file to check.")
     public File INPUT;
 
     @Override

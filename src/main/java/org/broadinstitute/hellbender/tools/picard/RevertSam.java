@@ -26,26 +26,26 @@ import java.util.*;
 )
 public class RevertSam extends PicardCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
     public File INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM/BAM file to create.")
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM/BAM file to create.")
     public File OUTPUT;
 
-    @Option(shortName = "SO", doc = "The sort order to create the reverted output file with.")
+    @Argument(shortName = "SO", doc = "The sort order to create the reverted output file with.")
     public SAMFileHeader.SortOrder SORT_ORDER = SAMFileHeader.SortOrder.queryname;
 
-    @Option(shortName = StandardOptionDefinitions.USE_ORIGINAL_QUALITIES_SHORT_NAME, doc = "True to restore original qualities from the OQ field to the QUAL field if available.")
+    @Argument(shortName = StandardArgumentDefinitions.USE_ORIGINAL_QUALITIES_SHORT_NAME, doc = "True to restore original qualities from the OQ field to the QUAL field if available.")
     public boolean RESTORE_ORIGINAL_QUALITIES = true;
 
-    @Option(doc = "Remove duplicate read flags from all reads.  Note that if this is true and REMOVE_ALIGNMENT_INFORMATION==false, " +
+    @Argument(doc = "Remove duplicate read flags from all reads.  Note that if this is true and REMOVE_ALIGNMENT_INFORMATION==false, " +
             " the output may have the unusual but sometimes desirable trait of having unmapped reads that are marked as duplicates.")
     public boolean REMOVE_DUPLICATE_INFORMATION = true;
 
-    @Option(doc = "Remove all alignment information from the file.")
+    @Argument(doc = "Remove all alignment information from the file.")
     public boolean REMOVE_ALIGNMENT_INFORMATION = true;
 
-    @Option(doc = "When removing alignment information, the set of optional tags to remove.")
+    @Argument(doc = "When removing alignment information, the set of optional tags to remove.")
     public List<String> ATTRIBUTE_TO_CLEAR = new ArrayList<>(Arrays.asList(  //NOTE: Arrays.asList is immutable but we need a mutable
             SAMTag.NM.name(),                                                //list so we do this wrapping dance here.
             SAMTag.UQ.name(),
@@ -55,24 +55,24 @@ public class RevertSam extends PicardCommandLineProgram {
             SAMTag.SA.name(),  // Supplementary alignment metadata
             SAMTag.MC.name())); // Mate Cigar
 
-    @Option(doc = "WARNING: This option is potentially destructive. If enabled will discard reads in order to produce " +
+    @Argument(doc = "WARNING: This option is potentially destructive. If enabled will discard reads in order to produce " +
             "a consistent output BAM. Reads discarded include (but are not limited to) paired reads with missing " +
             "mates, duplicated records, records with mismatches in length of bases and qualities. This option can " +
             "only be enabled if the output sort order is queryname and will always cause sorting to occur.")
     public boolean SANITIZE = false;
 
-    @Option(doc = "If SANITIZE=true and higher than MAX_DISCARD_FRACTION reads are discarded due to sanitization then" +
+    @Argument(doc = "If SANITIZE=true and higher than MAX_DISCARD_FRACTION reads are discarded due to sanitization then" +
             "the program will exit with an Exception instead of exiting cleanly. Output BAM will still be valid.")
     public double MAX_DISCARD_FRACTION = 0.01;
 
-    @Option(doc = "The sample alias to use in the reverted output file.  This will override the existing " +
+    @Argument(doc = "The sample alias to use in the reverted output file.  This will override the existing " +
             "sample alias in the file and is used only if all the read groups in the input file have the " +
-            "same sample alias ", shortName = StandardOptionDefinitions.SAMPLE_ALIAS_SHORT_NAME, optional = true)
+            "same sample alias ", shortName = StandardArgumentDefinitions.SAMPLE_ALIAS_SHORT_NAME, optional = true)
     public String SAMPLE_ALIAS;
 
-    @Option(doc = "The library name to use in the reverted output file.  This will override the existing " +
+    @Argument(doc = "The library name to use in the reverted output file.  This will override the existing " +
             "sample alias in the file and is used only if all the read groups in the input file have the " +
-            "same sample alias ", shortName = StandardOptionDefinitions.LIBRARY_NAME_SHORT_NAME, optional = true)
+            "same sample alias ", shortName = StandardArgumentDefinitions.LIBRARY_NAME_SHORT_NAME, optional = true)
     public String LIBRARY_NAME;
 
     private final static Log log = Log.getInstance(RevertSam.class);

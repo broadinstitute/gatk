@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
 import java.io.File;
@@ -21,10 +21,10 @@ import java.util.List;
  */
 public abstract class ReadWalker extends GATKTool {
 
-    @Option(fullName = StandardOptionDefinitions.INPUT_LONG_NAME, shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "One or more BAM/SAM/CRAM files containing reads", common = false, optional = false, minElements = 1)
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "One or more BAM/SAM/CRAM files containing reads", common = false, optional = false, minElements = 1)
     public List<File> READS_FILES;
 
-    @Option(fullName = StandardOptionDefinitions.REFERENCE_LONG_NAME, shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence", common = false, optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence", common = false, optional = true)
     public File REFERENCE_FILE;
 
     private ReadsDataSource reads = null;

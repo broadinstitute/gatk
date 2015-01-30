@@ -32,71 +32,71 @@ import java.util.*;
 )
 public class SamToFastq extends PicardCommandLineProgram {
 
-    @Option(doc = "Input SAM/BAM file to extract reads from", shortName = StandardOptionDefinitions.INPUT_SHORT_NAME)
+    @Argument(doc = "Input SAM/BAM file to extract reads from", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Option(shortName = "F", doc = "Output fastq file (single-end fastq or, if paired, first end of the pair fastq).",
+    @Argument(shortName = "F", doc = "Output fastq file (single-end fastq or, if paired, first end of the pair fastq).",
             mutex = {"OUTPUT_PER_RG"})
     public File FASTQ;
 
-    @Option(shortName = "F2", doc = "Output fastq file (if paired, second end of the pair fastq).", optional = true,
+    @Argument(shortName = "F2", doc = "Output fastq file (if paired, second end of the pair fastq).", optional = true,
             mutex = {"OUTPUT_PER_RG"})
     public File SECOND_END_FASTQ;
 
-    @Option(shortName = "FU", doc = "Output fastq file for unpaired reads; may only be provided in paired-fastq mode", optional = true, mutex = {"OUTPUT_PER_RG"})
+    @Argument(shortName = "FU", doc = "Output fastq file for unpaired reads; may only be provided in paired-fastq mode", optional = true, mutex = {"OUTPUT_PER_RG"})
     public File UNPAIRED_FASTQ;
 
-    @Option(shortName = "OPRG", doc = "Output a fastq file per read group (two fastq files per read group if the group is paired).",
+    @Argument(shortName = "OPRG", doc = "Output a fastq file per read group (two fastq files per read group if the group is paired).",
             optional = true, mutex = {"FASTQ", "SECOND_END_FASTQ", "UNPAIRED_FASTQ"})
     public boolean OUTPUT_PER_RG;
 
-    @Option(shortName="RGT", doc = "The read group tag (PU or ID) to be used to output a fastq file per read group.")
+    @Argument(shortName="RGT", doc = "The read group tag (PU or ID) to be used to output a fastq file per read group.")
     public String RG_TAG = "PU";
 
-    @Option(shortName = "ODIR", doc = "Directory in which to output the fastq file(s).  Used only when OUTPUT_PER_RG is true.",
+    @Argument(shortName = "ODIR", doc = "Directory in which to output the fastq file(s).  Used only when OUTPUT_PER_RG is true.",
             optional = true)
     public File OUTPUT_DIR;
 
-    @Option(shortName = "RC", doc = "Re-reverse bases and qualities of reads with negative strand flag set before writing them to fastq",
+    @Argument(shortName = "RC", doc = "Re-reverse bases and qualities of reads with negative strand flag set before writing them to fastq",
             optional = true)
     public boolean RE_REVERSE = true;
 
-    @Option(shortName = "INTER", doc = "Will generate an interleaved fastq if paired, each line will have /1 or /2 to describe which end it came from")
+    @Argument(shortName = "INTER", doc = "Will generate an interleaved fastq if paired, each line will have /1 or /2 to describe which end it came from")
     public boolean INTERLEAVE = false;
 
-    @Option(shortName = "NON_PF", doc = "Include non-PF reads from the SAM file into the output " +
+    @Argument(shortName = "NON_PF", doc = "Include non-PF reads from the SAM file into the output " +
             "FASTQ files. PF means 'passes filtering'. Reads whose 'not passing quality controls' " +
             "flag is set are non-PF reads.")
     public boolean INCLUDE_NON_PF_READS = false;
 
-    @Option(shortName = "CLIP_ATTR", doc = "The attribute that stores the position at which " +
+    @Argument(shortName = "CLIP_ATTR", doc = "The attribute that stores the position at which " +
             "the SAM record should be clipped", optional = true)
     public String CLIPPING_ATTRIBUTE;
 
-    @Option(shortName = "CLIP_ACT", doc = "The action that should be taken with clipped reads: " +
+    @Argument(shortName = "CLIP_ACT", doc = "The action that should be taken with clipped reads: " +
             "'X' means the reads and qualities should be trimmed at the clipped position; " +
             "'N' means the bases should be changed to Ns in the clipped region; and any " +
             "integer means that the base qualities should be set to that value in the " +
             "clipped region.", optional = true)
     public String CLIPPING_ACTION;
 
-    @Option(shortName = "R1_TRIM", doc = "The number of bases to trim from the beginning of read 1.")
+    @Argument(shortName = "R1_TRIM", doc = "The number of bases to trim from the beginning of read 1.")
     public int READ1_TRIM = 0;
 
-    @Option(shortName = "R1_MAX_BASES", doc = "The maximum number of bases to write from read 1 after trimming. " +
+    @Argument(shortName = "R1_MAX_BASES", doc = "The maximum number of bases to write from read 1 after trimming. " +
             "If there are fewer than this many bases left after trimming, all will be written.  If this " +
             "value is null then all bases left after trimming will be written.", optional = true)
     public Integer READ1_MAX_BASES_TO_WRITE;
 
-    @Option(shortName = "R2_TRIM", doc = "The number of bases to trim from the beginning of read 2.")
+    @Argument(shortName = "R2_TRIM", doc = "The number of bases to trim from the beginning of read 2.")
     public int READ2_TRIM = 0;
 
-    @Option(shortName = "R2_MAX_BASES", doc = "The maximum number of bases to write from read 2 after trimming. " +
+    @Argument(shortName = "R2_MAX_BASES", doc = "The maximum number of bases to write from read 2 after trimming. " +
             "If there are fewer than this many bases left after trimming, all will be written.  If this " +
             "value is null then all bases left after trimming will be written.", optional = true)
     public Integer READ2_MAX_BASES_TO_WRITE;
 
-    @Option(doc = "If true, include non-primary alignments in the output.  Support of non-primary alignments in SamToFastq " +
+    @Argument(doc = "If true, include non-primary alignments in the output.  Support of non-primary alignments in SamToFastq " +
             "is not comprehensive, so there may be exceptions if this is set to true and there are paired reads with non-primary alignments.")
     public boolean INCLUDE_NON_PRIMARY_ALIGNMENTS = false;
 

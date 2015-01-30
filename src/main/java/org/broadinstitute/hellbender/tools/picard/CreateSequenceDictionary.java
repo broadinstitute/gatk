@@ -29,21 +29,21 @@ import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
 public class CreateSequenceDictionary extends PicardCommandLineProgram {
 
     // The following attributes define the command-line arguments
-    @Option(doc = "Output SAM or BAM file containing only the sequence dictionary",
-            shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME)
+    @Argument(doc = "Output SAM or BAM file containing only the sequence dictionary",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 
-    @Option(doc = "Put into AS field of sequence dictionary entry if supplied", optional = true)
+    @Argument(doc = "Put into AS field of sequence dictionary entry if supplied", optional = true)
     public String GENOME_ASSEMBLY;
 
-    @Option(doc = "Put into UR field of sequence dictionary entry.  If not supplied, input reference file is used",
+    @Argument(doc = "Put into UR field of sequence dictionary entry.  If not supplied, input reference file is used",
             optional = true)
     public String URI;
 
-    @Option(doc = "Put into SP field of sequence dictionary entry", optional = true)
+    @Argument(doc = "Put into SP field of sequence dictionary entry", optional = true)
     public String SPECIES;
 
-    @Option(doc = "Stop after writing this many sequences.  For testing.")
+    @Argument(doc = "Stop after writing this many sequences.  For testing.")
     public int NUM_SEQUENCES = Integer.MAX_VALUE;
 
     /**

@@ -50,30 +50,30 @@ public class FilterReads extends PicardCommandLineProgram {
         }
     }
 
-    @Option(doc = "The SAM or BAM file that will be filtered.",
+    @Argument(doc = "The SAM or BAM file that will be filtered.",
             optional = false,
-            shortName = StandardOptionDefinitions.INPUT_SHORT_NAME)
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Option(doc = "Filter.", optional = false)
+    @Argument(doc = "Filter.", optional = false)
     public Filter FILTER = null;
 
-    @Option(doc = "Read List File containing reads that will be included or excluded from the OUTPUT SAM or BAM file.",
+    @Argument(doc = "Read List File containing reads that will be included or excluded from the OUTPUT SAM or BAM file.",
             optional = true,
             shortName = "RLF")
     public File READ_LIST_FILE;
 
-    @Option(
+    @Argument(
             doc = "SortOrder of the OUTPUT SAM or BAM file, otherwise use the SortOrder of the INPUT file.",
             optional = true, shortName = "SO")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
-    @Option(
+    @Argument(
             doc = "Create .reads files (for debugging purposes)",
             optional = true)
     public boolean WRITE_READS_FILES = true;
 
-    @Option(doc = "SAM or BAM file to write read excluded results to",
+    @Argument(doc = "SAM or BAM file to write read excluded results to",
             optional = false, shortName = "O")
     public File OUTPUT;
 

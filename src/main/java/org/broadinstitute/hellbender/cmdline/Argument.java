@@ -41,7 +41,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 @Documented
-public @interface Option {
+public @interface Argument {
 
     /**
      * The full name of the command-line argument.  Full names should be

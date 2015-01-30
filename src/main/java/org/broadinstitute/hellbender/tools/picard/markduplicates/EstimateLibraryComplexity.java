@@ -7,8 +7,8 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
@@ -59,28 +59,28 @@ import static java.lang.Math.pow;
 )
 public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "One or more files to combine and " +
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "One or more files to combine and " +
             "estimate library complexity from. Reads can be mapped or unmapped.")
     public List<File> INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file to writes per-library metrics to.")
     public File OUTPUT;
 
-    @Option(doc = "The minimum number of bases at the starts of reads that must be identical for reads to " +
+    @Argument(doc = "The minimum number of bases at the starts of reads that must be identical for reads to " +
             "be grouped together for duplicate detection.  In effect total_reads / 4^max_id_bases reads will " +
             "be compared at a time, so lower numbers will produce more accurate results but consume " +
             "exponentially more memory and CPU.")
     public int MIN_IDENTICAL_BASES = 5;
 
-    @Option(doc = "The maximum rate of differences between two reads to call them identical.")
+    @Argument(doc = "The maximum rate of differences between two reads to call them identical.")
     public double MAX_DIFF_RATE = 0.03;
 
-    @Option(doc = "The minimum mean quality of the bases in a read pair for the read to be analyzed. Reads with " +
+    @Argument(doc = "The minimum mean quality of the bases in a read pair for the read to be analyzed. Reads with " +
             "lower average quality are filtered out and not considered in any calculations.")
     public int MIN_MEAN_QUALITY = 20;
 
-    @Option(doc = "Do not process self-similar groups that are this many times over the mean expected group size. " +
+    @Argument(doc = "Do not process self-similar groups that are this many times over the mean expected group size. " +
             "I.e. if the input contains 10m read pairs and MIN_IDENTICAL_BASES is set to 5, then the mean expected " +
             "group size would be approximately 10 reads.")
     public int MAX_GROUP_RATIO = 500;
