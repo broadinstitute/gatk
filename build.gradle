@@ -74,7 +74,8 @@ dependencies {
     compile 'org.apache.commons:commons-collections4:4.0'
     compile 'commons-io:commons-io:2.4'
     compile 'org.reflections:reflections:0.9.9'
-    compile 'net.sf.jopt-simple:jopt-simple:4.8'
+    compile 'net.sf.jopt-simple:jopt-simple:4.9-beta-1'
+
 
     testCompile 'org.testng:testng:6.8.8'
 }

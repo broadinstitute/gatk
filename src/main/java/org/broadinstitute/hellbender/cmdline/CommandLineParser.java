@@ -24,10 +24,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.StringUtil;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
-import joptsimple.OptionSpecBuilder;
+import joptsimple.*;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -220,7 +217,6 @@ public class CommandLineParser {
                     .forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
     }
 
-
     /**
      * Parse command-line arguments, and store values in callerArguments object passed to ctor.
      *
@@ -234,10 +230,11 @@ public class CommandLineParser {
         this.messageStream = messageStream;
 
         OptionParser parser = new OptionParser();
+
         for (ArgumentDefinition arg : argumentDefinitions){
             OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.doc);
             if (arg.isFlag()) {
-                bld.withOptionalArg();
+                bld.withOptionalArg().withValuesConvertedBy(new StrictBooleanConverter());
             } else {
                 bld.withRequiredArg();
             }
