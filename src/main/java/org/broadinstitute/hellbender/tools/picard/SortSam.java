@@ -21,13 +21,13 @@ import java.io.File;
 )
 public class SortSam extends PicardCommandLineProgram {
 
-    @Option(doc = "The BAM or SAM file to sort.", shortName = StandardOptionDefinitions.INPUT_SHORT_NAME)
+    @Argument(doc = "The BAM or SAM file to sort.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Option(doc = "The sorted BAM or SAM output file. ", shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME)
+    @Argument(doc = "The sorted BAM or SAM output file. ", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 
-    @Option(shortName = StandardOptionDefinitions.SORT_ORDER_SHORT_NAME, doc = "Sort order of output file")
+    @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, doc = "Sort order of output file")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
     private final Log log = Log.getInstance(SortSam.class);

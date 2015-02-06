@@ -42,7 +42,7 @@ import java.util.*;
  *
  * To use:
  *
- * 1. Extend this class with a concrete class that has data members annotated with @Option, @PositionalArguments
+ * 1. Extend this class with a concrete class that has data members annotated with @Argument, @PositionalArguments
  * and/or @Usage annotations.
  *
  * 2. If there is any custom command-line validation, override customCommandLineValidation().  When this method is
@@ -55,17 +55,17 @@ import java.util.*;
  */
 public abstract class CommandLineProgram {
 
-    @Option(common=true, optional=true)
+    @Argument(common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
 
-    @ArgumentCollection(doc="Special Options that have meaning to the argument parsing system.  " +
+    @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
     public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
 
-    @Option(doc = "Control verbosity of logging.", common=true)
+    @Argument(doc = "Control verbosity of logging.", common=true)
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
-    @Option(doc = "Whether to suppress job-summary info on System.err.", common=true)
+    @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
     private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
 
@@ -163,7 +163,7 @@ public abstract class CommandLineProgram {
     /**
     * Put any custom command-line validation in an override of this method.
     * clp is initialized at this point and can be used to print usage and access argv.
-     * Any options set by command-line parser can be validated.
+     * Any arguments set by command-line parser can be validated.
     * @return null if command line is valid.  If command line is invalid, returns an array of error message
     * to be written to the appropriate place.
     */
@@ -178,7 +178,7 @@ public abstract class CommandLineProgram {
     protected boolean parseArgs(final String[] argv) {
 
         commandLineParser = new CommandLineParser(this);
-        final boolean ret = commandLineParser.parseOptions(System.err, argv);
+        final boolean ret = commandLineParser.parseArguments(System.err, argv);
         commandLine = commandLineParser.getCommandLine();
         if (!ret) {
             return false;

@@ -29,7 +29,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -99,14 +99,14 @@ public class SplitReadsTest extends CommandLineProgramTest {
         );
         outputDir.toFile().deleteOnExit();
 
-        args.add("-"+StandardOptionDefinitions.INPUT_SHORT_NAME);
+        args.add("-"+ StandardArgumentDefinitions.INPUT_SHORT_NAME);
         args.add(getTestDataDir() + "/" + TEST_DATA_PREFIX + fileExtension);
 
-        args.add("-"+StandardOptionDefinitions.OUTPUT_SHORT_NAME );
+        args.add("-"+ StandardArgumentDefinitions.OUTPUT_SHORT_NAME );
         args.add(outputDir.toString());
 
         if (isReferenceRequired(type)) {
-            args.add("-" + StandardOptionDefinitions.REFERENCE_SHORT_NAME );
+            args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME );
             args.add(getTestDataDir()+ "/" + REFERENCE_SEQUENCE);
         }
 

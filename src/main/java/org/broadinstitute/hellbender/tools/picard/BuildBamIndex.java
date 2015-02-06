@@ -24,14 +24,14 @@ public class BuildBamIndex extends PicardCommandLineProgram {
 
     private static final Log log = Log.getInstance(BuildBamIndex.class);
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "A BAM file or URL to process. Must be sorted in coordinate order.")
     public String INPUT;
 
     URL inputUrl = null;   // INPUT as URL
     File inputFile = null; // INPUT as File, if it can't be interpreted as a valid URL
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The BAM index file. Defaults to x.bai if INPUT is x.bam, otherwise INPUT.bai.\n" +
                     "If INPUT is a URL and OUTPUT is unspecified, defaults to a file in the current directory.", optional = true)
     public File OUTPUT;

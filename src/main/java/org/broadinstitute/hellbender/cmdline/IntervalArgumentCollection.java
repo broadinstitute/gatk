@@ -36,21 +36,21 @@ import java.util.List;
 
 public class IntervalArgumentCollection implements ArgumentCollectionDefinition {
     /**
-     * Use this option to perform the analysis over only part of the genome. This argument can be specified multiple times.
+     * Use this argument to perform the analysis over only part of the genome. This argument can be specified multiple times.
      * You can use samtools-style intervals either explicitly on the command line (e.g. -L 1 or -L 1:100-200) or
      * by loading in a file containing a list of intervals (e.g. -L myFile.intervals).
      */
-    @Option(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate")
+    @Argument(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate")
     final protected List<String> intervalStrings = new ArrayList<>();
 
     /**
-     * Use this option to exclude certain parts of the genome from the analysis (like -L, but the opposite).
+     * Use this argument to exclude certain parts of the genome from the analysis (like -L, but the opposite).
      * This argument can be specified multiple times. You can use samtools-style intervals either explicitly on the
      * command line (e.g. -XL 1 or -XL 1:100-200) or by loading in a file containing a list of intervals
      * (e.g. -XL myFile.intervals).
      *
      * */
-    @Option(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing")
+    @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing")
     final protected List<String> excludeIntervalStrings = new ArrayList<>();
 
     /**
@@ -62,7 +62,7 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      *
      * Note that if you specify both -L and -XL, the -XL interval set will be subtracted from the -L interval set.
      */
-    @Option(fullName = "interval_set_rule", shortName = "isr", doc = "Set merging approach to use for combining interval inputs")
+    @Argument(fullName = "interval_set_rule", shortName = "isr", doc = "Set merging approach to use for combining interval inputs")
     protected IntervalSetRule intervalSetRule = IntervalSetRule.UNION;
 
     /**
@@ -70,7 +70,7 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      * padding value of 20 would turn into '-L 1:80-120'. This is typically used to add padding around exons when
      * analyzing exomes.
      */
-    @Option(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval")
+    @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval")
     protected int intervalPadding = 0;
 
     final protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;

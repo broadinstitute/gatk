@@ -27,7 +27,7 @@ package org.broadinstitute.hellbender.cmdline;
  * A set of String constants in which the name of the constant (minus the _SHORT_NAME suffix)
  * is the standard long Option name, and the value of the constant is the standard shortName.
  */
-public class StandardOptionDefinitions {
+public class StandardArgumentDefinitions {
 
     public static final String INPUT_LONG_NAME = "input";
     public static final String OUTPUT_LONG_NAME = "output";

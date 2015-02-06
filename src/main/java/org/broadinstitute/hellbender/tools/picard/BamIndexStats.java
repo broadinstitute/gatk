@@ -28,7 +28,7 @@ public class BamIndexStats extends PicardCommandLineProgram {
 
     private static final Log log = Log.getInstance(BamIndexStats.class);
 
-    @Option(shortName= StandardOptionDefinitions.INPUT_SHORT_NAME,
+    @Argument(shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc="A BAM file to process.")
     public File INPUT;
 

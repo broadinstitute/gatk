@@ -25,7 +25,7 @@
 package org.broadinstitute.hellbender.utils.sam.markduplicates;
 
 import htsjdk.samtools.util.Log;
-import org.broadinstitute.hellbender.cmdline.Option;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 
 /**
@@ -38,7 +38,7 @@ public abstract class AbstractOpticalDuplicateFinderCommandLineProgram extends P
     protected static Log LOG = Log.getInstance(AbstractOpticalDuplicateFinderCommandLineProgram.class);
 
 
-    @Option(doc = "Regular expression that can be used to parse read names in the incoming SAM file. Read names are " +
+    @Argument(doc = "Regular expression that can be used to parse read names in the incoming SAM file. Read names are " +
             "parsed to extract three variables: tile/region, x coordinate and y coordinate. These values are used " +
             "to estimate the rate of optical duplication in order to give a more accurate estimated library size. " +
             "Set this option to null to disable optical duplicate detection. " +
@@ -51,7 +51,7 @@ public abstract class AbstractOpticalDuplicateFinderCommandLineProgram extends P
             optional = true)
     public String READ_NAME_REGEX = OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX;
 
-    @Option(doc = "The maximum offset between two duplicte clusters in order to consider them optical duplicates. This " +
+    @Argument(doc = "The maximum offset between two duplicte clusters in order to consider them optical duplicates. This " +
             "should usually be set to some fairly small number (e.g. 5-10 pixels) unless using later versions of the " +
             "Illumina pipeline that multiply pixel values by 10, in which case 50-100 is more normal.")
     public int OPTICAL_DUPLICATE_PIXEL_DISTANCE = OpticalDuplicateFinder.DEFAULT_OPTICAL_DUPLICATE_DISTANCE;

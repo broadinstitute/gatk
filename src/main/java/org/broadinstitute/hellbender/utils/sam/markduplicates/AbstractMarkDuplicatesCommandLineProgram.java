@@ -29,8 +29,8 @@ import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.Histogram;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 
@@ -45,52 +45,52 @@ import java.util.*;
  */
 public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more input SAM or BAM files to analyze. Must be coordinate sorted.")
     public List<File> INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The output file to write marked records to")
     public File OUTPUT;
 
-    @Option(shortName = "M",
+    @Argument(shortName = "M",
             doc = "File to write duplication metrics to")
     public File METRICS_FILE;
 
-    @Option(shortName = StandardOptionDefinitions.PROGRAM_RECORD_ID_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.PROGRAM_RECORD_ID_SHORT_NAME,
             doc = "The program record ID for the @PG record(s) created by this program. Set to null to disable " +
                     "PG record creation.  This string may have a suffix appended to avoid collision with other " +
                     "program record IDs.",
             optional = true)
     public String PROGRAM_RECORD_ID = "MarkDuplicates";
 
-    @Option(shortName = "PG_VERSION",
+    @Argument(shortName = "PG_VERSION",
             doc = "Value of VN tag of PG record to be created. If not specified, the version will be detected automatically.",
             optional = true)
     public String PROGRAM_GROUP_VERSION;
 
-    @Option(shortName = "PG_COMMAND",
+    @Argument(shortName = "PG_COMMAND",
             doc = "Value of CL tag of PG record to be created. If not supplied the command line will be detected automatically.",
             optional = true)
     public String PROGRAM_GROUP_COMMAND_LINE;
 
-    @Option(shortName = "PG_NAME",
+    @Argument(shortName = "PG_NAME",
             doc = "Value of PN tag of PG record to be created.")
     public String PROGRAM_GROUP_NAME = getClass().getSimpleName();
 
-    @Option(shortName = "CO",
+    @Argument(shortName = "CO",
             doc = "Comment(s) to include in the output file's header.",
             optional = true)
     public List<String> COMMENT = new ArrayList<String>();
 
-    @Option(doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.")
+    @Argument(doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.")
     public boolean REMOVE_DUPLICATES = false;
 
-    @Option(shortName = StandardOptionDefinitions.ASSUME_SORTED_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.ASSUME_SORTED_SHORT_NAME,
             doc = "If true, assume that the input file is coordinate sorted even if the header says otherwise.")
     public boolean ASSUME_SORTED = false;
 
-    @Option(shortName = "DS", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    @Argument(shortName = "DS", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public DuplicateScoringStrategy.ScoringStrategy DUPLICATE_SCORING_STRATEGY = ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
 
     /** The program groups that have been seen during the course of examining the input records. */

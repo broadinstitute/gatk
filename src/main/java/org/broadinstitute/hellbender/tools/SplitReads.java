@@ -30,16 +30,16 @@ public class SplitReads extends ReadWalker {
     public static final String READ_GROUP_SHORT_NAME = "RG";
 
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardOptionDefinitions.OUTPUT_LONG_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The directory to output SAM or BAM or CRAM files.")
     public File OUTPUT_DIRECTORY = new File("");
 
-    @Option(shortName = SAMPLE_SHORT_NAME,
+    @Argument(shortName = SAMPLE_SHORT_NAME,
             doc = "Split file by sample.")
     public boolean SAMPLE;
 
-    @Option(shortName = READ_GROUP_SHORT_NAME,
+    @Argument(shortName = READ_GROUP_SHORT_NAME,
             doc = "Split file by read group.")
     public boolean READ_GROUP;
 

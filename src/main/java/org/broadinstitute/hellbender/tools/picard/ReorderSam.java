@@ -29,22 +29,22 @@ import java.util.Map;
 )
 public class ReorderSam extends PicardCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam) to extract reads from.")
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam) to extract reads from.")
     public File INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (bam or sam) to write extracted reads to.")
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (bam or sam) to write extracted reads to.")
     public File OUTPUT;
 
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence to reorder reads to match.  " +
+    @Argument(shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence to reorder reads to match.  " +
             "A sequence dictionary corresponding to the reference fasta is required.  Create one with CreateSequenceDictionary.jar.")
     public File REFERENCE;
 
-    @Option(shortName = "S", doc = "If true, then allows only a partial overlap of the BAM contigs with the new reference " +
+    @Argument(shortName = "S", doc = "If true, then allows only a partial overlap of the BAM contigs with the new reference " +
             "sequence contigs.  By default, this tool requires a corresponding contig in the new " +
             "reference for each read contig")
     public boolean ALLOW_INCOMPLETE_DICT_CONCORDANCE = false;
 
-    @Option(shortName = "U", doc = "If true, then permits mapping from a read contig to a new reference contig with the " +
+    @Argument(shortName = "U", doc = "If true, then permits mapping from a read contig to a new reference contig with the " +
             "same name but a different length.  Highly dangerous, only use if you know what you " +
             "are doing.")
     public boolean ALLOW_CONTIG_LENGTH_DISCORDANCE = false;

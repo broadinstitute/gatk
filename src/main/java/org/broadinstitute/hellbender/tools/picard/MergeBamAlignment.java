@@ -35,106 +35,106 @@ import java.util.List;
 public class MergeBamAlignment extends PicardCommandLineProgram {
 
     @Deprecated
-    @Option(doc = "This argument is ignored and will be removed.", shortName = "PE")
+    @Argument(doc = "This argument is ignored and will be removed.", shortName = "PE")
     public Boolean PAIRED_RUN;
 
-    @Option(shortName = "UNMAPPED",
+    @Argument(shortName = "UNMAPPED",
             doc = "Original SAM or BAM file of unmapped reads, which must be in queryname order.")
     public File UNMAPPED_BAM;
 
-    @Option(shortName = "ALIGNED",
+    @Argument(shortName = "ALIGNED",
             doc = "SAM or BAM file(s) with alignment data.",
             mutex = {"READ1_ALIGNED_BAM", "READ2_ALIGNED_BAM"},
             optional = true)
     public List<File> ALIGNED_BAM;
 
-    @Option(shortName = "R1_ALIGNED",
+    @Argument(shortName = "R1_ALIGNED",
             doc = "SAM or BAM file(s) with alignment data from the first read of a pair.",
             mutex = {"ALIGNED_BAM"},
             optional = true)
     public List<File> READ1_ALIGNED_BAM;
 
-    @Option(shortName = "R2_ALIGNED",
+    @Argument(shortName = "R2_ALIGNED",
             doc = "SAM or BAM file(s) with alignment data from the second read of a pair.",
             mutex = {"ALIGNED_BAM"},
             optional = true)
     public List<File> READ2_ALIGNED_BAM;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Merged SAM or BAM file to write to.")
     public File OUTPUT;
 
-    @Option(shortName = StandardOptionDefinitions.PROGRAM_RECORD_ID_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.PROGRAM_RECORD_ID_SHORT_NAME,
             doc = "The program group ID of the aligner (if not supplied by the aligned file).",
             optional = true)
     public String PROGRAM_RECORD_ID;
 
-    @Option(shortName = "PG_VERSION",
+    @Argument(shortName = "PG_VERSION",
             doc = "The version of the program group (if not supplied by the aligned file).",
             optional = true)
     public String PROGRAM_GROUP_VERSION;
 
-    @Option(shortName = "PG_COMMAND",
+    @Argument(shortName = "PG_COMMAND",
             doc = "The command line of the program group (if not supplied by the aligned file).",
             optional = true)
     public String PROGRAM_GROUP_COMMAND_LINE;
 
-    @Option(shortName = "PG_NAME",
+    @Argument(shortName = "PG_NAME",
             doc = "The name of the program group (if not supplied by the aligned file).",
             optional = true)
     public String PROGRAM_GROUP_NAME;
 
-    @Option(doc = "The expected jump size (required if this is a jumping library). Deprecated. Use EXPECTED_ORIENTATIONS instead",
+    @Argument(doc = "The expected jump size (required if this is a jumping library). Deprecated. Use EXPECTED_ORIENTATIONS instead",
             shortName = "JUMP",
             mutex = "EXPECTED_ORIENTATIONS",
             optional = true)
     public Integer JUMP_SIZE;
 
-    @Option(doc = "Whether to clip adapters where identified.")
+    @Argument(doc = "Whether to clip adapters where identified.")
     public boolean CLIP_ADAPTERS = true;
 
-    @Option(doc = "Whether the lane is bisulfite sequence (used when caculating the NM tag).")
+    @Argument(doc = "Whether the lane is bisulfite sequence (used when caculating the NM tag).")
     public boolean IS_BISULFITE_SEQUENCE = false;
 
-    @Option(doc = "Whether to output only aligned reads.  ")
+    @Argument(doc = "Whether to output only aligned reads.  ")
     public boolean ALIGNED_READS_ONLY = false;
 
-    @Option(doc = "The maximum number of insertions or deletions permitted for an alignment to be " +
+    @Argument(doc = "The maximum number of insertions or deletions permitted for an alignment to be " +
             "included. Alignments with more than this many insertions or deletions will be ignored. " +
             "Set to -1 to allow any number of insertions or deletions.",
             shortName = "MAX_GAPS")
     public int MAX_INSERTIONS_OR_DELETIONS = 1;
 
-    @Option(doc = "Reserved alignment attributes (tags starting with X, Y, or Z) that should be " +
+    @Argument(doc = "Reserved alignment attributes (tags starting with X, Y, or Z) that should be " +
             "brought over from the alignment data when merging.")
     public List<String> ATTRIBUTES_TO_RETAIN = new ArrayList<String>();
 
-    @Option(doc = "Attributes from the alignment record that should be removed when merging." +
+    @Argument(doc = "Attributes from the alignment record that should be removed when merging." +
             "  This overrides ATTRIBUTES_TO_RETAIN if they share common tags.")
     public List<String> ATTRIBUTES_TO_REMOVE = new ArrayList<String>();
 
-    @Option(shortName = "R1_TRIM",
+    @Argument(shortName = "R1_TRIM",
             doc = "The number of bases trimmed from the beginning of read 1 prior to alignment")
     public int READ1_TRIM = 0;
 
-    @Option(shortName = "R2_TRIM",
+    @Argument(shortName = "R2_TRIM",
             doc = "The number of bases trimmed from the beginning of read 2 prior to alignment")
     public int READ2_TRIM = 0;
 
-    @Option(shortName = "ORIENTATIONS",
+    @Argument(shortName = "ORIENTATIONS",
             doc = "The expected orientation of proper read pairs. Replaces JUMP_SIZE",
             mutex = "JUMP_SIZE",
             optional = true)
     public List<SamPairUtil.PairOrientation> EXPECTED_ORIENTATIONS;
 
-    @Option(doc = "Use the aligner's idea of what a proper pair is rather than computing in this program.")
+    @Argument(doc = "Use the aligner's idea of what a proper pair is rather than computing in this program.")
     public boolean ALIGNER_PROPER_PAIR_FLAGS = false;
 
-    @Option(shortName = StandardOptionDefinitions.SORT_ORDER_SHORT_NAME,
+    @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME,
             doc = "The order in which the merged reads should be output.")
     public SAMFileHeader.SortOrder SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
 
-    @Option(doc = "Strategy for selecting primary alignment when the aligner has provided more than one alignment " +
+    @Argument(doc = "Strategy for selecting primary alignment when the aligner has provided more than one alignment " +
             "for a pair or fragment, and none are marked as primary, more than one is marked as primary, or the primary " +
             "alignment is filtered out for some reason. " +
             "BestMapq expects that multiple alignments will be correlated with HI tag, and prefers the pair of " +
@@ -149,13 +149,13 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
             "ties are resolved arbitrarily.")
     public PrimaryAlignmentStrategy PRIMARY_ALIGNMENT_STRATEGY = PrimaryAlignmentStrategy.BestMapq;
 
-    @Option(doc = "For paired reads, soft clip the 3' end of each read if necessary so that it does not extend past the 5' end of its mate.")
+    @Argument(doc = "For paired reads, soft clip the 3' end of each read if necessary so that it does not extend past the 5' end of its mate.")
     public boolean CLIP_OVERLAPPING_READS = true;
 
-    @Option(doc = "If false, do not write secondary alignments to output.")
+    @Argument(doc = "If false, do not write secondary alignments to output.")
     public boolean INCLUDE_SECONDARY_ALIGNMENTS = true;
 
-    @Option(shortName = "MC", optional = true, doc = "Adds the mate CIGAR tag (MC) if true, does not if false.")
+    @Argument(shortName = "MC", optional = true, doc = "Adds the mate CIGAR tag (MC) if true, does not if false.")
     public Boolean ADD_MATE_CIGAR = true;
 
     private static final Log log = Log.getInstance(MergeBamAlignment.class);

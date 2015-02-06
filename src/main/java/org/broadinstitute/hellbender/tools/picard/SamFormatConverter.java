@@ -23,9 +23,9 @@ import java.io.File;
         programGroup = ReadProgramGroup.class
 )
 public class SamFormatConverter extends PicardCommandLineProgram {
-    @Option(doc = "The BAM or SAM file to parse.", shortName = StandardOptionDefinitions.INPUT_SHORT_NAME)
+    @Argument(doc = "The BAM or SAM file to parse.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
-    @Option(doc = "The BAM or SAM output file. ", shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME)
+    @Argument(doc = "The BAM or SAM output file. ", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 
     @Override

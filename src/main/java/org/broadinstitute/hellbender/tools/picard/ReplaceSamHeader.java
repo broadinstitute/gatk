@@ -23,14 +23,14 @@ import java.io.File;
 )
 public class ReplaceSamHeader extends PicardCommandLineProgram {
 
-    @Option(doc = "SAM file from which SAMRecords will be read.", shortName = StandardOptionDefinitions.INPUT_SHORT_NAME)
+    @Argument(doc = "SAM file from which SAMRecords will be read.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Option(doc = "SAM file from which SAMFileHeader will be read.")
+    @Argument(doc = "SAM file from which SAMFileHeader will be read.")
     public File HEADER;
 
-    @Option(doc = "SAMFileHeader from HEADER file will be written to this file, followed by SAMRecords from INPUT file",
-            shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME)
+    @Argument(doc = "SAMFileHeader from HEADER file will be written to this file, followed by SAMRecords from INPUT file",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 
     /**

@@ -23,21 +23,21 @@ import java.util.Iterator;
 )
 public class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
     public File INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM/BAM file to create.")
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM/BAM file to create.")
     public File OUTPUT;
 
-    @Option(shortName = "SO", doc = "The sort order to create the reverted output file with."
+    @Argument(shortName = "SO", doc = "The sort order to create the reverted output file with."
             + "By default, the sort order will be the same as the input.", optional = true)
     public SAMFileHeader.SortOrder SORT_ORDER = null;
 
-    @Option(shortName = StandardOptionDefinitions.USE_ORIGINAL_QUALITIES_SHORT_NAME, doc = "True to restore original" +
+    @Argument(shortName = StandardArgumentDefinitions.USE_ORIGINAL_QUALITIES_SHORT_NAME, doc = "True to restore original" +
             " qualities from the OQ field to the QUAL field if available.")
     public boolean RESTORE_ORIGINAL_QUALITIES = true;
 
-    @Option(doc = "The maximum number of records to examine to determine if we can exit early and not output, given that"
+    @Argument(doc = "The maximum number of records to examine to determine if we can exit early and not output, given that"
             + " there are a no original base qualities (if we are to restore) and mate cigars exist."
             + " Set to 0 to never skip the file.")
     public int MAX_RECORDS_TO_EXAMINE = 10000;

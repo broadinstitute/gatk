@@ -26,13 +26,13 @@ import java.util.List;
 )
 public class AddCommentsToBam extends PicardCommandLineProgram {
 
-    @Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "Input BAM file to add a comment to the header")
+    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input BAM file to add a comment to the header")
     public File INPUT;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output BAM file to write results")
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output BAM file to write results")
     public File OUTPUT;
 
-    @Option(shortName = "C", doc = "Comments to add to the BAM file")
+    @Argument(shortName = "C", doc = "Comments to add to the BAM file")
     public List<String> COMMENT;
 
     @Override

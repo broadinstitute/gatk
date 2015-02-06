@@ -16,7 +16,7 @@ import java.io.File;
 )
 public class PrintReads extends ReadWalker {
 
-    @Option(fullName = "output", shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
+    @Argument(fullName = "output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
 
     private SAMFileWriter outputWriter;

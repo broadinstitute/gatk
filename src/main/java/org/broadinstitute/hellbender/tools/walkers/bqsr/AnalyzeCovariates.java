@@ -55,7 +55,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.tools.recalibration.BaseRecalibration;
 import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
@@ -220,31 +220,31 @@ public final class AnalyzeCovariates extends CommandLineProgram {
     /**
      * File containing the recalibration tables from the first pass.
      */
-    @Option(shortName=BEFORE_ARG_SHORT_NAME,fullName="beforeReportFile", doc = "file containing the BQSR first-pass report file",optional = true)
+    @Argument(shortName=BEFORE_ARG_SHORT_NAME,fullName="beforeReportFile", doc = "file containing the BQSR first-pass report file",optional = true)
     protected File beforeFile = null;
 
     /**
      * File containing the recalibration tables from the second pass.
      */
-    @Option(shortName=AFTER_ARG_SHORT_NAME, fullName="afterReportFile", doc = "file containing the BQSR second-pass report file",optional = true)
+    @Argument(shortName=AFTER_ARG_SHORT_NAME, fullName="afterReportFile", doc = "file containing the BQSR second-pass report file",optional = true)
     protected File afterFile = null;
 
     /**
      * If true, it won't show a warning if the last-modification time of the before and after input files suggest that they have been reversed.
      */
-    @Option(shortName="ignoreLMT", fullName="ignoreLastModificationTimes", doc= "do not emit warning messages related to suspicious last modification time order of inputs",optional = true)
+    @Argument(shortName="ignoreLMT", fullName="ignoreLastModificationTimes", doc= "do not emit warning messages related to suspicious last modification time order of inputs",optional = true)
     protected boolean ignoreLastModificationTime = false;
 
     /**
      * Output report file name.
      */
-    @Option(shortName=PDF_ARG_SHORT_NAME, fullName="plotsReportFile" ,doc = "location of the output report",optional = true)
+    @Argument(shortName=PDF_ARG_SHORT_NAME, fullName="plotsReportFile" ,doc = "location of the output report",optional = true)
     protected File pdfFile = null;
 
     /**
      * Output csv file name.
      */
-    @Option(shortName=CSV_ARG_SHORT_NAME,fullName="intermediateCsvFile" ,doc = "location of the csv intermediate file",optional = true)
+    @Argument(shortName=CSV_ARG_SHORT_NAME,fullName="intermediateCsvFile" ,doc = "location of the csv intermediate file",optional = true)
     protected File csvFile = null;
 
     /**
@@ -252,7 +252,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
      * (see Best Practices workflow documentation). The covariates tables are produced by the BaseRecalibrator tool.
      * Please be aware that you should only run recalibration with the covariates file created on the same input bam(s).
      */
-    @Option(fullName="BQSR", shortName="BQSR", optional=true, doc="Input covariates table file for on-the-fly base quality score recalibration")
+    @Argument(fullName="BQSR", shortName="BQSR", optional=true, doc="Input covariates table file for on-the-fly base quality score recalibration")
     public File BQSR_RECAL_FILE = null;
 
     /**

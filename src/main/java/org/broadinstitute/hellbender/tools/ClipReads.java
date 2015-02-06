@@ -39,8 +39,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Option;
-import org.broadinstitute.hellbender.cmdline.StandardOptionDefinitions;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -59,7 +59,7 @@ import java.util.regex.Pattern;
  *
  * <p>This tool provides simple, powerful read clipping capabilities that allow you to remove low quality strings of bases, sections of reads, and reads containing user-provided sequences.</p> 
  *
- * <p>There are three options for clipping (quality, position and sequence), which can be used alone or in combination. In addition, you can also specify a clipping representation, which determines exactly how ClipReads applies clips to the reads (soft clips, writing Q0 base quality scores, etc.). Please note that you MUST specify at least one of the three clipping options, and specifying a clipping representation is not sufficient. If you do not specify a clipping option, the program will run but it will not do anything to your reads.</p>
+ * <p>There are three arguments for clipping (quality, position and sequence), which can be used alone or in combination. In addition, you can also specify a clipping representation, which determines exactly how ClipReads applies clips to the reads (soft clips, writing Q0 base quality scores, etc.). Please note that you MUST specify at least one of the three clipping arguments, and specifying a clipping representation is not sufficient. If you do not specify a clipping argument, the program will run but it will not do anything to your reads.</p>
  *
  * <dl>
  *     <dt>Quality score based clipping</dt>
@@ -121,7 +121,7 @@ import java.util.regex.Pattern;
  *     -CT "1-5,11-15" \
  *     -QT 10
  * </pre>
- * <p>The command line shown above will apply all three options in combination. See the detailed examples below to see how the choice of clipping representation affects the output.</p>
+ * <p>The command line shown above will apply all three arguments in combination. See the detailed examples below to see how the choice of clipping representation affects the output.</p>
  *
  *     <h4>Detailed clipping examples</h4>
  *     <p>Suppose we are given this read:</p>
@@ -166,20 +166,20 @@ public final class ClipReads extends ReadWalker {
     /**
      * The output SAM/BAM file will be written here
      */
-    @Option(doc = "BAM output file", shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, fullName = StandardOptionDefinitions.OUTPUT_LONG_NAME)
+    @Argument(doc = "BAM output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     File OUTPUT;
 
     /**
      * If provided, ClipReads will write summary statistics about the clipping operations applied to the reads in this file.
      */
-    @Option(fullName = "outputStatistics", shortName = "os", doc = "File to output statistics", optional = true)
+    @Argument(fullName = "outputStatistics", shortName = "os", doc = "File to output statistics", optional = true)
     File STATSOUTPUT = null;
 
     /**
      * If a value > 0 is provided, then the quality score based read clipper will be applied to the reads using this
      * quality score threshold.
      */
-    @Option(fullName = "qTrimmingThreshold", shortName = "QT", doc = "If provided, the Q-score clipper will be applied", optional = true)
+    @Argument(fullName = "qTrimmingThreshold", shortName = "QT", doc = "If provided, the Q-score clipper will be applied", optional = true)
     int qTrimmingThreshold = -1;
 
     /**
@@ -188,30 +188,30 @@ public final class ClipReads extends ReadWalker {
      * values (positions). For example, 1-5,10-12 clips the first 5 bases, and then three bases at cycles 10, 11,
      * and 12.
      */
-    @Option(fullName = "cyclesToTrim", shortName = "CT", doc = "String indicating machine cycles to clip from the reads", optional = true)
+    @Argument(fullName = "cyclesToTrim", shortName = "CT", doc = "String indicating machine cycles to clip from the reads", optional = true)
     String cyclesToClipArg = null;
 
     /**
      * Reads the sequences in the provided FASTA file, and clip any bases that exactly match any of the
      * sequences in the file.
      */
-    @Option(fullName = "clipSequencesFile", shortName = "XF", doc = "Remove sequences within reads matching the sequences in this FASTA file", optional = true)
+    @Argument(fullName = "clipSequencesFile", shortName = "XF", doc = "Remove sequences within reads matching the sequences in this FASTA file", optional = true)
     String clipSequenceFile = null;
 
     /**
      * Clips bases from the reads matching the provided SEQ.
      */
-    @Option(fullName = "clipSequence", shortName = "X", doc = "Remove sequences within reads matching this sequence", optional = true)
+    @Argument(fullName = "clipSequence", shortName = "X", doc = "Remove sequences within reads matching this sequence", optional = true)
     List<String> clipSequencesArgs = null;
 
     /**
      * The different values for this argument determines how ClipReads applies clips to the reads.  This can range
      * from writing Ns over the clipped bases to hard clipping away the bases from the BAM.
      */
-    @Option(fullName = "clipRepresentation", shortName = "CR", doc = "How should we actually clip the bases?", optional = true)
+    @Argument(fullName = "clipRepresentation", shortName = "CR", doc = "How should we actually clip the bases?", optional = true)
     ClippingRepresentation clippingRepresentation = ClippingRepresentation.WRITE_NS;
 
-    @Option(fullName="read", doc="", optional = true)
+    @Argument(fullName="read", doc="", optional = true)
     String onlyDoRead = null;
 
     /**
