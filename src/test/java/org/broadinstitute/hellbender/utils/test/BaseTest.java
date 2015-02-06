@@ -24,6 +24,7 @@
 */
 package org.broadinstitute.hellbender.utils.test;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.Genotype;
@@ -32,10 +33,15 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.testng.Assert;
 import org.testng.Reporter;
+import org.testng.annotations.BeforeClass;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
@@ -62,7 +68,29 @@ public abstract class BaseTest {
 
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
-    public static final String exampleIntervalFile = publicTestDir + "hg19mini.interval_list";
+    public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
+    public GenomeLocParser hg19GenomeLocParser;
+    // used to seed the genome loc parser with a sequence dictionary
+    protected SAMFileHeader hg19Header;
+
+    @BeforeClass
+    public void initGenomeLocParser() throws FileNotFoundException {
+        CachingIndexedFastaSequenceFile ref = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
+        hg19Header = new SAMFileHeader();
+        hg19Header.setSequenceDictionary(ref.getSequenceDictionary());
+        hg19GenomeLocParser = new GenomeLocParser(ref);
+    }
+
+    protected List<GenomeLoc> getLocs(String... intervals) {
+        return getLocs(Arrays.asList(intervals));
+    }
+
+    protected List<GenomeLoc> getLocs(List<String> intervals) {
+        List<GenomeLoc> locs = new ArrayList<>();
+        for (String interval: intervals)
+            locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));
+        return Collections.unmodifiableList(locs);
+    }
 
     /**
      * Simple generic utility class to creating TestNG data providers:

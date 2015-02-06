@@ -333,7 +333,7 @@ public class GenomeLocSortedSetUnitTest extends BaseTest {
         final GenomeLoc post1 = genomeLocParser.createGenomeLoc("3", 1, 10);
         final GenomeLoc post2 = genomeLocParser.createGenomeLoc("3", 20, 50);
 
-        final int chr20Length = genomeLocParser.getContigs().getSequence("2").getSequenceLength();
+        final int chr20Length = genomeLocParser.getSequenceDictionary().getSequence("2").getSequenceLength();
         for ( final int regionStart : Arrays.asList(1, 10, chr20Length - 10, chr20Length) ) {
             for ( final int regionSize : Arrays.asList(1, 10, 100) ) {
                 final GenomeLoc region = genomeLocParser.createGenomeLocOnContig("2", regionStart, regionStart + regionSize);

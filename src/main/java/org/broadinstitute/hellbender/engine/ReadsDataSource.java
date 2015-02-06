@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Manages traversals and queries over sources of reads (for now, SAM/BAM files only).
@@ -28,6 +29,11 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
      * active on that reader.
      */
     private Map<SamReader, CloseableIterator<SAMRecord>> readers;
+
+    /**
+     * Hang onto the input files so that we can print useful errors about them
+     */
+    final private Map<SamReader, File> backingFiles;
 
     /**
      * Interval set to bound iteration over this data source. Null if iteration is unbounded.
@@ -59,54 +65,29 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
      */
     private boolean indicesAvailable;
 
+
+
     /**
-     * Initialize this data source with a single SAM/BAM file, and no intervals to restrict iteration
+     * Initialize this data source with a single SAM/BAM file
      *
-     * @param samFile SAM/BAM file, not null. Must be indexed.
+     * @param samFile SAM/BAM file, not null.
      */
     public ReadsDataSource( final File samFile ) {
-        this(samFile != null ? Arrays.asList(samFile) : null, null);
+        this(samFile != null ? Arrays.asList(samFile) : null);
     }
 
     /**
-     * Initialize this data source with multiple SAM/BAM files, and no intervals to restrict iteration
+     * Initialize this data source with multiple SAM/BAM files
      *
-     * @param samFiles SAM/BAM files, not null. Each file must be indexed.
+     * @param samFiles SAM/BAM files, not null.
      */
     public ReadsDataSource( final List<File> samFiles ) {
-        this(samFiles, null);
-    }
-
-    /**
-     * Initialize this data source with a single SAM/BAM file, and a set of intervals to bound iteration.
-     * Only reads that overlap these intervals will be returned during a full iteration (but individual
-     * queries will be unaffected by these intervals).
-     *
-     * @param samFile SAM/BAM file, not null. Must be indexed.
-     * @param intervals Intervals for iteration over this data source. Do not affect individual queries.
-     */
-    public ReadsDataSource( final File samFile, final List<GenomeLoc> intervals ) {
-        this(samFile != null ? Arrays.asList(samFile) : null, intervals);
-    }
-
-    /**
-     * Initialize this data source with multiple SAM/BAM files, and a set of intervals to bound iteration.
-     * Only reads that overlap these intervals will be returned during a full iteration (but individual
-     * queries will be unaffected by these intervals).
-     *
-     * @param samFiles SAM/BAM files, not null. Each file must be indexed.
-     * @param intervals Intervals for iteration over this data source. Do not affect individual queries.
-     */
-    public ReadsDataSource( final List<File> samFiles, final List<GenomeLoc> intervals ) {
         if ( samFiles == null || samFiles.size() == 0 ) {
             throw new IllegalArgumentException("ReadsDataSource cannot be created from empty file list");
         }
 
-        // Treat null and empty interval lists the same
-        this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
-        preparedIntervals = this.intervals != null ? prepareIntervalsForTraversal() : null;
-
         readers = new LinkedHashMap<>(samFiles.size() * 2);
+        backingFiles = new LinkedHashMap<>(samFiles.size() *2);
         indicesAvailable = true;
 
         for ( File samFile : samFiles ) {
@@ -124,16 +105,41 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {
                 indicesAvailable = false;
-                if ( this.intervals != null )
-                    throw new UserException("File " + samFile.getAbsolutePath() + " has no index, and traversal by intervals was requested. Please index this file (can be done using \"samtools index\")");
             }
 
             readers.put(reader, null);
+            backingFiles.put(reader, samFile);
         }
 
         // Prepare a header merger only if we have multiple readers
         headerMerger = samFiles.size() > 1 ? createHeaderMerger() : null;
         mergingIterator = null;
+    }
+
+    /**
+     * Restricts a traversal of this data source via iterator() to only return reads which overlap the given intervals.
+     * Calls to query() are not affected by setting these intervals.
+     *
+     */
+    public void setIntervalsForTraversal(List<GenomeLoc> intervals){
+        // Treat null and empty interval lists the same
+        this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
+
+        if ( this.intervals != null && !indicesAvailable) {
+            raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
+        }
+        preparedIntervals = this.intervals != null ? prepareIntervalsForTraversal() : null;
+    }
+
+    private void raiseExceptionForMissingIndex(String reason) {
+        String commandsToIndex = backingFiles.entrySet().stream()
+                .filter(f -> f.getKey().hasIndex())
+                .map(Map.Entry::getValue)
+                .map(File::getAbsolutePath)
+                .map(f -> "samtools index " + f)
+                .collect(Collectors.joining("\n"));
+
+        throw new UserException(reason + "\nPlease index all input files:\n" + commandsToIndex);
     }
 
     /**
@@ -156,7 +162,7 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
     @Override
     public Iterator<SAMRecord> query( final GenomeLoc interval ) {
         if ( ! indicesAvailable )
-            throw new UserException("Cannot query reads data source by interval unless all files are indexed");
+            raiseExceptionForMissingIndex("Cannot query reads data source by interval unless all files are indexed");
 
         final QueryInterval[] queryInterval = { new QueryInterval(interval.getContigIndex(), interval.getStart(), interval.getStop()) };
         return prepareIteratorsForTraversal(queryInterval);
@@ -288,4 +294,14 @@ public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable
             }
         }
     }
+
+    /**
+     * Get the sequence dictionary for this ReadsDataSource
+     *
+     * @return SAMSequenceDictionary from the SAMReader backing this if there is only 1 input file, otherwise the merged SAMSequenceDictionary from the merged header
+     */
+    public SAMSequenceDictionary getSequenceDictionary() {
+        return getHeader().getSequenceDictionary();
+    }
+
 }

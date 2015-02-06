@@ -28,6 +28,8 @@ package org.broadinstitute.hellbender.utils.interval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
@@ -47,41 +49,15 @@ import java.util.*;
  * test out the interval utility methods
  */
 public class IntervalUtilsUnitTest extends BaseTest {
-    // used to seed the genome loc parser with a sequence dictionary
-    private SAMFileHeader hg19Header;
-    private GenomeLocParser hg19GenomeLocParser;
+    public static final String emptyIntervals = BaseTest.publicTestDir + "empty_intervals.list";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;
 
-    private List<GenomeLoc> getLocs(String... intervals) {
-        return getLocs(Arrays.asList(intervals));
-    }
-
-    private List<GenomeLoc> getLocs(List<String> intervals) {
-        if (intervals.size() == 0)
-            return hg19ReferenceLocs;
-        List<GenomeLoc> locs = new ArrayList<GenomeLoc>();
-        for (String interval: intervals)
-            locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));
-        return Collections.unmodifiableList(locs);
-    }
 
     @BeforeClass
     public void init() {
-
-        File hg19Ref = new File(BaseTest.exampleReference);
-        try {
-            final ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(hg19Ref);
-            hg19Header = new SAMFileHeader();
-            hg19Header.setSequenceDictionary(seq.getSequenceDictionary());
-            hg19GenomeLocParser = new GenomeLocParser(seq);
-            hg19ReferenceLocs = Collections.unmodifiableList(GenomeLocSortedSet.createSetFromSequenceDictionary(seq.getSequenceDictionary()).toList()) ;
-
-            hg19exomeIntervals = Collections.unmodifiableList(IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(exampleIntervalFile)));
-        }
-        catch(FileNotFoundException ex) {
-            throw new UserException.CouldNotReadInputFile(hg19Ref,ex);
-        }
+        hg19ReferenceLocs = Collections.unmodifiableList(GenomeLocSortedSet.createSetFromSequenceDictionary(hg19Header.getSequenceDictionary()).toList()) ;
+        hg19exomeIntervals = Collections.unmodifiableList(IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(hg19MiniIntervalFile)));
     }
 
     // -------------------------------------------------------------------------------------
@@ -356,21 +332,21 @@ public class IntervalUtilsUnitTest extends BaseTest {
         Map<String, Integer> lengths = IntervalUtils.getContigSizes(new File(BaseTest.exampleReference));
         Assert.assertEquals((long)lengths.get("1"), 16000);
         Assert.assertEquals((long)lengths.get("2"), 16000);
-        Assert.assertEquals((long)lengths.get("3"), 16000);
+        Assert.assertEquals((long) lengths.get("3"), 16000);
         Assert.assertEquals((long)lengths.get("4"), 16000);
     }
 
     @Test
     public void testParseIntervalArguments() {
-        Assert.assertEquals(getLocs().size(), 4);
+        Assert.assertEquals(hg19ReferenceLocs.size(), 4);
         Assert.assertEquals(getLocs("1", "2", "3").size(), 3);
         Assert.assertEquals(getLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
     }
 
     @Test
     public void testIsIntervalFile() {
-        Assert.assertTrue(IntervalUtils.isIntervalFile(BaseTest.publicTestDir + "empty_intervals.list"));
-        Assert.assertTrue(IntervalUtils.isIntervalFile(BaseTest.publicTestDir + "empty_intervals.list", true));
+        Assert.assertTrue(IntervalUtils.isIntervalFile(emptyIntervals));
+        Assert.assertTrue(IntervalUtils.isIntervalFile(emptyIntervals, true));
 
         List<String> extensions = Arrays.asList("bed", "interval_list", "intervals", "list", "picard");
         for (String extension: extensions) {
@@ -536,7 +512,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test
     public void testScatterFixedIntervalsFile() {
         List<File> files = testFiles("sg.", 10, ".intervals");
-        List<GenomeLoc> locs = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(exampleIntervalFile));
+        List<GenomeLoc> locs = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(hg19MiniIntervalFile));
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
 
         int[] counts = {
@@ -776,6 +752,37 @@ public class IntervalUtilsUnitTest extends BaseTest {
         // Test that null means the same as ALL
         merged = IntervalUtils.mergeIntervalLocations(locs, null);
         Assert.assertEquals(merged.size(), 1);
+    }
+
+    @Test(expectedExceptions=UserException.MalformedGenomeLoc.class, dataProvider="invalidIntervalTestData")
+    public void testInvalidGATKFileIntervalHandling(GenomeLocParser genomeLocParser,
+                                                    String contig, int intervalStart, int intervalEnd ) throws Exception {
+
+        File gatkIntervalFile = createTempFile("testInvalidGATKFileIntervalHandling", ".intervals",
+                String.format("%s:%d-%d", contig, intervalStart, intervalEnd));
+
+        List<String> intervalArgs = new ArrayList<>(1);
+        intervalArgs.add(gatkIntervalFile.getAbsolutePath());
+
+        IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+    }
+
+    @Test(expectedExceptions=UserException.MalformedFile.class, dataProvider="invalidIntervalTestData")
+    public void testInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
+                                                  String contig, int intervalStart, int intervalEnd ) throws Exception {
+
+        SAMFileHeader picardFileHeader = new SAMFileHeader();
+        picardFileHeader.addSequence(genomeLocParser.getContigInfo("1"));
+        IntervalList picardIntervals = new IntervalList(picardFileHeader);
+        picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname"));
+
+        File picardIntervalFile = createTempFile("testInvalidPicardIntervalHandling", ".intervals");
+        picardIntervals.write(picardIntervalFile);
+
+        List<String> intervalArgs = new ArrayList<>(1);
+        intervalArgs.add(picardIntervalFile.getAbsolutePath());
+
+        IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
     }
 
     /*
@@ -1034,5 +1041,30 @@ public class IntervalUtilsUnitTest extends BaseTest {
     public void testSortAndMergeIntervals(IntervalMergingRule merge, List<GenomeLoc> unsorted, List<GenomeLoc> expected) {
         List<GenomeLoc> sorted = IntervalUtils.sortAndMergeIntervals(hg19GenomeLocParser, unsorted, merge).toList();
         Assert.assertEquals(sorted, expected);
+    }
+
+    @DataProvider(name="loadintervals")
+    public Object[][] getloadIntervals(){
+        final String severalIntervals = "src/test/resources/org/broadinstitute/hellbender/utils/interval/example_intervals.list";
+
+        return new Object[][]{
+                new Object[]{Arrays.asList("1:1-2"), IntervalSetRule.UNION, 0, getLocs("1:1-2")},
+                new Object[]{Arrays.asList("1:1-2", "2:1-2"), IntervalSetRule.UNION, 0, getLocs("1:1-2", "2:1-2")},
+                new Object[]{Arrays.asList("1:1-10", "1:5-15"), IntervalSetRule.UNION, 0, getLocs("1:1-15")},
+                new Object[]{Arrays.asList("1:1-10", "1:5-15"), IntervalSetRule.INTERSECTION, 0, getLocs("1:5-10")},
+                new Object[]{Arrays.asList("1:5-5"), IntervalSetRule.UNION, 5, getLocs("1:1-10")},
+                new Object[]{Arrays.asList(severalIntervals), IntervalSetRule.UNION, 0, getLocs("1:100-200","2:20-30","4:50")}
+        };
+    }
+
+    @Test( dataProvider = "loadintervals")
+    public void loadIntervalsTest(List<String> intervals, IntervalSetRule setRule, int padding, List<GenomeLoc> results){
+        GenomeLocSortedSet loadedIntervals = IntervalUtils.loadIntervals(intervals, setRule, IntervalMergingRule.ALL, padding, hg19GenomeLocParser);
+        Assert.assertEquals(loadedIntervals, results);
+    }
+
+    @Test(expectedExceptions = UserException.MalformedFile.class)
+    public void loadIntervalsEmptyFile(){
+        IntervalUtils.loadIntervals(Arrays.asList(emptyIntervals), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
 }

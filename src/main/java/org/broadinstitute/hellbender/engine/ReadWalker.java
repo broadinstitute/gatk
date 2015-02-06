@@ -42,8 +42,12 @@ public abstract class ReadWalker extends GATKTool {
         // Need to delay initialization of members until after the argument-parsing system has injected argument values
         reads = new ReadsDataSource(READS_FILES);
         reference = REFERENCE_FILE != null ? new ReferenceDataSource(REFERENCE_FILE) : null;
-    }
 
+        if(intervalArgumentCollection.intervalsSpecified()){
+            SAMSequenceDictionary sequenceDict = reference != null ? reference.getSequenceDictionary() : reads.getSequenceDictionary();
+            reads.setIntervalsForTraversal(intervalArgumentCollection.getIntervals(sequenceDict));
+        }
+    }
     /**
      * Returns the SAM header for this reads traversal. Will be a merged header if there are multiple inputs for
      * the reads. If there is only a single input, returns its header directly.

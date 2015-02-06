@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 /**
  * <p/>
@@ -107,8 +108,12 @@ public class UserException extends RuntimeException {
     public static class BadArgumentValue extends CommandLineException {
         private static final long serialVersionUID = 0L;
 
-        public BadArgumentValue(String arg, String message) {
-            super(String.format("Argument %s has a bad value: %s", arg, message));
+        public BadArgumentValue(String arg, String value) {
+            super(String.format("Argument %s has a bad value: %s", arg, value));
+        }
+
+        public BadArgumentValue(String arg, String value, String message){
+            super(String.format("Argument %s has a bad value: %s. %s", arg, value,message));
         }
     }
 
@@ -272,6 +277,13 @@ public class UserException extends RuntimeException {
     public static class IncompatibleRecalibrationTableParameters extends UserException {
         private static final long serialVersionUID = 0L;
         public IncompatibleRecalibrationTableParameters(String s) {
+            super(s);
+        }
+    }
+
+    public static class EmptyIntersection extends UserException {
+        private static final long serialVersionUID = 0L;
+        public EmptyIntersection(String s) {
             super(s);
         }
     }

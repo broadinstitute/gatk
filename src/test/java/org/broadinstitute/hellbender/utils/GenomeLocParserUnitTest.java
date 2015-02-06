@@ -61,7 +61,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
     private SAMFileHeader header;
 
     @BeforeClass
-         public void init() {
+    public void init() {
         header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 10);
         genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
     }

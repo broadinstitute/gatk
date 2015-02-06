@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.IntervalArgumentCollection;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -10,6 +12,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
  */
 @CommandLineProgramProperties(usage = "Generic GATK tool", usageShort = "Generic GATK tool", omitFromCommandLine = true)
 public abstract class GATKTool extends CommandLineProgram {
+
+    @ArgumentCollection
+    protected IntervalArgumentCollection intervalArgumentCollection = new IntervalArgumentCollection();
 
     /**
      * Operations performed just prior to the start of traversal. Should be overridden by tool authors
