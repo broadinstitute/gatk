@@ -95,7 +95,7 @@ public class CigarUtils {
     }
 
     public static Cigar cigarFromString(String cigarString) {
-        return TextCigarCodec.getSingleton().decode(cigarString);
+        return TextCigarCodec.decode(cigarString);
     }
 
     /**
