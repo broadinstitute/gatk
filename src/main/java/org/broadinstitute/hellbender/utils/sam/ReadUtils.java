@@ -722,54 +722,6 @@ public class ReadUtils {
         return coverage;
     }
 
-    /**
-     * Makes association maps for the reads and loci coverage as described below :
-     *
-     *  - First: locusToReadMap -- a HashMap that describes for each locus, which reads contribute to its coverage.
-     *    Note: Locus is in reference coordinates.
-     *    Example: Locus => {read1, read2, ..., readN}
-     *
-     *  - Second: readToLocusMap -- a HashMap that describes for each read what loci it contributes to the coverage.
-     *    Note: Locus is a boolean array, indexed from 0 (= startLocation) to N (= stopLocation), with value==true meaning it contributes to the coverage.
-     *    Example: Read => {true, true, false, ... false}
-     *
-     * @param readList      the list of reads to generate the association mappings
-     * @param startLocation the first reference coordinate of the region (inclusive)
-     * @param stopLocation  the last reference coordinate of the region (inclusive)
-     * @return the two hashmaps described above
-     */
-    public static Pair<HashMap<Integer, HashSet<SAMRecord>> , HashMap<SAMRecord, Boolean[]>> getBothReadToLociMappings (List<SAMRecord> readList, int startLocation, int stopLocation) {
-        int arraySize = stopLocation - startLocation + 1;
-
-        HashMap<Integer, HashSet<SAMRecord>> locusToReadMap = new HashMap<>(2*(stopLocation - startLocation + 1), 0.5f);
-        HashMap<SAMRecord, Boolean[]> readToLocusMap = new HashMap<SAMRecord, Boolean[]>(2*readList.size(), 0.5f);
-
-        for (int i = startLocation; i <= stopLocation; i++)
-            locusToReadMap.put(i, new HashSet<SAMRecord>()); // Initialize the locusToRead map with empty lists
-
-        for (SAMRecord read : readList) {
-            readToLocusMap.put(read, new Boolean[arraySize]);       // Initialize the readToLocus map with empty arrays
-
-            int [] readCoverage = getCoverageDistributionOfRead(read, startLocation, stopLocation);
-
-            for (int i = 0; i < readCoverage.length; i++) {
-                int refLocation = i + startLocation;
-                if (readCoverage[i] > 0) {
-                    // Update the hash for this locus
-                    HashSet<SAMRecord> readSet = locusToReadMap.get(refLocation);
-                    readSet.add(read);
-
-                    // Add this locus to the read hash
-                    readToLocusMap.get(read)[refLocation - startLocation] = true;
-                }
-                else
-                    // Update the boolean array with a 'no coverage' from this read to this locus
-                    readToLocusMap.get(read)[refLocation-startLocation] = false;
-            }
-        }
-        return new MutablePair<>(locusToReadMap, readToLocusMap);
-    }
-
     public static String prettyPrintSequenceRecords ( SAMSequenceDictionary sequenceDictionary ) {
         String[] sequenceRecordNames = new String[sequenceDictionary.size()];
         int sequenceRecordIndex = 0;
@@ -803,45 +755,6 @@ public class ReadUtils {
             throw new GATKException(OFFSET_NOT_ZERO_EXCEPTION);
 
         return location;
-    }
-
-    /**
-     * Creates a map with each event in the read (cigar operator) and the read coordinate where it happened.
-     *
-     * Example:
-     *  D -> 2, 34, 75
-     *  I -> 55
-     *  S -> 0, 101
-     *  H -> 101
-     *
-     * @param read the read
-     * @return a map with the properties described above. See example
-     */
-    public static Map<CigarOperator, ArrayList<Integer>> getCigarOperatorForAllBases (SAMRecord read) {
-        Map<CigarOperator, ArrayList<Integer>> events = new HashMap<CigarOperator, ArrayList<Integer>>();
-
-        int position = 0;
-        for (CigarElement cigarElement : read.getCigar().getCigarElements()) {
-            CigarOperator op = cigarElement.getOperator();
-            if (op.consumesReadBases()) {
-                ArrayList<Integer> list = events.get(op);
-                if (list == null) {
-                    list = new ArrayList<Integer>();
-                    events.put(op, list);
-                }
-                for (int i = position; i < cigarElement.getLength(); i++)
-                    list.add(position++);
-            }
-            else {
-                ArrayList<Integer> list = events.get(op);
-                if (list == null) {
-                    list = new ArrayList<Integer>();
-                    events.put(op, list);
-                }
-                list.add(position);
-            }
-        }
-        return events;
     }
 
     /**

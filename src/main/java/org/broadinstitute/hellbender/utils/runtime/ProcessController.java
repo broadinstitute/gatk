@@ -279,7 +279,7 @@ public class ProcessController {
         if (po.getExitValue() != 0) {
             String message = String.format("Process exited with %d\nCommand Line: %s",
                     po.getExitValue(),
-                    Utils.join(" ", settings.getCommand()));
+                    String.join(" ", settings.getCommand()));
             throw new IOException(message);
         }
         return po;
