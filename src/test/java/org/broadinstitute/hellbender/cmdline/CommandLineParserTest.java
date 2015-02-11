@@ -24,8 +24,6 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.CollectionUtil;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -585,6 +583,15 @@ public class CommandLineParserTest {
 
         @PositionalArguments()
         List<Integer> positionals = new ArrayList<>();
+    }
+
+    @Test
+    public void testFlagWithPositionalFollowing(){
+        PrivateArgument o = new PrivateArgument();
+        final CommandLineParser clp = new CommandLineParser(o);
+        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1","1","2" }));
+        Assert.assertTrue(o.booleanFlags.flag1);
+        Assert.assertEquals(o.positionals, Arrays.asList(1,2));
     }
 
     @Test
