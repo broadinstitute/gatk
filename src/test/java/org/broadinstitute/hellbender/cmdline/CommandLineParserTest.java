@@ -25,6 +25,8 @@ package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.CollectionUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -188,7 +190,7 @@ public class CommandLineParserTest {
         Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 20);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.MissingArgument.class)
     public void testMissingRequiredArgument() {
         final String[] args = {
                 "--TRUTHINESS","False",
@@ -199,10 +201,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test( expectedExceptions = UserException.BadArgumentValue.class)
     public void testBadValue() {
         final String[] args = {
                 "--FROBNICATION_THRESHOLD","ABC",
@@ -215,10 +217,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.BadArgumentValue.class)
     public void testBadEnumValue() {
         final String[] args = {
                 "--FROBNICATION_FLAVOR","HiMom",
@@ -230,10 +232,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.MissingArgument.class)
     public void testNotEnoughOfListArgument() {
         final String[] args = {
                 "--FROBNICATION_FLAVOR","BAR",
@@ -243,10 +245,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test( expectedExceptions = UserException.CommandLineException.class)
     public void testTooManyListArgument() {
         final String[] args = {
                 "--FROBNICATION_FLAVOR","BAR",
@@ -260,10 +262,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.CommandLineException.class)
     public void testTooManyPositional() {
         final String[] args = {
                 "--FROBNICATION_FLAVOR","BAR",
@@ -276,10 +278,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.MissingArgument.class)
     public void testNotEnoughPositional() {
         final String[] args = {
                 "--FROBNICATION_FLAVOR","BAR",
@@ -289,10 +291,10 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test( expectedExceptions = UserException.CommandLineException.class)
     public void testUnexpectedPositional() {
         final String[] args = {
                 "--T","17",
@@ -304,10 +306,10 @@ public class CommandLineParserTest {
         };
         final ArgumentsWithoutPositional fo = new ArgumentsWithoutPositional();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.CommandLineException.class)
     public void testArgumentUseClash() {
         final String[] args = {
                 "--FROBNICATION_FLAVOR", "BAR",
@@ -318,7 +320,7 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
 
     @Test
@@ -362,7 +364,7 @@ public class CommandLineParserTest {
      * In an arguments file, should not be allowed to override an argument set on the command line
      * @throws Exception
      */
-    @Test
+    @Test( expectedExceptions = UserException.CommandLineException.class)
     public void testArgumentsFileWithDisallowedOverride() throws Exception {
         final File argumentsFile = File.createTempFile("clp.", ".arguments");
         argumentsFile.deleteOnExit();
@@ -375,25 +377,31 @@ public class CommandLineParserTest {
         };
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertFalse(clp.parseArguments(System.err, args));
+        clp.parseArguments(System.err, args);
     }
     
-    @DataProvider(name="mutexScenarios")
-    public Object[][] mutexScenarios() {
+    @DataProvider(name="failingMutexScenarios")
+    public Object[][] failingMutexScenarios() {
         return new Object[][] {
-                { "pass", new String[] {"-A","1", "-B","2"}, true },
                 { "no args", new String[0], false },
                 { "1 of group required", new String[] {"-A","1"}, false },
                 { "mutex", new String[]  {"-A","1", "-Y","3"}, false },
                 { "mega mutex", new String[]  {"-A","1", "-B","2", "-Y","3", "-Z","1", "-M","2", "-N","3"}, false }
         };
     }
-    
-    @Test(dataProvider="mutexScenarios")
-    public void testMutex(final String testName, final String[] args, final boolean expected) {
+
+    @Test
+    public void passingMutexCheck(){
         final MutexArguments o = new MutexArguments();
         final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertEquals(clp.parseArguments(System.err, args), expected);
+        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"-A", "1", "-B", "2"}));
+    }
+
+    @Test(dataProvider="failingMutexScenarios", expectedExceptions = UserException.CommandLineException.class)
+    public void testFailingMutex(final String testName, final String[] args, final boolean expected) {
+        final MutexArguments o = new MutexArguments();
+        final CommandLineParser clp = new CommandLineParser(o);
+        clp.parseArguments(System.err, args);
     }
 
     class UninitializedCollectionArguments {
@@ -456,7 +464,7 @@ public class CommandLineParserTest {
     }
 
     @Test
-    public void testAddToDefaultValuesListArgument() {
+    public void testDefaultValuesListArgument() {
         final CollectionWithDefaultValuesArguments o = new CollectionWithDefaultValuesArguments();
         final CommandLineParser clp = new CommandLineParser(o);
         final String[] args = {"--LIST","baz", "--LIST","frob"};
@@ -464,36 +472,10 @@ public class CommandLineParserTest {
         Assert.assertEquals(o.LIST, CollectionUtil.makeList("foo", "bar", "baz", "frob"));
     }
 
-    @Test
-    public void testCommandLineToolTest() {
-        final CollectionWithDefaultValuesArguments o = new CollectionWithDefaultValuesArguments();
-        final CommandLineParser clp = new CommandLineParser(o);
-        final String[] args = {"--LIST","baz", "--LIST","frob"};
-        Assert.assertTrue(clp.parseArguments(System.err, args));
-        Assert.assertEquals(o.LIST, CollectionUtil.makeList("foo", "bar", "baz", "frob"));
-    }
-
-    class ArgumentsWithArgumentCollectionAgain {
-        @ArgumentCollection(doc="Doc for inner FROB")
-        public ArgumentsWithoutPositional FROB = new ArgumentsWithoutPositional();
-    }
-
-
-    class FlagCollection{
-        @Argument
-        public boolean flag1 = false;
-
-        @Argument
-        public boolean flag2 = true;
-
-        @ArgumentCollection
-        SpecialArgumentsCollection special = new SpecialArgumentsCollection();
-
-    }
 
     @Test
        public void testFlagNoArgument(){
-        final FlagCollection o = new FlagCollection();
+        final BooleanFlags o = new BooleanFlags();
         final CommandLineParser clp = new CommandLineParser(o);
         Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1"}));
         Assert.assertTrue(o.flag1);
@@ -501,7 +483,7 @@ public class CommandLineParserTest {
 
     @Test
     public void testFlagsWithArguments(){
-        final FlagCollection o = new FlagCollection();
+        final BooleanFlags o = new BooleanFlags();
         final CommandLineParser clp = new CommandLineParser(o);
         Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1", "false", "--flag2", "false"}));
         Assert.assertFalse(o.flag1);
@@ -545,6 +527,12 @@ public class CommandLineParserTest {
 
         @Argument
         public boolean flag3 = false;
+
+        @Argument(mutex="flag1")
+        public boolean antiflag1 = false;
+
+        @ArgumentCollection
+        SpecialArgumentsCollection special = new SpecialArgumentsCollection();
     }
 
     @Test
@@ -591,7 +579,7 @@ public class CommandLineParserTest {
         final CommandLineParser clp = new CommandLineParser(o);
         Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1","1","2" }));
         Assert.assertTrue(o.booleanFlags.flag1);
-        Assert.assertEquals(o.positionals, Arrays.asList(1,2));
+        Assert.assertEquals(o.positionals, Arrays.asList(1, 2));
     }
 
     @Test
@@ -604,4 +592,40 @@ public class CommandLineParserTest {
         Assert.assertEquals(o.privateCollection, Arrays.asList(1,2));
         Assert.assertTrue(o.booleanFlags.flag1);
     }
+
+    /**
+     * Test that the special flags --help and --version are handled correctly
+     */
+    @Test
+    public void testSpecialFlags(){
+        final BooleanFlags o = new BooleanFlags();
+        final CommandLineParser clp = new CommandLineParser(o);
+
+        String[] helpArgs = new String[]{"--"+SpecialArgumentsCollection.HELP_FULLNAME};
+
+        String out = BaseTest.captureStderr( () -> {
+            Assert.assertFalse(clp.parseArguments(System.err, helpArgs));
+            });
+        BaseTest.assertContains(out, "Usage:");
+
+        final String[] versionArgs = {"--" + SpecialArgumentsCollection.VERSION_FULLNAME};
+        out = BaseTest.captureStderr(() -> {
+                    Assert.assertFalse(clp.parseArguments(System.err, versionArgs));
+            });
+        BaseTest.assertContains(out,"Version:");
+
+        Assert.assertTrue(clp.parseArguments(System.err,  new String[]{"--help", "false"}));
+        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--version","false"}));
+
+        Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--help", "true"}));
+        Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--version", "true"}));
+    }
+
+
+
+
+
+
+
+
 }

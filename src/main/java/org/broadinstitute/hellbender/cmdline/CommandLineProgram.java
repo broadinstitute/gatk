@@ -104,7 +104,8 @@ public abstract class CommandLineProgram {
 
     public Object instanceMain(final String[] argv) {
         if (!parseArgs(argv)) {
-            throw new UserException.CommandLineParseException(Arrays.toString(argv));
+            //an information only argument like help or version was specified, just exit
+            return 0;
         }
 
         // Provide one temp directory if the caller didn't

@@ -76,7 +76,7 @@ public class GATKException extends RuntimeException {
         public ShouldNeverReachHereException( final String s, final Throwable throwable ) {
             super(s, throwable);
         }
-
+        public ShouldNeverReachHereException( final Throwable throwable) {this("Should never reach here.", throwable);}
     }
 }
 
