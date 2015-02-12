@@ -1,63 +1,28 @@
-/*
- * The MIT License
- *
- * Copyright (c) 2009 The Broad Institute
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.utils.sam;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.CloserUtil;
-import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMProgramRecord;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SecondaryOrSupplementarySkippingIterator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Rudimentary SAM comparer.  Compares headers, and if headers are compatible enough, compares SAMRecords,
  * looking only at basic alignment info.  Summarizes the number of alignments that match, mismatch, are missing, etc.
  */
-@CommandLineProgramProperties(
-        usage = "USAGE: CompareSAMs <SAMFile1> <SAMFile2>\n" +
-                "Compares the headers of the two input SAM or BAM files, and, if possible, the SAMRecords. " +
-                "For SAMRecords, compares only the readUnmapped flag, reference name, start position and strand. " +
-                "Reports the number of SAMRecords that match, differ in alignment, are mapped in only one input, " +
-                "or are missing in one of the files",
-        usageShort = "Compares two input SAM or BAM files",
-        programGroup = ReadProgramGroup.class
-)
-public class CompareSAMs extends CommandLineProgram {
+public class SamComparison {
+    private SamReader reader1;
+    private SamReader reader2;
 
-    @Argument(shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", common = true, optional = true)
-    public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
-
-    @PositionalArguments(minElements = 2, maxElements = 2)
-    public List<File> samFiles;
-
-    private final SamReader[] samReaders = new SamReader[2];
     private boolean sequenceDictionariesDiffer;
+    private boolean headersAreEqual;
+    private boolean alignmentsAreEqual;
+
     private int mappingsMatch = 0;
     private int unmappedBoth = 0;
     private int unmappedLeft = 0;
@@ -65,27 +30,18 @@ public class CompareSAMs extends CommandLineProgram {
     private int mappingsDiffer = 0;
     private int missingLeft = 0;
     private int missingRight = 0;
-    private boolean areEqual;
 
-    @Override
-    protected Object doWork() {
-        SamReaderFactory factory = SamReaderFactory.makeDefault();
-        for (int i = 0; i < samFiles.size(); ++i) {
-            samReaders[i] = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(i));
-        }
-        areEqual = compareHeaders();
-        areEqual = compareAlignments() && areEqual;
-        printReport();
-        if (areEqual) {
-            System.out.println("SAM files match.");
-        } else {
-            System.out.println("SAM files differ.");
-        }
-        CloserUtil.close(samReaders);
-        return null;
+    /**
+     * Note: the caller must make sure the SamReaders are closed properly.
+     */
+    public SamComparison(final SamReader reader1, final SamReader reader2) {
+        this.reader1 = reader1;
+        this.reader2 = reader2;
+        this.headersAreEqual = compareHeaders();
+        this.alignmentsAreEqual = compareAlignments();
     }
 
-    private void printReport() {
+    public void printReport() {
         System.out.println("Match\t" + mappingsMatch);
         System.out.println("Differ\t" + mappingsDiffer);
         System.out.println("Unmapped_both\t" + unmappedBoth);
@@ -96,12 +52,11 @@ public class CompareSAMs extends CommandLineProgram {
     }
 
     private boolean compareAlignments() {
-        if (!compareValues(samReaders[0].getFileHeader().getSortOrder(), samReaders[1].getFileHeader().getSortOrder(),
-                "Sort Order")) {
+        if (!compareValues(reader1.getFileHeader().getSortOrder(), reader2.getFileHeader().getSortOrder(), "Sort Order")) {
             System.out.println("Cannot compare alignments if sort orders differ.");
             return false;
         }
-        switch (samReaders[0].getFileHeader().getSortOrder()) {
+        switch (reader1.getFileHeader().getSortOrder()) {
             case coordinate:
                 if (sequenceDictionariesDiffer) {
                     System.out.println("Cannot compare coordinate-sorted SAM files because sequence dictionaries differ.");
@@ -120,9 +75,9 @@ public class CompareSAMs extends CommandLineProgram {
 
     private boolean compareCoordinateSortedAlignments() {
         final SecondaryOrSupplementarySkippingIterator itLeft =
-                new SecondaryOrSupplementarySkippingIterator(samReaders[0].iterator());
+                new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
         final SecondaryOrSupplementarySkippingIterator itRight =
-                new SecondaryOrSupplementarySkippingIterator(samReaders[1].iterator());
+                new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
         // Save any reads which haven't been matched during in-order scan.
         final Map<String, SAMRecord> leftUnmatched = new HashMap<String, SAMRecord>();
@@ -228,8 +183,8 @@ public class CompareSAMs extends CommandLineProgram {
         } else if (rightReferenceName == null) {
             return -1;
         }
-        final int leftReferenceIndex = samReaders[0].getFileHeader().getSequenceIndex(leftReferenceName);
-        final int rightReferenceIndex = samReaders[0].getFileHeader().getSequenceIndex(rightReferenceName);
+        final int leftReferenceIndex = reader1.getFileHeader().getSequenceIndex(leftReferenceName);
+        final int rightReferenceIndex = reader1.getFileHeader().getSequenceIndex(rightReferenceName);
 
         if (leftReferenceIndex != rightReferenceIndex) {
             return leftReferenceIndex - rightReferenceIndex;
@@ -238,8 +193,8 @@ public class CompareSAMs extends CommandLineProgram {
     }
 
     private boolean compareQueryNameSortedAlignments() {
-        final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(samReaders[0].iterator());
-        final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(samReaders[1].iterator());
+        final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
+        final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
         boolean ret = true;
         while (it1.hasCurrent()) {
@@ -272,8 +227,8 @@ public class CompareSAMs extends CommandLineProgram {
     }
 
     private boolean compareUnsortedAlignments() {
-        final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(samReaders[0].iterator());
-        final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(samReaders[1].iterator());
+        final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
+        final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
         boolean ret = true;
         for (; it1.hasCurrent(); it1.advance(), it2.advance()) {
             if (!it2.hasCurrent()) {
@@ -331,8 +286,8 @@ public class CompareSAMs extends CommandLineProgram {
     }
 
     private boolean compareHeaders() {
-        final SAMFileHeader h1 = samReaders[0].getFileHeader();
-        final SAMFileHeader h2 = samReaders[1].getFileHeader();
+        final SAMFileHeader h1 = reader1.getFileHeader();
+        final SAMFileHeader h2 = reader2.getFileHeader();
         boolean ret = compareValues(h1.getVersion(), h2.getVersion(), "File format version");
         ret = compareValues(h1.getCreator(), h2.getCreator(), "File creator") && ret;
         ret = compareValues(h1.getAttribute("SO"), h2.getAttribute("SO"), "Sort order") && ret;
@@ -453,8 +408,8 @@ public class CompareSAMs extends CommandLineProgram {
 
     private void reportDifference(final String s1, final String s2, final String label) {
         System.out.println(label + " differs.");
-        System.out.println(samFiles.get(0) + ": " + s1);
-        System.out.println(samFiles.get(1) + ": " + s2);
+        System.out.println("File 1: " + s1);
+        System.out.println("File 2: " + s2);
     }
 
     private void reportDifference(Object o1, Object o2, final String label) {
@@ -496,7 +451,6 @@ public class CompareSAMs extends CommandLineProgram {
     }
 
     public boolean areEqual() {
-        return areEqual;
+        return headersAreEqual && alignmentsAreEqual;
     }
-
 }

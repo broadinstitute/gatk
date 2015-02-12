@@ -26,6 +26,8 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.picard.CompareSAMs;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -34,6 +36,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +44,7 @@ import java.util.List;
 public class ClipReadsTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "clipOptions")
-    public void testClipper(String inBam, String option, String optAbrv) throws FileNotFoundException {
+    public void testClipper(String inBam, String option, String optAbrv) throws IOException {
         final String tmpName = BaseTest.createTempFile(inBam + "." + optAbrv, ".tmp").getAbsolutePath();
         final String outName = BaseTest.createTempFile(inBam + "." + optAbrv, ".bam").getAbsolutePath();
 
@@ -60,15 +63,12 @@ public class ClipReadsTest extends CommandLineProgramTest {
         final ClipReads.ClippingData res = (ClipReads.ClippingData)this.runCommandLine(args);
         System.out.println(res);
 
-        final CompareSAMs compareSAMs = new CompareSAMs();
         Assert.assertTrue(expectedOutBam.exists(), "expected output read file exists " + expectedOutBam.getAbsolutePath());
         Assert.assertTrue(outFileBam.exists(), "actual output read file exists " + outFileBam.getAbsolutePath());
 
         Assert.assertTrue(expectedTmp.exists(), "expected output stat file exists " + expectedTmp.getAbsolutePath());
         Assert.assertTrue(outFileTmp.exists(), "actual output stat file exists " + outFileTmp.getAbsolutePath());
-        compareSAMs.samFiles = Arrays.asList(expectedOutBam, outFileBam);
-        compareSAMs.doWork();
-        Assert.assertTrue(compareSAMs.areEqual(), "Bam files are equal");
+        SamAssertionUtils.assertSamsEqual(expectedOutBam, outFileBam);
 
         List<String> actualLines = new XReadLines(new File(tmpName)).readLines();
         List<String> expectedLines = new XReadLines(expectedTmp).readLines();

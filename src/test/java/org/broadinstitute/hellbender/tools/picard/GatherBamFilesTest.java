@@ -2,13 +2,12 @@ package org.broadinstitute.hellbender.tools.picard;
 
 import htsjdk.samtools.BamFileIoUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.CompareSAMs;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,12 +39,7 @@ public class GatherBamFilesTest extends CommandLineProgramTest {
         }
         args.add("OUTPUT=" + outputFile);
         runCommandLine(args.getArgsList());
-
-        // TODO don't abuse instanceMain
-        final CompareSAMs compareSams = new CompareSAMs();
-        String[] compareSamsArgs = new String[]{ORIG_BAM.getAbsolutePath(), outputFile.getAbsolutePath()};
-        compareSams.instanceMain(compareSamsArgs);
-        Assert.assertTrue(compareSams.areEqual());
+        SamAssertionUtils.assertSamsEqual(ORIG_BAM, outputFile);
     }
 
     @Test
@@ -57,11 +51,6 @@ public class GatherBamFilesTest extends CommandLineProgramTest {
         }
         args.add("OUTPUT=" + outputFile);
         runCommandLine(args.getArgsList());
-
-        // TODO don't abuse instanceMain
-        final CompareSAMs compareSams = new CompareSAMs();
-        String[] compareSamsArgs = new String[]{ORIG_BAM.getAbsolutePath(), outputFile.getAbsolutePath()};
-        compareSams.instanceMain(compareSamsArgs);
-        Assert.assertTrue(compareSams.areEqual());
+        SamAssertionUtils.assertSamsEqual(ORIG_BAM, outputFile);
     }
 }

@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.sam.mergealignment.BestMapqPrimaryAlignmentSelectionStrategy;
 import org.broadinstitute.hellbender.utils.sam.mergealignment.SamAlignmentMerger;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -461,18 +462,7 @@ public class MergeBamAlignmentTest extends CommandLineProgramTest {
             Assert.assertEquals(actual, entry.getValue(), entry.getKey());
         }
 
-        assertSamValid(merged);
-    }
-
-    private void assertSamValid(final File sam) throws IOException {
-        final SamReader samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(sam);
-        final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
-        validator.setIgnoreWarnings(true);
-        validator.setVerbose(true, 1000);
-        validator.setErrorsToIgnore(Arrays.asList(SAMValidationError.Type.MISSING_READ_GROUP));
-        final boolean validated = validator.validateSamFileVerbose(samReader, null);
-        samReader.close();
-        Assert.assertTrue(validated, "ValidateSamFile failed");
+        SamAssertionUtils.assertSamValid(merged);
     }
 
     private static class AlignmentAccumulator {
@@ -577,7 +567,7 @@ public class MergeBamAlignmentTest extends CommandLineProgramTest {
                 null, null, null, null
         );
 
-        assertSamValid(mergedSam);
+        SamAssertionUtils.assertSamValid(mergedSam);
 
         // Tally metrics and check for agreement with expected.
         final SamReader mergedReader = SamReaderFactory.makeDefault().open(mergedSam);
@@ -838,7 +828,7 @@ public class MergeBamAlignmentTest extends CommandLineProgramTest {
                 false, fasta, mergedSam,
                 null, null, null, null);
 
-        assertSamValid(mergedSam);
+        SamAssertionUtils.assertSamValid(mergedSam);
 
         // Tally metrics and check for agreement with expected.
         final SamReader mergedReader = SamReaderFactory.makeDefault().open(mergedSam);

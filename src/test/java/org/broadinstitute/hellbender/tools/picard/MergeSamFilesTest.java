@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -36,18 +37,7 @@ public class MergeSamFilesTest extends CommandLineProgramTest {
         Assert.assertEquals(runCommandLine(args.getArgsList()), null);
         final SamReader reader = SamReaderFactory.makeDefault().open(mergedOutput);
         Assert.assertEquals(reader.getFileHeader().getSortOrder(), SAMFileHeader.SortOrder.coordinate);
-        assertSamValid(mergedOutput);
+        SamAssertionUtils.assertSamValid(mergedOutput);
         CloserUtil.close(reader);
-    }
-
-    private void assertSamValid(final File sam) throws IOException {
-        final SamReader samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(sam);
-        final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
-        validator.setIgnoreWarnings(true);
-        validator.setVerbose(true, 1000);
-        validator.setErrorsToIgnore(Arrays.asList(SAMValidationError.Type.MISSING_READ_GROUP));
-        final boolean validated = validator.validateSamFileVerbose(samReader, null);
-        samReader.close();
-        Assert.assertTrue(validated, "ValidateSamFile failed");
     }
 }
