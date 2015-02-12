@@ -168,7 +168,7 @@ public class AlignmentUtilsUnitTest {
 
     @Test(enabled = true, dataProvider = "CalcNumDifferentBasesData")
     public void testCalcNumDifferentBases(final String cigarString, final String ref, final String read, final int expectedDifferences) {
-        final Cigar cigar = TextCigarCodec.getSingleton().decode(cigarString);
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
         Assert.assertEquals(AlignmentUtils.calcNumDifferentBases(cigar, ref.getBytes(), read.getBytes()), expectedDifferences);
     }
 
@@ -299,8 +299,8 @@ public class AlignmentUtilsUnitTest {
 
     @Test(enabled = !DEBUG, dataProvider = "ConsolidateCigarData")
     public void testConsolidateCigarWithData(final String testCigarString, final String expectedCigarString) {
-        final Cigar testCigar = TextCigarCodec.getSingleton().decode(testCigarString);
-        final Cigar expectedCigar = TextCigarCodec.getSingleton().decode(expectedCigarString);
+        final Cigar testCigar = TextCigarCodec.decode(testCigarString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
         final Cigar actualCigar = AlignmentUtils.consolidateCigar(testCigar);
         Assert.assertEquals(actualCigar, expectedCigar);
     }
@@ -766,8 +766,8 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "TrimCigarData", enabled = ! DEBUG)
     public void testTrimCigar(final String cigarString, final int start, final int length, final String expectedCigarString) {
-        final Cigar cigar = TextCigarCodec.getSingleton().decode(cigarString);
-        final Cigar expectedCigar = TextCigarCodec.getSingleton().decode(expectedCigarString);
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
         final Cigar actualCigar = AlignmentUtils.trimCigarByReference(cigar, start, length);
         Assert.assertEquals(actualCigar, expectedCigar);
     }
@@ -801,8 +801,8 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "TrimCigarByBasesData", enabled = !DEBUG)
     public void testTrimCigarByBase(final String cigarString, final int start, final int length, final String expectedCigarString) {
-        final Cigar cigar = TextCigarCodec.getSingleton().decode(cigarString);
-        final Cigar expectedCigar = TextCigarCodec.getSingleton().decode(expectedCigarString);
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
         final Cigar actualCigar = AlignmentUtils.trimCigarByBases(cigar, start, length);
         Assert.assertEquals(actualCigar, expectedCigar);
     }
@@ -853,9 +853,9 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "ApplyCigarToCigarData", enabled = !DEBUG)
     public void testApplyCigarToCigar(final String firstToSecondString, final String secondToThirdString, final String expectedCigarString) {
-        final Cigar firstToSecond = TextCigarCodec.getSingleton().decode(firstToSecondString);
-        final Cigar secondToThird = TextCigarCodec.getSingleton().decode(secondToThirdString);
-        final Cigar expectedCigar = TextCigarCodec.getSingleton().decode(expectedCigarString);
+        final Cigar firstToSecond = TextCigarCodec.decode(firstToSecondString);
+        final Cigar secondToThird = TextCigarCodec.decode(secondToThirdString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
         final Cigar actualCigar = AlignmentUtils.applyCigarToCigar(firstToSecond, secondToThird);
         Assert.assertEquals(actualCigar, expectedCigar);
     }
@@ -909,7 +909,7 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "ReadOffsetFromCigarData", enabled = !DEBUG)
     public void testReadOffsetFromCigar(final String cigarString, final int startOnCigar, final int expectedOffset) {
-        final Cigar cigar = TextCigarCodec.getSingleton().decode(cigarString);
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
         final int actualOffset = AlignmentUtils.calcFirstBaseMatchingReferenceInCigar(cigar, startOnCigar);
         Assert.assertEquals(actualOffset, expectedOffset);
     }
@@ -940,9 +940,9 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "AddCigarElementsData", enabled = !DEBUG)
     public void testAddCigarElements(final String cigarString, final int pos, final int start, final int end, final String expectedCigarString) {
-        final Cigar cigar = TextCigarCodec.getSingleton().decode(cigarString);
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
         final CigarElement elt = cigar.getCigarElement(0);
-        final Cigar expectedCigar = TextCigarCodec.getSingleton().decode(expectedCigarString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
 
         final List<CigarElement> elts = new LinkedList<CigarElement>();
         final int actualEndPos = AlignmentUtils.addCigarElements(elts, pos, start, end, elt);
@@ -1000,7 +1000,7 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "GetBasesCoveringRefIntervalData", enabled = true)
     public void testGetBasesCoveringRefInterval(final String basesString, final int refStart, final int refEnd, final String cigarString, final String expected) {
-        final byte[] actualBytes = AlignmentUtils.getBasesCoveringRefInterval(refStart, refEnd, basesString.getBytes(), 0, TextCigarCodec.getSingleton().decode(cigarString));
+        final byte[] actualBytes = AlignmentUtils.getBasesCoveringRefInterval(refStart, refEnd, basesString.getBytes(), 0, TextCigarCodec.decode(cigarString));
         if ( expected == null )
             Assert.assertNull(actualBytes);
         else
@@ -1031,13 +1031,13 @@ public class AlignmentUtilsUnitTest {
 
     @Test(dataProvider = "StartsOrEndsWithInsertionOrDeletionData", enabled = true)
     public void testStartsOrEndsWithInsertionOrDeletion(final String cigar, final boolean expected) {
-        Assert.assertEquals(AlignmentUtils.startsOrEndsWithInsertionOrDeletion(TextCigarCodec.getSingleton().decode(cigar)), expected);
+        Assert.assertEquals(AlignmentUtils.startsOrEndsWithInsertionOrDeletion(TextCigarCodec.decode(cigar)), expected);
     }
 
     @Test(dataProvider = "StartsOrEndsWithInsertionOrDeletionData", enabled = true)
     public void testRemoveTrailingDeletions(final String cigar, final boolean expected) {
 
-        final Cigar originalCigar = TextCigarCodec.getSingleton().decode(cigar);
+        final Cigar originalCigar = TextCigarCodec.decode(cigar);
         final Cigar newCigar = AlignmentUtils.removeTrailingDeletions(originalCigar);
 
         Assert.assertEquals(originalCigar.equals(newCigar), !cigar.endsWith("D"));

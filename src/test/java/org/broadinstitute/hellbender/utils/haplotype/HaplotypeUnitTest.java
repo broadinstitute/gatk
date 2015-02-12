@@ -166,7 +166,7 @@ public class HaplotypeUnitTest extends BaseTest {
 
     private Haplotype makeHCForCigar(final String bases, final String cigar) {
         final Haplotype h = new Haplotype(bases.getBytes());
-        h.setCigar(TextCigarCodec.getSingleton().decode(cigar));
+        h.setCigar(TextCigarCodec.decode(cigar));
         return h;
     }
 
@@ -200,10 +200,10 @@ public class HaplotypeUnitTest extends BaseTest {
 
                 final int hapStart = 10;
                 full.setAlignmentStartHapwrtRef(hapStart);
-                full.setCigar(TextCigarCodec.getSingleton().decode(full.length() + "M"));
+                full.setCigar(TextCigarCodec.decode(full.length() + "M"));
 
                 trimmed.setAlignmentStartHapwrtRef(hapStart + start);
-                trimmed.setCigar(TextCigarCodec.getSingleton().decode(trimmed.length() + "M"));
+                trimmed.setCigar(TextCigarCodec.decode(trimmed.length() + "M"));
 
                 tests.add(new Object[]{full, trimmedLoc, trimmed});
             }
@@ -211,7 +211,7 @@ public class HaplotypeUnitTest extends BaseTest {
 
         final Haplotype full = new Haplotype("ACT".getBytes(), new UnvalidatingGenomeLoc("20", 0, 10, 14));
         full.setAlignmentStartHapwrtRef(10);
-        full.setCigar(TextCigarCodec.getSingleton().decode("1M2D2M"));
+        full.setCigar(TextCigarCodec.decode("1M2D2M"));
         tests.add(new Object[]{full, new UnvalidatingGenomeLoc("20", 0, 11, 12), null});
         tests.add(new Object[]{full, new UnvalidatingGenomeLoc("20", 0, 10, 12), null});
         tests.add(new Object[]{full, new UnvalidatingGenomeLoc("20", 0, 11, 13), null});

@@ -128,7 +128,7 @@ public class EventMapUnitTest extends BaseTest {
      */
     @Test(dataProvider = "BlockSubstitutionsData")
     public void testBlockSubstitutionsData(final String refBases, final String haplotypeBases, final String cigar, final VariantContext expectedBlock) {
-        final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.getSingleton().decode(cigar));
+        final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.decode(cigar));
         final GenomeLoc loc = new UnvalidatingGenomeLoc(CHR, 0, 1, refBases.length());
         final EventMap ee = new EventMap(hap, refBases.getBytes(), loc, NAME);
         ee.replaceClumpedEventsWithBlockSubstitutions();
@@ -157,7 +157,7 @@ public class EventMapUnitTest extends BaseTest {
      */
     @Test(dataProvider = "AdjacentSNPIndelTest")
     public void testAdjacentSNPIndelTest(final String refBases, final String haplotypeBases, final String cigar, final List<List<String>> expectedAlleles) {
-        final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.getSingleton().decode(cigar));
+        final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.decode(cigar));
         final GenomeLoc loc = new UnvalidatingGenomeLoc(CHR, 0, 1, refBases.length());
         final EventMap ee = new EventMap(hap, refBases.getBytes(), loc, NAME);
         ee.replaceClumpedEventsWithBlockSubstitutions();
