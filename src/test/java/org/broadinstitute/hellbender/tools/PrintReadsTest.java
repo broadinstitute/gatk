@@ -24,6 +24,8 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.picard.CompareSAMs;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -52,11 +54,7 @@ public class PrintReadsTest extends CommandLineProgramTest{
                 "--output", outFile.getAbsolutePath()
         };
         Assert.assertEquals(runCommandLine(args), null);
-
-        final CompareSAMs compareSAMs = new CompareSAMs();
-        compareSAMs.samFiles = Arrays.asList(ORIG_BAM, outFile);
-        compareSAMs.doWork();
-        Assert.assertTrue(compareSAMs.areEqual());
+        SamAssertionUtils.assertSamsEqual(ORIG_BAM, outFile);
     }
 
     @DataProvider(name="testingData")

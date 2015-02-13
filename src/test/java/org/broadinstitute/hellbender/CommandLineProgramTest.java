@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Utility class for CommandLine Program testing.
@@ -34,13 +33,27 @@ public abstract class CommandLineProgramTest {
      * @return String[] of command line arguments
      */
     public String[] makeCommandLineArgs(final List<String> args) {
-        final String[] commandLineArgs = new String[args.size() + 1];
+        List<String> curatedArgs = injectDefaultVerbosity(args);
+        final String[] commandLineArgs = new String[curatedArgs.size() + 1];
         commandLineArgs[0] = getCommandLineProgramName();
         int i = 1;
-        for (final String arg : args) {
+        for (final String arg : curatedArgs) {
             commandLineArgs[i++] = arg;
         }
         return commandLineArgs;
+    }
+
+    /**
+     * Look for VERBOSITY argument; if not found, supply a default value that minimizes the amount of logging output.
+     */
+    private List<String> injectDefaultVerbosity(final List<String> args) {
+        for (String arg : args) {
+            if (arg.equalsIgnoreCase("--VERBOSITY")) return args;
+        }
+        List<String> argsWithVerbosity = new ArrayList<>(args);
+        argsWithVerbosity.add("--VERBOSITY");
+        argsWithVerbosity.add("ERROR");
+        return argsWithVerbosity;
     }
 
     public String[] makeCommandLineArgs(final String[] args) {

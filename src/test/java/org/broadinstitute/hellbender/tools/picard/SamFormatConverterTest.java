@@ -1,19 +1,19 @@
 package org.broadinstitute.hellbender.tools.picard;
 
+import htsjdk.samtools.SAMValidationError;
+import htsjdk.samtools.SamFileValidator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.CompareSAMs;
-import org.broadinstitute.hellbender.tools.picard.SamFormatConverter;
-import org.broadinstitute.hellbender.tools.picard.ValidateSamFile;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import java.io.PrintWriter;
+import java.util.*;
 
 public class SamFormatConverterTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/SamFormatConverterTest");
@@ -55,7 +55,6 @@ public class SamFormatConverterTest extends CommandLineProgramTest {
         convertFile(unmappedCram, unmappedSam, ".sam");
     }
 
-
     private void convertFile(final File inputFile, final File fileToCompare, final String extension) throws IOException {
         final List<String> samFileConverterArgs = new ArrayList<>();
         samFileConverterArgs.add("--INPUT");
@@ -64,16 +63,7 @@ public class SamFormatConverterTest extends CommandLineProgramTest {
         samFileConverterArgs.add("--OUTPUT");
         samFileConverterArgs.add(converterOutput.getAbsolutePath());
         Assert.assertEquals(runCommandLine(samFileConverterArgs), null);
-
-        ValidateSamFile validator = new ValidateSamFile();
-        String[] validatorArgs = new String[]{"--INPUT", converterOutput.getAbsolutePath()};
-        Assert.assertEquals(validator.instanceMain(validatorArgs), true);
-
-        // TODO this is a bit silly - since doWork is package-protected, we have to call instanceMain;
-        // since instanceMain returns null, we rely on the object being mutated and call a public getter.
-        CompareSAMs compareSams = new CompareSAMs();
-        String[] compareSamsArgs = new String[]{converterOutput.toString(), fileToCompare.toString()};
-        compareSams.instanceMain(compareSamsArgs);
-        Assert.assertTrue(compareSams.areEqual());
+        SamAssertionUtils.assertSamValid(converterOutput);
+        SamAssertionUtils.assertSamsEqual(converterOutput, fileToCompare);
     }
 }
