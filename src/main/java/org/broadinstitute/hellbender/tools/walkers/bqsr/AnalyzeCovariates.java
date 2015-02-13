@@ -444,7 +444,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
                 throw new UserException.IncompatibleRecalibrationTableParameters("There are differences in relevant arguments of"
                         + " two or more input recalibration reports. Please make sure"
                         + " they have been created using the same recalibration parameters."
-                        + " " + Utils.join("// ", reportDifferencesStringArray(diffs)));
+                        + " " + String.join("// ", reportDifferencesStringArray(diffs)));
             }
         }
     }

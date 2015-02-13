@@ -342,16 +342,16 @@ public class RecalibrationArgumentCollection implements Cloneable {
         if (intersect.size() == 0) { // In practice this is not possible due to required covariates but...
             diffMessage = String.format("There are no common covariates between '%s' and '%s'"
                             + " recalibrator reports. Covariates in '%s': {%s}. Covariates in '%s': {%s}.", thisRole, otherRole,
-                    thisRole, Utils.join(", ", this.COVARIATES),
-                    otherRole, Utils.join(",", other.COVARIATES));
+                    thisRole, String.join(", ", this.COVARIATES),
+                    otherRole, String.join(",", other.COVARIATES));
         } else if (intersect.size() != beforeNames.size() || intersect.size() != afterNames.size()) {
             beforeNames.removeAll(intersect);
             afterNames.removeAll(intersect);
             diffMessage = String.format("There are differences in the set of covariates requested in the"
                             + " '%s' and '%s' recalibrator reports. "
                             + " Exclusive to '%s': {%s}. Exclusive to '%s': {%s}.", thisRole, otherRole,
-                    thisRole, Utils.join(", ", beforeNames),
-                    otherRole, Utils.join(", ", afterNames));
+                    thisRole, String.join(", ", beforeNames),
+                    otherRole, String.join(", ", afterNames));
         }
         if (diffMessage != null) {
             diffs.put("covariate",diffMessage);

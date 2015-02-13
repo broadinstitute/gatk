@@ -26,6 +26,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -109,6 +110,38 @@ public class UtilsUnitTest extends BaseTest {
         map.put("six",2);
         String joined = Utils.joinMap("-",";",map);
         Assert.assertTrue("one-1;two-2;three-1;four-2;five-1;six-2".equals(joined));
+    }
+
+    @Test
+    public void testWarnUserLines(){
+        String message = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut" +
+                " labore et dolore magna aliqua.";
+        Assert.assertEquals(Utils.warnUserLines(message), new ArrayList<>(Arrays.asList(
+                "**********************************************************************",
+                "* WARNING:",
+                "* ",
+                "* Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do",
+                "* eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                "**********************************************************************")));
+    }
+
+    @Test
+    public void testListFromPrimitives(){
+        int[] ints = {1,2,3,4};
+        Assert.assertEquals(Utils.listFromPrimitives(ints), Arrays.asList(ArrayUtils.toObject(ints)));
+    }
+
+    @Test
+    public void testJoin(){
+        int[] ints = {1,2,3,4};
+        int[] nullints = null;
+        Assert.assertEquals(Utils.join(",", ints),"1,2,3,4");
+        Assert.assertEquals(Utils.join(",", nullints), "");
+
+        double[] dbls = {1.0,2.0,3.0,4.0};
+        double[] emptydbl = null;
+        Assert.assertEquals(Utils.join(",", emptydbl), "");
+        Assert.assertEquals(Utils.join(",",dbls), "1.0,2.0,3.0,4.0");
     }
 
     @Test

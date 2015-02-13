@@ -179,65 +179,16 @@ public class Utils {
         for (L key : map.keySet()) {
             joinedKeyValues[index++] = String.format("%s%s%s",key.toString(),keyValueSeperator,map.get(key).toString());
         }
-        return join(recordSeperator,joinedKeyValues);
+        return String.join(recordSeperator, joinedKeyValues);
     }
 
     /**
-     * Splits a String using indexOf instead of regex to speed things up.
+     * Returns a string of the values in ints joined by separator, such as A,B,C
      *
-     * @param str the string to split.
-     * @param delimiter the delimiter used to split the string.
-     * @return an array of tokens.
+     * @param separator separator character
+     * @param ints   the array with values
+     * @return a string with the values separated by the separator
      */
-    public static ArrayList<String> split(String str, String delimiter) {
-        return split(str, delimiter, 10);
-    }
-
-    /**
-     * Splits a String using indexOf instead of regex to speed things up.
-     *
-     * @param str the string to split.
-     * @param delimiter the delimiter used to split the string.
-     * @param expectedNumTokens The number of tokens expected. This is used to initialize the ArrayList.
-     * @return an array of tokens.
-     */
-    public static ArrayList<String> split(String str, String delimiter, int expectedNumTokens) {
-        final ArrayList<String> result =  new ArrayList<String>(expectedNumTokens);
-
-        int delimiterIdx = -1;
-        do {
-            final int tokenStartIdx = delimiterIdx + 1;
-            delimiterIdx = str.indexOf(delimiter, tokenStartIdx);
-            final String token = (delimiterIdx != -1 ? str.substring(tokenStartIdx, delimiterIdx) : str.substring(tokenStartIdx) );
-            result.add(token);
-        } while( delimiterIdx != -1 );
-
-        return result;
-    }
-
-
-    /**
-     * join an array of strings given a seperator
-     * @param separator the string to insert between each array element
-     * @param strings the array of strings
-     * @return a string, which is the joining of all array values with the separator
-     */
-    public static String join(String separator, String[] strings) {
-        return join(separator, strings, 0, strings.length);
-    }
-
-    public static String join(String separator, String[] strings, int start, int end) {
-        if ((end - start) == 0) {
-            return "";
-        }
-        StringBuilder ret = new StringBuilder(strings[start]);
-        for (int i = start + 1; i < end; ++i) {
-            ret.append(separator);
-            ret.append(strings[i]);
-        }
-        return ret.toString();
-    }
-
     public static String join(String separator, int[] ints) {
         if ( ints == null || ints.length == 0)
             return "";
@@ -390,22 +341,6 @@ public class Utils {
         byte[] bytes = new byte[nCopies];
         Arrays.fill(bytes, b);
         return bytes;
-    }
-
-    // trim a string for the given character (i.e. not just whitespace)
-    public static String trim(String str, char ch) {
-        char[] array = str.toCharArray();
-
-
-        int start = 0;
-        while ( start < array.length && array[start] == ch )
-            start++;
-
-        int end = array.length - 1;
-        while ( end > start && array[end] == ch )
-            end--;
-
-        return str.substring(start, end+1);
     }
 
     /**
@@ -727,25 +662,6 @@ public class Utils {
     }
 
     /**
-     * Divides the input list into a list of sublists, which contains group size elements (except potentially the last one)
-     *
-     * list = [A, B, C, D, E]
-     * groupSize = 2
-     * result = [[A, B], [C, D], [E]]
-     *
-     */
-    public static <T> List<List<T>> groupList(final List<T> list, final int groupSize) {
-        if ( groupSize < 1 ) throw new IllegalArgumentException("groupSize >= 1");
-
-        final List<List<T>> subLists = new LinkedList<List<T>>();
-        int n = list.size();
-        for ( int i = 0; i < n; i += groupSize ) {
-            subLists.add(list.subList(i, Math.min(i + groupSize, n)));
-        }
-        return subLists;
-    }
-
-    /**
      * @see #calcMD5(byte[])
      */
     public static String calcMD5(final String s) {
@@ -887,7 +803,7 @@ public class Utils {
     }
 
     /**
-     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
+     * Skims out positions of an array returning a shorter one with the remaining positions in the same order.
      * @param original the original array to splice.
      * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
      *               or retained ({@code false})
