@@ -5,12 +5,11 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.filters.MalformedReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
 import java.io.File;
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 /**
@@ -85,7 +84,7 @@ public abstract class ReadWalker extends GATKTool {
 
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        Predicate<SAMRecord> filter = makeReadFilter();
+        ReadFilter filter = makeReadFilter();
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(filter)
                 .forEach(read -> {
@@ -101,9 +100,9 @@ public abstract class ReadWalker extends GATKTool {
      * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
      *
      * Subclasses can extend to provide own filters (ie override and call super).
-     * Multiple filters can be composed by using {@link Predicate} composition methods.
+     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
      */
-    public Predicate<SAMRecord> makeReadFilter(){
+    public ReadFilter makeReadFilter(){
           return read -> true;//HACK to check
         //return new MalformedReadFilter();
     }

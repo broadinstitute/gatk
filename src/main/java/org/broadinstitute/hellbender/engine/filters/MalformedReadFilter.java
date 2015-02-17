@@ -28,12 +28,10 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
-import java.util.function.Predicate;
-
 /**
  * Filter out malformed reads.
  */
-public class MalformedReadFilter implements Predicate<SAMRecord> {
+public class MalformedReadFilter implements ReadFilter {
 
     /**
      *filter out reads with CIGAR containing the N operator, instead of stop processing and report an error."

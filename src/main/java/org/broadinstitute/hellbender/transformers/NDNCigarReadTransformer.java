@@ -29,8 +29,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-
-import java.util.function.Function;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadTransformer;
 
 /**
  * A read transformer that refactor NDN cigar elements to one N element.
@@ -48,7 +47,7 @@ import java.util.function.Function;
  *
  */
 
-public final class NDNCigarReadTransformer implements Function<SAMRecord, SAMRecord> {
+public final class NDNCigarReadTransformer implements ReadTransformer {
 
     @Override
     public SAMRecord apply(final SAMRecord read) {

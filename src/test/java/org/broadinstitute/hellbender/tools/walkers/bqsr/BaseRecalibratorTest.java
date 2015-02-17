@@ -72,6 +72,7 @@ public class BaseRecalibratorTest extends CommandLineProgramTest{
         spec.executeTest("testBQSR-" + params.args, this);
     }
 
+
     @Test(enabled = false)
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir = getTestDataDir() + getCommandLineProgramName();

@@ -65,7 +65,7 @@ import org.broadinstitute.hellbender.engine.HACKRefMetaDataTracker;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.engine.filters.ReadFilters;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
@@ -86,8 +86,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * First pass of the base quality score recalibration -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).
@@ -305,14 +303,14 @@ public class BaseRecalibrator extends ReadWalker {
     }
 
     @Override
-    public Predicate<SAMRecord> makeReadFilter() {
+    public ReadFilter makeReadFilter() {
         return super.makeReadFilter()
-                .and(ReadFilters.MAPPING_QUALITY_ZERO.negate())
-                .and(ReadFilters.MAPPING_QUALITY_UNAVAIALBLE.negate())
-                .and(ReadFilters.UNMAPPED.negate())
-                .and(ReadFilters.NOT_PRIMARY_ALIGNMENT.negate())
-                .and(ReadFilters.DUPLICATE.negate())
-                .and(ReadFilters.FAILS_VENDOR_QUALITY_CHECK.negate());
+                .and(ReadFilter.MAPPING_QUALITY_ZERO)
+                .and(ReadFilter.MAPPING_QUALITY_UNAVAIALBLE)
+                .and(ReadFilter.UNMAPPED)
+                .and(ReadFilter.NOT_PRIMARY_ALIGNMENT)
+                .and(ReadFilter.DUPLICATE)
+                .and(ReadFilter.FAILS_VENDOR_QUALITY_CHECK);
     }
 
     private static SAMRecord resetOriginalQualities(SAMRecord read){
@@ -357,10 +355,11 @@ public class BaseRecalibrator extends ReadWalker {
         return read;
     }
 
-    private Function<SAMRecord, SAMRecord> makeReadTransform(){
-        Function<SAMRecord, SAMRecord> adaptor = ReadClipper::hardClipAdaptorSequence;
 
-        Function<SAMRecord, SAMRecord> f =
+    private ReadTransformer makeReadTransform(){
+        ReadTransformer adaptor = ReadClipper::hardClipAdaptorSequence;
+
+        ReadTransformer f =
                  adaptor.andThen(ReadClipper::hardClipSoftClippedBases)
                 .andThen(BaseRecalibrator::consolidateCigar)
                 .andThen(this::setDefaultBaseQualities)
@@ -374,7 +373,7 @@ public class BaseRecalibrator extends ReadWalker {
      */
     @Override
     public void apply( final SAMRecord originalRead, final ReferenceContext ref) {
-        Function<SAMRecord, SAMRecord> transform = makeReadTransform();
+        ReadTransformer transform = makeReadTransform();
         final SAMRecord read = transform.apply(originalRead);
 
         if( ReadUtils.isEmpty(read) ) { return; } // the whole read was inside the adaptor so skip it

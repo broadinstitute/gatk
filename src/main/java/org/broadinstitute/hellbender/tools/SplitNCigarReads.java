@@ -61,6 +61,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadTransformer;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.OverhangFixingManager;
@@ -70,7 +71,6 @@ import org.broadinstitute.hellbender.utils.sam.CigarUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
@@ -145,7 +145,7 @@ public class SplitNCigarReads extends CommandLineProgram {
         final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
         final SAMFileWriter outputWriter = initialize(in);
 
-        final Function<SAMRecord, SAMRecord> rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : read -> read;
+        final ReadTransformer rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
 
         StreamSupport.stream(in.spliterator(), false)
                 .map(rnaReadTransform)
