@@ -140,7 +140,7 @@ task wrapper(type: Wrapper) {
 
 task fatJar(type: Jar) {
   manifest {
-        attributes 'Implementation-Title': 'Hellbender'
+        attributes 'Implementation-Title': 'Hellbender',
           'Implementation-Version': version,
           'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
