@@ -32,10 +32,12 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
+import java.util.function.Function;
 
 
 public class BaseUtilsUnitTest extends BaseTest {
@@ -233,4 +235,53 @@ public class BaseUtilsUnitTest extends BaseTest {
         }
         return result;
     }
+
+    @Test
+    public void testCaptureStdOut(){
+        PrintStream stdout = System.out;
+        String out = captureStdout(() -> System.out.println("Hello world"));
+        BaseTest.assertContains(out, "Hello world");
+
+        try {
+            captureStdout(() -> {
+                throw new IllegalStateException("oh no!");
+            });
+        } catch (Exception e){
+            //we're expecting this one... just consume it
+        }
+        //make sure we reset this
+        Assert.assertEquals(stdout, System.out);
+    }
+
+    @Test
+    public void testCaptureStderr(){
+        PrintStream stderr = System.err;
+        String out = captureStderr(() -> System.err.println("Hello world"));
+        BaseTest.assertContains(out, "Hello world");
+        try {
+            captureStdout(() -> {
+                throw new IllegalStateException("oh no!");
+            });
+        } catch (Exception e){
+            //we're expecting this one... just consume it
+        }
+        //make sure we reset this
+        Assert.assertEquals(stderr, System.err);
+    }
+
+    @Test()
+    public void testAssertContains(){
+        assertContains("something", "thing");
+        assertContains("somethingelse","some");
+        assertContains("thing","thing");
+
+        boolean caughtException = false;
+        try {
+            assertContains("thing", "something"); //should fail
+        } catch (AssertionError e){
+            caughtException = true;
+        }
+        Assert.assertTrue(caughtException);
+    }
+
 }

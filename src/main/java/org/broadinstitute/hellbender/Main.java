@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.lang.reflect.Modifier;
 
@@ -112,8 +113,16 @@ public class Main {
      * Override this if you want to include different java packages to search for classes that extend CommandLineProgram. *
      */
     public static void main(final String[] args) {
-        Object result = new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
-        System.out.println("Tool returned:\n" + result);
+        try {
+            Object result = new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
+            System.out.println("Tool returned:\n" + result);
+        } catch (UserException e){
+            System.err.println("***********************************************************************");
+            System.err.println();
+            System.err.println(e.getMessage());
+            System.err.println();
+            System.err.println("***********************************************************************");
+        }
     }
 
     /**

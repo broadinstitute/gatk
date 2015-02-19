@@ -40,11 +40,10 @@ import org.testng.Assert;
 import org.testng.Reporter;
 import org.testng.annotations.BeforeClass;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
+import java.util.function.Consumer;
+
 
 /**
  * This is the base test class for all of our test cases.  All test cases should extend from this
@@ -226,21 +225,21 @@ public abstract class BaseTest {
 
     private static final double DEFAULT_FLOAT_TOLERANCE = 1e-1;
 
-    public static final void assertEqualsDoubleSmart(final Object actual, final Double expected) {
+    public static void assertEqualsDoubleSmart(final Object actual, final Double expected) {
         Assert.assertTrue(actual instanceof Double, "Not a double");
         assertEqualsDoubleSmart((double)(Double)actual, (double)expected);
     }
 
-    public static final void assertEqualsDoubleSmart(final Object actual, final Double expected, final double tolerance) {
+    public static void assertEqualsDoubleSmart(final Object actual, final Double expected, final double tolerance) {
         Assert.assertTrue(actual instanceof Double, "Not a double");
         assertEqualsDoubleSmart((double)(Double)actual, (double)expected, tolerance);
     }
 
-    public static final void assertEqualsDoubleSmart(final double actual, final double expected) {
+    public static void assertEqualsDoubleSmart(final double actual, final double expected) {
         assertEqualsDoubleSmart(actual, expected, DEFAULT_FLOAT_TOLERANCE);
     }
 
-    public static final <T> void assertEqualsSet(final Set<T> actual, final Set<T> expected, final String info) {
+    public static <T> void assertEqualsSet(final Set<T> actual, final Set<T> expected, final String info) {
         final Set<T> actualSet = new HashSet<T>(actual);
         final Set<T> expectedSet = new HashSet<T>(expected);
         Assert.assertTrue(actualSet.equals(expectedSet), info); // note this is necessary due to testng bug for set comps
@@ -375,7 +374,7 @@ public abstract class BaseTest {
         }
     }
 
-    private static final boolean isMissing(final Object value) {
+    private static boolean isMissing(final Object value) {
         if ( value == null ) return true;
         else if ( value.equals(VCFConstants.MISSING_VALUE_v4) ) return true;
         else if ( value instanceof List ) {
@@ -387,5 +386,41 @@ public abstract class BaseTest {
         } else
             return false;
     }
+
+
+    /**
+     * captures {@link java.lang.System#out} while runnable is executing
+     * @param runnable a code block to execute
+     * @return everything written to {@link java.lang.System#out} by runnable
+     */
+    public static String captureStdout(Runnable runnable){
+        return captureSystemStream(runnable, System.out, System::setOut);
+    }
+
+
+    /**
+     * captures {@link java.lang.System#err} while runnable is executing
+     * @param runnable a code block to execute
+     * @return everything written to {@link java.lang.System#err} by runnable
+     */
+    public static String captureStderr(Runnable runnable){
+        return captureSystemStream(runnable, System.err, System::setErr);
+    }
+
+    private static String captureSystemStream(Runnable runnable,  PrintStream stream, Consumer<? super PrintStream> setter){
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        setter.accept(new PrintStream(out));
+        try {
+            runnable.run();
+        } finally{
+            setter.accept(stream);
+        }
+        return out.toString();
+    }
+
+    public static void assertContains(String actual, String expectedSubstring){
+        Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual+ ".");
+    }
+
 }
 
