@@ -136,3 +136,16 @@ test {
 task wrapper(type: Wrapper) {
     gradleVersion = '2.2.1'
 }
+
+
+task fatJar(type: Jar) {
+  manifest {
+        attributes 'Implementation-Title': 'Hellbender'
+          'Implementation-Version': version,
+          'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+ 
