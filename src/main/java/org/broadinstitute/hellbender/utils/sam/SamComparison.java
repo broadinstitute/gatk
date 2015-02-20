@@ -9,8 +9,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Rudimentary SAM comparer.  Compares headers, and if headers are compatible enough, compares SAMRecords,
- * looking only at basic alignment info.  Summarizes the number of alignments that match, mismatch, are missing, etc.
+ * Rudimentary SAM comparer. Compares headers, and if headers are compatible enough, compares SAMRecords,
+ * looking only at basic alignment info. Summarizes the number of alignments that match, mismatch, are missing, etc.
+ * Supplementary and secondary alignments are skipped. The inputs are assumed to be valid (as per SamFileValidator),
+ * otherwise undefined behavior may occur.
  */
 public class SamComparison {
     private SamReader reader1;
@@ -27,6 +29,10 @@ public class SamComparison {
     private int mappingsDiffer = 0;
     private int missingLeft = 0;
     private int missingRight = 0;
+
+    private enum AlignmentComparison {
+        UNMAPPED_BOTH, UNMAPPED_LEFT, UNMAPPED_RIGHT, MAPPINGS_DIFFER, MAPPINGS_MATCH
+    }
 
     /**
      * Note: the caller must make sure the SamReaders are closed properly.
@@ -77,10 +83,8 @@ public class SamComparison {
                 new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
         // Save any reads which haven't been matched during in-order scan.
-        final Map<String, SAMRecord> leftUnmatched = new HashMap<String, SAMRecord>();
-        final Map<String, SAMRecord> rightUnmatched = new HashMap<String, SAMRecord>();
-
-        boolean ret = true;
+        final Map<PrimaryAlignmentKey, SAMRecord> leftUnmatched = new HashMap<PrimaryAlignmentKey, SAMRecord>();
+        final Map<PrimaryAlignmentKey, SAMRecord> rightUnmatched = new HashMap<PrimaryAlignmentKey, SAMRecord>();
 
         while (itLeft.hasCurrent()) {
             if (!itRight.hasCurrent()) {
@@ -88,7 +92,8 @@ public class SamComparison {
                 // any of the saved right reads.
                 for (; itLeft.hasCurrent(); itLeft.advance()) {
                     final SAMRecord left = itLeft.getCurrent();
-                    final SAMRecord right = rightUnmatched.remove(left.getReadName());
+                    final PrimaryAlignmentKey leftKey = new PrimaryAlignmentKey(left);
+                    final SAMRecord right = rightUnmatched.remove(leftKey);
                     if (right == null) {
                         ++missingRight;
                     } else {
@@ -100,12 +105,14 @@ public class SamComparison {
             // Don't assume stability of order beyond the coordinate.  Therefore grab all the
             // reads from the left that has the same coordinate.
             final SAMRecord left = itLeft.getCurrent();
-            final Map<String, SAMRecord> leftCurrentCoordinate = new HashMap<String, SAMRecord>();
-            leftCurrentCoordinate.put(left.getReadName(), left);
+            final Map<PrimaryAlignmentKey, SAMRecord> leftCurrentCoordinate = new HashMap<PrimaryAlignmentKey, SAMRecord>();
+            final PrimaryAlignmentKey leftKey = new PrimaryAlignmentKey(left);
+            leftCurrentCoordinate.put(leftKey, left);
             while (itLeft.advance()) {
                 final SAMRecord nextLeft = itLeft.getCurrent();
                 if (compareAlignmentCoordinates(left, nextLeft) == 0) {
-                    leftCurrentCoordinate.put(nextLeft.getReadName(), nextLeft);
+                    final PrimaryAlignmentKey nextLeftKey = new PrimaryAlignmentKey(nextLeft);
+                    leftCurrentCoordinate.put(nextLeftKey, nextLeft);
                 } else {
                     break;
                 }
@@ -113,7 +120,8 @@ public class SamComparison {
             // Advance the right iterator until it is >= the left reads that have just been grabbed
             while (itRight.hasCurrent() && compareAlignmentCoordinates(left, itRight.getCurrent()) > 0) {
                 final SAMRecord right = itRight.getCurrent();
-                rightUnmatched.put(right.getReadName(), right);
+                final PrimaryAlignmentKey rightKey = new PrimaryAlignmentKey(right);
+                rightUnmatched.put(rightKey, right);
                 itRight.advance();
             }
             // For each right read that has the same coordinate as the current left reads,
@@ -121,24 +129,27 @@ public class SamComparison {
             // save the right read for later.
             for (; itRight.hasCurrent() && compareAlignmentCoordinates(left, itRight.getCurrent()) == 0; itRight.advance()) {
                 final SAMRecord right = itRight.getCurrent();
-                final SAMRecord matchingLeft = leftCurrentCoordinate.remove(right.getReadName());
+                final PrimaryAlignmentKey rightKey = new PrimaryAlignmentKey(right);
+                final SAMRecord matchingLeft = leftCurrentCoordinate.remove(rightKey);
                 if (matchingLeft != null) {
-                    ret = tallyAlignmentRecords(matchingLeft, right) && ret;
+                    tallyAlignmentRecords(matchingLeft, right);
                 } else {
-                    rightUnmatched.put(right.getReadName(), right);
+                    rightUnmatched.put(rightKey, right);
                 }
             }
 
             // Anything left in leftCurrentCoordinate has not been matched
             for (final SAMRecord samRecord : leftCurrentCoordinate.values()) {
-                leftUnmatched.put(samRecord.getReadName(), samRecord);
+                final PrimaryAlignmentKey recordKey = new PrimaryAlignmentKey(samRecord);
+                leftUnmatched.put(recordKey, samRecord);
             }
         }
         // The left iterator has been exhausted.  See if any of the remaining right reads
         // match any of the saved left reads.
         for (; itRight.hasCurrent(); itRight.advance()) {
             final SAMRecord right = itRight.getCurrent();
-            final SAMRecord left = leftUnmatched.remove(right.getReadName());
+            final PrimaryAlignmentKey rightKey = new PrimaryAlignmentKey(right);
+            final SAMRecord left = leftUnmatched.remove(rightKey);
             if (left != null) {
                 tallyAlignmentRecords(left, right);
             } else {
@@ -148,10 +159,10 @@ public class SamComparison {
 
         // Look up reads that were unmatched from left, and see if they are in rightUnmatched.
         // If found, remove from rightUnmatched and tally.
-        for (final Map.Entry<String, SAMRecord> leftEntry : leftUnmatched.entrySet()) {
-            final String readName = leftEntry.getKey();
+        for (final Map.Entry<PrimaryAlignmentKey, SAMRecord> leftEntry : leftUnmatched.entrySet()) {
+            final PrimaryAlignmentKey leftKey = leftEntry.getKey();
             final SAMRecord left = leftEntry.getValue();
-            final SAMRecord right = rightUnmatched.remove(readName);
+            final SAMRecord right = rightUnmatched.remove(leftKey);
             if (right == null) {
                 ++missingRight;
                 continue;
@@ -162,12 +173,7 @@ public class SamComparison {
         // Any elements remaining in rightUnmatched are guaranteed not to be in leftUnmatched.
         missingLeft += rightUnmatched.size();
 
-        if (ret) {
-            if (missingLeft > 0 || missingRight > 0 || mappingsDiffer > 0 || unmappedLeft > 0 || unmappedRight > 0) {
-                ret = false;
-            }
-        }
-        return ret;
+        return allVisitedAlignmentsEqual();
     }
 
     private int compareAlignmentCoordinates(final SAMRecord left, final SAMRecord right) {
@@ -193,58 +199,67 @@ public class SamComparison {
         final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
         final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
-        boolean ret = true;
         while (it1.hasCurrent()) {
             if (!it2.hasCurrent()) {
                 missingRight += countRemaining(it1);
-                return false;
             }
-            final int cmp = it1.getCurrent().getReadName().compareTo(it2.getCurrent().getReadName());
+            final PrimaryAlignmentKey leftKey = new PrimaryAlignmentKey(it1.getCurrent());
+            final PrimaryAlignmentKey rightKey = new PrimaryAlignmentKey(it2.getCurrent());
+            final int cmp = leftKey.compareTo(rightKey);
             if (cmp < 0) {
                 ++missingRight;
                 it1.advance();
-                ret = false;
             } else if (cmp > 0) {
                 ++missingLeft;
                 it2.advance();
-                ret = false;
             } else {
-                if (!tallyAlignmentRecords(it1.getCurrent(), it2.getCurrent())) {
-                    ret = false;
-                }
+                tallyAlignmentRecords(it1.getCurrent(), it2.getCurrent());
                 it1.advance();
                 it2.advance();
             }
         }
         if (it2.hasCurrent()) {
             missingLeft += countRemaining(it2);
-            return false;
         }
-        return ret;
+        return allVisitedAlignmentsEqual();
     }
 
+    /**
+     * For unsorted alignments, assume nothing about the order. Determine which records to compare solely on the
+     * basis of their PrimaryAlignmentKey.
+     */
     private boolean compareUnsortedAlignments() {
         final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
         final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
-        boolean ret = true;
-        for (; it1.hasCurrent(); it1.advance(), it2.advance()) {
-            if (!it2.hasCurrent()) {
-                missingRight += countRemaining(it1);
-                return false;
-            }
-            final SAMRecord s1 = it1.getCurrent();
-            final SAMRecord s2 = it2.getCurrent();
-            if (!compareValues(s1.getReadName(), s2.getReadName(), "Read names")) {
-                System.out.println("Read names cease agreeing in unsorted SAM files .  Comparison aborting.");
-            }
-            ret = tallyAlignmentRecords(s1, s2) && ret;
+
+        final HashMap<PrimaryAlignmentKey, SAMRecord> leftUnmatched = new HashMap<PrimaryAlignmentKey, SAMRecord>();
+        for (; it1.hasCurrent(); it1.advance()) {
+            final SAMRecord left = it1.getCurrent();
+            final PrimaryAlignmentKey leftKey = new PrimaryAlignmentKey(left);
+            leftUnmatched.put(leftKey, left);
         }
 
-        if (it2.hasCurrent()) {
-            missingLeft += countRemaining(it2);
-            return false;
+        for (; it2.hasCurrent(); it2.advance()) {
+            final SAMRecord right = it2.getCurrent();
+            final PrimaryAlignmentKey rightKey = new PrimaryAlignmentKey(right);
+            final SAMRecord left = leftUnmatched.remove(rightKey);
+            if (left != null) {
+                tallyAlignmentRecords(left, right);
+            } else {
+                ++missingLeft;
+            }
         }
-        return ret;
+
+        missingRight += leftUnmatched.size();
+
+        return allVisitedAlignmentsEqual();
+    }
+
+    /**
+     * Check the alignments tallied thus far for any kind of disparity.
+     */
+    private boolean allVisitedAlignmentsEqual() {
+        return !(missingLeft > 0 || missingRight > 0 || mappingsDiffer > 0 || unmappedLeft > 0 || unmappedRight > 0);
     }
 
     private int countRemaining(final SecondaryOrSupplementarySkippingIterator it) {
@@ -255,31 +270,54 @@ public class SamComparison {
         return i;
     }
 
-    private boolean tallyAlignmentRecords(final SAMRecord s1, final SAMRecord s2) {
+    private AlignmentComparison compareAlignmentRecords(final SAMRecord s1, final SAMRecord s2) {
+        if (s1.getReadUnmappedFlag() && s2.getReadUnmappedFlag()) {
+            return AlignmentComparison.UNMAPPED_BOTH;
+        } else if (s1.getReadUnmappedFlag()) {
+            return AlignmentComparison.UNMAPPED_LEFT;
+        } else if (s2.getReadUnmappedFlag()) {
+            return AlignmentComparison.UNMAPPED_RIGHT;
+        } else if (alignmentsMatch(s1, s2)) {
+            return AlignmentComparison.MAPPINGS_MATCH;
+        } else {
+            return AlignmentComparison.MAPPINGS_DIFFER;
+        }
+    }
+
+    private boolean alignmentsMatch(final SAMRecord s1, final SAMRecord s2) {
+        return (s1.getReferenceName().equals(s2.getReferenceName()) &&
+                s1.getAlignmentStart() == s2.getAlignmentStart() &&
+                s1.getReadNegativeStrandFlag() == s1.getReadNegativeStrandFlag());
+    }
+
+    /**
+     * Compare the mapping information for two SAMRecords.
+     */
+    private void tallyAlignmentRecords(final SAMRecord s1, final SAMRecord s2) {
         if (!s1.getReadName().equals(s2.getReadName())) {
             throw new GATKException("Read names do not match: " + s1.getReadName() + " : " + s2.getReadName());
         }
-        if (s1.getReadUnmappedFlag() && s2.getReadUnmappedFlag()) {
-            ++unmappedBoth;
-            return true;
+        final AlignmentComparison comp = compareAlignmentRecords(s1, s2);
+        switch (comp) {
+            case UNMAPPED_BOTH:
+                ++unmappedBoth;
+                break;
+            case UNMAPPED_LEFT:
+                ++unmappedLeft;
+                break;
+            case UNMAPPED_RIGHT:
+                ++unmappedRight;
+                break;
+            case MAPPINGS_DIFFER:
+                ++mappingsDiffer;
+                break;
+            case MAPPINGS_MATCH:
+                ++mappingsMatch;
+                break;
+            default:
+                // unreachable
+                throw new GATKException.ShouldNeverReachHereException("Unhandled comparison type: " + comp);
         }
-        if (s1.getReadUnmappedFlag()) {
-            ++unmappedLeft;
-            return false;
-        }
-        if (s2.getReadUnmappedFlag()) {
-            ++unmappedRight;
-            return false;
-        }
-        final boolean ret = (s1.getReferenceName().equals(s2.getReferenceName()) &&
-                s1.getAlignmentStart() == s2.getAlignmentStart() &&
-                s1.getReadNegativeStrandFlag() == s1.getReadNegativeStrandFlag());
-        if (!ret) {
-            ++mappingsDiffer;
-        } else {
-            ++mappingsMatch;
-        }
-        return ret;
     }
 
     private boolean compareHeaders() {
