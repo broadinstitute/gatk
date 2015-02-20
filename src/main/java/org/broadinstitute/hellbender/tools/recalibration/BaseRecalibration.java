@@ -73,7 +73,6 @@ import java.util.List;
 
 public class BaseRecalibration {
     private static Logger logger = LogManager.getLogger(BaseRecalibration.class);
-    private final static boolean TEST_CACHING = false;
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;

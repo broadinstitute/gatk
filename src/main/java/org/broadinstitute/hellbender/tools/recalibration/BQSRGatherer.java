@@ -55,12 +55,11 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.commandline.Gatherer;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.*;
 
@@ -73,14 +72,10 @@ public class BQSRGatherer extends Gatherer {
 
     @Override
     public void gather(final List<File> inputs, final File output) {
-        final PrintStream outputFile;
-        try {
-            outputFile = new PrintStream(output);
-        } catch(FileNotFoundException e) {
-            throw new UserException.MissingArgument("output", MISSING_OUTPUT_FILE);
+        try (final PrintStream outputFile = IOUtils.makePrintStreamMaybeGzipped(output)) {
+            final GATKReport report = gatherReport(inputs);
+            report.print(outputFile);
         }
-        final GATKReport report = gatherReport(inputs);
-        report.print(outputFile);
     }
 
     /**

@@ -5,10 +5,15 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
 import java.io.File;
 import java.util.List;
+import java.util.stream.StreamSupport;
+
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
 /**
  * A ReadWalker is a tool that processes a single read at a time from one or multiple sources of reads, with
@@ -70,17 +75,38 @@ public abstract class ReadWalker extends GATKTool {
 
     /**
      * Implementation of read-based traversal.
+     * Subclasses can override to provide own behavior but default implementation should be suitable for most uses.
+     *
+     * The default implementation creates filters using {@link #makeReadFilter}
+     * and then iterates over all reads, applies the filter and hands the resulting reads to the {@link #apply}
+     * function of the walker (long with additional contextual information, if present, such as reference bases).
      */
     @Override
     public void traverse() {
         final GenomeLocParser genomeLocParser = reference != null ? new GenomeLocParser(reference.getSequenceDictionary()) : null;
 
-        // Invoke apply() on each read in the input stream.
+        // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        for ( SAMRecord read : reads ) {
-            final ReferenceContext refContext = reference != null ? new ReferenceContext(reference, genomeLocParser.createGenomeLoc(read)) : null;
-            apply(read, refContext);
-        }
+        ReadFilter filter = makeReadFilter();
+        StreamSupport.stream(reads.spliterator(), false)
+                .filter(filter)
+                .forEach(read -> {
+                    final ReferenceContext refContext = reference == null ? null : new ReferenceContext(reference, genomeLocParser.createGenomeLoc(read));
+                    apply(read, refContext);
+                });
+    }
+
+    /**
+     * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
+     * The default implementation uses the {#link MalformedReadFilter} filter with all default options.
+     * Default implementation of {@link #traverse()} calls this method once before iterating
+     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+     *
+     * Subclasses can extend to provide own filters (ie override and call super).
+     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
+     */
+    public ReadFilter makeReadFilter(){
+          return ALLOW_ALL_READS;//TODO reanable MalformedReadFilter https://github.com/broadinstitute/hellbender/issues/180
     }
 
     /**

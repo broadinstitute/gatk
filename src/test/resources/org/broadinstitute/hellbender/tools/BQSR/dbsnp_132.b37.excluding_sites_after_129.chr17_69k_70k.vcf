@@ -1,0 +1,78 @@
+##fileformat=VCFv4.0
+##FILTER=<ID=NC,Description="Inconsistent Genotype Submission For At Least One Sample">
+##INFO=<ID=AF,Number=.,Type=Float,Description="Allele Frequency">
+##INFO=<ID=ASP,Number=0,Type=Flag,Description="Is Assembly specific. This is set if the snp only maps to one assembly">
+##INFO=<ID=ASS,Number=0,Type=Flag,Description="In acceptor splice site FxnCode = 73">
+##INFO=<ID=CDA,Number=0,Type=Flag,Description="Variation is interrogated in a clinical diagnostic assay">
+##INFO=<ID=CFL,Number=0,Type=Flag,Description="Has Assembly conflict. This is for weight 1 and 2 snp that maps to different chromosomes on different assemblies.">
+##INFO=<ID=CLN,Number=0,Type=Flag,Description="SNP is Clinical(LSDB,OMIM,TPA,Diagnostic)">
+##INFO=<ID=DSS,Number=0,Type=Flag,Description="In donor splice-site FxnCode = 75">
+##INFO=<ID=G5,Number=0,Type=Flag,Description=">5% minor allele frequency in 1+ populations">
+##INFO=<ID=G5A,Number=0,Type=Flag,Description=">5% minor allele frequency in each and all populations">
+##INFO=<ID=GCF,Number=0,Type=Flag,Description="Has Genotype Conflict Same (rs, ind), different genotype.  N/N is not included.">
+##INFO=<ID=GMAF,Number=1,Type=Float,Description="Global Minor Allele Frequency [0, 0.5]; global population is 1000GenomesProject phase 1 genotype data from 629 individuals, released in the 08-04-2010 dataset">
+##INFO=<ID=GNO,Number=0,Type=Flag,Description="Genotypes available. The snp has individual genotype (in SubInd table).">
+##INFO=<ID=HD,Number=0,Type=Flag,Description="Marker is on high density genotyping kit (50K density or greater).  The snp may have phenotype associations present in dbGaP.">
+##INFO=<ID=INT,Number=0,Type=Flag,Description="In Intron FxnCode = 6">
+##INFO=<ID=KGPROD,Number=0,Type=Flag,Description="1000 Genome production phase">
+##INFO=<ID=KGPilot1,Number=0,Type=Flag,Description="1000 Genome discovery(pilot1) 2009">
+##INFO=<ID=KGPilot123,Number=0,Type=Flag,Description="1000 Genome discovery all pilots 2010(1,2,3)">
+##INFO=<ID=KGVAL,Number=0,Type=Flag,Description="1000 Genome validated by second method">
+##INFO=<ID=LSD,Number=0,Type=Flag,Description="Submitted from a locus-specific database">
+##INFO=<ID=MTP,Number=0,Type=Flag,Description="Microattribution/third-party annotation(TPA:GWAS,PAGE)">
+##INFO=<ID=MUT,Number=0,Type=Flag,Description="Is mutation (journal citation, explicit fact): a low frequency variation that is cited in journal and other reputable sources">
+##INFO=<ID=NOC,Number=0,Type=Flag,Description="Contig allele not present in SNP allele list. The reference sequence allele at the mapped position is not present in the SNP allele list, adjusted for orientation.">
+##INFO=<ID=NOV,Number=0,Type=Flag,Description="Rs cluster has non-overlapping allele sets. True when rs set has more than 2 alleles from different submissions and these sets share no alleles in common.">
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">
+##INFO=<ID=NSF,Number=0,Type=Flag,Description="Has non-synonymous frameshift A coding region variation where one allele in the set changes all downstream amino acids. FxnClass = 44">
+##INFO=<ID=NSM,Number=0,Type=Flag,Description="Has non-synonymous missense A coding region variation where one allele in the set changes protein peptide. FxnClass = 42">
+##INFO=<ID=NSN,Number=0,Type=Flag,Description="Has non-synonymous nonsense A coding region variation where one allele in the set changes to STOP codon (TER). FxnClass = 41">
+##INFO=<ID=OM,Number=0,Type=Flag,Description="Has OMIM/OMIA">
+##INFO=<ID=OTH,Number=0,Type=Flag,Description="Has other snp with exactly the same set of mapped positions on NCBI refernce assembly.">
+##INFO=<ID=PH1,Number=0,Type=Flag,Description="Phase 1 genotyped: filtered, non-redundant">
+##INFO=<ID=PH2,Number=0,Type=Flag,Description="Phase 2 genotyped: filtered, non-redundant">
+##INFO=<ID=PH3,Number=0,Type=Flag,Description="Phase 3 genotyped: filtered, non-redundant">
+##INFO=<ID=PM,Number=0,Type=Flag,Description="SNP is Precious(Clinical,Pubmed Cited)">
+##INFO=<ID=PMC,Number=0,Type=Flag,Description="Links exist to PubMed Central article">
+##INFO=<ID=R3,Number=0,Type=Flag,Description="In 3' gene region FxnCode = 13">
+##INFO=<ID=R5,Number=0,Type=Flag,Description="In 5' gene region FxnCode = 15">
+##INFO=<ID=REF,Number=0,Type=Flag,Description="Has reference A coding region variation where one allele in the set is identical to the reference sequence. FxnCode = 8">
+##INFO=<ID=RSPOS,Number=1,Type=Integer,Description="Chr position reported in dbSNP">
+##INFO=<ID=RV,Number=0,Type=Flag,Description="RS orientation is reversed">
+##INFO=<ID=S3D,Number=0,Type=Flag,Description="Has 3D structure - SNP3D table">
+##INFO=<ID=SAO,Number=1,Type=Integer,Description="SNP Allele Origin: 0 - unspecified, 1 - Germline, 2 - Somatic, 3 - Both">
+##INFO=<ID=SCS,Number=1,Type=Integer,Description="SNP Clinical Significance, 0 - unknown, 1 - untested, 2 - non-pathogenic, 3 - probable-non-pathogenic, 4 - probable-pathogenic, 5 - pathogenic, 6 - drug-response, 7 - histocompatibility, 255 - other">
+##INFO=<ID=SLO,Number=0,Type=Flag,Description="Has SubmitterLinkOut - From SNP->SubSNP->Batch.link_out">
+##INFO=<ID=SSR,Number=1,Type=Integer,Description="SNP Suspect Reason Code, 0 - unspecified, 1 - Paralog, 2 - byEST, 3 - Para_EST, 4 - oldAlign, 5 - other">
+##INFO=<ID=SYN,Number=0,Type=Flag,Description="Has synonymous A coding region variation where one allele in the set does not change the encoded amino acid. FxnCode = 3">
+##INFO=<ID=TPA,Number=0,Type=Flag,Description="Provisional Third Party Annotation(TPA) (currently rs from PHARMGKB who will give phenotype data)">
+##INFO=<ID=U3,Number=0,Type=Flag,Description="In 3' UTR Location is in an untranslated region (UTR). FxnCode = 53">
+##INFO=<ID=U5,Number=0,Type=Flag,Description="In 5' UTR Location is in an untranslated region (UTR). FxnCode = 55">
+##INFO=<ID=VC,Number=1,Type=String,Description="Variation Class">
+##INFO=<ID=VLD,Number=0,Type=Flag,Description="Is Validated.  This bit is set if the snp has 2+ minor allele count based on frequency or genotype data.">
+##INFO=<ID=VP,Number=1,Type=String,Description="Variation Property">
+##INFO=<ID=WGT,Number=1,Type=Integer,Description="Weight, 00 - unmapped, 1 - weight 1, 2 - weight 2, 3 - weight 3 or more">
+##INFO=<ID=WTD,Number=0,Type=Flag,Description="Is Withdrawn by submitter If one member ss is withdrawn by submitter, then this bit is set.  If all member ss' are withdrawn, then the rs is deleted to SNPHistory">
+##INFO=<ID=dbSNPBuildID,Number=1,Type=Integer,Description="First SNP Build for RS">
+##LeftAlignVariants="analysis_type=LeftAlignVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta rodBind=[./00-All.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false enable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null quiet_output_mode=false debug_mode=false help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##SelectVariants="analysis_type=SelectVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/gsa-hpprojects/GATK/bundle/5974/b37/dbsnp_132.b37.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null select_expressions=[dbSNPBuildID <= 129] excludeNonVariants=false excludeFiltered=false discordance= concordance= family_structure= mendelianViolation=false mendelianViolationQualThreshold=0.0 select_random_number=0 select_random_fraction=0.0 selectSNPs=false selectIndels=false"
+##dbSNP_BUILD_ID=132
+##fileDate=20110320
+##phasing=partial
+##reference=GRCh37
+##source=SelectVariants
+##source=dbSNP
+##variationPropertyDocumentationUrl=ftp://ftp.ncbi.nlm.nih.gov/snp/specs/dbSNP_BitField_latest.pdf
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	
+17	69133	rs12165023	G	T	.	PASS	GMAF=0.0222575516693164;INT;RSPOS=69133;SAO=0;SCS=0;SSR=0;VC=SNP;VP=050000080001000000000100;WGT=1;dbSNPBuildID=120
+17	69240	rs62057058	G	A	.	PASS	G5;G5A;GMAF=0.239268680445151;GNO;INT;RSPOS=69240;SAO=0;SCS=0;SSR=0;VC=SNP;VLD;VP=050000080001070100000100;WGT=1;dbSNPBuildID=129
+17	69298	rs62057059	A	T	.	PASS	G5;G5A;GNO;INT;KGPilot123;RSPOS=69298;SAO=0;SCS=0;SSR=0;VC=SNP;VP=050000080001030110000100;WGT=1;dbSNPBuildID=129
+17	69336	rs12165025	G	A	.	PASS	INT;RSPOS=69336;SAO=0;SCS=0;SSR=0;VC=SNP;VP=050000080001000000000100;WGT=1;dbSNPBuildID=120
+17	69368	rs62059560	G	C	.	PASS	G5;G5A;GMAF=0.24483306836248;GNO;INT;KGPilot1;KGPilot123;RSPOS=69368;SAO=0;SCS=0;SSR=0;VC=SNP;VLD;VP=050000080001070118000100;WGT=1;dbSNPBuildID=129
+17	69631	rs62059561	C	T	.	PASS	G5;G5A;GMAF=0.243243243243243;GNO;INT;KGPilot1;KGPilot123;RSPOS=69631;SAO=0;SCS=0;SSR=0;VC=SNP;VLD;VP=050000080001070118000100;WGT=1;dbSNPBuildID=129
+17	69803	rs62059562	G	A	.	PASS	G5;G5A;GMAF=0.231319554848967;GNO;INT;KGPilot1;KGPilot123;RSPOS=69803;SAO=0;SCS=0;SSR=0;VC=SNP;VLD;VP=050000080001070118000100;WGT=1;dbSNPBuildID=129
+17	69807	rs62059563	A	C	.	PASS	G5;G5A;GMAF=0.240858505564388;GNO;INT;KGPilot1;KGPilot123;RSPOS=69807;SAO=0;SCS=0;SSR=0;VC=SNP;VLD;VP=050000080001070118000100;WGT=1;dbSNPBuildID=129
+17	69854	rs12450789	C	T	.	PASS	G5;GMAF=0.123211446740859;GNO;HD;INT;KGPilot123;PH2;RSPOS=69854;SAO=0;SCS=0;SLO;SSR=0;VC=SNP;VLD;VP=050100080001050512000100;WGT=1;dbSNPBuildID=120
+17	69927	rs8069578	A	C	.	PASS	G5;GNO;HD;INT;RSPOS=69927;SAO=0;SCS=0;SLO;SSR=0;VC=SNP;VP=050100080001010500000100;WGT=1;dbSNPBuildID=116
+17	69929	rs12450803	C	T	.	PASS	G5;GNO;INT;RSPOS=69929;SAO=0;SCS=0;SLO;SSR=0;VC=SNP;VP=050100080001010100000100;WGT=1;dbSNPBuildID=120
+17	69931	rs8069582	A	T	.	PASS	G5;G5A;GNO;INT;RSPOS=69931;SAO=0;SCS=0;SLO;SSR=0;VC=SNP;VP=050100080001030100000100;WGT=1;dbSNPBuildID=116

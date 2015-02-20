@@ -25,6 +25,8 @@ package org.broadinstitute.hellbender.utils.text;
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+
 import java.io.*;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -53,24 +55,24 @@ public class XReadLines implements Iterator<String>, Iterable<String> {
     private final boolean trimWhitespace;
     private final String commentPrefix;
 
-    public XReadLines(final File filename) throws FileNotFoundException {
-        this(new FileReader(filename), true, null);
+    public XReadLines(final File filename) throws IOException {
+        this(IOUtils.makeReaderMaybeGzipped(filename), true, null);
     }
 
-    public XReadLines(final File filename, final boolean trimWhitespace) throws FileNotFoundException {
-        this(new FileReader(filename), trimWhitespace, null);
+    public XReadLines(final File filename, final boolean trimWhitespace) throws IOException {
+        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
     }
 
     /**
      * Creates a new xReadLines object to read lines from filename
      *
-     * @param filename file name
+     * @param filename file name (may be gzipped if name ends on ".gz")
      * @param trimWhitespace trim whitespace
      * @param commentPrefix prefix for comments or null if no prefix is set
      * @throws FileNotFoundException when the file is not found
      */
-    public XReadLines(final File filename, final boolean trimWhitespace, final String commentPrefix) throws FileNotFoundException {
-        this(new FileReader(filename), trimWhitespace, commentPrefix);
+    public XReadLines(final File filename, final boolean trimWhitespace, final String commentPrefix) throws IOException {
+        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, commentPrefix);
     }
 
     public XReadLines(final InputStream inputStream) throws FileNotFoundException {

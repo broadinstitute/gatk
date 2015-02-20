@@ -86,7 +86,7 @@ import org.broadinstitute.hellbender.utils.sam.ReadUtils;
  * The Reported Quality Score covariate.
  */
 
-public class QualityScoreCovariate implements RequiredCovariate {
+public class QualityScoreCovariate implements Covariate {
 
     // Initialize any member variables using the command-line arguments passed to the walkers
     @Override

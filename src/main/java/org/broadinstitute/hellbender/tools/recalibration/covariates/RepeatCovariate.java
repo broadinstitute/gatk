@@ -64,7 +64,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class RepeatCovariate implements ExperimentalCovariate {
+public abstract class RepeatCovariate implements Covariate {
     protected int MAX_REPEAT_LENGTH;
     protected int MAX_STR_UNIT_LENGTH;
     private final HashMap<String, Integer> repeatLookupTable = new HashMap<String, Integer>();

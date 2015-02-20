@@ -27,6 +27,7 @@ package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
 import java.util.*;
@@ -84,7 +85,7 @@ public class GATKReport {
         BufferedReader reader;
         String reportHeader;
         try {
-            reader = new BufferedReader(new FileReader(file));
+            reader = new BufferedReader(IOUtils.makeReaderMaybeGzipped(file));
             reportHeader = reader.readLine();
         } catch (FileNotFoundException e) {
             throw new UserException.CouldNotReadInputFile(file, "it does not exist");

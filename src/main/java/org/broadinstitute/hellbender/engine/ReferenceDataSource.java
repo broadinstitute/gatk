@@ -76,8 +76,23 @@ public class ReferenceDataSource implements GATKDataSource<Byte>, AutoCloseable 
      * @return a ReferenceSequence containing all bases spanning the query interval, prefetched
      */
     public ReferenceSequence queryAndPrefetch( final GenomeLoc interval ) {
-        return reference.getSubsequenceAt(interval.getContig(), interval.getStart(), interval.getStop());
+        return queryAndPrefetch(interval.getContig(), interval.getStart(), interval.getStop());
     }
+
+    /**
+     * Query a specific interval on this reference, and get back all bases spanning that interval at once.
+     * Call getBases() on the returned ReferenceSequence to get the actual reference bases. See the BaseUtils
+     * class for guidance on how to work with bases in this format.
+     *
+     * @param contig query interval contig
+     * @param start query interval start
+     * @param stop query interval stop
+     * @return a ReferenceSequence containing all bases spanning the query interval, prefetched
+     */
+    public ReferenceSequence queryAndPrefetch( final String contig, final long start , final long stop) {
+        return reference.getSubsequenceAt(contig, start, stop);
+    }
+
 
     /**
      * Get the sequence dictionary for this reference

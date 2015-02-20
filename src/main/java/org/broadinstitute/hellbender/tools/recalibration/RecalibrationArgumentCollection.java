@@ -52,6 +52,7 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
@@ -61,17 +62,14 @@ import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
 import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A collection of the arguments that are used for BQSR. Used to be common to both CovariateCounterWalker and TableRecalibrationWalker.
  * This set of arguments will also be passed to the constructor of every Covariate when it is instantiated.
  */
 
-public class RecalibrationArgumentCollection implements Cloneable {
+public class RecalibrationArgumentCollection implements Cloneable, ArgumentCollectionDefinition {
 
     /**
      * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,
@@ -89,7 +87,7 @@ public class RecalibrationArgumentCollection implements Cloneable {
      * and the raw empirical quality score calculated by phred-scaling the mismatch rate.   Use '/dev/stdout' to print to standard out.
      */
     @Gather(BQSRGatherer.class)
-    @Argument(doc = "The output recalibration table file to create", optional = false)
+    @Argument(fullName= "RECAL_TABLE_FILE", shortName="RECAL_TABLE_FILE", doc = "The output recalibration table file to create", optional = false)
     public File RECAL_TABLE_FILE = null;
     public PrintStream RECAL_TABLE;
 
@@ -105,7 +103,7 @@ public class RecalibrationArgumentCollection implements Cloneable {
      * Use the --list argument to see the available covariates.
      */
     @Argument(fullName = "covariate", shortName = "cov", doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
-    public String[] COVARIATES = null;
+    public List<String> COVARIATES = new ArrayList<>();
 
     /*
      * The Cycle and Context covariates are standard and are included by default unless this argument is provided.
@@ -330,10 +328,10 @@ public class RecalibrationArgumentCollection implements Cloneable {
     private boolean compareRequestedCovariates(final Map<String,String> diffs,
             final RecalibrationArgumentCollection other, final String thisRole, final String otherRole) {
 
-        final Set<String> beforeNames = new HashSet<>(this.COVARIATES.length);
-        final Set<String> afterNames = new HashSet<>(other.COVARIATES.length);
-        Utils.addAll(beforeNames, this.COVARIATES);
-        Utils.addAll(afterNames,other.COVARIATES);
+        final Set<String> beforeNames = new HashSet<>(this.COVARIATES.size());
+        final Set<String> afterNames = new HashSet<>(other.COVARIATES.size());
+        beforeNames.addAll(this.COVARIATES);
+        afterNames.addAll(other.COVARIATES);
         final Set<String> intersect = new HashSet<>(Math.min(beforeNames.size(), afterNames.size()));
         intersect.addAll(beforeNames);
         intersect.retainAll(afterNames);
@@ -413,5 +411,6 @@ public class RecalibrationArgumentCollection implements Cloneable {
                     + this.getClass().getName() + " is cloneable ",e);
         }
     }
+
 
 }

@@ -32,7 +32,7 @@ import org.broadinstitute.hellbender.tools.picard.markduplicates.MarkDuplicatesW
  * This class is an extension of AbstractMarkDuplicatesCommandLineProgramTester used to test MarkDuplicatesWithMateCigar with SAM files generated on the fly.
  * This performs the underlying tests defined by classes such as see AbstractMarkDuplicatesCommandLineProgramTest and MarkDuplicatesWithMateCigarTest.
  */
-public class MarkDuplicatesWithMateCigarTester extends AbstractMarkDuplicatesCommandLineProgramTester {
+public class MarkDuplicatesWithMateCigarTester extends AbstractMarkDuplicatesTester {
 
     public MarkDuplicatesWithMateCigarTester() {
         // NB: to be equivalent to MarkDuplicates we need to use SUM_OF_BASE_QUALITIES
