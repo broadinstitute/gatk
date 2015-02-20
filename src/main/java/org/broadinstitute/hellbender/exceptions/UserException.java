@@ -239,23 +239,6 @@ public class UserException extends RuntimeException {
         }
     }
 
-    /**
-     * <p/>
-     * Class UserException.CommandLineParseException
-     * <p/>
-     * For errors parsing the user's command line
-     */
-    public static class CommandLineParseException extends UserException {
-        private static final long serialVersionUID = 0L;
-        public CommandLineParseException(final String s) {
-            super("Malformed command line: " + s);
-        }
-
-        public CommandLineParseException(final String s, final Throwable throwable) {
-            super("Malformed command line: " + s, throwable);
-        }
-    }
-
     public static class MissingReferenceFaiFile extends UserException {
         private static final long serialVersionUID = 0L;
         public MissingReferenceFaiFile( final File indexFile, final File fastaFile ) {
