@@ -77,10 +77,9 @@ package org.broadinstitute.hellbender.tools.recalibration.covariates;
  */
 
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.SequencerFlowClass;
 
@@ -142,96 +141,10 @@ public class CycleCovariate implements Covariate {
 
         // Flow cycle platforms
         else if (ngsPlatform.getSequencerType() == SequencerFlowClass.FLOW) {
-
-            final byte[] bases = read.getReadBases();
-
-            // Differentiate between first and second of pair.
-            // The sequencing machine cycle keeps incrementing for the second read in a pair. So it is possible for a read group
-            // to have an error affecting quality at a particular cycle on the first of pair which carries over to the second of pair.
-            // Therefore the cycle covariate must differentiate between first and second of pair reads.
-            // This effect can not be corrected by pulling out the first of pair and second of pair flags into a separate covariate because
-            //   the current sequential model would consider the effects independently instead of jointly.
-            final boolean multiplyByNegative1 = read.getReadPairedFlag() && read.getSecondOfPairFlag();
-
-            int cycle = multiplyByNegative1 ? -1 : 1; // todo -- check if this is the right behavior for mate paired reads in flow cycle platforms.
-
-            // BUGBUG: Consider looking at degradation of base quality scores in homopolymer runs to detect when the cycle incremented even though the nucleotide didn't change
-            // For example, AAAAAAA was probably read in two flow cycles but here we count it as one
-            if (!read.getReadNegativeStrandFlag()) { // Forward direction
-                int iii = 0;
-                while (iii < readLength) {
-                    while (iii < readLength && bases[iii] == (byte) 'T') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii++;
-                    }
-                    while (iii < readLength && bases[iii] == (byte) 'A') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii++;
-                    }
-                    while (iii < readLength && bases[iii] == (byte) 'C') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii++;
-                    }
-                    while (iii < readLength && bases[iii] == (byte) 'G') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii++;
-                    }
-                    if (iii < readLength) {
-                        if (multiplyByNegative1)
-                            cycle--;
-                        else
-                            cycle++;
-                    }
-                    if (iii < readLength && !BaseUtils.isRegularBase(bases[iii])) {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii++;
-                    }
-
-                }
-            }
-            else { // Negative direction
-                int iii = readLength - 1;
-                while (iii >= 0) {
-                    while (iii >= 0 && bases[iii] == (byte) 'T') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii--;
-                    }
-                    while (iii >= 0 && bases[iii] == (byte) 'A') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii--;
-                    }
-                    while (iii >= 0 && bases[iii] == (byte) 'C') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii--;
-                    }
-                    while (iii >= 0 && bases[iii] == (byte) 'G') {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii--;
-                    }
-                    if (iii >= 0) {
-                        if (multiplyByNegative1)
-                            cycle--;
-                        else
-                            cycle++;
-                    }
-                    if (iii >= 0 && !BaseUtils.isRegularBase(bases[iii])) {
-                        final int key = keyFromCycle(cycle);
-                        values.addCovariate(key, key, key, iii);
-                        iii--;
-                    }
-                }
-            }
+            throw new UserException("The platform (" + read.getReadGroup().getPlatform()
+                    + ") associated with read group " + read.getReadGroup()
+                    + " is not a supported platform.");
         }
-
         // Unknown platforms
         else {
             throw new UserException("The platform (" + read.getReadGroup().getPlatform()

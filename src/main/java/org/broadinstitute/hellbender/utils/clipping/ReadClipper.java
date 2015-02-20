@@ -179,8 +179,6 @@ public class ReadClipper {
         return (new ReadClipper(read)).hardClipByReferenceCoordinates(-1, refStop);
     }
 
-
-
     /**
      * Hard clips the right tail of a read starting at (and including) refStart using reference
      * coordinates.
@@ -209,6 +207,7 @@ public class ReadClipper {
         this.addOp(new ClippingOp(start, stop));
         return clipRead(ClippingRepresentation.HARDCLIP_BASES);
     }
+
     public static SAMRecord hardClipByReadCoordinates(SAMRecord read, int start, int stop) {
         return (new ReadClipper(read)).hardClipByReadCoordinates(start, stop);
     }
@@ -236,6 +235,7 @@ public class ReadClipper {
         ReadClipper clipper = new ReadClipper(leftTailRead);
         return clipper.hardClipByReferenceCoordinatesLeftTail(left);
     }
+
     public static SAMRecord hardClipBothEndsByReferenceCoordinates(SAMRecord read, int left, int right) {
         return (new ReadClipper(read)).hardClipBothEndsByReferenceCoordinates(left, right);
     }
@@ -277,16 +277,9 @@ public class ReadClipper {
         return this.clipRead(algorithm);
     }
 
-    private SAMRecord hardClipLowQualEnds(byte lowQual) {
-        return this.clipLowQualEnds(ClippingRepresentation.HARDCLIP_BASES, lowQual);
-    }
-    public static SAMRecord hardClipLowQualEnds(SAMRecord read, byte lowQual) {
-        return (new ReadClipper(read)).hardClipLowQualEnds(lowQual);
-    }
     public static SAMRecord clipLowQualEnds(SAMRecord read, byte lowQual, ClippingRepresentation algorithm) {
         return (new ReadClipper(read)).clipLowQualEnds(algorithm, lowQual);
     }
-
 
     /**
      * Will hard clip every soft clipped bases in the read.
@@ -330,21 +323,6 @@ public class ReadClipper {
         return (new ReadClipper(read)).hardClipSoftClippedBases();
     }
 
-
-    /**
-     * Hard clip the read to the variable region (from refStart to refStop)
-     *
-     * @param read     the read to be clipped
-     * @param refStart the beginning of the variant region (inclusive)
-     * @param refStop  the end of the variant region (inclusive)
-     * @return the read hard clipped to the variant region
-     */
-    public static SAMRecord hardClipToRegion( final SAMRecord read, final int refStart, final int refStop ) {
-        final int start = read.getAlignmentStart();
-        final int stop = read.getAlignmentEnd();
-        return hardClipToRegion(read, refStart, refStop,start,stop);
-    }
-
     /**
      * Hard clip the read to the variable region (from refStart to refStop) processing also the clipped bases
      *
@@ -374,17 +352,6 @@ public class ReadClipper {
 
     }
 
-    public static List<SAMRecord> hardClipToRegion( final List<SAMRecord> reads, final int refStart, final int refStop ) {
-        final List<SAMRecord> returnList = new ArrayList<SAMRecord>( reads.size() );
-        for( final SAMRecord read : reads ) {
-            final SAMRecord clippedRead = hardClipToRegion( read, refStart, refStop );
-            if( !isEmpty(clippedRead) ) {
-                returnList.add( clippedRead );
-            }
-        }
-        return returnList;
-    }
-
     /**
      * Checks if a read contains adaptor sequences. If it does, hard clips them out.
      *
@@ -403,32 +370,6 @@ public class ReadClipper {
     public static SAMRecord hardClipAdaptorSequence (SAMRecord read) {
         return (new ReadClipper(read)).hardClipAdaptorSequence();
     }
-
-
-    /**
-     * Hard clips any leading insertions in the read. Only looks at the beginning of the read, not the end.
-     *
-     * @return a new read without leading insertions
-     */
-    private SAMRecord hardClipLeadingInsertions() {
-        if (isEmpty(read))
-            return read;
-
-        for(CigarElement cigarElement : read.getCigar().getCigarElements()) {
-            if (cigarElement.getOperator() != CigarOperator.HARD_CLIP && cigarElement.getOperator() != CigarOperator.SOFT_CLIP &&
-                    cigarElement.getOperator() != CigarOperator.INSERTION)
-                break;
-
-            else if (cigarElement.getOperator() == CigarOperator.INSERTION)
-                this.addOp(new ClippingOp(0, cigarElement.getLength() - 1));
-
-        }
-        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
-    }
-    public static SAMRecord hardClipLeadingInsertions(SAMRecord read) {
-        return (new ReadClipper(read)).hardClipLeadingInsertions();
-    }
-
 
     /**
      * Turns soft clipped bases into matches
@@ -450,63 +391,6 @@ public class ReadClipper {
      */
     public static SAMRecord revertSoftClippedBases(SAMRecord read) {
         return (new ReadClipper(read)).revertSoftClippedBases();
-    }
-
-    /**
-     * Reverts only soft clipped bases with quality score greater than or equal to minQual
-     *
-     * todo -- Note: Will write a temporary field with the number of soft clips that were undone on each side (left: 'SL', right: 'SR') -- THIS HAS BEEN REMOVED TEMPORARILY SHOULD HAPPEN INSIDE THE CLIPPING ROUTINE!
-     *
-     * @param read    the read
-     * @param minQual the mininum base quality score to revert the base (inclusive)
-     * @return a new read with high quality soft clips reverted
-     */
-    public static SAMRecord revertSoftClippedBases(SAMRecord read, byte minQual) {
-        return revertSoftClippedBases(hardClipLowQualitySoftClips(read, minQual));
-    }
-
-    /**
-     * Hard clips away soft clipped bases that are below the given quality threshold
-     *
-     * @param read    the read
-     * @param minQual the minimum base quality score to revert the base (inclusive)
-     * @return a new read without low quality soft clipped bases
-     */
-    public static SAMRecord hardClipLowQualitySoftClips(SAMRecord read, byte minQual) {
-        int nLeadingSoftClips = read.getAlignmentStart() - getSoftStart(read);
-        if (isEmpty(read) || nLeadingSoftClips > read.getReadLength())
-            return ReadUtils.emptyRead(read);
-
-        byte [] quals = read.getBaseQualities();
-        int left = -1;
-
-        if (nLeadingSoftClips > 0) {
-            for (int i = nLeadingSoftClips - 1; i >= 0; i--) {
-                if (quals[i] >= minQual)
-                    left = i;
-                else
-                    break;
-            }
-        }
-
-        int right = -1;
-        int nTailingSoftClips = getSoftEnd(read) - read.getAlignmentEnd();
-        if (nTailingSoftClips > 0) {
-            for (int i = read.getReadLength() - nTailingSoftClips; i < read.getReadLength() ; i++) {
-                if (quals[i] >= minQual)
-                    right = i;
-                else
-                    break;
-            }
-        }
-
-        SAMRecord clippedRead = read;
-        if (right >= 0 && right + 1 < clippedRead.getReadLength())                                                      // only clip if there are softclipped bases (right >= 0) and the first high quality soft clip is not the last base (right+1 < readlength)
-            clippedRead = hardClipByReadCoordinates(clippedRead, right+1, clippedRead.getReadLength()-1);           // first we hard clip the low quality soft clips on the right tail
-        if (left >= 0 && left - 1 > 0)                                                                                  // only clip if there are softclipped bases (left >= 0) and the first high quality soft clip is not the last base (left-1 > 0)
-            clippedRead = hardClipByReadCoordinates(clippedRead, 0, left-1);                                        // then we hard clip the low quality soft clips on the left tail
-
-        return clippedRead;
     }
 
     /**

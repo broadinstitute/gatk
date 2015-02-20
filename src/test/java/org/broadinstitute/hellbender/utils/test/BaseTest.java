@@ -68,16 +68,19 @@ public abstract class BaseTest {
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
+
+    public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;
+
     // used to seed the genome loc parser with a sequence dictionary
     protected SAMFileHeader hg19Header;
 
     @BeforeClass
     public void initGenomeLocParser() throws FileNotFoundException {
-        CachingIndexedFastaSequenceFile ref = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
+        hg19ReferenceReader = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
         hg19Header = new SAMFileHeader();
-        hg19Header.setSequenceDictionary(ref.getSequenceDictionary());
-        hg19GenomeLocParser = new GenomeLocParser(ref);
+        hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
+        hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);
     }
 
     protected List<GenomeLoc> getLocs(String... intervals) {

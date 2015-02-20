@@ -1,18 +1,21 @@
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.transformers;
 
 import htsjdk.samtools.SAMRecord;
 
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-
-public interface ReadTransformer extends Function<SAMRecord ,SAMRecord> {
+@FunctionalInterface
+public interface ReadTransformer extends UnaryOperator<SAMRecord> {
     //HACK: These methods are a hack to get to get the type system to accept compositions of ReadTransformers.
+
+    @SuppressWarnings("overloads")
     default public ReadTransformer andThen(ReadTransformer after) {
-        return Function.super.andThen(after)::apply;
+        return UnaryOperator.super.andThen(after)::apply;
     }
 
+    @SuppressWarnings("overloads")
     default public  ReadTransformer compose(ReadTransformer before) {
-        return Function.super.compose(before)::apply;
+        return UnaryOperator.super.compose(before)::apply;
     }
 
     static public ReadTransformer identity(){

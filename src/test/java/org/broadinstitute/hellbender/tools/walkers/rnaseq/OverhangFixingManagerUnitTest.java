@@ -49,166 +49,133 @@
 * 8.7 Governing Law. This Agreement shall be construed, governed, interpreted and applied in accordance with the internal laws of the Commonwealth of Massachusetts, U.S.A., without regard to conflict of laws principles.
 */
 
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.OverhangFixingManager;
-import org.broadinstitute.hellbender.utils.ReadClipperTestUtils;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 
-/**
- *
- * Tests all possible (and valid) cigar strings that might contain any cigar elements. It uses a code that were written to test the ReadClipper walker.
- * For valid cigar sting in length 8 there are few thousands options, with N in every possible option and with more than one N (for example 1M1N1M1N1M1N2M).
- * The cigarElements array is used to provide all the possible cigar element that might be included.
- */
-public class SplitNCigarReadsIntegrationTest extends CommandLineProgramTest {
-    final static CigarElement[] cigarElements = {
-            new CigarElement(1, CigarOperator.HARD_CLIP),
-            new CigarElement(1, CigarOperator.SOFT_CLIP),
-            new CigarElement(1, CigarOperator.INSERTION),
-            new CigarElement(1, CigarOperator.DELETION),
-            new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH),
-            new CigarElement(1, CigarOperator.SKIPPED_REGION)
-    };
+public class OverhangFixingManagerUnitTest extends BaseTest {
 
-    private static File REFERENCE_FASTA = new File(BaseTest.exampleReference);
+    @Test
+    public void testCleanSplices() {
 
-    private IndexedFastaSequenceFile referenceReader;
-    private GenomeLocParser genomeLocParser;
+        final OverhangFixingManager manager = new OverhangFixingManager(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
 
-    @BeforeClass
-    public void setup() throws FileNotFoundException {
-        referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_FASTA);
-        genomeLocParser = new GenomeLocParser(referenceReader.getSequenceDictionary());
+        final int offset = 10;
+        for ( int i = 0; i < OverhangFixingManager.MAX_SPLICES_TO_KEEP + 1; i++ )
+            manager.addSplicePosition("1", offset + i, offset + 1 + i);
+
+        final List<OverhangFixingManager.Splice> splices = manager.getSplicesForTesting();
+
+        Assert.assertEquals(splices.size(), (OverhangFixingManager.MAX_SPLICES_TO_KEEP / 2) + 1);
+
+        final int minStartPos = (OverhangFixingManager.MAX_SPLICES_TO_KEEP / 2) + offset;
+
+        for ( final OverhangFixingManager.Splice splice : splices )
+            Assert.assertTrue(splice.loc.getStart() >= minStartPos);
     }
 
-    @Override
-    public String getCommandLineProgramName() {
-        return SplitNCigarReads.class.getSimpleName();
-    }
+    @DataProvider(name = "OverhangTest")
+    public Object[][] makeOverhangData() {
+        final List<Object[]> tests = new ArrayList<>();
+        for ( int leftRead : Arrays.asList(10, 20, 30, 40) ) {
+            for ( int rightRead : Arrays.asList(20, 30, 40, 50) ) {
+                if ( leftRead >= rightRead )
+                    continue;
+                for ( int leftSplice : Arrays.asList(10, 20, 30) ) {
+                    for ( int rightSplice : Arrays.asList(20, 30, 40) ) {
+                        if ( leftSplice >= rightSplice )
+                            continue;
 
-    private final class TestManager extends OverhangFixingManager {
-        public TestManager() {
-            super(null, genomeLocParser, referenceReader, 10000, 1, 40, false);
+                        final GenomeLoc readLoc = hg19GenomeLocParser.createGenomeLoc("1", leftRead, rightRead);
+                        final GenomeLoc spliceLoc = hg19GenomeLocParser.createGenomeLoc("1", leftSplice, rightSplice);
+                        tests.add(new Object[]{readLoc, spliceLoc});
+                    }
+                }
+            }
         }
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "OverhangTest")
+    public void testLeftOverhangs(final GenomeLoc readLoc, final GenomeLoc spliceLoc) {
+        final boolean isValidOverhang = readLoc.getStart() <= spliceLoc.getStop() &&
+                readLoc.getStop() > spliceLoc.getStop() &&
+                readLoc.getStart() > spliceLoc.getStart();
+        Assert.assertEquals(OverhangFixingManager.isLeftOverhang(readLoc, spliceLoc), isValidOverhang, readLoc + " vs. " + spliceLoc);
+    }
+
+    @Test(dataProvider = "OverhangTest")
+    public void testRightOverhangs(final GenomeLoc readLoc, final GenomeLoc spliceLoc) {
+        final boolean isValidOverhang = readLoc.getStop() >= spliceLoc.getStart() &&
+                readLoc.getStop() < spliceLoc.getStop() &&
+                readLoc.getStart() < spliceLoc.getStart();
+        Assert.assertEquals(OverhangFixingManager.isRightOverhang(readLoc, spliceLoc), isValidOverhang, readLoc + " vs. " + spliceLoc);
+    }
+
+    @DataProvider(name = "MismatchEdgeConditionTest")
+    public Object[][] makeMismatchEdgeConditionData() {
+        final List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{null, 1, null, 1, 0});
+        tests.add(new Object[]{null, 1, null, 1, 100});
+        tests.add(new Object[]{new byte[4], 1, null, 1, 3});
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "MismatchEdgeConditionTest")
+    public void testMismatchEdgeCondition(final byte[] read, final int readStart, final byte[] ref, final int refStart, final int overhang) {
+        final OverhangFixingManager manager = new OverhangFixingManager(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        Assert.assertFalse(manager.overhangingBasesMismatch(read, readStart, ref, refStart, overhang));
+    }
+
+    @DataProvider(name = "MismatchTest")
+    public Object[][] makeMismatchData() {
+        final List<Object[]> tests = new ArrayList<>();
+
+        final byte[] AAAA = new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A'};
+        final byte[] AAAC = new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'C'};
+        final byte[] AAAAAA = new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'A'};
+        final byte[] AAAACA = new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'C', (byte)'A'};
+        final byte[] AAAACC = new byte[]{(byte)'A', (byte)'A', (byte)'A', (byte)'A', (byte)'C', (byte)'C'};
+
+        tests.add(new Object[]{AAAA, 2, AAAA, 2, 2, false});
+        tests.add(new Object[]{AAAA, 2, AAAC, 2, 2, true});
+        tests.add(new Object[]{AAAAAA, 3, AAAACA, 3, 3, false});
+        tests.add(new Object[]{AAAAAA, 3, AAAACC, 3, 3, true});
+        tests.add(new Object[]{AAAAAA, 4, AAAACC, 4, 2, true});
+        tests.add(new Object[]{AAAAAA, 2, AAAACC, 2, 3, false});
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "MismatchTest")
+    public void testMismatch(final byte[] read, final int readStart, final byte[] ref, final int refStart, final int overhang, final boolean expected) {
+        final OverhangFixingManager manager = new OverhangFixingManager(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        Assert.assertEquals(manager.overhangingBasesMismatch(read, readStart, ref, refStart, overhang), expected, new String(read) + " vs. " + new String(ref) + " @" + overhang);
     }
 
     @Test
-    public void splitReadAtN() {
-        final int cigarStringLength = 10;
-        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(cigarStringLength,cigarElements);
+    public void testUnmappedReadsDoNotFail() {
+        // create an unmapped read
+        final SAMRecord read = new SAMRecord(ArtificialSAMUtils.createArtificialSamHeader());
+        read.setReadName("foo");
+        read.setReferenceName("*");
+        read.setAlignmentStart(100);
+        read.setCigarString("*");
+        read.setReadUnmappedFlag(true);
 
-        // For Debugging use those lines (instead of above cigarList) to create specific read:
-        //------------------------------------------------------------------------------------
-        // final GATKSAMRecord tmpRead = GATKSAMRecord.createRandomRead(6);
-        // tmpRead.setCigarString("1M1N1M");
-
-        // final List<Cigar> cigarList = new ArrayList<>();
-        // cigarList.add(tmpRead.getCigar());
-
-        for(Cigar cigar: cigarList){
-
-            final int numOfSplits = numOfNElements(cigar.getCigarElements());
-
-            if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
-
-                final TestManager manager = new TestManager();
-                SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigar);
-                SplitNCigarReads.splitNCigarRead(read, manager);
-                List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
-                final int expectedReads = numOfSplits+1;
-                Assert.assertEquals(splitReads.size(),expectedReads,"wrong number of reads after split read with cigar: "+cigar+" at Ns [expected]: "+expectedReads+" [actual value]: "+splitReads.size());
-                final List<Integer> readLengths = consecutiveNonNElements(read.getCigar().getCigarElements());
-                int index = 0;
-                int offsetFromStart = 0;
-                for(final OverhangFixingManager.SplitRead splitRead: splitReads){
-                    int expectedLength = readLengths.get(index);
-                    Assert.assertTrue(splitRead.read.getReadLength() == expectedLength,
-                            "the "+index+" (starting with 0) split read has a wrong length.\n" +
-                                    "cigar of original read: "+cigar+"\n"+
-                                    "expected length: "+expectedLength+"\n"+
-                                    "actual length: "+splitRead.read.getReadLength()+"\n");
-                    assertBases(splitRead.read.getReadBases(), read.getReadBases(), offsetFromStart);
-                    index++;
-                    offsetFromStart += expectedLength;
-                }
-            }
-        }
+        // try to add it to the manager
+        final OverhangFixingManager manager = new OverhangFixingManager(null, null, null, 100, 1, 30, false);
+        manager.addRead(read); // we just want to make sure that the following call does not fail
+        Assert.assertTrue(true);
     }
-
-    private int numOfNElements(final List<CigarElement> cigarElements){
-        int numOfNElements = 0;
-        for (CigarElement element: cigarElements){
-            if (element.getOperator() == CigarOperator.SKIPPED_REGION)
-                numOfNElements++;
-        }
-        return numOfNElements;
-    }
-
-    private static boolean isCigarDoesNotHaveEmptyRegionsBetweenNs(final Cigar cigar) {
-        boolean sawM = false;
-        boolean sawS = false;
-
-        for (CigarElement cigarElement : cigar.getCigarElements()) {
-            if (cigarElement.getOperator().equals(CigarOperator.SKIPPED_REGION)) {
-                if(!sawM && !sawS)
-                    return false;
-                sawM = false;
-                sawS = false;
-            }
-            if (cigarElement.getOperator().equals(CigarOperator.MATCH_OR_MISMATCH))
-                sawM = true;
-            if (cigarElement.getOperator().equals(CigarOperator.SOFT_CLIP))
-                sawS = true;
-
-        }
-        if(!sawS && !sawM)
-            return false;
-        return true;
-    }
-
-    private List<Integer> consecutiveNonNElements(final List<CigarElement> cigarElements){
-        final LinkedList<Integer> results = new LinkedList<>();
-        int consecutiveLength = 0;
-        for(CigarElement element: cigarElements){
-            final CigarOperator op = element.getOperator();
-            if(op.equals(CigarOperator.MATCH_OR_MISMATCH) || op.equals(CigarOperator.SOFT_CLIP) || op.equals(CigarOperator.INSERTION)){
-                consecutiveLength += element.getLength();
-            }
-            else if(op.equals(CigarOperator.SKIPPED_REGION))
-            {
-                if(consecutiveLength != 0){
-                    results.addLast(consecutiveLength);
-                    consecutiveLength = 0;
-                }
-            }
-        }
-        if(consecutiveLength != 0)
-            results.addLast(consecutiveLength);
-        return results;
-    }
-
-    private void assertBases(final byte[] actualBase, final byte[] expectedBase, final int startIndex) {
-        for (int i = 0; i < actualBase.length; i++) {
-            Assert.assertEquals(actualBase[i], expectedBase[startIndex + i],"unmatched bases between: "+ Arrays.toString(actualBase)+"\nand:\n"+Arrays.toString(expectedBase)+"\nat position: "+i);
-        }
-    }
-
 }

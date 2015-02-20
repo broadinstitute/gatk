@@ -25,12 +25,11 @@
 
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.Array;
 import java.math.BigInteger;
-import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -49,40 +48,11 @@ public class Utils {
 
     private static final int TEXT_WARNING_WIDTH = 68;
     private static final String TEXT_WARNING_PREFIX = "* ";
-    private static final String TEXT_WARNING_BORDER = dupString('*', TEXT_WARNING_PREFIX.length() + TEXT_WARNING_WIDTH);
+    private static final String TEXT_WARNING_BORDER = StringUtils.repeat('*', TEXT_WARNING_PREFIX.length() + TEXT_WARNING_WIDTH);
     private static final char ESCAPE_CHAR = '\u001B';
-    // ASCII codes for making text blink
-    public static final String TEXT_BLINK = ESCAPE_CHAR + "[5m";
-    public static final String TEXT_RESET = ESCAPE_CHAR + "[m";
 
     /** our log, which we want to capture anything from this class */
     private static Logger logger = LogManager.getLogger(Utils.class);
-
-    public static final float JAVA_DEFAULT_HASH_LOAD_FACTOR = 0.75f;
-
-    /**
-     * Boolean xor operation.  Only true if x != y.
-     *
-     * @param x a boolean
-     * @param y a boolean
-     * @return true if x != y
-     */
-    public static boolean xor(final boolean x, final boolean y) {
-        return x != y;
-    }
-
-    /**
-     * Calculates the optimum initial size for a hash table given the maximum number
-     * of elements it will need to hold. The optimum size is the smallest size that
-     * is guaranteed not to result in any rehash/table-resize operations.
-     *
-     * @param maxElements  The maximum number of elements you expect the hash table
-     *                     will need to hold
-     * @return             The optimum initial size for the table, given maxElements
-     */
-    public static int optimumHashSize ( int maxElements ) {
-        return (int)(maxElements / JAVA_DEFAULT_HASH_LOAD_FACTOR) + 2;
-    }
 
     public static <T> List<T> cons(final T elt, final List<T> l) {
         List<T> l2 = new ArrayList<T>();
@@ -156,30 +126,6 @@ public class Utils {
             currPos++;
         }
         return lastSpace;
-    }
-
-    /**
-     * join the key value pairs of a map into one string, i.e. myMap = [A->1,B->2,C->3] with a call of:
-     * joinMap("-","*",myMap) -> returns A-1*B-2*C-3
-     *
-     * Be forewarned, if you're not using a map that is aware of the ordering (i.e. HashMap instead of LinkedHashMap)
-     * the ordering of the string you get back might not be what you expect! (i.e. C-3*A-1*B-2 vrs A-1*B-2*C-3)
-     *
-     * @param keyValueSeperator the string to seperate the key-value pairs
-     * @param recordSeperator the string to use to seperate each key-value pair from other key-value pairs
-     * @param map the map to draw from
-     * @param <L> the map's key type
-     * @param <R> the map's value type
-     * @return a string representing the joined map
-     */
-    public static <L,R> String joinMap(String keyValueSeperator, String recordSeperator, Map<L,R> map) {
-        if (map.size() < 1) { return null; }
-        String joinedKeyValues[] = new String[map.size()];
-        int index = 0;
-        for (L key : map.keySet()) {
-            joinedKeyValues[index++] = String.format("%s%s%s",key.toString(),keyValueSeperator,map.get(key).toString());
-        }
-        return String.join(recordSeperator, joinedKeyValues);
     }
 
     /**
@@ -315,28 +261,6 @@ public class Utils {
         return l;
     }
 
-    /**
-     * Create a new string thats a n duplicate copies of s
-     * @param s the string to duplicate
-     * @param nCopies how many copies?
-     * @return a string
-     */
-    public static String dupString(final String s, int nCopies) {
-        if ( s == null || s.equals("") ) throw new IllegalArgumentException("Bad s " + s);
-        if ( nCopies < 0 ) throw new IllegalArgumentException("nCopies must be >= 0 but got " + nCopies);
-
-        final StringBuilder b = new StringBuilder();
-        for ( int i = 0; i < nCopies; i++ )
-            b.append(s);
-        return b.toString();
-    }
-
-    public static String dupString(char c, int nCopies) {
-        char[] chars = new char[nCopies];
-        Arrays.fill(chars, c);
-        return new String(chars);
-    }
-
     public static byte[] dupBytes(byte b, int nCopies) {
         byte[] bytes = new byte[nCopies];
         Arrays.fill(bytes, b);
@@ -393,34 +317,6 @@ public class Utils {
         System.arraycopy(A, 0, C, 0, A.length);
         System.arraycopy(B, 0, C, A.length, B.length);
         return C;
-    }
-
-    /**
-     * Concatenates byte arrays
-     * @return a concat of all bytes in allBytes in order
-     */
-    public static byte[] concat(final byte[] ... allBytes) {
-        int size = 0;
-        for ( final byte[] bytes : allBytes ) size += bytes.length;
-
-        final byte[] c = new byte[size];
-        int offset = 0;
-        for ( final byte[] bytes : allBytes ) {
-            System.arraycopy(bytes, 0, c, offset, bytes.length);
-            offset += bytes.length;
-        }
-
-        return c;
-    }
-
-    /**
-     * Appends String(s) B to array A.
-     * @param A First array.
-     * @param B Strings to append.
-     * @return A with B(s) appended.
-     */
-    public static String[] appendArray(String[] A, String... B) {
-        return concatArrays(A, B);
     }
 
     public static <T extends Comparable<T>> List<T> sorted(Collection<T> c) {
@@ -502,21 +398,6 @@ public class Utils {
         return ((value & flag) == flag);
     }
 
-    /**
-     * Helper utility that calls into the InetAddress system to resolve the hostname.  If this fails,
-     * unresolvable gets returned instead.
-     */
-    public static String resolveHostname() {
-        try {
-            return InetAddress.getLocalHost().getCanonicalHostName();
-        }
-        catch (java.net.UnknownHostException uhe) { // [beware typo in code sample -dmw]
-            return "unresolvable";
-            // handle exception
-        }
-    }
-
-
     public static byte [] arrayFromArrayWithLength(byte[] array, int length) {
         byte [] output = new byte[length];
         for (int j = 0; j < length; j++)
@@ -527,33 +408,6 @@ public class Utils {
     public static void fillArrayWithByte(byte[] array, byte value) {
         for (int i=0; i<array.length; i++)
             array[i] = value;
-    }
-
-
-    /**
-     * Returns the number of combinations represented by this collection
-     * of collection of options.
-     *
-     * For example, if this is [[A, B], [C, D], [E, F, G]] returns 2 * 2 * 3 = 12
-     */
-    public static <T> int nCombinations(final Collection<T>[] options) {
-        int nStates = 1;
-        for ( Collection<T> states : options ) {
-            nStates *= states.size();
-        }
-        return nStates;
-    }
-
-    public static <T> int nCombinations(final List<List<T>> options) {
-        if ( options.isEmpty() )
-            return 0;
-        else {
-            int nStates = 1;
-            for ( Collection<T> states : options ) {
-                nStates *= states.size();
-            }
-            return nStates;
-        }
     }
 
     /**
@@ -588,39 +442,6 @@ public class Utils {
     }
 
     /**
-     * Convenience function that formats the novelty rate as a %.2f string
-     *
-     * @param known number of variants from all that are known
-     * @param all number of all variants
-     * @return a String novelty rate, or NA if all == 0
-     */
-    public static String formattedNoveltyRate(final int known, final int all) {
-        return formattedPercent(all - known, all);
-    }
-
-    /**
-     * Convenience function that formats the novelty rate as a %.2f string
-     *
-     * @param x number of objects part of total that meet some criteria
-     * @param total count of all objects, including x
-     * @return a String percent rate, or NA if total == 0
-     */
-    public static String formattedPercent(final long x, final long total) {
-        return total == 0 ? "NA" : String.format("%.2f", (100.0*x) / total);
-    }
-
-    /**
-     * Convenience function that formats a ratio as a %.2f string
-     *
-     * @param num  number of observations in the numerator
-     * @param denom number of observations in the denumerator
-     * @return a String formatted ratio, or NA if all == 0
-     */
-    public static String formattedRatio(final long num, final long denom) {
-        return denom == 0 ? "NA" : String.format("%.2f", num / (1.0 * denom));
-    }
-
-    /**
      * Adds element from an array into a collection.
      *
      * In the event of exception being throw due to some element, <code>dest</code> might have been modified by
@@ -649,16 +470,6 @@ public class Utils {
             result = dest.add(e) | result;
         }
         return result;
-    }
-
-    /**
-     * Create a constant map that maps each value in values to itself
-     */
-    public static <T> Map<T, T> makeIdentityFunctionMap(Collection<T> values) {
-        Map<T,T> map = new HashMap<T, T>(values.size());
-        for ( final T value : values )
-            map.put(value, value);
-        return Collections.unmodifiableMap(map);
     }
 
     /**
@@ -702,294 +513,4 @@ public class Utils {
         return new String(big).endsWith(new String(suffix));
     }
 
-    /**
-     * Get the length of the longest common prefix of seq1 and seq2
-     * @param seq1 non-null byte array
-     * @param seq2 non-null byte array
-     * @param maxLength the maximum allowed length to return
-     * @return the length of the longest common prefix of seq1 and seq2, >= 0
-     */
-    public static int longestCommonPrefix(final byte[] seq1, final byte[] seq2, final int maxLength) {
-        if ( seq1 == null ) throw new IllegalArgumentException("seq1 is null");
-        if ( seq2 == null ) throw new IllegalArgumentException("seq2 is null");
-        if ( maxLength < 0 ) throw new IllegalArgumentException("maxLength < 0 " + maxLength);
-
-        final int end = Math.min(seq1.length, Math.min(seq2.length, maxLength));
-        for ( int i = 0; i < end; i++ ) {
-            if ( seq1[i] != seq2[i] )
-                return i;
-        }
-        return end;
-    }
-
-    /**
-     * Get the length of the longest common suffix of seq1 and seq2
-     * @param seq1 non-null byte array
-     * @param seq2 non-null byte array
-     * @param maxLength the maximum allowed length to return
-     * @return the length of the longest common suffix of seq1 and seq2, >= 0
-     */
-    public static int longestCommonSuffix(final byte[] seq1, final byte[] seq2, final int maxLength) {
-        if ( seq1 == null ) throw new IllegalArgumentException("seq1 is null");
-        if ( seq2 == null ) throw new IllegalArgumentException("seq2 is null");
-        if ( maxLength < 0 ) throw new IllegalArgumentException("maxLength < 0 " + maxLength);
-
-        final int end = Math.min(seq1.length, Math.min(seq2.length, maxLength));
-        for ( int i = 0; i < end; i++ ) {
-            if ( seq1[seq1.length - i - 1] != seq2[seq2.length - i - 1] )
-                return i;
-        }
-        return end;
-    }
-
-    /**
-     * Trim any number of bases from the front and/or back of an array
-     *
-     * @param seq                the sequence to trim
-     * @param trimFromFront      how much to trim from the front
-     * @param trimFromBack       how much to trim from the back
-     * @return a non-null array; can be the original array (i.e. not a copy)
-     */
-    public static byte[] trimArray(final byte[] seq, final int trimFromFront, final int trimFromBack) {
-        if ( trimFromFront + trimFromBack > seq.length )
-            throw new IllegalArgumentException("trimming total is larger than the original array");
-
-        // don't perform array copies if we need to copy everything anyways
-        return  ( trimFromFront == 0 && trimFromBack == 0 ) ? seq : Arrays.copyOfRange(seq, trimFromFront, seq.length - trimFromBack);
-    }
-
-    /**
-     * Simple wrapper for sticking elements of a int[] array into a List<Integer>
-     * @param ar - the array whose elements should be listified
-     * @return - a List<Integer> where each element has the same value as the corresponding index in @ar
-     */
-    public static List<Integer> listFromPrimitives(final int[] ar) {
-        final ArrayList<Integer> lst = new ArrayList<>(ar.length);
-        for ( final int d : ar ) {
-            lst.add(d);
-        }
-
-        return lst;
-    }
-
-    /**
-     * Compares sections from to byte arrays to verify whether they contain the same values.
-     *
-     * @param left first array to compare.
-     * @param leftOffset first position of the first array to compare.
-     * @param right second array to compare.
-     * @param rightOffset first position of the second array to compare.
-     * @param length number of positions to compare.
-     *
-     * @throws IllegalArgumentException if <ul>
-     *     <li>either {@code left} or {@code right} is {@code null} or</li>
-     *     <li>any off the offset or length combine point outside any of the two arrays</li>
-     * </ul>
-     * @return {@code true} iff {@code length} is 0 or all the bytes in both ranges are the same two-by-two.
-     */
-    public static boolean equalRange(final byte[] left, final int leftOffset, byte[] right, final int rightOffset, final int length) {
-        if (left == null) throw new IllegalArgumentException("left cannot be null");
-        if (right == null) throw new IllegalArgumentException("right cannot be null");
-        if (length < 0) throw new IllegalArgumentException("the length cannot be negative");
-        if (leftOffset < 0) throw new IllegalArgumentException("left offset cannot be negative");
-        if (leftOffset + length > left.length) throw new IllegalArgumentException("length goes beyond end of left array");
-        if (rightOffset < 0) throw new IllegalArgumentException("right offset cannot be negative");
-        if (rightOffset + length > right.length) throw new IllegalArgumentException("length goes beyond end of right array");
-
-        for (int i = 0; i < length; i++)
-            if (left[leftOffset + i] != right[rightOffset + i])
-                return false;
-        return true;
-    }
-
-    /**
-     * Skims out positions of an array returning a shorter one with the remaining positions in the same order.
-     * @param original the original array to splice.
-     * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
-     *               or retained ({@code false})
-     *
-     * @param <T> the array type.
-     *
-     * @throws IllegalArgumentException if either {@code original} or {@code remove} is {@code null},
-     *    or {@code remove length is different to {@code original}'s}, or {@code original} is not in
-     *    fact an array.
-     *
-     * @return never {@code null}.
-     */
-    public static <T> T skimArray(final T original, final boolean[] remove) {
-        return skimArray(original,0,null,0,remove,0);
-    }
-
-    /**
-     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
-     *
-     * <p>
-     *     If the {@code dest} array provide is not long enough a new one will be created and returned with the
-     *     same component type. All elements before {@code destOffset} will be copied from the input to the
-     *     result array. If {@code dest} is {@code null}, a brand-new array large enough will be created where
-     *     the position preceding {@code destOffset} will be left with the default value. The component type
-     *     Will match the one of the {@code source} array.
-     * </p>
-     *
-     * @param source the original array to splice.
-     * @param sourceOffset the first position to skim.
-     * @param dest the destination array.
-     * @param destOffset the first position where to copy the skimed array values.
-     * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
-     *               or retained ({@code false})
-     * @param removeOffset the first position in the remove index array to consider.
-     *
-     * @param <T> the array type.
-     *
-     * @throws IllegalArgumentException if either {@code original} or {@code remove} is {@code null},
-     *    or {@code remove length is different to {@code original}'s}, or {@code original} is not in
-     *    fact an array.
-     *
-     * @return never {@code null}.
-     */
-    public static <T> T skimArray(final T source, final int sourceOffset, final T dest, final int destOffset, final boolean[] remove, final int removeOffset) {
-        if (source == null)
-            throw new IllegalArgumentException("the source array cannot be null");
-        @SuppressWarnings("unchecked")
-        final Class<T> sourceClazz = (Class<T>) source.getClass();
-
-        if (!sourceClazz.isArray())
-            throw new IllegalArgumentException("the source array is not in fact an array instance");
-        final int length = Array.getLength(source) - sourceOffset;
-        if (length < 0)
-            throw new IllegalArgumentException("the source offset goes beyond the source array length");
-        return skimArray(source,sourceOffset,dest,destOffset,remove,removeOffset,length);
-    }
-
-    /**
-     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
-     *
-     * <p>
-     *     If the {@code dest} array provide is not long enough a new one will be created and returned with the
-     *     same component type. All elements before {@code destOffset} will be copied from the input to the
-     *     result array. If {@code dest} is {@code null}, a brand-new array large enough will be created where
-     *     the position preceding {@code destOffset} will be left with the default value. The component type
-     *     Will match the one of the {@code source} array.
-     * </p>
-     *
-     * @param source the original array to splice.
-     * @param sourceOffset the first position to skim.
-     * @param dest the destination array.
-     * @param destOffset the first position where to copy the skimed array values.
-     * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
-     *               or retained ({@code false})
-     * @param removeOffset the first position in the remove index array to consider.
-     * @param length the total number of position in {@code source} to consider. Thus only the {@code sourceOffset} to
-     *               {@code sourceOffset + length - 1} region will be skimmed.
-     *
-     * @param <T> the array type.
-     *
-     * @throws IllegalArgumentException if either {@code original} or {@code remove} is {@code null},
-     *    or {@code remove length is different to {@code original}'s}, or {@code original} is not in
-     *    fact an array.
-     *
-     * @return never {@code null}.
-     */
-    public static <T> T skimArray(final T source, final int sourceOffset, final T dest, final int destOffset,
-                                  final boolean[] remove, final int removeOffset, final int length) {
-        if (source == null)
-            throw new IllegalArgumentException("the source array cannot be null");
-        if (remove == null)
-            throw new IllegalArgumentException("the remove array cannot be null");
-        if (sourceOffset < 0)
-            throw new IllegalArgumentException("the source array offset cannot be negative");
-        if (destOffset < 0)
-            throw new IllegalArgumentException("the destination array offset cannot be negative");
-        if (removeOffset < 0)
-            throw new IllegalArgumentException("the remove array offset cannot be negative");
-        if (length < 0)
-            throw new IllegalArgumentException("the length provided cannot be negative");
-
-        final int removeLength = Math.min(remove.length - removeOffset,length);
-
-        if (removeLength < 0)
-            throw new IllegalArgumentException("the remove offset provided falls beyond the remove array end");
-
-
-        @SuppressWarnings("unchecked")
-        final Class<T> sourceClazz = (Class<T>) source.getClass();
-
-        if (!sourceClazz.isArray())
-            throw new IllegalArgumentException("the source array is not in fact an array instance");
-
-        final Class<T> destClazz = skimArrayDetermineDestArrayClass(dest, sourceClazz);
-
-        final int sourceLength = Array.getLength(source);
-
-        if (sourceLength < length + sourceOffset)
-            throw new IllegalArgumentException("the source array is too small considering length and offset");
-
-        // count how many positions are to be removed.
-
-        int removeCount = 0;
-
-        final int removeEnd = removeLength + removeOffset;
-        for (int i = removeOffset; i < removeEnd; i++)
-            if  (remove[i]) removeCount++;
-
-
-        final int newLength = length - removeCount;
-
-
-        @SuppressWarnings("unchecked")
-        final T result = skimArrayBuildResultArray(dest, destOffset, destClazz, newLength);
-        // No removals, just copy the whole thing.
-
-        if (removeCount == 0)
-            System.arraycopy(source,sourceOffset,result,destOffset,length);
-        else if (length > 0) {  // if length == 0 nothing to do.
-            int nextOriginalIndex = 0;
-            int nextNewIndex = 0;
-            int nextRemoveIndex = removeOffset;
-            while (nextOriginalIndex < length && nextNewIndex < newLength) {
-                while (nextRemoveIndex < removeEnd && remove[nextRemoveIndex++]) { nextOriginalIndex++; } // skip positions to be spliced.
-                // Since we make the nextNewIndex < newLength check in the while condition
-                // there is no need to include the following break, as is guaranteed not to be true:
-                // if (nextOriginalIndex >= length) break; // we reach the final (last positions are to be spliced.
-                final int copyStart = nextOriginalIndex;
-                while (++nextOriginalIndex < length && (nextRemoveIndex >= removeEnd || !remove[nextRemoveIndex])) { nextRemoveIndex++; }
-                final int copyEnd = nextOriginalIndex;
-                final int copyLength = copyEnd - copyStart;
-                System.arraycopy(source, sourceOffset + copyStart, result, destOffset + nextNewIndex, copyLength);
-                nextNewIndex += copyLength;
-            }
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> T skimArrayBuildResultArray(final T dest, final int destOffset, final Class<T> destClazz, final int newLength) {
-        final T result;
-
-        if (dest == null)
-            result = (T) Array.newInstance(destClazz.getComponentType(), newLength + destOffset);
-        else if (Array.getLength(dest) < newLength + destOffset) {
-            result = (T) Array.newInstance(destClazz.getComponentType(),newLength + destOffset);
-            if (destOffset > 0) System.arraycopy(dest,0,result,0,destOffset);
-        } else
-            result = dest;
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> Class<T> skimArrayDetermineDestArrayClass(final T dest, Class<T> sourceClazz) {
-        final Class<T> destClazz;
-        if (dest == null)
-            destClazz = sourceClazz;
-        else {
-            destClazz = (Class<T>) dest.getClass();
-            if (destClazz != sourceClazz) {
-                if (!destClazz.isArray())
-                    throw new IllegalArgumentException("the destination array class must be an array");
-                if (sourceClazz.getComponentType().isAssignableFrom(destClazz.getComponentType()))
-                    throw new IllegalArgumentException("the provided destination array class cannot contain values from the source due to type incompatibility");
-            }
-        }
-        return destClazz;
-    }
 }

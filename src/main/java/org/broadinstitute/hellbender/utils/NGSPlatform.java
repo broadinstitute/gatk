@@ -36,9 +36,6 @@ import java.util.List;
  * A canonical, master list of the standard NGS platforms.  These values
  * can be obtained (efficiently) from a GATKSAMRecord object with the
  * getNGSPlatform method.
- *
- * @author Mark DePristo
- * @since 2011
  */
 public enum NGSPlatform {
     // note the order of elements here determines the order of matching operations, and therefore the

@@ -1,6 +1,6 @@
 /*
 * Copyright (c) 2012 The Broad Institute
-* 
+*
 * Permission is hereby granted, free of charge, to any person
 * obtaining a copy of this software and associated documentation
 * files (the "Software"), to deal in the Software without
@@ -9,10 +9,10 @@
 * copies of the Software, and to permit persons to whom the
 * Software is furnished to do so, subject to the following
 * conditions:
-* 
+*
 * The above copyright notice and this permission notice shall be
 * included in all copies or substantial portions of the Software.
-* 
+*
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -26,8 +26,8 @@
 package org.broadinstitute.hellbender.utils.io;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -35,56 +35,11 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
 public class IOUtilsUnitTest extends BaseTest {
-    @Test
-    public void testGoodTempDir() {
-        IOUtils.checkTempDir(new File("/tmp/queue"));
-    }
 
-    @Test(expectedExceptions=UserException.BadTmpDir.class)
-    public void testBadTempDir() {
-        IOUtils.checkTempDir(new File("/tmp"));
-    }
-
-    @Test
-    public void testAbsoluteSubDir() {
-        File subDir = IOUtils.absolute(new File("."), new File("/path/to/file"));
-        Assert.assertEquals(subDir, new File("/path/to/file"));
-
-        subDir = IOUtils.absolute(new File("/different/path"), new File("/path/to/file"));
-        Assert.assertEquals(subDir, new File("/path/to/file"));
-
-        subDir = IOUtils.absolute(new File("/different/path"), new File("."));
-        Assert.assertEquals(subDir, new File("/different/path"));
-    }
-
-    @Test
-    public void testRelativeSubDir() throws IOException {
-        File subDir = IOUtils.absolute(new File("."), new File("path/to/file"));
-        Assert.assertEquals(subDir.getCanonicalFile(), new File("path/to/file").getCanonicalFile());
-
-        subDir = IOUtils.absolute(new File("/different/path"), new File("path/to/file"));
-        Assert.assertEquals(subDir, new File("/different/path/path/to/file"));
-    }
-
-    @Test
-    public void testDottedSubDir() throws IOException {
-        File subDir = IOUtils.absolute(new File("."), new File("path/../to/file"));
-        Assert.assertEquals(subDir.getCanonicalFile(), new File("path/../to/./file").getCanonicalFile());
-
-        subDir = IOUtils.absolute(new File("."), new File("/path/../to/file"));
-        Assert.assertEquals(subDir, new File("/path/../to/file"));
-
-        subDir = IOUtils.absolute(new File("/different/../path"), new File("path/to/file"));
-        Assert.assertEquals(subDir, new File("/different/../path/path/to/file"));
-
-        subDir = IOUtils.absolute(new File("/different/./path"), new File("/path/../to/file"));
-        Assert.assertEquals(subDir, new File("/path/../to/file"));
-    }
 
     @Test
     public void testTempDir() {
@@ -95,21 +50,6 @@ public class IOUtilsUnitTest extends BaseTest {
         boolean deleted = IOUtils.tryDelete(tempDir);
         Assert.assertTrue(deleted);
         Assert.assertFalse(tempDir.exists());
-    }
-
-    @Test
-    public void testDirLevel() {
-        File dir = IOUtils.dirLevel(new File("/path/to/directory"), 1);
-        Assert.assertEquals(dir, new File("/path"));
-
-        dir = IOUtils.dirLevel(new File("/path/to/directory"), 2);
-        Assert.assertEquals(dir, new File("/path/to"));
-
-        dir = IOUtils.dirLevel(new File("/path/to/directory"), 3);
-        Assert.assertEquals(dir, new File("/path/to/directory"));
-
-        dir = IOUtils.dirLevel(new File("/path/to/directory"), 4);
-        Assert.assertEquals(dir, new File("/path/to/directory"));
     }
 
     @Test
@@ -202,29 +142,9 @@ public class IOUtilsUnitTest extends BaseTest {
     }
 
     @Test( expectedExceptions = IllegalArgumentException.class )
-    public void testReadNullStreamIntoByteArray() {
-        IOUtils.readStreamIntoByteArray(null);
-    }
-
-    @Test( expectedExceptions = IllegalArgumentException.class )
     public void testReadStreamIntoByteArrayInvalidBufferSize() throws Exception {
         IOUtils.readStreamIntoByteArray(new FileInputStream(createTempFile("testReadStreamIntoByteArrayInvalidBufferSize", "tmp")),
                 -1);
-    }
-
-    @Test( expectedExceptions = UserException.CouldNotCreateOutputFile.class )
-    public void testWriteByteArrayToUncreatableFile() {
-        IOUtils.writeByteArrayToFile(new byte[]{0}, new File("/dev/foo/bar"));
-    }
-
-    @Test( expectedExceptions = IllegalArgumentException.class )
-    public void testWriteNullByteArrayToFile() {
-        IOUtils.writeByteArrayToFile(null, createTempFile("testWriteNullByteArrayToFile", "tmp"));
-    }
-
-    @Test( expectedExceptions = IllegalArgumentException.class )
-    public void testWriteByteArrayToNullStream() {
-        IOUtils.writeByteArrayToStream(new byte[]{0}, null);
     }
 
     private byte[] getDeterministicRandomData ( int size ) {

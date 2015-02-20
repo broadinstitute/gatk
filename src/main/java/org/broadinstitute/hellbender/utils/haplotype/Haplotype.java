@@ -31,13 +31,13 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.HasGenomeLocation;
 import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.util.Arrays;
-import java.util.Comparator;
 
-public class Haplotype extends Allele {
+public class Haplotype extends Allele implements HasGenomeLocation {
 
     private GenomeLoc genomeLocation = null;
     private EventMap eventMap = null;
@@ -78,15 +78,6 @@ public class Haplotype extends Allele {
         this(bases, isRef);
         this.alignmentStartHapwrtRef = alignmentStartHapwrtRef;
         setCigar(cigar);
-    }
-
-    /**
-     * Copy constructor.  Note the ref state of the provided allele is ignored!
-     *
-     * @param allele allele to copy
-     */
-    public Haplotype( final Allele allele ) {
-        super(allele, true);
     }
 
     public Haplotype( final byte[] bases, final GenomeLoc loc ) {
@@ -155,8 +146,8 @@ public class Haplotype extends Allele {
      * Get the span of this haplotype (may be null)
      * @return a potentially null genome loc
      */
-    public GenomeLoc getGenomeLocation() {
-        return genomeLocation;
+    public GenomeLoc getLocation() {
+        return this.genomeLocation;
     }
 
     public void setGenomeLocation(GenomeLoc genomeLocation) {
@@ -229,18 +220,6 @@ public class Haplotype extends Allele {
         return new Haplotype(newHaplotypeBases);
     }
 
-    private static class Event {
-        public Allele ref;
-        public Allele alt;
-        public int pos;
-
-        public Event( final Allele ref, final Allele alt, final int pos ) {
-            this.ref = ref;
-            this.alt = alt;
-            this.pos = pos;
-        }
-    }
-
     /**
      * Get the score (an estimate of the support) of this haplotype
      * @return a double, where higher values are better
@@ -260,29 +239,5 @@ public class Haplotype extends Allele {
         this.score = score;
     }
 
-    /**
-     * Comparator used to sort haplotypes, alphanumerically.
-     *
-     * <p>
-     *     If one haplotype is the prefix of the other, the shorter one comes first.
-     * </p>
-     */
-    public static final Comparator<Haplotype> ALPHANUMERICAL_COMPARATOR = new Comparator<Haplotype>() {
-
-        @Override
-        public int compare(final Haplotype o1, final Haplotype o2) {
-            if (o1 == o2)
-                return 0;
-            final byte[] bases1 = o1.getBases();
-            final byte[] bases2 = o2.getBases();
-            final int iLimit = Math.min(bases1.length, bases2.length);
-            for (int i = 0; i < iLimit; i++) {
-                final int cmp = Byte.compare(bases1[i], bases2[i]);
-                if (cmp != 0) return cmp;
-            }
-            if (bases1.length == bases2.length) return 0;
-            return (bases1.length > bases2.length) ? -1 : 1; // is a bit better to get the longest haplotypes first.
-        }
-    };
 
 }

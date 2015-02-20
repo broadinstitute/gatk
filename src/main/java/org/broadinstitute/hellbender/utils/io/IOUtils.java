@@ -27,7 +27,6 @@ package org.broadinstitute.hellbender.utils.io;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.LineIterator;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,8 +34,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -44,31 +41,6 @@ import java.util.zip.GZIPOutputStream;
 public class IOUtils {
     private static Logger logger = LogManager.getLogger(IOUtils.class);
     private static final File DEV_DIR = new File("/dev");
-
-    /**
-     * Checks if the temp directory has been setup and throws an exception if they user hasn't set it correctly.
-     *
-     * @param tempDir Temporary directory.
-     */
-    public static void checkTempDir(File tempDir) {
-        if (isDefaultTempDir(tempDir))
-            throw new UserException.BadTmpDir("java.io.tmpdir must be explicitly set");
-        if (!tempDir.exists() && !tempDir.mkdirs())
-            throw new UserException.BadTmpDir("Could not create directory: " + tempDir.getAbsolutePath());
-    }
-
-    /**
-     * Returns true if the directory is a default temporary directory.
-     * @param tempDir the directory to check.
-     * @return true if the directory is a default temporary directory.
-     */
-    public static boolean isDefaultTempDir(File tempDir) {
-        String tempDirPath = tempDir.getAbsolutePath();
-        // Keeps the user from leaving the temp directory as the default, and on Macs from having pluses
-        // in the path which can cause problems with the Google Reflections library.
-        // see also: http://benjchristensen.com/2009/09/22/mac-osx-10-6-java-java-io-tmpdir/
-        return (tempDirPath.startsWith("/var/folders/") || (tempDirPath.equals("/tmp")) || (tempDirPath.equals("/tmp/")));
-    }
 
     /**
      * Creates a temp directory with the prefix and optional suffix.
@@ -138,100 +110,32 @@ public class IOUtils {
     }
 
     /**
-     * Waits for NFS to propagate a file creation, imposing a timeout.
-     *
-     * Based on Apache Commons IO FileUtils.waitFor()
-     *
-     * @param file    The file to wait for.
-     * @param seconds The maximum time in seconds to wait.
-     * @return true if the file exists
+     * Returns true if the file is a special file.
+     * @param file File path to check.
+     * @return true if the file is a special file.
      */
-    public static boolean waitFor(File file, int seconds) {
-        return waitFor(Collections.singletonList(file), seconds).isEmpty();
+    public static boolean isSpecialFile(File file) {
+        return file != null && (file.getAbsolutePath().startsWith("/dev/") || file.equals(DEV_DIR));
     }
 
     /**
-     * Waits for NFS to propagate a file creation, imposing a timeout.
+     * Tries to delete a file. Emits a warning if the file
+     * is not a special file and was unable to be deleted.
      *
-     * Based on Apache Commons IO FileUtils.waitFor()
-     *
-     * @param files   The list of files to wait for.
-     * @param seconds The maximum time in seconds to wait.
-     * @return Files that still do not exists at the end of the timeout, or a empty list if all files exists.
+     * @param file File to delete.
+     * @return true if the file was deleted.
      */
-    public static List<File> waitFor(Collection<File> files, int seconds) {
-        long timeout = 0;
-        long tick = 0;
-        List<File> missingFiles = new ArrayList<File>();
-        for (File file : files)
-            if (!file.exists())
-                missingFiles.add(file);
-
-        while (!missingFiles.isEmpty() && timeout <= seconds) {
-            if (tick >= 10) {
-                tick = 0;
-                timeout++;
-            }
-            tick++;
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException ignore) {
-            }
-            List<File> newMissingFiles = new ArrayList<File>();
-            for (File file : missingFiles)
-                if (!file.exists())
-                    newMissingFiles.add(file);
-            missingFiles = newMissingFiles;
+    public static boolean tryDelete(File file) {
+        if (isSpecialFile(file)) {
+            logger.debug("Not trying to delete " + file);
+            return false;
         }
-        return missingFiles;
-    }
-
-    /**
-     * Returns the directory at the number of levels deep.
-     * For example 2 levels of /path/to/dir will return /path/to
-     *
-     * @param dir   Directory path.
-     * @param level how many levels deep from the root.
-     * @return The path to the parent directory that is level-levels deep.
-     */
-    public static File dirLevel(File dir, int level) {
-        List<File> directories = new ArrayList<File>();
-        File parentDir = absolute(dir);
-        while (parentDir != null) {
-            directories.add(0, parentDir);
-            parentDir = parentDir.getParentFile();
-        }
-        if (directories.size() <= level)
-            return directories.get(directories.size() - 1);
-        else
-            return directories.get(level);
-    }
-
-    /**
-     * Returns the sub path rooted at the parent.
-     *
-     * @param parent The parent directory.
-     * @param path   The sub path to append to the parent, if the path is not absolute.
-     * @return The absolute path to the file in the parent dir if the path was not absolute, otherwise the original path.
-     */
-    public static File absolute(File parent, String path) {
-        return absolute(parent, new File(path));
-    }
-
-    /**
-     * Returns the sub path rooted at the parent.
-     *
-     * @param parent The parent directory.
-     * @param file   The sub path to append to the parent, if the path is not absolute.
-     * @return The absolute path to the file in the parent dir if the path was not absolute, otherwise the original path.
-     */
-    public static File absolute(File parent, File file) {
-        String newPath;
-        if (file.isAbsolute())
-            newPath = absolutePath(file);
-        else
-            newPath = absolutePath(new File(parent, file.getPath()));
-        return replacePath(file, newPath);
+        boolean deleted = FileUtils.deleteQuietly(file);
+        if (deleted)
+            logger.debug("Deleted " + file);
+        else if (file.exists())
+            logger.warn("Unable to delete " + file);
+        return deleted;
     }
 
     /**
@@ -289,54 +193,6 @@ public class IOUtils {
     }
 
     /**
-     * Returns the last lines of the file.
-     * NOTE: This is only safe to run on smaller files!
-     *
-     * @param file  File to read.
-     * @param count Maximum number of lines to return.
-     * @return The last count lines from file.
-     * @throws java.io.IOException When unable to read the file.
-     */
-    public static List<String> tail(File file, int count) throws IOException {
-        LinkedList<String> tailLines = new LinkedList<String>();
-        FileReader reader = new FileReader(file);
-        try {
-            LineIterator iterator = org.apache.commons.io.IOUtils.lineIterator(reader);
-            int lineCount = 0;
-            while (iterator.hasNext()) {
-                String line = iterator.nextLine();
-                lineCount++;
-                if (lineCount > count)
-                    tailLines.removeFirst();
-                tailLines.offer(line);
-            }
-        } finally {
-            org.apache.commons.io.IOUtils.closeQuietly(reader);
-        }
-        return tailLines;
-    }
-
-    /**
-     * Tries to delete a file. Emits a warning if the file
-     * is not a special file and was unable to be deleted.
-     *
-     * @param file File to delete.
-     * @return true if the file was deleted.
-     */
-    public static boolean tryDelete(File file) {
-        if (isSpecialFile(file)) {
-            logger.debug("Not trying to delete " + file);
-            return false;
-        }
-        boolean deleted = FileUtils.deleteQuietly(file);
-        if (deleted)
-            logger.debug("Deleted " + file);
-        else if (file.exists())
-            logger.warn("Unable to delete " + file);
-        return deleted;
-    }
-
-    /**
      * Writes the an embedded resource to a temp file.
      * File is not scheduled for deletion and must be cleaned up by the caller.
      * @param resource Embedded resource.
@@ -372,38 +228,6 @@ public class IOUtils {
             org.apache.commons.io.IOUtils.closeQuietly(inputStream);
             org.apache.commons.io.IOUtils.closeQuietly(outputStream);
         }
-    }
-
-    /**
-     * Returns a file throwing a UserException if the file cannot be read.
-     * @param path File path
-     * @return LineIterator
-     */
-    public static LineIterator lineIterator(String path) {
-        return lineIterator(new File(path));
-    }
-
-    /**
-     * Returns a file throwing a UserException if the file cannot be read.
-     * @param file File
-     * @return LineIterator
-     */
-    public static LineIterator lineIterator(File file) {
-        try {
-            return FileUtils.lineIterator(file);
-        } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(file, e);
-        }
-
-    }
-
-    /**
-     * Returns true if the file is a special file.
-     * @param file File path to check.
-     * @return true if the file is a special file.
-     */
-    public static boolean isSpecialFile(File file) {
-        return file != null && (file.getAbsolutePath().startsWith("/dev/") || file.equals(DEV_DIR));
     }
 
     /**
@@ -443,16 +267,6 @@ public class IOUtils {
         }
 
         return fileContents;
-    }
-
-    /**
-     * Reads all data from the given stream into a byte array. Uses a read buffer size of 4096 bytes.
-     *
-     * @param in Stream to read data from
-     * @return The contents of the stream as a byte array
-     */
-    public static byte[] readStreamIntoByteArray ( InputStream in ) {
-        return readStreamIntoByteArray(in, 4096);
     }
 
     /**
@@ -502,7 +316,7 @@ public class IOUtils {
      */
     public static void writeByteArrayToFile ( byte[] bytes, File destination ) {
         if ( destination == null ) {
-            throw new IllegalArgumentException("Destination file was null");
+            throw new GATKException("Destination file was null");
         }
 
         try {
@@ -521,7 +335,7 @@ public class IOUtils {
      */
     public static void writeByteArrayToStream ( byte[] bytes, OutputStream out ) {
         if ( bytes == null || out == null ) {
-            throw new IllegalArgumentException("Data to write or output stream was null");
+            throw new GATKException("Data to write or output stream was null");
         }
 
         try {
@@ -534,44 +348,6 @@ public class IOUtils {
         }
         catch ( IOException e ) {
             throw new UserException.CouldNotCreateOutputFile("I/O error writing to output stream", e);
-        }
-    }
-
-    /**
-     * Determines the uncompressed size of a GZIP file. Uses the GZIP ISIZE field in the last
-     * 4 bytes of the file to get this information.
-     *
-     * @param gzipFile GZIP-format file whose uncompressed size to determine
-     * @return The uncompressed size (in bytes) of the GZIP file
-     */
-    public static int getGZIPFileUncompressedSize ( File gzipFile ) {
-        if ( gzipFile == null ) {
-            throw new GATKException("GZIP file to examine was null");
-        }
-
-        try {
-            // The GZIP ISIZE field holds the uncompressed size of the compressed data.
-            // It occupies the last 4 bytes of any GZIP file:
-            RandomAccessFile in = new RandomAccessFile(gzipFile, "r");
-            in.seek(gzipFile.length() - 4);
-            byte[] sizeBytes = new byte[4];
-            in.read(sizeBytes, 0, 4);
-
-            ByteBuffer byteBuf = ByteBuffer.wrap(sizeBytes);
-            byteBuf.order(ByteOrder.LITTLE_ENDIAN);   // The GZIP spec mandates little-endian byte order
-            int uncompressedSize = byteBuf.getInt();
-
-            // If the size read in is negative, we've overflowed our signed integer:
-            if ( uncompressedSize < 0 ) {
-                throw new UserException.CouldNotReadInputFile(String.format("Cannot accurately determine the uncompressed size of file %s " +
-                                "because it's either larger than %d bytes or the GZIP ISIZE field is corrupt",
-                        gzipFile.getAbsolutePath(), Integer.MAX_VALUE));
-            }
-
-            return uncompressedSize;
-        }
-        catch ( IOException e ) {
-            throw new UserException.CouldNotReadInputFile(gzipFile, e);
         }
     }
 

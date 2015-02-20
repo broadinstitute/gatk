@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 /**
  * standard ReadFilters
  */
-public class ReadFilterLibrary {
+public final class ReadFilterLibrary {
     public static ReadFilter MAPPED =  read -> !(read.getReadUnmappedFlag() || read.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START);
     public static ReadFilter PRIMARY_ALIGNMENT = (samRecord) -> !samRecord.getNotPrimaryAlignmentFlag();
     public static ReadFilter NOT_DUPLICATE = (samRecord) -> !samRecord.getDuplicateReadFlag();

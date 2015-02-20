@@ -28,8 +28,6 @@ package org.broadinstitute.hellbender.utils.runtime;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 public class RuntimeUtils {
     public static final String[] PATHS;
@@ -57,21 +55,5 @@ public class RuntimeUtils {
                 return file.getAbsoluteFile();
         }
         return null;
-    }
-
-    /**
-     * Return the current classpath as a list of absolute paths
-     * @return
-     */
-    public static List<String> getAbsoluteClassPaths() {
-        final String[] relativeClassPaths = System.getProperty("java.class.path").split(File.pathSeparator);
-        final List<String> absoluteClassPaths = new ArrayList<>(relativeClassPaths.length);
-        for (String classPath : relativeClassPaths) {
-            File cp = new File(classPath);
-            if (cp.exists())
-                absoluteClassPaths.add(cp.getAbsolutePath());
-        }
-
-        return absoluteClassPaths;
     }
 }

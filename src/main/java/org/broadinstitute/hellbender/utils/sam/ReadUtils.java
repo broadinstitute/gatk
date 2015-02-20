@@ -32,8 +32,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
@@ -45,9 +43,6 @@ import java.util.*;
  */
 public class ReadUtils {
     private final static Logger logger = LogManager.getLogger(ReadUtils.class);
-
-    private static final String OFFSET_OUT_OF_BOUNDS_EXCEPTION = "Offset cannot be greater than read length %d : %d";
-    private static final String OFFSET_NOT_ZERO_EXCEPTION = "We ran past the end of the read and never found the offset, something went wrong!";
 
     private ReadUtils() {
     }
@@ -62,28 +57,10 @@ public class ReadUtils {
     public static final String BQSR_BASE_INSERTION_QUALITIES = "BI";                // base qualities for insertions
     public static final String BQSR_BASE_DELETION_QUALITIES = "BD";                 // base qualities for deletions
 
-
-    private static final int DEFAULT_ADAPTOR_SIZE = 100;
     public static final int CLIPPING_GOAL_NOT_REACHED = -1;
 
     /**
-     * Pull out the samples from a SAMFileHeader;
-     * note that we use a TreeSet so that they are sorted
-     *
-     * @param header  the sam file header
-     * @return list of strings representing the sample names
-     */
-    public static Set<String> getSAMFileSamples(final SAMFileHeader header) {
-        // get all of the unique sample names
-        final Set<String> samples = new TreeSet<>();
-        List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        for ( SAMReadGroupRecord readGroup : readGroups )
-            samples.add(readGroup.getSample());
-        return samples;
-    }
-
-    /**
-     * This is a HACK to make a copy of a read. Really,  SAMRecord should provide a copy constuctor or a factory method.
+     * This is a HACK to make a copy of a read. Really,  SAMRecord should provide a copy constructor or a factory method.
      */
     public static SAMRecord makeClone(SAMRecord originalRead) {
         if (originalRead == null) return null;
@@ -125,72 +102,6 @@ public class ReadUtils {
         readFlagNames.put(0x100, "NotPrimary");
         readFlagNames.put(0x200, "NON-PF");
         readFlagNames.put(0x400, "Duplicate");
-    }
-
-    /**
-     * This enum represents all the different ways in which a read can overlap an interval.
-     *
-     * NO_OVERLAP_CONTIG:
-     * read and interval are in different contigs.
-     *
-     * NO_OVERLAP_LEFT:
-     * the read does not overlap the interval.
-     *
-     *                        |----------------| (interval)
-     *   <---------------->                      (read)
-     *
-     * NO_OVERLAP_RIGHT:
-     * the read does not overlap the interval.
-     *
-     *   |----------------|                      (interval)
-     *                        <----------------> (read)
-     *
-     * OVERLAP_LEFT:
-     * the read starts before the beginning of the interval but ends inside of it
-     *
-     *          |----------------| (interval)
-     *   <---------------->        (read)
-     *
-     * OVERLAP_RIGHT:
-     * the read starts inside the interval but ends outside of it
-     *
-     *   |----------------|     (interval)
-     *       <----------------> (read)
-     *
-     * OVERLAP_LEFT_AND_RIGHT:
-     * the read starts before the interval and ends after the interval
-     *
-     *      |-----------|     (interval)
-     *  <-------------------> (read)
-     *
-     * OVERLAP_CONTAINED:
-     * the read starts and ends inside the interval
-     *
-     *  |----------------|     (interval)
-     *     <-------->          (read)
-     */
-    public enum ReadAndIntervalOverlap {NO_OVERLAP_CONTIG, NO_OVERLAP_LEFT, NO_OVERLAP_RIGHT, NO_OVERLAP_HARDCLIPPED_LEFT, NO_OVERLAP_HARDCLIPPED_RIGHT, OVERLAP_LEFT, OVERLAP_RIGHT, OVERLAP_LEFT_AND_RIGHT, OVERLAP_CONTAINED}
-
-    /**
-     * is this base inside the adaptor of the read?
-     *
-     * There are two cases to treat here:
-     *
-     * 1) Read is in the negative strand => Adaptor boundary is on the left tail
-     * 2) Read is in the positive strand => Adaptor boundary is on the right tail
-     *
-     * Note: We return false to all reads that are UNMAPPED or have an weird big insert size (probably due to mismapping or bigger event)
-     *
-     * @param read the read to test
-     * @param basePos base position in REFERENCE coordinates (not read coordinates)
-     * @return whether or not the base is in the adaptor
-     */
-    public static boolean isBaseInsideAdaptor(final SAMRecord read, long basePos) {
-        final int adaptorBoundary = ReadUtils.getAdaptorBoundary(read);
-        if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || read.getInferredInsertSize() > DEFAULT_ADAPTOR_SIZE)
-            return false;
-
-        return read.getReadNegativeStrandFlag() ? basePos <= adaptorBoundary : basePos >= adaptorBoundary;
     }
 
     /**
@@ -264,38 +175,6 @@ public class ReadUtils {
             // we're on the positive strand, so our mate should be to our right (his start + insert size should be past our start)
             return read.getAlignmentStart() <= read.getMateAlignmentStart() + read.getInferredInsertSize();
         }
-    }
-
-    /**
-     * checks if the read has a platform tag in the readgroup equal to 'name'.
-     * Assumes that 'name' is upper-cased.
-     *
-     * @param read the read to test
-     * @param name the upper-cased platform name to test
-     * @return whether or not name == PL tag in the read group of read
-     */
-    public static boolean isPlatformRead(SAMRecord read, String name) {
-        SAMReadGroupRecord readGroup = read.getReadGroup();
-        if (readGroup != null) {
-            Object readPlatformAttr = readGroup.getAttribute("PL");
-            if (readPlatformAttr != null)
-                return readPlatformAttr.toString().toUpperCase().contains(name);
-        }
-        return false;
-    }
-
-
-    /**
-     * Returns the collections of reads sorted in coordinate order, according to the order defined
-     * in the reads themselves
-     *
-     * @param reads
-     * @return
-     */
-    public final static List<SAMRecord> sortReadsByCoordinate(List<SAMRecord> reads) {
-        final SAMRecordComparator comparer = new SAMRecordCoordinateComparator();
-        Collections.sort(reads, comparer);
-        return reads;
     }
 
     /**
@@ -377,49 +256,6 @@ public class ReadUtils {
         }
         return softEnd;
     }
-    /**
-     * Determines what is the position of the read in relation to the interval.
-     * Note: This function uses the UNCLIPPED ENDS of the reads for the comparison.
-     * @param read the read
-     * @param interval the interval
-     * @return the overlap type as described by ReadAndIntervalOverlap enum (see above)
-     */
-    public static ReadAndIntervalOverlap getReadAndIntervalOverlapType(SAMRecord read, GenomeLoc interval) {
-
-        int sStart = getSoftStart(read);
-        int sStop = getSoftEnd(read);
-        int uStart = read.getUnclippedStart();
-        int uStop = read.getUnclippedEnd();
-
-        if ( !read.getReferenceName().equals(interval.getContig()) )
-            return ReadAndIntervalOverlap.NO_OVERLAP_CONTIG;
-
-        else if ( uStop < interval.getStart() )
-            return ReadAndIntervalOverlap.NO_OVERLAP_LEFT;
-
-        else if ( uStart > interval.getStop() )
-            return ReadAndIntervalOverlap.NO_OVERLAP_RIGHT;
-
-        else if ( sStop < interval.getStart() )
-            return ReadAndIntervalOverlap.NO_OVERLAP_HARDCLIPPED_LEFT;
-
-        else if ( sStart > interval.getStop() )
-            return ReadAndIntervalOverlap.NO_OVERLAP_HARDCLIPPED_RIGHT;
-
-        else if ( (sStart >= interval.getStart()) &&
-                (sStop <= interval.getStop()) )
-            return ReadAndIntervalOverlap.OVERLAP_CONTAINED;
-
-        else if ( (sStart < interval.getStart()) &&
-                (sStop > interval.getStop()) )
-            return ReadAndIntervalOverlap.OVERLAP_LEFT_AND_RIGHT;
-
-        else if ( (sStart < interval.getStart()) )
-            return ReadAndIntervalOverlap.OVERLAP_LEFT;
-
-        else
-            return ReadAndIntervalOverlap.OVERLAP_RIGHT;
-    }
 
     /**
      * Pre-processes the results of getReadCoordinateForReferenceCoordinate(SAMRecord, int) to take care of
@@ -467,27 +303,6 @@ public class ReadUtils {
         return readCoord;
     }
 
-    /**
-     * Returns the read coordinate corresponding to the requested reference coordinate.
-     *
-     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
-     * will return the last read base before the deletion (or skipped region). This function returns a
-     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
-     * a deletion (or skipped region).
-     *
-     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(SAMRecord, int, ClippingTail) instead to get a
-     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
-     * behavior to your needs.
-     *
-     * @param read
-     * @param refCoord the requested reference coordinate
-     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
-     */
-    //TODO since we do not have contracts any more, should we check for the requirements in the method code?
-    public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(SAMRecord read, int refCoord) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, false);
-    }
-
     public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final boolean allowGoalNotReached) {
         int readBases = 0;
         int refBases = 0;
@@ -498,7 +313,7 @@ public class ReadUtils {
         final int goal = refCoord - alignmentStart;  // The goal is to move this many reference bases
         if (goal < 0) {
             if (allowGoalNotReached) {
-                return new MutablePair<Integer, Boolean>(CLIPPING_GOAL_NOT_REACHED, false);
+                return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
             } else {
                 throw new GATKException("Somehow the requested coordinate is not covered by the read. Too many deletions?");
             }
@@ -588,26 +403,13 @@ public class ReadUtils {
 
         if (!goalReached) {
             if (allowGoalNotReached) {
-                return new MutablePair<Integer, Boolean>(CLIPPING_GOAL_NOT_REACHED, false);
+                return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
             } else {
                 throw new GATKException("Somehow the requested coordinate is not covered by the read. Alignment " + alignmentStart + " | " + cigar);
             }
         }
 
-        return new MutablePair<Integer, Boolean>(readBases, fallsInsideOrJustBeforeDeletionOrSkippedRegion);
-    }
-
-    /**
-     * Compares two SAMRecords only the basis on alignment start.  Note that
-     * comparisons are performed ONLY on the basis of alignment start; any
-     * two SAM records with the same alignment start will be considered equal.
-     *
-     * Unmapped alignments will all be considered equal.
-     */
-
-    public static int compareSAMRecords(SAMRecord read1, SAMRecord read2) {
-        AlignmentStartComparator comp = new AlignmentStartComparator();
-        return comp.compare(read1, read2);
+        return new MutablePair<>(readBases, fallsInsideOrJustBeforeDeletionOrSkippedRegion);
     }
 
     /**
@@ -619,20 +421,6 @@ public class ReadUtils {
      */
     public static boolean isInsideRead(final SAMRecord read, final int referenceCoordinate) {
         return referenceCoordinate >= read.getAlignmentStart() && referenceCoordinate <= read.getAlignmentEnd();
-    }
-
-    /**
-     * Is this read all insertion?
-     *
-     * @param read
-     * @return whether or not the only element in the cigar string is an Insertion
-     */
-    public static boolean readIsEntirelyInsertion(SAMRecord read) {
-        for (CigarElement cigarElement : read.getCigar().getCigarElements()) {
-            if (cigarElement.getOperator() != CigarOperator.INSERTION)
-                return false;
-        }
-        return true;
     }
 
     /**
@@ -658,142 +446,6 @@ public class ReadUtils {
                 break;
         }
         return null;
-    }
-
-    /**
-     * Returns the coverage distribution of a list of reads within the desired region.
-     *
-     * See getCoverageDistributionOfRead for information on how the coverage is calculated.
-     *
-     * @param list          the list of reads covering the region
-     * @param startLocation the first reference coordinate of the region (inclusive)
-     * @param stopLocation  the last reference coordinate of the region (inclusive)
-     * @return an array with the coverage of each position from startLocation to stopLocation
-     */
-    public static int [] getCoverageDistributionOfReads(List<SAMRecord> list, int startLocation, int stopLocation) {
-        int [] totalCoverage = new int[stopLocation - startLocation + 1];
-
-        for (SAMRecord read : list) {
-            int [] readCoverage = getCoverageDistributionOfRead(read, startLocation, stopLocation);
-            totalCoverage = MathUtils.addArrays(totalCoverage, readCoverage);
-        }
-
-        return totalCoverage;
-    }
-
-    /**
-     * Returns the coverage distribution of a single read within the desired region.
-     *
-     * Note: This function counts DELETIONS as coverage (since the main purpose is to downsample
-     * reads for variant regions, and deletions count as variants)
-     *
-     * @param read          the read to get the coverage distribution of
-     * @param startLocation the first reference coordinate of the region (inclusive)
-     * @param stopLocation  the last reference coordinate of the region (inclusive)
-     * @return an array with the coverage of each position from startLocation to stopLocation
-     */
-    public static int [] getCoverageDistributionOfRead(SAMRecord read, int startLocation, int stopLocation) {
-        int [] coverage = new int[stopLocation - startLocation + 1];
-        int refLocation = getSoftStart(read);
-        for (CigarElement cigarElement : read.getCigar().getCigarElements()) {
-            switch (cigarElement.getOperator()) {
-                case S:
-                case M:
-                case EQ:
-                case N:
-                case X:
-                case D:
-                    for (int i = 0; i < cigarElement.getLength(); i++) {
-                        if (refLocation >= startLocation && refLocation <= stopLocation) {
-                            coverage[refLocation - startLocation]++;
-                        }
-                        refLocation++;
-                    }
-                    break;
-
-                case P:
-                case I:
-                case H:
-                    break;
-            }
-
-            if (refLocation > stopLocation)
-                break;
-        }
-        return coverage;
-    }
-
-    public static String prettyPrintSequenceRecords ( SAMSequenceDictionary sequenceDictionary ) {
-        String[] sequenceRecordNames = new String[sequenceDictionary.size()];
-        int sequenceRecordIndex = 0;
-        for (SAMSequenceRecord sequenceRecord : sequenceDictionary.getSequences())
-            sequenceRecordNames[sequenceRecordIndex++] = sequenceRecord.getSequenceName();
-        return Arrays.deepToString(sequenceRecordNames);
-    }
-
-    /**
-     * Calculates the reference coordinate for a read coordinate
-     *
-     * @param read   the read
-     * @param offset the base in the read (coordinate in the read)
-     * @return the reference coordinate correspondent to this base
-     */
-    public static long getReferenceCoordinateForReadCoordinate(SAMRecord read, int offset) {
-        if (offset > read.getReadLength())
-            throw new GATKException(String.format(OFFSET_OUT_OF_BOUNDS_EXCEPTION, offset, read.getReadLength()));
-
-        long location = read.getAlignmentStart();
-        Iterator<CigarElement> cigarElementIterator = read.getCigar().getCigarElements().iterator();
-        while (offset > 0 && cigarElementIterator.hasNext()) {
-            CigarElement cigarElement = cigarElementIterator.next();
-            long move = 0;
-            if (cigarElement.getOperator().consumesReferenceBases())
-                move = (long) Math.min(cigarElement.getLength(), offset);
-            location += move;
-            offset -= move;
-        }
-        if (offset > 0 && !cigarElementIterator.hasNext())
-            throw new GATKException(OFFSET_NOT_ZERO_EXCEPTION);
-
-        return location;
-    }
-
-    /**
-     * Given a read, outputs the read bases in a string format
-     *
-     * @param read the read
-     * @return a string representation of the read bases
-     */
-    public static String convertReadBasesToString(SAMRecord read) {
-        String bases = "";
-        for (byte b : read.getReadBases()) {
-            bases += (char) b;
-        }
-        return bases.toUpperCase();
-    }
-
-    /**
-     * Given a read, outputs the base qualities in a string format
-     *
-     * @param quals the read qualities
-     * @return a string representation of the base qualities
-     */
-    public static String convertReadQualToString(byte[] quals) {
-        String result = "";
-        for (byte b : quals) {
-            result += (char) (33 + b);
-        }
-        return result;
-    }
-
-    /**
-     * Given a read, outputs the base qualities in a string format
-     *
-     * @param read the read
-     * @return a string representation of the base qualities
-     */
-    public static String convertReadQualToString(SAMRecord read) {
-        return convertReadQualToString(read.getBaseQualities());
     }
 
     /**

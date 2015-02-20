@@ -34,6 +34,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.StringUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -46,7 +47,6 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -578,7 +578,7 @@ public final class ClipReads extends ReadWalker {
         public String toString() {
             StringBuilder s = new StringBuilder();
 
-            s.append(Utils.dupString('-', 80) + "\n");
+            s.append(StringUtils.repeat('-', 80) + "\n");
             s.append(String.format("Number of examined reads              %d%n", nTotalReads));
             s.append(String.format("Number of clipped reads               %d%n", nClippedReads));
             s.append(String.format("Percent of clipped reads              %.2f%n", (100.0 * nClippedReads) / nTotalReads));
@@ -593,7 +593,7 @@ public final class ClipReads extends ReadWalker {
                 s.append(String.format("  %8d clip sites matching %s%n", elt.getValue(), elt.getKey()));
             }
 
-            s.append(Utils.dupString('-', 80) + "\n");
+            s.append(StringUtils.repeat('-', 80) + "\n");
             return s.toString();
         }
     }
