@@ -126,6 +126,7 @@ test {
     String runRTests = "$System.env.RUNR"
     if (CI == "true") {
         int count = 0
+        maxParallelForks = 2
         // listen to events in the test execution lifecycle
         testLogging {
             events "skipped", "failed"

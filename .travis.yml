@@ -15,6 +15,10 @@ before_install:
   - mkdir -p site-library
   - sudo ln -sFv ~/site-library /usr/local/lib/R/site-library
   - wget -N https://downloads.gradle.org/distributions/gradle-2.2.1-bin.zip
+  #necessary for mailing
+  - sudo apt-get install -y sharutils
+  - sudo apt-get install -y bsd-mailx 
+  #end mail
   - unzip gradle-2.2.1-bin.zip
   - "export PATH=`pwd`/gradle-2.2.1/bin:$PATH"
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
@@ -25,4 +29,7 @@ before_install:
   - R --version
   - sudo Rscript scripts/install_R_packages.R
 after_success:
-- gradle jacocoTestReport coveralls
+  - gradle jacocoTestReport coveralls
+after_script:
+  - tar -zcvf reports.tar.gz build/reports/
+  - uuencode reports.tar.gz reports.tar.gz | mailx louisb@broadinstitute.org
