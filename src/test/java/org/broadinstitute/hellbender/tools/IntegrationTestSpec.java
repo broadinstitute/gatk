@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -67,7 +68,7 @@ public final class IntegrationTestSpec {
         }
 
         final String args = String.format(getArgs(), tmpFiles.toArray());
-        System.out.println(Utils.dupString('-', 80));
+        System.out.println(StringUtils.repeat('-', 80));
 
         if (expectsException()) {
             // this branch handles the case were we are testing that a walker will fail as expected

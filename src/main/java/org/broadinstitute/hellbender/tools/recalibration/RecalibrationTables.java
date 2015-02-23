@@ -52,11 +52,9 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.collections.LoggingNestedIntegerArray;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
@@ -74,36 +72,26 @@ public final class RecalibrationTables {
     private final int qualDimension;
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;
-    private final PrintStream log;
 
     public RecalibrationTables(final Covariate[] covariates) {
-        this(covariates, covariates[TableType.READ_GROUP_TABLE.ordinal()].maximumKeyValue() + 1, null);
+        this(covariates, covariates[TableType.READ_GROUP_TABLE.ordinal()].maximumKeyValue() + 1);
     }
 
     public RecalibrationTables(final Covariate[] covariates, final int numReadGroups) {
-        this(covariates, numReadGroups, null);
-    }
-
-    public RecalibrationTables(final Covariate[] covariates, final int numReadGroups, final PrintStream log) {
-        tables = new ArrayList<NestedIntegerArray<RecalDatum>>(covariates.length);
+        tables = new ArrayList<>(covariates.length);
         for ( int i = 0; i < covariates.length; i++ )
             tables.add(i, null); // initialize so we can set below
 
         qualDimension = covariates[TableType.QUALITY_SCORE_TABLE.ordinal()].maximumKeyValue() + 1;
         this.numReadGroups = numReadGroups;
-        this.log = log;
 
         tables.set(TableType.READ_GROUP_TABLE.ordinal(),
-                log == null ? new NestedIntegerArray<RecalDatum>(numReadGroups, eventDimension) :
-                        new LoggingNestedIntegerArray<RecalDatum>(log, "READ_GROUP_TABLE", numReadGroups, eventDimension));
+                 new NestedIntegerArray<>(numReadGroups, eventDimension));
 
         tables.set(TableType.QUALITY_SCORE_TABLE.ordinal(), makeQualityScoreTable());
 
         for (int i = TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < covariates.length; i++)
-            tables.set(i,
-                    log == null ? new NestedIntegerArray<RecalDatum>(numReadGroups, qualDimension, covariates[i].maximumKeyValue()+1, eventDimension) :
-                            new LoggingNestedIntegerArray<RecalDatum>(log, String.format("OPTIONAL_COVARIATE_TABLE_%d", i - TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal() + 1),
-                                    numReadGroups, qualDimension, covariates[i].maximumKeyValue()+1, eventDimension));
+            tables.set(i, new NestedIntegerArray<>(numReadGroups, qualDimension, covariates[i].maximumKeyValue()+1, eventDimension));
     }
 
     public NestedIntegerArray<RecalDatum> getReadGroupTable() {
@@ -140,9 +128,7 @@ public final class RecalibrationTables {
      * @return a newly allocated, empty read group x quality score table
      */
     public NestedIntegerArray<RecalDatum> makeQualityScoreTable() {
-        return log == null
-                ? new NestedIntegerArray<RecalDatum>(numReadGroups, qualDimension, eventDimension)
-                : new LoggingNestedIntegerArray<RecalDatum>(log, "QUALITY_SCORE_TABLE", numReadGroups, qualDimension, eventDimension);
+        return new NestedIntegerArray<>(numReadGroups, qualDimension, eventDimension);
     }
 
     /**

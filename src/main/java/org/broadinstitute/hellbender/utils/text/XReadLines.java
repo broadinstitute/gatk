@@ -59,61 +59,6 @@ public class XReadLines implements Iterator<String>, Iterable<String> {
         this(IOUtils.makeReaderMaybeGzipped(filename), true, null);
     }
 
-    public XReadLines(final File filename, final boolean trimWhitespace) throws IOException {
-        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
-    }
-
-    /**
-     * Creates a new xReadLines object to read lines from filename
-     *
-     * @param filename file name (may be gzipped if name ends on ".gz")
-     * @param trimWhitespace trim whitespace
-     * @param commentPrefix prefix for comments or null if no prefix is set
-     * @throws FileNotFoundException when the file is not found
-     */
-    public XReadLines(final File filename, final boolean trimWhitespace, final String commentPrefix) throws IOException {
-        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, commentPrefix);
-    }
-
-    public XReadLines(final InputStream inputStream) throws FileNotFoundException {
-        this(new InputStreamReader(inputStream), true, null);
-    }
-
-    public XReadLines(final InputStream inputStream, final boolean trimWhitespace) {
-        this(new InputStreamReader(inputStream), trimWhitespace, null);
-    }
-
-    /**
-     * Creates a new xReadLines object to read lines from an input stream
-     *
-     * @param inputStream input stream
-     * @param trimWhitespace trim whitespace
-     * @param commentPrefix prefix for comments or null if no prefix is set
-     */
-    public XReadLines(final InputStream inputStream, final boolean trimWhitespace, final String commentPrefix) {
-        this(new InputStreamReader(inputStream), trimWhitespace, commentPrefix);
-    }
-
-
-    /**
-     * Creates a new xReadLines object to read lines from a reader
-     *
-     * @param reader reader
-     */
-    public XReadLines(final Reader reader) {
-        this(reader, true, null);
-    }
-
-    /**
-     * Creates a new xReadLines object to read lines from an reader
-     *
-     * @param reader reader
-     * @param trimWhitespace trim whitespace
-     */
-    public XReadLines(final Reader reader, final boolean trimWhitespace) {
-        this(reader, trimWhitespace, null);
-    }
-
     /**
      * Creates a new xReadLines object to read lines from an bufferedReader
      *

@@ -28,10 +28,11 @@ package org.broadinstitute.hellbender.utils.haplotype;
 
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -103,8 +104,8 @@ public class EventMapUnitTest extends BaseTest {
         List<Object[]> tests = new ArrayList<Object[]>();
 
         for ( int size = EventMap.MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION; size < 10; size++ ) {
-            final String ref = Utils.dupString("A", size);
-            final String alt = Utils.dupString("C", size);
+            final String ref = StringUtils.repeat("A", size);
+            final String alt = StringUtils.repeat("C", size);
             tests.add(new Object[]{ref, alt, size + "M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1, Arrays.asList(ref, alt))});
         }
 
@@ -112,7 +113,7 @@ public class EventMapUnitTest extends BaseTest {
         tests.add(new Object[]{"AAAAAA", "GAGAGG", "6M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1, Arrays.asList("AAAAAA", "GAGAGG"))});
 
         for ( int len = 0; len < 10; len++ ) {
-            final String s = len == 0 ? "" : Utils.dupString("A", len);
+            final String s = len == 0 ? "" : StringUtils.repeat("A", len);
             tests.add(new Object[]{s + "AACCCCAA", s + "GAAG", len + 2 + "M4D2M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1 + len,   Arrays.asList("AACCCCAA", "GAAG"))});
             tests.add(new Object[]{s + "AAAA", s + "GACCCCAG", len + 2 + "M4I2M", GATKVariantContextUtils.makeFromAlleles(NAME, CHR, 1 + len, Arrays.asList("AAAA", "GACCCCAG"))});
 

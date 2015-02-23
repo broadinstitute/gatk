@@ -23,43 +23,35 @@
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package org.broadinstitute.hellbender.utils.R;
+package org.broadinstitute.hellbender.transformers;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.TextCigarCodec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+public class NDNCigarReadTransformerUnitTest {
 
-public class RUtilsUnitTest {
-    @DataProvider(name = "stringLists")
-    public Object[][] getStringLists() {
-        return new Object[][] {
-                new Object[] { null, "NA" },
-                new Object[] { Collections.EMPTY_LIST, "c()" },
-                new Object[] { Arrays.asList("1", "2", "3"), "c('1','2','3')" }
+    @DataProvider(name = "filteringIteratorTestData")
+    public String[][] getFilteringIteratorTestData() {
+        return new String[][] {
+                {"1M1N1N1M","1M1N1N1M"},           // NN elements
+                {"1M1N1D4M","1M1N1D4M"},           // ND
+                {"1M1N3M","1M1N3M"},               // N
+                {"1M1N2I1N3M","1M1N2I1N3M"},       // NIN
+                {"1M1N3D2N1M","1M6N1M"},
+                {"1M2N2D2N1M1D3N1D1N1M2H","1M6N1M1D5N1M2H"},
+                {"1H2S1M1N3D2N1M","1H2S1M6N1M"},
+                {"10M628N2D203N90M","10M833N90M"}
         };
     }
 
-    @Test(dataProvider = "stringLists")
-    public void testToStringList(List<? extends CharSequence> actual, String expected) {
-        Assert.assertEquals(RUtils.toStringList(actual), expected);
+    @Test(dataProvider = "filteringIteratorTestData")
+    public void testCigarRefactoring (final String originalCigarString, final String expectedString) {
+        Cigar originalCigar = TextCigarCodec.decode(originalCigarString);
+        String actualString = NDNCigarReadTransformer.refactorNDNtoN(originalCigar).toString();
+        Assert.assertEquals(actualString, expectedString, "cigar string " + originalCigarString + " should become: " + expectedString + " but got: " + actualString);
     }
 
-    @DataProvider(name = "numberLists")
-    public Object[][] getNumberLists() {
-        return new Object[][] {
-                new Object[] { null, "NA" },
-                new Object[] { Collections.EMPTY_LIST, "c()" },
-                new Object[] { Arrays.asList(1, 2, 3), "c(1,2,3)" },
-                new Object[] { Arrays.asList(1D, 2D, 3D), "c(1.0,2.0,3.0)" }
-        };
-    }
-
-    @Test(dataProvider = "numberLists")
-    public void testToNumberList(List<? extends Number> actual, String expected) {
-        Assert.assertEquals(RUtils.toNumberList(actual), expected);
-    }
 }

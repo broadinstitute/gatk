@@ -25,11 +25,9 @@
 
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Random;
 
 /**
@@ -125,10 +123,6 @@ public class BaseUtils {
                 b1 == Base.C.ordinal() && b2 == Base.T.ordinal() || b1 == Base.T.ordinal() && b2 == Base.C.ordinal();
     }
 
-    public static boolean isTransversion(byte base1, byte base2) {
-        return !isTransition(base1, base2);
-    }
-
     /**
      * Private constructor.  No instantiating this class!
      */
@@ -136,63 +130,6 @@ public class BaseUtils {
 
     static public boolean basesAreEqual(byte base1, byte base2) {
         return simpleBaseToBaseIndex(base1) == simpleBaseToBaseIndex(base2);
-    }
-
-    /**
-     * Checks whether to bases are the same in fact ignore ambiguous 'N' bases.
-     *
-     * @param base1 first base to compare.
-     * @param base2 second base to compare.
-     * @return true if {@code base1 == base2} or either is an 'N', false otherwise.
-     */
-    static public boolean basesAreEqualIgnoreAmbiguous(final byte base1, final byte base2) {
-        if (base1 == base2) return true;
-        else if (base1 == 'n' || base1 == 'N' || base2 == 'N' || base2 == 'n') return true;
-        else return false;
-    }
-
-    /**
-     * Compare to base arrays ranges checking whether they contain the same bases.
-     *
-     * <p>
-     *     By default two array have equal bases, i.e. {@code length == 0} results results in {@code true}.
-     * </p>
-     *
-     * @param bases1 first base array to compare.
-     * @param offset1 position of the first base in bases1 to compare.
-     * @param bases2 second base array to compare.
-     * @param offset2 position of the first base in bases2 to compare.
-     * @param length number of bases to compare.
-     *
-     * @throws NullPointerException if {@code bases1} or {@code bases2} is {@code null}.
-     * @throws ArrayIndexOutOfBoundsException if:
-     * <ul>
-     *      <li>{@code offset1} is not within the range [0,{@code bases1.length}) or</li>
-     *     <li>{@code offset2} is not within the range [0,{@code bases2.length}) or</li>
-     *     <li>{@code offset1 + length} is not within the range [0,{@code bases1.length}) or </li>
-     *     <li>{@code offset2 + length} is not within the range [0,{@code bases2.length})</li>
-     * </ul>
-     * @return
-     */
-    static public boolean basesAreEqualIgnoreAmbiguous(final byte[] bases1, final int offset1, final byte[] bases2, final int offset2, final int length) {
-        for (int i = 0; i < length; i++)
-            if (!basesAreEqualIgnoreAmbiguous(bases1[offset1 + i],bases2[offset2 + i])) return false;
-        return true;
-    }
-
-    static public boolean extendedBasesAreEqual(byte base1, byte base2) {
-        return extendedBaseToBaseIndex(base1) == extendedBaseToBaseIndex(base2);
-    }
-
-    /**
-     * @return true iff the bases array contains at least one instance of base
-     */
-    static public boolean containsBase(final byte[] bases, final byte base) {
-        for ( final byte b : bases ) {
-            if ( b == base )
-                return true;
-        }
-        return false;
     }
 
     public static byte[] convertIUPACtoN(final byte[] bases, final boolean errorOnBadReferenceBase, final boolean ignoreConversionOfFirstByte) {
@@ -210,48 +147,6 @@ public class BaseUtils {
         return bases;
     }
 
-
-    /**
-     * Converts a pair of bases to their IUPAC ambiguity code
-     *
-     * @param base1  1st base
-     * @param base2  2nd base
-     * @return byte
-     */
-    static public byte basesToIUPAC(final byte base1, final byte base2) {
-        // ensure that the bases come in order
-        if ( base2 < base1 )
-            return basesToIUPAC(base2, base1);
-
-        // ensure that the bases are regular ones
-        if ( !isRegularBase(base1) || !isRegularBase(base2) )
-            return Base.N.base;
-
-        // IUPAC codes are not needed if the bases are identical
-        if ( basesAreEqual(base1, base2) )
-            return base1;
-
-        if ( base1 == Base.A.base )
-            return (byte)(base2 == Base.C.base ? 'M' : (base2 == Base.G.base ? 'R' : 'W'));
-
-        if ( base1 == Base.C.base )
-            return (byte)(base2 == Base.G.base ? 'S' : 'Y');
-
-        // the only possibility left is G/T
-        return 'K';
-    }
-
-    public static boolean isUpperCase(final byte[] bases) {
-        for ( byte base : bases )
-            if ( ! isUpperCase(base) )
-                return false;
-        return true;
-    }
-
-    public static boolean isUpperCase(final byte base) {
-        return base >= 'A' && base <= 'Z';
-    }
-
     /**
      * Converts a simple base to a base index
      *
@@ -265,48 +160,20 @@ public class BaseUtils {
     }
 
     /**
-     * Converts a simple base to a base index
-     *
-     * @param base [AaCcGgTt]
-     * @return 0, 1, 2, 3, or -1 if the base can't be understood
+     * Returns true iff the base represented by the byte is a 'regular' base (ACGT or *).
      */
-    @Deprecated
-    static public int simpleBaseToBaseIndex(char base) {
-        return baseIndexMap[base];
-    }
-
-    static public int extendedBaseToBaseIndex(byte base) {
-        switch (base) {
-            case 'd':
-            case 'D':
-                return Base.D.ordinal();
-            case 'n':
-            case 'N':
-                return Base.N.ordinal();
-
-            default:
-                return simpleBaseToBaseIndex(base);
-        }
-    }
-
-    @Deprecated
-    static public boolean isRegularBase( final char base ) {
-        return simpleBaseToBaseIndex(base) != -1;
-    }
-
     static public boolean isRegularBase( final byte base ) {
         return simpleBaseToBaseIndex(base) != -1;
     }
 
+    /**
+     * Returns true iff all bases are 'regular' {@link #isRegularBase}.
+     */
     static public boolean isAllRegularBases( final byte[] bases ) {
         for( final byte base : bases) {
             if( !isRegularBase(base) ) { return false; }
         }
         return true;
-    }
-
-    static public boolean isNBase(byte base) {
-        return base == 'N' || base == 'n';
     }
 
     /**
@@ -355,11 +222,6 @@ public class BaseUtils {
         }
     }
 
-    @Deprecated
-    static private char simpleComplement(char base) {
-        return (char) simpleComplement((byte) base);
-    }
-
     /**
      * Reverse complement a byte array of bases (that is, chars casted to bytes, *not* base indices in byte form)
      *
@@ -376,147 +238,12 @@ public class BaseUtils {
         return rcbases;
     }
 
-    /**
-     * Reverse complement a char array of bases
-     *
-     * @param bases the char array of bases
-     * @return the reverse complement of the char byte array
-     */
-    @Deprecated
-    static public char[] simpleReverseComplement(char[] bases) {
-        char[] rcbases = new char[bases.length];
-
-        for (int i = 0; i < bases.length; i++) {
-            rcbases[i] = simpleComplement(bases[bases.length - 1 - i]);
-        }
-
-        return rcbases;
-    }
-
-    /**
-     * Reverse complement a String of bases.  Preserves ambiguous bases.
-     *
-     * @param bases the String of bases
-     * @return the reverse complement of the String
-     */
-    @Deprecated
-    static public String simpleReverseComplement(String bases) {
-        return new String(simpleReverseComplement(bases.getBytes()));
-    }
-
-    /**
-     * Returns the uppercased version of the bases
-     *
-     * @param bases   the bases
-     * @return the upper cased version
-     */
-    static public void convertToUpperCase(final byte[] bases) {
-        StringUtil.toUpperCase(bases);
-    }
-
-    /**
-     * Returns the index of the most common base in the basecounts array. To be used with
-     * pileup.getBaseCounts.
-     *
-     * @param baseCounts counts of a,c,g,t in order.
-     * @return the index of the most common base
-     */
-    static public int mostFrequentBaseIndex(int[] baseCounts) {
-        int mostFrequentBaseIndex = 0;
-        for (int baseIndex = 1; baseIndex < 4; baseIndex++) {
-            if (baseCounts[baseIndex] > baseCounts[mostFrequentBaseIndex]) {
-                mostFrequentBaseIndex = baseIndex;
-            }
-        }
-        return mostFrequentBaseIndex;
-    }
-
-    static public int mostFrequentBaseIndexNotRef(int[] baseCounts, int refBaseIndex) {
-        int tmp = baseCounts[refBaseIndex];
-        baseCounts[refBaseIndex] = -1;
-        int result = mostFrequentBaseIndex(baseCounts);
-        baseCounts[refBaseIndex] = tmp;
-        return result;
-    }
-
-    static public int mostFrequentBaseIndexNotRef(int[] baseCounts, byte refSimpleBase) {
-        return mostFrequentBaseIndexNotRef(baseCounts, simpleBaseToBaseIndex(refSimpleBase));
-    }
-
-    /**
-     * Returns the most common base in the basecounts array. To be used with pileup.getBaseCounts.
-     *
-     * @param baseCounts counts of a,c,g,t in order.
-     * @return the most common base
-     */
-    static public byte mostFrequentSimpleBase(int[] baseCounts) {
-        return baseIndexToSimpleBase(mostFrequentBaseIndex(baseCounts));
-    }
-
-    /**
-     * For the most frequent base in the sequence, return the percentage of the read it constitutes.
-     *
-     * @param sequence the read sequence
-     * @return the percentage of the read that's made up of the most frequent base
-     */
-    static public double mostFrequentBaseFraction(byte[] sequence) {
-        int[] baseCounts = new int[4];
-
-        for (byte base : sequence) {
-            int baseIndex = simpleBaseToBaseIndex(base);
-
-            if (baseIndex >= 0) {
-                baseCounts[baseIndex]++;
-            }
-        }
-
-        int mostFrequentBaseIndex = mostFrequentBaseIndex(baseCounts);
-
-        return ((double) baseCounts[mostFrequentBaseIndex]) / ((double) sequence.length);
-    }
-
     // --------------------------------------------------------------------------------
     //
     // random bases
     //
     // --------------------------------------------------------------------------------
 
-    /**
-     * Return a random base index (A=0, C=1, G=2, T=3).
-     *
-     * @return a random base index (A=0, C=1, G=2, T=3)
-     */
-    static public int getRandomBaseIndex() {
-        return getRandomBaseIndex(-1);
-    }
-
-    /**
-     * Return random bases.
-     *
-     * @param length base count and length of returned array.
-     *
-     * @throws IllegalArgumentException if {@code length} is less than 0.
-     *
-     * @return never {@code null}
-     */
-    public static byte[] getRandomBases(final int length) {
-        if (length < 0)
-            throw new IllegalArgumentException("length must zero or greater");
-        final byte[] result = new byte[length];
-        fillWithRandomBases(result);
-        return result;
-    }
-
-    /**
-     * Fills an array with random bases.
-     *
-     * @param dest the array to fill.
-     *
-     * @throws IllegalArgumentException if {@code result} is {@code null}.
-     */
-    public static void fillWithRandomBases(final byte[] dest) {
-        fillWithRandomBases(dest,0,dest.length);
-    }
 
     /**
      * Fill an array section with random bases.
@@ -545,22 +272,6 @@ public class BaseUtils {
             dest[i] = baseIndexToSimpleBase(rnd.nextInt(4));
     }
 
-    /**
-     * Return a random base index, excluding some base index.
-     *
-     * @param excludeBaseIndex the base index to exclude
-     * @return a random base index, excluding the one specified (A=0, C=1, G=2, T=3)
-     */
-    static public int getRandomBaseIndex(int excludeBaseIndex) {
-        int randomBaseIndex = excludeBaseIndex;
-
-        while (randomBaseIndex == excludeBaseIndex) {
-            randomBaseIndex = Utils.getRandomGenerator().nextInt(4);
-        }
-
-        return randomBaseIndex;
-    }
-
     public static byte getComplement(byte base) {
         switch(base) {
             case 'a':
@@ -582,26 +293,4 @@ public class BaseUtils {
                 throw new IllegalArgumentException("base must be A, C, G or T. " + (char) base + " is not a valid base.");
         }
     }
-
-
-    /**
-     * Lexicographical sorting of base arrays {@link Comparator}.
-     */
-    public static final Comparator<byte[]> BASES_COMPARATOR = new Comparator<byte[]> (){
-
-        @Override
-        public int compare(final byte[] o1,final byte[] o2) {
-            final int minLength = Math.min(o1.length,o2.length);
-            for (int i = 0; i < minLength; i++) {
-                final int cmp = Byte.compare(o1[i],o2[i]);
-                if (cmp != 0) return cmp;
-            }
-            if (o1.length == o2.length)
-                return 0;
-            else if (o1.length == minLength)
-                return -1;
-            else
-                return 1;
-        }
-    };
 }

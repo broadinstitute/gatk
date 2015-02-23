@@ -54,7 +54,6 @@ package org.broadinstitute.hellbender.tools.recalibration;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.Gather;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -211,10 +210,6 @@ public class RecalibrationArgumentCollection implements Cloneable, ArgumentColle
     @HiddenOption
     @Argument(fullName = "force_readgroup", shortName = "fRG", optional = true, doc = "If provided, the read group of EVERY read will be forced to be the provided String.")
     public String FORCE_READGROUP = null;
-
-    @HiddenOption
-    @Argument(fullName = "recal_table_update_log", shortName = "recal_table_update_log", optional = true, doc = "If provided, log all updates to the recalibration tables to the given file. For debugging/testing purposes only")
-    public PrintStream RECAL_TABLE_UPDATE_LOG = null;
 
     /**
      * The repeat covariate will use a context of this size to calculate it's covariate value for base insertions and deletions

@@ -25,11 +25,11 @@
 
 package org.broadinstitute.hellbender.transformers;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadTransformer;
 
 /**
  * A read transformer that refactor NDN cigar elements to one N element.
@@ -58,7 +58,11 @@ public final class NDNCigarReadTransformer implements ReadTransformer {
         return read;
     }
 
-    private Cigar refactorNDNtoN(final Cigar originalCigar) {
+    /**
+     * Refactor cigar strings that contain N-D-N elements to one N element (with total length of the three refactored elements).
+     */
+    @VisibleForTesting
+    protected static Cigar refactorNDNtoN(final Cigar originalCigar) {
         final Cigar refactoredCigar = new Cigar();
         final int cigarLength = originalCigar.numCigarElements();
         for(int i = 0; i < cigarLength; i++){
@@ -73,17 +77,17 @@ public final class NDNCigarReadTransformer implements ReadTransformer {
                     final CigarElement refactoredElement = new CigarElement(threeElementsLength,CigarOperator.N);
                     refactoredCigar.add(refactoredElement);
                     i += 2; //skip the elements that were refactored
-                }
-                else
+                } else {
                     refactoredCigar.add(element);  // add only the first N
-            }
-            else
+                }
+            } else {
                 refactoredCigar.add(element);  // add any non-N element
+            }
         }
         return refactoredCigar;
     }
 
-    private boolean thereAreAtLeast2MoreElements(final int index, final int cigarLength){
+    private static boolean thereAreAtLeast2MoreElements(final int index, final int cigarLength){
         return index < cigarLength - 2;
     }
 

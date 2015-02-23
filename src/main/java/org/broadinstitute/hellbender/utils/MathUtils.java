@@ -45,11 +45,6 @@ public final class MathUtils {
      * where the real-space value is 0.0.
      */
     public static final double LOG10_P_OF_ZERO = -1000000.0;
-    public static final double FAIR_BINOMIAL_PROB_LOG10_0_5 = Math.log10(0.5);
-    public static final double LOG_ONE_HALF = -Math.log10(2.0);
-    public static final double LOG_ONE_THIRD = -Math.log10(3.0);
-    private static final double NATURAL_LOG_OF_TEN = Math.log(10.0);
-    private static final double SQUARE_ROOT_OF_TWO_TIMES_PI = Math.sqrt(2.0 * Math.PI);
 
     /**
      * A helper class to maintain a cache of log10 values
@@ -93,127 +88,11 @@ public final class MathUtils {
         private static double[] cache = new double[] { Double.NEGATIVE_INFINITY };
     }
 
-    /**
-     * Get a random int between min and max (inclusive) using the global GATK random number generator
-     *
-     * @param min lower bound of the range
-     * @param max upper bound of the range
-     * @return a random int >= min and <= max
-     */
-    public static int randomIntegerInRange( final int min, final int max ) {
-        return Utils.getRandomGenerator().nextInt(max - min + 1) + min;
-    }
-
-    /**
-     * Encapsulates the second term of Jacobian log identity for differences up to MAX_TOLERANCE
-     */
-    private static class JacobianLogTable {
-
-        public static final double MAX_TOLERANCE = 8.0;
-
-        public static double get(final double difference) {
-            if (cache == null)
-                initialize();
-            final int index = fastRound(difference * INV_STEP);
-            return cache[index];
-        }
-
-        private static void initialize() {
-            if (cache == null) {
-                final int tableSize = (int) (MAX_TOLERANCE / TABLE_STEP) + 1;
-                cache = new double[tableSize];
-                for (int k = 0; k < cache.length; k++)
-                    cache[k] = Math.log10(1.0 + Math.pow(10.0, -((double) k) * TABLE_STEP));
-            }
-        }
-
-        private static final double TABLE_STEP = 0.0001;
-        private static final double INV_STEP = 1.0 / TABLE_STEP;
-        private static double[] cache = null;
-    }
-
     // A fast implementation of the Math.round() method.  This method does not perform
     // under/overflow checking, so this shouldn't be used in the general case (but is fine
     // if one is already make those checks before calling in to the rounding).
     public static int fastRound(final double d) {
         return (d > 0.0) ? (int) (d + 0.5d) : (int) (d - 0.5d);
-    }
-
-    public static double approximateLog10SumLog10(final double[] vals) {
-        return approximateLog10SumLog10(vals, vals.length);
-    }
-
-    /**
-     * Calculate the approximate log10 sum of an array range.
-     * @param vals the input values.
-     * @param fromIndex the first inclusive index in the input array.
-     * @param toIndex index following the last element to sum in the input array (exclusive).
-     * @return the approximate sum.
-     * @throws IllegalArgumentException if {@code vals} is {@code null} or  {@code fromIndex} is out of bounds
-     * or if {@code toIndex} is larger than
-     * the length of the input array or {@code fromIndex} is larger than {@code toIndex}.
-     */
-    public static double approximateLog10SumLog10(final double[] vals, final int fromIndex, final int toIndex) {
-        if (fromIndex == toIndex) return Double.NEGATIVE_INFINITY;
-        final int maxElementIndex = MathUtils.maxElementIndex(vals,fromIndex,toIndex);
-        double approxSum = vals[maxElementIndex];
-
-        for (int i = fromIndex; i < toIndex; i++) {
-            final double val;
-            if (i == maxElementIndex || (val = vals[i]) == Double.NEGATIVE_INFINITY)
-                continue;
-            final double diff = approxSum - val;
-            if (diff < JacobianLogTable.MAX_TOLERANCE)
-                approxSum += JacobianLogTable.get(diff);
-        }
-        return approxSum;
-    }
-
-    public static double approximateLog10SumLog10(final double[] vals, final int endIndex) {
-
-        final int maxElementIndex = MathUtils.maxElementIndex(vals, endIndex);
-        double approxSum = vals[maxElementIndex];
-
-        for (int i = 0; i < endIndex; i++) {
-            if (i == maxElementIndex || vals[i] == Double.NEGATIVE_INFINITY)
-                continue;
-
-            final double diff = approxSum - vals[i];
-            if (diff < JacobianLogTable.MAX_TOLERANCE) {
-                // See notes from the 2-inout implementation below
-                approxSum += JacobianLogTable.get(diff);
-            }
-        }
-
-        return approxSum;
-    }
-
-    public static double approximateLog10SumLog10(final double a, final double b, final double c) {
-        return approximateLog10SumLog10(a, approximateLog10SumLog10(b, c));
-    }
-
-    public static double approximateLog10SumLog10(double small, double big) {
-        // make sure small is really the smaller value
-        if (small > big) {
-            final double t = big;
-            big = small;
-            small = t;
-        }
-
-        if (small == Double.NEGATIVE_INFINITY || big == Double.NEGATIVE_INFINITY)
-            return big;
-
-        final double diff = big - small;
-        if (diff >= JacobianLogTable.MAX_TOLERANCE)
-            return big;
-
-        // OK, so |y-x| < tol: we use the following identity then:
-        // we need to compute log10(10^x + 10^y)
-        // By Jacobian logarithm identity, this is equal to
-        // max(x,y) + log10(1+10^-abs(x-y))
-        // we compute the second term as a table lookup with integer quantization
-        // we have pre-stored correction for 0,0.1,0.2,... 10.0
-        return big + JacobianLogTable.get(diff);
     }
 
     public static double sum(final double[] values) {
@@ -235,113 +114,6 @@ public final class MathUtils {
         for (byte v : x)
             total += (int)v;
         return total;
-    }
-
-    public static double percentage(int x, int base) {
-        return (base > 0 ? ((double) x / (double) base) * 100.0 : 0);
-    }
-
-    public static double ratio(final int num, final int denom) {
-        if ( denom > 0 ) {
-            return ((double) num)/denom;
-        } else {
-            if ( num == 0 && denom == 0) {
-                return 0.0;
-            } else {
-                throw new GATKException(String.format("The denominator of a ratio cannot be zero or less than zero: %d/%d",num,denom));
-            }
-        }
-    }
-
-    public static double ratio(final long num, final long denom) {
-        if ( denom > 0L ) {
-            return ((double) num)/denom;
-        } else {
-            if ( num == 0L && denom == 0L ) {
-                return 0.0;
-            } else {
-                throw new GATKException(String.format("The denominator of a ratio cannot be zero or less than zero: %d/%d",num,denom));
-            }
-        }
-    }
-
-    /**
-     * Converts a real space array of numbers (typically probabilities) into a log10 array
-     *
-     * @param prRealSpace
-     * @return
-     */
-    public static double[] toLog10(final double[] prRealSpace) {
-        double[] log10s = new double[prRealSpace.length];
-        for (int i = 0; i < prRealSpace.length; i++) {
-            log10s[i] = Math.log10(prRealSpace[i]);
-        }
-        return log10s;
-    }
-
-    public static double log10sumLog10(final double[] log10p, final int start) {
-        return log10sumLog10(log10p, start, log10p.length);
-    }
-
-    public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
-
-        if (start >= finish)
-            return Double.NEGATIVE_INFINITY;
-        final int maxElementIndex = MathUtils.maxElementIndex(log10p, start, finish);
-        final double maxValue = log10p[maxElementIndex];
-        if(maxValue == Double.NEGATIVE_INFINITY)
-            return maxValue;
-        double sum = 1.0;
-        for (int i = start; i < finish; i++) {
-            double curVal = log10p[i];
-            double scaled_val = curVal - maxValue;
-            if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
-                continue;
-            }
-            else {
-                sum += Math.pow(10.0, scaled_val);
-            }
-        }
-        if ( Double.isNaN(sum) || sum == Double.POSITIVE_INFINITY ) {
-            throw new IllegalArgumentException("log10p: Values must be non-infinite and non-NAN");
-        }
-        return maxValue + (sum != 1.0 ? Math.log10(sum) : 0.0);
-    }
-
-    public static double sumLog10(final double[] log10values) {
-        return Math.pow(10.0, log10sumLog10(log10values));
-    }
-
-    public static double log10sumLog10(final double[] log10values) {
-        return log10sumLog10(log10values, 0);
-    }
-
-    public static boolean wellFormedDouble(final double val) {
-        return !Double.isInfinite(val) && !Double.isNaN(val);
-    }
-
-    public static double bound(final double value, final double minBoundary, final double maxBoundary) {
-        return Math.max(Math.min(value, maxBoundary), minBoundary);
-    }
-
-    public static boolean isBounded(final double val, final double lower, final double upper) {
-        return val >= lower && val <= upper;
-    }
-
-    public static boolean isPositive(final double val) {
-        return !isNegativeOrZero(val);
-    }
-
-    public static boolean isPositiveOrZero(final double val) {
-        return isBounded(val, 0.0, Double.POSITIVE_INFINITY);
-    }
-
-    public static boolean isNegativeOrZero(final double val) {
-        return isBounded(val, Double.NEGATIVE_INFINITY, 0.0);
-    }
-
-    public static boolean isNegative(final double val) {
-        return !isPositiveOrZero(val);
     }
 
     /**
@@ -374,63 +146,6 @@ public final class MathUtils {
     }
 
     /**
-     * Calculate f(x) = Normal(x | mu = mean, sigma = sd)
-     * @param mean the desired mean of the Normal distribution
-     * @param sd the desired standard deviation of the Normal distribution
-     * @param x the value to evaluate
-     * @return a well-formed double
-     */
-    public static double normalDistribution(final double mean, final double sd, final double x) {
-        if( sd < 0 )
-            throw new IllegalArgumentException("sd: Standard deviation of normal must be >0");
-        if ( ! wellFormedDouble(mean) || ! wellFormedDouble(sd) || ! wellFormedDouble(x) )
-            throw new IllegalArgumentException("mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
-        double a = 1.0 / (sd * Math.sqrt(2.0 * Math.PI));
-        double b = Math.exp(-1.0 * (Math.pow(x - mean, 2.0) / (2.0 * sd * sd)));
-        return a * b;
-    }
-
-    /**
-     * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
-     * @param mean the desired mean of the Normal distribution
-     * @param sd the desired standard deviation of the Normal distribution
-     * @param x the value to evaluate
-     * @return a well-formed double
-     */
-
-    public static double normalDistributionLog10(final double mean, final double sd, final double x) {
-        if( sd < 0 )
-            throw new IllegalArgumentException("sd: Standard deviation of normal must be >0");
-        if ( ! wellFormedDouble(mean) || ! wellFormedDouble(sd) || ! wellFormedDouble(x) )
-            throw new IllegalArgumentException("mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
-        final double a = -1.0 * Math.log10(sd * SQUARE_ROOT_OF_TWO_TIMES_PI);
-        final double b = -1.0 * (square(x - mean) / (2.0 * square(sd))) / NATURAL_LOG_OF_TEN;
-        return a + b;
-    }
-
-    /**
-     * Calculate f(x) = x^2
-     * @param x the value to square
-     * @return x * x
-     */
-    public static double square(final double x) {
-        return x * x;
-    }
-
-    /**
-     * Calculates the log10 of the binomial coefficient. Designed to prevent
-     * overflows even with very large numbers.
-     *
-     * @param n total number of trials
-     * @param k number of successes
-     * @return the log10 of the binomial coefficient
-     */
-    public static double binomialCoefficient(final int n, final int k) {
-        return Math.pow(10, log10BinomialCoefficient(n, k));
-    }
-
-    /**
-     * @see #binomialCoefficient(int, int) with log10 applied to result
      */
     public static double log10BinomialCoefficient(final int n, final int k) {
         if ( n < 0 ) {
@@ -444,23 +159,7 @@ public final class MathUtils {
     }
 
     /**
-     * Computes a binomial probability.  This is computed using the formula
-     * <p/>
-     * B(k; n; p) = [ n! / ( k! (n - k)! ) ] (p^k)( (1-p)^k )
-     * <p/>
-     * where n is the number of trials, k is the number of successes, and p is the probability of success
-     *
-     * @param n number of Bernoulli trials
-     * @param k number of successes
-     * @param p probability of success
-     * @return the binomial probability of the specified configuration.  Computes values down to about 1e-237.
-     */
-    public static double binomialProbability(final int n, final int k, final double p) {
-        return Math.pow(10, log10BinomialProbability(n, k, Math.log10(p)));
-    }
-
-    /**
-     * @see #binomialProbability(int, int, double) with log10 applied to result
+     * binomial Probability(int, int, double) with log10 applied to result
      */
     public static double log10BinomialProbability(final int n, final int k, final double log10p) {
         if ( log10p > 1e-18 )
@@ -469,240 +168,43 @@ public final class MathUtils {
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
     }
 
-    /**
-     * @see #binomialProbability(int, int, double) with p=0.5
-     */
-    public static double binomialProbability(final int n, final int k) {
-        return Math.pow(10, log10BinomialProbability(n, k));
+    public static double log10sumLog10(final double[] log10p, final int start) {
+        return log10sumLog10(log10p, start, log10p.length);
     }
 
-    /**
-     * @see #binomialProbability(int, int, double) with p=0.5 and log10 applied to result
-     */
-    public static double log10BinomialProbability(final int n, final int k) {
-        return log10BinomialCoefficient(n, k) + (n * FAIR_BINOMIAL_PROB_LOG10_0_5);
+    public static double log10sumLog10(final double[] log10values) {
+        return log10sumLog10(log10values, 0);
+    }
+
+
+    public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
+
+        if (start >= finish)
+            return Double.NEGATIVE_INFINITY;
+        final int maxElementIndex = MathUtils.maxElementIndex(log10p, start, finish);
+        final double maxValue = log10p[maxElementIndex];
+        if(maxValue == Double.NEGATIVE_INFINITY)
+            return maxValue;
+        double sum = 1.0;
+        for (int i = start; i < finish; i++) {
+            double curVal = log10p[i];
+            double scaled_val = curVal - maxValue;
+            if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
+                continue;
+            }
+            else {
+                sum += Math.pow(10.0, scaled_val);
+            }
+        }
+        if ( Double.isNaN(sum) || sum == Double.POSITIVE_INFINITY ) {
+            throw new IllegalArgumentException("log10p: Values must be non-infinite and non-NAN");
+        }
+        return maxValue + (sum != 1.0 ? Math.log10(sum) : 0.0);
     }
 
     private static final double LOG1MEXP_THRESHOLD = Math.log(0.5);
 
     private static final double LN_10 = Math.log(10);
-
-    /**
-     * Calculates {@code log(1-exp(a))} without loosing precision.
-     *
-     * <p>
-     *     This is based on the approach described in:
-     *
-     * </p>
-     * <p>
-     *     Maechler M, Accurately Computing log(1-exp(-|a|)) Assessed by the Rmpfr package, 2012 <br/>
-     *     <a ref="http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf">Online document</a>.
-     *
-     * </p>
-     *
-     * @param a the input exponent.
-     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
-     */
-    public static double log1mexp(final double a) {
-        if (a > 0) return Double.NaN;
-        if (a == 0) return Double.NEGATIVE_INFINITY;
-
-        return (a < LOG1MEXP_THRESHOLD) ? Math.log1p(-Math.exp(a)) : Math.log(-Math.expm1(a));
-    }
-
-    /**
-     * Calculates {@code log10(1-10^a)} without loosing precision.
-     *
-     * <p>
-     *     This is based on the approach described in:
-     *
-     * </p>
-     * <p>
-     *     Maechler M, Accurately Computing log(1-exp(-|a|)) Assessed by the Rmpfr package, 2012 <br/>
-     *     <a ref="http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf">Online document</a>.
-     * </p>
-     *
-     * @param a the input exponent.
-     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
-     */
-    public static double log10OneMinusPow10(final double a) {
-        if (a > 0) return Double.NaN;
-        if (a == 0) return Double.NEGATIVE_INFINITY;
-        final double b = a * LN_10;
-        return log1mexp(b) / LN_10;
-    }
-
-    /**
-     * Calculates the log10 of the multinomial coefficient. Designed to prevent
-     * overflows even with very large numbers.
-     *
-     * @param n total number of trials
-     * @param k array of any size with the number of successes for each grouping (k1, k2, k3, ..., km)
-     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
-     */
-    public static double log10MultinomialCoefficient(final int n, final int[] k) {
-        if ( n < 0 )
-            throw new IllegalArgumentException("n: Must have non-negative number of trials");
-        double denominator = 0.0;
-        int sum = 0;
-        for (int x : k) {
-            if ( x < 0 )
-                throw new IllegalArgumentException("x element of k: Must have non-negative observations of group");
-            if ( x > n )
-                throw new IllegalArgumentException("x element of k, n: Group observations must be bounded by k");
-            denominator += log10Factorial(x);
-            sum += x;
-        }
-        if ( sum != n )
-            throw new IllegalArgumentException("k and n: Sum of observations in multinomial must sum to total number of trials");
-        return log10Factorial(n) - denominator;
-    }
-
-    /**
-     * Computes the log10 of the multinomial distribution probability given a vector
-     * of log10 probabilities. Designed to prevent overflows even with very large numbers.
-     *
-     * @param n      number of trials
-     * @param k      array of number of successes for each possibility
-     * @param log10p array of log10 probabilities
-     * @return
-     */
-    public static double log10MultinomialProbability(final int n, final int[] k, final double[] log10p) {
-        if (log10p.length != k.length)
-            throw new IllegalArgumentException("p and k: Array of log10 probabilities must have the same size as the array of number of sucesses: " + log10p.length + ", " + k.length);
-        double log10Prod = 0.0;
-        for (int i = 0; i < log10p.length; i++) {
-            if ( log10p[i] > 1e-18 )
-                throw new IllegalArgumentException("log10p: Log-probability must be <= 0");
-            log10Prod += log10p[i] * k[i];
-        }
-        return log10MultinomialCoefficient(n, k) + log10Prod;
-    }
-
-    /**
-     * Computes a multinomial coefficient efficiently avoiding overflow even for large numbers.
-     * This is computed using the formula:
-     * <p/>
-     * M(x1,x2,...,xk; n) = [ n! / (x1! x2! ... xk!) ]
-     * <p/>
-     * where xi represents the number of times outcome i was observed, n is the number of total observations.
-     * In this implementation, the value of n is inferred as the sum over i of xi.
-     *
-     * @param k an int[] of counts, where each element represents the number of times a certain outcome was observed
-     * @return the multinomial of the specified configuration.
-     */
-    public static double multinomialCoefficient(final int[] k) {
-        int n = 0;
-        for (int xi : k) {
-            n += xi;
-        }
-
-        return Math.pow(10, log10MultinomialCoefficient(n, k));
-    }
-
-    /**
-     * Computes a multinomial probability efficiently avoiding overflow even for large numbers.
-     * This is computed using the formula:
-     * <p/>
-     * M(x1,x2,...,xk; n; p1,p2,...,pk) = [ n! / (x1! x2! ... xk!) ] (p1^x1)(p2^x2)(...)(pk^xk)
-     * <p/>
-     * where xi represents the number of times outcome i was observed, n is the number of total observations, and
-     * pi represents the probability of the i-th outcome to occur.  In this implementation, the value of n is
-     * inferred as the sum over i of xi.
-     *
-     * @param k an int[] of counts, where each element represents the number of times a certain outcome was observed
-     * @param p a double[] of probabilities, where each element represents the probability a given outcome can occur
-     * @return the multinomial probability of the specified configuration.
-     */
-    public static double multinomialProbability(final int[] k, final double[] p) {
-        if (p.length != k.length)
-            throw new IllegalArgumentException("p and k: Array of log10 probabilities must have the same size as the array of number of sucesses: " + p.length + ", " + k.length);
-
-        int n = 0;
-        double[] log10P = new double[p.length];
-        for (int i = 0; i < p.length; i++) {
-            log10P[i] = Math.log10(p[i]);
-            n += k[i];
-        }
-        return Math.pow(10, log10MultinomialProbability(n, k, log10P));
-    }
-
-    /**
-     * calculate the Root Mean Square of an array of integers
-     *
-     * @param x an byte[] of numbers
-     * @return the RMS of the specified numbers.
-     */
-    public static double rms(final byte[] x) {
-        if (x.length == 0)
-            return 0.0;
-
-        double rms = 0.0;
-        for (int i : x)
-            rms += i * i;
-        rms /= x.length;
-        return Math.sqrt(rms);
-    }
-
-    /**
-     * calculate the Root Mean Square of an array of integers
-     *
-     * @param x an int[] of numbers
-     * @return the RMS of the specified numbers.
-     */
-    public static double rms(final int[] x) {
-        if (x.length == 0)
-            return 0.0;
-
-        double rms = 0.0;
-        for (int i : x)
-            rms += i * i;
-        rms /= x.length;
-        return Math.sqrt(rms);
-    }
-
-    /**
-     * calculate the Root Mean Square of an array of doubles
-     *
-     * @param x a double[] of numbers
-     * @return the RMS of the specified numbers.
-     */
-    public static double rms(final Double[] x) {
-        if (x.length == 0)
-            return 0.0;
-
-        double rms = 0.0;
-        for (Double i : x)
-            rms += i * i;
-        rms /= x.length;
-        return Math.sqrt(rms);
-    }
-
-    public static double rms(final Collection<Integer> l) {
-        if (l.size() == 0)
-            return 0.0;
-
-        double rms = 0.0;
-        for (int i : l)
-            rms += i * i;
-        rms /= l.size();
-        return Math.sqrt(rms);
-    }
-
-    public static double distanceSquared(final double[] x, final double[] y) {
-        double dist = 0.0;
-        for (int iii = 0; iii < x.length; iii++) {
-            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
-        }
-        return dist;
-    }
-
-    public static double round(final double num, final int digits) {
-        double result = num * Math.pow(10.0, (double) digits);
-        result = Math.round(result);
-        result = result / Math.pow(10.0, (double) digits);
-        return result;
-    }
 
     /**
      * normalizes the log10-based array.  ASSUMES THAT ALL ARRAY ENTRIES ARE <= 0 (<= 1 IN REAL-SPACE).
@@ -817,155 +319,8 @@ public final class MathUtils {
         return maxElementIndex(array, 0, endIndex);
     }
 
-    public static int maxElementIndex(final int[] array) {
-        return maxElementIndex(array, array.length);
-    }
-
-    public static int maxElementIndex(final byte[] array) {
-        return maxElementIndex(array, array.length);
-    }
-
-    public static int maxElementIndex(final int[] array, final int endIndex) {
-        if (array == null || array.length == 0)
-            throw new IllegalArgumentException("Array cannot be null!");
-
-        int maxI = 0;
-        for (int i = 1; i < endIndex; i++) {
-            if (array[i] > array[maxI])
-                maxI = i;
-        }
-        return maxI;
-    }
-
-    public static int maxElementIndex(final byte[] array, final int endIndex) {
-        if (array == null || array.length == 0)
-            throw new IllegalArgumentException("Array cannot be null!");
-
-        int maxI = 0;
-        for (int i = 1; i < endIndex; i++) {
-            if (array[i] > array[maxI])
-                maxI = i;
-        }
-
-        return maxI;
-    }
-
-    public static int arrayMax(final int[] array) {
-        return array[maxElementIndex(array)];
-    }
-
-
     public static double arrayMax(final double[] array) {
         return array[maxElementIndex(array)];
-    }
-
-    public static double arrayMax(final double[] array, final int endIndex) {
-        return array[maxElementIndex(array, endIndex)];
-    }
-
-    public static double arrayMin(final double[] array) {
-        return array[minElementIndex(array)];
-    }
-
-    public static int arrayMin(final int[] array) {
-        return array[minElementIndex(array)];
-    }
-
-    public static byte arrayMin(final byte[] array) {
-        return array[minElementIndex(array)];
-    }
-
-    /**
-     * Compute the min element of a List<Integer>
-     * @param array a non-empty list of integer
-     * @return the min
-     */
-    public static int arrayMin(final List<Integer> array) {
-        if ( array == null || array.isEmpty() ) throw new IllegalArgumentException("Array must be non-null and non-empty");
-        int min = array.get(0);
-        for ( final int i : array )
-            if ( i < min ) min = i;
-        return min;
-    }
-
-    /**
-     * Compute the median element of the list of integers
-     * @param array a list of integers
-     * @return the median element
-     */
-    public static <T extends Comparable<? super T>> T median(final List<T> array) {
-         /* TODO -- from Valentin
-        the current implementation is not the usual median when the input is of even length. More concretely it returns the ith element of the list where i = floor(input.size() / 2).
-
-        But actually that is not the "usual" definition of a median, as it is supposed to return the average of the two middle values when the sample length is an even number (i.e. median(1,2,3,4,5,6) == 3.5). [Sources: R and wikipedia]
-
-        My suggestion for a solution is then:
-
-        unify median and medianDoubles to public static <T extends Number> T median(Collection<T>)
-        check on null elements and throw an exception if there are any or perhaps return a null; documented in the javadoc.
-        relocate, rename and refactor MathUtils.median(X) to Utils.ithElement(X,X.size()/2)
-        In addition, the current median implementation sorts the whole input list witch is O(n log n). However find out the ith element (thus calculate the median) can be done in O(n)
-        */
-        if ( array == null ) throw new IllegalArgumentException("Array must be non-null");
-        final int size = array.size();
-        if ( size == 0 ) throw new IllegalArgumentException("Array cannot have size 0");
-        else if ( size == 1 ) return array.get(0);
-        else {
-            final ArrayList<T> sorted = new ArrayList<>(array);
-            Collections.sort(sorted);
-            return sorted.get(size / 2);
-        }
-    }
-
-    public static int minElementIndex(final double[] array) {
-        if (array == null || array.length == 0)
-            throw new IllegalArgumentException("Array cannot be null!");
-
-        int minI = 0;
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] < array[minI])
-                minI = i;
-        }
-
-        return minI;
-    }
-
-    public static int minElementIndex(final byte[] array) {
-        if (array == null || array.length == 0)
-            throw new IllegalArgumentException("Array cannot be null!");
-
-        int minI = 0;
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] < array[minI])
-                minI = i;
-        }
-
-        return minI;
-    }
-
-    public static int minElementIndex(final int[] array) {
-        if (array == null || array.length == 0)
-            throw new IllegalArgumentException("Array cannot be null!");
-
-        int minI = 0;
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] < array[minI])
-                minI = i;
-        }
-
-        return minI;
-    }
-
-    public static int arrayMaxInt(final List<Integer> array) {
-        if (array == null)
-            throw new IllegalArgumentException("Array cannot be null!");
-        if (array.size() == 0)
-            throw new IllegalArgumentException("Array size cannot be 0!");
-
-        int m = array.get(0);
-        for (int e : array)
-            m = Math.max(m, e);
-        return m;
     }
 
     public static int sum(final List<Integer> list ) {
@@ -976,52 +331,6 @@ public final class MathUtils {
         return sum;
     }
 
-    public static double average(final List<Long> vals, final int maxI) {
-        long sum = 0L;
-
-        int i = 0;
-        for (long x : vals) {
-            if (i > maxI)
-                break;
-            sum += x;
-            i++;
-        }
-
-        return (1.0 * sum) / i;
-    }
-
-    public static double average(final List<Long> vals) {
-        return average(vals, vals.size());
-    }
-
-    public static int countOccurrences(final char c, final String s) {
-        int count = 0;
-        for (int i = 0; i < s.length(); i++) {
-            count += s.charAt(i) == c ? 1 : 0;
-        }
-        return count;
-    }
-
-    public static <T> int countOccurrences(T x, List<T> l) {
-        int count = 0;
-        for (T y : l) {
-            if (x.equals(y))
-                count++;
-        }
-
-        return count;
-    }
-
-    public static int countOccurrences(byte element, byte[] array) {
-        int count = 0;
-        for (byte y : array) {
-            if (element == y)
-                count++;
-        }
-
-        return count;
-    }
-
     public static int countOccurrences(final boolean element, final boolean[] array) {
         int count = 0;
         for (final boolean b : array) {
@@ -1030,106 +339,6 @@ public final class MathUtils {
         }
 
         return count;
-    }
-
-
-    /**
-     * Returns n random indices drawn with replacement from the range 0..(k-1)
-     *
-     * @param n the total number of indices sampled from
-     * @param k the number of random indices to draw (with replacement)
-     * @return a list of k random indices ranging from 0 to (n-1) with possible duplicates
-     */
-    static public List<Integer> sampleIndicesWithReplacement(final int n, final int k) {
-
-        List<Integer> chosen_balls = new ArrayList<>(k);
-        for (int i = 0; i < k; i++) {
-            chosen_balls.add(Utils.getRandomGenerator().nextInt(n));
-        }
-        return chosen_balls;
-    }
-
-    /**
-     * Returns n random indices drawn without replacement from the range 0..(k-1)
-     *
-     * @param n the total number of indices sampled from
-     * @param k the number of random indices to draw (without replacement)
-     * @return a list of k random indices ranging from 0 to (n-1) without duplicates
-     */
-    static public List<Integer> sampleIndicesWithoutReplacement(final int n, final int k) {
-        List<Integer> chosen_balls = new ArrayList<>(k);
-
-        for (int i = 0; i < n; i++) {
-            chosen_balls.add(i);
-        }
-
-        Collections.shuffle(chosen_balls, Utils.getRandomGenerator());
-
-        return new ArrayList<>(chosen_balls.subList(0, k));
-    }
-
-    /**
-     * Given a list of indices into a list, return those elements of the list with the possibility of drawing list elements multiple times
-     *
-     * @param indices the list of indices for elements to extract
-     * @param list    the list from which the elements should be extracted
-     * @param <T>     the template type of the ArrayList
-     * @return a new ArrayList consisting of the elements at the specified indices
-     */
-    static public <T> ArrayList<T> sliceListByIndices(final List<Integer> indices, final List<T> list) {
-        ArrayList<T> subset = new ArrayList<T>();
-
-        for (int i : indices) {
-            subset.add(list.get(i));
-        }
-
-        return subset;
-    }
-
-    /**
-     * Given two log-probability vectors, compute log of vector product of them:
-     * in Matlab notation, return log10(10.*x'*10.^y)
-     * @param x vector 1
-     * @param y vector 2
-     * @return a double representing log (dotProd(10.^x,10.^y)
-     */
-    public static double logDotProduct(final double [] x, final double[] y) {
-        if (x.length != y.length)
-            throw new GATKException("BUG: Vectors of different lengths");
-
-        double tmpVec[] = new double[x.length];
-
-        for (int k=0; k < tmpVec.length; k++ ) {
-            tmpVec[k] = x[k]+y[k];
-        }
-
-        return log10sumLog10(tmpVec);
-
-
-
-    }
-
-    /**
-     * Check that the log10 prob vector vector is well formed
-     *
-     * @param vector
-     * @param expectedSize
-     * @param shouldSumToOne
-     *
-     * @return true if vector is well-formed, false otherwise
-     */
-    public static boolean goodLog10ProbVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
-        if ( vector.length != expectedSize ) return false;
-
-        for ( final double pr : vector ) {
-            if ( ! goodLog10Probability(pr) )
-                return false;
-        }
-
-        if ( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 )
-            return false;
-
-        return true; // everything is good
     }
 
     /**
@@ -1162,66 +371,6 @@ public final class MathUtils {
      */
     public static boolean goodProbability(final double result) {
         return result >= 0.0 && result <= 1.0 && ! Double.isInfinite(result) && ! Double.isNaN(result);
-    }
-
-    /**
-     * A utility class that computes on the fly average and standard deviation for a stream of numbers.
-     * The number of observations does not have to be known in advance, and can be also very big (so that
-     * it could overflow any naive summation-based scheme or cause loss of precision).
-     * Instead, adding a new number <code>observed</code>
-     * to a sample with <code>add(observed)</code> immediately updates the instance of this object so that
-     * it contains correct mean and standard deviation for all the numbers seen so far. Source: Knuth, vol.2
-     * (see also e.g. http://www.johndcook.com/standard_deviation.html for online reference).
-     */
-    public static class RunningAverage {
-        private double mean = 0.0;
-        private double s = 0.0;
-        private long obs_count = 0;
-
-        public void add(double obs) {
-            obs_count++;
-            double oldMean = mean;
-            mean += (obs - mean) / obs_count; // update mean
-            s += (obs - oldMean) * (obs - mean);
-        }
-
-        public void addAll(Collection<Number> col) {
-            for (Number o : col) {
-                add(o.doubleValue());
-            }
-        }
-
-        public double mean() {
-            return mean;
-        }
-
-        public double stddev() {
-            return Math.sqrt(s / (obs_count - 1));
-        }
-
-        public double var() {
-            return s / (obs_count - 1);
-        }
-
-        public long observationCount() {
-            return obs_count;
-        }
-
-        public RunningAverage clone() {
-            RunningAverage ra = new RunningAverage();
-            ra.mean = this.mean;
-            ra.s = this.s;
-            ra.obs_count = this.obs_count;
-            return ra;
-        }
-
-        public void merge(RunningAverage other) {
-            if (this.obs_count > 0 || other.obs_count > 0) { // if we have any observations at all
-                this.mean = (this.mean * this.obs_count + other.mean * other.obs_count) / (this.obs_count + other.obs_count);
-                this.s += other.s;
-            }
-            this.obs_count += other.obs_count;
-        }
     }
 
     //
@@ -1394,10 +543,6 @@ public final class MathUtils {
         return lnToLog10(lnGamma(x));
     }
 
-    public static double factorial(final int x) {
-        // avoid rounding errors caused by fact that 10^log(x) might be slightly lower than x and flooring may produce 1 less than real value
-        return (double)Math.round(Math.pow(10, log10Factorial(x)));
-    }
 
     public static double log10Factorial(final int x) {
         if (x >= Log10FactorialCache.size() || x < 0)
@@ -1438,86 +583,6 @@ public final class MathUtils {
     }
 
     /**
-     * Adds two arrays together and returns a new array with the sum.
-     *
-     * @param a one array
-     * @param b another array
-     * @return a new array with the sum of a and b
-     */
-    public static int[] addArrays(final int[] a, final int[] b) {
-        int[] c = new int[a.length];
-        for (int i = 0; i < a.length; i++)
-            c[i] = a[i] + b[i];
-        return c;
-    }
-
-    /** Same routine, unboxed types for efficiency
-     *
-     * @param x                 First vector
-     * @param y                 Second vector
-     * @return Vector of same length as x and y so that z[k] = x[k]+y[k]
-     */
-    public static double[] vectorSum(final double[]x, final double[] y) {
-        if (x.length != y.length)
-            throw new GATKException("BUG: Lengths of x and y must be the same");
-
-        double[] result = new double[x.length];
-        for (int k=0; k <x.length; k++)
-            result[k] = x[k]+y[k];
-
-        return result;
-    }
-
-    /** Compute Z=X-Y for two numeric vectors X and Y
-     *
-     * @param x                 First vector
-     * @param y                 Second vector
-     * @return Vector of same length as x and y so that z[k] = x[k]-y[k]
-     */
-    public static int[] vectorDiff(final int[]x, final int[] y) {
-        if (x.length != y.length)
-            throw new GATKException("BUG: Lengths of x and y must be the same");
-
-        int[] result = new int[x.length];
-        for (int k=0; k <x.length; k++)
-            result[k] = x[k]-y[k];
-
-        return result;
-    }
-
-    /**
-     * Returns a series of integer values between start and stop, inclusive,
-     * expontentially distributed between the two.  That is, if there are
-     * ten values between 0-10 there will be 10 between 10-100.
-     *
-     * WARNING -- BADLY TESTED
-     * @param start
-     * @param stop
-     * @param eps
-     * @return
-     */
-    public static List<Integer> log10LinearRange(final int start, final int stop, final double eps) {
-        final LinkedList<Integer> values = new LinkedList<>();
-        final double log10range = Math.log10(stop - start);
-
-        if ( start == 0 )
-            values.add(0);
-
-        double i = 0.0;
-        while ( i <= log10range ) {
-            final int index = (int)Math.round(Math.pow(10, i)) + start;
-            if ( index < stop && (values.peekLast() == null || values.peekLast() != index ) )
-                values.add(index);
-            i += eps;
-        }
-
-        if ( values.peekLast() == null || values.peekLast() != stop )
-            values.add(stop);
-
-        return values;
-    }
-
-    /**
      * Compute in a numerical correct way the quantity log10(1-x)
      *
      * Uses the approximation log10(1-x) = log10(1/x - 1) + log10(x) to avoid very quick underflow
@@ -1535,60 +600,5 @@ public final class MathUtils {
             final double d = Math.log10(1 / x - 1) + Math.log10(x);
             return Double.isInfinite(d) || d > 0.0 ? 0.0 : d;
         }
-    }
-
-    /**
-     * Draw N random elements from list
-     * @param list - the list from which to draw randomly
-     * @param N - the number of elements to draw
-     */
-    public static <T> List<T> randomSubset(final List<T> list, final int N) {
-        if (list.size() <= N) {
-            return list;
-        }
-
-        return sliceListByIndices(sampleIndicesWithoutReplacement(list.size(),N),list);
-    }
-
-    /**
-     * Draw N random elements from list with replacement
-     * @param list - the list from which to draw randomly
-     * @param N - the number of elements to draw
-     */
-    public static <T> List<T> randomSample(final List<T> list, final int N) {
-        if (list.isEmpty() ) {
-            return list;
-        }
-        return sliceListByIndices(sampleIndicesWithReplacement(list.size(),N),list);
-    }
-
-    /**
-     * Return the likelihood of observing the counts of categories having sampled a population
-     * whose categorial frequencies are distributed according to a Dirichlet distribution
-     * @param dirichletParams - params of the prior dirichlet distribution
-     * @param dirichletSum - the sum of those parameters
-     * @param counts - the counts of observation in each category
-     * @param countSum - the sum of counts (number of trials)
-     * @return - associated likelihood
-     */
-    public static double dirichletMultinomial(final double[] dirichletParams, final double dirichletSum,
-                                              final int[] counts, final int countSum) {
-        if ( dirichletParams.length != counts.length ) {
-            throw new IllegalStateException("The number of dirichlet parameters must match the number of categories");
-        }
-        // todo -- lots of lnGammas here. At some point we can safely switch to x * ( ln(x) - 1)
-        double likelihood = log10MultinomialCoefficient(countSum,counts);
-        likelihood += log10Gamma(dirichletSum);
-        likelihood -= log10Gamma(dirichletSum+countSum);
-        for ( int idx = 0; idx < counts.length; idx++ ) {
-            likelihood += log10Gamma(counts[idx] + dirichletParams[idx]);
-            likelihood -= log10Gamma(dirichletParams[idx]);
-        }
-
-        return likelihood;
-    }
-
-    public static double dirichletMultinomial(double[] params, int[] counts) {
-        return dirichletMultinomial(params,sum(params),counts,(int) sum(counts));
     }
 }

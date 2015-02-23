@@ -49,125 +49,165 @@
 * 8.7 Governing Law. This Agreement shall be construed, governed, interpreted and applied in accordance with the internal laws of the Commonwealth of Massachusetts, U.S.A., without regard to conflict of laws principles.
 */
 
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.tools.recalibration.RecalDatum;
-import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
-public class RecalibrationEngine {
-    final protected Covariate[] covariates;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
-    /**
-     * Has finalizeData() been called?
-     */
-    private boolean finalized = false;
+/**
+ *
+ * Tests all possible (and valid) cigar strings that might contain any cigar elements. It uses a code that were written to test the ReadClipper walker.
+ * For valid cigar sting in length 8 there are few thousands options, with N in every possible option and with more than one N (for example 1M1N1M1N1M1N2M).
+ * The cigarElements array is used to provide all the possible cigar element that might be included.
+ */
+public class SplitNCigarReadsIntegrationTest extends CommandLineProgramTest {
+    final static CigarElement[] cigarElements = {
+            new CigarElement(1, CigarOperator.HARD_CLIP),
+            new CigarElement(1, CigarOperator.SOFT_CLIP),
+            new CigarElement(1, CigarOperator.INSERTION),
+            new CigarElement(1, CigarOperator.DELETION),
+            new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH),
+            new CigarElement(1, CigarOperator.SKIPPED_REGION)
+    };
 
-    private final RecalibrationTables tables;
+    private static File REFERENCE_FASTA = new File(BaseTest.exampleReference);
 
-    /**
-     * Initialize the recalibration engine
-     *
-     * Called once before any calls to updateDataForRead are made.  The engine should prepare itself
-     * to handle any number of updateDataForRead calls containing ReadRecalibrationInfo containing
-     * keys for each of the covariates provided.
-     *
-     * The engine should collect match and mismatch data into the recalibrationTables data.
-     *
-     * @param covariates an array of the covariates we'll be using in this engine, order matters
-     * @param numReadGroups the number of read groups we should use for the recalibration tables
-     */
-    public RecalibrationEngine(final Covariate[] covariates, final int numReadGroups) {
-        if ( covariates == null ) throw new IllegalArgumentException("Covariates cannot be null");
-        if ( numReadGroups < 1 ) throw new IllegalArgumentException("numReadGroups must be >= 1 but got " + numReadGroups);
+    private IndexedFastaSequenceFile referenceReader;
+    private GenomeLocParser genomeLocParser;
 
-        this.covariates = covariates.clone();
-        this.tables = new RecalibrationTables(covariates, numReadGroups);
+    @BeforeClass
+    public void setup() throws FileNotFoundException {
+        referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_FASTA);
+        genomeLocParser = new GenomeLocParser(referenceReader.getSequenceDictionary());
     }
 
-    /**
-     * Update the recalibration statistics using the information in recalInfo
-     * @param recalInfo data structure holding information about the recalibration values for a single read
-     */
-    public void updateDataForRead( final ReadRecalibrationInfo recalInfo ) {
-        if ( finalized ) throw new IllegalStateException("FinalizeData() has already been called");
+    @Override
+    public String getCommandLineProgramName() {
+        return SplitNCigarReads.class.getSimpleName();
+    }
 
-        final SAMRecord read = recalInfo.getRead();
-        final ReadCovariates readCovariates = recalInfo.getCovariatesValues();
-        final NestedIntegerArray<RecalDatum> qualityScoreTable = tables.getQualityScoreTable();
+    private final class TestManager extends OverhangFixingManager {
+        public TestManager() {
+            super(null, genomeLocParser, referenceReader, 10000, 1, 40, false);
+        }
+    }
 
-        for( int offset = 0; offset < read.getReadBases().length; offset++ ) {
-            if( ! recalInfo.skip(offset) ) {
+    @Test
+    public void splitReadAtN() {
+        final int cigarStringLength = 10;
+        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(cigarStringLength,cigarElements);
 
-                for (final EventType eventType : EventType.values()) {
-                    final int[] keys = readCovariates.getKeySet(offset, eventType);
-                    final int eventIndex = eventType.ordinal();
-                    final byte qual = recalInfo.getQual(eventType, offset);
-                    final double isError = recalInfo.getErrorFraction(eventType, offset);
+        // For Debugging use those lines (instead of above cigarList) to create specific read:
+        //------------------------------------------------------------------------------------
+        // final GATKSAMRecord tmpRead = GATKSAMRecord.createRandomRead(6);
+        // tmpRead.setCigarString("1M1N1M");
 
-                    RecalUtils.incrementDatumOrPutIfNecessary(qualityScoreTable, qual, isError, keys[0], keys[1], eventIndex);
+        // final List<Cigar> cigarList = new ArrayList<>();
+        // cigarList.add(tmpRead.getCigar());
 
-                    for (int i = 2; i < covariates.length; i++) {
-                        if (keys[i] < 0)
-                            continue;
+        for(Cigar cigar: cigarList){
 
-                        RecalUtils.incrementDatumOrPutIfNecessary(tables.getTable(i), qual, isError, keys[0], keys[1], keys[i], eventIndex);
-                    }
+            final int numOfSplits = numOfNElements(cigar.getCigarElements());
+
+            if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
+
+                final TestManager manager = new TestManager();
+                SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigar);
+                SplitNCigarReads.splitNCigarRead(read, manager);
+                List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
+                final int expectedReads = numOfSplits+1;
+                Assert.assertEquals(splitReads.size(),expectedReads,"wrong number of reads after split read with cigar: "+cigar+" at Ns [expected]: "+expectedReads+" [actual value]: "+splitReads.size());
+                final List<Integer> readLengths = consecutiveNonNElements(read.getCigar().getCigarElements());
+                int index = 0;
+                int offsetFromStart = 0;
+                for(final OverhangFixingManager.SplitRead splitRead: splitReads){
+                    int expectedLength = readLengths.get(index);
+                    Assert.assertTrue(splitRead.read.getReadLength() == expectedLength,
+                            "the "+index+" (starting with 0) split read has a wrong length.\n" +
+                                    "cigar of original read: "+cigar+"\n"+
+                                    "expected length: "+expectedLength+"\n"+
+                                    "actual length: "+splitRead.read.getReadLength()+"\n");
+                    assertBases(splitRead.read.getReadBases(), read.getReadBases(), offsetFromStart);
+                    index++;
+                    offsetFromStart += expectedLength;
                 }
             }
         }
     }
 
+    private int numOfNElements(final List<CigarElement> cigarElements){
+        int numOfNElements = 0;
+        for (CigarElement element: cigarElements){
+            if (element.getOperator() == CigarOperator.SKIPPED_REGION)
+                numOfNElements++;
+        }
+        return numOfNElements;
+    }
 
-    /**
-     * Finalize, if appropriate, all derived data in recalibrationTables.
-     *
-     * Called once after all calls to updateDataForRead have been issued.
-     *
-     * Assumes that all of the principal tables (by quality score) have been completely updated,
-     * and walks over this data to create summary data tables like by read group table.
-     */
-    public void finalizeData() {
-        if ( finalized ) throw new IllegalStateException("FinalizeData() has already been called");
+    private static boolean isCigarDoesNotHaveEmptyRegionsBetweenNs(final Cigar cigar) {
+        boolean sawM = false;
+        boolean sawS = false;
 
-        final NestedIntegerArray<RecalDatum> byReadGroupTable = tables.getReadGroupTable();
-        final NestedIntegerArray<RecalDatum> byQualTable = tables.getQualityScoreTable();
+        for (CigarElement cigarElement : cigar.getCigarElements()) {
+            if (cigarElement.getOperator().equals(CigarOperator.SKIPPED_REGION)) {
+                if(!sawM && !sawS)
+                    return false;
+                sawM = false;
+                sawS = false;
+            }
+            if (cigarElement.getOperator().equals(CigarOperator.MATCH_OR_MISMATCH))
+                sawM = true;
+            if (cigarElement.getOperator().equals(CigarOperator.SOFT_CLIP))
+                sawS = true;
 
-        // iterate over all values in the qual table
-        for ( final NestedIntegerArray.Leaf<RecalDatum> leaf : byQualTable.getAllLeaves() ) {
-            final int rgKey = leaf.keys[0];
-            final int eventIndex = leaf.keys[2];
-            final RecalDatum rgDatum = byReadGroupTable.get(rgKey, eventIndex);
-            final RecalDatum qualDatum = leaf.value;
+        }
+        if(!sawS && !sawM)
+            return false;
+        return true;
+    }
 
-            if ( rgDatum == null ) {
-                // create a copy of qualDatum, and initialize byReadGroup table with it
-                byReadGroupTable.put(new RecalDatum(qualDatum), rgKey, eventIndex);
-            } else {
-                // combine the qual datum with the existing datum in the byReadGroup table
-                rgDatum.combine(qualDatum);
+    private List<Integer> consecutiveNonNElements(final List<CigarElement> cigarElements){
+        final LinkedList<Integer> results = new LinkedList<>();
+        int consecutiveLength = 0;
+        for(CigarElement element: cigarElements){
+            final CigarOperator op = element.getOperator();
+            if(op.equals(CigarOperator.MATCH_OR_MISMATCH) || op.equals(CigarOperator.SOFT_CLIP) || op.equals(CigarOperator.INSERTION)){
+                consecutiveLength += element.getLength();
+            }
+            else if(op.equals(CigarOperator.SKIPPED_REGION))
+            {
+                if(consecutiveLength != 0){
+                    results.addLast(consecutiveLength);
+                    consecutiveLength = 0;
+                }
             }
         }
-
-        finalized = true;
+        if(consecutiveLength != 0)
+            results.addLast(consecutiveLength);
+        return results;
     }
 
-   /**
-     * Get the final recalibration tables, after finalizeData() has been called
-     *
-     * This returns the finalized recalibration table collected by this engine.
-     *
-     * It is an error to call this function before finalizeData has been called
-     *
-     * @return the finalized recalibration table collected by this engine
-     */
-    public RecalibrationTables getFinalRecalibrationTables() {
-        if ( ! finalized ) throw new IllegalStateException("Cannot get final recalibration tables until finalizeData() has been called");
-        return tables;
+    private void assertBases(final byte[] actualBase, final byte[] expectedBase, final int startIndex) {
+        for (int i = 0; i < actualBase.length; i++) {
+            Assert.assertEquals(actualBase[i], expectedBase[startIndex + i],"unmatched bases between: "+ Arrays.toString(actualBase)+"\nand:\n"+Arrays.toString(expectedBase)+"\nat position: "+i);
+        }
     }
+
 }

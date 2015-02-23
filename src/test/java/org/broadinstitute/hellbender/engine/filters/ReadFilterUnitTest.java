@@ -7,7 +7,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class ReadFilterTest {
+public class ReadFilterUnitTest {
 
     static final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 10);
     static final SAMRecord goodRead = ArtificialSAMUtils.createArtificialRead(header, "Zuul", 0, 2,2);
