@@ -26,7 +26,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.tribble.TribbleException;
-import htsjdk.tribble.util.popgen.HardyWeinbergCalculation;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.ArrayUtils;
@@ -34,32 +33,18 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GATKVariantContextUtils {
 
     private static Logger logger = LogManager.getLogger(GATKVariantContextUtils.class);
 
     public static final int DEFAULT_PLOIDY = HomoSapiensConstants.DEFAULT_PLOIDY;
-
-    public static final double SUM_GL_THRESH_NOCALL = -0.1; // if sum(gl) is bigger than this threshold, we treat GL's as non-informative and will force a no-call.
-
-    /**
-     * Diploid NO_CALL allele list...
-     *
-     * @deprecated you should use {@link #noCallAlleles(int)} instead. It indicates the presence of a hardcoded diploid assumption which is bad.
-     */
-    @Deprecated
-    public final static List<Allele> NO_CALL_ALLELES = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
-
-    public final static String NON_REF_SYMBOLIC_ALLELE_NAME = "NON_REF";
-    public final static Allele NON_REF_SYMBOLIC_ALLELE = Allele.create("<"+NON_REF_SYMBOLIC_ALLELE_NAME+">", false); // represents any possible non-ref allele at this site
 
     public final static String MERGE_FILTER_PREFIX = "filterIn";
     public final static String MERGE_REF_IN_ALL = "ReferenceInAll";
@@ -92,24 +77,6 @@ public class GATKVariantContextUtils {
         if (!variantContext.getChr().equals(region.getContig()))
             return false;
         return true;
-    }
-
-    /**
-     * Returns a homozygous call allele list given the only allele and the ploidy.
-     *
-     * @param allele the only allele in the allele list.
-     * @param ploidy the ploidy of the resulting allele list.
-     *
-     * @throws IllegalArgumentException if {@code allele} is {@code null} or ploidy is negative.
-     *
-     * @return never {@code null}.
-     */
-    public static List<Allele> homozygousAlleleList(final Allele allele, final int ploidy) {
-        if (allele == null || ploidy < 0)
-            throw new IllegalArgumentException();
-
-        // Use a tailored inner class to implement the list:
-        return Collections.nCopies(ploidy,allele);
     }
 
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
@@ -205,119 +172,6 @@ public class GATKVariantContextUtils {
          * If any record is present at this site (regardless of possibly being filtered), then all such records are kept and the filters are reset.
          */
         KEEP_UNCONDITIONAL
-    }
-
-    public enum MultipleAllelesMergeType {
-        /**
-         * Combine only alleles of the same type (SNP, indel, etc.) into a single VCF record.
-         */
-        BY_TYPE,
-        /**
-         * Merge all allele types at the same start position into the same VCF record.
-         */
-        MIX_TYPES
-    }
-
-    /**
-     * Refactored out of the AverageAltAlleleLength annotation class
-     * @param vc the variant context
-     * @return the average length of the alt allele (a double)
-     */
-    public static double getMeanAltAlleleLength(VariantContext vc) {
-        double averageLength = 1.0;
-        if ( ! vc.isSNP() && ! vc.isSymbolic() ) {
-            // adjust for the event length
-            int averageLengthNum = 0;
-            int averageLengthDenom = 0;
-            int refLength = vc.getReference().length();
-            for ( final Allele a : vc.getAlternateAlleles() ) {
-                int numAllele = vc.getCalledChrCount(a);
-                int alleleSize;
-                if ( a.length() == refLength ) {
-                    // SNP or MNP
-                    byte[] a_bases = a.getBases();
-                    byte[] ref_bases = vc.getReference().getBases();
-                    int n_mismatch = 0;
-                    for ( int idx = 0; idx < a_bases.length; idx++ ) {
-                        if ( a_bases[idx] != ref_bases[idx] )
-                            n_mismatch++;
-                    }
-                    alleleSize = n_mismatch;
-                }
-                else if ( a.isSymbolic() ) {
-                    alleleSize = 1;
-                } else {
-                    alleleSize = Math.abs(refLength-a.length());
-                }
-                averageLengthNum += alleleSize*numAllele;
-                averageLengthDenom += numAllele;
-            }
-            averageLength = ( (double) averageLengthNum )/averageLengthDenom;
-        }
-
-        return averageLength;
-    }
-
-    public static BaseUtils.BaseSubstitutionType getSNPSubstitutionType(VariantContext context) {
-        if (!context.isSNP() || !context.isBiallelic())
-            throw new IllegalStateException("Requested SNP substitution type for bialleic non-SNP " + context);
-        return BaseUtils.SNPSubstitutionType(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]);
-    }
-
-    /**
-     * If this is a BiAllelic SNP, is it a transition?
-     */
-    public static boolean isTransition(VariantContext context) {
-        return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSITION;
-    }
-
-    /**
-     * If this is a BiAllelic SNP, is it a transversion?
-     */
-    public static boolean isTransversion(VariantContext context) {
-        return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSVERSION;
-    }
-
-    public static boolean isTransition(Allele ref, Allele alt) {
-        return BaseUtils.SNPSubstitutionType(ref.getBases()[0], alt.getBases()[0]) == BaseUtils.BaseSubstitutionType.TRANSITION;
-    }
-
-    public static boolean isTransversion(Allele ref, Allele alt) {
-        return BaseUtils.SNPSubstitutionType(ref.getBases()[0], alt.getBases()[0]) == BaseUtils.BaseSubstitutionType.TRANSVERSION;
-    }
-
-    /**
-     * Returns a context identical to this with the REF and ALT alleles reverse complemented.
-     *
-     * @param vc        variant context
-     * @return new vc
-     */
-    public static VariantContext reverseComplement(VariantContext vc) {
-        // create a mapping from original allele to reverse complemented allele
-        HashMap<Allele, Allele> alleleMap = new HashMap<>(vc.getAlleles().size());
-        for ( final Allele originalAllele : vc.getAlleles() ) {
-            Allele newAllele;
-            if ( originalAllele.isNoCall() )
-                newAllele = originalAllele;
-            else
-                newAllele = Allele.create(BaseUtils.simpleReverseComplement(originalAllele.getBases()), originalAllele.isReference());
-            alleleMap.put(originalAllele, newAllele);
-        }
-
-        // create new Genotype objects
-        GenotypesContext newGenotypes = GenotypesContext.create(vc.getNSamples());
-        for ( final Genotype genotype : vc.getGenotypes() ) {
-            List<Allele> newAlleles = new ArrayList<>();
-            for ( final Allele allele : genotype.getAlleles() ) {
-                Allele newAllele = alleleMap.get(allele);
-                if ( newAllele == null )
-                    newAllele = Allele.NO_CALL;
-                newAlleles.add(newAllele);
-            }
-            newGenotypes.add(new GenotypeBuilder(genotype).alleles(newAlleles).make());
-        }
-
-        return new VariantContextBuilder(vc).alleles(alleleMap.values()).genotypes(newGenotypes).make();
     }
 
     /**
@@ -568,212 +422,6 @@ public class GATKVariantContextUtils {
     }
 
     /**
-     * subset the Variant Context to the specific set of alleles passed in (pruning the PLs appropriately)
-     *
-     * @param vc                 variant context with genotype likelihoods
-     * @param allelesToUse       which alleles from the vc are okay to use; *** must be in the same relative order as those in the original VC ***
-     * @param assignGenotypes    assignment strategy for the (subsetted) PLs
-     * @return a new non-null GenotypesContext
-     */
-    public static GenotypesContext subsetDiploidAlleles(final VariantContext vc,
-                                                        final List<Allele> allelesToUse,
-                                                        final GenotypeAssignmentMethod assignGenotypes) {
-        if ( allelesToUse.get(0).isNonReference() ) throw new IllegalArgumentException("First allele must be the reference allele");
-        if ( allelesToUse.size() == 1 ) throw new IllegalArgumentException("Cannot subset to only 1 alt allele");
-
-        // optimization: if no input genotypes, just exit
-        if (vc.getGenotypes().isEmpty()) return GenotypesContext.create();
-
-        // we need to determine which of the alternate alleles (and hence the likelihoods) to use and carry forward
-        final List<Integer> likelihoodIndexesToUse = determineLikelihoodIndexesToUse(vc, allelesToUse);
-
-        // create the new genotypes
-        return createGenotypesWithSubsettedLikelihoods(vc.getGenotypes(), vc, allelesToUse, likelihoodIndexesToUse, assignGenotypes);
-    }
-
-    /**
-     * Figure out which likelihood indexes to use for a selected down set of alleles
-     *
-     * @param originalVC        the original VariantContext
-     * @param allelesToUse      the subset of alleles to use
-     * @return a list of PL indexes to use or null if none
-     */
-    private static List<Integer> determineLikelihoodIndexesToUse(final VariantContext originalVC, final List<Allele> allelesToUse) {
-
-        // the bitset representing the allele indexes we want to keep
-        final boolean[] alleleIndexesToUse = getAlleleIndexBitset(originalVC, allelesToUse);
-
-        // an optimization: if we are supposed to use all (or none in the case of a ref call) of the alleles,
-        // then we can keep the PLs as is; otherwise, we determine which ones to keep
-        if ( MathUtils.countOccurrences(true, alleleIndexesToUse) == alleleIndexesToUse.length )
-            return null;
-
-        return getLikelihoodIndexes(originalVC, alleleIndexesToUse);
-    }
-
-    /**
-     * Get the actual likelihoods indexes to use given the corresponding allele indexes
-     *
-     * @param originalVC           the original VariantContext
-     * @param alleleIndexesToUse   the bitset representing the alleles to use (@see #getAlleleIndexBitset)
-     * @return a non-null List
-     */
-    private static List<Integer> getLikelihoodIndexes(final VariantContext originalVC, final boolean[] alleleIndexesToUse) {
-
-        final List<Integer> result = new ArrayList<>(30);
-
-        // numLikelihoods takes total # of alleles. Use default # of chromosomes (ploidy) = 2
-        final int numLikelihoods = GenotypeLikelihoods.numLikelihoods(originalVC.getNAlleles(), DEFAULT_PLOIDY);
-
-        for ( int PLindex = 0; PLindex < numLikelihoods; PLindex++ ) {
-            final GenotypeLikelihoods.GenotypeLikelihoodsAllelePair alleles = GenotypeLikelihoods.getAllelePair(PLindex);
-            // consider this entry only if both of the alleles are good
-            if ( alleleIndexesToUse[alleles.alleleIndex1] && alleleIndexesToUse[alleles.alleleIndex2] )
-                result.add(PLindex);
-        }
-
-        return result;
-    }
-
-    /**
-     * Given an original VariantContext and a list of alleles from that VC to keep,
-     * returns a bitset representing which allele indexes should be kept
-     *
-     * @param originalVC      the original VC
-     * @param allelesToKeep   the list of alleles to keep
-     * @return non-null bitset
-     */
-    private static boolean[] getAlleleIndexBitset(final VariantContext originalVC, final List<Allele> allelesToKeep) {
-        final int numOriginalAltAlleles = originalVC.getNAlleles() - 1;
-        final boolean[] alleleIndexesToKeep = new boolean[numOriginalAltAlleles + 1];
-
-        // the reference Allele is definitely still used
-        alleleIndexesToKeep[0] = true;
-        for ( int i = 0; i < numOriginalAltAlleles; i++ ) {
-            if ( allelesToKeep.contains(originalVC.getAlternateAllele(i)) )
-                alleleIndexesToKeep[i+1] = true;
-        }
-
-        return alleleIndexesToKeep;
-    }
-
-    /**
-     * Create the new GenotypesContext with the subsetted PLs and ADs
-     *
-     * @param originalGs               the original GenotypesContext
-     * @param vc                       the original VariantContext
-     * @param allelesToUse             the actual alleles to use with the new Genotypes
-     * @param likelihoodIndexesToUse   the indexes in the PL to use given the allelesToUse (@see #determineLikelihoodIndexesToUse())
-     * @param assignGenotypes          assignment strategy for the (subsetted) PLs
-     * @return a new non-null GenotypesContext
-     */
-    private static GenotypesContext createGenotypesWithSubsettedLikelihoods(final GenotypesContext originalGs,
-                                                                            final VariantContext vc,
-                                                                            final List<Allele> allelesToUse,
-                                                                            final List<Integer> likelihoodIndexesToUse,
-                                                                            final GenotypeAssignmentMethod assignGenotypes) {
-        // the new genotypes to create
-        final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
-
-        // make sure we are seeing the expected number of likelihoods per sample
-        final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(vc.getNAlleles(), 2);
-
-        // the samples
-        final List<String> sampleIndices = originalGs.getSampleNamesOrderedByName();
-
-        // create the new genotypes
-        for ( int k = 0; k < originalGs.size(); k++ ) {
-            final Genotype g = originalGs.get(sampleIndices.get(k));
-            final GenotypeBuilder gb = new GenotypeBuilder(g);
-
-            // create the new likelihoods array from the alleles we are allowed to use
-            double[] newLikelihoods;
-            if ( !g.hasLikelihoods() ) {
-                // we don't have any likelihoods, so we null out PLs and make G ./.
-                newLikelihoods = null;
-                gb.noPL();
-            } else {
-                final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
-                if ( likelihoodIndexesToUse == null ) {
-                    newLikelihoods = originalLikelihoods;
-                } else if ( originalLikelihoods.length != expectedNumLikelihoods ) {
-                    logger.debug("Wrong number of likelihoods in sample " + g.getSampleName() + " at " + vc + " got " + g.getLikelihoodsString() + " but expected " + expectedNumLikelihoods);
-                    newLikelihoods = null;
-                } else {
-                    newLikelihoods = new double[likelihoodIndexesToUse.size()];
-                    int newIndex = 0;
-                    for ( final int oldIndex : likelihoodIndexesToUse )
-                        newLikelihoods[newIndex++] = originalLikelihoods[oldIndex];
-
-                    // might need to re-normalize
-                    newLikelihoods = MathUtils.normalizeFromLog10(newLikelihoods, false, true);
-                }
-
-                if ( newLikelihoods == null || likelihoodsAreUninformative(newLikelihoods) )
-                    gb.noPL();
-                else
-                    gb.PL(newLikelihoods);
-            }
-
-            updateGenotypeAfterSubsetting(g.getAlleles(), gb, assignGenotypes, newLikelihoods, allelesToUse);
-            newGTs.add(gb.make());
-        }
-
-        return fixADFromSubsettedAlleles(newGTs, vc, allelesToUse);
-    }
-
-    private static boolean likelihoodsAreUninformative(final double[] likelihoods) {
-        return MathUtils.sum(likelihoods) > SUM_GL_THRESH_NOCALL;
-    }
-
-    /**
-     * Add the genotype call (GT) field to GenotypeBuilder using the requested algorithm assignmentMethod
-     *
-     * @param originalGT the original genotype calls, cannot be null
-     * @param gb the builder where we should put our newly called alleles, cannot be null
-     * @param assignmentMethod the method to use to do the assignment, cannot be null
-     * @param newLikelihoods a vector of likelihoods to use if the method requires PLs, should be log10 likelihoods, cannot be null
-     * @param allelesToUse the alleles we are using for our subsetting
-     */
-    public static void updateGenotypeAfterSubsetting(final List<Allele> originalGT,
-                                                     final GenotypeBuilder gb,
-                                                     final GenotypeAssignmentMethod assignmentMethod,
-                                                     final double[] newLikelihoods,
-                                                     final List<Allele> allelesToUse) {
-        switch ( assignmentMethod ) {
-            case DO_NOT_ASSIGN_GENOTYPES:
-                break;
-            case SET_TO_NO_CALL:
-                gb.alleles(NO_CALL_ALLELES);
-                gb.noGQ();
-                break;
-            case USE_PLS_TO_ASSIGN:
-                if ( newLikelihoods == null || likelihoodsAreUninformative(newLikelihoods) ) {
-                    // if there is no mass on the (new) likelihoods, then just no-call the sample
-                    gb.alleles(NO_CALL_ALLELES);
-                    gb.noGQ();
-                } else {
-                    // find the genotype with maximum likelihoods
-                    final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
-                    GenotypeLikelihoods.GenotypeLikelihoodsAllelePair alleles = GenotypeLikelihoods.getAllelePair(PLindex);
-                    gb.alleles(Arrays.asList(allelesToUse.get(alleles.alleleIndex1), allelesToUse.get(alleles.alleleIndex2)));
-                    gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods));
-                }
-                break;
-            case BEST_MATCH_TO_ORIGINAL:
-                final List<Allele> best = new LinkedList<>();
-                final Allele ref = allelesToUse.get(0); // WARNING -- should be checked in input argument
-                for ( final Allele originalAllele : originalGT ) {
-                    best.add(allelesToUse.contains(originalAllele) ? originalAllele : ref);
-                }
-                gb.noGQ();
-                gb.noPL();
-                gb.alleles(best);
-                break;
-        }
-    }
-
-    /**
      * Subset the samples in VC to reference only information with ref call alleles
      *
      * Preserves DP if present
@@ -809,70 +457,6 @@ public class GATKVariantContextUtils {
         }
 
         return newGTs;
-    }
-
-    /**
-     * Assign genotypes (GTs) to the samples in the Variant Context greedily based on the PLs
-     *
-     * @param vc            variant context with genotype likelihoods
-     * @return genotypes context
-     */
-    public static GenotypesContext assignDiploidGenotypes(final VariantContext vc) {
-        return subsetDiploidAlleles(vc, vc.getAlleles(), GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN);
-    }
-
-    /**
-     * Split variant context into its biallelic components if there are more than 2 alleles
-     *
-     * For VC has A/B/C alleles, returns A/B and A/C contexts.
-     * Genotypes are all no-calls now (it's not possible to fix them easily)
-     * Alleles are right trimmed to satisfy VCF conventions
-     *
-     * If vc is biallelic or non-variant it is just returned
-     *
-     * Chromosome counts are updated (but they are by definition 0)
-     *
-     * @param vc a potentially multi-allelic variant context
-     * @return a list of bi-allelic (or monomorphic) variant context
-     */
-    public static List<VariantContext> splitVariantContextToBiallelics(final VariantContext vc) {
-        return splitVariantContextToBiallelics(vc, false, GenotypeAssignmentMethod.SET_TO_NO_CALL);
-    }
-
-    /**
-     * Split variant context into its biallelic components if there are more than 2 alleles
-     *
-     * For VC has A/B/C alleles, returns A/B and A/C contexts.
-     * Genotypes are all no-calls now (it's not possible to fix them easily)
-     * Alleles are right trimmed to satisfy VCF conventions
-     *
-     * If vc is biallelic or non-variant it is just returned
-     *
-     * Chromosome counts are updated (but they are by definition 0)
-     *
-     * @param vc a potentially multi-allelic variant context
-     * @param trimLeft if true, we will also left trim alleles, potentially moving the resulting vcs forward on the genome
-     * @return a list of bi-allelic (or monomorphic) variant context
-     */
-    public static List<VariantContext> splitVariantContextToBiallelics(final VariantContext vc, final boolean trimLeft, final GenotypeAssignmentMethod genotypeAssignmentMethod) {
-        if ( ! vc.isVariant() || vc.isBiallelic() )
-            // non variant or biallelics already satisfy the contract
-            return Collections.singletonList(vc);
-        else {
-            final List<VariantContext> biallelics = new LinkedList<>();
-
-            for ( final Allele alt : vc.getAlternateAlleles() ) {
-                VariantContextBuilder builder = new VariantContextBuilder(vc);
-                final List<Allele> alleles = Arrays.asList(vc.getReference(), alt);
-                builder.alleles(alleles);
-                builder.genotypes(subsetDiploidAlleles(vc, alleles, genotypeAssignmentMethod));
-                VariantContextUtils.calculateChromosomeCounts(builder, true);
-                final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
-                biallelics.add(trimmed);
-            }
-
-            return biallelics;
-        }
     }
 
     public static Genotype removePLsAndAD(final Genotype g) {
@@ -952,12 +536,9 @@ public class GATKVariantContextUtils {
 
         final List<VariantContext> preFilteredVCs = sortVariantContextsByPriority(unsortedVCs, priorityListOfVCs, genotypeMergeOptions);
         // Make sure all variant contexts are padded with reference base in case of indels if necessary
-        List<VariantContext> VCs = new ArrayList<>();
-
-        for (final VariantContext vc : preFilteredVCs) {
-            if ( ! filteredAreUncalled || vc.isNotFiltered() )
-                VCs.add(vc);
-        }
+        List<VariantContext> VCs = preFilteredVCs.stream()
+                .filter(vc -> !filteredAreUncalled || vc.isNotFiltered())
+                .collect(Collectors.toList());
 
         if ( VCs.size() == 0 ) // everything is filtered out and we're filteredAreUncalled
             return null;
@@ -1147,106 +728,6 @@ public class GATKVariantContextUtils {
         return newGs;
     }
 
-    /**
-     * Updates the PLs and AD of the Genotypes in the newly selected VariantContext to reflect the fact that some alleles
-     * from the original VariantContext are no longer present.
-     *
-     * @param selectedVC  the selected (new) VariantContext
-     * @param originalVC  the original VariantContext
-     * @return a new non-null GenotypesContext
-     */
-    public static GenotypesContext updatePLsAndAD(final VariantContext selectedVC, final VariantContext originalVC) {
-        final int numNewAlleles = selectedVC.getAlleles().size();
-        final int numOriginalAlleles = originalVC.getAlleles().size();
-
-        // if we have more alternate alleles in the selected VC than in the original VC, then something is wrong
-        if ( numNewAlleles > numOriginalAlleles )
-            throw new IllegalArgumentException("Attempting to fix PLs and AD from what appears to be a *combined* VCF and not a selected one");
-
-        final GenotypesContext oldGs = selectedVC.getGenotypes();
-
-        // if we have the same number of alternate alleles in the selected VC as in the original VC, then we don't need to fix anything
-        if ( numNewAlleles == numOriginalAlleles )
-            return oldGs;
-
-        return fixGenotypesFromSubsettedAlleles(oldGs, originalVC, selectedVC.getAlleles());
-    }
-
-    /**
-     * Fix the PLs and ADs for the GenotypesContext of a VariantContext that has been subset
-     *
-     * @param originalGs       the original GenotypesContext
-     * @param originalVC       the original VariantContext
-     * @param allelesToUse     the new (sub)set of alleles to use
-     * @return a new non-null GenotypesContext
-     */
-    static private GenotypesContext fixGenotypesFromSubsettedAlleles(final GenotypesContext originalGs, final VariantContext originalVC, final List<Allele> allelesToUse) {
-
-        // we need to determine which of the alternate alleles (and hence the likelihoods) to use and carry forward
-        final List<Integer> likelihoodIndexesToUse = determineLikelihoodIndexesToUse(originalVC, allelesToUse);
-
-        // create the new genotypes
-        return createGenotypesWithSubsettedLikelihoods(originalGs, originalVC, allelesToUse, likelihoodIndexesToUse, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
-    }
-
-    /**
-     * Fix the AD for the GenotypesContext of a VariantContext that has been subset
-     *
-     * @param originalGs       the original GenotypesContext
-     * @param originalVC       the original VariantContext
-     * @param allelesToUse     the new (sub)set of alleles to use
-     * @return a new non-null GenotypesContext
-     */
-    static private GenotypesContext fixADFromSubsettedAlleles(final GenotypesContext originalGs, final VariantContext originalVC, final List<Allele> allelesToUse) {
-
-        // the bitset representing the allele indexes we want to keep
-        final boolean[] alleleIndexesToUse = getAlleleIndexBitset(originalVC, allelesToUse);
-
-        // the new genotypes to create
-        final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
-
-        // the samples
-        final List<String> sampleIndices = originalGs.getSampleNamesOrderedByName();
-
-        // create the new genotypes
-        for ( int k = 0; k < originalGs.size(); k++ ) {
-            final Genotype g = originalGs.get(sampleIndices.get(k));
-            newGTs.add(fixAD(g, alleleIndexesToUse, allelesToUse.size()));
-        }
-
-        return newGTs;
-    }
-
-    /**
-     * Fix the AD for the given Genotype
-     *
-     * @param genotype              the original Genotype
-     * @param alleleIndexesToUse    a bitset describing whether or not to keep a given index
-     * @param nAllelesToUse         how many alleles we are keeping
-     * @return a non-null Genotype
-     */
-    private static Genotype fixAD(final Genotype genotype, final boolean[] alleleIndexesToUse, final int nAllelesToUse) {
-        // if it ain't broke don't fix it
-        if ( !genotype.hasAD() )
-            return genotype;
-
-        final GenotypeBuilder builder = new GenotypeBuilder(genotype);
-
-        final int[] oldAD = genotype.getAD();
-        if ( oldAD.length != alleleIndexesToUse.length ) {
-            builder.noAD();
-        } else {
-            final int[] newAD = new int[nAllelesToUse];
-            int currentIndex = 0;
-            for ( int i = 0; i < oldAD.length; i++ ) {
-                if ( alleleIndexesToUse[i] )
-                    newAD[currentIndex++] = oldAD[i];
-            }
-            builder.AD(newAD);
-        }
-        return builder.make();
-    }
-
     private static Allele determineReferenceAllele(final List<VariantContext> VCs) {
         return determineReferenceAllele(VCs, null);
     }
@@ -1378,40 +859,8 @@ public class GATKVariantContextUtils {
     }
 
 
-    /**
-     * This is just a safe wrapper around GenotypeLikelihoods.calculatePLindex()
-     *
-     * @param originalIndex1   the index of the first allele
-     * @param originalIndex2   the index of the second allele
-     * @return the PL index
-     */
-    protected static int calculatePLindexFromUnorderedIndexes(final int originalIndex1, final int originalIndex2) {
-        // we need to make sure they are ordered correctly
-        return ( originalIndex2 < originalIndex1 ) ? GenotypeLikelihoods.calculatePLindex(originalIndex2, originalIndex1) : GenotypeLikelihoods.calculatePLindex(originalIndex1, originalIndex2);
-    }
-
     public static String mergedSampleName(String trackName, String sampleName, boolean uniquify ) {
         return uniquify ? sampleName + "." + trackName : sampleName;
-    }
-
-    /**
-     * Trim the alleles in inputVC from the reverse direction
-     *
-     * @param inputVC a non-null input VC whose alleles might need a haircut
-     * @return a non-null VariantContext (may be == to inputVC) with alleles trimmed up
-     */
-    public static VariantContext reverseTrimAlleles( final VariantContext inputVC ) {
-        return trimAlleles(inputVC, false, true);
-    }
-
-    /**
-     * Trim the alleles in inputVC from the forward direction
-     *
-     * @param inputVC a non-null input VC whose alleles might need a haircut
-     * @return a non-null VariantContext (may be == to inputVC) with alleles trimmed up
-     */
-    public static VariantContext forwardTrimAlleles( final VariantContext inputVC ) {
-        return trimAlleles(inputVC, true, false);
     }
 
     /**
@@ -1432,8 +881,7 @@ public class GATKVariantContextUtils {
         final int revTrim = trimReverse ? computeReverseClipping(inputVC.getAlleles(), inputVC.getReference().getDisplayString().getBytes()) : 0;
         final VariantContext revTrimVC = trimAlleles(inputVC, -1, revTrim);
         final int fwdTrim = trimForward ? computeForwardClipping(revTrimVC.getAlleles()) : -1;
-        final VariantContext vc= trimAlleles(revTrimVC, fwdTrim, 0);
-        return vc;
+        return trimAlleles(revTrimVC, fwdTrim, 0);
     }
 
     /**
@@ -1574,41 +1022,6 @@ public class GATKVariantContextUtils {
         return indexOflastSharedBase;
     }
 
-    public static double computeHardyWeinbergPvalue(VariantContext vc) {
-        if ( vc.getCalledChrCount() == 0 )
-            return 0.0;
-        return HardyWeinbergCalculation.hwCalculate(vc.getHomRefCount(), vc.getHetCount(), vc.getHomVarCount());
-    }
-
-    public static boolean requiresPaddingBase(final List<String> alleles) {
-
-        // see whether one of the alleles would be null if trimmed through
-
-        for ( final String allele : alleles ) {
-            if ( allele.isEmpty() )
-                return true;
-        }
-
-        int clipping = 0;
-        Character currentBase = null;
-
-        while ( true ) {
-            for ( final String allele : alleles ) {
-                if ( allele.length() - clipping == 0 )
-                    return true;
-
-                char myBase = allele.charAt(clipping);
-                if ( currentBase == null )
-                    currentBase = myBase;
-                else if ( currentBase != myBase )
-                    return false;
-            }
-
-            clipping++;
-            currentBase = null;
-        }
-    }
-
     private final static Map<String, Object> subsetAttributes(final CommonInfo igc, final Collection<String> keysToPreserve) {
         Map<String, Object> attributes = new HashMap<>(keysToPreserve.size());
         for ( final String key : keysToPreserve  ) {
@@ -1648,87 +1061,6 @@ public class GATKVariantContextUtils {
         return builder.genotypes(genotypes).attributes(attributes);
     }
 
-    public static boolean allelesAreSubset(VariantContext vc1, VariantContext vc2) {
-        // if all alleles of vc1 are a contained in alleles of vc2, return true
-        if (!vc1.getReference().equals(vc2.getReference()))
-            return false;
-
-        for (final Allele a :vc1.getAlternateAlleles()) {
-            if (!vc2.getAlternateAlleles().contains(a))
-                return false;
-        }
-
-        return true;
-    }
-
-    public static Map<VariantContext.Type, List<VariantContext>> separateVariantContextsByType( final Collection<VariantContext> VCs ) {
-        if( VCs == null ) { throw new IllegalArgumentException("VCs cannot be null."); }
-
-        final HashMap<VariantContext.Type, List<VariantContext>> mappedVCs = new HashMap<>();
-        for ( final VariantContext vc : VCs ) {
-            VariantContext.Type vcType = vc.getType();
-
-            // look at previous variant contexts of different type. If:
-            // a) otherVC has alleles which are subset of vc, remove otherVC from its list and add otherVC to vc's list
-            // b) vc has alleles which are subset of otherVC. Then, add vc to otherVC's type list (rather, do nothing since vc will be added automatically to its list)
-            // c) neither: do nothing, just add vc to its own list
-            boolean addtoOwnList = true;
-            for (final VariantContext.Type type : VariantContext.Type.values()) {
-                if (type.equals(vcType))
-                    continue;
-
-                if (!mappedVCs.containsKey(type))
-                    continue;
-
-                List<VariantContext> vcList = mappedVCs.get(type);
-                for (int k=0; k <  vcList.size(); k++) {
-                    VariantContext otherVC = vcList.get(k);
-                    if (allelesAreSubset(otherVC,vc)) {
-                        // otherVC has a type different than vc and its alleles are a subset of vc: remove otherVC from its list and add it to vc's type list
-                        vcList.remove(k);
-                        // avoid having empty lists
-                        if (vcList.size() == 0)
-                            mappedVCs.remove(type);
-                        if ( !mappedVCs.containsKey(vcType) )
-                            mappedVCs.put(vcType, new ArrayList<VariantContext>());
-                        mappedVCs.get(vcType).add(otherVC);
-                        break;
-                    }
-                    else if (allelesAreSubset(vc,otherVC)) {
-                        // vc has a type different than otherVC and its alleles are a subset of VC: add vc to otherVC's type list and don't add to its own
-                        mappedVCs.get(type).add(vc);
-                        addtoOwnList = false;
-                        break;
-                    }
-                }
-            }
-            if (addtoOwnList) {
-                if ( !mappedVCs.containsKey(vcType) )
-                    mappedVCs.put(vcType, new ArrayList<VariantContext>());
-                mappedVCs.get(vcType).add(vc);
-            }
-        }
-
-        return mappedVCs;
-    }
-
-    public static VariantContext purgeUnallowedGenotypeAttributes(VariantContext vc, Set<String> allowedAttributes) {
-        if ( allowedAttributes == null )
-            return vc;
-
-        final GenotypesContext newGenotypes = GenotypesContext.create(vc.getNSamples());
-        for ( final Genotype genotype : vc.getGenotypes() ) {
-            final Map<String, Object> attrs = new HashMap<>();
-            for ( final Map.Entry<String, Object> attr : genotype.getExtendedAttributes().entrySet() ) {
-                if ( allowedAttributes.contains(attr.getKey()) )
-                    attrs.put(attr.getKey(), attr.getValue());
-            }
-            newGenotypes.add(new GenotypeBuilder(genotype).attributes(attrs).make());
-        }
-
-        return new VariantContextBuilder(vc).genotypes(newGenotypes).make();
-    }
-
     protected static class AlleleMapper {
         private VariantContext vc = null;
         private Map<Allele, Allele> map = null;
@@ -1739,22 +1071,13 @@ public class GATKVariantContextUtils {
         public Allele remap(Allele a)                   { return map != null && map.containsKey(a) ? map.get(a) : a; }
 
         public List<Allele> remap(List<Allele> as) {
-            List<Allele> newAs = new ArrayList<>();
-            for ( final Allele a : as ) {
-                //System.out.printf("  Remapping %s => %s%n", a, remap(a));
-                newAs.add(remap(a));
-            }
+            List<Allele> newAs = as.stream()
+                    .map(this::remap)
+                    .collect(Collectors.toList());
+            //System.out.printf("  Remapping %s => %s%n", a, remap(a));
             return newAs;
         }
 
-        /**
-         * @return the list of unique values
-         */
-        public List<Allele> getUniqueMappedAlleles() {
-            if ( map == null )
-                return Collections.emptyList();
-            return new ArrayList<>(new HashSet<>(map.values()));
-        }
     }
 
     private static class CompareByPriority implements Comparator<VariantContext>, Serializable {
