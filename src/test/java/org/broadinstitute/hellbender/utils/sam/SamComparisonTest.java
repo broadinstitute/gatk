@@ -52,6 +52,7 @@ public class SamComparisonTest {
 
     @Test
     public void testSortsDifferent() throws IOException {
+        // should be all 0's because program should return before comparing any alignments
         testHelper("genomic_sorted.sam", "unsorted.sam", 0, 0, 0, 0, 0, 0, 0, false);
     }
 
@@ -113,5 +114,25 @@ public class SamComparisonTest {
     @Test
     public void testUnmapped4() throws IOException {
         testHelper("unmapped_first.sam", "unmapped_first.sam", 1, 0, 1, 0, 0, 0, 0, true);
+    }
+
+    @Test
+    public void testDuplicateReadNameAndCoordinate() throws IOException {
+        testHelper("same_qname_and_pos.sam", "same_qname_and_pos.sam", 1, 0, 1, 0, 0, 0, 0, true);
+    }
+
+    @Test
+    public void testQuerynameSomeDifferentCoords() throws IOException {
+        testHelper("qname_sorted_v1.sam", "qname_sorted_v2.sam", 2, 2, 0, 0, 0, 0, 0, false);
+    }
+
+    @Test
+    public void testQuerynameMissingFirstOfPair() throws IOException {
+        testHelper("qname_sorted_v1.sam", "qname_sorted_v1_second_of_pair_only.sam", 2, 0, 0, 0, 0, 0, 2, false);
+    }
+
+    @Test
+    public void testUnsorted() throws IOException {
+        testHelper("unsorted.sam", "unsorted_bigger.sam", 2, 0, 0, 0, 0, 1, 0, false);
     }
 }
