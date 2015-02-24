@@ -16,12 +16,12 @@ public class RScriptExecutorUnitTest extends BaseTest {
     private static final String HELLO_WORLD_SCRIPT = "print('hello, world')";
     private static final String GSALIB_LOADED_SCRIPT = "if (!'package:gsalib' %in% search()) stop('gsalib not loaded')";
 
-    @Test
+    @Test(groups = {"R"})
     public void testRscriptExists() {
         Assert.assertTrue(RScriptExecutor.RSCRIPT_EXISTS, "Rscript not found in environment ${PATH}");
     }
 
-    @Test(dependsOnMethods = "testRscriptExists")
+    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
     public void testExistingScript() {
         File script = writeScript(HELLO_WORLD_SCRIPT);
         try {
@@ -33,14 +33,14 @@ public class RScriptExecutorUnitTest extends BaseTest {
         }
     }
 
-    @Test(dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
+    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
     public void testNonExistantScriptException() {
         RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new File("does_not_exists.R"));
         executor.exec();
     }
 
-    @Test(dependsOnMethods = "testRscriptExists")
+    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
     public void testNonExistantScriptNoException() {
         logger.warn("Testing that warning is printed an no exception thrown for missing script.");
         RScriptExecutor executor = new RScriptExecutor();
@@ -49,7 +49,7 @@ public class RScriptExecutorUnitTest extends BaseTest {
         Assert.assertFalse(executor.exec(), "Exec should have returned false when the job failed");
     }
 
-    @Test(dependsOnMethods = "testRscriptExists")
+    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
     public void testLibrary() {
         File script = writeScript(GSALIB_LOADED_SCRIPT);
         try {
@@ -62,7 +62,7 @@ public class RScriptExecutorUnitTest extends BaseTest {
         }
     }
 
-    @Test(dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
+    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
     public void testLibraryMissing() {
         File script = writeScript(GSALIB_LOADED_SCRIPT);
         try {

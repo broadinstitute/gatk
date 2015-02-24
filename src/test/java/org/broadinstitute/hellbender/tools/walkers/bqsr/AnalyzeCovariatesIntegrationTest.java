@@ -73,7 +73,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @throws java.io.IOException should never happen. It would be an
      *    indicator of a problem with the testing environment.
      */
-    @Test
+    @Test(groups = {"R"})
     public void testPdfGeneration()
             throws IOException {
         final File pdfFile = createTempFile("ACTest", ".pdf");
@@ -139,7 +139,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @param useAfterFile  whether to include the -after input file.
      * @throws java.io.IOException never thrown, unless there is a problem with the testing environment.
      */
-    @Test(dataProvider="alternativeInOutAbsenceCombinations")
+    @Test(groups = {"R"}, dataProvider="alternativeInOutAbsenceCombinations")
     public void testInOutAbsence(final boolean useCsvFile, final boolean usePdfFile,
             final boolean useBQSRFile, final boolean useBeforeFile, final boolean useAfterFile)
             throws IOException {

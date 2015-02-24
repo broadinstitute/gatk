@@ -7,13 +7,13 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public class RScriptLibraryUnitTest {
-    @Test
+    @Test(groups = {"R"})
     public void testProperties() {
         Assert.assertEquals(RScriptLibrary.GSALIB.getLibraryName(), "gsalib");
         Assert.assertEquals(RScriptLibrary.GSALIB.getResourcePath(), "gsalib.tar.gz");
     }
 
-    @Test
+    @Test(groups = {"R"})
     public void testWriteTemp() {
         File file = RScriptLibrary.GSALIB.writeTemp();
         Assert.assertTrue(file.exists(), "R library was not written to temp file: " + file);
