@@ -1022,24 +1022,13 @@ public class GATKVariantContextUtils {
         return indexOflastSharedBase;
     }
 
-    private final static Map<String, Object> subsetAttributes(final CommonInfo igc, final Collection<String> keysToPreserve) {
+    private static Map<String, Object> subsetAttributes(final CommonInfo igc, final Collection<String> keysToPreserve) {
         Map<String, Object> attributes = new HashMap<>(keysToPreserve.size());
         for ( final String key : keysToPreserve  ) {
             if ( igc.hasAttribute(key) )
                 attributes.put(key, igc.getAttribute(key));
         }
         return attributes;
-    }
-
-    /**
-     * @deprecated use variant context builder version instead
-     * @param vc                  the variant context
-     * @param keysToPreserve      the keys to preserve
-     * @return a pruned version of the original variant context
-     */
-    @Deprecated
-    public static VariantContext pruneVariantContext(final VariantContext vc, Collection<String> keysToPreserve ) {
-        return pruneVariantContext(new VariantContextBuilder(vc), keysToPreserve).make();
     }
 
     public static VariantContextBuilder pruneVariantContext(final VariantContextBuilder builder, Collection<String> keysToPreserve ) {

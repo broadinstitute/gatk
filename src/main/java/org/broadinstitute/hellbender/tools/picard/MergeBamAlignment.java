@@ -34,10 +34,6 @@ import java.util.List;
 )
 public class MergeBamAlignment extends PicardCommandLineProgram {
 
-    @Deprecated
-    @Argument(doc = "This argument is ignored and will be removed.", shortName = "PE")
-    public Boolean PAIRED_RUN;
-
     @Argument(shortName = "UNMAPPED",
             doc = "Original SAM or BAM file of unmapped reads, which must be in queryname order.")
     public File UNMAPPED_BAM;
@@ -84,12 +80,6 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
             optional = true)
     public String PROGRAM_GROUP_NAME;
 
-    @Argument(doc = "The expected jump size (required if this is a jumping library). Deprecated. Use EXPECTED_ORIENTATIONS instead",
-            shortName = "JUMP",
-            mutex = "EXPECTED_ORIENTATIONS",
-            optional = true)
-    public Integer JUMP_SIZE;
-
     @Argument(doc = "Whether to clip adapters where identified.")
     public boolean CLIP_ADAPTERS = true;
 
@@ -122,8 +112,7 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
     public int READ2_TRIM = 0;
 
     @Argument(shortName = "ORIENTATIONS",
-            doc = "The expected orientation of proper read pairs. Replaces JUMP_SIZE",
-            mutex = "JUMP_SIZE",
+            doc = "The expected orientation of proper read pairs.",
             optional = true)
     public List<SamPairUtil.PairOrientation> EXPECTED_ORIENTATIONS;
 
@@ -194,10 +183,7 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
             prod.setCommandLine(PROGRAM_GROUP_COMMAND_LINE);
             prod.setProgramName(PROGRAM_GROUP_NAME);
         }
-        // TEMPORARY FIX until internal programs all specify EXPECTED_ORIENTATIONS
-        if (JUMP_SIZE != null) {
-            EXPECTED_ORIENTATIONS = Arrays.asList(SamPairUtil.PairOrientation.RF);
-        } else if (EXPECTED_ORIENTATIONS == null || EXPECTED_ORIENTATIONS.isEmpty()) {
+        if (EXPECTED_ORIENTATIONS == null || EXPECTED_ORIENTATIONS.isEmpty()) {
             EXPECTED_ORIENTATIONS = Arrays.asList(SamPairUtil.PairOrientation.FR);
         }
 
