@@ -34,6 +34,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
@@ -55,14 +56,14 @@ public class RScriptExecutor {
      */
     private static Logger logger = LogManager.getLogger(RScriptExecutor.class);
 
-    private boolean exceptOnError = false;
-    private final List<RScriptLibrary> libraries = new ArrayList<RScriptLibrary>();
-    private final List<Resource> scriptResources = new ArrayList<Resource>();
-    private final List<File> scriptFiles = new ArrayList<File>();
-    private final List<String> args = new ArrayList<String>();
+    private boolean ignoreExceptions = false;
+    private final List<RScriptLibrary> libraries = new ArrayList<>();
+    private final List<Resource> scriptResources = new ArrayList<>();
+    private final List<File> scriptFiles = new ArrayList<>();
+    private final List<String> args = new ArrayList<>();
 
-    public void setExceptOnError(boolean exceptOnError) {
-        this.exceptOnError = exceptOnError;
+    public void setIgnoreExceptions(boolean ignoreExceptions) {
+        this.ignoreExceptions = ignoreExceptions;
     }
 
     public void addLibrary(RScriptLibrary library) {
@@ -100,7 +101,7 @@ public class RScriptExecutor {
 
     public boolean exec() {
         if (!RSCRIPT_EXISTS) {
-            if (exceptOnError) {
+            if (!ignoreExceptions) {
                 throw new UserException.CannotExecuteRScript(RSCRIPT_MISSING_MESSAGE);
             } else {
                 logger.warn("Skipping: " + getApproximateCommandLine());
@@ -118,7 +119,7 @@ public class RScriptExecutor {
             StringBuilder expression = new StringBuilder("tempLibDir = '").append(tempLibInstallationDir).append("';");
 
             if (this.libraries.size() > 0) {
-                List<String> tempLibraryPaths = new ArrayList<String>();
+                List<String> tempLibraryPaths = new ArrayList<>();
                 for (RScriptLibrary library: this.libraries) {
                     File tempLibrary = library.writeLibrary(tempLibSourceDir);
                     tempFiles.add(tempLibrary);
@@ -155,9 +156,13 @@ public class RScriptExecutor {
                 cmd[i++] = arg;
 
             ProcessSettings processSettings = new ProcessSettings(cmd);
+            //if debug is enabled, output the stdout and stdder, otherwise capture it to a buffer
             if (logger.isDebugEnabled()) {
                 processSettings.getStdoutSettings().printStandard(true);
                 processSettings.getStderrSettings().printStandard(true);
+            } else {
+                processSettings.getStdoutSettings().setBufferSize(8192);
+                processSettings.getStderrSettings().setBufferSize(8192);
             }
 
             ProcessController controller = ProcessController.getThreadLocal();
@@ -167,17 +172,25 @@ public class RScriptExecutor {
                 for (String arg: cmd)
                     logger.debug("  " + arg);
             }
-            int exitValue = controller.exec(processSettings).getExitValue();
+            ProcessOutput po = controller.exec(processSettings);
+            int exitValue = po.getExitValue();
             logger.debug("Result: " + exitValue);
 
-            if (exitValue != 0)
-                throw new RScriptExecutorException(
-                        "RScript exited with " + exitValue +
-                                (logger.isDebugEnabled() ? "" : ". Run with -l DEBUG for more info."));
+            if (exitValue != 0){
+                StringBuilder message = new StringBuilder();
+                message.append(String.format("\nRscript exited with %d\nCommand Line: %s", exitValue,String.join(" ", cmd)));
+                //if debug was enabled the stdout/error were already output somewhere
+                if (!logger.isDebugEnabled()){
+                    message.append(String.format("\nStdout: %s\nStderr: %s",
+                            po.getStdout().getBufferString(),
+                            po.getStderr().getBufferString()));
+                }
+                throw new RScriptExecutorException(message.toString());
+            }
 
             return true;
         } catch (GATKException e) {
-            if (exceptOnError) {
+            if (!ignoreExceptions) {
                 throw e;
             } else {
                 logger.warn(e.getMessage());
