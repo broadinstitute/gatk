@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -16,7 +17,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public final class IntegrationTestSpec {
-    public static final String DEFAUL_TEMP_EXTENSION = ".tmp";
+    public static final String DEFAULT_TEMP_EXTENSION = ".tmp";
     public static final String DEFAULT_TEMP_PREFIX = "walktest.tmp_param";
 
     private final String args;
@@ -62,7 +63,7 @@ public final class IntegrationTestSpec {
     public void executeTest(final String name, CommandLineProgramTest test) throws IOException {
         List<File> tmpFiles = new ArrayList<>();
         for (int i = 0; i < nOutputFiles; i++) {
-            String ext = DEFAUL_TEMP_EXTENSION;
+            String ext = DEFAULT_TEMP_EXTENSION;
             File fl = BaseTest.createTempFile(String.format(DEFAULT_TEMP_PREFIX + ".%d", i), ext);
             tmpFiles.add(fl);
         }
@@ -170,26 +171,6 @@ public final class IntegrationTestSpec {
     }
 
     private void compareBamFiles(File resultFile, File expectedFile) throws IOException {
-//     //TODO - there's a bug in CompareSAMs that prevents us from using it.
-       // Until it's fixed, we're converting bams to sams and comparing strings.
-//     final CompareSAMs compareSAMs = new CompareSAMs();
-//     compareSAMs.samFiles = Arrays.asList(resultFile, expectedFile);
-//     compareSAMs.doWork();
-//     Assert.assertTrue(compareSAMs.areEqual(), "actual:" + resultFile.getAbsolutePath() + " expected:" + expectedFile);
-
-        //HACK comparing bam files as text files, first converting them to sam files
-        PrintReads pr = new PrintReads();
-        File expectedSAMfile = BaseTest.createTempFile("expected", ".sam");
-        pr.OUTPUT=  expectedSAMfile;
-        pr.READS_FILES = Arrays.asList(expectedFile);
-        pr.runTool();
-
-        PrintReads pr1 = new PrintReads();
-        File actualSAMfile = BaseTest.createTempFile("actual", ".sam");
-        pr1.OUTPUT= actualSAMfile;
-        pr1.READS_FILES = Arrays.asList(resultFile);
-        pr1.runTool();
-
-        compareTextFiles(actualSAMfile, expectedSAMfile);
+        SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
     }
 }
