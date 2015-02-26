@@ -1,0 +1,18 @@
+package org.broadinstitute.hellbender.cmdline.programgroups;
+
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
+
+/**
+ * Program group for tools that manipulate variants and associated metadata
+ */
+public class VariantProgramGroup implements CommandLineProgramGroup {
+    @Override
+    public String getName() {
+        return "VCF/BCF";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Tools for manipulating variants and associated metadata";
+    }
+}

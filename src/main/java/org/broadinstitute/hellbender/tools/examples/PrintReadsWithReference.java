@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.util.Optional;
 
 /**
  * Example/toy program that prints reads from the provided file or files with corresponding reference bases
@@ -40,10 +42,10 @@ public class PrintReadsWithReference extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext ) {
+    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
         outputStream.printf("Read at %s:%d-%d:\n%s\n", read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd(), read.getReadString());
-        if ( referenceContext != null )
-            outputStream.println("Reference Context:\n" + new String(referenceContext.getBases()));
+        if ( referenceContext.isPresent() )
+            outputStream.println("Reference Context:\n" + new String(referenceContext.get().getBases()));
         outputStream.println();
     }
 

@@ -9,12 +9,14 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.recalibration.BaseRecalibration;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.function.Function;
 
 @CommandLineProgramProperties(
@@ -99,7 +101,7 @@ public final class ApplyBQSR extends ReadWalker{
     }
 
     @Override
-    public void apply(SAMRecord read, ReferenceContext referenceContext) {
+    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
         outputWriter.addAlignment(bqsrTransform.apply(read));
     }
 

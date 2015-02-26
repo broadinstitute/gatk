@@ -51,8 +51,10 @@
 
 package org.broadinstitute.hellbender.tools.recalibration;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.Gather;
@@ -72,12 +74,13 @@ public class RecalibrationArgumentCollection implements Cloneable, ArgumentColle
 
     /**
      * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,
-     * so it is critical that a database of known polymorphic sites is given to the tool in order to skip over those sites. This tool accepts any number of RodBindings (VCF, Bed, etc.)
-     * for use as this database. For users wishing to exclude an interval list of known variation simply use -XL my.interval.list to skip over processing those sites.
-     * Please note however that the statistics reported by the tool will not accurately reflected those sites skipped by the -XL argument.
+     * so it is critical that a database of known polymorphic sites is given to the tool in order to skip over those sites. This tool accepts any number of
+     * Feature-containing files (VCF, BCF, BED, etc.) for use as this database. For users wishing to exclude an interval list of known variation simply
+     * use -XL my.interval.list to skip over processing those sites. Please note however that the statistics reported by the tool will not accurately
+     * reflected those sites skipped by the -XL argument.
      */
-    @Argument(fullName = "knownSites", shortName = "knownSites", doc = "VCF file with the set of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = true)
-    public File knownSitesVCF;
+    @Argument(fullName = "knownSites", shortName = "knownSites", doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = true)
+    public List<FeatureInput<Feature>> knownSites;
 
     /**
      * After the header, data records occur one per line until the end of the file. The first several items on a line are the
@@ -115,7 +118,7 @@ public class RecalibrationArgumentCollection implements Cloneable, ArgumentColle
      * This calculation is critically dependent on being able to skip over known polymorphic sites. Please be sure that you know what you are doing if you use this option.
      */
     @AdvancedOption
-    @Argument(fullName = "run_without_dbsnp_potentially_ruining_quality", shortName = "run_without_dbsnp_potentially_ruining_quality", optional = true, doc = "If specified, allows the recalibrator to be used without a dbsnp rod. Very unsafe and for expert users only.")
+    @Argument(fullName = "run_without_dbsnp_potentially_ruining_quality", shortName = "run_without_dbsnp_potentially_ruining_quality", optional = true, doc = "If specified, allows the recalibrator to be used without a dbsnp database. Very unsafe and for expert users only.")
     public boolean RUN_WITHOUT_DBSNP = false;
 
     /**

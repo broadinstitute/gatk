@@ -43,6 +43,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -312,15 +313,8 @@ public final class ClipReads extends ReadWalker {
         }
     }
 
-    /**
-     * The reads map function.
-     *
-     *
-     * @param ref  the reference bases that correspond to our read, if a reference was provided
-     * @param read the read itself, as a GATKSAMRecord
-     */
     @Override
-    public void apply(SAMRecord read, ReferenceContext ref) {
+    public void apply( SAMRecord read, Optional<ReferenceContext> ref, Optional<FeatureContext> featureContext ) {
         if ( onlyDoRead == null || read.getReadName().equals(onlyDoRead) ) {
             if ( clippingRepresentation == ClippingRepresentation.HARDCLIP_BASES || clippingRepresentation == ClippingRepresentation.REVERT_SOFTCLIPPED_BASES )
                 read = ReadClipper.revertSoftClippedBases(read);

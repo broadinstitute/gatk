@@ -6,6 +6,7 @@ import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -63,7 +64,7 @@ public class SplitReads extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext ) {
+    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
         outs.get(getKey(splitters, read)).addAlignment(read);
     }
 

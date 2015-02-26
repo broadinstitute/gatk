@@ -4,10 +4,12 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.io.File;
+import java.util.Optional;
 
 @CommandLineProgramProperties(
 	usage = "Prints reads from the input to the output.",
@@ -28,7 +30,7 @@ public class PrintReads extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext ) {
+    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
         outputWriter.addAlignment(read);
     }
 

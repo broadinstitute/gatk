@@ -26,6 +26,7 @@ package org.broadinstitute.hellbender.cmdline;
 import htsjdk.samtools.util.StringUtil;
 import joptsimple.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -639,7 +640,7 @@ public class CommandLineParser {
     }
 
 
-    private static boolean isCollectionField(final Field field) {
+    public static boolean isCollectionField(final Field field) {
         try {
             field.getType().asSubclass(Collection.class);
             return true;
@@ -670,7 +671,7 @@ public class CommandLineParser {
      * the case of primitive fields it will return the wrapper type so that String
      * constructors can be found.
      */
-    private Class<?> getUnderlyingType(final Field field) {
+    private static Class<?> getUnderlyingType(final Field field) {
         if (isCollectionField(field)) {
             final ParameterizedType clazz = (ParameterizedType) (field.getGenericType());
             final Type[] genericTypes = clazz.getActualTypeArguments();
@@ -678,7 +679,13 @@ public class CommandLineParser {
                 throw new GATKException.CommandLineParserInternalException("Strange collection type for field " +
                         field.getName());
             }
-            return (Class<?>) genericTypes[0];
+
+            // If the Collection's parameterized type is itself parameterized (eg., List<Foo<Bar>>),
+            // return the raw type of the outer parameter (Foo.class, in this example) to avoid a
+            // ClassCastException. Otherwise, return the Collection's type parameter directly as a Class.
+            return (Class<?>) (genericTypes[0] instanceof ParameterizedType ?
+                               ((ParameterizedType)genericTypes[0]).getRawType() :
+                               genericTypes[0]);
 
         } else {
             final Class<?> type = field.getType();
@@ -700,7 +707,9 @@ public class CommandLineParser {
             return true;
         }
         try {
-            clazz.getConstructor(String.class);
+            // Need to use getDeclaredConstructor() instead of getConstructor() in case the constructor
+            // is non-public
+            clazz.getDeclaredConstructor(String.class);
             return true;
         } catch (final NoSuchMethodException e) {
             return false;
@@ -718,7 +727,10 @@ public class CommandLineParser {
                             clazz.getSimpleName() + ". "+ getEnumOptions(clazz) );
                 }
             }
-            final Constructor<?> ctor = clazz.getConstructor(String.class);
+            // Need to use getDeclaredConstructor() instead of getConstructor() in case the constructor
+            // is non-public. Set it to be accessible if it isn't already.
+            final Constructor<?> ctor = clazz.getDeclaredConstructor(String.class);
+            ctor.setAccessible(true);
             return ctor.newInstance(s);
         } catch (final NoSuchMethodException e) {
             // Shouldn't happen because we've checked for presence of ctor
@@ -889,4 +901,74 @@ public class CommandLineParser {
         return toolName + " " + commandLineString.toString();
     }
 
+    /**
+     * Locates and returns the VALUES of all Argument-annotated fields of a specified type in a given object,
+     * pairing each field value with its corresponding Field object.
+     *
+     * Must be called AFTER argument parsing and value injection into argumentSource is complete (otherwise there
+     * will be no values to gather!). As a result, this is implemented as a static utility method into which
+     * the fully-initialized tool instance must be passed.
+     *
+     * Locates Argument-annotated fields of the target type, subtypes of the target type, and Collections of
+     * the target type or one of its subtypes. Unpacks Collection fields, returning a separate Pair for each
+     * value in each Collection.
+     *
+     * Searches argumentSource itself, as well as ancestor classes, and also recurses into any ArgumentCollections
+     * found.
+     *
+     * Will return Pairs containing a null second element for fields having no value, including empty Collection fields
+     * (these represent arguments of the target type that were not specified on the command line and so never initialized).
+     *
+     * @param type Target type. Search for Argument-annotated fields that are either of this type, subtypes of this type, or Collections of this type or one of its subtypes.
+     * @param argumentSource Object whose fields to search. Must have already undergone argument parsing and argument value injection.
+     * @param <T> Type parameter representing the type to search for and return
+     * @return A List of Pairs containing all Argument-annotated field values found of the target type. First element in each Pair
+     *         is the Field object itself, and the second element is the actual value of the argument field. The second
+     *         element will be null for uninitialized fields.
+     */
+    public static <T> List<Pair<Field, T>> gatherArgumentValuesOfType( final Class<T> type, final Object argumentSource ) {
+        List<Pair<Field, T>> argumentValues = new ArrayList<>();
+
+        // Examine all fields in argumentSource (including superclasses)
+        for ( Field field : getAllFields(argumentSource.getClass()) ) {
+            field.setAccessible(true);
+
+            try {
+                // Consider only fields that have Argument annotations and are either of the target type,
+                // subtypes of the target type, or Collections of the target type or one of its subtypes:
+                if ( field.getAnnotation(Argument.class) != null && type.isAssignableFrom(getUnderlyingType(field)) ) {
+
+                    if ( isCollectionField(field) ) {
+                        // Collection arguments are guaranteed by the parsing system to be non-null (at worst, empty)
+                        Collection<?> argumentContainer = (Collection<?>)field.get(argumentSource);
+
+                        // Emit a Pair with an explicit null value for empty Collection arguments
+                        if ( argumentContainer.isEmpty() ) {
+                            argumentValues.add(Pair.of(field, null));
+                        }
+                        // Unpack non-empty Collections of the target type into individual values,
+                        // each paired with the same Field object.
+                        else {
+                            for ( Object argumentValue : argumentContainer ) {
+                                argumentValues.add(Pair.of(field, type.cast(argumentValue)));
+                            }
+                        }
+                    }
+                    else {
+                        // Add values for non-Collection arguments of the target type directly
+                        argumentValues.add(Pair.of(field, type.cast(field.get(argumentSource))));
+                    }
+                }
+                else if ( field.getAnnotation(ArgumentCollection.class) != null ) {
+                    // Recurse into ArgumentCollections for more potential matches.
+                    argumentValues.addAll(gatherArgumentValuesOfType(type, field.get(argumentSource)));
+                }
+            }
+            catch ( IllegalAccessException e ) {
+                throw new GATKException.ShouldNeverReachHereException("field access failed after setAccessible(true)");
+            }
+        }
+
+        return argumentValues;
+    }
 }
