@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.utils.GenomeLoc;
+import htsjdk.samtools.util.SimpleInterval;
 
 import java.util.Iterator;
 
@@ -11,5 +11,5 @@ import java.util.Iterator;
  * @param <T> Type of data in the data source
  */
 public interface GATKDataSource<T> extends Iterable<T> {
-    Iterator<T> query(final GenomeLoc interval);
+    Iterator<T> query(final SimpleInterval interval);
 }

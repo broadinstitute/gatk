@@ -10,11 +10,13 @@ public class StandardArgumentDefinitions {
     public static final String OUTPUT_LONG_NAME = "output";
     public static final String REFERENCE_LONG_NAME = "reference";
     public static final String VARIANT_LONG_NAME = "variant";
+    public static final String FEATURE_LONG_NAME = "feature";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
     public static final String REFERENCE_SHORT_NAME = "R";
     public static final String VARIANT_SHORT_NAME = "V";
+    public static final String FEATURE_SHORT_NAME = "F";
     public static final String SAMPLE_ALIAS_SHORT_NAME = "ALIAS";
     public static final String LIBRARY_NAME_SHORT_NAME = "LIB";
     public static final String EXPECTED_INSERT_SIZE_SHORT_NAME = "INSERT";

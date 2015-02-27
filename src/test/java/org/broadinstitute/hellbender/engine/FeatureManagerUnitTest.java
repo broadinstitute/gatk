@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
@@ -144,8 +145,8 @@ public class FeatureManagerUnitTest extends BaseTest {
         toolInstance.bedListFeatureInput.add(new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bed_file.bed"));
 
         FeatureManager manager = new FeatureManager(toolInstance);
-        List<VariantContext> vcFeatures = manager.getFeatures(toolInstance.variantContextFeatureInput, hg19GenomeLocParser.createGenomeLoc("1", 1, 2000));
-        List<BEDFeature> bedFeatures = manager.getFeatures(toolInstance.bedListFeatureInput.get(0), hg19GenomeLocParser.createGenomeLoc("1", 1, 1));
+        List<VariantContext> vcFeatures = manager.getFeatures(toolInstance.variantContextFeatureInput, new SimpleInterval("1", 1, 2000));
+        List<BEDFeature> bedFeatures = manager.getFeatures(toolInstance.bedListFeatureInput.get(0), new SimpleInterval("1", 1, 1));
 
         Assert.assertEquals(vcFeatures.size(), 14, "Wrong number of Features returned from VariantContext test Feature file");
         Assert.assertEquals(bedFeatures.size(), 1, "Wrong number of Features returned from BED test Feature file");
@@ -157,6 +158,6 @@ public class FeatureManagerUnitTest extends BaseTest {
 
         // Requests for FeatureInputs not declared in the tool's class hierarchy (or associated ArgumentCollections)
         // should throw an exception
-        manager.getFeatures(new FeatureInput<Feature>("featureInputNotDeclaredInTool"), hg19GenomeLocParser.createGenomeLoc("1", 1, 1));
+        manager.getFeatures(new FeatureInput<Feature>("featureInputNotDeclaredInTool"), new SimpleInterval("1", 1, 1));
     }
 }

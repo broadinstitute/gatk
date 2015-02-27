@@ -57,13 +57,14 @@ public class LeftAlignIndels extends ReadWalker {
     private SAMFileWriter outputWriter = null;
 
     @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
-
-        if ( ! referenceIsPresent() ) {
-            throw new UserException("This tool requires a reference");
-        }
-        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_FILE);
+        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.referenceFile);
     }
 
     @Override

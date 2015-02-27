@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,9 +24,9 @@ import java.util.List;
  * Feature sources are lazily queried, so there's no overhead if the client chooses not to examine
  * the FeatureContext it's passed.
  *
- * A FeatureContext may have no backing data source. In this case, queries on it will always
+ * A FeatureContext may have no backing data source and/or interval. In these cases, queries on it will always
  * return empty Lists. You can determine whether there is a backing source of Features via
- * {@link #hasBackingDataSource()}
+ * {@link #hasBackingDataSource()}, and whether there is an interval via {@link #getInterval}
  */
 public final class FeatureContext {
 
@@ -37,9 +37,10 @@ public final class FeatureContext {
     private final FeatureManager featureManager;
 
     /**
-     * We will return Features overlapping this interval
+     * We will return Features overlapping this interval. Null if this context has no known location
+     * (eg., we are dealing with unmapped data).
      */
-    private final GenomeLoc interval;
+    private final SimpleInterval interval;
 
     /**
      * Creates an empty FeatureContext with no backing data source. All queries on this context will
@@ -51,19 +52,13 @@ public final class FeatureContext {
 
     /**
      * Creates a new FeatureContext given a FeatureManager and a query interval. These may be null if
-     * no sources of Features are available, but if you provide a FeatureManager you must also provide
-     * a query interval.
+     * no sources of Features are available and/or we don't have a known location on the reference,
+     * in which case all queries on this context will return an empty List.
      *
      * @param featureManager FeatureManager containing backing data sources for all discovered Feature arguments. Null if there are no sources of Features.
-     * @param interval Interval to constrain queries on this FeatureContext. May be null if there are no sources of Features.
+     * @param interval Interval to constrain queries on this FeatureContext. Null if we have no known location.
      */
-    public FeatureContext( final FeatureManager featureManager, final GenomeLoc interval ) {
-        // If we have a backing FeatureManager, we must also have a query interval. If there's no source of Features,
-        // we don't care about the interval (may be null or non-null).
-        if ( featureManager != null && interval == null ) {
-            throw new IllegalArgumentException("Must provide a non-null query interval for a FeatureContext that has a backing FeatureManager");
-        }
-
+    public FeatureContext( final FeatureManager featureManager, final SimpleInterval interval ) {
         this.featureManager = featureManager;
         this.interval = interval;
     }
@@ -79,28 +74,29 @@ public final class FeatureContext {
     }
 
     /**
-     * Gets our query interval (the interval that all Features returned by this FeatureContext overlap)
+     * Gets our query interval (the interval that all Features returned by this FeatureContext overlap).
+     * Null if this context has no interval.
      *
-     * @return query interval for this FeatureContext
+     * @return query interval for this FeatureContext (may be null)
      */
-    public GenomeLoc getInterval() {
+    public SimpleInterval getInterval() {
         return interval;
     }
 
     /**
      * Gets all Features from the source represented by the provided FeatureInput argument that overlap
      * this FeatureContext's query interval. Will return an empty List if this FeatureContext has
-     * no backing source of Features.
+     * no backing source of Features and/or interval.
      *
      * Returned Features are not guaranteed to be in any particular order.
      *
      * @param featureDescriptor FeatureInput argument for which to fetch Features
      * @param <T> type of Feature in the data source backing the provided FeatureInput
      * @return All Features in the data source backing the provided FeatureInput that overlap
-     *         this FeatureContext's query interval. Empty List if there is no backing data source.
+     *         this FeatureContext's query interval. Empty List if there is no backing data source and/or interval.
      */
     public <T extends Feature> List<T> getValues( final FeatureInput<T> featureDescriptor ) {
-        if ( featureManager == null ) {
+        if ( featureManager == null || interval == null ) {
             return Collections.<T>emptyList();
         }
 
@@ -110,7 +106,7 @@ public final class FeatureContext {
     /**
      * Gets all Features from the source represented by the provided FeatureInput argument that overlap
      * this FeatureContext's query interval AND that start at the specified start position.
-     * Will return an empty List if this FeatureContext has no backing source of Features.
+     * Will return an empty List if this FeatureContext has no backing source of Features and/or interval.
      *
      * Returned Features are not guaranteed to be in any particular order.
      *
@@ -120,10 +116,10 @@ public final class FeatureContext {
      * @param <T> type of Feature in the data source backing the provided FeatureInput
      * @return All Features in the data source backing the provided FeatureInput that overlap
      *         this FeatureContext's query interval AND that start at the specified start position.
-     *         Empty List if there is no backing data source.
+     *         Empty List if there is no backing data source and/or interval.
      */
     public <T extends Feature> List<T> getValues( final FeatureInput<T> featureDescriptor, final int featureStart ) {
-        if ( featureManager == null ) {
+        if ( featureManager == null || interval == null ) {
             return Collections.<T>emptyList();
         }
 
@@ -133,7 +129,7 @@ public final class FeatureContext {
     /**
      * Gets all Features from the sources represented by the provided FeatureInput arguments that overlap
      * this FeatureContext's query interval. Will return an empty List if this FeatureContext has no
-     * backing source of Features.
+     * backing source of Features and/or interval.
      *
      * Returned Features are not guaranteed to be in any particular order, or to be globally unique
      * across all sources of Features.
@@ -141,10 +137,10 @@ public final class FeatureContext {
      * @param featureDescriptors FeatureInput arguments for which to fetch Features
      * @param <T> type of Feature in the data sources backing the provided FeatureInputs
      * @return All Features in the data sources backing the provided FeatureInputs that overlap
-     *         this FeatureContext's query interval. Empty List if there is no backing data source.
+     *         this FeatureContext's query interval. Empty List if there is no backing data source and/or interval.
      */
     public <T extends Feature> List<T> getValues( final Collection<FeatureInput<T>> featureDescriptors ) {
-        if ( featureManager == null ) {
+        if ( featureManager == null || interval == null ) {
             return Collections.<T>emptyList();
         }
 
@@ -158,7 +154,7 @@ public final class FeatureContext {
     /**
      * Gets all Features from the sources represented by the provided FeatureInput arguments that overlap
      * this FeatureContext's query interval, AND that start at the specified start position. Will return
-     * an empty List if this FeatureContext has no backing source of Features.
+     * an empty List if this FeatureContext has no backing source of Features and/or interval.
      *
      * Returned Features are not guaranteed to be in any particular order, or to be globally unique
      * across all sources of Features.
@@ -169,10 +165,10 @@ public final class FeatureContext {
      * @param <T> type of Feature in the data sources backing the provided FeatureInputs
      * @return All Features in the data sources backing the provided FeatureInputs that overlap
      *         this FeatureContext's query interval, AND that start at the specified start position.
-     *         Empty List if there is no backing data source.
+     *         Empty List if there is no backing data source and/or interval.
      */
     public <T extends Feature> List<T> getValues( final Collection<FeatureInput<T>> featureDescriptors, final int featureStart ) {
-        if ( featureManager == null ) {
+        if ( featureManager == null || interval == null ) {
             return Collections.<T>emptyList();
         }
 

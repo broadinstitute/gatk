@@ -1,0 +1,18 @@
+Current interval: 1:100-200
+	Overlapping reference bases: NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+
+	Overlapping read at 1:200-275
+
+	Overlapping variant at 1:100-100. Ref: G* Alt(s): [A]
+	Overlapping variant at 1:199-200. Ref: GG* Alt(s): [G]
+	Overlapping variant at 1:200-200. Ref: G* Alt(s): [A]
+
+Current interval: 2:500-600
+	Overlapping reference bases: NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+
+	Overlapping read at 2:500-575
+	Overlapping read at 2:550-625
+
+	Overlapping variant at 2:525-525. Ref: G* Alt(s): [A]
+	Overlapping variant at 2:548-550. Ref: GGG* Alt(s): [G]
+

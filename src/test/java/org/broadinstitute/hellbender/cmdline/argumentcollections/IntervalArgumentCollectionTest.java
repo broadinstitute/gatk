@@ -1,7 +1,9 @@
-package org.broadinstitute.hellbender.cmdline;
+package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -23,7 +25,8 @@ public class IntervalArgumentCollectionTest extends BaseTest{
         IntervalArgumentCollection iac = new IntervalArgumentCollection();
         iac.excludeIntervalStrings.addAll(Arrays.asList("1", "2", "3"));
         Assert.assertTrue(iac.intervalsSpecified());
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(hg19GenomeLocParser.createOverEntireContig("4")));
+        GenomeLoc chr4GenomeLoc = hg19GenomeLocParser.createOverEntireContig("4");
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval(chr4GenomeLoc.getContig(), chr4GenomeLoc.getStart(), chr4GenomeLoc.getStop())));
     }
 
     @Test
@@ -32,7 +35,7 @@ public class IntervalArgumentCollectionTest extends BaseTest{
         iac.intervalStrings.add("1:1-100");
         iac.excludeIntervalStrings.add("1:90-200");
         Assert.assertTrue(iac.intervalsSpecified());
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), getLocs("1:1-89"));
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval("1", 1, 89)));
     }
 
     @Test
@@ -41,9 +44,9 @@ public class IntervalArgumentCollectionTest extends BaseTest{
         iac.intervalStrings.add("1:1-100");
         iac.intervalStrings.add("1:90-200");
         iac.intervalSetRule = IntervalSetRule.INTERSECTION;
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), getLocs("1:90-100"));
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval("1", 90, 100)));
         iac.intervalSetRule = IntervalSetRule.UNION;
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), getLocs("1:1-200"));
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval("1", 1, 200)));
     }
 
     @Test
@@ -51,7 +54,7 @@ public class IntervalArgumentCollectionTest extends BaseTest{
         IntervalArgumentCollection iac = new IntervalArgumentCollection();
         iac.intervalStrings.add("1:20-30");
         iac.intervalPadding = 10;
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), getLocs("1:10-40"));
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval("1", 10, 40)));
     }
 
     @Test( expectedExceptions = UserException.BadArgumentValue.class)

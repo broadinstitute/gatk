@@ -3,9 +3,9 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +40,7 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * Only reads that overlap these intervals will be returned during a full iteration.
      * Individual queries are unaffected by these intervals, however.
      */
-    private List<GenomeLoc> intervals;
+    private List<SimpleInterval> intervals;
 
     /**
      * Bounding intervals in htsjdk-compatible form after processing to sort and merge adjacent/overlapping
@@ -124,12 +124,13 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * Restricts a traversal of this data source via iterator() to only return reads which overlap the given intervals.
      * Calls to query() are not affected by setting these intervals.
      *
+     * @param intervals Our next full traversal will return only reads overlapping these intervals
      */
-    public void setIntervalsForTraversal(List<GenomeLoc> intervals){
+    public void setIntervalsForTraversal( final List<SimpleInterval> intervals ){
         // Treat null and empty interval lists the same
         this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
 
-        if ( this.intervals != null && !indicesAvailable) {
+        if ( this.intervals != null && ! indicesAvailable ) {
             raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
         }
         preparedIntervals = this.intervals != null ? prepareIntervalsForTraversal() : null;
@@ -164,11 +165,11 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * @return Iterator over reads overlapping the query interval
      */
     @Override
-    public Iterator<SAMRecord> query( final GenomeLoc interval ) {
+    public Iterator<SAMRecord> query( final SimpleInterval interval ) {
         if ( ! indicesAvailable )
             raiseExceptionForMissingIndex("Cannot query reads data source by interval unless all files are indexed");
 
-        final QueryInterval[] queryInterval = { new QueryInterval(interval.getContigIndex(), interval.getStart(), interval.getStop()) };
+        final QueryInterval[] queryInterval = { convertIntervalToQueryInterval(interval) };
         return prepareIteratorsForTraversal(queryInterval);
     }
 
@@ -230,23 +231,40 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
     }
 
     /**
-     * Converts our intervals from GATK format into htsjdk-compatible format suitable for querying
-     * overlapping reads
+     * Converts our intervals from GATK format into htsjdk-compatible "QueryInterval" format suitable for
+     * querying overlapping reads
      *
-     * @return intervals converted into htsjdk format
+     * @return intervals converted into htsjdk QueryInterval format
      */
     private QueryInterval[] prepareIntervalsForTraversal() {
         QueryInterval[] convertedIntervals = new QueryInterval[intervals.size()];
 
-        // Convert each GenomeLoc to a QueryInterval
+        // Convert each SimpleInterval to a QueryInterval
         int intervalIndex = 0;
-        for ( GenomeLoc interval : intervals ) {
-            convertedIntervals[intervalIndex] = new QueryInterval(interval.getContigIndex(), interval.getStart(), interval.getStop());
+        for ( SimpleInterval interval : intervals ) {
+            convertedIntervals[intervalIndex] = convertIntervalToQueryInterval(interval);
             ++intervalIndex;
         }
 
         // Intervals must be optimized (sorted and merged) in order to use the htsjdk query API
         return QueryInterval.optimizeIntervals(convertedIntervals);
+    }
+
+    /**
+     * Converts an interval in SimpleInterval format into an htsjdk QueryInterval.
+     *
+     * In doing so, a header lookup is performed to convert from contig name to index
+     *
+     * @param interval interval to convert
+     * @return an equivalent interval in QueryInterval format
+     */
+    private QueryInterval convertIntervalToQueryInterval( final SimpleInterval interval ) {
+        final int contigIndex = getHeader().getSequenceIndex(interval.getContig());
+        if ( contigIndex == -1 ) {
+            throw new UserException("Contig " + interval.getContig() + " not present in reads sequence dictionary");
+        }
+
+        return new QueryInterval(contigIndex, interval.getStart(), interval.getEnd());
     }
 
     /**

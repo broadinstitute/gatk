@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import org.apache.commons.lang3.tuple.Pair;
@@ -11,7 +12,6 @@ import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -32,7 +32,7 @@ import java.util.*;
  * by the user on the command line, determines the type of the file and the codec required to decode it,
  * creates a FeatureDataSource for that file, and adds it to a query-able resource pool.
  *
- * Clients can then call {@link #getFeatures(FeatureInput, GenomeLoc)} to query the data source for
+ * Clients can then call {@link #getFeatures(FeatureInput, SimpleInterval)} to query the data source for
  * a particular FeatureInput over a specific interval.
  */
 public final class FeatureManager implements AutoCloseable {
@@ -86,24 +86,42 @@ public final class FeatureManager implements AutoCloseable {
 
     /**
      * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
-     * arguments in the tool and creating query-able FeatureDataSources for them
+     * arguments in the tool and creating query-able FeatureDataSources for them. Uses the default
+     * caching behavior of {@link FeatureDataSource}.
      *
      * @param toolInstance Instance of the tool to be run (potentially containing one or more FeatureInput arguments)
      *                     Must have undergone command-line argument parsing and argument value injection already.
      */
     public FeatureManager( final CommandLineProgram toolInstance ) {
+        this(toolInstance, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES);
+    }
+
+    /**
+     * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
+     * arguments in the tool and creating query-able FeatureDataSources for them. Allows control over
+     * how much caching is performed by each {@link FeatureDataSource}.
+     *
+     * @param toolInstance Instance of the tool to be run (potentially containing one or more FeatureInput arguments)
+     *                     Must have undergone command-line argument parsing and argument value injection already.
+     * @param featureQueryLookahead When querying FeatureDataSources, cache this many extra bases of context beyond
+     *                              the end of query intervals in anticipation of future queries (>= 0).
+     */
+    public FeatureManager( final CommandLineProgram toolInstance, final int featureQueryLookahead ) {
         this.toolInstance = toolInstance;
         featureSources = new HashMap<>();
 
-        initializeFeatureSources();
+        initializeFeatureSources(featureQueryLookahead);
     }
 
     /**
      * Given our tool instance, discover all argument of type FeatureInput (or Collections thereof), determine
      * the type of each Feature-containing file, and add a FeatureDataSource for each file to our query pool.
+     *
+     * @param featureQueryLookahead Set up each FeatureDataSource to cache this many extra bases of context beyond
+     *                              the end of query intervals in anticipation of future queries (>= 0).
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void initializeFeatureSources() {
+    private void initializeFeatureSources( final int featureQueryLookahead ) {
 
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
@@ -138,7 +156,7 @@ public final class FeatureManager implements AutoCloseable {
                 }
 
                 // Create a new FeatureDataSource for this file, and add it to our query pool
-                featureSources.put(featureInput, new FeatureDataSource<>(featureInput.getFeatureFile(), codec, featureInput.getName()));
+                featureSources.put(featureInput, new FeatureDataSource<>(featureInput.getFeatureFile(), codec, featureInput.getName(), featureQueryLookahead));
             }
         }
     }
@@ -205,7 +223,7 @@ public final class FeatureManager implements AutoCloseable {
      * @return A List of all Features in the backing data source for the provided FeatureInput that overlap
      *         the provided interval (may be empty if there are none, but never null)
      */
-    public <T extends Feature> List<T> getFeatures( final FeatureInput<T> featureDescriptor, final GenomeLoc interval ) {
+    public <T extends Feature> List<T> getFeatures( final FeatureInput<T> featureDescriptor, final SimpleInterval interval ) {
         @SuppressWarnings("unchecked")
         FeatureDataSource<T> dataSource = (FeatureDataSource<T>)featureSources.get(featureDescriptor);
 
