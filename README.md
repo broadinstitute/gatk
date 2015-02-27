@@ -37,7 +37,7 @@ General guidelines for Hellbender developers
 
 * When in doubt, follow the Google Java Style guide: http://google-styleguide.googlecode.com/svn/trunk/javaguide.html
 
-* Don't accept pull requests that introduce warninigs. Warnings need to be addressed or supressed.
+* Don't accept pull requests that introduce warnings. Warnings need to be addressed or supressed.
 
 * Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
 
