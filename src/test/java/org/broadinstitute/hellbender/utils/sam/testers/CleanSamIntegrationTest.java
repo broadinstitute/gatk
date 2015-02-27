@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.sam.testers;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.TestUtil;
-import org.broadinstitute.hellbender.tools.picard.CleanSam;
+import org.broadinstitute.hellbender.tools.picard.sam.CleanSam;
 import org.testng.Assert;
 
 import java.io.PrintWriter;

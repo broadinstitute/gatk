@@ -28,6 +28,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -36,9 +37,9 @@ import java.io.File;
  * This class defines the individual test cases to run.  The actual running of the test is done
  * by AbstractMarkDuplicatesCommandLineProgramTester or children thereof (see getTester).
  */
-public abstract class AbstractMarkDuplicatesCommandLineProgramTest {
+public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends CommandLineProgramTest {
 
-    protected static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/MarkDuplicates/");
+    protected static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MarkDuplicates/");
 
     protected abstract AbstractMarkDuplicatesTester getTester();
 

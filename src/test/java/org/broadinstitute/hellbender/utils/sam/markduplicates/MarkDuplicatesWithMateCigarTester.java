@@ -26,7 +26,7 @@ package org.broadinstitute.hellbender.utils.sam.markduplicates;
 
 import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
-import org.broadinstitute.hellbender.tools.picard.markduplicates.MarkDuplicatesWithMateCigar;
+import org.broadinstitute.hellbender.tools.picard.sam.markduplicates.MarkDuplicatesWithMateCigar;
 
 /**
  * This class is an extension of AbstractMarkDuplicatesCommandLineProgramTester used to test MarkDuplicatesWithMateCigar with SAM files generated on the fly.

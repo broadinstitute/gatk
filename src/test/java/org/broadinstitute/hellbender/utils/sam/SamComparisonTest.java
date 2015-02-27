@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class SamComparisonTest {
-    private static final File TEST_FILES_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/CompareSAMs");
+    private static final File TEST_FILES_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/CompareSAMs");
 
     private void testHelper(final String f1, final String f2,
                             final int expectedMatch, final int expectedDiffer, final int expectedUnmappedBoth,
