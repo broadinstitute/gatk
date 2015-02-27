@@ -33,7 +33,7 @@ import java.io.File;
 
 public class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
-    private static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/");
+    private static final File TEST_DATA_DIR = getTestDataDir();
 
     @Override
     public String getCommandLineProgramName() {
