@@ -26,8 +26,8 @@
 package org.broadinstitute.hellbender.utils.R;
 
 import org.apache.commons.io.FileUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -52,7 +52,6 @@ public class RScriptExecutorUnitTest extends BaseTest {
         try {
             RScriptExecutor executor = new RScriptExecutor();
             executor.addScript(script);
-            executor.setExceptOnError(true);
             Assert.assertTrue(executor.exec(), "Exec failed");
         } finally {
             FileUtils.deleteQuietly(script);
@@ -62,7 +61,6 @@ public class RScriptExecutorUnitTest extends BaseTest {
     @Test(dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
     public void testNonExistantScriptException() {
         RScriptExecutor executor = new RScriptExecutor();
-        executor.setExceptOnError(true);
         executor.addScript(new File("does_not_exists.R"));
         executor.exec();
     }
@@ -71,8 +69,8 @@ public class RScriptExecutorUnitTest extends BaseTest {
     public void testNonExistantScriptNoException() {
         logger.warn("Testing that warning is printed an no exception thrown for missing script.");
         RScriptExecutor executor = new RScriptExecutor();
-        executor.setExceptOnError(false);
         executor.addScript(new File("does_not_exists.R"));
+        executor.setIgnoreExceptions(true);
         Assert.assertFalse(executor.exec(), "Exec should have returned false when the job failed");
     }
 
@@ -83,7 +81,6 @@ public class RScriptExecutorUnitTest extends BaseTest {
             RScriptExecutor executor = new RScriptExecutor();
             executor.addScript(script);
             executor.addLibrary(RScriptLibrary.GSALIB);
-            executor.setExceptOnError(true);
             Assert.assertTrue(executor.exec(), "Exec failed");
         } finally {
             FileUtils.deleteQuietly(script);
@@ -97,7 +94,6 @@ public class RScriptExecutorUnitTest extends BaseTest {
             RScriptExecutor executor = new RScriptExecutor();
             executor.addScript(script);
             // GSALIB is not added nor imported in the script
-            executor.setExceptOnError(true);
             executor.exec();
         } finally {
             FileUtils.deleteQuietly(script);

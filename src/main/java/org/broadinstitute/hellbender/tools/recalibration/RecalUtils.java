@@ -578,7 +578,6 @@ public class RecalUtils {
     public static void generatePlots(final File csvFile, final File maybeGzipedExampleReportFile, final File output) {
         final File exampleReportFile = IOUtils.gunzipToTempIfNeeded(maybeGzipedExampleReportFile);
         final RScriptExecutor executor = new RScriptExecutor();
-        executor.setExceptOnError(true);
         executor.addScript(new Resource(SCRIPT_FILE, RecalUtils.class));
         executor.addArgs(csvFile.getAbsolutePath());
         executor.addArgs(exampleReportFile.getAbsolutePath());
