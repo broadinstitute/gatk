@@ -23,15 +23,23 @@ General guidelines for Hellbender developers
 
 * **Do not put private or restricted data into the repo.**
 
-* **Keep datafiles under 100kb in size.**
+* **Try to keep datafiles under 100kb in size.**
 
 * Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code). New code without tests should not be accepted as pull requests.
-
-* Don't use `toString()` for anything other than human consumption (ie. don't base your code on it.)
 
 * Do use Java 8 features liberally, in particular streams, functional programming etc.
 
 * Don't override `clone()` unless you really know what you're doing. If you do override it, document thoroughly.
+
+* Don't override or call `finalize()` even when you think you know what you're doing.
+
+* Don't use `toString()` for anything other than human consumption (ie. don't base your code on it.)
+
+* When in doubt, follow the Google Java Style guide: http://google-styleguide.googlecode.com/svn/trunk/javaguide.html
+
+* Don't accept pull requests that introduce warninigs. Warnings need to be addressed or supressed.
+
+* Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
 
 
 Creating a Hellbender project in the IntelliJ IDE:
