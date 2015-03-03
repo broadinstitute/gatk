@@ -35,7 +35,7 @@ import java.util.*;
  * Clients can then call {@link #getFeatures(FeatureInput, GenomeLoc)} to query the data source for
  * a particular FeatureInput over a specific interval.
  */
-public class FeatureManager {
+public final class FeatureManager implements AutoCloseable {
     private static final Logger logger = LogManager.getLogger(FeatureManager.class);
 
     /**

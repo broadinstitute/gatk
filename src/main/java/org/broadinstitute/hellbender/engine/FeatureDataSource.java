@@ -31,7 +31,7 @@ import java.util.*;
  *
  * @param <T> The type of Feature returned by this data source
  */
-public class FeatureDataSource<T extends Feature> implements GATKDataSource<T>, AutoCloseable {
+public final class FeatureDataSource<T extends Feature> implements GATKDataSource<T>, AutoCloseable {
 
     /**
      * File backing this data source. Used mainly for error messages.

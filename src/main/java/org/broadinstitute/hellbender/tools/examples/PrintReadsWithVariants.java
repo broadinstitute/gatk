@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Example/toy program that prints reads from the provided file or files along with overlapping variants
@@ -51,30 +50,26 @@ public class PrintReadsWithVariants extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         outputStream.printf("Read at %s:%d-%d:\n%s\n", read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd(), read.getReadString());
 
-        // The featureContext will be absent if we didn't provide any sources of variants on the command line
-        if ( featureContext.isPresent() ) {
+        if ( groupVariantsBySource ) {
+            // We can keep the variants from each source separate by passing in the FeatureInputs
+            // individually to featureContext.getValues()
+            for ( FeatureInput<VariantContext> featureSource : variants ) {
+                outputStream.println("From source " + featureSource.getName());
 
-            if ( groupVariantsBySource ) {
-                // We can keep the variants from each source separate by passing in the FeatureInputs
-                // individually to featureContext.getValues()
-                for ( FeatureInput<VariantContext> featureSource : variants ) {
-                    outputStream.println("From source " + featureSource.getName());
-
-                    for ( VariantContext variant : featureContext.get().getValues(featureSource) ) {
-                        outputStream.printf("\t");
-                        printOverlappingVariant(variant);
-                    }
-                }
-            }
-            else {
-                // Passing in all FeatureInputs at once to featureContext.getValues() lets us get
-                // all overlapping variants without regard to source
-                for ( VariantContext variant : featureContext.get().getValues(variants) ) {
+                for ( VariantContext variant : featureContext.getValues(featureSource) ) {
+                    outputStream.printf("\t");
                     printOverlappingVariant(variant);
                 }
+            }
+        }
+        else {
+            // Passing in all FeatureInputs at once to featureContext.getValues() lets us get
+            // all overlapping variants without regard to source
+            for ( VariantContext variant : featureContext.getValues(variants) ) {
+                printOverlappingVariant(variant);
             }
         }
 

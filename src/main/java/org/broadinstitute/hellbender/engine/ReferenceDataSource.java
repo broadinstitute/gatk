@@ -17,7 +17,7 @@ import java.util.Iterator;
  * Supports targeted queries over the reference by interval, but does not
  * yet support complete iteration over the entire reference.
  */
-public class ReferenceDataSource implements GATKDataSource<Byte>, AutoCloseable {
+public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoCloseable {
 
     /**
      * Our reference file. Uses the caching version of IndexedFastaSequenceFile

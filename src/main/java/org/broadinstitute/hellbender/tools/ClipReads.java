@@ -314,7 +314,7 @@ public final class ClipReads extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> ref, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext ref, FeatureContext featureContext ) {
         if ( onlyDoRead == null || read.getReadName().equals(onlyDoRead) ) {
             if ( clippingRepresentation == ClippingRepresentation.HARDCLIP_BASES || clippingRepresentation == ClippingRepresentation.REVERT_SOFTCLIPPED_BASES )
                 read = ReadClipper.revertSoftClippedBases(read);

@@ -7,8 +7,6 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
-import java.util.Optional;
-
 @CommandLineProgramProperties(
 	usage = "Count reads.",
 	usageShort = "Count reads",
@@ -18,7 +16,7 @@ public class CountReads extends ReadWalker {
 
     private long count = 0;
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         ++count;
     }
 
