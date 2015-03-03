@@ -64,7 +64,6 @@ import org.broadinstitute.hellbender.utils.sam.CigarUtils;
 import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
 
 import java.io.File;
-import java.util.Optional;
 
 /**
  * Left-aligns indels from reads in a bam file.
@@ -118,7 +117,7 @@ public class LeftAlignIndels extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> ref, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext ref, FeatureContext featureContext ) {
         // we can not deal with screwy records
         if ( read.getReadUnmappedFlag() || read.getCigar().numCigarElements() == 0 ) {
             outputWriter.addAlignment(read);
@@ -129,7 +128,7 @@ public class LeftAlignIndels extends ReadWalker {
         int numBlocks = AlignmentUtils.getNumAlignmentBlocks(read);
         if ( numBlocks == 2 ) {
             // We checked in onTraversalStart() that a reference is present, so ref.get() is safe
-            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.unclipCigar(read.getCigar()), ref.get().getBases(), read.getReadBases(), 0, 0, true);
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.unclipCigar(read.getCigar()), ref.getBases(), read.getReadBases(), 0, 0, true);
             newCigar = CigarUtils.reclipCigar(newCigar, read);
             read.setCigar(newCigar);
         }

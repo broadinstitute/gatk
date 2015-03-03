@@ -324,7 +324,7 @@ public class BaseRecalibrator extends ReadWalker {
      * whether or not the base matches the reference at this particular location
      */
     @Override
-    public void apply( SAMRecord originalRead, Optional<ReferenceContext> ref, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord originalRead, ReferenceContext ref, FeatureContext featureContext ) {
         ReadTransformer transform = makeReadTransform();
         final SAMRecord read = transform.apply(originalRead);
 
@@ -336,7 +336,7 @@ public class BaseRecalibrator extends ReadWalker {
         }
 
         // We've checked in onTraversalStart() that we have a reference, so ref.get() is safe
-        final int[] isSNP = calculateIsSNP(read, ref.get(), originalRead);
+        final int[] isSNP = calculateIsSNP(read, ref, originalRead);
         final int[] isInsertion = calculateIsIndel(read, EventType.BASE_INSERTION);
         final int[] isDeletion = calculateIsIndel(read, EventType.BASE_DELETION);
         final int nErrors = nEvents(isSNP, isInsertion, isDeletion);
@@ -376,10 +376,10 @@ public class BaseRecalibrator extends ReadWalker {
         return n;
     }
 
-    private boolean[] calculateSkipArray( final SAMRecord read, final Optional<FeatureContext> featureContext ) {
+    private boolean[] calculateSkipArray( final SAMRecord read, final FeatureContext featureContext ) {
         final byte[] bases = read.getReadBases();
         final boolean[] skip = new boolean[bases.length];
-        final boolean[] knownSites = calculateKnownSites(read, featureContext.isPresent() ? featureContext.get().getValues(RAC.knownSites) : Collections.<Feature>emptyList());
+        final boolean[] knownSites = calculateKnownSites(read, featureContext.getValues(RAC.knownSites));
         for( int iii = 0; iii < bases.length; iii++ ) {
             skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSites[iii] || badSolidOffset(read, iii);
         }

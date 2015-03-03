@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.tools.recalibration.BaseRecalibration;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 
 import java.io.File;
-import java.util.Optional;
 import java.util.function.Function;
 
 @CommandLineProgramProperties(
@@ -101,7 +100,7 @@ public final class ApplyBQSR extends ReadWalker{
     }
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         outputWriter.addAlignment(bqsrTransform.apply(read));
     }
 

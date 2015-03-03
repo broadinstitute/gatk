@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.util.Optional;
 
 /**
  * Example/toy program that prints reads from the provided file or files with corresponding reference bases
@@ -42,10 +41,10 @@ public class PrintReadsWithReference extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         outputStream.printf("Read at %s:%d-%d:\n%s\n", read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd(), read.getReadString());
-        if ( referenceContext.isPresent() )
-            outputStream.println("Reference Context:\n" + new String(referenceContext.get().getBases()));
+        if ( referenceContext.hasBackingDataSource() )
+            outputStream.println("Reference Context:\n" + new String(referenceContext.getBases()));
         outputStream.println();
     }
 

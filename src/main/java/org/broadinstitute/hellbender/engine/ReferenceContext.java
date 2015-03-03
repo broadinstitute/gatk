@@ -4,6 +4,7 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
 import java.util.Iterator;
 
@@ -19,11 +20,15 @@ import java.util.Iterator;
  * the start of the interval and 5 bases of extra reference context after the end of the interval.
  *
  * Window boundaries can be set either at construction time or afterwards via {@link #setWindow}.
+ *
+ * A ReferenceContext may have no backing data source. In this case, queries on it will always
+ * return empty arrays / iterators. You can determine whether there is a backing source of reference
+ * data via {@link #hasBackingDataSource()}
  */
-public class ReferenceContext {
+public final class ReferenceContext {
 
     /**
-     * Backing data source
+     * Backing data source. Null if there is no reference data.
      */
     private ReferenceDataSource dataSource;
 
@@ -43,6 +48,15 @@ public class ReferenceContext {
      */
     private GenomeLoc window;
 
+
+    /**
+     * Create a ReferenceContext with no backing data source. This context will always return
+     * empty arrays/iterators in response to queries.
+     */
+    public ReferenceContext() {
+        this(null, null);
+    }
+
     /**
      * Create a windowless ReferenceContext set up to lazily query the bases spanning just
      * the provided interval (with no extra bases of context)
@@ -60,20 +74,33 @@ public class ReferenceContext {
      *
      * Window boundaries are cropped at contig boundaries, if necessary.
      *
-     * @param dataSource backing reference data source
-     * @param interval our location on the reference
+     * @param dataSource backing reference data source (must be null if there is no reference)
+     * @param interval our location on the reference (may be null if there is no reference)
      * @param windowLeadingBases Number of extra reference bases to include before the start of our interval. Must be >= 0.
      * @param windowTrailingBases Number of extra reference bases to include after the end of our interval. Must be >= 0.
      */
     public ReferenceContext( final ReferenceDataSource dataSource, final GenomeLoc interval, final int windowLeadingBases, final int windowTrailingBases ) {
-        if ( dataSource == null || interval == null ) {
-            throw new IllegalArgumentException("dataSource/interval must be non-null");
+        // If we have a backing data source, we must also have a query interval. If there's no data source,
+        // we don't care about the interval (may be null or non-null).
+        if ( dataSource != null && interval == null ) {
+            throw new IllegalArgumentException("Must provide a non-null query interval for a ReferenceContext that has a backing ReferenceDataSource");
         }
 
         this.dataSource = dataSource;
         cachedSequence = null;
         this.interval = interval;
         setWindow(windowLeadingBases, windowTrailingBases);
+    }
+
+    /**
+     * Determines whether this ReferenceContext has a backing reference data source. A ReferenceContext with
+     * no backing data source will always return an empty bases array from {@link #getBases()} and an
+     * empty iterator from {@link #getBasesIterator()}
+     *
+     * @return true if this ReferenceContext has a backing reference data source, otherwise false
+     */
+    public boolean hasBackingDataSource() {
+        return dataSource != null;
     }
 
     /**
@@ -85,11 +112,12 @@ public class ReferenceContext {
      * @return iterator over the reference bases in this context
      */
     public Iterator<Byte> getBasesIterator() {
-        return dataSource.query(window);
+        return dataSource != null ? dataSource.query(window) : new ByteArrayIterator(new byte[0]);
     }
 
     /**
      * Get all reference bases in this context. The results are cached in this object for future queries.
+     * Will always return an empty array if there is no backing data source to query.
      *
      * Call {@link #setWindow} before calling this method if you want to configure the amount of extra reference context
      * to include around the current interval
@@ -97,6 +125,10 @@ public class ReferenceContext {
      * @return reference bases in this context, as a byte array
      */
     public byte[] getBases() {
+        if ( dataSource == null ) {
+            return new byte[0];
+        }
+
         // Only perform a query if we haven't fetched the bases in this context previously
         if ( cachedSequence == null ) {
             cachedSequence = dataSource.queryAndPrefetch(window);

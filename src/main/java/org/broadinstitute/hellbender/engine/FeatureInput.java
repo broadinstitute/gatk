@@ -24,7 +24,7 @@ import java.io.File;
  *
  * @param <T> the type of Feature that this FeatureInput file contains (eg., VariantContext, BEDFeature, etc.)
  */
-public class FeatureInput<T extends Feature> {
+public final class FeatureInput<T extends Feature> {
 
     /**
      * Logical name for this source of Features optionally provided by the user on the command line

@@ -51,8 +51,9 @@ public abstract class ReadWalker extends GATKTool {
         reference = REFERENCE_FILE != null ? new ReferenceDataSource(REFERENCE_FILE) : null;
 
         features = new FeatureManager(this);
-        if ( features.isEmpty() ) // No available sources of Features for this tool
+        if ( features.isEmpty() ) {  // No available sources of Features for this tool
             features = null;
+        }
 
         if(intervalArgumentCollection.intervalsSpecified()){
             reads.setIntervalsForTraversal(intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()));
@@ -94,7 +95,7 @@ public abstract class ReadWalker extends GATKTool {
      *
      * The default implementation creates filters using {@link #makeReadFilter}
      * and then iterates over all reads, applies the filter and hands the resulting reads to the {@link #apply}
-     * function of the walker (long with additional contextual information, if present, such as reference bases).
+     * function of the walker (along with additional contextual information, if present, such as reference bases).
      */
     @Override
     public void traverse() {
@@ -108,8 +109,8 @@ public abstract class ReadWalker extends GATKTool {
                 .forEach(read -> {
                     final GenomeLoc readInterval = genomeLocParser.createGenomeLoc(read);
                     apply(read,
-                          reference == null ? Optional.empty() : Optional.of(new ReferenceContext(reference, readInterval)),
-                          features == null  ? Optional.empty() : Optional.of(new FeatureContext(features, readInterval)));
+                          new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference == null
+                          new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features == null
                 });
     }
 
@@ -135,12 +136,16 @@ public abstract class ReadWalker extends GATKTool {
      * TODO: to complement this operation. At a minimum, we should make apply() return a value to
      * TODO: discourage statefulness in walkers, but how this value should be handled is TBD.
      * @param read current read
-     * @param referenceContext Reference bases spanning the current read (Optional.empty() if no reference was specified).
-     *                         Can request extra bases of context around the current read's interval by invoking
-     *                         {@link ReferenceContext#setWindow} on this object before calling {@link ReferenceContext#getBases}
-     * @param featureContext Features spanning the current read (Optional.empty() if no Feature inputs were specified for this tool)
+     * @param referenceContext Reference bases spanning the current read. Will be an empty, but non-null, context object
+     *                         if there is no backing source of reference data (in which case all queries on it will return
+     *                         an empty array/iterator). Can request extra bases of context around the current read's interval
+     *                         by invoking {@link org.broadinstitute.hellbender.engine.ReferenceContext#setWindow}
+     *                         on this object before calling {@link org.broadinstitute.hellbender.engine.ReferenceContext#getBases}
+     * @param featureContext Features spanning the current read. Will be an empty, but non-null, context object
+     *                       if there is no backing source of Feature data (in which case all queries on it will return an
+     *                       empty List).
      */
-    public abstract void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext );
+    public abstract void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
      * Close the reads and reference data sources.

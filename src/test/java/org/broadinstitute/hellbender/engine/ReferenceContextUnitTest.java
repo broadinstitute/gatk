@@ -18,17 +18,29 @@ public class ReferenceContextUnitTest extends BaseTest {
     private static final File TEST_REFERENCE = new File(hg19MiniReference);
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullDataSource() {
-        try ( ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE) ) {
-            ReferenceContext refContext = new ReferenceContext(null, new GenomeLocParser(reference.getSequenceDictionary()).createGenomeLoc("1", 1, 5));
-        }
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullInterval() {
+    public void testNullIntervalWithNonNullDataSource() {
+        // If we provide a backing data source, we must also provide a query interval
         try ( ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE) ) {
             ReferenceContext refContext = new ReferenceContext(reference, null);
         }
+    }
+
+    @DataProvider(name = "EmptyReferenceContextDataProvider")
+    public Object[][] getEmptyReferenceContextData() {
+        // Default-constructed ReferenceContexts and ReferenceContexts constructed from null ReferenceDataSources
+        // should behave as empty context objects.
+        return new Object[][] {
+                { new ReferenceContext() },
+                { new ReferenceContext(null, null) },
+                { new ReferenceContext(null, hg19GenomeLocParser.createGenomeLoc("1", 1, 1) ) }
+        };
+    }
+
+    @Test(dataProvider = "EmptyReferenceContextDataProvider")
+    public void testReferenceContextWithNoBackingDataSource( final ReferenceContext refContext) {
+        Assert.assertFalse(refContext.hasBackingDataSource(), "Empty ReferenceContext reports having a backing data source");
+        Assert.assertEquals(refContext.getBases().length, 0, "Empty ReferenceContext should have returned an empty bases array from getBases()");
+        Assert.assertFalse(refContext.getBasesIterator().hasNext(), "Empty ReferenceContext should have returned an empty bases iterator from getBasesIterator()");
     }
 
     @DataProvider(name = "WindowlessReferenceIntervalDataProvider")

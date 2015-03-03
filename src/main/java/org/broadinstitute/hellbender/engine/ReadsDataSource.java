@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * -Iteration over all reads, optionally restricted to reads that overlap a set of intervals
  * -Targeted queries by one interval at a time
  */
-public class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable {
+public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable {
 
     /**
      * Mapping from SamReaders to iterators over the reads from each reader. Only one

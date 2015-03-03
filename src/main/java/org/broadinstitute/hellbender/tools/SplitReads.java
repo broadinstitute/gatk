@@ -64,7 +64,7 @@ public class SplitReads extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         outs.get(getKey(splitters, read)).addAlignment(read);
     }
 

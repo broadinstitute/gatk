@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.Optional;
 
 @CommandLineProgramProperties(
 	usage = "Walks over all input data, accumulating statistics such as total number of read\n" +
@@ -22,7 +21,7 @@ public class FlagStat extends ReadWalker {
     private FlagStatus sum = new FlagStatus();
 
     @Override
-    public void apply( SAMRecord read, Optional<ReferenceContext> referenceContext, Optional<FeatureContext> featureContext ) {
+    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         sum.add(read);
     }
 
