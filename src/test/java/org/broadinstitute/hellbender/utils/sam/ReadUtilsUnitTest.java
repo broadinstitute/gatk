@@ -162,7 +162,7 @@ public class ReadUtilsUnitTest extends BaseTest {
         }
     }
 
-    @Test (enabled = true)
+    @Test
     public void testGetBasesReverseComplement() {
         int iterations = 1000;
         Random random = Utils.getRandomGenerator();
@@ -179,7 +179,7 @@ public class ReadUtilsUnitTest extends BaseTest {
         }
     }
 
-    @Test (enabled = true)
+    @Test
     public void testGetMaxReadLength() {
         for( final int minLength : Arrays.asList( 5, 30, 50 ) ) {
             for( final int maxLength : Arrays.asList( 50, 75, 100 ) ) {
@@ -195,7 +195,7 @@ public class ReadUtilsUnitTest extends BaseTest {
         Assert.assertEquals(ReadUtils.getMaxReadLength(reads), 0, "Empty list should have max length of zero");
     }
 
-    @Test (enabled = true)
+    @Test
     public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
 
         final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
@@ -211,7 +211,7 @@ public class ReadUtilsUnitTest extends BaseTest {
         Assert.assertEquals(result, 2);
     }
 
-    @Test (enabled = true)
+    @Test
     public void testReadWithNsRefAfterDeletion() throws FileNotFoundException {
 
         final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));

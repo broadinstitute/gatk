@@ -6,15 +6,13 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
 import java.io.File;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.StreamSupport;
-
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
 /**
  * A ReadWalker is a tool that processes a single read at a time from one or multiple sources of reads, with
@@ -32,6 +30,9 @@ public abstract class ReadWalker extends GATKTool {
 
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence", common = false, optional = true)
     public File REFERENCE_FILE;
+
+    @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
+    public boolean disable_all_read_filters = false;
 
     private ReadsDataSource reads = null;
     private ReferenceDataSource reference = null;
@@ -103,7 +104,8 @@ public abstract class ReadWalker extends GATKTool {
 
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        ReadFilter filter = makeReadFilter();
+        ReadFilter filter = disable_all_read_filters ? ReadFilterLibrary.ALLOW_ALL_READS : makeReadFilter();
+
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(filter)
                 .forEach(read -> {
@@ -116,7 +118,7 @@ public abstract class ReadWalker extends GATKTool {
 
     /**
      * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {#link MalformedReadFilter} filter with all default options.
+     * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.WELLFORMED} filter with all default options.
      * Default implementation of {@link #traverse()} calls this method once before iterating
      * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
      *
@@ -124,7 +126,7 @@ public abstract class ReadWalker extends GATKTool {
      * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
      */
     public ReadFilter makeReadFilter(){
-          return ALLOW_ALL_READS;//TODO reanable MalformedReadFilter https://github.com/broadinstitute/hellbender/issues/180
+          return ReadFilterLibrary.WELLFORMED;
     }
 
     /**

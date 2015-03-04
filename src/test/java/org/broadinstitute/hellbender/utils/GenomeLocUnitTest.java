@@ -1,18 +1,13 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.*;
 
 /**
@@ -275,7 +270,7 @@ public class GenomeLocUnitTest extends BaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "SGLtest", enabled = true)
+    @Test(dataProvider = "SGLtest")
     public void testSimpleGenomeLoc(MergeTest test) {
         testMerge(test.locs);
     }
@@ -305,7 +300,7 @@ public class GenomeLocUnitTest extends BaseTest {
     //
     // -------------------------------------------------------------------------------------
 
-    @Test(enabled=true)
+    @Test
     public void testDistanceAcrossContigs() {
         final int chrSize = 1000;
         SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(10, 0, chrSize);

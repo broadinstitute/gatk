@@ -27,7 +27,7 @@ public class ContextCovariateUnitTest {
         ReadCovariates.clearKeysCache();
     }
 
-    @Test(enabled = true)
+    @Test
     public void testSimpleContexts() {
         SAMRecord read = ArtificialSAMUtils.createRandomRead(1000);
         SAMRecord clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);

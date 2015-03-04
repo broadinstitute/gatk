@@ -54,7 +54,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @throws java.io.IOException should never happen. It would be an indicator of a
      * problem with the testing environment.
      */
-    @Test(enabled = true)
+    @Test
     public void testCsvGeneration()
             throws IOException {
 
@@ -73,7 +73,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @throws java.io.IOException should never happen. It would be an
      *    indicator of a problem with the testing environment.
      */
-    @Test(enabled = true)
+    @Test
     public void testPdfGeneration()
             throws IOException {
         final File pdfFile = createTempFile("ACTest", ".pdf");
@@ -95,7 +95,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @throws java.io.IOException should never happen. It would be an
      *        indicator of a problem with the testing environment.
      */
-    @Test(enabled = true, dataProvider="alternativeAfterFileProvider")
+    @Test(dataProvider="alternativeAfterFileProvider")
     public void testParameterChangeException(final String afterFileName,
             final String description)
             throws IOException {
@@ -119,7 +119,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @param useAfterFile  whether to include the -after input file.
      * @throws java.io.IOException never thrown, unless there is a problem with the testing environment.
      */
-    @Test(enabled = true, dataProvider="alternativeInOutAbsenceCombinations")
+    @Test(dataProvider="alternativeInOutAbsenceCombinations")
     public void testInOutAbsenceException(final boolean useCsvFile, final boolean usePdfFile,
             final boolean useBQSRFile, final boolean useBeforeFile, final boolean useAfterFile)
             throws IOException {
@@ -139,7 +139,7 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
      * @param useAfterFile  whether to include the -after input file.
      * @throws java.io.IOException never thrown, unless there is a problem with the testing environment.
      */
-    @Test(enabled = true, dataProvider="alternativeInOutAbsenceCombinations")
+    @Test(dataProvider="alternativeInOutAbsenceCombinations")
     public void testInOutAbsence(final boolean useCsvFile, final boolean usePdfFile,
             final boolean useBQSRFile, final boolean useBeforeFile, final boolean useAfterFile)
             throws IOException {

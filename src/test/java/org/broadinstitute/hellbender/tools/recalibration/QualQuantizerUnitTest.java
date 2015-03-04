@@ -127,7 +127,7 @@ public class QualQuantizerUnitTest extends BaseTest {
         return QuantizerTestProvider.getTests(QuantizerTestProvider.class);
     }
 
-    @Test(dataProvider = "QuantizerTestProvider", enabled = true)
+    @Test(dataProvider = "QuantizerTestProvider")
     public void testQuantizer(QuantizerTestProvider cfg) {
         QualQuantizer qq = new QualQuantizer(cfg.nObservationsPerQual, cfg.nLevels, 0);
         logger.warn("cfg: " + cfg);
