@@ -312,4 +312,29 @@ public class ArtificialSAMUtils {
         header.setSequenceDictionary(dict);
         return header;
     }
+
+    /**
+     * setup read groups for the specified read groups and sample names
+     *
+     * @param header       the header to set
+     * @param readGroupIDs the read group ID tags
+     * @param sampleNames  the sample names
+     * @return the adjusted SAMFileHeader
+     */
+    public static SAMFileHeader createEnumeratedReadGroups(SAMFileHeader header, List<String> readGroupIDs, List<String> sampleNames) {
+        if (readGroupIDs.size() != sampleNames.size()) {
+            throw new GATKException("read group count and sample name count must be the same");
+        }
+
+        List<SAMReadGroupRecord> readGroups = new ArrayList<SAMReadGroupRecord>();
+
+        int x = 0;
+        for (; x < readGroupIDs.size(); x++) {
+            SAMReadGroupRecord rec = new SAMReadGroupRecord(readGroupIDs.get(x));
+            rec.setSample(sampleNames.get(x));
+            readGroups.add(rec);
+        }
+        header.setReadGroups(readGroups);
+        return header;
+    }
 }
