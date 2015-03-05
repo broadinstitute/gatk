@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ContextCovariate implements Covariate {
     private final static Logger logger = LogManager.getLogger(ContextCovariate.class);
@@ -56,7 +57,7 @@ public class ContextCovariate implements Covariate {
     public void recordValues(final SAMRecord read, final ReadCovariates values) {
 
         // store the original bases and then write Ns over low quality ones
-        final byte[] originalBases = read.getReadBases().clone();
+        final byte[] originalBases = Arrays.copyOf(read.getReadBases(), read.getReadBases().length);
         // Write N's over the low quality tail of the reads to avoid adding them into the context
         final SAMRecord clippedRead = ReadClipper.clipLowQualEnds(read, LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
         

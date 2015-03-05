@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.sam.CigarUtils;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -105,7 +106,7 @@ public class SplitNCigarReads extends CommandLineProgram {
     }
 
     private SAMFileWriter initialize(final SamReader in) {
-        final SAMFileHeader outputHeader = in.getFileHeader().clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(in.getFileHeader());
         final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_SEQUENCE);
 
         try {

@@ -209,7 +209,7 @@ public class RecalUtils {
          * @param c  covariates to print out.
          */
         protected CsvPrinter(final OutputStream os, final Covariate ... c) {
-            covariates = c == null ? new Covariate[0] : c.clone();
+            covariates = c == null ? new Covariate[0] : Arrays.copyOf(c, c.length);
             ps = new PrintStream(os);
             printHeader();
         }

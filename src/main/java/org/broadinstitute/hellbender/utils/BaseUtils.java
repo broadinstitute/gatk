@@ -43,7 +43,7 @@ public class BaseUtils {
         baseIndexMap['t'] = Base.T.ordinal();
     }
 
-    static private final int[] baseIndexWithIupacMap = baseIndexMap.clone();
+    static private final int[] baseIndexWithIupacMap = Arrays.copyOf(baseIndexMap, baseIndexMap.length);
     static {
         baseIndexWithIupacMap['*'] = -1;    // the wildcard character is bad
         baseIndexWithIupacMap['N'] = Base.N.ordinal();

@@ -35,7 +35,7 @@ public abstract class RepeatCovariate implements Covariate {
     @Override
     public void recordValues(final SAMRecord read, final ReadCovariates values) {
         // store the original bases and then write Ns over low quality ones
-        final byte[] originalBases = read.getReadBases().clone();
+        final byte[] originalBases = Arrays.copyOf(read.getReadBases(), read.getReadBases().length);
 
         final boolean negativeStrand = read.getReadNegativeStrandFlag();
         byte[] bases = read.getReadBases();
@@ -74,7 +74,7 @@ public abstract class RepeatCovariate implements Covariate {
             byte[] backwardRepeatUnit = Arrays.copyOfRange(readBases, offset - str + 1, offset + 1);
             maxBW = GATKVariantContextUtils.findNumberOfRepetitions(backwardRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
             if (maxBW > 1) {
-                bestBWRepeatUnit = backwardRepeatUnit.clone();
+                bestBWRepeatUnit = Arrays.copyOf(backwardRepeatUnit, backwardRepeatUnit.length);
                 break;
             }
         }
@@ -94,7 +94,7 @@ public abstract class RepeatCovariate implements Covariate {
                 byte[] forwardRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset + str + 1);
                 maxFW = GATKVariantContextUtils.findNumberOfRepetitions(forwardRepeatUnit, Arrays.copyOfRange(readBases, offset + 1, readBases.length), true);
                 if (maxFW > 1) {
-                    bestFWRepeatUnit = forwardRepeatUnit.clone();
+                    bestFWRepeatUnit = Arrays.copyOf(forwardRepeatUnit, forwardRepeatUnit.length);
                     break;
                 }
             }

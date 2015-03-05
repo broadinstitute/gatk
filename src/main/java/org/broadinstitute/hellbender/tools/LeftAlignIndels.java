@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.sam.CigarUtils;
 import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 
@@ -57,7 +58,7 @@ public class LeftAlignIndels extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = getHeaderForReads().clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
 
         if ( ! referenceIsPresent() ) {
             throw new UserException("This tool requires a reference");

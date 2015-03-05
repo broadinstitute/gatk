@@ -126,7 +126,7 @@ public class UtilsUnitTest extends BaseTest {
             }
         } else {
             final Random rdn = Utils.getRandomGenerator();
-            final int[] valuesClone = values.clone();
+            final int[] valuesClone = Arrays.copyOf(values, values.length);
             final List<Integer> list = Utils.asList(valuesClone);
             Assert.assertNotNull(list);
             Assert.assertEquals(list.size(),values.length);
@@ -161,7 +161,7 @@ public class UtilsUnitTest extends BaseTest {
             }
         } else {
             final Random rdn = Utils.getRandomGenerator();
-            final double[] valuesClone = values.clone();
+            final double[] valuesClone = Arrays.copyOf(values, values.length);
             final List<Double> list = Utils.asList(valuesClone);
             Assert.assertNotNull(list);
             Assert.assertEquals(list.size(),values.length);

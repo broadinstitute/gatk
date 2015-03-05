@@ -360,7 +360,7 @@ public class AlignmentUtilsUnitTest {
                                 final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
 
                                 // set the read's bases and quals
-                                final byte[] readBases = reference.clone();
+                                final byte[] readBases = Arrays.copyOf(reference, reference.length);
                                 // create the mismatch if requested
                                 if ( mismatchLocation != -1 )
                                     readBases[mismatchLocation] = (byte)'C';

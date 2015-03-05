@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.util.HashMap;
@@ -73,7 +74,7 @@ public class ReorderSam extends PicardCommandLineProgram {
         Map<Integer, Integer> newOrder = buildSequenceDictionaryMap(refDict, in.getFileHeader().getSequenceDictionary());
 
         // has to be after we create the newOrder
-        SAMFileHeader outHeader = in.getFileHeader().clone();
+        SAMFileHeader outHeader = ReadUtils.clone(in.getFileHeader());
         outHeader.setSequenceDictionary(refDict);
 
         log.info("Writing reads...");

@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 
@@ -24,7 +25,7 @@ public class PrintReads extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = getHeaderForReads().clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
         outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_FILE);
     }
 

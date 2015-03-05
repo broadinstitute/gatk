@@ -414,20 +414,6 @@ public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
 
 
     /**
-     * return a deep copy of this collection.
-     *
-     * @return a new GenomeLocSortedSet, identical to the current GenomeLocSortedSet.
-     */
-    public GenomeLocSortedSet clone() {
-        GenomeLocSortedSet ret = new GenomeLocSortedSet(genomeLocParser);
-        for (GenomeLoc loc : this.mArray) {
-            // ensure a deep copy
-            ret.mArray.add(genomeLocParser.createGenomeLoc(loc.getContig(), loc.getStart(), loc.getStop()));
-        }
-        return ret;
-    }
-
-    /**
      * convert this object to a list
      * @return the lists
      */

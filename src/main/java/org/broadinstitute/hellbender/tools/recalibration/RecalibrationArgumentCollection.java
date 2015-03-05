@@ -4,7 +4,6 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.Gather;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -19,7 +18,7 @@ import java.util.*;
  * This set of arguments will also be passed to the constructor of every Covariate when it is instantiated.
  */
 
-public class RecalibrationArgumentCollection implements Cloneable, ArgumentCollectionDefinition {
+public class RecalibrationArgumentCollection implements ArgumentCollectionDefinition {
 
     /**
      * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,
@@ -343,21 +342,4 @@ public class RecalibrationArgumentCollection implements Cloneable, ArgumentColle
         }
 
     }
-
-    /**
-     * Create a shallow copy of this argument collection.
-     *
-     * @return never <code>null</code>.
-     */
-    @Override
-    public RecalibrationArgumentCollection clone() {
-        try {
-            return (RecalibrationArgumentCollection) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new GATKException("Unreachable code clone not supported thrown when the class "
-                    + this.getClass().getName() + " is cloneable ",e);
-        }
-    }
-
-
 }

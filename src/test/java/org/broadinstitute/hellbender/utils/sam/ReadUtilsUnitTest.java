@@ -246,16 +246,16 @@ public class ReadUtilsUnitTest extends BaseTest {
         read.setReadNegativeStrandFlag(false);
         read.setMateNegativeStrandFlag(true);
 
-        tests.add( new Object[]{ "basic case", read.clone(), true });
+        tests.add( new Object[]{ "basic case", ReadUtils.clone(read), true });
 
         {
-            final SAMRecord bad1 = (SAMRecord)read.clone();
+            final SAMRecord bad1 = ReadUtils.clone(read);
             bad1.setReadPairedFlag(false);
             tests.add( new Object[]{ "not paired", bad1, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setProperPairFlag(false);
             // we currently don't require the proper pair flag to be set
             tests.add( new Object[]{ "not proper pair", bad, true });
@@ -263,43 +263,43 @@ public class ReadUtilsUnitTest extends BaseTest {
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setReadUnmappedFlag(true);
             tests.add( new Object[]{ "read is unmapped", bad, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setMateUnmappedFlag(true);
             tests.add( new Object[]{ "mate is unmapped", bad, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setMateNegativeStrandFlag(false);
             tests.add( new Object[]{ "read and mate both on positive strand", bad, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setReadNegativeStrandFlag(true);
             tests.add( new Object[]{ "read and mate both on negative strand", bad, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setInferredInsertSize(0);
             tests.add( new Object[]{ "insert size is 0", bad, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setAlignmentStart(1000);
             tests.add( new Object[]{ "positve read starts after mate end", bad, false });
         }
 
         {
-            final SAMRecord bad = (SAMRecord)read.clone();
+            final SAMRecord bad = ReadUtils.clone(read);
             bad.setReadNegativeStrandFlag(true);
             bad.setMateNegativeStrandFlag(false);
             bad.setMateAlignmentStart(1000);

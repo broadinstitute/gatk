@@ -27,7 +27,7 @@ public class Haplotype extends Allele implements HasGenomeLocation {
      * @param isRef is this the reference haplotype?
      */
     public Haplotype( final byte[] bases, final boolean isRef ) {
-        super(bases.clone(), isRef);
+        super(Arrays.copyOf(bases, bases.length), isRef);
     }
 
     /**

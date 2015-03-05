@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.util.*;
@@ -95,7 +96,7 @@ public class SplitReads extends ReadWalker {
 
         // For every combination of keys, add a SAMFileWriter.
         addKey(splitKeys, 0, "", key -> {
-            final SAMFileHeader samFileHeaderOut = samFileHeaderIn.clone();
+            final SAMFileHeader samFileHeaderOut = ReadUtils.clone(samFileHeaderIn);
             final File outFile = new File(OUTPUT_DIRECTORY, base + key + extension);
             outs.put(key, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, REFERENCE_FILE));
         });

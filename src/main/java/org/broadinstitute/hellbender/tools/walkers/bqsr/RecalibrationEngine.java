@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
+import java.util.Arrays;
+
 public class RecalibrationEngine {
     final protected Covariate[] covariates;
 
@@ -35,7 +37,7 @@ public class RecalibrationEngine {
         if ( covariates == null ) throw new IllegalArgumentException("Covariates cannot be null");
         if ( numReadGroups < 1 ) throw new IllegalArgumentException("numReadGroups must be >= 1 but got " + numReadGroups);
 
-        this.covariates = covariates.clone();
+        this.covariates = Arrays.copyOf(covariates, covariates.length);
         this.tables = new RecalibrationTables(covariates, numReadGroups);
     }
 

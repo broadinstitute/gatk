@@ -182,8 +182,12 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
             }
         }
 
+        /**
+         * For an explanation of why codecs must implement clone(),
+         * see the HTSJDK documentation for {#link htsjdk.samtools.util.SortingCollection.Codec}.
+         */
         @Override
-        public SortingCollection.Codec<PairedReadSequence> clone() { return new PairedReadCodec(); }
+        public PairedReadCodec clone() { return new PairedReadCodec(); }
     }
 
     /**

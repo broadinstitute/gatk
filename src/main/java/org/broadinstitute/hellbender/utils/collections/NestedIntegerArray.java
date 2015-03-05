@@ -23,7 +23,7 @@ public class NestedIntegerArray<T> {
         numDimensions = dimensions.length;
         if ( numDimensions == 0 )
             throw new IllegalArgumentException("There must be at least one dimension to an NestedIntegerArray");
-        this.dimensions = dimensions.clone();
+        this.dimensions = Arrays.copyOf(dimensions, dimensions.length);
 
         int dimensionsToPreallocate = Math.min(dimensions.length, NUM_DIMENSIONS_TO_PREALLOCATE);
 
