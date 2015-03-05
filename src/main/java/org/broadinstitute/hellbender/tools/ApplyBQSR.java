@@ -12,12 +12,12 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.recalibration.BaseRecalibration;
+import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
-import java.util.function.Function;
 
 @CommandLineProgramProperties(
         usage = "Applies the BQSR table to the input BAM.",
@@ -81,28 +81,18 @@ public final class ApplyBQSR extends ReadWalker{
 
     private SAMFileWriter outputWriter;
 
-    private Function<SAMRecord, SAMRecord> bqsrTransform;
+    private ReadTransformer transform;
 
     @Override
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
         outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_FILE);
-        bqsrTransform = new Function<SAMRecord, SAMRecord>() {
-            //The transformer stores a read-only state which takes a time to initialize.
-            //we store this in the transform to be explicit about state
-            private BaseRecalibration bqsr = new BaseRecalibration(BQSR_RECAL_FILE, quantizationLevels, disableIndelQuals, PRESERVE_QSCORES_LESS_THAN, emitOriginalQuals, globalQScorePrior);
-
-            @Override
-            public SAMRecord apply(SAMRecord read) {
-                bqsr.recalibrateRead(read);
-                return read;
-            }
-        };
+        transform = new BQSRReadTransformer(BQSR_RECAL_FILE, quantizationLevels, disableIndelQuals, PRESERVE_QSCORES_LESS_THAN, emitOriginalQuals, globalQScorePrior);
     }
 
     @Override
     public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputWriter.addAlignment(bqsrTransform.apply(read));
+        outputWriter.addAlignment(transform.apply(read));
     }
 
     @Override
