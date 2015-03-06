@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
@@ -334,6 +335,16 @@ public class UserException extends RuntimeException {
         }
     }
 
+    public static class FailsStrictValidation extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public final ValidateVariants.ValidationType type;
+
+        public FailsStrictValidation(File f, ValidateVariants.ValidationType type, String message) {
+            super(String.format("File %s fails strict validation: %s of type:", f.getAbsolutePath(), message, type));
+            this.type = type;
+        }
+    }
 }
 
 

@@ -143,9 +143,9 @@ public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
     public void testInOutAbsence(final boolean useCsvFile, final boolean usePdfFile,
             final boolean useBQSRFile, final boolean useBeforeFile, final boolean useAfterFile)
             throws IOException {
-        final List<String> md5 = Collections.emptyList();
+        final List<String> empty = Collections.emptyList();
         final IntegrationTestSpec spec = new IntegrationTestSpec(buildCommandLine(useCsvFile,usePdfFile,
-                useBQSRFile,useBeforeFile,useAfterFile),md5);
+                useBQSRFile,useBeforeFile,useAfterFile),empty);
         spec.executeTest("testInOutAbsencePresence", this);
     }
 

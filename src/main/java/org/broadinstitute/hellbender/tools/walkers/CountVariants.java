@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
         usageShort = "Count variants",
         programGroup = VariantProgramGroup.class
 )
-
 public final class CountVariants extends VariantWalker{
     private long count = 0;
 

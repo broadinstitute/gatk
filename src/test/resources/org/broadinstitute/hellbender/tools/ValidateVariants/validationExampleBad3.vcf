@@ -1,0 +1,6 @@
+##fileformat=VCFv4.0
+##INFO=<ID=AC,Number=.,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Allele Number">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1	SAMPLE2
+1	985449	.	GATTACA	A	42.22	PASS	AC=2;AN=4	GT	0/0	1/1
