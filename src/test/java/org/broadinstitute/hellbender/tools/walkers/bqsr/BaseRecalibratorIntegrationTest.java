@@ -54,8 +54,6 @@ public class BaseRecalibratorIntegrationTest extends CommandLineProgramTest{
 
         return new Object[][]{
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "", resourceDir + "expected.NA12878.chr17_69k_70k.txt")},
-                {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--no_standard_covs -cov ContextCovariate", resourceDir + "expected.NA12878.chr17_69k_70k.ContextCovariate.txt")},
-                {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--no_standard_covs -cov CycleCovariate", resourceDir + "expected.NA12878.chr17_69k_70k.CycleCovariate.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--indels_context_size 4", resourceDir + "expected.NA12878.chr17_69k_70k.indels_context_size4.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--low_quality_tail 5", resourceDir + "expected.NA12878.chr17_69k_70k.low_quality_tail5.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--quantizing_levels 6", resourceDir + "expected.NA12878.chr17_69k_70k.quantizing_levels6.txt")},

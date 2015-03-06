@@ -4,6 +4,11 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.CycleCovariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.QualityScoreCovariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.ReadGroupCovariate;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.Gather;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -41,25 +46,9 @@ public class RecalibrationArgumentCollection implements ArgumentCollectionDefini
     public File RECAL_TABLE_FILE = null;
     public PrintStream RECAL_TABLE;
 
-    /**
-     * Note that the --list argument requires a fully resolved and correct command-line to work.
-     */
-    @Argument(fullName = "list", shortName = "ls", doc = "List the available covariates and exit", optional = true)
-    public boolean LIST_ONLY = false;
 
-    /**
-     * Note that the ReadGroup and QualityScore covariates are required and do not need to be specified.
-     * Also, unless --no_standard_covs is specified, the Cycle and Context covariates are standard and are included by default.
-     * Use the --list argument to see the available covariates.
-     */
-    @Argument(fullName = "covariate", shortName = "cov", doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
-    public List<String> COVARIATES = new ArrayList<>();
-
-    /*
-     * The Cycle and Context covariates are standard and are included by default unless this argument is provided.
-     * Note that the ReadGroup and QualityScore covariates are required and cannot be excluded.
-     */
-    @Argument(fullName = "no_standard_covs", shortName = "noStandard", doc = "Do not use the standard set of covariates, but rather just the ones listed using the -cov argument", optional = true)
+    //HACK - we hardwire those names here to keep compatibility with GATK3 reports.
+    public List<String> COVARIATES = Arrays.asList(ReadGroupCovariate.class.getSimpleName(), QualityScoreCovariate.class.getSimpleName(), ContextCovariate.class.getSimpleName(), CycleCovariate.class.getSimpleName());
     public boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**

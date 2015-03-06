@@ -3,14 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.tribble.Feature;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -28,7 +30,8 @@ import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
@@ -170,7 +173,7 @@ public class BaseRecalibrator extends ReadWalker {
         if (RAC.knownSites.isEmpty() && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
             throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
 
-        requestedCovariates = getCovariatesArray();
+        requestedCovariates = RecalUtils.initializeCovariatesAsArray();
 
         logger.info("The covariates being used here: ");
         for (Covariate cov : requestedCovariates) { // list all the covariates being used
@@ -191,14 +194,6 @@ public class BaseRecalibrator extends ReadWalker {
             throw new UserException("This tool requires a reference");
         }
         referenceDataSource = new ReferenceDataSource(REFERENCE_FILE);
-    }
-
-    private Covariate[] getCovariatesArray() {
-        Pair<ArrayList<Covariate>, ArrayList<Covariate>> covariates = RecalUtils.initializeCovariates(RAC); // initialize the required and optional covariates
-        List<Covariate> covariatesList = new ArrayList<>(covariates.getLeft().size() + covariates.getRight().size());
-        covariatesList.addAll(covariates.getLeft());
-        covariatesList.addAll(covariates.getRight());
-        return covariatesList.toArray(new Covariate[covariatesList.size()]);
     }
 
     /**

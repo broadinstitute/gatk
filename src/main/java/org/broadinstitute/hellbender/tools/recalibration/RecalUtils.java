@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -63,119 +62,16 @@ public class RecalUtils {
     private static final Pair<String, String> nObservations      = new MutablePair<>(RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME, "%d");
     private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%.2f");
 
-    public static List<Class<? extends Covariate>> getStandardCovariateClasses(){
-        return Arrays.asList(ContextCovariate.class, CycleCovariate.class);
-    }
-
-    public static List<Class<? extends Covariate>> getRequiredCovariateClasses(){
-        return Arrays.asList(ReadGroupCovariate.class, QualityScoreCovariate.class);
-    }
-
-    public static List<Class<? extends Covariate>> getExperimentalCovariateClasses() {
-        return Arrays.asList(RepeatLengthCovariate.class, RepeatUnitAndLengthCovariate.class, RepeatUnitCovariate.class);
-    }
-
-    public static List<Class<? extends Covariate>> getAllCovariateClasses(){
-        List<Class<? extends Covariate>> ALL = new ArrayList<>();
-        ALL.addAll(getStandardCovariateClasses());
-        ALL.addAll(getRequiredCovariateClasses());
-        ALL.addAll(getExperimentalCovariateClasses());
-        return Collections.unmodifiableList(ALL);
-    }
     /**
-     * Generates two lists : required covariates and optional covariates based on the user's requests.
+     * Generates a list of covariates
      *
-     * Performs the following tasks in order:
-     *  1. Adds all requierd covariates in order
-     *  2. Check if the user asked to use the standard covariates and adds them all if that's the case
-     *  3. Adds all covariates requested by the user that were not already added by the two previous steps
+     * XXX: ReadGroupCovariate must be fist and QualityScoreCovariate must be second
      *
-     * @param argumentCollection the argument collection object for the recalibration walker
-     * @return a pair of ordered lists : required covariates (first) and optional covariates (second)
+     * @return an ordered list of covariates
      */
-    public static Pair<ArrayList<Covariate>, ArrayList<Covariate>> initializeCovariates(RecalibrationArgumentCollection argumentCollection) {
-        final List<Class<? extends Covariate>> covariateClasses = getAllCovariateClasses();
-        final List<Class<? extends Covariate>> requiredClasses = getRequiredCovariateClasses();
-        final List<Class<? extends Covariate>> standardClasses = getStandardCovariateClasses();
-
-        final ArrayList<Covariate> requiredCovariates = addRequiredCovariatesToList(requiredClasses); // add the required covariates
-        ArrayList<Covariate> optionalCovariates = new ArrayList<>();
-        if (!argumentCollection.DO_NOT_USE_STANDARD_COVARIATES)
-            optionalCovariates = addStandardCovariatesToList(standardClasses); // add the standard covariates if -standard was specified by the user
-
-        // parse the -cov arguments that were provided, skipping over the ones already specified
-        if (argumentCollection.COVARIATES != null) {
-            for (String requestedCovariateString : argumentCollection.COVARIATES) {
-                // help the transition from BQSR v1 to BQSR v2
-                if ( requestedCovariateString.equals("DinucCovariate") )
-                    throw new UserException.CommandLineException("DinucCovariate has been retired.  Please use its successor covariate " +
-                            "ContextCovariate instead, which includes the 2 bp (dinuc) substitution model of the retired DinucCovariate " +
-                            "as well as an indel context to model the indel error rates");
-
-                boolean foundClass = false;
-                for (Class<? extends Covariate> covClass : covariateClasses) {
-                    if (requestedCovariateString.equalsIgnoreCase(covClass.getSimpleName())) { // -cov argument matches the class name for an implementing class
-                        foundClass = true;
-                        if (!requiredClasses.contains(covClass) &&
-                                (argumentCollection.DO_NOT_USE_STANDARD_COVARIATES || !standardClasses.contains(covClass))) {
-                            try {
-                                final Covariate covariate = covClass.newInstance(); // now that we've found a matching class, try to instantiate it
-                                optionalCovariates.add(covariate);
-                            } catch (Exception e) {
-                                throw new UserException.DynamicClassResolutionException(covClass, e);
-                            }
-                        }
-                    }
-                }
-
-                if (!foundClass) {
-                    throw new UserException.CommandLineException("The requested covariate type (" + requestedCovariateString + ") isn't a valid covariate option. Use --list to see possible covariates.");
-                }
-            }
-        }
-        return new MutablePair<>(requiredCovariates, optionalCovariates);
-    }
-
-    /**
-     * Adds the required covariates to a covariate list
-     *
-     * Note: this method really only checks if the classes object has the expected number of required covariates, then add them by hand.
-     *
-     * @param classes list of classes to add to the covariate list
-     * @return the covariate list
-     */
-    private static ArrayList<Covariate> addRequiredCovariatesToList(List<Class<? extends Covariate>> classes) {
-        //FIXME this is bogus: this method is not checking the classes in the List it's passed at all
-        //FIXME (just the number of classes). It then proceeds to add a new ReadGroupCovariate()
-        //FIXME and new QualityScoreCovariate() unconditionally.
-        //FIXME Should either be a parameterless method, or should actually
-        //FIXME check and instantiate the classes in the List it's passed.
-        ArrayList<Covariate> dest = new ArrayList<>(classes.size());
-        if (classes.size() != 2)
-            throw new GATKException("The number of required covariates has changed, this is a hard change in the code and needs to be inspected");
-
-        dest.add(new ReadGroupCovariate()); // enforce the order with RG first and QS next.
-        dest.add(new QualityScoreCovariate());
-        return dest;
-    }
-
-    /**
-     * Adds the standard covariates to a covariate list
-     *
-     * @param classes list of classes to add to the covariate list
-     * @return the covariate list
-     */
-    private static ArrayList<Covariate> addStandardCovariatesToList(List<Class<? extends Covariate>> classes) {
-        ArrayList<Covariate> dest = new ArrayList<>(classes.size());
-        for (Class<?> covClass : classes) {
-            try {
-                final Covariate covariate = (Covariate) covClass.newInstance();
-                dest.add(covariate);
-            } catch (Exception e) {
-                throw new UserException.DynamicClassResolutionException(covClass, e);
-            }
-        }
-        return dest;
+    public static Covariate[] initializeCovariatesAsArray() {
+        // enforce the order with RG first and QS next.
+        return new Covariate[]{new ReadGroupCovariate(), new QualityScoreCovariate(), new ContextCovariate(), new CycleCovariate()};
     }
 
     /**
@@ -386,7 +282,7 @@ public class RecalUtils {
         int rowIndex = 0;
         final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
         for (final Covariate covariate : requestedCovariates)
-            covariateNameMap.put(covariate, parseCovariateName(covariate));
+            covariateNameMap.put(covariate, covariate.parseNameForReport());
 
         for (int tableIndex = 0; tableIndex < recalibrationTables.numTables(); tableIndex++) {
 
@@ -454,10 +350,6 @@ public class RecalUtils {
         }
 
         return result;
-    }
-
-    private static String parseCovariateName(final Covariate covariate) {
-        return covariate.getClass().getSimpleName().split("Covariate")[0];
     }
 
     /**
@@ -568,9 +460,9 @@ public class RecalUtils {
             printHeader(deltaTableFile);
         }
 
-        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
+        final Map<Covariate, String> covariateNameMap = new HashMap<>(requestedCovariates.length);
         for (final Covariate covariate : requestedCovariates)
-            covariateNameMap.put(covariate, parseCovariateName(covariate));
+            covariateNameMap.put(covariate, covariate.parseNameForReport());
 
         // print each data line
         for (final NestedIntegerArray.Leaf<RecalDatum> leaf : deltaTable.getAllLeaves()) {
