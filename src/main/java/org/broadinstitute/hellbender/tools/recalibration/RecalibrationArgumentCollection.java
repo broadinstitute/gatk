@@ -5,10 +5,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.CycleCovariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.QualityScoreCovariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.ReadGroupCovariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.Gather;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -48,7 +45,7 @@ public class RecalibrationArgumentCollection implements ArgumentCollectionDefini
 
 
     //HACK - we hardwire those names here to keep compatibility with GATK3 reports.
-    public List<String> COVARIATES = Arrays.asList(ReadGroupCovariate.class.getSimpleName(), QualityScoreCovariate.class.getSimpleName(), ContextCovariate.class.getSimpleName(), CycleCovariate.class.getSimpleName());
+    public List<String> COVARIATES = Covariate.classNameList(RecalUtils.initializeCovariatesAsArray());
     public boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**
