@@ -1,26 +1,30 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class RecalibrationTablesUnitTest extends BaseTest {
     private RecalibrationTables tables;
-    private Covariate[] covariates;
+    private StandardCovariateList covariates;
     private int numReadGroups = 6;
     final byte qualByte = 1;
     final List<Integer> combineStates = Arrays.asList(0, 1, 2);
 
     @BeforeMethod
     private void makeTables() {
-        covariates = RecalibrationTestUtils.makeInitializedStandardCovariates();
+        final List<String> readGroups= IntStream.range(1, numReadGroups).mapToObj(i -> "readgroup"+i).collect(Collectors.toList());
+        covariates = new StandardCovariateList(new RecalibrationArgumentCollection(), readGroups);
         tables = new RecalibrationTables(covariates, numReadGroups);
         fillTable(tables);
     }
@@ -45,25 +49,23 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
 
     @Test
     public void basicTest() {
-        final Covariate qualCov = covariates[1];
-        final Covariate cycleCov = covariates[2];
-        final Covariate contextCov = covariates[3];
+        final Covariate qualCov = covariates.getQualityScoreCovariate();
 
-        Assert.assertEquals(tables.numTables(), covariates.length);
+        Assert.assertEquals(tables.numTables(), covariates.size());
 
         Assert.assertNotNull(tables.getReadGroupTable());
-        Assert.assertEquals(tables.getReadGroupTable(), tables.getTable(RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()));
+        Assert.assertEquals(tables.getReadGroupTable(), tables.getReadGroupTable());
         testDimensions(tables.getReadGroupTable(), numReadGroups);
 
         Assert.assertNotNull(tables.getQualityScoreTable());
-        Assert.assertEquals(tables.getQualityScoreTable(), tables.getTable(RecalibrationTables.TableType.QUALITY_SCORE_TABLE.ordinal()));
+        Assert.assertEquals(tables.getQualityScoreTable(), tables.getQualityScoreTable());
         testDimensions(tables.getQualityScoreTable(), numReadGroups, qualCov.maximumKeyValue() + 1);
 
-        Assert.assertNotNull(tables.getTable(2));
-        testDimensions(tables.getTable(2), numReadGroups, qualCov.maximumKeyValue() + 1, cycleCov.maximumKeyValue() + 1);
-
-        Assert.assertNotNull(tables.getTable(3));
-        testDimensions(tables.getTable(3), numReadGroups, qualCov.maximumKeyValue() + 1, contextCov.maximumKeyValue() + 1);
+        for (NestedIntegerArray<RecalDatum> table : tables.getAdditionalTables()){
+            Assert.assertNotNull(table);
+            Covariate cov = tables.getCovariateForTable(table);
+            testDimensions(table, numReadGroups, qualCov.maximumKeyValue() + 1, cov.maximumKeyValue() + 1);
+        }
     }
 
     private void testDimensions(final NestedIntegerArray<RecalDatum> table, final int ... dimensions) {
@@ -79,7 +81,7 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
 
     @Test
     public void basicMakeQualityScoreTable() {
-        final Covariate qualCov = covariates[1];
+        final Covariate qualCov = covariates.getQualityScoreCovariate();
         final NestedIntegerArray<RecalDatum> copy = tables.makeQualityScoreTable();
         testDimensions(copy, numReadGroups, qualCov.maximumKeyValue()+1);
         Assert.assertEquals(copy.getAllValues().size(), 0);

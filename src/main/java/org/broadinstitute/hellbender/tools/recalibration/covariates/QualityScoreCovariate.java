@@ -9,12 +9,11 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 /**
  * The Reported Quality Score covariate.
  */
-
 public final class QualityScoreCovariate implements Covariate {
 
-    // Initialize any member variables using the command-line arguments passed to the walkers
-    @Override
-    public void initialize(final RecalibrationArgumentCollection RAC) {}
+    public QualityScoreCovariate(final RecalibrationArgumentCollection RAC){
+        //nothing to initialize
+    }
 
     @Override
     public void recordValues(final SAMRecord read, final ReadCovariates values) {
@@ -23,14 +22,8 @@ public final class QualityScoreCovariate implements Covariate {
         final byte[] baseDeletionQualities = ReadUtils.getBaseDeletionQualities(read);
 
         for (int i = 0; i < baseQualities.length; i++) {
-            values.addCovariate((int)baseQualities[i], (int)baseInsertionQualities[i], (int)baseDeletionQualities[i], i);
+            values.addCovariate(baseQualities[i], baseInsertionQualities[i], baseDeletionQualities[i], i);
         }
-    }
-
-    // Used to get the covariate's value from input csv file during on-the-fly recalibration
-    @Override
-    public final Object getValue(final String str) {
-        return Byte.parseByte(str);
     }
 
     @Override
@@ -40,7 +33,7 @@ public final class QualityScoreCovariate implements Covariate {
 
     @Override
     public int keyFromValue(final Object value) {
-        return (value instanceof String) ? (int) Byte.parseByte((String) value) : (int)(Byte) value;
+        return (value instanceof String) ? Byte.parseByte((String) value) : (int)(Byte) value;
     }
 
     @Override

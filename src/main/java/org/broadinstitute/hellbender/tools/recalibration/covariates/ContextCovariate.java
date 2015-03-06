@@ -16,13 +16,13 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class ContextCovariate implements Covariate {
-    private final static Logger logger = LogManager.getLogger(ContextCovariate.class);
+    private final Logger logger = LogManager.getLogger(ContextCovariate.class);
 
-    private int mismatchesContextSize;
-    private int indelsContextSize;
+    private final int mismatchesContextSize;
+    private final int indelsContextSize;
 
-    private int mismatchesKeyMask;
-    private int indelsKeyMask;
+    private final int mismatchesKeyMask;
+    private final int indelsKeyMask;
 
     private static final int LENGTH_BITS = 4;
     private static final int LENGTH_MASK = 15;
@@ -30,25 +30,26 @@ public final class ContextCovariate implements Covariate {
     // the maximum context size (number of bases) permitted; we need to keep the leftmost base free so that values are
     // not negative and we reserve 4 more bits to represent the length of the context; it takes 2 bits to encode one base.
     private static final int MAX_DNA_CONTEXT = 13;
-    private byte lowQualTail;
+    private final byte lowQualTail;
 
-    // Initialize any member variables using the command-line arguments passed to the walkers
-    @Override
-    public void initialize(final RecalibrationArgumentCollection RAC) {
+    public ContextCovariate(final RecalibrationArgumentCollection RAC){
         mismatchesContextSize = RAC.MISMATCHES_CONTEXT_SIZE;
         indelsContextSize = RAC.INDELS_CONTEXT_SIZE;
 
         logger.info("\t\tContext sizes: base substitution model " + mismatchesContextSize + ", indel substitution model " + indelsContextSize);
 
-        if (mismatchesContextSize > MAX_DNA_CONTEXT)
+        if (mismatchesContextSize > MAX_DNA_CONTEXT) {
             throw new UserException.BadArgumentValue("mismatches_context_size", String.format("context size cannot be bigger than %d, but was %d", MAX_DNA_CONTEXT, mismatchesContextSize));
-        if (indelsContextSize > MAX_DNA_CONTEXT)
+        }
+        if (indelsContextSize > MAX_DNA_CONTEXT) {
             throw new UserException.BadArgumentValue("indels_context_size", String.format("context size cannot be bigger than %d, but was %d", MAX_DNA_CONTEXT, indelsContextSize));
+        }
 
         lowQualTail = RAC.LOW_QUAL_TAIL;
-        
-        if (mismatchesContextSize <= 0 || indelsContextSize <= 0)
-            throw new UserException(String.format("Context size must be positive, if you don't want to use the context covariate, just turn it off instead. Mismatches: %d Indels: %d", mismatchesContextSize, indelsContextSize));
+
+        if (mismatchesContextSize <= 0 || indelsContextSize <= 0) {
+            throw new UserException(String.format("Context size must be positive. Mismatches: %d Indels: %d", mismatchesContextSize, indelsContextSize));
+        }
 
         mismatchesKeyMask = createMask(mismatchesContextSize);
         indelsKeyMask = createMask(indelsContextSize);
@@ -116,12 +117,6 @@ public final class ContextCovariate implements Covariate {
         } else {
             return bases;
         }
-    }
-
-    // Used to get the covariate's value from input csv file during on-the-fly recalibration
-    @Override
-    public Object getValue(final String str) {
-        return str;
     }
 
     @Override

@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.LRUCache;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 /**
- * The object temporarily held by a read that describes all of it's covariates.
+ * The object temporarily held by a read that describes all of its covariates.
  *
  * In essence, this is an array of CovariateValues, but it also has some functionality to deal with the optimizations of the NestedHashMap
  */

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.ReadGroupCovariate;
@@ -10,16 +11,12 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-public final class ReadGroupCovariateUnitTest {
-    ReadGroupCovariate covariate;
-    RecalibrationArgumentCollection RAC;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
-    @BeforeClass
-    public void init() {
-        RAC = new RecalibrationArgumentCollection();
-        covariate = new ReadGroupCovariate();
-        covariate.initialize(RAC);
-    }
+public final class ReadGroupCovariateUnitTest {
 
     @BeforeMethod
     public void initCache() {
@@ -28,28 +25,56 @@ public final class ReadGroupCovariateUnitTest {
 
     @Test
     public void testSingleRecord() {
+        final String id = "MY.ID";
         final String expected = "SAMPLE.1";
-        SAMReadGroupRecord rg = new SAMReadGroupRecord("MY.ID");
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
+        SAMReadGroupRecord rg = new SAMReadGroupRecord(id);
         rg.setPlatformUnit(expected);
         runTest(rg, expected, covariate);
     }
 
     @Test
-    public void testMissingPlatformUnit() {
-        final String expected = "MY.7";
-        SAMReadGroupRecord rg = new SAMReadGroupRecord(expected);
-        runTest(rg, expected, covariate);
+    public void testMaxValue() {
+        final String id = "MY.ID";
+        final String expected = "SAMPLE.1";
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
+        SAMReadGroupRecord rg = new SAMReadGroupRecord(id);
+        rg.setPlatformUnit(expected);
+        Assert.assertEquals(covariate.maximumKeyValue(), 0);//there's just 1 read group, so 0 is the max value
     }
 
     @Test
-    public void testForceReadgroup() {
-        final RecalibrationArgumentCollection forcedRAC = new RecalibrationArgumentCollection();
-        forcedRAC.FORCE_READGROUP = "FOO";
-        final ReadGroupCovariate forcedCovariate = new ReadGroupCovariate();
-        forcedCovariate.initialize(forcedRAC);
+    public void testReadGroupNames() {
+        final String id = "MY.ID";
+        final String expected = "SAMPLE.1";
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
+        final SAMFileHeader headerWithGroups = ArtificialSAMUtils.createArtificialSamHeaderWithGroups(1, 0, 100, 2);
+        final List<String> rgs = Arrays.asList("rg1", "rg2");
+        Assert.assertEquals(ReadGroupCovariate.getReadGroupIDs(headerWithGroups), headerWithGroups.getReadGroups().stream().map(rg -> ReadGroupCovariate.getID(rg)).collect(Collectors.toList()));
+    }
 
-        final SAMReadGroupRecord rg = new SAMReadGroupRecord("NOT_FOO");
-        runTest(rg, "FOO", forcedCovariate);
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testMissingKey() {
+        final String id = "MY.ID";
+        final String expected = "SAMPLE.1";
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
+        final String s = covariate.formatKey(1);
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testMissingReadGroup() {
+        final String id = "MY.ID";
+        final String expected = "SAMPLE.1";
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
+        final int key = covariate.keyFromValue("fred");
+    }
+
+    @Test
+    public void testMissingPlatformUnit() {
+        final String expected = "MY.7";
+        final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
+        SAMReadGroupRecord rg = new SAMReadGroupRecord(expected);
+        runTest(rg, expected, covariate);
     }
 
     private static void runTest(final SAMReadGroupRecord rg, final String expected, final ReadGroupCovariate covariate) {

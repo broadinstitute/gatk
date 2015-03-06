@@ -3,19 +3,22 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.tribble.Feature;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -28,7 +31,8 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
@@ -140,7 +144,7 @@ public final class BaseRecalibrator extends ReadWalker {
     /**
      * list to hold the all the covariate objects that were requested (required + standard + experimental)
      */
-    private Covariate[] requestedCovariates;
+    private StandardCovariateList covariates;
 
     private RecalibrationEngine recalibrationEngine;
 
@@ -176,17 +180,16 @@ public final class BaseRecalibrator extends ReadWalker {
         if (RAC.knownSites.isEmpty() && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
             throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
 
-        requestedCovariates = getCovariatesArray();
+        covariates = new StandardCovariateList(RAC, getHeaderForReads());
 
         logger.info("The covariates being used here: ");
-        for (Covariate cov : requestedCovariates) { // list all the covariates being used
-            logger.info("\t" + cov.getClass().getSimpleName());
-            cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
+        for (final Covariate cov : covariates) { // list all the covariates being used
+            logger.info('\t' + cov.getClass().getSimpleName());
         }
 
         try {
             RAC.RECAL_TABLE = new PrintStream(RAC.RECAL_TABLE_FILE);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(RAC.RECAL_TABLE_FILE, e);
         }
 
@@ -196,21 +199,13 @@ public final class BaseRecalibrator extends ReadWalker {
         referenceDataSource = new ReferenceDataSource(referenceArguments.getReferenceFile());
     }
 
-    private Covariate[] getCovariatesArray() {
-        Pair<ArrayList<Covariate>, ArrayList<Covariate>> covariates = RecalUtils.initializeCovariates(RAC); // initialize the required and optional covariates
-        List<Covariate> covariatesList = new ArrayList<>(covariates.getLeft().size() + covariates.getRight().size());
-        covariatesList.addAll(covariates.getLeft());
-        covariatesList.addAll(covariates.getRight());
-        return covariatesList.toArray(new Covariate[covariatesList.size()]);
-    }
-
     /**
      * Initialize the recalibration engine
      */
     private void initializeRecalibrationEngine() {
-        int numReadGroups = getHeaderForReads().getReadGroups().size();
+        final int numReadGroups = getHeaderForReads().getReadGroups().size();
 
-        recalibrationEngine = new RecalibrationEngine(requestedCovariates, numReadGroups);
+        recalibrationEngine = new RecalibrationEngine(covariates, numReadGroups);
     }
 
     private boolean isLowQualityBase( final SAMRecord read, final int offset ) {
@@ -298,7 +293,7 @@ public final class BaseRecalibrator extends ReadWalker {
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
-            final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
+            final ReadCovariates covariates = RecalUtils.computeCovariates(read, this.covariates);
             final boolean[] skip = calculateSkipArray(read, featureContext); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
@@ -550,6 +545,6 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     private void generateReport() {
-        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), requestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
+        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), covariates, RAC.SORT_BY_ALL_COLUMNS);
     }
 }

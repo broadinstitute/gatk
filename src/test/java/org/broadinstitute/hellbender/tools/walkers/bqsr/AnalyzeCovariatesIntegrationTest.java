@@ -163,8 +163,6 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
      * Triplets &lt; alfter-grp-file, whether it should fail, what is different &gt;
      */
     private final Object[][] DIFFERENT_PARAMETERS_AFTER_FILES = {
-            {"after-cov.table.gz", true, "Adds additional covariate: repeat-length" },
-            {"after-dpSOLID.table.gz", true, "Change the default platform to SOLID" },
             {"after-noDp.table.gz",true, "Unset the default platform" },
             {"after-mcs4.table.gz", true, "Changed -mcs parameter from 2 to 4" }
     };
@@ -204,7 +202,7 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
      *
      * @return never <code>null</code>.
      */
-    private String buildCommandLine(final String csvFileName, final String pdfFileName, final boolean useBQSRFile,
+    private String  buildCommandLine(final String csvFileName, final String pdfFileName, final boolean useBQSRFile,
                                     final boolean useBeforeFile, final boolean useAfterFile) {
         return buildCommandLine(csvFileName,pdfFileName,useBQSRFile ? BQSR_FILE : null,
                 useBeforeFile ? BEFORE_FILE : null,
