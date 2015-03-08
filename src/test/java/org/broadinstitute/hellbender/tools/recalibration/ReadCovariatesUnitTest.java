@@ -10,6 +10,8 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 public class ReadCovariatesUnitTest {
@@ -34,11 +36,7 @@ public class ReadCovariatesUnitTest {
         coCov.initialize(RAC);
         cyCov.initialize(RAC);
 
-        Covariate[] requestedCovariates = new Covariate[4];
-        requestedCovariates[0] = rgCov;
-        requestedCovariates[1] = qsCov;
-        requestedCovariates[2] = coCov;
-        requestedCovariates[3] = cyCov;
+        List<Covariate> requestedCovariates = Arrays.asList(rgCov, qsCov, coCov, cyCov);
 
         final int NUM_READS = 100;
         final Random rnd = Utils.getRandomGenerator();

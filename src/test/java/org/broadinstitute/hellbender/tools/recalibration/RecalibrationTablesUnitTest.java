@@ -13,7 +13,7 @@ import java.util.List;
 
 public final class RecalibrationTablesUnitTest extends BaseTest {
     private RecalibrationTables tables;
-    private Covariate[] covariates;
+    private List<Covariate> covariates;
     private int numReadGroups = 6;
     final byte qualByte = 1;
     final List<Integer> combineStates = Arrays.asList(0, 1, 2);
@@ -45,11 +45,11 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
 
     @Test
     public void basicTest() {
-        final Covariate qualCov = covariates[1];
-        final Covariate cycleCov = covariates[2];
-        final Covariate contextCov = covariates[3];
+        final Covariate qualCov = covariates.get(1);
+        final Covariate cycleCov = covariates.get(2);
+        final Covariate contextCov = covariates.get(3);
 
-        Assert.assertEquals(tables.numTables(), covariates.length);
+        Assert.assertEquals(tables.numTables(), covariates.size());
 
         Assert.assertNotNull(tables.getReadGroupTable());
         Assert.assertEquals(tables.getReadGroupTable(), tables.getTable(RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()));
@@ -79,7 +79,7 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
 
     @Test
     public void basicMakeQualityScoreTable() {
-        final Covariate qualCov = covariates[1];
+        final Covariate qualCov = covariates.get(1);
         final NestedIntegerArray<RecalDatum> copy = tables.makeQualityScoreTable();
         testDimensions(copy, numReadGroups, qualCov.maximumKeyValue()+1);
         Assert.assertEquals(copy.getAllValues().size(), 0);

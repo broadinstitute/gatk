@@ -25,7 +25,7 @@ public class BaseRecalibration {
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
-    private final Covariate[] requestedCovariates; // list of all covariates to be used in this calculation
+    private final List<Covariate> requestedCovariates; // list of all covariates to be used in this calculation
 
     private final boolean disableIndelQuals;
     private final int preserveQLessThan;
@@ -115,7 +115,7 @@ public class BaseRecalibration {
                         final int[] keySet = fullReadKeySet[offset];
                         final RecalDatum empiricalQualQS = recalibrationTables.getQualityScoreTable().get(keySet[0], keySet[1], errorModel.ordinal());
                         final List<RecalDatum> empiricalQualCovs = new ArrayList<>();
-                        for (int i = 2; i < requestedCovariates.length; i++) {
+                        for (int i = 2; i < requestedCovariates.size(); i++) {
                             if (keySet[i] < 0) {
                                 continue;
                             }

@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Utility class to facilitate base quality score recalibration.
@@ -22,16 +23,16 @@ public final class RecalibrationTables {
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;
 
-    public RecalibrationTables(final Covariate[] covariates) {
-        this(covariates, covariates[TableType.READ_GROUP_TABLE.ordinal()].maximumKeyValue() + 1);
+    public RecalibrationTables(final List<Covariate> covariates) {
+        this(covariates, covariates.get(TableType.READ_GROUP_TABLE.ordinal()).maximumKeyValue() + 1);
     }
 
-    public RecalibrationTables(final Covariate[] covariates, final int numReadGroups) {
-        tables = new ArrayList<>(covariates.length);
-        for ( int i = 0; i < covariates.length; i++ )
+    public RecalibrationTables(final List<Covariate> covariates, final int numReadGroups) {
+        tables = new ArrayList<>(covariates.size());
+        for ( int i = 0; i < covariates.size(); i++ )
             tables.add(i, null); // initialize so we can set below
 
-        qualDimension = covariates[TableType.QUALITY_SCORE_TABLE.ordinal()].maximumKeyValue() + 1;
+        qualDimension = covariates.get(TableType.QUALITY_SCORE_TABLE.ordinal()).maximumKeyValue() + 1;
         this.numReadGroups = numReadGroups;
 
         tables.set(TableType.READ_GROUP_TABLE.ordinal(),
@@ -39,8 +40,8 @@ public final class RecalibrationTables {
 
         tables.set(TableType.QUALITY_SCORE_TABLE.ordinal(), makeQualityScoreTable());
 
-        for (int i = TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < covariates.length; i++)
-            tables.set(i, new NestedIntegerArray<>(numReadGroups, qualDimension, covariates[i].maximumKeyValue()+1, eventDimension));
+        for (int i = TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < covariates.size(); i++)
+            tables.set(i, new NestedIntegerArray<>(numReadGroups, qualDimension, covariates.get(i).maximumKeyValue()+1, eventDimension));
     }
 
     public NestedIntegerArray<RecalDatum> getReadGroupTable() {

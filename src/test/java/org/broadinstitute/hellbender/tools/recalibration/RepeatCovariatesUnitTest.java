@@ -16,6 +16,7 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 public class RepeatCovariatesUnitTest {
@@ -132,10 +133,7 @@ public class RepeatCovariatesUnitTest {
             Arrays.fill(readQuals, (byte) 30);
             final SAMRecord read = ArtificialSAMUtils.createArtificialRead(readBases.getBytes(), readQuals, readLength + "M");
 
-            Covariate[] requestedCovariates = new Covariate[3];
-            requestedCovariates[0] = rlCovariate;
-            requestedCovariates[1] = ruCovariate;
-            requestedCovariates[2] = rurlCovariate;
+            List<Covariate> requestedCovariates = Arrays.asList(rlCovariate, ruCovariate, rurlCovariate);
             ReadCovariates rc = RecalUtils.computeCovariates(read, requestedCovariates);
 
             // check that the length is correct

@@ -65,12 +65,12 @@ public class RecalibrationReportUnitTest {
         cyCovariate.initialize(RAC);
         optionalCovariates.add(cyCovariate);
 
-        final Covariate[] requestedCovariates = new Covariate[requiredCovariates.size() + optionalCovariates.size()];
+        final List<Covariate> requestedCovariates = new ArrayList<>(requiredCovariates.size() + optionalCovariates.size());
         int covariateIndex = 0;
         for (final Covariate cov : requiredCovariates)
-            requestedCovariates[covariateIndex++] = cov;
+            requestedCovariates.add(covariateIndex++, cov);
         for (final Covariate cov : optionalCovariates)
-            requestedCovariates[covariateIndex++] = cov;
+            requestedCovariates.add(covariateIndex++, cov);
 
         final SAMReadGroupRecord rg = new SAMReadGroupRecord("id");
         rg.setPlatform("illumina");

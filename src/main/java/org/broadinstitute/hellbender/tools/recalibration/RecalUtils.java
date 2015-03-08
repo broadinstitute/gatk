@@ -63,15 +63,15 @@ public class RecalUtils {
     private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%.2f");
 
     /**
-     * Generates a list of covariates
+     * Generates a a list of the standard four covariates that we always use for recalibration.
      *
-     * XXX: ReadGroupCovariate must be fist and QualityScoreCovariate must be second
+     * XXX: ReadGroupCovariate must be first and QualityScoreCovariate must be second
      *
      * @return an ordered list of covariates
      */
-    public static Covariate[] initializeCovariatesAsArray() {
+    public static List<Covariate> initializeCovariatesAsArray() {
         // enforce the order with RG first and QS next.
-        return new Covariate[]{new ReadGroupCovariate(), new QualityScoreCovariate(), new ContextCovariate(), new CycleCovariate()};
+        return Arrays.asList(new ReadGroupCovariate(), new QualityScoreCovariate(), new ContextCovariate(), new CycleCovariate());
     }
 
     /**
@@ -86,26 +86,26 @@ public class RecalUtils {
     private static class CsvPrinter {
 
         private final PrintStream ps;
-        private final Covariate[] covariates;
+        private final List<Covariate> covariates;
 
         /**
          * Constructs a printer redirected to an output file.
          * @param out the output file.
-         * @param c covariates to print out.
+         * @param covs covariates to print out.
          * @throws java.io.FileNotFoundException if the file could not be created anew.
          */
-        protected CsvPrinter(final File out, final Covariate ... c)
+        protected CsvPrinter(final File out, final List<Covariate> covs)
                 throws FileNotFoundException {
-            this(new FileOutputStream(out), c);
+            this(new FileOutputStream(out), covs);
         }
 
         /**
          * Constructs a printer redirected to an output stream
          * @param os the output.
-         * @param c  covariates to print out.
+         * @param covs  covariates to print out.
          */
-        protected CsvPrinter(final OutputStream os, final Covariate ... c) {
-            covariates = c == null ? new Covariate[0] : Arrays.copyOf(c, c.length);
+        protected CsvPrinter(final OutputStream os, final List<Covariate> covs) {
+            covariates = covs == null ? Collections.emptyList() : new ArrayList<>(covs);
             ps = new PrintStream(os);
             printHeader();
         }
@@ -145,19 +145,19 @@ public class RecalUtils {
      * Returns a csv output printer.
      *
      * @param out the output file. It will be overridden
-     * @param c list of covariates to print out.
+     * @param covs list of covariates to print out.
      *
      * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
      *
      * @return never <code>null</code>
      */
-    protected static CsvPrinter csvPrinter(final File out, final Covariate ... c)
+    protected static CsvPrinter csvPrinter(final File out, final List<Covariate> covs)
         throws FileNotFoundException
     {
-        if (c == null) {
+        if (covs == null) {
             throw new IllegalArgumentException("the input covariate array cannot be null");
         }
-        return new CsvPrinter(out,c);
+        return new CsvPrinter(out,covs);
     }
 
     /**
@@ -174,16 +174,16 @@ public class RecalUtils {
     public static void generateCsv(final File out, final Map<String, RecalibrationReport> reports)
             throws FileNotFoundException {
         if (reports.size() == 0) {
-            writeCsv(out, reports, new Covariate[0]);
+            writeCsv(out, reports, Collections.emptyList());
         } else {
             final Iterator<RecalibrationReport> rit = reports.values().iterator();
             final RecalibrationReport first = rit.next();
-            final Covariate[] firstCovariates = first.getRequestedCovariates();
+            final List<Covariate> firstCovariates = first.getRequestedCovariates();
             final Set<Covariate> covariates = new LinkedHashSet<>();
-            Utils.addAll(covariates,firstCovariates);
+            covariates.addAll(firstCovariates);
             while (rit.hasNext() && covariates.size() > 0) {
-                final Covariate[] nextCovariates = rit.next().getRequestedCovariates();
-                final Set<String> nextCovariateNames = new LinkedHashSet<String>(nextCovariates.length);
+                final List<Covariate> nextCovariates = rit.next().getRequestedCovariates();
+                final Set<String> nextCovariateNames = new LinkedHashSet<>(nextCovariates.size());
                 for (final Covariate nc : nextCovariates) {
                     nextCovariateNames.add(nc.getClass().getSimpleName());
                 }
@@ -194,7 +194,7 @@ public class RecalUtils {
                     }
                 }
             }
-            writeCsv(out, reports, covariates.toArray(new Covariate[covariates.size()]));
+            writeCsv(out, reports, new ArrayList<>(covariates));
         }
     }
 
@@ -209,7 +209,7 @@ public class RecalUtils {
      * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
      */
     private static void writeCsv(final File out,
-            final Map<String, RecalibrationReport> reports, final Covariate[] c)
+            final Map<String, RecalibrationReport> reports, final List<Covariate> c)
         throws FileNotFoundException {
         final CsvPrinter p = csvPrinter(out,c);
         for (Map.Entry<String,RecalibrationReport> e : reports.entrySet()) {
@@ -276,20 +276,20 @@ public class RecalUtils {
         }
     }
 
-    private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, boolean sortByCols) {
+    private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final List<Covariate> requestedCovariates, boolean sortByCols) {
         List<GATKReportTable> result = new LinkedList<GATKReportTable>();
         int reportTableIndex = 0;
         int rowIndex = 0;
-        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
+        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.size());
         for (final Covariate covariate : requestedCovariates)
             covariateNameMap.put(covariate, covariate.parseNameForReport());
 
         for (int tableIndex = 0; tableIndex < recalibrationTables.numTables(); tableIndex++) {
 
-            final ArrayList<Pair<String, String>> columnNames = new ArrayList<Pair<String, String>>(); // initialize the array to hold the column names
-            columnNames.add(new MutablePair<String, String>(covariateNameMap.get(requestedCovariates[0]), "%s")); // save the required covariate name so we can reference it in the future
+            final ArrayList<Pair<String, String>> columnNames = new ArrayList<>(); // initialize the array to hold the column names
+            columnNames.add(new MutablePair<>(covariateNameMap.get(requestedCovariates.get(0)), "%s")); // save the required covariate name so we can reference it in the future
             if (tableIndex != RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()) {
-                columnNames.add(new MutablePair<String, String>(covariateNameMap.get(requestedCovariates[1]), "%s")); // save the required covariate name so we can reference it in the future
+                columnNames.add(new MutablePair<>(covariateNameMap.get(requestedCovariates.get(1)), "%s")); // save the required covariate name so we can reference it in the future
                 if (tableIndex >= RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal()) {
                     columnNames.add(covariateValue);
                     columnNames.add(covariateName);
@@ -324,11 +324,11 @@ public class RecalUtils {
 
                 int columnIndex = 0;
                 int keyIndex = 0;
-                reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), requestedCovariates[0].formatKey(keys[keyIndex++]));
+                reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), requestedCovariates.get(0).formatKey(keys[keyIndex++]));
                 if (tableIndex != RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()) {
-                    reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), requestedCovariates[1].formatKey(keys[keyIndex++]));
+                    reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), requestedCovariates.get(1).formatKey(keys[keyIndex++]));
                     if (tableIndex >= RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal()) {
-                        final Covariate covariate = requestedCovariates[tableIndex];
+                        final Covariate covariate = requestedCovariates.get(tableIndex);
 
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.formatKey(keys[keyIndex++]));
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariateNameMap.get(covariate));
@@ -358,8 +358,8 @@ public class RecalUtils {
      * @param requestedCovariates a vector of covariates
      * @return a non-null comma-separated string
      */
-    public static String covariateNames(final Covariate[] requestedCovariates) {
-        final List<String> names = new ArrayList<String>(requestedCovariates.length);
+    public static String covariateNames(final List<Covariate> requestedCovariates) {
+        final List<String> names = new ArrayList<>(requestedCovariates.size());
         for ( final Covariate cov : requestedCovariates )
             names.add(cov.getClass().getSimpleName());
         return Utils.join(",", names);
@@ -374,7 +374,7 @@ public class RecalUtils {
      * @param requestedCovariates The list of requested covariates
      * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      */
-    public static void outputRecalibrationReport(final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, boolean sortByCols) {
+    public static void outputRecalibrationReport(final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final List<Covariate> requestedCovariates, boolean sortByCols) {
         final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariateNames(requestedCovariates)), quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, requestedCovariates, sortByCols));
         report.print(RAC.RECAL_TABLE);
     }
@@ -389,7 +389,7 @@ public class RecalUtils {
      * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      * @return GATK report
      */
-    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, final boolean sortByCols) {
+    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final List<Covariate> requestedCovariates, final boolean sortByCols) {
         return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, requestedCovariates, sortByCols));
     }
 
@@ -427,23 +427,23 @@ public class RecalUtils {
         executor.exec();
     }
 
-    private static void writeCSV(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final Covariate[] requestedCovariates, final boolean printHeader) {
+    private static void writeCSV(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final List<Covariate> requestedCovariates, final boolean printHeader) {
 
-        final NestedIntegerArray<RecalDatum> deltaTable = createDeltaTable(recalibrationTables, requestedCovariates.length);
+        final NestedIntegerArray<RecalDatum> deltaTable = createDeltaTable(recalibrationTables, requestedCovariates.size());
 
         // add the quality score table to the delta table
         final NestedIntegerArray<RecalDatum> qualTable = recalibrationTables.getQualityScoreTable();
         for (final NestedIntegerArray.Leaf<RecalDatum> leaf : qualTable.getAllLeaves()) { // go through every element in the covariates table to create the delta table
             final int[] newCovs = new int[4];
             newCovs[0] = leaf.keys[0];
-            newCovs[1] = requestedCovariates.length; // replace the covariate name with an arbitrary (unused) index for QualityScore
+            newCovs[1] = requestedCovariates.size(); // replace the covariate name with an arbitrary (unused) index for QualityScore
             newCovs[2] = leaf.keys[1];
             newCovs[3] = leaf.keys[2];
             addToDeltaTable(deltaTable, newCovs, leaf.value); // add this covariate to the delta table
         }
 
         // add the optional covariates to the delta table
-        for (int i = RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < requestedCovariates.length; i++) {
+        for (int i = RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < requestedCovariates.size(); i++) {
             final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(i);
             for (final NestedIntegerArray.Leaf<RecalDatum> leaf : covTable.getAllLeaves()) {
                 final int[] covs = new int[4];
@@ -460,7 +460,7 @@ public class RecalUtils {
             printHeader(deltaTableFile);
         }
 
-        final Map<Covariate, String> covariateNameMap = new HashMap<>(requestedCovariates.length);
+        final Map<Covariate, String> covariateNameMap = new HashMap<>(requestedCovariates.size());
         for (final Covariate covariate : requestedCovariates)
             covariateNameMap.put(covariate, covariate.parseNameForReport());
 
@@ -519,13 +519,13 @@ public class RecalUtils {
         return new NestedIntegerArray<RecalDatum>(dimensionsForDeltaTable);
     }
 
-    protected static List<Object> generateValuesFromKeys(final int[] keys, final Covariate[] covariates, final Map<Covariate, String> covariateNameMap) {
+    protected static List<Object> generateValuesFromKeys(final int[] keys, final List<Covariate> covariates, final Map<Covariate, String> covariateNameMap) {
         final List<Object> values = new ArrayList<Object>(4);
-        values.add(covariates[RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()].formatKey(keys[0]));
+        values.add(covariates.get(RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()).formatKey(keys[0]));
 
         final int covariateIndex = keys[1];
         final int covariateKey = keys[2];
-        final Covariate covariate = covariateIndex == covariates.length ? covariates[RecalibrationTables.TableType.QUALITY_SCORE_TABLE.ordinal()] : covariates[covariateIndex];
+        final Covariate covariate = covariateIndex == covariates.size() ? covariates.get(RecalibrationTables.TableType.QUALITY_SCORE_TABLE.ordinal()) : covariates.get(covariateIndex);
         values.add(covariate.formatKey(covariateKey));
         values.add(covariateNameMap.get(covariate));
         values.add(EventType.eventFrom(keys[3]).prettyPrint());
@@ -727,8 +727,8 @@ public class RecalUtils {
      * @param requestedCovariates The list of requested covariates.
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static ReadCovariates computeCovariates(final SAMRecord read, final Covariate[] requestedCovariates) {
-        final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), requestedCovariates.length);
+    public static ReadCovariates computeCovariates(final SAMRecord read, final List<Covariate> requestedCovariates) {
+        final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), requestedCovariates.size());
         computeCovariates(read, requestedCovariates, readCovariates);
         return readCovariates;
     }
@@ -745,11 +745,11 @@ public class RecalUtils {
      * @param requestedCovariates The list of requested covariates.
      * @param resultsStorage      The object to store the covariate values
      */
-    public static void computeCovariates(final SAMRecord read, final Covariate[] requestedCovariates, final ReadCovariates resultsStorage) {
+    public static void computeCovariates(final SAMRecord read, final List<Covariate> requestedCovariates, final ReadCovariates resultsStorage) {
         // Loop through the list of requested covariates and compute the values of each covariate for all positions in this read
-        for (int i = 0; i < requestedCovariates.length; i++) {
+        for (int i = 0; i < requestedCovariates.size(); i++) {
             resultsStorage.setCovariateIndex(i);
-            requestedCovariates[i].recordValues(read, resultsStorage);
+            requestedCovariates.get(i).recordValues(read, resultsStorage);
         }
     }
 

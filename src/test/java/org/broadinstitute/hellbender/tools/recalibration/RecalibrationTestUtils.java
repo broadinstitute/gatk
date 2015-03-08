@@ -2,15 +2,16 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class RecalibrationTestUtils {
-    public static Covariate[] makeInitializedStandardCovariates() {
+    public static List<Covariate> makeInitializedStandardCovariates() {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
-        final Covariate[] covariates = new Covariate[4];
-        covariates[0] = new ReadGroupCovariate();
-        covariates[1] = new QualityScoreCovariate();
-        covariates[2] = new ContextCovariate();
-        covariates[3] = new CycleCovariate();
-        for ( Covariate cov : covariates ) cov.initialize(RAC);
+        final List<Covariate> covariates = Arrays.asList(new ReadGroupCovariate(), new QualityScoreCovariate(), new ContextCovariate(), new CycleCovariate());
+        for ( Covariate cov : covariates ) {
+            cov.initialize(RAC);
+        }
         return covariates;
     }
 }

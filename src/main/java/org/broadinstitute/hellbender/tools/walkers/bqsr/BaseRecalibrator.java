@@ -143,7 +143,7 @@ public class BaseRecalibrator extends ReadWalker {
     /**
      * list to hold the all the covariate objects that were requested (required + standard + experimental)
      */
-    private Covariate[] requestedCovariates;
+    private List<Covariate> requestedCovariates;
 
     private RecalibrationEngine recalibrationEngine;
 
