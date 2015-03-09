@@ -77,18 +77,27 @@ dependencies {
     compile 'com.google.apis:google-api-services-genomics:v1beta2-rev26-1.19.1'
 
 
-
     testCompile 'org.testng:testng:6.8.8'
 }
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-version = '1.0'
+//set version
+def stdout = new ByteArrayOutputStream()
+exec{
+    commandLine "git","describe","--always","--long"
+    standardOutput = stdout;
+
+    ignoreExitValue = true
+}
+version = stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
+
+
 jar {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-tools',
-                'Implementation-Version': version, 
+                'Implementation-Version': version,
                 'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
 }
@@ -96,8 +105,6 @@ jar {
 test {
     // enable TestNG support (default is JUnit)
     useTestNG()
-
-
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
@@ -131,10 +138,6 @@ test {
             logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
         }
     }
-
-
-
-
 }
 
 task wrapper(type: Wrapper) {
