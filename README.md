@@ -47,6 +47,8 @@ Creating a Hellbender project in the IntelliJ IDE:
 
 * Ensure that you have `gradle` and the Java 8 JDK installed
 
+* Install the TestNG plugin (in preferences)
+
 * Clone the Hellbender repository using git
 
 * In IntelliJ, go to File -> "Import Project"
