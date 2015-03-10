@@ -273,7 +273,7 @@ public final class RecalibrationReport {
             if (argument.equals("covariate") && value != null)
                 RAC.COVARIATES = Arrays.asList(value.toString().split(","));
 
-            else if (argument.equals("standard_covs"))
+            else if (argument.equals("no_standard_covs"))
                 RAC.DO_NOT_USE_STANDARD_COVARIATES = Boolean.parseBoolean((String) value);
 
             else if (argument.equals("solid_recal_mode"))
@@ -322,11 +322,11 @@ public final class RecalibrationReport {
                 RAC.SORT_BY_ALL_COLUMNS = Boolean.parseBoolean((String) value);
         }
 
-        if (RAC.COVARIATES.equals(new StandardCovariateList().getStandardCovariateClassNames())) {
-            throw new UserException("Non standard covariates are not supported. Only the following are supported " + new StandardCovariateList().getStandardCovariateClassNames());
+        if (!RAC.COVARIATES.equals(new StandardCovariateList().getStandardCovariateClassNames())) {
+            throw new UserException("Non-standard covariates are not supported. Only the following are supported " + new StandardCovariateList().getStandardCovariateClassNames() + " but was " + RAC.COVARIATES);
         }
-        if (RAC.DO_NOT_USE_STANDARD_COVARIATES == true){
-            throw new UserException("Non standard covariates are not supported. Only the following are supported " + new StandardCovariateList().getStandardCovariateClassNames());
+        if (RAC.DO_NOT_USE_STANDARD_COVARIATES){
+            throw new UserException("Non-standard covariates are not supported. Only the following are supported " + new StandardCovariateList().getStandardCovariateClassNames() + " but no_standard_covs was true");
         }
         return RAC;
     }
