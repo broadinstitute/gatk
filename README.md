@@ -25,6 +25,8 @@ General guidelines for Hellbender developers
 
 * **Try to keep datafiles under 100kb in size.**
 
+* Hellbender is  BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
+
 * Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code). New code without tests should not be accepted as pull requests.
 
 * Do use Java 8 features liberally, in particular streams, functional programming etc.
