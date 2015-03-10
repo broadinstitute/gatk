@@ -14,7 +14,6 @@ import java.util.List;
  */
 public final class StandardCovariateList implements Iterable<Covariate>{
 
-    // enforce the order with RG first and QS next.
     private final List<Covariate> theList;
 
     private final Covariate readGroupCovariate;
@@ -27,7 +26,15 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         this.qualityScoreCovariate = new QualityScoreCovariate();
         this.contextCovariate = new ContextCovariate();
         this.cycleCovariate = new CycleCovariate();
-       this.theList = Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate);
+        this.theList = Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate);
+    }
+
+    public List<String> getStandardCovariateClassNames() {
+        final List<String> names = new ArrayList<>(theList.size());
+        for ( final Covariate cov : theList ) {
+            names.add(cov.getClass().getSimpleName());
+        }
+        return names;
     }
 
     public final int size(){
@@ -62,11 +69,7 @@ public final class StandardCovariateList implements Iterable<Covariate>{
      * @return a non-null comma-separated string
      */
     public String covariateNames() {
-        final List<String> names = new ArrayList<>(this.size());
-        for ( final Covariate cov : theList ) {
-            names.add(cov.getClass().getSimpleName());
-        }
-        return String.join(",", names);
+        return String.join(",", getStandardCovariateClassNames());
     }
 
     private void recordValueInStorage(Covariate cov, SAMRecord read, ReadCovariates resultsStorage) {
@@ -99,8 +102,8 @@ public final class StandardCovariateList implements Iterable<Covariate>{
     }
 
     public StandardCovariateList initializeAll(RecalibrationArgumentCollection rac) {
-        for (Covariate c : theList){
-            c.initialize(rac);
+        for (Covariate cov : theList){
+            cov.initialize(rac);
         }
         return this;
     }

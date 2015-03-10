@@ -44,8 +44,12 @@ public class RecalibrationArgumentCollection implements ArgumentCollectionDefini
     public PrintStream RECAL_TABLE;
 
 
-    //HACK - we hardwire those names here to keep compatibility with GATK3 reports.
-    public List<String> COVARIATES = Covariate.classNameList(RecalUtils.initializeCovariatesAsArray());
+    //HACK - we hardwire those names here to keep compatibility with GATK3 reports. However, using a report with a different set will cause a UserException.
+    @Deprecated
+    public List<String> COVARIATES = Covariate.classNameList(new StandardCovariateList());
+
+    //HACK - we hardwire those names here to keep compatibility with GATK3 reports. However, using a report with a different set will cause a UserException.
+    @Deprecated
     public boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**
@@ -228,7 +232,7 @@ public class RecalibrationArgumentCollection implements ArgumentCollectionDefini
      */
     public Map<String,? extends CharSequence> compareReportArguments(final RecalibrationArgumentCollection other,final String thisRole, final String otherRole) {
         final Map<String,String> result = new LinkedHashMap<>(15);
-        compareRequestedCovariates(result, other, thisRole, otherRole);
+        compareCovariates(result, other, thisRole, otherRole);
         compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, other.DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
         compareSimpleReportArgument(result,"run_without_dbsnp",RUN_WITHOUT_DBSNP,other.RUN_WITHOUT_DBSNP,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, other.SOLID_RECAL_MODE,thisRole,otherRole);
@@ -257,8 +261,8 @@ public class RecalibrationArgumentCollection implements ArgumentCollectionDefini
      *
      * @return <code>true</code> if a difference was found.
      */
-    private boolean compareRequestedCovariates(final Map<String,String> diffs,
-            final RecalibrationArgumentCollection other, final String thisRole, final String otherRole) {
+    private boolean compareCovariates(final Map<String, String> diffs,
+                                      final RecalibrationArgumentCollection other, final String thisRole, final String otherRole) {
 
         final Set<String> beforeNames = new HashSet<>(this.COVARIATES.size());
         final Set<String> afterNames = new HashSet<>(other.COVARIATES.size());

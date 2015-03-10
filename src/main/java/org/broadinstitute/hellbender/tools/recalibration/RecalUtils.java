@@ -65,17 +65,6 @@ public class RecalUtils {
     private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%.2f");
 
     /**
-     * Generates a a list of the standard four covariates that we always use for recalibration.
-     *
-     * XXX: ReadGroupCovariate must be first and QualityScoreCovariate must be second
-     *
-     * @return an ordered list of covariates
-     */
-    public static StandardCovariateList initializeCovariatesAsArray() {
-        return new StandardCovariateList();
-    }
-
-    /**
      * Component used to print out csv representation of the reports that can be use to perform analysis in
      * external tools. E.g. generate plots using R scripts.
      * <p/>
@@ -179,7 +168,7 @@ public class RecalUtils {
         } else {
             final Iterator<RecalibrationReport> rit = reports.values().iterator();
             final RecalibrationReport first = rit.next();
-            final StandardCovariateList covariates = first.getRequestedCovariates();
+            final StandardCovariateList covariates = first.getCovariates();
             writeCsv(out, reports, covariates);
         }
     }
@@ -197,7 +186,7 @@ public class RecalUtils {
     private static void writeCsv(final File out,
             final Map<String, RecalibrationReport> reports, final StandardCovariateList c)
         throws FileNotFoundException {
-        final CsvPrinter p = csvPrinter(out,c);
+        final CsvPrinter p = csvPrinter(out, c);
         for (Map.Entry<String,RecalibrationReport> e : reports.entrySet()) {
             p.print(e.getValue(),e.getKey());
         }
@@ -374,12 +363,12 @@ public class RecalUtils {
      * @param argumentTable Argument table
      * @param quantizationInfo Quantization info
      * @param recalibrationTables Recalibration tables
-     * @param requestedCovariates The list of requested covariates
+     * @param covariates The list of covariates
      * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      * @return GATK report
      */
-    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList requestedCovariates, final boolean sortByCols) {
-        return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, requestedCovariates, sortByCols));
+    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, final boolean sortByCols) {
+        return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, covariates, sortByCols));
     }
 
     /**
@@ -713,12 +702,12 @@ public class RecalUtils {
      * reqeustedCovariates list.
      *
      * @param read                The read for which to compute covariate values.
-     * @param requestedCovariates The list of requested covariates.
+     * @param covariates The list of requested covariates.
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static ReadCovariates computeCovariates(final SAMRecord read, final StandardCovariateList requestedCovariates) {
-        final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), requestedCovariates.size());
-        computeCovariates(read, requestedCovariates, readCovariates);
+    public static ReadCovariates computeCovariates(final SAMRecord read, final StandardCovariateList covariates) {
+        final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), covariates.size());
+        computeCovariates(read, covariates, readCovariates);
         return readCovariates;
     }
 
@@ -728,7 +717,7 @@ public class RecalUtils {
      *
      * It populates an array of covariate values where result[i][j] is the covariate
      * value for the ith position in the read and the jth covariate in
-     * requestedCovariates list.
+     * covariates list.
      *
      * @param read                The read for which to compute covariate values.
      * @param covariates          The list of covariates.

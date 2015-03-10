@@ -34,7 +34,7 @@ public class ReadCovariatesUnitTest {
         coCov.initialize(RAC);
         cyCov.initialize(RAC);
 
-        StandardCovariateList requestedCovariates = new StandardCovariateList();
+        StandardCovariateList covariates = new StandardCovariateList();
 
         final int NUM_READS = 100;
         final Random rnd = Utils.getRandomGenerator();
@@ -51,7 +51,7 @@ public class ReadCovariatesUnitTest {
                 final byte[] mQuals = read.getBaseQualities();
                 final byte[] iQuals = ReadUtils.getBaseInsertionQualities(read);
                 final byte[] dQuals = ReadUtils.getBaseDeletionQualities(read);
-                ReadCovariates rc = RecalUtils.computeCovariates(read, requestedCovariates);
+                ReadCovariates rc = RecalUtils.computeCovariates(read, covariates);
 
                 // check that the length is correct
                 Assert.assertEquals(rc.getMismatchesKeySet().length, length);

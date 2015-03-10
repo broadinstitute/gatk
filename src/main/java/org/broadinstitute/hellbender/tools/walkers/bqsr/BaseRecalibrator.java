@@ -144,7 +144,7 @@ public class BaseRecalibrator extends ReadWalker {
     /**
      * list to hold the all the covariate objects that were requested (required + standard + experimental)
      */
-    private StandardCovariateList requestedCovariates;
+    private StandardCovariateList covariates;
 
     private RecalibrationEngine recalibrationEngine;
 
@@ -174,10 +174,10 @@ public class BaseRecalibrator extends ReadWalker {
         if (RAC.knownSites.isEmpty() && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
             throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
 
-        requestedCovariates = RecalUtils.initializeCovariatesAsArray();
+        covariates = new StandardCovariateList();
 
         logger.info("The covariates being used here: ");
-        for (Covariate cov : requestedCovariates) { // list all the covariates being used
+        for (Covariate cov : covariates) { // list all the covariates being used
             logger.info("\t" + cov.getClass().getSimpleName());
             cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
         }
@@ -203,7 +203,7 @@ public class BaseRecalibrator extends ReadWalker {
     private void initializeRecalibrationEngine() {
         int numReadGroups = getHeaderForReads().getReadGroups().size();
 
-        recalibrationEngine = new RecalibrationEngine(requestedCovariates, numReadGroups);
+        recalibrationEngine = new RecalibrationEngine(covariates, numReadGroups);
     }
 
     private boolean isLowQualityBase( final SAMRecord read, final int offset ) {
@@ -291,7 +291,7 @@ public class BaseRecalibrator extends ReadWalker {
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
-            final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
+            final ReadCovariates covariates = RecalUtils.computeCovariates(read, this.covariates);
             final boolean[] skip = calculateSkipArray(read, featureContext); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
@@ -544,6 +544,6 @@ public class BaseRecalibrator extends ReadWalker {
     }
 
     private void generateReport() {
-        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), requestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
+        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), covariates, RAC.SORT_BY_ALL_COLUMNS);
     }
 }

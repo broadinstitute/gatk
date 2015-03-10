@@ -25,7 +25,7 @@ public class BaseRecalibration {
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
-    private final StandardCovariateList requestedCovariates; // list of all covariates to be used in this calculation
+    private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
 
     private final boolean disableIndelQuals;
     private final int preserveQLessThan;
@@ -44,7 +44,7 @@ public class BaseRecalibration {
         RecalibrationReport recalibrationReport = new RecalibrationReport(RECAL_FILE);
 
         recalibrationTables = recalibrationReport.getRecalibrationTables();
-        requestedCovariates = recalibrationReport.getRequestedCovariates();
+        covariates = recalibrationReport.getCovariates();
         quantizationInfo = recalibrationReport.getQuantizationInfo();
         if (quantizationLevels == 0) // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
@@ -85,7 +85,7 @@ public class BaseRecalibration {
             }
         }
 
-        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, requestedCovariates);
+        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, covariates);
         final int readLength = read.getReadLength();
 
         for (final EventType errorModel : EventType.values()) { // recalibrate all three quality strings
@@ -115,7 +115,7 @@ public class BaseRecalibration {
                         final int[] keySet = fullReadKeySet[offset];
                         final RecalDatum empiricalQualQS = recalibrationTables.getQualityScoreTable().get(keySet[0], keySet[1], errorModel.ordinal());
                         final List<RecalDatum> empiricalQualCovs = new ArrayList<>();
-                        for (int i = 2; i < requestedCovariates.size(); i++) {
+                        for (int i = 2; i < covariates.size(); i++) {
                             if (keySet[i] < 0) {
                                 continue;
                             }

@@ -36,8 +36,8 @@ public class RecalibrationReportUnitTest {
     public void testOutput() {
         final int length = 100;
 
-        List<Byte> quals = new ArrayList<Byte>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
-        List<Long> counts = new ArrayList<Long>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
+        List<Byte> quals = new ArrayList<>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
+        List<Long> counts = new ArrayList<>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
 
         for (int i = 0;  i<= QualityUtils.MAX_SAM_QUAL_SCORE; i++) {
             quals.add((byte) i);
@@ -48,18 +48,18 @@ public class RecalibrationReportUnitTest {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
         quantizationInfo.noQuantization();
-        final StandardCovariateList requiredCovariates = new StandardCovariateList();
+        final StandardCovariateList covariateList = new StandardCovariateList();
 
-        final Covariate rgCovariate = requiredCovariates.getReadGroupCovariate();
+        final Covariate rgCovariate = covariateList.getReadGroupCovariate();
         rgCovariate.initialize(RAC);
 
-        final Covariate qsCovariate = requiredCovariates.getQualityScoreCovariate();
+        final Covariate qsCovariate = covariateList.getQualityScoreCovariate();
         qsCovariate.initialize(RAC);
 
-        final Covariate cxCovariate = requiredCovariates.getContextCovariate();
+        final Covariate cxCovariate = covariateList.getContextCovariate();
         cxCovariate.initialize(RAC);
 
-        final Covariate cyCovariate = requiredCovariates.getCycleCovariate();
+        final Covariate cyCovariate = covariateList.getCycleCovariate();
         cyCovariate.initialize(RAC);
 
         final SAMReadGroupRecord rg = new SAMReadGroupRecord("id");
@@ -73,9 +73,9 @@ public class RecalibrationReportUnitTest {
 
         final int expectedKeys = expectedNumberOfKeys(length, RAC.INDELS_CONTEXT_SIZE, RAC.MISMATCHES_CONTEXT_SIZE);
         int nKeys = 0;                                                                                                  // keep track of how many keys were produced
-        final ReadCovariates rc = RecalUtils.computeCovariates(read, requiredCovariates);
+        final ReadCovariates rc = RecalUtils.computeCovariates(read, covariateList);
 
-        final RecalibrationTables recalibrationTables = new RecalibrationTables(requiredCovariates);
+        final RecalibrationTables recalibrationTables = new RecalibrationTables(covariateList);
         final NestedIntegerArray<RecalDatum> rgTable = recalibrationTables.getReadGroupTable();
         final NestedIntegerArray<RecalDatum> qualTable = recalibrationTables.getQualityScoreTable();
 
@@ -89,7 +89,7 @@ public class RecalibrationReportUnitTest {
                 rgTable.put(createRandomRecalDatum(randomMax, 10), covariates[0], errorMode.ordinal());
                 qualTable.put(createRandomRecalDatum(randomMax, 10), covariates[0], covariates[1], errorMode.ordinal());
                 nKeys += 2;
-                for (int j = requiredCovariates.getOptionalCovariatesStartIndex(); j < requiredCovariates.size(); j++) {
+                for (int j = covariateList.getOptionalCovariatesStartIndex(); j < covariateList.size(); j++) {
                     final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(j);
                     final int covValue = covariates[j];
                     if ( covValue >= 0 ) {

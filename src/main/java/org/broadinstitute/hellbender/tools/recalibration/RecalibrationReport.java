@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -22,8 +23,8 @@ import java.util.TreeSet;
 public final class RecalibrationReport {
     private QuantizationInfo quantizationInfo; // histogram containing the counts for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables; // quick access reference to the tables
-    private final StandardCovariateList requestedCovariates; // list of all covariates to be used in this calculation
-    private final List<String> requestedCovariateNames; // list of all covariate names to be used in this calculation
+    private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
+    private final List<String> covariateNames; // list of all covariate names to be used in this calculation
 
     private final GATKReportTable argumentTable; // keep the argument table untouched just for output purposes
     private final RecalibrationArgumentCollection RAC; // necessary for quantizing qualities with the same parameter
@@ -45,14 +46,12 @@ public final class RecalibrationReport {
         GATKReportTable quantizedTable = report.getTable(RecalUtils.QUANTIZED_REPORT_TABLE_TITLE);
         quantizationInfo = initializeQuantizationTable(quantizedTable);
 
-        requestedCovariates = RecalUtils.initializeCovariatesAsArray(); // initialize the required and optional covariates
-        requestedCovariateNames =  Covariate.classNameList(requestedCovariates);
+        covariates = new StandardCovariateList(); // initialize the required and optional covariates
+        covariateNames =  Covariate.classNameList(covariates);
 
-        for (Covariate cov : requestedCovariates) {
-            cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
-        }
+        covariates.initializeAll(RAC);
 
-        recalibrationTables = new RecalibrationTables(requestedCovariates, allReadGroups.size());
+        recalibrationTables = new RecalibrationTables(covariates, allReadGroups.size());
 
         initializeReadGroupCovariates(allReadGroups);
 
@@ -83,8 +82,9 @@ public final class RecalibrationReport {
     private static SortedSet<String> getReadGroups(final GATKReport report) {
         final GATKReportTable reportTable = report.getTable(RecalUtils.READGROUP_REPORT_TABLE_TITLE);
         final SortedSet<String> readGroups = new TreeSet<>();
-        for ( int i = 0; i < reportTable.getNumRows(); i++ )
+        for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             readGroups.add(reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME).toString());
+        }
         return readGroups;
     }
 
@@ -117,8 +117,8 @@ public final class RecalibrationReport {
         return recalibrationTables;
     }
 
-    public StandardCovariateList getRequestedCovariates() {
-        return requestedCovariates;
+    public StandardCovariateList getCovariates() {
+        return covariates;
     }
 
     /**
@@ -131,7 +131,7 @@ public final class RecalibrationReport {
      */
     private void initializeReadGroupCovariates(final SortedSet<String> allReadGroups) {
         for (String readGroup: allReadGroups) {
-            requestedCovariates.getReadGroupCovariate().keyFromValue(readGroup);
+            covariates.getReadGroupCovariate().keyFromValue(readGroup);
         }
     }
 
@@ -144,14 +144,14 @@ public final class RecalibrationReport {
     private void parseAllCovariatesTable(final GATKReportTable reportTable, final RecalibrationTables recalibrationTables) {
         for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             final Object rg = reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME);
-            tempCOVarray[0] = requestedCovariates.getReadGroupCovariate().keyFromValue(rg);
+            tempCOVarray[0] = covariates.getReadGroupCovariate().keyFromValue(rg);
             final Object qual = reportTable.get(i, RecalUtils.QUALITY_SCORE_COLUMN_NAME);
-            tempCOVarray[1] = requestedCovariates.getQualityScoreCovariate().keyFromValue(qual);
+            tempCOVarray[1] = covariates.getQualityScoreCovariate().keyFromValue(qual);
 
             final String covName = (String)reportTable.get(i, RecalUtils.COVARIATE_NAME_COLUMN_NAME);
-            final int covIndex = requestedCovariateNames.indexOf(covName);
+            final int covIndex = covariateNames.indexOf(covName);
             final Object covValue = reportTable.get(i, RecalUtils.COVARIATE_VALUE_COLUMN_NAME);
-            tempCOVarray[2] = requestedCovariates.get(covIndex).keyFromValue(covValue);
+            tempCOVarray[2] = covariates.get(covIndex).keyFromValue(covValue);
 
             final EventType event = EventType.eventFrom((String)reportTable.get(i, RecalUtils.EVENT_TYPE_COLUMN_NAME));
             tempCOVarray[3] = event.ordinal();
@@ -169,9 +169,9 @@ public final class RecalibrationReport {
     private void parseQualityScoreTable(final GATKReportTable reportTable, final NestedIntegerArray<RecalDatum> qualTable) {
         for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             final Object rg = reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME);
-            tempQUALarray[0] = requestedCovariates.getReadGroupCovariate().keyFromValue(rg);
+            tempQUALarray[0] = covariates.getReadGroupCovariate().keyFromValue(rg);
             final Object qual = reportTable.get(i, RecalUtils.QUALITY_SCORE_COLUMN_NAME);
-            tempQUALarray[1] = requestedCovariates.getQualityScoreCovariate().keyFromValue(qual);
+            tempQUALarray[1] = covariates.getQualityScoreCovariate().keyFromValue(qual);
             final EventType event = EventType.eventFrom((String)reportTable.get(i, RecalUtils.EVENT_TYPE_COLUMN_NAME));
             tempQUALarray[2] = event.ordinal();
 
@@ -188,7 +188,7 @@ public final class RecalibrationReport {
     private void parseReadGroupTable(final GATKReportTable reportTable, final NestedIntegerArray<RecalDatum> rgTable) {
         for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             final Object rg = reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME);
-            tempRGarray[0] = requestedCovariates.getReadGroupCovariate().keyFromValue(rg);
+            tempRGarray[0] = covariates.getReadGroupCovariate().keyFromValue(rg);
             final EventType event = EventType.eventFrom((String)reportTable.get(i, RecalUtils.EVENT_TYPE_COLUMN_NAME));
             tempRGarray[1] = event.ordinal();
 
@@ -260,6 +260,7 @@ public final class RecalibrationReport {
      * @param table the GATKReportTable containing the arguments and its corresponding values
      * @return a RAC object properly initialized with all the objects in the table
      */
+    @SuppressWarnings("deprecation")
     private RecalibrationArgumentCollection initializeArgumentCollectionTable(GATKReportTable table) {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
@@ -268,6 +269,12 @@ public final class RecalibrationReport {
             Object value = table.get(i, RecalUtils.ARGUMENT_VALUE_COLUMN_NAME);
             if (value.equals("null"))
                 value = null; // generic translation of null values that were printed out as strings | todo -- add this capability to the GATKReport
+
+            if (argument.equals("covariate") && value != null)
+                RAC.COVARIATES = Arrays.asList(value.toString().split(","));
+
+            else if (argument.equals("standard_covs"))
+                RAC.DO_NOT_USE_STANDARD_COVARIATES = Boolean.parseBoolean((String) value);
 
             else if (argument.equals("solid_recal_mode"))
                 RAC.SOLID_RECAL_MODE = RecalUtils.SOLID_RECAL_MODE.recalModeFromString((String) value);
@@ -315,6 +322,12 @@ public final class RecalibrationReport {
                 RAC.SORT_BY_ALL_COLUMNS = Boolean.parseBoolean((String) value);
         }
 
+        if (RAC.COVARIATES.equals(new StandardCovariateList().getStandardCovariateClassNames())) {
+            throw new UserException("Non standard covariates are not supported. Only the following are supported " + new StandardCovariateList().getStandardCovariateClassNames());
+        }
+        if (RAC.DO_NOT_USE_STANDARD_COVARIATES == true){
+            throw new UserException("Non standard covariates are not supported. Only the following are supported " + new StandardCovariateList().getStandardCovariateClassNames());
+        }
         return RAC;
     }
 
@@ -332,7 +345,7 @@ public final class RecalibrationReport {
      * @return newly created recalibration report
      */
     public GATKReport createGATKReport() {
-        return RecalUtils.createRecalibrationGATKReport(argumentTable, quantizationInfo, recalibrationTables, requestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
+        return RecalUtils.createRecalibrationGATKReport(argumentTable, quantizationInfo, recalibrationTables, covariates, RAC.SORT_BY_ALL_COLUMNS);
     }
 
     public RecalibrationArgumentCollection getRAC() {
