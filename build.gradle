@@ -25,7 +25,7 @@ mainClassName = "org.broadinstitute.hellbender.Main"
 task downloadGsaLibFile(type: Download) {
     src 'http://cran.r-project.org/src/contrib/gsalib_2.1.tar.gz'
     dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
-    overwrite true
+    overwrite false
 }
 
 repositories {
