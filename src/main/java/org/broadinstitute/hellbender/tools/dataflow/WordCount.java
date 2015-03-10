@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.dataflowtest;
+package org.broadinstitute.hellbender.tools.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
@@ -16,7 +16,7 @@ import java.io.File;
 import java.io.Serializable;
 
 @CommandLineProgramProperties(usage="Count the usages of every word in a text", usageShort="Count Words")
-public class CountReads extends CommandLineProgram implements Serializable{
+public class WordCount extends CommandLineProgram implements Serializable{
     @Argument
     public File input;
 
