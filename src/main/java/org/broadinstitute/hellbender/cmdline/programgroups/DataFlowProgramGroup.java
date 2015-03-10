@@ -1,7 +1,17 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
-/**
- * Created by louisb on 3/10/15.
- */
-public class DataFlowProgramGroup {
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
+
+public class DataFlowProgramGroup implements CommandLineProgramGroup {
+
+    @Override
+    public String getName() {
+        return "Dataflow tests";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Programs to test out google data flow";
+    }
 }
+
