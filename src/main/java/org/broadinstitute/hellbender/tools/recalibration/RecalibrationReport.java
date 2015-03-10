@@ -149,14 +149,14 @@ public final class RecalibrationReport {
             tempCOVarray[1] = covariates.getQualityScoreCovariate().keyFromValue(qual);
 
             final String covName = (String)reportTable.get(i, RecalUtils.COVARIATE_NAME_COLUMN_NAME);
-            final int covIndex = covariateNames.indexOf(covName);
             final Object covValue = reportTable.get(i, RecalUtils.COVARIATE_VALUE_COLUMN_NAME);
-            tempCOVarray[2] = covariates.get(covIndex).keyFromValue(covValue);
+            final Covariate cov = covariates.getCovariateByParsedName(covName);
+            tempCOVarray[2] = cov.keyFromValue(covValue);
 
             final EventType event = EventType.eventFrom((String)reportTable.get(i, RecalUtils.EVENT_TYPE_COLUMN_NAME));
             tempCOVarray[3] = event.ordinal();
 
-            recalibrationTables.getTable(covIndex).put(getRecalDatum(reportTable, i, false), tempCOVarray);
+            recalibrationTables.getTableForCovariate(cov).put(getRecalDatum(reportTable, i, false), tempCOVarray);
         }
     }
 

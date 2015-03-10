@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * We always us the same covariates - this is the list.
+ * We always use the same covariates - this is the list.
  */
 public final class StandardCovariateList implements Iterable<Covariate>{
 
@@ -18,14 +18,15 @@ public final class StandardCovariateList implements Iterable<Covariate>{
 
     private final Covariate readGroupCovariate;
     private final Covariate qualityScoreCovariate;
-    private final Covariate contextCovariate;
-    private final Covariate cycleCovariate;
+    private final List<Covariate> nonSpecialCovariates;
 
     public StandardCovariateList(){
         this.readGroupCovariate = new ReadGroupCovariate();
         this.qualityScoreCovariate = new QualityScoreCovariate();
-        this.contextCovariate = new ContextCovariate();
-        this.cycleCovariate = new CycleCovariate();
+        ContextCovariate contextCovariate = new ContextCovariate();
+        CycleCovariate cycleCovariate = new CycleCovariate();
+
+        this.nonSpecialCovariates = Arrays.asList(contextCovariate, cycleCovariate);
         this.theList = Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate);
     }
 
@@ -55,12 +56,8 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         return qualityScoreCovariate;
     }
 
-    public Covariate getContextCovariate() {
-        return contextCovariate;
-    }
-
-    public Covariate getCycleCovariate() {
-        return cycleCovariate;
+    public Iterable<Covariate> getNonSpecialCovariates() {
+        return nonSpecialCovariates;
     }
 
     /**
@@ -89,17 +86,17 @@ public final class StandardCovariateList implements Iterable<Covariate>{
      * Get the covariate by the index.
      * XXX Exposing the index this is nasty, we need to eliminate this.
      */
-    public Covariate get(int covIndex) {
-        return theList.get(covIndex);
-    }
+//    public Covariate get(int covIndex) {
+//        return theList.get(covIndex);
+//    }
 
     /**
      * Return the index at which the optional covariates start.
-     * XXX This is a totally bogus. The list nature of this datastructure should not leak to clients but a lot of code depends on it.
+     * XXX This is a totally bogus. The list nature of this data structure should not leak to clients but a lot of code depends on it.
      */
-    public int getOptionalCovariatesStartIndex() {
-        return Math.min(theList.indexOf(contextCovariate), theList.indexOf(cycleCovariate));
-    }
+//    public int getOptionalCovariatesStartIndex() {
+//        return Math.min(theList.indexOf(contextCovariate), theList.indexOf(cycleCovariate));
+//    }
 
     public StandardCovariateList initializeAll(RecalibrationArgumentCollection rac) {
         for (Covariate cov : theList){
@@ -107,4 +104,14 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         }
         return this;
     }
+
+    public Covariate getCovariateByParsedName(String covName) {
+        for (Covariate cov : theList){
+            if (cov.parseNameForReport().equals(covName)) {
+                return cov;
+            }
+        }
+        throw new IllegalStateException("unknown covariate " + covName);
+    }
+
 }

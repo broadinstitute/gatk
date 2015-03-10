@@ -253,19 +253,16 @@ public class RecalUtils {
 
     private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
         List<GATKReportTable> result = new LinkedList<>();
-        //int reportTableIndex = 0;
         int rowIndex = 0;
+
+        GATKReportTable allCovsReportTable = null;
 
         for (NestedIntegerArray<RecalDatum> table : recalibrationTables){
             final ArrayList<Pair<String, String>> columnNames = new ArrayList<>(); // initialize the array to hold the column names
             columnNames.add(new MutablePair<>(covariates.getReadGroupCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
             if (!recalibrationTables.isReadGroupTable(table)) {
                 columnNames.add(new MutablePair<>(covariates.getQualityScoreCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
-                if (recalibrationTables.isContextTable(table)) {
-                    columnNames.add(covariateValue);
-                    columnNames.add(covariateName);
-                }
-                if (recalibrationTables.isCycleTable(table)) {
+                if (recalibrationTables.isNonSpecialTable(table)) {
                     columnNames.add(covariateValue);
                     columnNames.add(covariateName);
                 }
@@ -291,16 +288,21 @@ public class RecalUtils {
             final GATKReportTable.TableSortingWay sort = sortByCols ? GATKReportTable.TableSortingWay.SORT_BY_COLUMN : GATKReportTable.TableSortingWay.DO_NOT_SORT;
 
             final GATKReportTable reportTable;
+            final boolean addToList;
 
             //XXX this "if" implicitly uses the knowledge about the ordering of tables.
-            if (recalibrationTables.isReadGroupTable(table) || recalibrationTables.isQualityScoreTable(table) || recalibrationTables.isContextTable(table)) {
-                reportTable = new GATKReportTable(reportTableName, "", columnNames.size(), sort);
-                for (final Pair<String, String> columnName : columnNames) {
-                    reportTable.addColumn(columnName.getLeft(), columnName.getRight());
-                }
+            if (!recalibrationTables.isNonSpecialTable(table)) {
+                reportTable = makeNewTableWithColumns(columnNames, reportTableName, sort);
                 rowIndex = 0; // reset the row index since we're starting with a new table
+                addToList = true;
+            } else if (allCovsReportTable == null && recalibrationTables.isNonSpecialTable(table)) {
+                reportTable = makeNewTableWithColumns(columnNames, reportTableName, sort);
+                rowIndex = 0; // reset the row index since we're starting with a new table
+                allCovsReportTable =  reportTable;
+                addToList = true;
             } else {
-                reportTable = result.get(result.size()-1);//take the last one
+                reportTable = allCovsReportTable;
+                addToList = false;
             }
 
             for (final NestedIntegerArray.Leaf<RecalDatum> row : table.getAllLeaves()) {
@@ -312,13 +314,8 @@ public class RecalUtils {
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariates.getReadGroupCovariate().formatKey(keys[keyIndex++]));
                 if (!recalibrationTables.isReadGroupTable(table)) {
                     reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariates.getQualityScoreCovariate().formatKey(keys[keyIndex++]));
-                    if (recalibrationTables.isContextTable(table)){
-                        final Covariate covariate = covariates.getContextCovariate();
-                        reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.formatKey(keys[keyIndex++]));
-                        reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.parseNameForReport());
-                    }
-                    if (recalibrationTables.isCycleTable(table)){
-                        final Covariate covariate = covariates.getCycleCovariate();
+                    if (recalibrationTables.isNonSpecialTable(table)){
+                        final Covariate covariate = recalibrationTables.getCovariateForTable(table);
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.formatKey(keys[keyIndex++]));
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.parseNameForReport());
                     }
@@ -336,10 +333,20 @@ public class RecalUtils {
 
                 rowIndex++;
             }
-            result.add(reportTable);
+            if (addToList){
+                result.add(reportTable);      //XXX using a set would be slow because the equals method on GATKReportTable is expensive.
+            }
         }
 
         return result;
+    }
+
+    private static GATKReportTable makeNewTableWithColumns(ArrayList<Pair<String, String>> columnNames, String reportTableName, GATKReportTable.TableSortingWay sort) {
+        GATKReportTable rt = new GATKReportTable(reportTableName, "", columnNames.size(), sort);
+        for (final Pair<String, String> columnName : columnNames) {
+            rt.addColumn(columnName.getLeft(), columnName.getRight());
+        }
+        return rt;
     }
 
 
@@ -488,7 +495,7 @@ public class RecalUtils {
         dimensionsForDeltaTable[3] = dimensionsOfQualTable[2];
 
         // now, update the dimensions based on the optional covariate tables as needed
-        for ( NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getOptionalTables()) {
+        for ( NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getNonSpecialTables()) {
             final int[] dimensionsOfCovTable = covTable.getDimensions();
             dimensionsForDeltaTable[2] = Math.max(dimensionsForDeltaTable[2], dimensionsOfCovTable[2]);
             dimensionsForDeltaTable[3] = Math.max(dimensionsForDeltaTable[3], dimensionsOfCovTable[3]);
