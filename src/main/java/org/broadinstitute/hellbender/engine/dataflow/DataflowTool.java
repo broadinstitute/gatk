@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.PipelineResult;
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
@@ -20,9 +21,9 @@ public abstract class DataflowTool extends CommandLineProgram implements Seriali
         BLOCKING(BlockingDataflowPipelineRunner.class),
         NONBLOCKING(DataflowPipelineRunner.class);
 
-        public  Class<? extends PipelineRunner> runner;
+        public  Class<? extends PipelineRunner<? extends PipelineResult>> runner;
 
-        private PipelineRunnerType(Class<? extends PipelineRunner> runner){
+        private PipelineRunnerType(Class<? extends PipelineRunner<? extends PipelineResult>> runner){
             this.runner = runner;
         }
 
@@ -52,7 +53,7 @@ public abstract class DataflowTool extends CommandLineProgram implements Seriali
         DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
         options.setProject(projectID);
         options.setStagingLocation(stagingLocation);
-        options.setRunner((Class<? extends PipelineRunner<?>>) this.runner.runner);
+        options.setRunner(this.runner.runner);
         Pipeline p = Pipeline.create(options);
         setupPipeline(p);
         p.run();
