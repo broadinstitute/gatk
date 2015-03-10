@@ -11,23 +11,21 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
 
-import java.io.File;
-
 @CommandLineProgramProperties(
         usage="Count the usages of every word in a text",
         usageShort="Count Words",
         programGroup = DataFlowProgramGroup.class)
 public class WordCount extends DataflowTool{
     @Argument
-    public File input;
+    public String input;
 
     @Argument
-    public File output;
+    public String output;
 
     @Override
     public void setupPipeline(Pipeline p) {
         // Apply a root transform, a text file read, to the pipeline.
-        p.apply(TextIO.Read.from(input.getAbsolutePath()))
+        p.apply(TextIO.Read.from(input))
 
                 // Apply a ParDo transform to the PCollection resulting from the text file read
                 .apply(ParDo.of(new DoFn<String, String>() {
@@ -54,7 +52,7 @@ public class WordCount extends DataflowTool{
                 }))
 
                         // Apply a text file write transform to the PCollection of formatted word counts
-                .apply(TextIO.Write.to(output.getAbsolutePath()));
+                .apply(TextIO.Write.to(output));
     }
 
 }
