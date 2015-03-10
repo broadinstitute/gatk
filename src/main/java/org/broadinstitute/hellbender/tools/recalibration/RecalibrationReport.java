@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
@@ -21,7 +22,7 @@ import java.util.TreeSet;
 public final class RecalibrationReport {
     private QuantizationInfo quantizationInfo; // histogram containing the counts for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables; // quick access reference to the tables
-    private final List<Covariate> requestedCovariates; // list of all covariates to be used in this calculation
+    private final StandardCovariateList requestedCovariates; // list of all covariates to be used in this calculation
     private final List<String> requestedCovariateNames; // list of all covariate names to be used in this calculation
 
     private final GATKReportTable argumentTable; // keep the argument table untouched just for output purposes
@@ -116,7 +117,7 @@ public final class RecalibrationReport {
         return recalibrationTables;
     }
 
-    public List<Covariate> getRequestedCovariates() {
+    public StandardCovariateList getRequestedCovariates() {
         return requestedCovariates;
     }
 
@@ -130,7 +131,7 @@ public final class RecalibrationReport {
      */
     private void initializeReadGroupCovariates(final SortedSet<String> allReadGroups) {
         for (String readGroup: allReadGroups) {
-            requestedCovariates.get(0).keyFromValue(readGroup);
+            requestedCovariates.getReadGroupCovariate().keyFromValue(readGroup);
         }
     }
 
@@ -143,9 +144,9 @@ public final class RecalibrationReport {
     private void parseAllCovariatesTable(final GATKReportTable reportTable, final RecalibrationTables recalibrationTables) {
         for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             final Object rg = reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME);
-            tempCOVarray[0] = requestedCovariates.get(0).keyFromValue(rg);
+            tempCOVarray[0] = requestedCovariates.getReadGroupCovariate().keyFromValue(rg);
             final Object qual = reportTable.get(i, RecalUtils.QUALITY_SCORE_COLUMN_NAME);
-            tempCOVarray[1] = requestedCovariates.get(1).keyFromValue(qual);
+            tempCOVarray[1] = requestedCovariates.getQualityScoreCovariate().keyFromValue(qual);
 
             final String covName = (String)reportTable.get(i, RecalUtils.COVARIATE_NAME_COLUMN_NAME);
             final int covIndex = requestedCovariateNames.indexOf(covName);
@@ -168,9 +169,9 @@ public final class RecalibrationReport {
     private void parseQualityScoreTable(final GATKReportTable reportTable, final NestedIntegerArray<RecalDatum> qualTable) {
         for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             final Object rg = reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME);
-            tempQUALarray[0] = requestedCovariates.get(0).keyFromValue(rg);
+            tempQUALarray[0] = requestedCovariates.getReadGroupCovariate().keyFromValue(rg);
             final Object qual = reportTable.get(i, RecalUtils.QUALITY_SCORE_COLUMN_NAME);
-            tempQUALarray[1] = requestedCovariates.get(1).keyFromValue(qual);
+            tempQUALarray[1] = requestedCovariates.getQualityScoreCovariate().keyFromValue(qual);
             final EventType event = EventType.eventFrom((String)reportTable.get(i, RecalUtils.EVENT_TYPE_COLUMN_NAME));
             tempQUALarray[2] = event.ordinal();
 
@@ -187,7 +188,7 @@ public final class RecalibrationReport {
     private void parseReadGroupTable(final GATKReportTable reportTable, final NestedIntegerArray<RecalDatum> rgTable) {
         for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
             final Object rg = reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME);
-            tempRGarray[0] = requestedCovariates.get(0).keyFromValue(rg);
+            tempRGarray[0] = requestedCovariates.getReadGroupCovariate().keyFromValue(rg);
             final EventType event = EventType.eventFrom((String)reportTable.get(i, RecalUtils.EVENT_TYPE_COLUMN_NAME));
             tempRGarray[1] = event.ordinal();
 

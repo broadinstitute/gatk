@@ -66,7 +66,7 @@ public interface Covariate {
     /**
      * Extract the names of the covariates. Strip the "Covariate" because that's how it's stored in the report.
      */
-    public static List<String> classNameList(List<Covariate> covs) {
+    public static List<String> classNameList(StandardCovariateList covs) {
         List<String> names = new ArrayList<>(covs.size());
         for(Covariate cov : covs){
             names.add(cov.parseNameForReport());

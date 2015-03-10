@@ -1,55 +1,89 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 /**
  * Utility class to facilitate base quality score recalibration.
  */
 
-public final class RecalibrationTables {
-    public enum TableType {
-        READ_GROUP_TABLE,
-        QUALITY_SCORE_TABLE,
-        OPTIONAL_COVARIATE_TABLES_START;
-    }
-
-    private final ArrayList<NestedIntegerArray<RecalDatum>> tables;
+public final class RecalibrationTables implements Iterable<NestedIntegerArray<RecalDatum>>{
+    private final List<NestedIntegerArray<RecalDatum>> tables;
     private final int qualDimension;
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;
 
-    public RecalibrationTables(final List<Covariate> covariates) {
-        this(covariates, covariates.get(TableType.READ_GROUP_TABLE.ordinal()).maximumKeyValue() + 1);
+    private final NestedIntegerArray<RecalDatum> readGroupTable;
+    private final NestedIntegerArray<RecalDatum> qualityScoreTable;
+    private final NestedIntegerArray<RecalDatum> contextTable;
+    private final NestedIntegerArray<RecalDatum> cycleTable;
+
+    public RecalibrationTables(final StandardCovariateList covariates) {
+        this(covariates, covariates.getReadGroupCovariate().maximumKeyValue() + 1);
     }
 
-    public RecalibrationTables(final List<Covariate> covariates, final int numReadGroups) {
-        tables = new ArrayList<>(covariates.size());
-        for ( int i = 0; i < covariates.size(); i++ )
-            tables.add(i, null); // initialize so we can set below
+    public RecalibrationTables(StandardCovariateList covariates, final int numReadGroups) {
+        this.tables = new ArrayList<>(covariates.size());
 
-        qualDimension = covariates.get(TableType.QUALITY_SCORE_TABLE.ordinal()).maximumKeyValue() + 1;
+        this.qualDimension = covariates.getQualityScoreCovariate().maximumKeyValue() + 1;
         this.numReadGroups = numReadGroups;
 
-        tables.set(TableType.READ_GROUP_TABLE.ordinal(),
-                 new NestedIntegerArray<>(numReadGroups, eventDimension));
+        this.readGroupTable = new NestedIntegerArray<>(numReadGroups, eventDimension);
+        tables.add(readGroupTable);
 
-        tables.set(TableType.QUALITY_SCORE_TABLE.ordinal(), makeQualityScoreTable());
+        this.qualityScoreTable = makeQualityScoreTable();
+        tables.add(qualityScoreTable);
 
-        for (int i = TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < covariates.size(); i++)
-            tables.set(i, new NestedIntegerArray<>(numReadGroups, qualDimension, covariates.get(i).maximumKeyValue()+1, eventDimension));
+        final Covariate contextCovariate = covariates.getContextCovariate();
+        this.contextTable = new NestedIntegerArray<>(numReadGroups, qualDimension, contextCovariate.maximumKeyValue() + 1, eventDimension);
+        tables.add(contextTable);
+
+        final Covariate cycleCovariate = covariates.getCycleCovariate();
+        this.cycleTable = new NestedIntegerArray<>(numReadGroups, qualDimension, cycleCovariate.maximumKeyValue() + 1, eventDimension);
+        tables.add(cycleTable);
+    }
+
+    public boolean isReadGroupTable(NestedIntegerArray<RecalDatum> table) {
+        return table.equals(getReadGroupTable());
+    }
+
+    public boolean isQualityScoreTable(NestedIntegerArray<RecalDatum> table) {
+        return table.equals(getQualityScoreTable());
+    }
+
+    public boolean isContextTable(NestedIntegerArray<RecalDatum> table) {
+        return table.equals(getContextTable());
+    }
+
+    public boolean isCycleTable(NestedIntegerArray<RecalDatum> table) {
+        return table.equals(getCycleTable());
+    }
+
+    public List<NestedIntegerArray<RecalDatum>> getOptionalTables() {
+        return Arrays.asList(contextTable, cycleTable);
     }
 
     public NestedIntegerArray<RecalDatum> getReadGroupTable() {
-        return getTable(TableType.READ_GROUP_TABLE.ordinal());
+        return readGroupTable;
     }
 
     public NestedIntegerArray<RecalDatum> getQualityScoreTable() {
-        return getTable(TableType.QUALITY_SCORE_TABLE.ordinal());
+        return qualityScoreTable;
+    }
+
+    public NestedIntegerArray<RecalDatum> getContextTable() {
+        return contextTable;
+    }
+
+    public NestedIntegerArray<RecalDatum> getCycleTable() {
+        return cycleTable;
     }
 
     public NestedIntegerArray<RecalDatum> getTable(final int index) {
@@ -58,6 +92,11 @@ public final class RecalibrationTables {
 
     public int numTables() {
         return tables.size();
+    }
+
+    @Override
+    public Iterator<NestedIntegerArray<RecalDatum>> iterator() {
+        return tables.iterator();
     }
 
     /**
@@ -94,4 +133,5 @@ public final class RecalibrationTables {
             RecalUtils.combineTables(myTable, otherTable);
         }
     }
+
 }

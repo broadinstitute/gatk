@@ -5,8 +5,8 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
@@ -25,7 +25,7 @@ public class BaseRecalibration {
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
-    private final List<Covariate> requestedCovariates; // list of all covariates to be used in this calculation
+    private final StandardCovariateList requestedCovariates; // list of all covariates to be used in this calculation
 
     private final boolean disableIndelQuals;
     private final int preserveQLessThan;

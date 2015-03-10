@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.CycleCovariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
@@ -13,7 +15,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -47,30 +48,19 @@ public class RecalibrationReportUnitTest {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
         quantizationInfo.noQuantization();
-        final List<Covariate> requiredCovariates = new LinkedList<Covariate>();
-        final List<Covariate> optionalCovariates = new LinkedList<Covariate>();
+        final StandardCovariateList requiredCovariates = new StandardCovariateList();
 
-        final ReadGroupCovariate rgCovariate = new ReadGroupCovariate();
+        final Covariate rgCovariate = requiredCovariates.getReadGroupCovariate();
         rgCovariate.initialize(RAC);
-        requiredCovariates.add(rgCovariate);
 
-        final QualityScoreCovariate qsCovariate = new QualityScoreCovariate();
+        final Covariate qsCovariate = requiredCovariates.getQualityScoreCovariate();
         qsCovariate.initialize(RAC);
-        requiredCovariates.add(qsCovariate);
 
-        final ContextCovariate cxCovariate = new ContextCovariate();
+        final Covariate cxCovariate = requiredCovariates.getContextCovariate();
         cxCovariate.initialize(RAC);
-        optionalCovariates.add(cxCovariate);
-        final CycleCovariate cyCovariate = new CycleCovariate();
-        cyCovariate.initialize(RAC);
-        optionalCovariates.add(cyCovariate);
 
-        final List<Covariate> requestedCovariates = new ArrayList<>(requiredCovariates.size() + optionalCovariates.size());
-        int covariateIndex = 0;
-        for (final Covariate cov : requiredCovariates)
-            requestedCovariates.add(covariateIndex++, cov);
-        for (final Covariate cov : optionalCovariates)
-            requestedCovariates.add(covariateIndex++, cov);
+        final Covariate cyCovariate = requiredCovariates.getCycleCovariate();
+        cyCovariate.initialize(RAC);
 
         final SAMReadGroupRecord rg = new SAMReadGroupRecord("id");
         rg.setPlatform("illumina");
@@ -83,9 +73,9 @@ public class RecalibrationReportUnitTest {
 
         final int expectedKeys = expectedNumberOfKeys(length, RAC.INDELS_CONTEXT_SIZE, RAC.MISMATCHES_CONTEXT_SIZE);
         int nKeys = 0;                                                                                                  // keep track of how many keys were produced
-        final ReadCovariates rc = RecalUtils.computeCovariates(read, requestedCovariates);
+        final ReadCovariates rc = RecalUtils.computeCovariates(read, requiredCovariates);
 
-        final RecalibrationTables recalibrationTables = new RecalibrationTables(requestedCovariates);
+        final RecalibrationTables recalibrationTables = new RecalibrationTables(requiredCovariates);
         final NestedIntegerArray<RecalDatum> rgTable = recalibrationTables.getReadGroupTable();
         final NestedIntegerArray<RecalDatum> qualTable = recalibrationTables.getQualityScoreTable();
 
@@ -99,9 +89,9 @@ public class RecalibrationReportUnitTest {
                 rgTable.put(createRandomRecalDatum(randomMax, 10), covariates[0], errorMode.ordinal());
                 qualTable.put(createRandomRecalDatum(randomMax, 10), covariates[0], covariates[1], errorMode.ordinal());
                 nKeys += 2;
-                for (int j = 0; j < optionalCovariates.size(); j++) {
-                    final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal() + j);
-                    final int covValue = covariates[RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal() + j];
+                for (int j = requiredCovariates.getOptionalCovariatesStartIndex(); j < requiredCovariates.size(); j++) {
+                    final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(j);
+                    final int covValue = covariates[j];
                     if ( covValue >= 0 ) {
                         covTable.put(createRandomRecalDatum(randomMax, 10), covariates[0], covariates[1], covValue, errorMode.ordinal());
                         nKeys++;

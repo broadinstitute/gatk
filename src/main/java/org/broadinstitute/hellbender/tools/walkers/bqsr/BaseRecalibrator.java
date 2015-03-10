@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -143,7 +144,7 @@ public class BaseRecalibrator extends ReadWalker {
     /**
      * list to hold the all the covariate objects that were requested (required + standard + experimental)
      */
-    private List<Covariate> requestedCovariates;
+    private StandardCovariateList requestedCovariates;
 
     private RecalibrationEngine recalibrationEngine;
 
