@@ -65,7 +65,7 @@ public class RecalibrationEngine {
 
                     RecalUtils.incrementDatumOrPutIfNecessary(qualityScoreTable, qual, isError, keys[0], keys[1], eventIndex);
 
-                    for (int i = 2; i < covariates.size(); i++) {
+                    for (int i = 2; i < covariates.size(); i++) { //XXX the 2 is hard-wired here as the number of special covariates
                         if (keys[i] < 0)
                             continue;
 

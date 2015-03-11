@@ -14,11 +14,10 @@ import java.util.List;
  */
 public final class StandardCovariateList implements Iterable<Covariate>{
 
-    private final List<Covariate> theList;
-
     private final Covariate readGroupCovariate;
     private final Covariate qualityScoreCovariate;
-    private final List<Covariate> nonSpecialCovariates;
+    private final List<Covariate> additionalCovariates;
+    private final List<Covariate> allCovariates;
 
     public StandardCovariateList(){
         this.readGroupCovariate = new ReadGroupCovariate();
@@ -26,25 +25,25 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         ContextCovariate contextCovariate = new ContextCovariate();
         CycleCovariate cycleCovariate = new CycleCovariate();
 
-        this.nonSpecialCovariates = Arrays.asList(contextCovariate, cycleCovariate);
-        this.theList = Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate);
+        this.additionalCovariates = Arrays.asList(contextCovariate, cycleCovariate);
+        this.allCovariates = Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate);
     }
 
     public List<String> getStandardCovariateClassNames() {
-        final List<String> names = new ArrayList<>(theList.size());
-        for ( final Covariate cov : theList ) {
+        final List<String> names = new ArrayList<>(allCovariates.size());
+        for ( final Covariate cov : allCovariates) {
             names.add(cov.getClass().getSimpleName());
         }
         return names;
     }
 
     public final int size(){
-        return theList.size();
+        return allCovariates.size();
     }
 
     @Override
     public Iterator<Covariate> iterator() {
-        return theList.iterator();
+        return allCovariates.iterator();
     }
 
 
@@ -56,8 +55,8 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         return qualityScoreCovariate;
     }
 
-    public Iterable<Covariate> getNonSpecialCovariates() {
-        return nonSpecialCovariates;
+    public Iterable<Covariate> getAdditionalCovariates() {
+        return additionalCovariates;
     }
 
     /**
@@ -69,8 +68,28 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         return String.join(",", getStandardCovariateClassNames());
     }
 
+    /**
+     * Get the covariate by the index.
+     */
+    public Covariate get(int covIndex) {
+        return allCovariates.get(covIndex);
+    }
+
+    /**
+     * Returns the index of the covariate by class name or -1 if not found.
+     */
+    public int indexByClass(Class<? extends Covariate> clazz){
+        for(int i = 0; i < allCovariates.size(); i++){
+            Covariate cov = allCovariates.get(i);
+            if (cov.getClass().equals(clazz))  {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private void recordValueInStorage(Covariate cov, SAMRecord read, ReadCovariates resultsStorage) {
-        int index = theList.indexOf(cov);
+        int index = indexByClass(cov.getClass());
         resultsStorage.setCovariateIndex(index);
         cov.recordValues(read, resultsStorage);
     }
@@ -82,31 +101,15 @@ public final class StandardCovariateList implements Iterable<Covariate>{
         }
     }
 
-    /**
-     * Get the covariate by the index.
-     * XXX Exposing the index this is nasty, we need to eliminate this.
-     */
-//    public Covariate get(int covIndex) {
-//        return theList.get(covIndex);
-//    }
-
-    /**
-     * Return the index at which the optional covariates start.
-     * XXX This is a totally bogus. The list nature of this data structure should not leak to clients but a lot of code depends on it.
-     */
-//    public int getOptionalCovariatesStartIndex() {
-//        return Math.min(theList.indexOf(contextCovariate), theList.indexOf(cycleCovariate));
-//    }
-
     public StandardCovariateList initializeAll(RecalibrationArgumentCollection rac) {
-        for (Covariate cov : theList){
+        for (Covariate cov : allCovariates){
             cov.initialize(rac);
         }
         return this;
     }
 
     public Covariate getCovariateByParsedName(String covName) {
-        for (Covariate cov : theList){
+        for (Covariate cov : allCovariates){
             if (cov.parseNameForReport().equals(covName)) {
                 return cov;
             }

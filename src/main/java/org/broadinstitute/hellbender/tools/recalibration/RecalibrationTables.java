@@ -20,9 +20,10 @@ public final class RecalibrationTables implements Iterable<NestedIntegerArray<Re
     private final NestedIntegerArray<RecalDatum> readGroupTable;
     private final NestedIntegerArray<RecalDatum> qualityScoreTable;
 
-    private final List<NestedIntegerArray<RecalDatum>> nonSpecialTables;
-    private final List<NestedIntegerArray<RecalDatum>> allTables;    //special + nonspecial
+    private final List<NestedIntegerArray<RecalDatum>> additionalTables;
+    private final List<NestedIntegerArray<RecalDatum>> allTables;    //special + additional
 
+    //bidirectional mappings
     private final Map<Covariate, NestedIntegerArray<RecalDatum>> covariateToTable;
     private final Map<NestedIntegerArray<RecalDatum>, Covariate> tableToCovariate;
 
@@ -32,7 +33,7 @@ public final class RecalibrationTables implements Iterable<NestedIntegerArray<Re
     }
 
     public RecalibrationTables(StandardCovariateList covariates, final int numReadGroups) {
-        this.nonSpecialTables = new ArrayList<>();
+        this.additionalTables = new ArrayList<>();
         this.allTables = new ArrayList<>();
         this.covariateToTable = new LinkedHashMap<>();
         this.tableToCovariate = new LinkedHashMap<>();
@@ -52,9 +53,9 @@ public final class RecalibrationTables implements Iterable<NestedIntegerArray<Re
         tableToCovariate.put(qualityScoreTable, covariates.getQualityScoreCovariate());
 
         //Non-special tables
-        for (Covariate cov : covariates.getNonSpecialCovariates()){
+        for (Covariate cov : covariates.getAdditionalCovariates()){
             final NestedIntegerArray<RecalDatum> table = new NestedIntegerArray<>(numReadGroups, qualDimension, cov.maximumKeyValue() + 1, eventDimension);
-            nonSpecialTables.add(table);
+            additionalTables.add(table);
             allTables.add(table);
             covariateToTable.put(cov, table);
             tableToCovariate.put(table, cov);
@@ -77,8 +78,8 @@ public final class RecalibrationTables implements Iterable<NestedIntegerArray<Re
         return table.equals(getQualityScoreTable());
     }
 
-    public boolean isNonSpecialTable(NestedIntegerArray<RecalDatum> table) {
-        return nonSpecialTables.contains(table);
+    public boolean isAdditionalCovariateTable(NestedIntegerArray<RecalDatum> table) {
+        return additionalTables.contains(table);
     }
 
     public NestedIntegerArray<RecalDatum> getReadGroupTable() {
@@ -90,7 +91,7 @@ public final class RecalibrationTables implements Iterable<NestedIntegerArray<Re
     }
 
     public int numTables() {
-        return 2 + nonSpecialTables.size();
+        return allTables.size();
     }
 
     @Override
@@ -133,12 +134,12 @@ public final class RecalibrationTables implements Iterable<NestedIntegerArray<Re
         }
     }
 
-    //HACK this should not be accessible by index
+    //XXX this should not be accessible by index
     public NestedIntegerArray<RecalDatum> getTable(int index) {
         return allTables.get(index);
     }
 
-    public List<NestedIntegerArray<RecalDatum>> getNonSpecialTables() {
-        return nonSpecialTables;
+    public List<NestedIntegerArray<RecalDatum>> getAdditionalTables() {
+        return additionalTables;
     }
 }

@@ -262,7 +262,7 @@ public class RecalUtils {
             columnNames.add(new MutablePair<>(covariates.getReadGroupCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
             if (!recalibrationTables.isReadGroupTable(table)) {
                 columnNames.add(new MutablePair<>(covariates.getQualityScoreCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
-                if (recalibrationTables.isNonSpecialTable(table)) {
+                if (recalibrationTables.isAdditionalCovariateTable(table)) {
                     columnNames.add(covariateValue);
                     columnNames.add(covariateName);
                 }
@@ -291,11 +291,11 @@ public class RecalUtils {
             final boolean addToList;
 
             //XXX this "if" implicitly uses the knowledge about the ordering of tables.
-            if (!recalibrationTables.isNonSpecialTable(table)) {
+            if (!recalibrationTables.isAdditionalCovariateTable(table)) {
                 reportTable = makeNewTableWithColumns(columnNames, reportTableName, sort);
                 rowIndex = 0; // reset the row index since we're starting with a new table
                 addToList = true;
-            } else if (allCovsReportTable == null && recalibrationTables.isNonSpecialTable(table)) {
+            } else if (allCovsReportTable == null && recalibrationTables.isAdditionalCovariateTable(table)) {
                 reportTable = makeNewTableWithColumns(columnNames, reportTableName, sort);
                 rowIndex = 0; // reset the row index since we're starting with a new table
                 allCovsReportTable =  reportTable;
@@ -314,7 +314,7 @@ public class RecalUtils {
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariates.getReadGroupCovariate().formatKey(keys[keyIndex++]));
                 if (!recalibrationTables.isReadGroupTable(table)) {
                     reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariates.getQualityScoreCovariate().formatKey(keys[keyIndex++]));
-                    if (recalibrationTables.isNonSpecialTable(table)){
+                    if (recalibrationTables.isAdditionalCovariateTable(table)){
                         final Covariate covariate = recalibrationTables.getCovariateForTable(table);
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.formatKey(keys[keyIndex++]));
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.parseNameForReport());
@@ -421,19 +421,18 @@ public class RecalUtils {
         for (final NestedIntegerArray.Leaf<RecalDatum> leaf : qualTable.getAllLeaves()) { // go through every element in the covariates table to create the delta table
             final int[] newCovs = new int[4];
             newCovs[0] = leaf.keys[0];
-            newCovs[1] = covariates.size(); // replace the covariate name with an arbitrary (unused) index for QualityScore
+            newCovs[1] = covariates.size(); // replace the covariate name with an arbitrary (unused) index for QualityScore. This is a HACK.
             newCovs[2] = leaf.keys[1];
             newCovs[3] = leaf.keys[2];
             addToDeltaTable(deltaTable, newCovs, leaf.value); // add this covariate to the delta table
         }
 
         // add the optional covariates to the delta table
-        for (int i = covariates.getOptionalCovariatesStartIndex(); i < covariates.size(); i++) {
-            final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(i);
+        for(NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getAdditionalTables()){
             for (final NestedIntegerArray.Leaf<RecalDatum> leaf : covTable.getAllLeaves()) {
                 final int[] covs = new int[4];
                 covs[0] = leaf.keys[0];
-                covs[1] = i; // reset the quality score covariate to 0 from the keyset (so we aggregate all rows regardless of QS)
+                covs[1] = covariates.indexByClass(recalibrationTables.getCovariateForTable(covTable).getClass()); // reset the quality score covariate to 0 from the keyset (so we aggregate all rows regardless of QS)
                 covs[2] = leaf.keys[2];
                 covs[3] = leaf.keys[3];
                 addToDeltaTable(deltaTable, covs, leaf.value); // add this covariate to the delta table
@@ -445,13 +444,9 @@ public class RecalUtils {
             printHeader(deltaTableFile);
         }
 
-        final Map<Covariate, String> covariateNameMap = new HashMap<>(covariates.size());
-        for (final Covariate covariate : covariates)
-            covariateNameMap.put(covariate, covariate.parseNameForReport());
-
         // print each data line
         for (final NestedIntegerArray.Leaf<RecalDatum> leaf : deltaTable.getAllLeaves()) {
-            final List<Object> deltaKeys = generateValuesFromKeys(leaf.keys, covariates, covariateNameMap);
+            final List<Object> deltaKeys = generateValuesFromKeys(leaf.keys, covariates);
             final RecalDatum deltaDatum = leaf.value;
             deltaTableFile.print(Utils.join(",", deltaKeys));
             deltaTableFile.print("," + deltaDatum.stringForCSV());
@@ -495,7 +490,7 @@ public class RecalUtils {
         dimensionsForDeltaTable[3] = dimensionsOfQualTable[2];
 
         // now, update the dimensions based on the optional covariate tables as needed
-        for ( NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getNonSpecialTables()) {
+        for ( NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getAdditionalTables()) {
             final int[] dimensionsOfCovTable = covTable.getDimensions();
             dimensionsForDeltaTable[2] = Math.max(dimensionsForDeltaTable[2], dimensionsOfCovTable[2]);
             dimensionsForDeltaTable[3] = Math.max(dimensionsForDeltaTable[3], dimensionsOfCovTable[3]);
@@ -504,15 +499,15 @@ public class RecalUtils {
         return new NestedIntegerArray<>(dimensionsForDeltaTable);
     }
 
-    protected static List<Object> generateValuesFromKeys(final int[] keys, final StandardCovariateList covariates, final Map<Covariate, String> covariateNameMap) {
+    protected static List<Object> generateValuesFromKeys(final int[] keys, final StandardCovariateList covariates) {
         final List<Object> values = new ArrayList<>(4);
         values.add(covariates.getReadGroupCovariate().formatKey(keys[0]));
 
         final int covariateIndex = keys[1];
         final int covariateKey = keys[2];
-        final Covariate covariate = covariateIndex == covariates.size() ? covariates.getQualityScoreCovariate() : covariates.get(covariateIndex);
+        final Covariate covariate = (covariateIndex == covariates.size()) ? covariates.getQualityScoreCovariate() : covariates.get(covariateIndex);
         values.add(covariate.formatKey(covariateKey));
-        values.add(covariateNameMap.get(covariate));
+        values.add(covariate.parseNameForReport());
         values.add(EventType.eventFrom(keys[3]).prettyPrint());
 
         return values;

@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.recalibration.EventType;
  *
  * In essence, this is an array of CovariateValues, but it also has some functionality to deal with the optimizations of the NestedHashMap
  */
-public class ReadCovariates {
+public final class ReadCovariates {
     private final static Logger logger = LogManager.getLogger(ReadCovariates.class);
 
     /**

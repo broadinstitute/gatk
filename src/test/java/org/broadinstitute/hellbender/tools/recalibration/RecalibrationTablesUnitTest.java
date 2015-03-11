@@ -47,8 +47,6 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
     @Test
     public void basicTest() {
         final Covariate qualCov = covariates.getQualityScoreCovariate();
-        final Covariate cycleCov = covariates.getCycleCovariate();
-        final Covariate contextCov = covariates.getContextCovariate();
 
         Assert.assertEquals(tables.numTables(), covariates.size());
 
@@ -60,11 +58,11 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
         Assert.assertEquals(tables.getQualityScoreTable(), tables.getQualityScoreTable());
         testDimensions(tables.getQualityScoreTable(), numReadGroups, qualCov.maximumKeyValue() + 1);
 
-        Assert.assertNotNull(tables.getContextTable());
-        testDimensions(tables.getContextTable(), numReadGroups, qualCov.maximumKeyValue() + 1, contextCov.maximumKeyValue() + 1);
-
-        Assert.assertNotNull(tables.getCycleTable());
-        testDimensions(tables.getCycleTable(), numReadGroups, qualCov.maximumKeyValue() + 1, cycleCov.maximumKeyValue() + 1);
+        for (NestedIntegerArray<RecalDatum> table : tables.getAdditionalTables()){
+            Assert.assertNotNull(table);
+            Covariate cov = tables.getCovariateForTable(table);
+            testDimensions(table, numReadGroups, qualCov.maximumKeyValue() + 1, cov.maximumKeyValue() + 1);
+        }
     }
 
     private void testDimensions(final NestedIntegerArray<RecalDatum> table, final int ... dimensions) {
@@ -80,7 +78,7 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
 
     @Test
     public void basicMakeQualityScoreTable() {
-        final Covariate qualCov = covariates.get(1);
+        final Covariate qualCov = covariates.getQualityScoreCovariate();
         final NestedIntegerArray<RecalDatum> copy = tables.makeQualityScoreTable();
         testDimensions(copy, numReadGroups, qualCov.maximumKeyValue()+1);
         Assert.assertEquals(copy.getAllValues().size(), 0);

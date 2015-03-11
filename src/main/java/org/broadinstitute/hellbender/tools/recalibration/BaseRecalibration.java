@@ -20,7 +20,7 @@ import java.util.List;
  * Utility methods to facilitate on-the-fly base quality score recalibration.
  */
 
-public class BaseRecalibration {
+public final class BaseRecalibration {
     private static Logger logger = LogManager.getLogger(BaseRecalibration.class);
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
@@ -115,7 +115,7 @@ public class BaseRecalibration {
                         final int[] keySet = fullReadKeySet[offset];
                         final RecalDatum empiricalQualQS = recalibrationTables.getQualityScoreTable().get(keySet[0], keySet[1], errorModel.ordinal());
                         final List<RecalDatum> empiricalQualCovs = new ArrayList<>();
-                        for (int i = 2; i < covariates.size(); i++) {
+                        for (int i = 2; i < covariates.size(); i++) {  //XXX the 2 is hard-wired here as the number of special covariates
                             if (keySet[i] < 0) {
                                 continue;
                             }

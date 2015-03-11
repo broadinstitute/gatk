@@ -32,8 +32,9 @@ public class BQSRGathererTest extends BaseTest {
         final File output = BaseTest.createTempFile("BQSRgathererTest", ".table.gz");
 
         List<File> recalFiles = new LinkedList<>();
-        for ( int i=0; i < 5; i++ )
+        for ( int i=0; i < 5; i++ ) {
             recalFiles.add(recal);
+        }
 
         BQSRGatherer gatherer = new BQSRGatherer();
         gatherer.gather(recalFiles, output);
