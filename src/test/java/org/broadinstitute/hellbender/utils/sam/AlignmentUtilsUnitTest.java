@@ -141,7 +141,7 @@ public class AlignmentUtilsUnitTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(enabled = true, dataProvider = "CalcNumDifferentBasesData")
+    @Test(dataProvider = "CalcNumDifferentBasesData")
     public void testCalcNumDifferentBases(final String cigarString, final String ref, final String read, final int expectedDifferences) {
         final Cigar cigar = TextCigarCodec.decode(cigarString);
         Assert.assertEquals(AlignmentUtils.calcNumDifferentBases(cigar, ref.getBytes(), read.getBytes()), expectedDifferences);
@@ -973,7 +973,7 @@ public class AlignmentUtilsUnitTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "GetBasesCoveringRefIntervalData", enabled = true)
+    @Test(dataProvider = "GetBasesCoveringRefIntervalData")
     public void testGetBasesCoveringRefInterval(final String basesString, final int refStart, final int refEnd, final String cigarString, final String expected) {
         final byte[] actualBytes = AlignmentUtils.getBasesCoveringRefInterval(refStart, refEnd, basesString.getBytes(), 0, TextCigarCodec.decode(cigarString));
         if ( expected == null )
@@ -1004,12 +1004,12 @@ public class AlignmentUtilsUnitTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "StartsOrEndsWithInsertionOrDeletionData", enabled = true)
+    @Test(dataProvider = "StartsOrEndsWithInsertionOrDeletionData")
     public void testStartsOrEndsWithInsertionOrDeletion(final String cigar, final boolean expected) {
         Assert.assertEquals(AlignmentUtils.startsOrEndsWithInsertionOrDeletion(TextCigarCodec.decode(cigar)), expected);
     }
 
-    @Test(dataProvider = "StartsOrEndsWithInsertionOrDeletionData", enabled = true)
+    @Test(dataProvider = "StartsOrEndsWithInsertionOrDeletionData")
     public void testRemoveTrailingDeletions(final String cigar, final boolean expected) {
 
         final Cigar originalCigar = TextCigarCodec.decode(cigar);

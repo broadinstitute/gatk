@@ -61,7 +61,7 @@ public class EventMapUnitTest extends BaseTest {
     /**
      * Example testng test using MyDataProvider
      */
-    @Test(dataProvider = "MyDataProvider", enabled = true)
+    @Test(dataProvider = "MyDataProvider")
     public void testGetNeighborhood(final EventMap eventMap, final List<VariantContext> expectedNeighbors) {
         final VariantContext leftOfNeighors = expectedNeighbors.isEmpty() ? null : expectedNeighbors.get(0);
 
@@ -165,7 +165,7 @@ public class EventMapUnitTest extends BaseTest {
     /**
      * Example testng test using MyDataProvider
      */
-    @Test(dataProvider = "MakeBlockData", enabled = true)
+    @Test(dataProvider = "MakeBlockData")
     public void testGetNeighborhood(final List<String> firstAlleles, final List<String> secondAlleles, final List<String> expectedAlleles) {
         final VariantContext vc1 = GATKVariantContextUtils.makeFromAlleles("x", "20", 10, firstAlleles);
         final VariantContext vc2 = GATKVariantContextUtils.makeFromAlleles("x", "20", 10, secondAlleles);

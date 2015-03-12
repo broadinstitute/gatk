@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.utils.interval;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -16,7 +14,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.*;
 
 
@@ -68,7 +65,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
         return IntervalSlicingTest.getTests(IntervalSlicingTest.class);
     }
 
-    @Test(enabled = true, dataProvider = "intervalslicingdata")
+    @Test(dataProvider = "intervalslicingdata")
     public void testFixedScatterIntervalsAlgorithm(IntervalSlicingTest test) {
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(hg19exomeIntervals, test.parts);
 
@@ -122,7 +119,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
         return SplitLocusIntervalsTest.getTests(SplitLocusIntervalsTest.class);
     }
 
-    @Test(enabled = true, dataProvider = "IntervalRepartitionTest")
+    @Test(dataProvider = "IntervalRepartitionTest")
     public void testIntervalRepartition(SplitLocusIntervalsTest test) {
         List<List<GenomeLoc>> splitByLocus = IntervalUtils.splitLocusIntervals(test.originalIntervals, test.parts);
         Assert.assertEquals(splitByLocus.size(), test.parts, "SplitLocusIntervals failed to generate correct number of intervals");
@@ -200,7 +197,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
         return SplitLocusIntervalsSmallTest.getTests(SplitLocusIntervalsSmallTest.class);
     }
 
-    @Test(enabled = true, dataProvider = "SplitLocusIntervalsSmallTest")
+    @Test(dataProvider = "SplitLocusIntervalsSmallTest")
     public void splitLocusIntervalsSmallTest(SplitLocusIntervalsSmallTest test) {
         List<List<GenomeLoc>> splitByLocus = IntervalUtils.splitLocusIntervals(test.original, test.parts);
         Assert.assertEquals(splitByLocus.size(), test.expectedParts, "SplitLocusIntervals failed to generate correct number of intervals");

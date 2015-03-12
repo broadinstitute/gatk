@@ -27,7 +27,7 @@ public class CycleCovariateUnitTest {
         ReadCovariates.clearKeysCache();
     }
 
-    @Test(enabled = true)
+    @Test
     public void testSimpleCycles() {
         short readLength = 10;
         SAMRecord read = ArtificialSAMUtils.createRandomRead(readLength);
@@ -60,7 +60,7 @@ public class CycleCovariateUnitTest {
         }
     }
 
-    @Test(enabled = true, expectedExceptions={UserException.class})
+    @Test(expectedExceptions={UserException.class})
     public void testMoreThanMaxCycleFails() {
         int readLength = RAC.MAXIMUM_CYCLE_VALUE + 1;
         SAMRecord read = ArtificialSAMUtils.createRandomRead(readLength);
@@ -72,7 +72,7 @@ public class CycleCovariateUnitTest {
         covariate.recordValues(read, readCovariates);
     }
 
-    @Test(enabled = true)
+    @Test
     public void testMaxCyclePasses() {
         int readLength = RAC.MAXIMUM_CYCLE_VALUE;
         SAMRecord read = ArtificialSAMUtils.createRandomRead(readLength);

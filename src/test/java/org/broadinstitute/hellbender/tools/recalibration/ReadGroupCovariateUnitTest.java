@@ -26,7 +26,7 @@ public class ReadGroupCovariateUnitTest {
         ReadCovariates.clearKeysCache();
     }
 
-    @Test(enabled = true)
+    @Test
     public void testSingleRecord() {
         final String expected = "SAMPLE.1";
         SAMReadGroupRecord rg = new SAMReadGroupRecord("MY.ID");
@@ -34,14 +34,14 @@ public class ReadGroupCovariateUnitTest {
         runTest(rg, expected, covariate);
     }
 
-    @Test(enabled = true)
+    @Test
     public void testMissingPlatformUnit() {
         final String expected = "MY.7";
         SAMReadGroupRecord rg = new SAMReadGroupRecord(expected);
         runTest(rg, expected, covariate);
     }
 
-    @Test(enabled = true)
+    @Test
     public void testForceReadgroup() {
         final RecalibrationArgumentCollection forcedRAC = new RecalibrationArgumentCollection();
         forcedRAC.FORCE_READGROUP = "FOO";

@@ -51,7 +51,7 @@ public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
         return cacheSizeRequested == -1 ? CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE : cacheSizeRequested;
     }
 
-    @Test(dataProvider = "fastas", enabled = true && ! DEBUG)
+    @Test(dataProvider = "fastas", enabled = ! DEBUG)
     public void testCachingIndexedFastaReaderSequential1(File fasta, int cacheSize, int querySize) throws FileNotFoundException {
         final CachingIndexedFastaSequenceFile caching = new CachingIndexedFastaSequenceFile(fasta, getCacheSize(cacheSize), true, false);
 
@@ -92,7 +92,7 @@ public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
     }
 
     // Tests grabbing sequences around a middle cached value.
-    @Test(dataProvider = "fastas", enabled = true && ! DEBUG)
+    @Test(dataProvider = "fastas", enabled = ! DEBUG)
     public void testCachingIndexedFastaReaderTwoStage(File fasta, int cacheSize, int querySize) throws FileNotFoundException {
         final IndexedFastaSequenceFile uncached = new IndexedFastaSequenceFile(fasta);
         final CachingIndexedFastaSequenceFile caching = new CachingIndexedFastaSequenceFile(fasta, getCacheSize(cacheSize), true, false);
@@ -138,7 +138,7 @@ public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
     }
 
     // make sure some bases are lower case and some are upper case
-    @Test(enabled = true)
+    @Test
     public void testMixedCasesInExample() throws FileNotFoundException, InterruptedException {
         final IndexedFastaSequenceFile original = new IndexedFastaSequenceFile(new File(exampleFASTA));
         final CachingIndexedFastaSequenceFile casePreserving = new CachingIndexedFastaSequenceFile(new File(exampleFASTA), true);
@@ -182,7 +182,7 @@ public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
             return new String(reader.getSubsequenceAt(contig, start, stop).getBases());
     }
 
-    @Test(enabled = true)
+    @Test
     public void testIupacChanges() throws FileNotFoundException, InterruptedException {
         final String testFasta = publicTestDir + "iupacFASTA.fasta";
         final CachingIndexedFastaSequenceFile iupacPreserving = new CachingIndexedFastaSequenceFile(new File(testFasta), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, false, true);
@@ -201,7 +201,7 @@ public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
         Assert.assertEquals(changingNs, preservingNs + 4);
     }
 
-    @Test(enabled = true, expectedExceptions = {UserException.class})
+    @Test(expectedExceptions = {UserException.class})
     public void testFailOnBadBase() throws FileNotFoundException, InterruptedException {
         final String testFasta = publicTestDir + "problematicFASTA.fasta";
         final CachingIndexedFastaSequenceFile fasta = new CachingIndexedFastaSequenceFile(new File(testFasta));

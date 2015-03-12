@@ -68,7 +68,7 @@ public class GATKReportUnitTest extends BaseTest {
         return table;
     }
 
-    @Test(enabled = true)
+    @Test
     public void testSortingByColumn() {
         Assert.assertEquals(isSorted(getTableWithRandomValues()), true);
     }
