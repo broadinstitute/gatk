@@ -49,6 +49,10 @@ public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
             "some of the sorting collections.  If you are running out of memory, try reducing this number.")
     public double SORTING_COLLECTION_SIZE_RATIO = 0.25;
 
+    @Argument(doc = "Report Memory Stats at various times during the run")
+    public boolean reportMemoryStats = false;
+
+
     private SortingCollection<ReadEndsForMarkDuplicates> pairSort;
     private SortingCollection<ReadEndsForMarkDuplicates> fragSort;
     private SortingLongCollection duplicateIndexes;
@@ -180,10 +184,12 @@ public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
 
     /** Print out some quick JVM memory stats. */
     private void reportMemoryStats(final String stage) {
-        System.gc();
-        final Runtime runtime = Runtime.getRuntime();
-        log.info(stage + " freeMemory: " + runtime.freeMemory() + "; totalMemory: " + runtime.totalMemory() +
-                "; maxMemory: " + runtime.maxMemory());
+        if(reportMemoryStats) {
+            System.gc();
+            final Runtime runtime = Runtime.getRuntime();
+            log.info(stage + " freeMemory: " + runtime.freeMemory() + "; totalMemory: " + runtime.totalMemory() +
+                    "; maxMemory: " + runtime.maxMemory());
+        }
     }
 
     /**

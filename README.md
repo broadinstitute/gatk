@@ -43,6 +43,25 @@ General guidelines for Hellbender developers
 
 * Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
 
+R Dependency
+----------------
+Certain Hellbender tools rely on R for generating plots. **R v3.1.3** must be installed for all unit tests to work (other versions of R may work, but there is no guarantee).  
+
+R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
+* for [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README))
+* for OSX we recommend installation through [homebrew](http://brew.sh/)
+
+* For more information on R see http://www.ihater.org/
+
+Gradle installApp will attempt to install R packages, this may potentially fail if your R library is not writable.  If this happens, the package installation script is the package installation script is `scripts/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
+```
+sudo Rscript scripts/install_R_packages.R
+```
+**or**
+```
+R 
+source("scripts/install_R_packages.R")
+```
 
 Creating a Hellbender project in the IntelliJ IDE:
 ----------------

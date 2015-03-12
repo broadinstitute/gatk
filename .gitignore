@@ -13,3 +13,4 @@ hellbender-tools/repos/
 testSortingFile.txt
 gsalib.tar.gz
 gradlew*
+*.swp
