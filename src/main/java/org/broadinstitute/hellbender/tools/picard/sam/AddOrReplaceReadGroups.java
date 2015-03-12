@@ -2,8 +2,12 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.util.Arrays;
@@ -81,7 +85,7 @@ public class AddOrReplaceReadGroups extends PicardCommandLineProgram {
 
         // create the new header and output file
         final SAMFileHeader inHeader = in.getFileHeader();
-        final SAMFileHeader outHeader = inHeader.clone();
+        final SAMFileHeader outHeader = ReadUtils.clone(inHeader);
         outHeader.setReadGroups(Arrays.asList(rg));
         if (SORT_ORDER != null) outHeader.setSortOrder(SORT_ORDER);
 

@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.recalibration.BaseRecalibration;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.util.function.Function;
@@ -84,7 +85,7 @@ public final class ApplyBQSR extends ReadWalker{
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = getHeaderForReads().clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
         outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_FILE);
         bqsrTransform = new Function<SAMRecord, SAMRecord>() {
             //The transformer stores a read-only state which takes a time to initialize.

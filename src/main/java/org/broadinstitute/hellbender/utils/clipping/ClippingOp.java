@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.util.Iterator;
 import java.util.List;
@@ -42,7 +43,7 @@ public class ClippingOp {
      * @param originalRead the read to be clipped
      */
     public SAMRecord apply(ClippingRepresentation algorithm, SAMRecord originalRead) {
-        SAMRecord read = makeClone(originalRead);
+        SAMRecord read = ReadUtils.clone(originalRead);
         byte[] quals = read.getBaseQualities();
         byte[] bases = read.getReadBases();
         byte[] newBases = new byte[bases.length];
@@ -139,7 +140,7 @@ public class ClippingOp {
     }
 
     private SAMRecord revertSoftClippedBases(SAMRecord read) {
-        SAMRecord unclipped = makeClone(read);
+        SAMRecord unclipped = ReadUtils.clone(read);
 
         Cigar unclippedCigar = new Cigar();
         int matchesCount = 0;
@@ -339,7 +340,7 @@ public class ClippingOp {
         System.arraycopy(read.getReadBases(), copyStart, newBases, 0, newLength);
         System.arraycopy(read.getBaseQualities(), copyStart, newQuals, 0, newLength);
 
-        final SAMRecord hardClippedRead = makeClone(read);
+        final SAMRecord hardClippedRead = ReadUtils.clone(read);
 
         hardClippedRead.setBaseQualities(newQuals);
         hardClippedRead.setReadBases(newBases);

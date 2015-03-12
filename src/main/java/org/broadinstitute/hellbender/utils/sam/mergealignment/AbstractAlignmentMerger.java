@@ -7,6 +7,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -268,8 +269,8 @@ public abstract class AbstractAlignmentMerger {
                         final SAMRecord firstToWrite;
                         final SAMRecord secondToWrite;
                         if (clone) {
-                            firstToWrite = clone(rec);
-                            secondToWrite = clone(secondOfPair);
+                            firstToWrite = ReadUtils.clone(rec);
+                            secondToWrite = ReadUtils.clone(secondOfPair);
                         } else {
                             firstToWrite = rec;
                             secondToWrite = secondOfPair;
@@ -303,7 +304,7 @@ public abstract class AbstractAlignmentMerger {
                         final SAMRecord matePrimary = isRead1 ? r2Primary : r1Primary;
 
                         for (final SAMRecord supp : supplementals) {
-                            final SAMRecord out = clone(sourceRec);
+                            final SAMRecord out = ReadUtils.clone(sourceRec);
                             transferAlignmentInfoToFragment(out, supp);
                             if (matePrimary != null) SamPairUtil.setMateInformationOnSupplementalAlignment(out, matePrimary, addMateCigar);
                             ++aligned;
@@ -312,7 +313,7 @@ public abstract class AbstractAlignmentMerger {
                     }
                 } else {
                     for (int i = 0; i < nextAligned.numHits(); ++i) {
-                        final SAMRecord recToWrite = clone ? clone(rec) : rec;
+                        final SAMRecord recToWrite = clone ? ReadUtils.clone(rec) : rec;
                         transferAlignmentInfoToFragment(recToWrite, nextAligned.getFragment(i));
                         addIfNotFiltered(sorted, recToWrite);
                         if (recToWrite.getReadUnmappedFlag()) ++unmapped;
@@ -320,7 +321,7 @@ public abstract class AbstractAlignmentMerger {
                     }
                     // Take all of the supplemental reads which had been stashed and add them (as appropriate) to sorted
                     for (final SAMRecord supplementalRec : nextAligned.getSupplementalFirstOfPairOrFragment()) {
-                        final SAMRecord recToWrite = clone(rec);
+                        final SAMRecord recToWrite = ReadUtils.clone(rec);
                         transferAlignmentInfoToFragment(recToWrite, supplementalRec);
                         addIfNotFiltered(sorted, recToWrite);
                         ++aligned;
@@ -387,14 +388,6 @@ public abstract class AbstractAlignmentMerger {
         if (includeSecondaryAlignments || !rec.getNotPrimaryAlignmentFlag()) {
             sorted.add(rec);
             this.progress.record(rec);
-        }
-    }
-
-    private SAMRecord clone(final SAMRecord rec) {
-        try {
-            return (SAMRecord) rec.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new GATKException("Should never happen.");
         }
     }
 

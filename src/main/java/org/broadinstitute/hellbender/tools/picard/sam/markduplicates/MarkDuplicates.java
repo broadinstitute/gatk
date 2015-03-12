@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 import org.broadinstitute.hellbender.utils.sam.markduplicates.*;
 
 import java.io.File;
@@ -87,7 +88,7 @@ public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
         final SamHeaderAndIterator headerAndIterator = openInputs();
         final SAMFileHeader header = headerAndIterator.header;
 
-        final SAMFileHeader outputHeader = header.clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(header);
         outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         for (final String comment : COMMENT) outputHeader.addComment(comment);
 

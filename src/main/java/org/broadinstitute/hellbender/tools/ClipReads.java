@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -277,7 +278,7 @@ public final class ClipReads extends ReadWalker {
         }
 
         final boolean presorted = EnumSet.of(ClippingRepresentation.WRITE_NS, ClippingRepresentation.WRITE_NS_Q0S, ClippingRepresentation.WRITE_Q0S).contains(clippingRepresentation);
-        final SAMFileHeader outputHeader = getHeaderForReads().clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
         outputBam = new SAMFileWriterFactory().makeWriter(outputHeader, presorted, OUTPUT, REFERENCE_FILE);
 
         accumulator = new ClippingData(sequencesToClip);

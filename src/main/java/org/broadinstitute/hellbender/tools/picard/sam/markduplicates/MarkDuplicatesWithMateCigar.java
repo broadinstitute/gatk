@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.iterators.MarkDuplicatesWithMateCigarIterator;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 import org.broadinstitute.hellbender.utils.sam.markduplicates.AbstractMarkDuplicatesCommandLineProgram;
 
 import java.util.HashSet;
@@ -66,7 +67,7 @@ public class MarkDuplicatesWithMateCigar extends AbstractMarkDuplicatesCommandLi
         final SAMFileHeader header = headerAndIterator.header;
 
         // Create the output header
-        final SAMFileHeader outputHeader = header.clone();
+        final SAMFileHeader outputHeader = ReadUtils.clone(header);
         outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         for (final String comment : COMMENT) outputHeader.addComment(comment);
 

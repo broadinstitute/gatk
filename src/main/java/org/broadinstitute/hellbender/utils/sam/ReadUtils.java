@@ -35,15 +35,25 @@ public class ReadUtils {
     public static final int CLIPPING_GOAL_NOT_REACHED = -1;
 
     /**
-     * This is a HACK to make a copy of a read. Really,  SAMRecord should provide a copy constructor or a factory method.
+     * HACK: This is used to make a copy of a read.
+     * Really, SAMRecord should provide a copy constructor or a factory method.
      */
-    public static SAMRecord makeClone(SAMRecord originalRead) {
+    public static SAMRecord clone(SAMRecord originalRead) {
         if (originalRead == null) return null;
         try {
             return (SAMRecord)originalRead.clone();
         } catch (CloneNotSupportedException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /**
+     * HACK: This is used to make a copy of a header.
+     * Really, SAMFileHeader should provide a copy constructor or a factory method.
+     */
+    public static SAMFileHeader clone(SAMFileHeader header) {
+        if (header == null) return null;
+        return header.clone();
     }
 
     public static boolean isEmpty(SAMRecord read) {

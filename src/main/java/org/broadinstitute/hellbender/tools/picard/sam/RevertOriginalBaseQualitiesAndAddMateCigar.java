@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.sam.ReadUtils;
 import org.broadinstitute.hellbender.utils.sam.mergealignment.AbstractAlignmentMerger;
 
 import java.io.File;
@@ -65,7 +66,7 @@ public class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardCommandLin
         final SAMFileHeader inHeader = in.getFileHeader();
 
         // Build the output writer based on the correct sort order
-        final SAMFileHeader outHeader = inHeader.clone();
+        final SAMFileHeader outHeader = ReadUtils.clone(inHeader);
         if (null == SORT_ORDER) this.SORT_ORDER = inHeader.getSortOrder(); // same as the input
         outHeader.setSortOrder(SORT_ORDER);
         SAMFileWriterFactory.setDefaultCreateIndexWhileWriting(CREATE_INDEX);
