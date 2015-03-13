@@ -24,14 +24,18 @@ import java.util.List;
  *
  * For the love of god, please use this system for reading lines in a file.
  */
-public class XReadLines implements Iterator<String>, Iterable<String> {
+public class XReadLines implements Iterator<String>, Iterable<String>, AutoCloseable {
     private final BufferedReader in;      // The stream we're reading from
     private String nextLine = null;       // Return value of next call to next()
     private final boolean trimWhitespace;
     private final String commentPrefix;
 
-    public XReadLines(final File filename) throws IOException {
-        this(IOUtils.makeReaderMaybeGzipped(filename), true, null);
+    public XReadLines(final File filename) {
+        this(filename, true);
+    }
+
+    public XReadLines(final File filename, final boolean trimWhitespace) {
+        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
     }
 
     /**

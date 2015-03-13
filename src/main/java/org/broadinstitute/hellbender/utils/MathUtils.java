@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.*;
+import java.util.List;
 
 /**
  * MathUtils is a static class (no instantiation allowed!) with some useful math methods.
@@ -20,6 +21,8 @@ public final class MathUtils {
      * where the real-space value is 0.0.
      */
     public static final double LOG10_P_OF_ZERO = -1000000.0;
+    public static final double NATURAL_LOG_OF_TEN = Math.log(10.0);
+
 
     /**
      * A helper class to maintain a cache of log10 values
@@ -141,6 +144,23 @@ public final class MathUtils {
             throw new IllegalArgumentException("log10p: Log-probability must be 0 or less");
         double log10OneMinusP = Math.log10(1 - Math.pow(10, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
+    }
+
+    /**
+     * A version of Log10SumLog10 that tolerates NaN values in the array
+     *
+     * In the case where one or more of the values are NaN, this function returns NaN
+     *
+     * @param values a non-null vector of doubles
+     * @return log10 of the sum of the log10 values, or NaN
+     */
+    public static double nanTolerantLog10SumLog10(final double[] values) {
+        for ( final double value : values ) {
+            if (Double.isNaN(value)) {
+                return Double.NaN;
+            }
+        }
+        return MathUtils.log10sumLog10(values);
     }
 
     public static double log10sumLog10(final double[] log10p, final int start) {
@@ -575,5 +595,24 @@ public final class MathUtils {
             final double d = Math.log10(1 / x - 1) + Math.log10(x);
             return Double.isInfinite(d) || d > 0.0 ? 0.0 : d;
         }
+    }
+
+    /**
+     * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
+     * @param mean the mean of the Normal distribution
+     * @param sd the standard deviation of the Normal distribution
+     * @param x the value to evaluate
+     * @return a well-formed double
+     */
+    public static double normalDistributionLog10(final double mean, final double sd, final double x) {
+        return new NormalDistribution(mean, sd).logDensity(x)/NATURAL_LOG_OF_TEN;
+    }
+
+    public static double distanceSquared(final double[] x, final double[] y) {
+        double dist = 0.0;
+        for (int iii = 0; iii < x.length; iii++) {
+            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
+        }
+        return dist;
     }
 }
