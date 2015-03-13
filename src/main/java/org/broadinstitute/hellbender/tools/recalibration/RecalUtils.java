@@ -7,7 +7,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -63,121 +64,6 @@ public class RecalUtils {
     private static final Pair<String, String> nObservations      = new MutablePair<>(RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME, "%d");
     private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%.2f");
 
-    public static List<Class<? extends Covariate>> getStandardCovariateClasses(){
-        return Arrays.asList(ContextCovariate.class, CycleCovariate.class);
-    }
-
-    public static List<Class<? extends Covariate>> getRequiredCovariateClasses(){
-        return Arrays.asList(ReadGroupCovariate.class, QualityScoreCovariate.class);
-    }
-
-    public static List<Class<? extends Covariate>> getExperimentalCovariateClasses() {
-        return Arrays.asList(RepeatLengthCovariate.class, RepeatUnitAndLengthCovariate.class, RepeatUnitCovariate.class);
-    }
-
-    public static List<Class<? extends Covariate>> getAllCovariateClasses(){
-        List<Class<? extends Covariate>> ALL = new ArrayList<>();
-        ALL.addAll(getStandardCovariateClasses());
-        ALL.addAll(getRequiredCovariateClasses());
-        ALL.addAll(getExperimentalCovariateClasses());
-        return Collections.unmodifiableList(ALL);
-    }
-    /**
-     * Generates two lists : required covariates and optional covariates based on the user's requests.
-     *
-     * Performs the following tasks in order:
-     *  1. Adds all requierd covariates in order
-     *  2. Check if the user asked to use the standard covariates and adds them all if that's the case
-     *  3. Adds all covariates requested by the user that were not already added by the two previous steps
-     *
-     * @param argumentCollection the argument collection object for the recalibration walker
-     * @return a pair of ordered lists : required covariates (first) and optional covariates (second)
-     */
-    public static Pair<ArrayList<Covariate>, ArrayList<Covariate>> initializeCovariates(RecalibrationArgumentCollection argumentCollection) {
-        final List<Class<? extends Covariate>> covariateClasses = getAllCovariateClasses();
-        final List<Class<? extends Covariate>> requiredClasses = getRequiredCovariateClasses();
-        final List<Class<? extends Covariate>> standardClasses = getStandardCovariateClasses();
-
-        final ArrayList<Covariate> requiredCovariates = addRequiredCovariatesToList(requiredClasses); // add the required covariates
-        ArrayList<Covariate> optionalCovariates = new ArrayList<>();
-        if (!argumentCollection.DO_NOT_USE_STANDARD_COVARIATES)
-            optionalCovariates = addStandardCovariatesToList(standardClasses); // add the standard covariates if -standard was specified by the user
-
-        // parse the -cov arguments that were provided, skipping over the ones already specified
-        if (argumentCollection.COVARIATES != null) {
-            for (String requestedCovariateString : argumentCollection.COVARIATES) {
-                // help the transition from BQSR v1 to BQSR v2
-                if ( requestedCovariateString.equals("DinucCovariate") )
-                    throw new UserException.CommandLineException("DinucCovariate has been retired.  Please use its successor covariate " +
-                            "ContextCovariate instead, which includes the 2 bp (dinuc) substitution model of the retired DinucCovariate " +
-                            "as well as an indel context to model the indel error rates");
-
-                boolean foundClass = false;
-                for (Class<? extends Covariate> covClass : covariateClasses) {
-                    if (requestedCovariateString.equalsIgnoreCase(covClass.getSimpleName())) { // -cov argument matches the class name for an implementing class
-                        foundClass = true;
-                        if (!requiredClasses.contains(covClass) &&
-                                (argumentCollection.DO_NOT_USE_STANDARD_COVARIATES || !standardClasses.contains(covClass))) {
-                            try {
-                                final Covariate covariate = covClass.newInstance(); // now that we've found a matching class, try to instantiate it
-                                optionalCovariates.add(covariate);
-                            } catch (Exception e) {
-                                throw new UserException.DynamicClassResolutionException(covClass, e);
-                            }
-                        }
-                    }
-                }
-
-                if (!foundClass) {
-                    throw new UserException.CommandLineException("The requested covariate type (" + requestedCovariateString + ") isn't a valid covariate option. Use --list to see possible covariates.");
-                }
-            }
-        }
-        return new MutablePair<>(requiredCovariates, optionalCovariates);
-    }
-
-    /**
-     * Adds the required covariates to a covariate list
-     *
-     * Note: this method really only checks if the classes object has the expected number of required covariates, then add them by hand.
-     *
-     * @param classes list of classes to add to the covariate list
-     * @return the covariate list
-     */
-    private static ArrayList<Covariate> addRequiredCovariatesToList(List<Class<? extends Covariate>> classes) {
-        //FIXME this is bogus: this method is not checking the classes in the List it's passed at all
-        //FIXME (just the number of classes). It then proceeds to add a new ReadGroupCovariate()
-        //FIXME and new QualityScoreCovariate() unconditionally.
-        //FIXME Should either be a parameterless method, or should actually
-        //FIXME check and instantiate the classes in the List it's passed.
-        ArrayList<Covariate> dest = new ArrayList<>(classes.size());
-        if (classes.size() != 2)
-            throw new GATKException("The number of required covariates has changed, this is a hard change in the code and needs to be inspected");
-
-        dest.add(new ReadGroupCovariate()); // enforce the order with RG first and QS next.
-        dest.add(new QualityScoreCovariate());
-        return dest;
-    }
-
-    /**
-     * Adds the standard covariates to a covariate list
-     *
-     * @param classes list of classes to add to the covariate list
-     * @return the covariate list
-     */
-    private static ArrayList<Covariate> addStandardCovariatesToList(List<Class<? extends Covariate>> classes) {
-        ArrayList<Covariate> dest = new ArrayList<>(classes.size());
-        for (Class<?> covClass : classes) {
-            try {
-                final Covariate covariate = (Covariate) covClass.newInstance();
-                dest.add(covariate);
-            } catch (Exception e) {
-                throw new UserException.DynamicClassResolutionException(covClass, e);
-            }
-        }
-        return dest;
-    }
-
     /**
      * Component used to print out csv representation of the reports that can be use to perform analysis in
      * external tools. E.g. generate plots using R scripts.
@@ -190,26 +76,26 @@ public class RecalUtils {
     private static class CsvPrinter {
 
         private final PrintStream ps;
-        private final Covariate[] covariates;
+        private final StandardCovariateList covariates;
 
         /**
          * Constructs a printer redirected to an output file.
          * @param out the output file.
-         * @param c covariates to print out.
+         * @param covs covariates to print out.
          * @throws java.io.FileNotFoundException if the file could not be created anew.
          */
-        protected CsvPrinter(final File out, final Covariate ... c)
+        protected CsvPrinter(final File out, final StandardCovariateList covs)
                 throws FileNotFoundException {
-            this(new FileOutputStream(out), c);
+            this(new FileOutputStream(out), covs);
         }
 
         /**
          * Constructs a printer redirected to an output stream
          * @param os the output.
-         * @param c  covariates to print out.
+         * @param covs  covariates to print out.
          */
-        protected CsvPrinter(final OutputStream os, final Covariate ... c) {
-            covariates = c == null ? new Covariate[0] : Arrays.copyOf(c, c.length);
+        protected CsvPrinter(final OutputStream os, final StandardCovariateList covs) {
+            covariates = covs;
             ps = new PrintStream(os);
             printHeader();
         }
@@ -249,19 +135,19 @@ public class RecalUtils {
      * Returns a csv output printer.
      *
      * @param out the output file. It will be overridden
-     * @param c list of covariates to print out.
+     * @param covs list of covariates to print out.
      *
      * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
      *
      * @return never <code>null</code>
      */
-    protected static CsvPrinter csvPrinter(final File out, final Covariate ... c)
+    protected static CsvPrinter csvPrinter(final File out, final StandardCovariateList covs)
         throws FileNotFoundException
     {
-        if (c == null) {
+        if (covs == null) {
             throw new IllegalArgumentException("the input covariate array cannot be null");
         }
-        return new CsvPrinter(out,c);
+        return new CsvPrinter(out,covs);
     }
 
     /**
@@ -278,27 +164,12 @@ public class RecalUtils {
     public static void generateCsv(final File out, final Map<String, RecalibrationReport> reports)
             throws FileNotFoundException {
         if (reports.size() == 0) {
-            writeCsv(out, reports, new Covariate[0]);
+            throw new GATKException("no reports");
         } else {
             final Iterator<RecalibrationReport> rit = reports.values().iterator();
             final RecalibrationReport first = rit.next();
-            final Covariate[] firstCovariates = first.getRequestedCovariates();
-            final Set<Covariate> covariates = new LinkedHashSet<>();
-            Utils.addAll(covariates,firstCovariates);
-            while (rit.hasNext() && covariates.size() > 0) {
-                final Covariate[] nextCovariates = rit.next().getRequestedCovariates();
-                final Set<String> nextCovariateNames = new LinkedHashSet<String>(nextCovariates.length);
-                for (final Covariate nc : nextCovariates) {
-                    nextCovariateNames.add(nc.getClass().getSimpleName());
-                }
-                final Iterator<Covariate> cit = covariates.iterator();
-                while (cit.hasNext()) {
-                    if (!nextCovariateNames.contains(cit.next().getClass().getSimpleName())) {
-                        cit.remove();
-                    }
-                }
-            }
-            writeCsv(out, reports, covariates.toArray(new Covariate[covariates.size()]));
+            final StandardCovariateList covariates = first.getCovariates();
+            writeCsv(out, reports, covariates);
         }
     }
 
@@ -313,9 +184,9 @@ public class RecalUtils {
      * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
      */
     private static void writeCsv(final File out,
-            final Map<String, RecalibrationReport> reports, final Covariate[] c)
+            final Map<String, RecalibrationReport> reports, final StandardCovariateList c)
         throws FileNotFoundException {
-        final CsvPrinter p = csvPrinter(out,c);
+        final CsvPrinter p = csvPrinter(out, c);
         for (Map.Entry<String,RecalibrationReport> e : reports.entrySet()) {
             p.print(e.getValue(),e.getKey());
         }
@@ -380,21 +251,18 @@ public class RecalUtils {
         }
     }
 
-    private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, boolean sortByCols) {
-        List<GATKReportTable> result = new LinkedList<GATKReportTable>();
-        int reportTableIndex = 0;
+    private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
+        List<GATKReportTable> result = new LinkedList<>();
         int rowIndex = 0;
-        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
-        for (final Covariate covariate : requestedCovariates)
-            covariateNameMap.put(covariate, parseCovariateName(covariate));
 
-        for (int tableIndex = 0; tableIndex < recalibrationTables.numTables(); tableIndex++) {
+        GATKReportTable allCovsReportTable = null;
 
-            final ArrayList<Pair<String, String>> columnNames = new ArrayList<Pair<String, String>>(); // initialize the array to hold the column names
-            columnNames.add(new MutablePair<String, String>(covariateNameMap.get(requestedCovariates[0]), "%s")); // save the required covariate name so we can reference it in the future
-            if (tableIndex != RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()) {
-                columnNames.add(new MutablePair<String, String>(covariateNameMap.get(requestedCovariates[1]), "%s")); // save the required covariate name so we can reference it in the future
-                if (tableIndex >= RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal()) {
+        for (NestedIntegerArray<RecalDatum> table : recalibrationTables){
+            final ArrayList<Pair<String, String>> columnNames = new ArrayList<>(); // initialize the array to hold the column names
+            columnNames.add(new MutablePair<>(covariates.getReadGroupCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
+            if (!recalibrationTables.isReadGroupTable(table)) {
+                columnNames.add(new MutablePair<>(covariates.getQualityScoreCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
+                if (recalibrationTables.isAdditionalCovariateTable(table)) {
                     columnNames.add(covariateValue);
                     columnNames.add(covariateName);
                 }
@@ -402,40 +270,54 @@ public class RecalUtils {
 
             columnNames.add(eventType); // the order of these column names is important here
             columnNames.add(empiricalQuality);
-            if (tableIndex == RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal())
+            if (recalibrationTables.isReadGroupTable(table)) {
                 columnNames.add(estimatedQReported); // only the read group table needs the estimated Q reported
+            }
             columnNames.add(nObservations);
             columnNames.add(nErrors);
 
-            final GATKReportTable reportTable;
-            if (tableIndex <= RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal()) {
-                if(sortByCols) {
-                    reportTable = new GATKReportTable("RecalTable" + reportTableIndex++, "", columnNames.size(), GATKReportTable.TableSortingWay.SORT_BY_COLUMN);
-                } else {
-                    reportTable = new GATKReportTable("RecalTable" + reportTableIndex++, "", columnNames.size(), GATKReportTable.TableSortingWay.DO_NOT_SORT);
-                }
-                for (final Pair<String, String> columnName : columnNames)
-                    reportTable.addColumn(columnName.getLeft(), columnName.getRight());
-                rowIndex = 0; // reset the row index since we're starting with a new table
+            final String reportTableName;
+            if (recalibrationTables.isReadGroupTable(table)){
+                reportTableName = READGROUP_REPORT_TABLE_TITLE;
+            } else if (recalibrationTables.isQualityScoreTable(table)){
+                reportTableName = QUALITY_SCORE_REPORT_TABLE_TITLE;
             } else {
-                reportTable = result.get(RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal());
+                reportTableName = ALL_COVARIATES_REPORT_TABLE_TITLE;
             }
 
-            final NestedIntegerArray<RecalDatum> table = recalibrationTables.getTable(tableIndex);
+            final GATKReportTable.TableSortingWay sort = sortByCols ? GATKReportTable.TableSortingWay.SORT_BY_COLUMN : GATKReportTable.TableSortingWay.DO_NOT_SORT;
+
+            final GATKReportTable reportTable;
+            final boolean addToList;
+
+            //XXX this "if" implicitly uses the knowledge about the ordering of tables.
+            if (!recalibrationTables.isAdditionalCovariateTable(table)) {
+                reportTable = makeNewTableWithColumns(columnNames, reportTableName, sort);
+                rowIndex = 0; // reset the row index since we're starting with a new table
+                addToList = true;
+            } else if (allCovsReportTable == null && recalibrationTables.isAdditionalCovariateTable(table)) {
+                reportTable = makeNewTableWithColumns(columnNames, reportTableName, sort);
+                rowIndex = 0; // reset the row index since we're starting with a new table
+                allCovsReportTable =  reportTable;
+                addToList = true;
+            } else {
+                reportTable = allCovsReportTable;
+                addToList = false;
+            }
+
             for (final NestedIntegerArray.Leaf<RecalDatum> row : table.getAllLeaves()) {
                 final RecalDatum datum = row.value;
                 final int[] keys = row.keys;
 
                 int columnIndex = 0;
                 int keyIndex = 0;
-                reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), requestedCovariates[0].formatKey(keys[keyIndex++]));
-                if (tableIndex != RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()) {
-                    reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), requestedCovariates[1].formatKey(keys[keyIndex++]));
-                    if (tableIndex >= RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal()) {
-                        final Covariate covariate = requestedCovariates[tableIndex];
-
+                reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariates.getReadGroupCovariate().formatKey(keys[keyIndex++]));
+                if (!recalibrationTables.isReadGroupTable(table)) {
+                    reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariates.getQualityScoreCovariate().formatKey(keys[keyIndex++]));
+                    if (recalibrationTables.isAdditionalCovariateTable(table)){
+                        final Covariate covariate = recalibrationTables.getCovariateForTable(table);
                         reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.formatKey(keys[keyIndex++]));
-                        reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariateNameMap.get(covariate));
+                        reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), covariate.parseNameForReport());
                     }
                 }
 
@@ -443,35 +325,30 @@ public class RecalUtils {
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), event.toString());
 
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getEmpiricalQuality());
-                if (tableIndex == RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal())
+                if (recalibrationTables.isReadGroupTable(table)) {
                     reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getEstimatedQReported()); // we only add the estimated Q reported in the RG table
+                }
                 reportTable.set(rowIndex, columnNames.get(columnIndex++).getLeft(), datum.getNumObservations());
                 reportTable.set(rowIndex, columnNames.get(columnIndex).getLeft(), datum.getNumMismatches());
 
                 rowIndex++;
             }
-            result.add(reportTable);
+            if (addToList){
+                result.add(reportTable);      //XXX using a set would be slow because the equals method on GATKReportTable is expensive.
+            }
         }
 
         return result;
     }
 
-    private static String parseCovariateName(final Covariate covariate) {
-        return covariate.getClass().getSimpleName().split("Covariate")[0];
+    private static GATKReportTable makeNewTableWithColumns(ArrayList<Pair<String, String>> columnNames, String reportTableName, GATKReportTable.TableSortingWay sort) {
+        GATKReportTable rt = new GATKReportTable(reportTableName, "", columnNames.size(), sort);
+        for (final Pair<String, String> columnName : columnNames) {
+            rt.addColumn(columnName.getLeft(), columnName.getRight());
+        }
+        return rt;
     }
 
-    /**
-     * Return a human-readable string representing the used covariates
-     *
-     * @param requestedCovariates a vector of covariates
-     * @return a non-null comma-separated string
-     */
-    public static String covariateNames(final Covariate[] requestedCovariates) {
-        final List<String> names = new ArrayList<String>(requestedCovariates.length);
-        for ( final Covariate cov : requestedCovariates )
-            names.add(cov.getClass().getSimpleName());
-        return Utils.join(",", names);
-    }
 
     /**
      * Outputs the GATK report to RAC.RECAL_TABLE.
@@ -479,11 +356,11 @@ public class RecalUtils {
      * @param RAC The list of shared command line arguments
      * @param quantizationInfo Quantization info
      * @param recalibrationTables Recalibration tables
-     * @param requestedCovariates The list of requested covariates
+     * @param covariates The list of requested covariates
      * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      */
-    public static void outputRecalibrationReport(final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, boolean sortByCols) {
-        final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariateNames(requestedCovariates)), quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, requestedCovariates, sortByCols));
+    public static void outputRecalibrationReport(final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
+        final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, covariates, sortByCols));
         report.print(RAC.RECAL_TABLE);
     }
 
@@ -493,12 +370,12 @@ public class RecalUtils {
      * @param argumentTable Argument table
      * @param quantizationInfo Quantization info
      * @param recalibrationTables Recalibration tables
-     * @param requestedCovariates The list of requested covariates
+     * @param covariates The list of covariates
      * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      * @return GATK report
      */
-    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, final boolean sortByCols) {
-        return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, requestedCovariates, sortByCols));
+    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, final boolean sortByCols) {
+        return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, covariates, sortByCols));
     }
 
     /**
@@ -535,28 +412,27 @@ public class RecalUtils {
         executor.exec();
     }
 
-    private static void writeCSV(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final Covariate[] requestedCovariates, final boolean printHeader) {
+    private static void writeCSV(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final StandardCovariateList covariates, final boolean printHeader) {
 
-        final NestedIntegerArray<RecalDatum> deltaTable = createDeltaTable(recalibrationTables, requestedCovariates.length);
+        final NestedIntegerArray<RecalDatum> deltaTable = createDeltaTable(recalibrationTables, covariates);
 
         // add the quality score table to the delta table
         final NestedIntegerArray<RecalDatum> qualTable = recalibrationTables.getQualityScoreTable();
         for (final NestedIntegerArray.Leaf<RecalDatum> leaf : qualTable.getAllLeaves()) { // go through every element in the covariates table to create the delta table
             final int[] newCovs = new int[4];
             newCovs[0] = leaf.keys[0];
-            newCovs[1] = requestedCovariates.length; // replace the covariate name with an arbitrary (unused) index for QualityScore
+            newCovs[1] = covariates.size(); // replace the covariate name with an arbitrary (unused) index for QualityScore. This is a HACK.
             newCovs[2] = leaf.keys[1];
             newCovs[3] = leaf.keys[2];
             addToDeltaTable(deltaTable, newCovs, leaf.value); // add this covariate to the delta table
         }
 
         // add the optional covariates to the delta table
-        for (int i = RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < requestedCovariates.length; i++) {
-            final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(i);
+        for(NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getAdditionalTables()){
             for (final NestedIntegerArray.Leaf<RecalDatum> leaf : covTable.getAllLeaves()) {
                 final int[] covs = new int[4];
                 covs[0] = leaf.keys[0];
-                covs[1] = i; // reset the quality score covariate to 0 from the keyset (so we aggregate all rows regardless of QS)
+                covs[1] = covariates.indexByClass(recalibrationTables.getCovariateForTable(covTable).getClass()); // reset the quality score covariate to 0 from the keyset (so we aggregate all rows regardless of QS)
                 covs[2] = leaf.keys[2];
                 covs[3] = leaf.keys[3];
                 addToDeltaTable(deltaTable, covs, leaf.value); // add this covariate to the delta table
@@ -568,13 +444,9 @@ public class RecalUtils {
             printHeader(deltaTableFile);
         }
 
-        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
-        for (final Covariate covariate : requestedCovariates)
-            covariateNameMap.put(covariate, parseCovariateName(covariate));
-
         // print each data line
         for (final NestedIntegerArray.Leaf<RecalDatum> leaf : deltaTable.getAllLeaves()) {
-            final List<Object> deltaKeys = generateValuesFromKeys(leaf.keys, requestedCovariates, covariateNameMap);
+            final List<Object> deltaKeys = generateValuesFromKeys(leaf.keys, covariates);
             final RecalDatum deltaDatum = leaf.value;
             deltaTableFile.print(Utils.join(",", deltaKeys));
             deltaTableFile.print("," + deltaDatum.stringForCSV());
@@ -604,7 +476,8 @@ public class RecalUtils {
      * @param numCovariates           the total number of covariates being used
      * @return a non-null nested integer array
      */
-    private static NestedIntegerArray<RecalDatum> createDeltaTable(final RecalibrationTables recalibrationTables, final int numCovariates) {
+    private static NestedIntegerArray<RecalDatum> createDeltaTable(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
+        final int numCovariates = covariates.size();
 
         final int[] dimensionsForDeltaTable = new int[4];
 
@@ -617,25 +490,24 @@ public class RecalUtils {
         dimensionsForDeltaTable[3] = dimensionsOfQualTable[2];
 
         // now, update the dimensions based on the optional covariate tables as needed
-        for ( int i = RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < numCovariates; i++ ) {
-            final NestedIntegerArray<RecalDatum> covTable = recalibrationTables.getTable(i);
+        for ( NestedIntegerArray<RecalDatum> covTable : recalibrationTables.getAdditionalTables()) {
             final int[] dimensionsOfCovTable = covTable.getDimensions();
             dimensionsForDeltaTable[2] = Math.max(dimensionsForDeltaTable[2], dimensionsOfCovTable[2]);
             dimensionsForDeltaTable[3] = Math.max(dimensionsForDeltaTable[3], dimensionsOfCovTable[3]);
         }
 
-        return new NestedIntegerArray<RecalDatum>(dimensionsForDeltaTable);
+        return new NestedIntegerArray<>(dimensionsForDeltaTable);
     }
 
-    protected static List<Object> generateValuesFromKeys(final int[] keys, final Covariate[] covariates, final Map<Covariate, String> covariateNameMap) {
-        final List<Object> values = new ArrayList<Object>(4);
-        values.add(covariates[RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()].formatKey(keys[0]));
+    protected static List<Object> generateValuesFromKeys(final int[] keys, final StandardCovariateList covariates) {
+        final List<Object> values = new ArrayList<>(4);
+        values.add(covariates.getReadGroupCovariate().formatKey(keys[0]));
 
         final int covariateIndex = keys[1];
         final int covariateKey = keys[2];
-        final Covariate covariate = covariateIndex == covariates.length ? covariates[RecalibrationTables.TableType.QUALITY_SCORE_TABLE.ordinal()] : covariates[covariateIndex];
+        final Covariate covariate = (covariateIndex == covariates.size()) ? covariates.getQualityScoreCovariate() : covariates.get(covariateIndex);
         values.add(covariate.formatKey(covariateKey));
-        values.add(covariateNameMap.get(covariate));
+        values.add(covariate.parseNameForReport());
         values.add(EventType.eventFrom(keys[3]).prettyPrint());
 
         return values;
@@ -832,12 +704,12 @@ public class RecalUtils {
      * reqeustedCovariates list.
      *
      * @param read                The read for which to compute covariate values.
-     * @param requestedCovariates The list of requested covariates.
+     * @param covariates The list of requested covariates.
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static ReadCovariates computeCovariates(final SAMRecord read, final Covariate[] requestedCovariates) {
-        final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), requestedCovariates.length);
-        computeCovariates(read, requestedCovariates, readCovariates);
+    public static ReadCovariates computeCovariates(final SAMRecord read, final StandardCovariateList covariates) {
+        final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), covariates.size());
+        computeCovariates(read, covariates, readCovariates);
         return readCovariates;
     }
 
@@ -847,18 +719,14 @@ public class RecalUtils {
      *
      * It populates an array of covariate values where result[i][j] is the covariate
      * value for the ith position in the read and the jth covariate in
-     * reqeustedCovariates list.
+     * covariates list.
      *
      * @param read                The read for which to compute covariate values.
-     * @param requestedCovariates The list of requested covariates.
+     * @param covariates          The list of covariates.
      * @param resultsStorage      The object to store the covariate values
      */
-    public static void computeCovariates(final SAMRecord read, final Covariate[] requestedCovariates, final ReadCovariates resultsStorage) {
-        // Loop through the list of requested covariates and compute the values of each covariate for all positions in this read
-        for (int i = 0; i < requestedCovariates.length; i++) {
-            resultsStorage.setCovariateIndex(i);
-            requestedCovariates[i].recordValues(read, resultsStorage);
-        }
+    public static void computeCovariates(final SAMRecord read, final StandardCovariateList covariates, final ReadCovariates resultsStorage) {
+        covariates.recordAllValuesInStorage(read, resultsStorage);
     }
 
     /**

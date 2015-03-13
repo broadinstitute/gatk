@@ -5,8 +5,8 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
@@ -20,12 +20,12 @@ import java.util.List;
  * Utility methods to facilitate on-the-fly base quality score recalibration.
  */
 
-public class BaseRecalibration {
+public final class BaseRecalibration {
     private static Logger logger = LogManager.getLogger(BaseRecalibration.class);
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
-    private final Covariate[] requestedCovariates; // list of all covariates to be used in this calculation
+    private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
 
     private final boolean disableIndelQuals;
     private final int preserveQLessThan;
@@ -44,7 +44,7 @@ public class BaseRecalibration {
         RecalibrationReport recalibrationReport = new RecalibrationReport(RECAL_FILE);
 
         recalibrationTables = recalibrationReport.getRecalibrationTables();
-        requestedCovariates = recalibrationReport.getRequestedCovariates();
+        covariates = recalibrationReport.getCovariates();
         quantizationInfo = recalibrationReport.getQuantizationInfo();
         if (quantizationLevels == 0) // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
@@ -85,7 +85,7 @@ public class BaseRecalibration {
             }
         }
 
-        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, requestedCovariates);
+        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, covariates);
         final int readLength = read.getReadLength();
 
         for (final EventType errorModel : EventType.values()) { // recalibrate all three quality strings
@@ -115,7 +115,7 @@ public class BaseRecalibration {
                         final int[] keySet = fullReadKeySet[offset];
                         final RecalDatum empiricalQualQS = recalibrationTables.getQualityScoreTable().get(keySet[0], keySet[1], errorModel.ordinal());
                         final List<RecalDatum> empiricalQualCovs = new ArrayList<>();
-                        for (int i = 2; i < requestedCovariates.length; i++) {
+                        for (int i = 2; i < covariates.size(); i++) {  //XXX the 2 is hard-wired here as the number of special covariates
                             if (keySet[i] < 0) {
                                 continue;
                             }

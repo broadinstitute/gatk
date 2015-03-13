@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class GATKReportTable {
+public final class GATKReportTable {
     /**
      * REGEX that matches any table with an invalid name
      */
@@ -93,12 +93,12 @@ public class GATKReportTable {
                 // initialize the data
                 final int nColumns = Integer.parseInt(tableData[TableDataHeaderFields.COLS.index()]);
                 final int nRows = Integer.parseInt(tableData[TableDataHeaderFields.ROWS.index()]);
-                underlyingData = new ArrayList<Object[]>(nRows);
-                columnInfo = new ArrayList<GATKReportColumn>(nColumns);
-                columnNameToIndex = new HashMap<Object, Integer>(nColumns);
+                underlyingData = new ArrayList<>(nRows);
+                columnInfo = new ArrayList<>(nColumns);
+                columnNameToIndex = new HashMap<>(nColumns);
 
                 // when reading from a file, the row ID mapping is just the index
-                rowIdToIndex = new HashMap<Object, Integer>();
+                rowIdToIndex = new HashMap<>();
                 for ( int i = 0; i < nRows; i++ )
                     rowIdToIndex.put(i, i);
 

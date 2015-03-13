@@ -1,69 +1,109 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
-import java.util.ArrayList;
+import java.util.*;
 
 /**
  * Utility class to facilitate base quality score recalibration.
  */
 
-public final class RecalibrationTables {
-    public enum TableType {
-        READ_GROUP_TABLE,
-        QUALITY_SCORE_TABLE,
-        OPTIONAL_COVARIATE_TABLES_START;
-    }
-
-    private final ArrayList<NestedIntegerArray<RecalDatum>> tables;
+public final class RecalibrationTables implements Iterable<NestedIntegerArray<RecalDatum>>{
     private final int qualDimension;
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;
 
-    public RecalibrationTables(final Covariate[] covariates) {
-        this(covariates, covariates[TableType.READ_GROUP_TABLE.ordinal()].maximumKeyValue() + 1);
+    //These two tables are special
+    private final NestedIntegerArray<RecalDatum> readGroupTable;
+    private final NestedIntegerArray<RecalDatum> qualityScoreTable;
+
+    private final List<NestedIntegerArray<RecalDatum>> additionalTables;
+    private final List<NestedIntegerArray<RecalDatum>> allTables;    //special + additional
+
+    //bidirectional mappings
+    private final Map<Covariate, NestedIntegerArray<RecalDatum>> covariateToTable;
+    private final Map<NestedIntegerArray<RecalDatum>, Covariate> tableToCovariate;
+
+
+    public RecalibrationTables(final StandardCovariateList covariates) {
+        this(covariates, covariates.getReadGroupCovariate().maximumKeyValue() + 1);
     }
 
-    public RecalibrationTables(final Covariate[] covariates, final int numReadGroups) {
-        tables = new ArrayList<>(covariates.length);
-        for ( int i = 0; i < covariates.length; i++ )
-            tables.add(i, null); // initialize so we can set below
+    public RecalibrationTables(StandardCovariateList covariates, final int numReadGroups) {
+        this.additionalTables = new ArrayList<>();
+        this.allTables = new ArrayList<>();
+        this.covariateToTable = new LinkedHashMap<>();
+        this.tableToCovariate = new LinkedHashMap<>();
 
-        qualDimension = covariates[TableType.QUALITY_SCORE_TABLE.ordinal()].maximumKeyValue() + 1;
+        this.qualDimension = covariates.getQualityScoreCovariate().maximumKeyValue() + 1;
         this.numReadGroups = numReadGroups;
 
-        tables.set(TableType.READ_GROUP_TABLE.ordinal(),
-                 new NestedIntegerArray<>(numReadGroups, eventDimension));
+        //two special tables
+        this.readGroupTable = new NestedIntegerArray<>(numReadGroups, eventDimension);
+        allTables.add(readGroupTable);
+        covariateToTable.put(covariates.getReadGroupCovariate(), readGroupTable);
+        tableToCovariate.put(readGroupTable, covariates.getReadGroupCovariate());
 
-        tables.set(TableType.QUALITY_SCORE_TABLE.ordinal(), makeQualityScoreTable());
+        this.qualityScoreTable = makeQualityScoreTable();
+        allTables.add(qualityScoreTable);
+        covariateToTable.put(covariates.getQualityScoreCovariate(), qualityScoreTable);
+        tableToCovariate.put(qualityScoreTable, covariates.getQualityScoreCovariate());
 
-        for (int i = TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal(); i < covariates.length; i++)
-            tables.set(i, new NestedIntegerArray<>(numReadGroups, qualDimension, covariates[i].maximumKeyValue()+1, eventDimension));
+        //Non-special tables
+        for (Covariate cov : covariates.getAdditionalCovariates()){
+            final NestedIntegerArray<RecalDatum> table = new NestedIntegerArray<>(numReadGroups, qualDimension, cov.maximumKeyValue() + 1, eventDimension);
+            additionalTables.add(table);
+            allTables.add(table);
+            covariateToTable.put(cov, table);
+            tableToCovariate.put(table, cov);
+        }
+    }
+
+    public NestedIntegerArray<RecalDatum> getTableForCovariate(Covariate cov) {
+        return covariateToTable.get(cov);
+    }
+
+    public Covariate getCovariateForTable(NestedIntegerArray<RecalDatum> table) {
+        return tableToCovariate.get(table);
+    }
+
+    public boolean isReadGroupTable(NestedIntegerArray<RecalDatum> table) {
+        return table.equals(getReadGroupTable());
+    }
+
+    public boolean isQualityScoreTable(NestedIntegerArray<RecalDatum> table) {
+        return table.equals(getQualityScoreTable());
+    }
+
+    public boolean isAdditionalCovariateTable(NestedIntegerArray<RecalDatum> table) {
+        return additionalTables.contains(table);
     }
 
     public NestedIntegerArray<RecalDatum> getReadGroupTable() {
-        return getTable(TableType.READ_GROUP_TABLE.ordinal());
+        return readGroupTable;
     }
 
     public NestedIntegerArray<RecalDatum> getQualityScoreTable() {
-        return getTable(TableType.QUALITY_SCORE_TABLE.ordinal());
-    }
-
-    public NestedIntegerArray<RecalDatum> getTable(final int index) {
-        return tables.get(index);
+        return qualityScoreTable;
     }
 
     public int numTables() {
-        return tables.size();
+        return allTables.size();
+    }
+
+    @Override
+    public Iterator<NestedIntegerArray<RecalDatum>> iterator() {
+        return allTables.iterator();
     }
 
     /**
      * @return true if all the tables contain no RecalDatums
      */
     public boolean isEmpty() {
-        for( final NestedIntegerArray<RecalDatum> table : tables ) {
+        for( final NestedIntegerArray<RecalDatum> table : allTables ) {
             if( !table.getAllValues().isEmpty() ) { return false; }
         }
         return true;
@@ -88,9 +128,18 @@ public final class RecalibrationTables {
             throw new IllegalArgumentException("Attempting to merge RecalibrationTables with different sizes");
 
         for ( int i = 0; i < numTables(); i++ ) {
-            final NestedIntegerArray<RecalDatum> myTable = this.getTable(i);
-            final NestedIntegerArray<RecalDatum> otherTable = toMerge.getTable(i);
+            final NestedIntegerArray<RecalDatum> myTable = this.allTables.get(i);
+            final NestedIntegerArray<RecalDatum> otherTable = toMerge.allTables.get(i);
             RecalUtils.combineTables(myTable, otherTable);
         }
+    }
+
+    //XXX this should not be accessible by index
+    public NestedIntegerArray<RecalDatum> getTable(int index) {
+        return allTables.get(index);
+    }
+
+    public List<NestedIntegerArray<RecalDatum>> getAdditionalTables() {
+        return additionalTables;
     }
 }

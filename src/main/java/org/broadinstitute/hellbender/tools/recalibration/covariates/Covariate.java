@@ -4,6 +4,9 @@ import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The Covariate interface. A Covariate is a feature used in the recalibration that can be picked out of the read.
  * In general most error checking and adjustments to the data are done before the call to the covariates getValue methods in order to speed up the code.
@@ -59,5 +62,24 @@ public interface Covariate {
      * @return the maximum value possible for any key representing this covariate
      */
     public int maximumKeyValue();
+
+    /**
+     * Extract the names of the covariates. Strip the "Covariate" because that's how it's stored in the report.
+     */
+    public static List<String> classNameList(StandardCovariateList covs) {
+        List<String> names = new ArrayList<>(covs.size());
+        for(Covariate cov : covs){
+            names.add(cov.parseNameForReport());
+        }
+        return names;
+    }
+
+    /**
+     * Returns the names of the covariate, which is the simple class name withouit the "Covariate" part;
+     * @return
+     */
+    default String parseNameForReport() {
+        return getClass().getSimpleName().split("Covariate")[0];
+    }
 }
 

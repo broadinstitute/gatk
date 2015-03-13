@@ -5,14 +5,16 @@ import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalDatum;
 import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RecalibrationEngine {
-    final protected Covariate[] covariates;
+    final protected StandardCovariateList covariates;
 
     /**
      * Has finalizeData() been called?
@@ -33,11 +35,11 @@ public class RecalibrationEngine {
      * @param covariates an array of the covariates we'll be using in this engine, order matters
      * @param numReadGroups the number of read groups we should use for the recalibration tables
      */
-    public RecalibrationEngine(final Covariate[] covariates, final int numReadGroups) {
+    public RecalibrationEngine(final StandardCovariateList covariates, final int numReadGroups) {
         if ( covariates == null ) throw new IllegalArgumentException("Covariates cannot be null");
         if ( numReadGroups < 1 ) throw new IllegalArgumentException("numReadGroups must be >= 1 but got " + numReadGroups);
 
-        this.covariates = Arrays.copyOf(covariates, covariates.length);
+        this.covariates = covariates;
         this.tables = new RecalibrationTables(covariates, numReadGroups);
     }
 
@@ -63,7 +65,7 @@ public class RecalibrationEngine {
 
                     RecalUtils.incrementDatumOrPutIfNecessary(qualityScoreTable, qual, isError, keys[0], keys[1], eventIndex);
 
-                    for (int i = 2; i < covariates.length; i++) {
+                    for (int i = 2; i < covariates.size(); i++) { //XXX the 2 is hard-wired here as the number of special covariates
                         if (keys[i] < 0)
                             continue;
 
