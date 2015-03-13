@@ -31,4 +31,26 @@ final class VariantDatum {
     public static int countCallsAtTruth(final List<VariantDatum> data, double minLOD ) {
         return (int)data.stream().filter(d -> (d.atTruthSite && d.lod >= minLOD)).count(); //XXX cast to int for compatibility
     }
+
+    /**
+     * Computes and sets the index of the worst performing annotation.
+     * That's the annotation with the lowest ratio of likelihoods from the good and bad models.
+     * @return the index of the worst annotation or -1 if probabilities for all dimensions are null.
+     */
+    public void setWorstPerformingAnnotation( final GaussianMixtureModel goodModel, final GaussianMixtureModel badModel ) {
+        int worstAnnotation = -1;
+        double minProb = Double.MAX_VALUE;
+        for( int i = 0; i < this.annotations.length; i++ ) {
+            final Double goodProbLog10 = goodModel.evaluateDatumInOneDimension(this, i);
+            final Double badProbLog10 = badModel.evaluateDatumInOneDimension(this, i);
+            if( goodProbLog10 != null && badProbLog10 != null ) {
+                final double prob = goodProbLog10 - badProbLog10;
+                if (prob < minProb) {
+                    minProb = prob;
+                    worstAnnotation = i;
+                }
+            }
+        }
+        this.worstAnnotation = worstAnnotation;
+    }
 }
