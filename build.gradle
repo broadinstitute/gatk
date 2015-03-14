@@ -127,7 +127,6 @@ test {
     String runRTests = "$System.env.RUNR"
     if (CI == "true") {
         int count = 0
-        maxParallelForks = 2
         // listen to events in the test execution lifecycle
         testLogging {
             events "skipped", "failed"
@@ -143,7 +142,6 @@ test {
     } else {
         // show standard out and standard error of the test JVM(s) on the console
         testLogging.showStandardStreams = true
-        maxParallelForks = 4 
         beforeTest { descriptor ->
             logger.lifecycle("Running Test: " + descriptor)
         }
