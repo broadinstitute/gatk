@@ -154,6 +154,12 @@ public class BaseRecalibrator extends ReadWalker {
 
 
     private long accumulator;
+
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
     /**
      * Parse the -cov arguments and create a list of covariates to be used here
      * Based on the covariates' estimates for initial capacity allocate the data hashmap
@@ -187,10 +193,7 @@ public class BaseRecalibrator extends ReadWalker {
         initializeRecalibrationEngine();
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
 
-        if ( ! referenceIsPresent() ) {
-            throw new UserException("This tool requires a reference");
-        }
-        referenceDataSource = new ReferenceDataSource(REFERENCE_FILE);
+        referenceDataSource = new ReferenceDataSource(referenceArguments.referenceFile);
     }
 
     private Covariate[] getCovariatesArray() {

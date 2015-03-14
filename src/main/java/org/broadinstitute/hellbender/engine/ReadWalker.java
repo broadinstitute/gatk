@@ -1,22 +1,16 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 
-import java.io.File;
-import java.util.List;
 import java.util.stream.StreamSupport;
 
 /**
  * A ReadWalker is a tool that processes a single read at a time from one or multiple sources of reads, with
- * optional contextual information from a reference and/or sets of variants.
+ * optional contextual information from a reference and/or sets of variants/Features.
  *
  * If multiple sources of reads are specified, they are merged together into a single sorted stream of reads.
  *
@@ -25,21 +19,16 @@ import java.util.stream.StreamSupport;
  */
 public abstract class ReadWalker extends GATKTool {
 
-    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "One or more BAM/SAM/CRAM files containing reads", common = false, optional = false, minElements = 1)
-    public List<File> READS_FILES;
-
-    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence", common = false, optional = true)
-    public File REFERENCE_FILE;
-
     @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
     public boolean disable_all_read_filters = false;
 
-    private ReadsDataSource reads = null;
-    private ReferenceDataSource reference = null;
-    private FeatureManager features = null;
+    @Override
+    public boolean requiresReads() {
+        return true;
+    }
 
     /**
-     * Create the reads and reference data sources.
+     * Initialize data sources for traversal.
      *
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
      */
@@ -47,47 +36,9 @@ public abstract class ReadWalker extends GATKTool {
     protected final void onStartup() {
         super.onStartup();
 
-        // Need to delay initialization of members until after the argument-parsing system has injected argument values
-        reads = new ReadsDataSource(READS_FILES);
-        reference = REFERENCE_FILE != null ? new ReferenceDataSource(REFERENCE_FILE) : null;
-
-        features = new FeatureManager(this);
-        if ( features.isEmpty() ) {  // No available sources of Features for this tool
-            features = null;
+        if ( hasIntervals() ) {
+            reads.setIntervalsForTraversal(intervalsForTraversal);
         }
-
-        if(intervalArgumentCollection.intervalsSpecified()){
-            reads.setIntervalsForTraversal(intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()));
-        }
-    }
-
-    /**
-     * Returns true if a reference was provided for this traversal, otherwise false
-     *
-     * @return true if a reference was provided for this traversal, otherwise false
-     */
-    public boolean referenceIsPresent() {
-        return REFERENCE_FILE != null;
-    }
-
-    /**
-     * Returns the SAM header for this reads traversal. Will be a merged header if there are multiple inputs for
-     * the reads. If there is only a single input, returns its header directly.
-     *
-     * @return SAM header for this reads traversal
-     */
-    public SAMFileHeader getHeaderForReads() {
-        return reads.getHeader();
-    }
-
-    /**
-     * Returns the "best available" sequence dictionary. This will be the reference sequence dictionary if
-     * there is a reference, otherwise it will be the sequence dictionary constructed from the reads.
-     *
-     * @return best available sequence dictionary given our inputs (never null)
-     */
-    public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
-        return reference != null ? reference.getSequenceDictionary() : reads.getSequenceDictionary();
     }
 
     /**
@@ -100,8 +51,6 @@ public abstract class ReadWalker extends GATKTool {
      */
     @Override
     public void traverse() {
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
-
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
         ReadFilter filter = disable_all_read_filters ? ReadFilterLibrary.ALLOW_ALL_READS : makeReadFilter();
@@ -109,10 +58,11 @@ public abstract class ReadWalker extends GATKTool {
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(filter)
                 .forEach(read -> {
-                    final GenomeLoc readInterval = genomeLocParser.createGenomeLoc(read);
+                    final SimpleInterval readInterval = read.getReadUnmappedFlag() ? null :
+                                                                                     new SimpleInterval(read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd());
                     apply(read,
-                          new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference == null
-                          new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features == null
+                          new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
+                          new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null
                 });
     }
 
@@ -150,21 +100,13 @@ public abstract class ReadWalker extends GATKTool {
     public abstract void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
-     * Close the reads and reference data sources.
+     * Shutdown data sources.
      *
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalDone() instead.
      */
     @Override
     protected final void onShutdown() {
+        // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
-
-        if ( reads != null )
-            reads.close();
-
-        if ( reference != null )
-            reference.close();
-
-        if ( features != null )
-            features.close();
     }
 }

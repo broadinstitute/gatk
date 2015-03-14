@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -14,22 +15,30 @@ import java.util.stream.StreamSupport;
 
 /**
  * A VariantWalker is a tool that processes a variant at a time from a source of variants, with
- * optional contextual information from a reference and/or sets of reads.
+ * optional contextual information from a reference, sets of reads, and/or supplementary sources
+ * of Features.
  *
  * VariantWalker authors must implement the apply() method to process each read, and may optionally implement
  * onTraversalStart() and/or onTraversalDone().
- *
  */
 public abstract class VariantWalker extends GATKTool {
 
+    // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
+    //       of variants separate from any other potential sources of Features
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF/BCF file containing variants", common = false, optional = false, minElements = 1)
-    public File VARIANT_FILE;
+    public File drivingVariantFile;
 
-    //NOTE: using this directly rather than FeatureInput because this is a special source of variants.
-    private FeatureDataSource<VariantContext> variants;
+    // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool
+    private FeatureDataSource<VariantContext> drivingVariants;
+
+    /*
+     * TODO: It's awkward that this traversal type requires variants yet can't override requiresFeatures() from
+     * TODO: GATKTool, since the required source of variants is managed separately (as drivingVariants) from
+     * TODO: our main FeatureManager in GATKTool. May need a way to register additional data sources with GATKTool.
+     */
 
     /**
-     * Create the reads and reference data sources.
+     * Create and initialize data sources.
      *
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
      */
@@ -38,11 +47,17 @@ public abstract class VariantWalker extends GATKTool {
     protected final void onStartup() {
         super.onStartup();
 
-        FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(VARIANT_FILE);
+        // Need to discover the right codec for the driving source of variants manually, since we are
+        // treating it specially (separate from the other sources of Features in our FeatureManager).
+        FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile);
         if (codec.getFeatureType() == VariantContext.class) {
-            variants = new FeatureDataSource<>(VARIANT_FILE, (FeatureCodec<VariantContext, ?>)codec);
+            drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec);
         } else {
-            throw new UserException("File " + VARIANT_FILE + " cannot be decoded as a variant file.");
+            throw new UserException("File " + drivingVariantFile + " cannot be decoded as a variant file.");
+        }
+
+        if ( hasIntervals() ) {
+            throw new UserException("VariantWalkers do not yet support traversal by intervals");
         }
     }
 
@@ -54,9 +69,15 @@ public abstract class VariantWalker extends GATKTool {
     public void traverse() {
         VariantFilter filter = makeVariantFilter();
         // Process each variant in the input stream.
-        StreamSupport.stream(variants.spliterator(), false)
+        StreamSupport.stream(drivingVariants.spliterator(), false)
                 .filter(filter)
-                .forEach(this::apply);
+                .forEach(variant -> {
+                    final SimpleInterval variantInterval = new SimpleInterval(variant.getChr(), variant.getStart(), variant.getEnd());
+                    apply(variant,
+                          new ReadsContext(reads, variantInterval),
+                          new ReferenceContext(reference, variantInterval),
+                          new FeatureContext(features, variantInterval));
+                });
     }
 
     /**
@@ -76,8 +97,21 @@ public abstract class VariantWalker extends GATKTool {
      * Process an individual variant. Must be implemented by tool authors.
      * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
      * as possible.
+     *
+     * @param variant Current variant being processed.
+     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
+     *                     if there is no backing source of reads data (in which case all queries on it will return
+     *                     an empty array/iterator)
+     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
+     *                         if there is no backing source of reference data (in which case all queries on it will return
+     *                         an empty array/iterator). Can request extra bases of context around the current read's interval
+     *                         by invoking {@link org.broadinstitute.hellbender.engine.ReferenceContext#setWindow}
+     *                         on this object before calling {@link org.broadinstitute.hellbender.engine.ReferenceContext#getBases}
+     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
+     *                       if there is no backing source of Feature data (in which case all queries on it will return an
+     *                       empty List).
      */
-    public abstract void apply( VariantContext variant );
+    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
      * Close the reads and reference data sources.
@@ -88,7 +122,7 @@ public abstract class VariantWalker extends GATKTool {
     protected final void onShutdown() {
         super.onShutdown();
 
-        if ( variants != null )
-            variants.close();
+        if ( drivingVariants != null )
+            drivingVariants.close();
     }
 }

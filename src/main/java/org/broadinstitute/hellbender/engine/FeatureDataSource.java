@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,7 +89,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * be a substantial number of cache hits between cache misses, reducing the number of times we need to
      * repopulate the cache from disk.
      */
-    private static final int DEFAULT_QUERY_LOOKAHEAD_BASES = 1000;
+    public static final int DEFAULT_QUERY_LOOKAHEAD_BASES = 1000;
 
     /**
      * FeatureCache: helper class to manage the cache of Feature records used during query operations.
@@ -101,13 +101,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * patterns, or intervals with decreasing start positions.
      *
      * Usage:
-     * -Test whether each query interval is a cache hit via {@link #cacheHit(GenomeLoc)}
+     * -Test whether each query interval is a cache hit via {@link #cacheHit(SimpleInterval)}
      *
      * -If it is a cache hit, trim the cache to the start position of the interval (discarding records that
-     *  end before the start of the new interval) via {@link #trimToNewStartPosition(long)}, then retrieve
-     *  records up to the desired endpoint using {@link #getCachedFeaturesUpToStopPosition(long)}.
+     *  end before the start of the new interval) via {@link #trimToNewStartPosition(int)}, then retrieve
+     *  records up to the desired endpoint using {@link #getCachedFeaturesUpToStopPosition(int)}.
      *
-     * -If it is a cache miss, reset the cache using {@link #fill(Iterator, GenomeLoc)}, pre-fetching
+     * -If it is a cache miss, reset the cache using {@link #fill(Iterator, SimpleInterval)}, pre-fetching
      *  a large number of records after the query interval in addition to those actually requested.
      *
      * @param <CACHED_FEATURE> Type of Feature record we are caching
@@ -120,19 +120,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         private final Deque<CACHED_FEATURE> cache;
 
         /**
-         * Our cache currently contains Feature records from this contig
+         * Our cache currently contains Feature records overlapping this interval
          */
-        private String cachedContig;
-
-        /**
-         * Our cache currently contains records overlapping the region beginning at this start position
-         */
-        private long cacheStart;
-
-        /**
-         * Our cache currently contains records overlapping the region ending at this stop position
-         */
-        private long cacheStop;
+        private SimpleInterval cachedInterval;
 
         /**
          * Initial capacity of our cache (will grow by doubling if needed)
@@ -159,7 +149,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          * @return the name of the contig on which the Features in our cache are located
          */
         public String getContig() {
-            return cachedContig;
+            return cachedInterval.getContig();
         }
 
         /**
@@ -167,8 +157,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          *
          * @return the start position of the interval that all Features in our cache overlap
          */
-        public long getCacheStart() {
-            return cacheStart;
+        public int getCacheStart() {
+            return cachedInterval.getStart();
         }
 
         /**
@@ -176,8 +166,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          *
          * @return the stop position of the interval that all Features in our cache overlap
          */
-        public long getCacheStop() {
-            return cacheStop;
+        public int getCacheEnd() {
+            return cachedInterval.getEnd();
         }
 
         /**
@@ -201,15 +191,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          *                    (replacing existing cache contents)
          * @param interval all Features from featureIter overlap this interval
          */
-        public void fill( final Iterator<CACHED_FEATURE> featureIter, final GenomeLoc interval ) {
+        public void fill( final Iterator<CACHED_FEATURE> featureIter, final SimpleInterval interval ) {
             cache.clear();
             while ( featureIter.hasNext() ) {
                 cache.add(featureIter.next());
             }
 
-            cachedContig = interval.getContig();
-            cacheStart = interval.getStart();
-            cacheStop = interval.getStop();
+            cachedInterval = interval;
         }
 
         /**
@@ -218,11 +206,11 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          * @param interval the interval to check against the contents of our cache
          * @return true if all records overlapping the provided interval are already contained in our cache, otherwise false
          */
-        public boolean cacheHit( final GenomeLoc interval ) {
-            return cachedContig != null &&
-                   cachedContig.equals(interval.getContig()) &&
-                   cacheStart <= interval.getStart() &&
-                   cacheStop >= interval.getStop();
+        public boolean cacheHit( final SimpleInterval interval ) {
+            return cachedInterval != null &&
+                   cachedInterval.getContig().equals(interval.getContig()) &&
+                   cachedInterval.getStart() <= interval.getStart() &&
+                   cachedInterval.getEnd() >= interval.getEnd();
         }
 
         /**
@@ -231,10 +219,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          *
          * @param newStart new start position on the current contig to which to trim the cache
          */
-        public void trimToNewStartPosition( final long newStart ) {
-            if ( newStart > cacheStop ) {
+        public void trimToNewStartPosition( final int newStart ) {
+            if ( newStart > cachedInterval.getEnd() ) {
                 throw new GATKException(String.format("BUG: attempted to trim Feature cache to an improper new start position (%d). Cache stop = %d",
-                                                      newStart, cacheStop));
+                                                      newStart, cachedInterval.getEnd()));
             }
 
             List<CACHED_FEATURE> overlappingFeaturesBeforeNewStart = new ArrayList<>(EXPECTED_MAX_OVERLAPPING_FEATURES_DURING_CACHE_TRIM);
@@ -261,7 +249,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             }
 
             // Record our new start boundary
-            cacheStart = newStart;
+            cachedInterval = new SimpleInterval(cachedInterval.getContig(), newStart, cachedInterval.getEnd());
         }
 
         /**
@@ -271,7 +259,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          * @param stopPosition Endpoint of the interval that returned Features must overlap
          * @return all cached Features that overlap the region from the start of our cache to the specified stop position
          */
-        public List<CACHED_FEATURE> getCachedFeaturesUpToStopPosition( final long stopPosition ) {
+        public List<CACHED_FEATURE> getCachedFeaturesUpToStopPosition( final int stopPosition ) {
             List<CACHED_FEATURE> matchingFeatures = new ArrayList<>(cache.size());
 
             // Find (but do not remove from our cache) all Features that start before or on the provided stop position
@@ -389,7 +377,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @return an iterator over all Features in this data source that overlap the provided interval
      */
     @Override
-    public Iterator<T> query( final GenomeLoc interval ) {
+    public Iterator<T> query( final SimpleInterval interval ) {
         return queryAndPrefetch(interval).iterator();
     }
 
@@ -408,7 +396,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param interval retrieve all Features overlapping this interval
      * @return a List of all Features in this data source that overlap the provided interval
      */
-    public List<T> queryAndPrefetch( final GenomeLoc interval ) {
+    public List<T> queryAndPrefetch( final SimpleInterval interval ) {
         if ( ! hasIndex ) {
             throw new UserException("File " + featureFile.getAbsolutePath() + " requires an index to enable queries by interval. " +
                                     "Please index this file using the bundled tool " + IndexFeatureFile.class.getSimpleName());
@@ -426,7 +414,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
 
         // Return the subset of our cache that overlaps our query interval
-        return queryCache.getCachedFeaturesUpToStopPosition(interval.getStop());
+        return queryCache.getCachedFeaturesUpToStopPosition(interval.getEnd());
     }
 
     /**
@@ -439,7 +427,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *
      * @param interval the query interval that produced a cache miss
      */
-    private void refillQueryCache( final GenomeLoc interval ) {
+    private void refillQueryCache( final SimpleInterval interval ) {
         // Tribble documentation states that having multiple iterators open simultaneously over the same FeatureReader
         // results in undefined behavior
         closeOpenIterationIfNecessary();
@@ -449,7 +437,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         //
         // Note that it doesn't matter if we go off the end of the contig in the process, since
         // our reader's query operation is not aware of (and does not care about) contig boundaries.
-        final int queryStop = interval.getStop() + queryLookaheadBases;
+        final int queryStop = interval.getEnd() + queryLookaheadBases;
 
         // Query iterator over our reader will be immediately closed after re-populating our cache
         try ( CloseableTribbleIterator<T> queryIter = featureReader.query(interval.getContig(), interval.getStart(), queryStop) ) {

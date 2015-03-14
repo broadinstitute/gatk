@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
 import java.util.Iterator;
@@ -15,38 +14,42 @@ import java.util.Iterator;
  * Reference data in the interval is lazily queried, so there's no overhead if the client chooses
  * not to examine contextual information from the reference.
  *
+ * Reference bases are returned as bytes for integration with the existing {@link org.broadinstitute.hellbender.utils.BaseUtils}
+ * implementation.
+ *
  * The reference interval can be optionally expanded by a configurable number of bases in each direction.
  * windowLeadingBases = 3 and windowTrailingBases = 5 means 3 bases of extra reference context before
  * the start of the interval and 5 bases of extra reference context after the end of the interval.
  *
  * Window boundaries can be set either at construction time or afterwards via {@link #setWindow}.
  *
- * A ReferenceContext may have no backing data source. In this case, queries on it will always
+ * A ReferenceContext may have no backing data source and/or interval. In these cases, queries on it will always
  * return empty arrays / iterators. You can determine whether there is a backing source of reference
- * data via {@link #hasBackingDataSource()}
+ * data via {@link #hasBackingDataSource()}, and whether there is an interval via {@link #getInterval}.
  */
-public final class ReferenceContext {
+public final class ReferenceContext implements Iterable<Byte> {
 
     /**
      * Backing data source. Null if there is no reference data.
      */
-    private ReferenceDataSource dataSource;
+    private final ReferenceDataSource dataSource;
+
+    /**
+     * Interval representing our location on the reference. May be null if, eg., we're dealing with unmapped data.
+     */
+    private final SimpleInterval interval;
+
+    /**
+     * Reference interval optionally expanded by a configurable amount to produce the true query interval.
+     * Will be null if this context lacks an interval.
+     */
+    private SimpleInterval window;
 
     /**
      * Reference bases spanning this interval/window if a query has been performed. Null if we haven't been queried yet.
      * Cache is cleared if the window size changes between queries.
      */
     private ReferenceSequence cachedSequence;
-
-    /**
-     * Interval representing our location on the reference
-     */
-    private GenomeLoc interval;
-
-    /**
-     * Reference interval optionally expanded by configurable amount to produce the true query interval
-     */
-    private GenomeLoc window;
 
 
     /**
@@ -61,10 +64,10 @@ public final class ReferenceContext {
      * Create a windowless ReferenceContext set up to lazily query the bases spanning just
      * the provided interval (with no extra bases of context)
      *
-     * @param dataSource backing reference data source
-     * @param interval interval to query, if we are accessed by a client
+     * @param dataSource backing reference data source (may be null if there is no reference)
+     * @param interval interval to query, if we are accessed by a client (may be null if our location is unknown)
      */
-    public ReferenceContext( final ReferenceDataSource dataSource, final GenomeLoc interval ) {
+    public ReferenceContext( final ReferenceDataSource dataSource, final SimpleInterval interval ) {
         this(dataSource, interval, 0, 0);
     }
 
@@ -74,18 +77,12 @@ public final class ReferenceContext {
      *
      * Window boundaries are cropped at contig boundaries, if necessary.
      *
-     * @param dataSource backing reference data source (must be null if there is no reference)
-     * @param interval our location on the reference (may be null if there is no reference)
+     * @param dataSource backing reference data source (may be null if there is no reference)
+     * @param interval our location on the reference (may be null if our location is unknown)
      * @param windowLeadingBases Number of extra reference bases to include before the start of our interval. Must be >= 0.
      * @param windowTrailingBases Number of extra reference bases to include after the end of our interval. Must be >= 0.
      */
-    public ReferenceContext( final ReferenceDataSource dataSource, final GenomeLoc interval, final int windowLeadingBases, final int windowTrailingBases ) {
-        // If we have a backing data source, we must also have a query interval. If there's no data source,
-        // we don't care about the interval (may be null or non-null).
-        if ( dataSource != null && interval == null ) {
-            throw new IllegalArgumentException("Must provide a non-null query interval for a ReferenceContext that has a backing ReferenceDataSource");
-        }
-
+    public ReferenceContext( final ReferenceDataSource dataSource, final SimpleInterval interval, final int windowLeadingBases, final int windowTrailingBases ) {
         this.dataSource = dataSource;
         cachedSequence = null;
         this.interval = interval;
@@ -95,7 +92,7 @@ public final class ReferenceContext {
     /**
      * Determines whether this ReferenceContext has a backing reference data source. A ReferenceContext with
      * no backing data source will always return an empty bases array from {@link #getBases()} and an
-     * empty iterator from {@link #getBasesIterator()}
+     * empty iterator from {@link #iterator()}
      *
      * @return true if this ReferenceContext has a backing reference data source, otherwise false
      */
@@ -104,20 +101,22 @@ public final class ReferenceContext {
     }
 
     /**
-     * Get an iterator over the reference bases in this context
+     * Get an iterator over the reference bases in this context. Will return an empty iterator if this
+     * context has no backing data source and/or interval.
      *
      * Call {@link #setWindow} before calling this method if you want to configure the amount of extra reference context
      * to include around the current interval
      *
      * @return iterator over the reference bases in this context
      */
-    public Iterator<Byte> getBasesIterator() {
-        return dataSource != null ? dataSource.query(window) : new ByteArrayIterator(new byte[0]);
+    @Override
+    public Iterator<Byte> iterator() {
+        return dataSource != null && window != null ? dataSource.query(window) : new ByteArrayIterator(new byte[0]);
     }
 
     /**
      * Get all reference bases in this context. The results are cached in this object for future queries.
-     * Will always return an empty array if there is no backing data source to query.
+     * Will always return an empty array if there is no backing data source and/or interval to query.
      *
      * Call {@link #setWindow} before calling this method if you want to configure the amount of extra reference context
      * to include around the current interval
@@ -125,7 +124,7 @@ public final class ReferenceContext {
      * @return reference bases in this context, as a byte array
      */
     public byte[] getBases() {
-        if ( dataSource == null ) {
+        if ( dataSource == null || window == null ) {
             return new byte[0];
         }
 
@@ -140,9 +139,10 @@ public final class ReferenceContext {
      * Get the location on the reference represented by this context, without including
      * any extra bases of requested context around this interval.
      *
-     * @return location on the reference represented by this context as a GenomeLoc
+     * @return location on the reference represented by this context as a SimpleInterval
+     *         (may be null if we have no known location)
      */
-    public GenomeLoc getInterval() {
+    public SimpleInterval getInterval() {
         return interval;
     }
 
@@ -153,9 +153,10 @@ public final class ReferenceContext {
      * Note that the true window size may be smaller than originally requested due to cropping
      * at contig boundaries.
      *
-     * @return full expanded window of bases spanned by this context as a GenomeLoc
+     * @return full expanded window of bases spanned by this context as a SimpleInterval
+     *         (will be null if this context has no interval)
      */
-    public GenomeLoc getWindow() {
+    public SimpleInterval getWindow() {
         return window;
     }
 
@@ -164,7 +165,7 @@ public final class ReferenceContext {
      *
      * Allows the client to request a specific number of extra reference bases to include before
      * and after the bases within our interval. These extra bases will be returned by calls to
-     * {@link #getBases} and {@link #getBasesIterator} in addition to the bases spanning our
+     * {@link #getBases} and {@link #iterator} in addition to the bases spanning our
      * actual interval.
      *
      * Note that the true window size may be smaller than requested due to cropping at contig boundaries.
@@ -178,13 +179,14 @@ public final class ReferenceContext {
         if( windowLeadingBases < 0 ) throw new GATKException("Reference window starts after the current interval");
         if( windowTrailingBases < 0 ) throw new GATKException("Reference window ends before the current interval");
 
-        if ( windowLeadingBases == 0 && windowTrailingBases == 0 ) {
+        if ( interval == null || (windowLeadingBases == 0 && windowTrailingBases == 0) ) {
             // the "windowless" case
             window = interval;
         }
         else {
-            window = new GenomeLocParser(dataSource.getSequenceDictionary()).createGenomeLoc(interval.getContig(),
-                                         calculateWindowStart(interval, windowLeadingBases), calculateWindowStop(interval, windowTrailingBases), true);
+            window = new SimpleInterval(interval.getContig(),
+                                        calculateWindowStart(interval, windowLeadingBases),
+                                        calculateWindowStop(interval, windowTrailingBases));
         }
 
         // Changing the window size invalidates our cached query result
@@ -200,7 +202,7 @@ public final class ReferenceContext {
      * @return number of extra bases of context before the start of our interval
      */
     public int numWindowLeadingBases() {
-        return interval.getStart() - window.getStart();
+        return window == null ? 0 : interval.getStart() - window.getStart();
     }
 
     /**
@@ -212,7 +214,7 @@ public final class ReferenceContext {
      * @return number of extra bases of context after the end of our interval
      */
     public int numWindowTrailingBases() {
-        return window.getStop() - interval.getStop();
+        return window == null ? 0 : window.getEnd() - interval.getEnd();
     }
 
     /**
@@ -222,7 +224,7 @@ public final class ReferenceContext {
      * @param windowLeadingBases number of bases to attempt to expand relative to the locus start (>= 0)
      * @return The start of the expanded window.
      */
-    private int calculateWindowStart( final GenomeLoc locus, final int windowLeadingBases ) {
+    private int calculateWindowStart( final SimpleInterval locus, final int windowLeadingBases ) {
         return Math.max(locus.getStart() - windowLeadingBases, 1);
     }
 
@@ -233,8 +235,8 @@ public final class ReferenceContext {
      * @param windowTrailingBases number of bases to attempt to expand relative to the locus end (>= 0)
      * @return The end of the expanded window.
      */
-    private int calculateWindowStop( final GenomeLoc locus, final int windowTrailingBases ) {
-        final int sequenceLength = dataSource.getSequenceDictionary().getSequence(locus.getContigIndex()).getSequenceLength();
-        return Math.min(locus.getStop() + windowTrailingBases, sequenceLength);
+    private int calculateWindowStop( final SimpleInterval locus, final int windowTrailingBases ) {
+        final int sequenceLength = dataSource.getSequenceDictionary().getSequence(locus.getContig()).getSequenceLength();
+        return Math.min(locus.getEnd() + windowTrailingBases, sequenceLength);
     }
 }

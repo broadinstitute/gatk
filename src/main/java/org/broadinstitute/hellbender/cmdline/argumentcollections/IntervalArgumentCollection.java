@@ -1,8 +1,12 @@
-package org.broadinstitute.hellbender.cmdline;
+
+package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.SimpleInterval;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
@@ -54,19 +58,19 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
 
     /**
      * Get the intervals specified on the command line.
-     * @param sequenceDict used to validate GenomeLocs
+     * @param sequenceDict used to validate intervals
      * @return a list of the given intervals after processing and validation
      */
-    public List<GenomeLoc> getIntervals(SAMSequenceDictionary sequenceDict){
+    public List<SimpleInterval> getIntervals(SAMSequenceDictionary sequenceDict){
         return getIntervals(new GenomeLocParser(sequenceDict));
     }
 
     /**
      * Get the intervals specified on the command line.
-     * @param genomeLocParser used to validate the GenomeLocs
+     * @param genomeLocParser used to validate the intervals
      * @return list of the given intervals after processing and validation
      */
-    public List<GenomeLoc> getIntervals(final GenomeLocParser genomeLocParser) {
+    public List<SimpleInterval> getIntervals(final GenomeLocParser genomeLocParser) {
         // return if no interval arguments at all
         if (!intervalsSpecified()) {
             throw new GATKException("Cannot call getIntervals() without specifying either intervals to include or exclude.");
@@ -108,7 +112,25 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
         }
 
         logger.info(String.format("Processing %d bp from intervals", intervals.coveredSize()));
-        return intervals.toList();
+        return convertGenomeLocsToSimpleIntervals(intervals.toList());
+    }
+
+    /**
+     * Convert a List of intervals in GenomeLoc format into a List of intervals in SimpleInterval format.
+     *
+     * @param genomeLocIntervals list of GenomeLoc intervals to convert
+     * @return equivalent List of SimpleIntervals
+     */
+    private List<SimpleInterval> convertGenomeLocsToSimpleIntervals( final List<GenomeLoc> genomeLocIntervals ) {
+        List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
+        for ( GenomeLoc genomeLoc : genomeLocIntervals ) {
+            if ( genomeLoc.isUnmapped() ) {
+                throw new UserException("Unmapped intervals are not currently supported");
+            }
+
+            convertedIntervals.add(new SimpleInterval(genomeLoc.getContig(), genomeLoc.getStart(), genomeLoc.getStop()));
+        }
+        return convertedIntervals;
     }
 
     /**

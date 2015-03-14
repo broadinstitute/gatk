@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
 import java.io.File;
@@ -62,7 +62,7 @@ public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoClos
      * @return iterator over the bases spanning the query interval
      */
     @Override
-    public Iterator<Byte> query( final GenomeLoc interval ) {
+    public Iterator<Byte> query( final SimpleInterval interval ) {
         // TODO: need a way to iterate lazily over reference bases without necessarily loading them all into memory at once
         return new ByteArrayIterator(queryAndPrefetch(interval).getBases());
     }
@@ -75,8 +75,8 @@ public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoClos
      * @param interval query interval
      * @return a ReferenceSequence containing all bases spanning the query interval, prefetched
      */
-    public ReferenceSequence queryAndPrefetch( final GenomeLoc interval ) {
-        return queryAndPrefetch(interval.getContig(), interval.getStart(), interval.getStop());
+    public ReferenceSequence queryAndPrefetch( final SimpleInterval interval ) {
+        return queryAndPrefetch(interval.getContig(), interval.getStart(), interval.getEnd());
     }
 
     /**

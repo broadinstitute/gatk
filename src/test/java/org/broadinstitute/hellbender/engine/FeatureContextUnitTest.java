@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -28,30 +29,24 @@ public class FeatureContextUnitTest extends BaseTest {
         }
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullIntervalWithNonNullFeatureManager() {
-        // If we provide a backing data source, we must also provide a query interval
-        try ( FeatureManager featureManager = new FeatureManager(new ArtificialFeatureContainingCommandLineProgram()) ) {
-            FeatureContext featureContext = new FeatureContext(featureManager, null);
-        }
-    }
-
     @DataProvider(name = "EmptyFeatureContextDataProvider")
     public Object[][] getEmptyFeatureContextData() {
         // Default-constructed FeatureContexts and FeatureContexts constructed from null FeatureManagers
-        // should behave as empty context objects.
+        // or intervals should behave as empty context objects.
         return new Object[][] {
                 { new FeatureContext() },
                 { new FeatureContext(null, null) },
-                { new FeatureContext(null, hg19GenomeLocParser.createGenomeLoc("1", 1, 1) ) }
+                { new FeatureContext(null, new SimpleInterval("1", 1, 1) ) },
+                { new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram()), null) }
         };
     }
 
     @Test(dataProvider = "EmptyFeatureContextDataProvider")
-    public void testFeatureContextWithNoBackingDataSource( final FeatureContext featureContext) {
+    public void testEmptyFeatureContext( final FeatureContext featureContext) {
         ArtificialFeatureContainingCommandLineProgram toolInstance = new ArtificialFeatureContainingCommandLineProgram();
 
-        Assert.assertFalse(featureContext.hasBackingDataSource(), "Empty FeatureContext reports having a backing data source");
+        Assert.assertFalse(featureContext.hasBackingDataSource() && featureContext.getInterval() != null,
+                           "Empty FeatureContext reports having both a backing data source and an interval");
         Assert.assertTrue(featureContext.getValues(toolInstance.featureArgument).isEmpty(), "Empty FeatureContext should have returned an empty List from getValues()");
         Assert.assertTrue(featureContext.getValues(toolInstance.featureArgument, 1).isEmpty(), "Empty FeatureContext should have returned an empty List from getValues()");
         Assert.assertTrue(featureContext.getValues(Arrays.<FeatureInput<Feature>>asList(toolInstance.featureArgument)).isEmpty(), "Empty FeatureContext should have returned an empty List from getValues()");

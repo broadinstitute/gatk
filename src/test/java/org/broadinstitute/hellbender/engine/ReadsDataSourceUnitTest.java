@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -46,25 +45,16 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testHandleUnindexedFileWithIntervals() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
-        refDataSource.close();
-
         // Cannot initialize a reads source with intervals unless all files are indexed
         ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
-        readsSource.setIntervalsForTraversal(Arrays.asList(parser.createGenomeLoc("1", 1, 5)));
-
+        readsSource.setIntervalsForTraversal(Arrays.asList(new SimpleInterval("1", 1, 5)));
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testHandleUnindexedFileQuery() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
-        refDataSource.close();
-
         // Construction should succeed, since we don't pass in any intervals, but the query should throw.
         ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
-        readsSource.query(parser.createGenomeLoc("1", 1, 5));
+        readsSource.query(new SimpleInterval("1", 1, 5));
     }
 
     @DataProvider(name = "SingleFileCompleteTraversalData")
@@ -99,41 +89,37 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "SingleFileTraversalWithIntervalsData")
     public Object[][] getSingleFileTraversalWithIntervalsData() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
-        refDataSource.close();
-
         // Files, with intervals, and expected read names in the expected order
         return new Object[][] {
                 { FIRST_TEST_BAM,
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 200, 210), parser.createGenomeLoc("2", 550, 700), parser.createGenomeLoc("4", 700, 701)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 200, 210), new SimpleInterval("2", 550, 700), new SimpleInterval("4", 700, 701)),
                   Arrays.<String>asList("a", "b", "c", "f", "g", "h", "k")
                 },
                 { FIRST_TEST_BAM,
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 205, 209), parser.createGenomeLoc("3", 400, 410)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 205, 209), new SimpleInterval("3", 400, 410)),
                   Arrays.<String>asList("a", "b", "j")
                 },
                 { FIRST_TEST_BAM,
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 999, 1200), parser.createGenomeLoc("2", 530, 625), parser.createGenomeLoc("4", 1000, 1200)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 999, 1200), new SimpleInterval("2", 530, 625), new SimpleInterval("4", 1000, 1200)),
                   Arrays.<String>asList("d", "e", "f", "g")
                 },
                 { FIRST_TEST_BAM,
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 900, 1100), parser.createGenomeLoc("1", 1000, 1200)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 900, 1100), new SimpleInterval("1", 1000, 1200)),
                   Arrays.<String>asList("d", "e")
                 },
                 { FIRST_TEST_BAM,
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 1000, 1099)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 1000, 1099)),
                   Arrays.<String>asList("d")
                 },
                 { FIRST_TEST_BAM,
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 2000, 3000), parser.createGenomeLoc("1", 4000, 5000), parser.createGenomeLoc("2", 1000, 2000)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 2000, 3000), new SimpleInterval("1", 4000, 5000), new SimpleInterval("2", 1000, 2000)),
                   Arrays.<String>asList()
                 }
         };
     }
 
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
-    public void testSingleFileTraversalWithIntervals( final File samFile, final List<GenomeLoc> intervals, final List<String> expectedReadNames ) {
+    public void testSingleFileTraversalWithIntervals( final File samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFile);
         readsSource.setIntervalsForTraversal(intervals);
 
@@ -155,41 +141,37 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "SingleFileQueryByIntervalData")
     public Object[][] getSingleFileQueryByIntervalData() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
-        refDataSource.close();
-
         // Files, with a single query interval, and expected read names in the expected order
         return new Object[][]{
                 { FIRST_TEST_BAM,
-                  parser.createGenomeLoc("1", 200, 209),
+                  new SimpleInterval("1", 200, 209),
                   Arrays.<String>asList("a", "b")
                 },
                 { FIRST_TEST_BAM,
-                  parser.createGenomeLoc("1", 285, 1100),
+                  new SimpleInterval("1", 285, 1100),
                   Arrays.<String>asList("c", "d", "e")
                 },
                 { FIRST_TEST_BAM,
-                  parser.createGenomeLoc("2", 550, 649),
+                  new SimpleInterval("2", 550, 649),
                   Arrays.<String>asList("f", "g")
                 },
                 { FIRST_TEST_BAM,
-                  parser.createGenomeLoc("3", 399, 400),
+                  new SimpleInterval("3", 399, 400),
                   Arrays.<String>asList("j")
                 },
                 { FIRST_TEST_BAM,
-                  parser.createGenomeLoc("4", 100, 200),
+                  new SimpleInterval("4", 100, 200),
                   Arrays.<String>asList()
                 },
                 { FIRST_TEST_BAM,
-                  parser.createGenomeLoc("4", 600, 699),
+                  new SimpleInterval("4", 600, 699),
                   Arrays.<String>asList()
                 }
         };
     }
 
     @Test(dataProvider = "SingleFileQueryByIntervalData")
-    public void testSingleFileQueryByInterval( final File samFile, final GenomeLoc interval, final List<String> expectedReadNames ) {
+    public void testSingleFileQueryByInterval( final File samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFile);
 
         List<SAMRecord> reads = new ArrayList<SAMRecord>();
@@ -242,41 +224,37 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "MultipleFilesTraversalWithIntervalsData")
     public Object[][] getMultipleFilesTraversalWithIntervalsData() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
-        refDataSource.close();
-
         // Files, with intervals, and expected read names in the expected order
         return new Object[][] {
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 205, 207), parser.createGenomeLoc("1", 400, 1000), parser.createGenomeLoc("4", 500, 704)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 205, 207), new SimpleInterval("1", 400, 1000), new SimpleInterval("4", 500, 704)),
                   Arrays.<String>asList("a", "b", "l", "n", "d", "y", "k")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("4", 500, 704), parser.createGenomeLoc("1", 400, 1000), parser.createGenomeLoc("1", 205, 207)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("4", 500, 704), new SimpleInterval("1", 400, 1000), new SimpleInterval("1", 205, 207)),
                   Arrays.<String>asList("a", "b", "l", "n", "d", "y", "k")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("2", 500, 600), parser.createGenomeLoc("2", 2099, 2200), parser.createGenomeLoc("3", 50, 100), parser.createGenomeLoc("3", 300, 500)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("2", 500, 600), new SimpleInterval("2", 2099, 2200), new SimpleInterval("3", 50, 100), new SimpleInterval("3", 300, 500)),
                   Arrays.<String>asList("f", "p", "g", "s", "w", "i", "j", "u")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 1, 300), parser.createGenomeLoc("1", 100, 500), parser.createGenomeLoc("1", 200, 600)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 1, 300), new SimpleInterval("1", 100, 500), new SimpleInterval("1", 200, 600)),
                   Arrays.<String>asList("a", "b", "l", "c", "m", "n")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 11000, 12000), parser.createGenomeLoc("3", 1000, 2000)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 11000, 12000), new SimpleInterval("3", 1000, 2000)),
                   Arrays.<String>asList()
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  Arrays.<GenomeLoc>asList(parser.createGenomeLoc("1", 1, 16000), parser.createGenomeLoc("2", 1, 16000), parser.createGenomeLoc("3", 1, 16000), parser.createGenomeLoc("4", 1, 16000)),
+                  Arrays.<SimpleInterval>asList(new SimpleInterval("1", 1, 16000), new SimpleInterval("2", 1, 16000), new SimpleInterval("3", 1, 16000), new SimpleInterval("4", 1, 16000)),
                   Arrays.<String>asList("a", "b", "l", "c", "m", "n", "d", "e", "o", "f", "p", "g", "h", "q", "r", "s", "w", "t", "x", "i", "j", "u", "v", "y", "k", "z")
                 }
         };
     }
 
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
-    public void testMultipleFilesTraversalWithIntervals( final List<File> samFiles, final List<GenomeLoc> intervals, final List<String> expectedReadNames ) {
+    public void testMultipleFilesTraversalWithIntervals( final List<File> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFiles);
         readsSource.setIntervalsForTraversal(intervals);
 
@@ -298,37 +276,33 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "MultipleFilesQueryByIntervalData")
     public Object[][] getMultipleFilesQueryByIntervalData() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser parser = new GenomeLocParser(refDataSource.getSequenceDictionary());
-        refDataSource.close();
-
         // Files, with a single query interval, and expected read names in the expected order
         return new Object[][] {
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  parser.createGenomeLoc("1", 285, 1000),
+                  new SimpleInterval("1", 285, 1000),
                   Arrays.<String>asList("c", "m", "n", "d")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  parser.createGenomeLoc("3", 200, 300),
+                  new SimpleInterval("3", 200, 300),
                   Arrays.<String>asList("t", "x", "i")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  parser.createGenomeLoc("1", 9000, 11000),
+                  new SimpleInterval("1", 9000, 11000),
                   Arrays.<String>asList("o")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  parser.createGenomeLoc("3", 1, 16000),
+                  new SimpleInterval("3", 1, 16000),
                   Arrays.<String>asList("w", "t", "x", "i", "j", "u", "v")
                 },
                 { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
-                  parser.createGenomeLoc("2", 10000, 12000),
+                  new SimpleInterval("2", 10000, 12000),
                   Arrays.<String>asList()
                 }
         };
     }
 
     @Test(dataProvider = "MultipleFilesQueryByIntervalData")
-    public void testMultipleFilesQueryByInterval( final List<File> samFiles, final GenomeLoc interval, final List<String> expectedReadNames ) {
+    public void testMultipleFilesQueryByInterval( final List<File> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFiles);
 
         List<SAMRecord> reads = new ArrayList<SAMRecord>();

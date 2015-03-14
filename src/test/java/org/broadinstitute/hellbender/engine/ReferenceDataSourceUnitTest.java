@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.util.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -54,24 +55,20 @@ public class ReferenceDataSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "ReferenceIntervalDataProvider")
     public Object[][] getReferenceIntervals() {
-        ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
-        GenomeLocParser genomeLocParser = new GenomeLocParser(reference.getSequenceDictionary());
-        reference.close();
-
         return new Object[][] {
-                { genomeLocParser.createGenomeLoc("1", 1, 3), "NNN" },
-                { genomeLocParser.createGenomeLoc("1", 11041, 11045), "GCAAA" },
-                { genomeLocParser.createGenomeLoc("1", 11210, 11220), "CGGTGCTGTGC" },
-                { genomeLocParser.createGenomeLoc("2", 9995, 10005), "NNNNNNCGTAT" },
-                { genomeLocParser.createGenomeLoc("2", 10001, 10080), "CGTATCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCAC" },
-                { genomeLocParser.createGenomeLoc("2", 10005, 10084), "TCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCACACCC" },
-                { genomeLocParser.createGenomeLoc("2", 15995, 16000), "TGTCAG" }
+                { new SimpleInterval("1", 1, 3), "NNN" },
+                { new SimpleInterval("1", 11041, 11045), "GCAAA" },
+                { new SimpleInterval("1", 11210, 11220), "CGGTGCTGTGC" },
+                { new SimpleInterval("2", 9995, 10005), "NNNNNNCGTAT" },
+                { new SimpleInterval("2", 10001, 10080), "CGTATCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCAC" },
+                { new SimpleInterval("2", 10005, 10084), "TCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCACACCC" },
+                { new SimpleInterval("2", 15995, 16000), "TGTCAG" }
         };
     }
 
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
-    public void testQueryAndPrefetch( final GenomeLoc interval, final String expectedBases ) {
+    public void testQueryAndPrefetch( final SimpleInterval interval, final String expectedBases ) {
         ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
         ReferenceSequence queryResult = reference.queryAndPrefetch(interval);
 
@@ -82,10 +79,10 @@ public class ReferenceDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
-    public void testQueryAndIterate( final GenomeLoc interval, final String expectedBases ) {
+    public void testQueryAndIterate( final SimpleInterval interval, final String expectedBases ) {
         ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
         Iterator<Byte> queryResultIterator = reference.query(interval);
-        List<Byte> queryResult = new ArrayList<Byte>();
+        List<Byte> queryResult = new ArrayList<>();
 
         while ( queryResultIterator.hasNext() ) {
             queryResult.add(queryResultIterator.next());

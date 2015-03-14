@@ -311,8 +311,8 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test
     public void testParseIntervalArguments() {
         Assert.assertEquals(hg19ReferenceLocs.size(), 4);
-        Assert.assertEquals(getLocs("1", "2", "3").size(), 3);
-        Assert.assertEquals(getLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
+        Assert.assertEquals(intervalStringsToGenomeLocs("1", "2", "3").size(), 3);
+        Assert.assertEquals(intervalStringsToGenomeLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
     }
 
     @Test
@@ -339,7 +339,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("basic.", 3, ".intervals");
 
-        List<GenomeLoc> locs = getLocs("1", "2", "3");
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2", "3");
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
 
@@ -365,7 +365,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("less.", 3, ".intervals");
 
-        List<GenomeLoc> locs = getLocs("1", "2", "3", "4");
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2", "3", "4");
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
 
@@ -386,14 +386,14 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test(expectedExceptions=UserException.BadArgumentValue.class)
     public void testSplitFixedIntervalsMoreFiles() {
         List<File> files = testFiles("more.", 3, ".intervals");
-        List<GenomeLoc> locs = getLocs("1", "2");
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2");
         IntervalUtils.splitFixedIntervals(locs, files.size());
     }
 
     @Test(expectedExceptions=UserException.BadArgumentValue.class)
     public void testScatterFixedIntervalsMoreFiles() {
         List<File> files = testFiles("more.", 3, ".intervals");
-        List<GenomeLoc> locs = getLocs("1", "2");
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2");
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, locs.size()); // locs.size() instead of files.size()
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
     }
@@ -407,7 +407,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("split.", 3, ".intervals");
 
-        List<GenomeLoc> locs = getLocs(intervals);
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs(intervals);
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
 
@@ -435,7 +435,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("split.", 3, ".intervals");
 
-        List<GenomeLoc> locs = getLocs(intervals);
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs(intervals);
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
 
@@ -463,7 +463,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("split.", 3, ".intervals");
 
-        List<GenomeLoc> locs = getLocs(intervals);
+        List<GenomeLoc> locs = intervalStringsToGenomeLocs(intervals);
         List<List<GenomeLoc>> splits = IntervalUtils.splitFixedIntervals(locs, files.size());
         IntervalUtils.scatterFixedIntervals(hg19Header, splits, files);
 
@@ -535,7 +535,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("split.", 3, ".intervals");
 
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs(intervals), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
         List<GenomeLoc> locs1 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(0).toString()));
         List<GenomeLoc> locs2 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(1).toString()));
@@ -558,7 +558,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("contig_basic.", 3, ".intervals");
 
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs("1", "2", "3"), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs("1", "2", "3"), files);
 
         List<GenomeLoc> locs1 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(0).toString()));
         List<GenomeLoc> locs2 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(1).toString()));
@@ -582,7 +582,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("contig_less.", 3, ".intervals");
 
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs("1", "2", "3", "4"), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs("1", "2", "3", "4"), files);
 
         List<GenomeLoc> locs1 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(0).toString()));
         List<GenomeLoc> locs2 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(1).toString()));
@@ -601,7 +601,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test(expectedExceptions=UserException.BadInput.class)
     public void testScatterContigIntervalsMoreFiles() {
         List<File> files = testFiles("contig_more.", 3, ".intervals");
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs("1", "2"), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs("1", "2"), files);
     }
 
     @Test
@@ -614,7 +614,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("contig_split_start.", 3, ".intervals");
 
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs(intervals), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
         List<GenomeLoc> locs1 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(0).toString()));
         List<GenomeLoc> locs2 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(1).toString()));
@@ -640,7 +640,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("contig_split_middle.", 3, ".intervals");
 
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs(intervals), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
         List<GenomeLoc> locs1 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(0).toString()));
         List<GenomeLoc> locs2 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(1).toString()));
@@ -666,7 +666,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
 
         List<File> files = testFiles("contig_split_end.", 3 ,".intervals");
 
-        IntervalUtils.scatterContigIntervals(hg19Header, getLocs(intervals), files);
+        IntervalUtils.scatterContigIntervals(hg19Header, intervalStringsToGenomeLocs(intervals), files);
 
         List<GenomeLoc> locs1 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(0).toString()));
         List<GenomeLoc> locs2 = IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(files.get(1).toString()));
@@ -1000,12 +1000,12 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @DataProvider(name = "sortAndMergeIntervals")
     public Object[][] getSortAndMergeIntervals() {
         return new Object[][] {
-                new Object[] { IntervalMergingRule.OVERLAPPING_ONLY, getLocs("1:1", "1:3", "1:2"), getLocs("1:1", "1:2", "1:3") },
-                new Object[] { IntervalMergingRule.ALL, getLocs("1:1", "1:3", "1:2"), getLocs("1:1-3") },
-                new Object[] { IntervalMergingRule.OVERLAPPING_ONLY, getLocs("1:1", "1:3", "2:2"), getLocs("1:1", "1:3", "2:2") },
-                new Object[] { IntervalMergingRule.ALL, getLocs("1:1", "1:3", "2:2"), getLocs("1:1", "1:3", "2:2") },
-                new Object[] { IntervalMergingRule.OVERLAPPING_ONLY, getLocs("1:1", "1"), getLocs("1") },
-                new Object[] { IntervalMergingRule.ALL, getLocs("1:1", "1"), getLocs("1") }
+                new Object[] { IntervalMergingRule.OVERLAPPING_ONLY, intervalStringsToGenomeLocs("1:1", "1:3", "1:2"), intervalStringsToGenomeLocs("1:1", "1:2", "1:3") },
+                new Object[] { IntervalMergingRule.ALL, intervalStringsToGenomeLocs("1:1", "1:3", "1:2"), intervalStringsToGenomeLocs("1:1-3") },
+                new Object[] { IntervalMergingRule.OVERLAPPING_ONLY, intervalStringsToGenomeLocs("1:1", "1:3", "2:2"), intervalStringsToGenomeLocs("1:1", "1:3", "2:2") },
+                new Object[] { IntervalMergingRule.ALL, intervalStringsToGenomeLocs("1:1", "1:3", "2:2"), intervalStringsToGenomeLocs("1:1", "1:3", "2:2") },
+                new Object[] { IntervalMergingRule.OVERLAPPING_ONLY, intervalStringsToGenomeLocs("1:1", "1"), intervalStringsToGenomeLocs("1") },
+                new Object[] { IntervalMergingRule.ALL, intervalStringsToGenomeLocs("1:1", "1"), intervalStringsToGenomeLocs("1") }
         };
     }
 
@@ -1020,12 +1020,12 @@ public class IntervalUtilsUnitTest extends BaseTest {
         final String severalIntervals = "src/test/resources/org/broadinstitute/hellbender/utils/interval/example_intervals.list";
 
         return new Object[][]{
-                new Object[]{Arrays.asList("1:1-2"), IntervalSetRule.UNION, 0, getLocs("1:1-2")},
-                new Object[]{Arrays.asList("1:1-2", "2:1-2"), IntervalSetRule.UNION, 0, getLocs("1:1-2", "2:1-2")},
-                new Object[]{Arrays.asList("1:1-10", "1:5-15"), IntervalSetRule.UNION, 0, getLocs("1:1-15")},
-                new Object[]{Arrays.asList("1:1-10", "1:5-15"), IntervalSetRule.INTERSECTION, 0, getLocs("1:5-10")},
-                new Object[]{Arrays.asList("1:5-5"), IntervalSetRule.UNION, 5, getLocs("1:1-10")},
-                new Object[]{Arrays.asList(severalIntervals), IntervalSetRule.UNION, 0, getLocs("1:100-200","2:20-30","4:50")}
+                new Object[]{Arrays.asList("1:1-2"), IntervalSetRule.UNION, 0, intervalStringsToGenomeLocs("1:1-2")},
+                new Object[]{Arrays.asList("1:1-2", "2:1-2"), IntervalSetRule.UNION, 0, intervalStringsToGenomeLocs("1:1-2", "2:1-2")},
+                new Object[]{Arrays.asList("1:1-10", "1:5-15"), IntervalSetRule.UNION, 0, intervalStringsToGenomeLocs("1:1-15")},
+                new Object[]{Arrays.asList("1:1-10", "1:5-15"), IntervalSetRule.INTERSECTION, 0, intervalStringsToGenomeLocs("1:5-10")},
+                new Object[]{Arrays.asList("1:5-5"), IntervalSetRule.UNION, 5, intervalStringsToGenomeLocs("1:1-10")},
+                new Object[]{Arrays.asList(severalIntervals), IntervalSetRule.UNION, 0, intervalStringsToGenomeLocs("1:100-200", "2:20-30", "4:50")}
         };
     }
 

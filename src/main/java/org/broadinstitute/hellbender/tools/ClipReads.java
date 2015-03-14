@@ -279,7 +279,7 @@ public final class ClipReads extends ReadWalker {
 
         final boolean presorted = EnumSet.of(ClippingRepresentation.WRITE_NS, ClippingRepresentation.WRITE_NS_Q0S, ClippingRepresentation.WRITE_Q0S).contains(clippingRepresentation);
         final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
-        outputBam = new SAMFileWriterFactory().makeWriter(outputHeader, presorted, OUTPUT, REFERENCE_FILE);
+        outputBam = new SAMFileWriterFactory().makeWriter(outputHeader, presorted, OUTPUT, referenceArguments.referenceFile);
 
         accumulator = new ClippingData(sequencesToClip);
         try {

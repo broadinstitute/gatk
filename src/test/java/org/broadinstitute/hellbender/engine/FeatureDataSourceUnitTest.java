@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -43,7 +42,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.class)
     public void testHandleQueryOverUnindexedFile() {
         try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(UNINDEXED_VCF, new VCFCodec()) ) {
-            featureSource.query(hg19GenomeLocParser.createGenomeLoc("1", 1, 1));  // Should throw, since we have no index
+            featureSource.query(new SimpleInterval("1", 1, 1));  // Should throw, since we have no index
         }
     }
 
@@ -97,55 +96,53 @@ public class FeatureDataSourceUnitTest extends BaseTest {
 
     @DataProvider(name = "IndependentFeatureQueryTestData")
     public Object[][] getIndependentFeatureQueryTestData() {
-        final GenomeLocParser parser = hg19GenomeLocParser;
-
         // Query Interval + Expected Variant ID(s)
         return new Object[][] {
-                { parser.createGenomeLoc("1", 1, 99), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("1", 100, 100), Arrays.asList("a") },
-                { parser.createGenomeLoc("1", 100, 200), Arrays.asList("a", "b", "c") },
-                { parser.createGenomeLoc("1", 200, 202), Arrays.asList("b", "c") },
-                { parser.createGenomeLoc("1", 200, 203), Arrays.asList("b", "c", "d") },
-                { parser.createGenomeLoc("1", 201, 203), Arrays.asList("d") },
-                { parser.createGenomeLoc("1", 204, 204), Arrays.asList("d") },
-                { parser.createGenomeLoc("1", 206, 206), Arrays.asList("d") },
-                { parser.createGenomeLoc("1", 207, 207), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("1", 200, 300), Arrays.asList("b", "c", "d", "e", "f", "g", "h") },
-                { parser.createGenomeLoc("1", 275, 300), Arrays.asList("e", "f", "g", "h") },
-                { parser.createGenomeLoc("1", 275, 284), Arrays.asList("e", "f") },
-                { parser.createGenomeLoc("1", 284, 284), Arrays.asList("f") },
-                { parser.createGenomeLoc("1", 284, 285), Arrays.asList("f", "g") },
-                { parser.createGenomeLoc("1", 284, 286), Arrays.asList("f", "g", "h") },
-                { parser.createGenomeLoc("1", 286, 286), Arrays.asList("f", "h") },
-                { parser.createGenomeLoc("1", 287, 290), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("1", 999, 1000), Arrays.asList("i", "j", "k") },
-                { parser.createGenomeLoc("1", 1000, 1001), Arrays.asList("j", "k") },
-                { parser.createGenomeLoc("1", 1002, 1005), Arrays.asList("k") },
-                { parser.createGenomeLoc("1", 1005, 1010), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("1", 1075, 1175), Arrays.asList("l", "m") },
-                { parser.createGenomeLoc("1", 1075, 1176), Arrays.asList("l", "m", "n") },
-                { parser.createGenomeLoc("1", 1077, 1176), Arrays.asList("m", "n") },
-                { parser.createGenomeLoc("1", 1170, 1180), Arrays.asList("n") },
-                { parser.createGenomeLoc("1", 1003, 1175), Arrays.asList("k", "l", "m") },
-                { parser.createGenomeLoc("1", 1, 2000), Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n") },
-                { parser.createGenomeLoc("1", 2000, 3000), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("1", 286, 1175), Arrays.asList("f", "h", "i", "j", "k", "l", "m") },
-                { parser.createGenomeLoc("2", 200, 700), Arrays.asList("o", "p", "q", "r", "s") },
-                { parser.createGenomeLoc("2", 201, 699), Arrays.asList("p", "q", "r") },
-                { parser.createGenomeLoc("2", 550, 560), Arrays.asList("q") },
-                { parser.createGenomeLoc("2", 549, 699), Arrays.asList("q", "r") },
-                { parser.createGenomeLoc("2", 600, 700), Arrays.asList("r", "s") },
-                { parser.createGenomeLoc("2", 701, 800), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("3", 1, 300), Arrays.asList("t", "u", "v") },
-                { parser.createGenomeLoc("3", 300, 400), Arrays.asList("u", "v", "w") },
-                { parser.createGenomeLoc("3", 301, 400), Arrays.asList("v", "w") },
-                { parser.createGenomeLoc("3", 301, 399), Arrays.asList("v") },
-                { parser.createGenomeLoc("3", 305, 400), Arrays.asList("w") },
-                { parser.createGenomeLoc("3", 500, 600), Collections.<String>emptyList() },
-                { parser.createGenomeLoc("4", 1, 1000), Arrays.asList("x", "y", "z") },
-                { parser.createGenomeLoc("4", 600, 775), Arrays.asList("x", "y") },
-                { parser.createGenomeLoc("4", 775, 776), Arrays.asList("y", "z") },
-                { parser.createGenomeLoc("4", 777, 780), Arrays.asList("z") }
+                { new SimpleInterval("1", 1, 99), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 100, 100), Arrays.asList("a") },
+                { new SimpleInterval("1", 100, 200), Arrays.asList("a", "b", "c") },
+                { new SimpleInterval("1", 200, 202), Arrays.asList("b", "c") },
+                { new SimpleInterval("1", 200, 203), Arrays.asList("b", "c", "d") },
+                { new SimpleInterval("1", 201, 203), Arrays.asList("d") },
+                { new SimpleInterval("1", 204, 204), Arrays.asList("d") },
+                { new SimpleInterval("1", 206, 206), Arrays.asList("d") },
+                { new SimpleInterval("1", 207, 207), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 200, 300), Arrays.asList("b", "c", "d", "e", "f", "g", "h") },
+                { new SimpleInterval("1", 275, 300), Arrays.asList("e", "f", "g", "h") },
+                { new SimpleInterval("1", 275, 284), Arrays.asList("e", "f") },
+                { new SimpleInterval("1", 284, 284), Arrays.asList("f") },
+                { new SimpleInterval("1", 284, 285), Arrays.asList("f", "g") },
+                { new SimpleInterval("1", 284, 286), Arrays.asList("f", "g", "h") },
+                { new SimpleInterval("1", 286, 286), Arrays.asList("f", "h") },
+                { new SimpleInterval("1", 287, 290), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 999, 1000), Arrays.asList("i", "j", "k") },
+                { new SimpleInterval("1", 1000, 1001), Arrays.asList("j", "k") },
+                { new SimpleInterval("1", 1002, 1005), Arrays.asList("k") },
+                { new SimpleInterval("1", 1005, 1010), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 1075, 1175), Arrays.asList("l", "m") },
+                { new SimpleInterval("1", 1075, 1176), Arrays.asList("l", "m", "n") },
+                { new SimpleInterval("1", 1077, 1176), Arrays.asList("m", "n") },
+                { new SimpleInterval("1", 1170, 1180), Arrays.asList("n") },
+                { new SimpleInterval("1", 1003, 1175), Arrays.asList("k", "l", "m") },
+                { new SimpleInterval("1", 1, 2000), Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n") },
+                { new SimpleInterval("1", 2000, 3000), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 286, 1175), Arrays.asList("f", "h", "i", "j", "k", "l", "m") },
+                { new SimpleInterval("2", 200, 700), Arrays.asList("o", "p", "q", "r", "s") },
+                { new SimpleInterval("2", 201, 699), Arrays.asList("p", "q", "r") },
+                { new SimpleInterval("2", 550, 560), Arrays.asList("q") },
+                { new SimpleInterval("2", 549, 699), Arrays.asList("q", "r") },
+                { new SimpleInterval("2", 600, 700), Arrays.asList("r", "s") },
+                { new SimpleInterval("2", 701, 800), Collections.<String>emptyList() },
+                { new SimpleInterval("3", 1, 300), Arrays.asList("t", "u", "v") },
+                { new SimpleInterval("3", 300, 400), Arrays.asList("u", "v", "w") },
+                { new SimpleInterval("3", 301, 400), Arrays.asList("v", "w") },
+                { new SimpleInterval("3", 301, 399), Arrays.asList("v") },
+                { new SimpleInterval("3", 305, 400), Arrays.asList("w") },
+                { new SimpleInterval("3", 500, 600), Collections.<String>emptyList() },
+                { new SimpleInterval("4", 1, 1000), Arrays.asList("x", "y", "z") },
+                { new SimpleInterval("4", 600, 775), Arrays.asList("x", "y") },
+                { new SimpleInterval("4", 775, 776), Arrays.asList("y", "z") },
+                { new SimpleInterval("4", 777, 780), Arrays.asList("z") }
         };
     }
 
@@ -157,7 +154,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
      *  below to make sure the caching is working as expected)
      */
     @Test(dataProvider = "IndependentFeatureQueryTestData")
-    public void testIndependentFeatureQuerying( final GenomeLoc queryInterval, final List<String> expectedVariantIDs ) {
+    public void testIndependentFeatureQuerying( final SimpleInterval queryInterval, final List<String> expectedVariantIDs ) {
         final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec());
 
         // Use query() here rather than queryAndPrefetch() so that query() will have test coverage
@@ -172,7 +169,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
     }
 
-    private void checkVariantQueryResults( final List<VariantContext> queryResults, final List<String> expectedVariantIDs, final GenomeLoc queryInterval ) {
+    private void checkVariantQueryResults( final List<VariantContext> queryResults, final List<String> expectedVariantIDs, final SimpleInterval queryInterval ) {
         Assert.assertEquals(queryResults.size(), expectedVariantIDs.size(), "Wrong number of records returned for query on interval " + queryInterval);
         for ( int recordIndex = 0; recordIndex < queryResults.size(); ++recordIndex ) {
             Assert.assertEquals(queryResults.get(recordIndex).getID(), expectedVariantIDs.get(recordIndex),
@@ -190,74 +187,72 @@ public class FeatureDataSourceUnitTest extends BaseTest {
     @DataProvider(name = "SingleDataSourceMultipleQueriesTestData")
     @SuppressWarnings("unchecked")
     public Object[][] getSingleDataSourceMultipleQueriesTestData() {
-        final GenomeLocParser parser = hg19GenomeLocParser;
-
         // Query set #1:
         // Re-use the queries + expected results from the IndependentFeatureQueryTestData DataProvider above,
         // but this time aggregated together and executed on the same FeatureDataSource
-        List<Pair<GenomeLoc, List<String>>> aggregatedIndependentQueries = new ArrayList<>();
+        List<Pair<SimpleInterval, List<String>>> aggregatedIndependentQueries = new ArrayList<>();
         Object[][] independentQueryTestData = getIndependentFeatureQueryTestData();
         for ( Object[] queryTest : independentQueryTestData ) {
-            aggregatedIndependentQueries.add(Pair.of((GenomeLoc)queryTest[0], (List<String>)queryTest[1]));
+            aggregatedIndependentQueries.add(Pair.of((SimpleInterval)queryTest[0], (List<String>)queryTest[1]));
         }
 
         // Query set #2:
         // Large intervals with regularly-increasing start positions. Represents typical query access patterns
         // ideal for the caching implementation in FeatureDataSource, as it minimizes cache misses.
-        List<Pair<GenomeLoc, List<String>>> regularlyIncreasingQueries = Arrays.asList(
-                Pair.of(parser.createGenomeLoc("1", 1, 100), Arrays.asList("a")),
-                Pair.of(parser.createGenomeLoc("1", 50, 150), Arrays.asList("a")),
-                Pair.of(parser.createGenomeLoc("1", 100, 200), Arrays.asList("a", "b", "c")),
-                Pair.of(parser.createGenomeLoc("1", 150, 250), Arrays.asList("b", "c", "d")),
-                Pair.of(parser.createGenomeLoc("1", 200, 300), Arrays.asList("b", "c", "d", "e", "f", "g", "h")),
-                Pair.of(parser.createGenomeLoc("1", 250, 350), Arrays.asList("e", "f", "g", "h")),
-                Pair.of(parser.createGenomeLoc("1", 300, 400), Collections.<String>emptyList()),
-                Pair.of(parser.createGenomeLoc("1", 350, 450), Collections.<String>emptyList()),
-                Pair.of(parser.createGenomeLoc("1", 950, 1050), Arrays.asList("i", "j", "k")),
-                Pair.of(parser.createGenomeLoc("1", 1000, 1100), Arrays.asList("j", "k", "l")),
+        List<Pair<SimpleInterval, List<String>>> regularlyIncreasingQueries = Arrays.asList(
+                Pair.of(new SimpleInterval("1", 1, 100), Arrays.asList("a")),
+                Pair.of(new SimpleInterval("1", 50, 150), Arrays.asList("a")),
+                Pair.of(new SimpleInterval("1", 100, 200), Arrays.asList("a", "b", "c")),
+                Pair.of(new SimpleInterval("1", 150, 250), Arrays.asList("b", "c", "d")),
+                Pair.of(new SimpleInterval("1", 200, 300), Arrays.asList("b", "c", "d", "e", "f", "g", "h")),
+                Pair.of(new SimpleInterval("1", 250, 350), Arrays.asList("e", "f", "g", "h")),
+                Pair.of(new SimpleInterval("1", 300, 400), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("1", 350, 450), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("1", 950, 1050), Arrays.asList("i", "j", "k")),
+                Pair.of(new SimpleInterval("1", 1000, 1100), Arrays.asList("j", "k", "l")),
                 // First cache miss here given the default queryLookaheadBases value of 1000
-                Pair.of(parser.createGenomeLoc("1", 1050, 1150), Arrays.asList("l", "m")),
-                Pair.of(parser.createGenomeLoc("1", 1100, 1200), Arrays.asList("m", "n")),
-                Pair.of(parser.createGenomeLoc("1", 1150, 1250), Arrays.asList("m", "n")),
-                Pair.of(parser.createGenomeLoc("1" ,1200, 1300), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("1", 1050, 1150), Arrays.asList("l", "m")),
+                Pair.of(new SimpleInterval("1", 1100, 1200), Arrays.asList("m", "n")),
+                Pair.of(new SimpleInterval("1", 1150, 1250), Arrays.asList("m", "n")),
+                Pair.of(new SimpleInterval("1" ,1200, 1300), Collections.<String>emptyList()),
                 // Second cache miss here as we change contigs
-                Pair.of(parser.createGenomeLoc("2", 1, 100), Collections.<String>emptyList()),
-                Pair.of(parser.createGenomeLoc("2", 100, 200), Arrays.asList("o")),
-                Pair.of(parser.createGenomeLoc("2", 500, 600), Arrays.asList("p", "q")),
-                Pair.of(parser.createGenomeLoc("2", 550, 650), Arrays.asList("q", "r")),
-                Pair.of(parser.createGenomeLoc("2", 600, 700), Arrays.asList("r", "s")),
-                Pair.of(parser.createGenomeLoc("2", 650, 750), Arrays.asList("s")),
+                Pair.of(new SimpleInterval("2", 1, 100), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("2", 100, 200), Arrays.asList("o")),
+                Pair.of(new SimpleInterval("2", 500, 600), Arrays.asList("p", "q")),
+                Pair.of(new SimpleInterval("2", 550, 650), Arrays.asList("q", "r")),
+                Pair.of(new SimpleInterval("2", 600, 700), Arrays.asList("r", "s")),
+                Pair.of(new SimpleInterval("2", 650, 750), Arrays.asList("s")),
                 // Third cache miss (changing contigs again)
-                Pair.of(parser.createGenomeLoc("3", 1, 200), Arrays.asList("t")),
-                Pair.of(parser.createGenomeLoc("3", 300, 400), Arrays.asList("u", "v", "w")),
-                Pair.of(parser.createGenomeLoc("3", 302, 350), Arrays.asList("v"))
+                Pair.of(new SimpleInterval("3", 1, 200), Arrays.asList("t")),
+                Pair.of(new SimpleInterval("3", 300, 400), Arrays.asList("u", "v", "w")),
+                Pair.of(new SimpleInterval("3", 302, 350), Arrays.asList("v"))
         );
 
         // Query set #3:
         // Cache miss hell: lots of cache misses in this query set due to either backing up or skipping ahead too far
-        List<Pair<GenomeLoc, List<String>>> cacheMissQueries = Arrays.asList(
-                Pair.of(parser.createGenomeLoc("1", 100, 200), Arrays.asList("a", "b", "c")),
+        List<Pair<SimpleInterval, List<String>>> cacheMissQueries = Arrays.asList(
+                Pair.of(new SimpleInterval("1", 100, 200), Arrays.asList("a", "b", "c")),
                 // Cache miss due to backup
-                Pair.of(parser.createGenomeLoc("1", 99, 205), Arrays.asList("a", "b", "c", "d")),
+                Pair.of(new SimpleInterval("1", 99, 205), Arrays.asList("a", "b", "c", "d")),
                 // Cache miss due to jumping past query lookahead
-                Pair.of(parser.createGenomeLoc("1", 2000, 3000), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("1", 2000, 3000), Collections.<String>emptyList()),
                 // Cache miss due to backup
-                Pair.of(parser.createGenomeLoc("1", 205, 285), Arrays.asList("d", "e", "f", "g")),
-                Pair.of(parser.createGenomeLoc("1", 286, 400), Arrays.asList("f", "h")),
+                Pair.of(new SimpleInterval("1", 205, 285), Arrays.asList("d", "e", "f", "g")),
+                Pair.of(new SimpleInterval("1", 286, 400), Arrays.asList("f", "h")),
                 // Cache miss due to contig change
-                Pair.of(parser.createGenomeLoc("2", 200, 600), Arrays.asList("o", "p", "q")),
+                Pair.of(new SimpleInterval("2", 200, 600), Arrays.asList("o", "p", "q")),
                 // Cache miss due to backup
-                Pair.of(parser.createGenomeLoc("2", 1, 100), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("2", 1, 100), Collections.<String>emptyList()),
                 // Cache miss due to jumping past query lookahead
-                Pair.of(parser.createGenomeLoc("2", 3000, 4000), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("2", 3000, 4000), Collections.<String>emptyList()),
                 // Cache miss due to contig change
-                Pair.of(parser.createGenomeLoc("1", 200, 300), Arrays.asList("b", "c", "d", "e", "f", "g", "h")),
+                Pair.of(new SimpleInterval("1", 200, 300), Arrays.asList("b", "c", "d", "e", "f", "g", "h")),
                 // Cache miss due to backup
-                Pair.of(parser.createGenomeLoc("1", 100, 200), Arrays.asList("a", "b", "c")),
+                Pair.of(new SimpleInterval("1", 100, 200), Arrays.asList("a", "b", "c")),
                 // Cache miss due to backup
-                Pair.of(parser.createGenomeLoc("1", 1, 1), Collections.<String>emptyList()),
+                Pair.of(new SimpleInterval("1", 1, 1), Collections.<String>emptyList()),
                 // Cache miss due to jumping past query lookahead
-                Pair.of(parser.createGenomeLoc("1", 1100, 1200), Arrays.asList("m", "n"))
+                Pair.of(new SimpleInterval("1", 1100, 1200), Arrays.asList("m", "n"))
         );
 
         return new Object[][] {
@@ -271,12 +266,12 @@ public class FeatureDataSourceUnitTest extends BaseTest {
      * Tests correctness of Feature caching behavior by executing multiple queries on the same FeatureDataSource
      */
     @Test(dataProvider = "SingleDataSourceMultipleQueriesTestData")
-    public void testSingleDataSourceMultipleQueries( final List<Pair<GenomeLoc, List<String>>> testQueries ) {
+    public void testSingleDataSourceMultipleQueries( final List<Pair<SimpleInterval, List<String>>> testQueries ) {
         final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec());
 
         // This test re-uses the same FeatureDataSource across queries to test caching of query results.
-        for ( Pair<GenomeLoc, List<String>> testQuery : testQueries ) {
-            final GenomeLoc queryInterval = testQuery.getLeft();
+        for ( Pair<SimpleInterval, List<String>> testQuery : testQueries ) {
+            final SimpleInterval queryInterval = testQuery.getLeft();
             final List<String> expectedVariantIDs = testQuery.getRight();
 
             final List<VariantContext> queryResults = featureSource.queryAndPrefetch(queryInterval);
@@ -333,11 +328,10 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         }
     }
 
-    private FeatureDataSource.FeatureCache<ArtificialTestFeature> initializeFeatureCache( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheStop ) {
-        GenomeLocParser parser = hg19GenomeLocParser;
+    private FeatureDataSource.FeatureCache<ArtificialTestFeature> initializeFeatureCache( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheEnd ) {
         FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = new FeatureDataSource.FeatureCache<>();
 
-        cache.fill(features.iterator(), parser.createGenomeLoc(cacheContig, cacheStart, cacheStop));
+        cache.fill(features.iterator(), new SimpleInterval(cacheContig, cacheStart, cacheEnd));
         return cache;
     }
 
@@ -345,7 +339,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
     public Object[][] getFeatureCacheFillData() {
         return new Object[][] {
                 { Arrays.asList(new ArtificialTestFeature("1", 1, 100), new ArtificialTestFeature("1", 50, 150),
-                               new ArtificialTestFeature("1", 200, 300), new ArtificialTestFeature("1", 350, 400)),
+                                new ArtificialTestFeature("1", 200, 300), new ArtificialTestFeature("1", 350, 400)),
                   "1", 1, 400 },
                 { Arrays.asList(new ArtificialTestFeature("1", 1, 100)), "1", 1, 100 },
                 { Collections.<ArtificialTestFeature>emptyList(), "1", 1, 1 }
@@ -353,13 +347,13 @@ public class FeatureDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "FeatureCacheFillDataProvider")
-    public void testCacheFill( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheStop) {
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, cacheContig, cacheStart, cacheStop);
+    public void testCacheFill( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheEnd) {
+        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, cacheContig, cacheStart, cacheEnd);
 
-        List<ArtificialTestFeature> cachedFeatures = cache.getCachedFeaturesUpToStopPosition(cacheStop);
+        List<ArtificialTestFeature> cachedFeatures = cache.getCachedFeaturesUpToStopPosition(cacheEnd);
         Assert.assertEquals(cache.getContig(), cacheContig, "Wrong contig reported by cache after fill");
         Assert.assertEquals(cache.getCacheStart(), cacheStart, "Wrong start position reported by cache after fill");
-        Assert.assertEquals(cache.getCacheStop(), cacheStop, "Wrong stop position reported by cache after fill");
+        Assert.assertEquals(cache.getCacheEnd(), cacheEnd, "Wrong stop position reported by cache after fill");
         Assert.assertEquals(cachedFeatures, features, "Wrong Features in cache after fill()");
     }
 
@@ -369,33 +363,32 @@ public class FeatureDataSourceUnitTest extends BaseTest {
                                                              new ArtificialTestFeature("1", 50, 150),
                                                              new ArtificialTestFeature("1", 200, 300));
         FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, "1", 50, 250);
-        GenomeLocParser parser = hg19GenomeLocParser;
 
         return new Object[][] {
                 // Exact match for cache boundaries
-                { cache, parser.createGenomeLoc("1", 50, 250), true },
+                { cache, new SimpleInterval("1", 50, 250), true },
                 // Interval completely contained within cache boundaries
-                { cache, parser.createGenomeLoc("1", 100, 200), true },
+                { cache, new SimpleInterval("1", 100, 200), true },
                 // Interval left-aligned with cache boundaries
-                { cache, parser.createGenomeLoc("1", 50, 100), true },
+                { cache, new SimpleInterval("1", 50, 100), true },
                 // Interval right-aligned with cache boundaries
-                { cache, parser.createGenomeLoc("1", 200, 250), true },
+                { cache, new SimpleInterval("1", 200, 250), true },
                 // Interval overlaps, but is off the left edge of cache boundaries
-                { cache, parser.createGenomeLoc("1", 49, 100), false },
+                { cache, new SimpleInterval("1", 49, 100), false },
                 // Interval overlaps, but is off the right edge of cache boundaries
-                { cache, parser.createGenomeLoc("1", 200, 251), false },
+                { cache, new SimpleInterval("1", 200, 251), false },
                 // Interval does not overlap and is to the left of cache boundaries
-                { cache, parser.createGenomeLoc("1", 1, 40), false },
+                { cache, new SimpleInterval("1", 1, 40), false },
                 // Interval does not overlap and is to the right of cache boundaries
-                { cache, parser.createGenomeLoc("1", 300, 350), false },
+                { cache, new SimpleInterval("1", 300, 350), false },
                 // Interval is on different contig
-                { cache, parser.createGenomeLoc("2", 50, 250), false }
+                { cache, new SimpleInterval("2", 50, 250), false }
         };
     }
 
     @Test(dataProvider = "FeatureCacheHitDetectionDataProvider")
     public void testCacheHitDetection( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache,
-                                       final GenomeLoc testInterval, final boolean cacheHitExpectedResult ) {
+                                       final SimpleInterval testInterval, final boolean cacheHitExpectedResult ) {
         Assert.assertEquals(cache.cacheHit(testInterval), cacheHitExpectedResult,
                             "Cache hit detection failed for interval " + testInterval);
     }
@@ -427,23 +420,23 @@ public class FeatureDataSourceUnitTest extends BaseTest {
 
         // Pairing of start position to which to trim the cache with the List of Features we expect to see
         // in the cache after trimming
-        List<Pair<Long, List<ArtificialTestFeature>>> trimOperations = Arrays.asList(
-                Pair.of(1l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(2l, Arrays.asList(feats.get(1), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(3l, Arrays.asList(feats.get(1), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(4l, Arrays.asList(feats.get(1), feats.get(3), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(5l, Arrays.asList(feats.get(1), feats.get(3), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(6l, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(10l, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(11l, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(50l, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(51l, Arrays.asList(feats.get(1), feats.get(9), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(100l, Arrays.asList(feats.get(1), feats.get(9), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(101l, Arrays.asList(feats.get(11), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(111l, Arrays.asList(feats.get(11), feats.get(14), feats.get(15), feats.get(16))),
-                Pair.of(151l, Arrays.asList(feats.get(11), feats.get(14), feats.get(16))),
-                Pair.of(151l, Arrays.asList(feats.get(11), feats.get(14), feats.get(16))),
-                Pair.of(200l, Arrays.asList(feats.get(11), feats.get(14)))
+        List<Pair<Integer, List<ArtificialTestFeature>>> trimOperations = Arrays.asList(
+                Pair.of(1, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(2, Arrays.asList(feats.get(1), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(3, Arrays.asList(feats.get(1), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(4, Arrays.asList(feats.get(1), feats.get(3), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(5, Arrays.asList(feats.get(1), feats.get(3), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(6, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(10, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(8), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(11, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(50, Arrays.asList(feats.get(1), feats.get(3), feats.get(7), feats.get(9), feats.get(10), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(51, Arrays.asList(feats.get(1), feats.get(9), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(100, Arrays.asList(feats.get(1), feats.get(9), feats.get(11), feats.get(12), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(101, Arrays.asList(feats.get(11), feats.get(13), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(111, Arrays.asList(feats.get(11), feats.get(14), feats.get(15), feats.get(16))),
+                Pair.of(151, Arrays.asList(feats.get(11), feats.get(14), feats.get(16))),
+                Pair.of(151, Arrays.asList(feats.get(11), feats.get(14), feats.get(16))),
+                Pair.of(200, Arrays.asList(feats.get(11), feats.get(14)))
         );
 
         return new Object[][] {
@@ -452,16 +445,16 @@ public class FeatureDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "FeatureCacheTrimmingDataProvider")
-    public void testCacheTrimming( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache, final List<Pair<Long, List<ArtificialTestFeature>>> trimOperations ) {
+    public void testCacheTrimming( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache, final List<Pair<Integer, List<ArtificialTestFeature>>> trimOperations ) {
         // Repeatedly trim the cache to ever-increasing start positions, and verify after each trim operation
         // that the cache holds the correct Features in the correc order
-        for ( Pair<Long, List<ArtificialTestFeature>> trimOperation : trimOperations ) {
-            final long trimPosition = trimOperation.getLeft();
+        for ( Pair<Integer, List<ArtificialTestFeature>> trimOperation : trimOperations ) {
+            final int trimPosition = trimOperation.getLeft();
             final List<ArtificialTestFeature> expectedFeatures = trimOperation.getRight();
 
             cache.trimToNewStartPosition(trimPosition);
 
-            final List<ArtificialTestFeature> actualFeatures = cache.getCachedFeaturesUpToStopPosition(cache.getCacheStop());
+            final List<ArtificialTestFeature> actualFeatures = cache.getCachedFeaturesUpToStopPosition(cache.getCacheEnd());
             Assert.assertEquals(actualFeatures, expectedFeatures, "Wrong Features in cache after trimming start position to " + trimPosition);
         }
     }
@@ -485,23 +478,23 @@ public class FeatureDataSourceUnitTest extends BaseTest {
 
         // Pairing of end position with which to bound cache retrieval with the List of Features we expect to see
         // after retrieval
-        List<Pair<Long, List<ArtificialTestFeature>>> retrievalOperations = Arrays.asList(
-                Pair.of(100l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10))),
-                Pair.of(80l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10))),
-                Pair.of(79l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9))),
-                Pair.of(80l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10))),
-                Pair.of(75l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9))),
-                Pair.of(74l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8))),
-                Pair.of(54l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7))),
-                Pair.of(52l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7))),
-                Pair.of(51l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6))),
-                Pair.of(50l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5))),
-                Pair.of(49l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4))),
-                Pair.of(10l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4))),
-                Pair.of(9l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2))),
-                Pair.of(5l, Arrays.asList(feats.get(0), feats.get(1), feats.get(2))),
-                Pair.of(4l, Arrays.asList(feats.get(0), feats.get(1))),
-                Pair.of(1l, Arrays.asList(feats.get(0), feats.get(1)))
+        List<Pair<Integer, List<ArtificialTestFeature>>> retrievalOperations = Arrays.asList(
+                Pair.of(100, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10))),
+                Pair.of(80, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10))),
+                Pair.of(79, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9))),
+                Pair.of(80, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9), feats.get(10))),
+                Pair.of(75, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8), feats.get(9))),
+                Pair.of(74, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7), feats.get(8))),
+                Pair.of(54, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7))),
+                Pair.of(52, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6), feats.get(7))),
+                Pair.of(51, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5), feats.get(6))),
+                Pair.of(50, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4), feats.get(5))),
+                Pair.of(49, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4))),
+                Pair.of(10, Arrays.asList(feats.get(0), feats.get(1), feats.get(2), feats.get(3), feats.get(4))),
+                Pair.of(9, Arrays.asList(feats.get(0), feats.get(1), feats.get(2))),
+                Pair.of(5, Arrays.asList(feats.get(0), feats.get(1), feats.get(2))),
+                Pair.of(4, Arrays.asList(feats.get(0), feats.get(1))),
+                Pair.of(1, Arrays.asList(feats.get(0), feats.get(1)))
         );
 
         return new Object[][] {
@@ -510,9 +503,9 @@ public class FeatureDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "FeatureCacheRetrievalDataProvider")
-    public void testCacheFeatureRetrieval( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache, final List<Pair<Long, List<ArtificialTestFeature>>> retrievalOperations ) {
-        for ( Pair<Long, List<ArtificialTestFeature>> retrievalOperation: retrievalOperations ) {
-            final long stopPosition = retrievalOperation.getLeft();
+    public void testCacheFeatureRetrieval( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache, final List<Pair<Integer, List<ArtificialTestFeature>>> retrievalOperations ) {
+        for ( Pair<Integer, List<ArtificialTestFeature>> retrievalOperation: retrievalOperations ) {
+            final int stopPosition = retrievalOperation.getLeft();
             final List<ArtificialTestFeature> expectedFeatures = retrievalOperation.getRight();
 
             final List<ArtificialTestFeature> actualFeatures = cache.getCachedFeaturesUpToStopPosition(stopPosition);
@@ -526,19 +519,18 @@ public class FeatureDataSourceUnitTest extends BaseTest {
      */
     @Test
     public void testHandleCachingOfEmptyRegion() {
-        GenomeLocParser parser = hg19GenomeLocParser;
         FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = new FeatureDataSource.FeatureCache<>();
         List<ArtificialTestFeature> emptyRegion = new ArrayList<>();
 
-        cache.fill(emptyRegion.iterator(), parser.createGenomeLoc("1", 1, 100));
+        cache.fill(emptyRegion.iterator(), new SimpleInterval("1", 1, 100));
 
         Assert.assertTrue(cache.isEmpty(), "Cache should be empty");
-        Assert.assertTrue(cache.cacheHit(parser.createGenomeLoc("1", 1, 100)), "Unexpected cache miss");
-        Assert.assertTrue(cache.cacheHit(parser.createGenomeLoc("1", 2, 99)), "Unexpected cache miss");
+        Assert.assertTrue(cache.cacheHit(new SimpleInterval("1", 1, 100)), "Unexpected cache miss");
+        Assert.assertTrue(cache.cacheHit(new SimpleInterval("1", 2, 99)), "Unexpected cache miss");
 
         Assert.assertEquals(cache.getCachedFeaturesUpToStopPosition(100), emptyRegion, "Should get back empty List for empty region");
         cache.trimToNewStartPosition(2);
-        Assert.assertTrue(cache.cacheHit(parser.createGenomeLoc("1", 2, 100)), "Unexpected cache miss");
+        Assert.assertTrue(cache.cacheHit(new SimpleInterval("1", 2, 100)), "Unexpected cache miss");
         Assert.assertEquals(cache.getCachedFeaturesUpToStopPosition(100), emptyRegion, "Should get back empty List for empty region");
     }
 

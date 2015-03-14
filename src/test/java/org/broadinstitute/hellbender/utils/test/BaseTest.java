@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.Genotype;
@@ -59,11 +60,11 @@ public abstract class BaseTest {
         hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);
     }
 
-    protected List<GenomeLoc> getLocs(String... intervals) {
-        return getLocs(Arrays.asList(intervals));
+    protected List<GenomeLoc> intervalStringsToGenomeLocs( String... intervals ) {
+        return intervalStringsToGenomeLocs(Arrays.asList(intervals));
     }
 
-    protected List<GenomeLoc> getLocs(List<String> intervals) {
+    protected List<GenomeLoc> intervalStringsToGenomeLocs( List<String> intervals ) {
         List<GenomeLoc> locs = new ArrayList<>();
         for (String interval: intervals)
             locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));

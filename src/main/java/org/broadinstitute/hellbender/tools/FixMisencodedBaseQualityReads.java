@@ -34,7 +34,7 @@ public class FixMisencodedBaseQualityReads extends ReadWalker {
     @Override
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = getHeaderForReads().clone();
-        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_FILE);
+        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.referenceFile);
         transform = new MisencodedBaseQualityReadTransformer();
     }
 
