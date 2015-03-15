@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -53,4 +54,15 @@ public class FeatureContextUnitTest extends BaseTest {
         Assert.assertTrue(featureContext.getValues(Arrays.<FeatureInput<Feature>>asList(toolInstance.featureArgument), 1).isEmpty(), "Empty FeatureContext should have returned an empty List from getValues()");
     }
 
+    @Test
+    public void testGetHeader() {
+        final ArtificialFeatureContainingCommandLineProgram toolInstance = new ArtificialFeatureContainingCommandLineProgram();
+        final FeatureManager featureManager = new FeatureManager(toolInstance);
+        final FeatureContext featureContext = new FeatureContext(featureManager, new SimpleInterval("1", 1, 1));
+        final Object header = featureContext.getHeader(toolInstance.featureArgument);
+        featureManager.close();
+
+        Assert.assertTrue(header instanceof VCFHeader, "Header for " + toolInstance.featureArgument.getFeatureFile().getAbsolutePath() +
+                                                       " not a VCFHeader");
+    }
 }

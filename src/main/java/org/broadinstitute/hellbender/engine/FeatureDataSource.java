@@ -477,6 +477,15 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     /**
+     * Gets the header associated with this data source
+     *
+     * @return header associated with this data source as an Object
+     */
+    public Object getHeader() {
+        return featureReader.getHeader();
+    }
+
+    /**
      * Permanently close this data source, invalidating any open iteration over it, and making it invalid for future
      * iterations and queries.
      */

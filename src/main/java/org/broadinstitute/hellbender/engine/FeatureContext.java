@@ -84,6 +84,17 @@ public final class FeatureContext {
     }
 
     /**
+     * Gets the header associated with the provided FeatureInput
+     *
+     * @param featureDescriptor FeatureInput whose header we want to retrieve
+     * @param <T> type of Feature in our FeatureInput
+     * @return header for the provided FeatureInput (null if we have no backing data sources)
+     */
+    public <T extends Feature> Object getHeader( final FeatureInput<T> featureDescriptor ) {
+        return featureManager != null ? featureManager.getHeader(featureDescriptor) : null;
+    }
+
+    /**
      * Gets all Features from the source represented by the provided FeatureInput argument that overlap
      * this FeatureContext's query interval. Will return an empty List if this FeatureContext has
      * no backing source of Features and/or interval.
