@@ -224,6 +224,35 @@ public final class FeatureManager implements AutoCloseable {
      *         the provided interval (may be empty if there are none, but never null)
      */
     public <T extends Feature> List<T> getFeatures( final FeatureInput<T> featureDescriptor, final SimpleInterval interval ) {
+        final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
+
+        // No danger of a ClassCastException here, since we verified that the FeatureDataSource for this
+        // FeatureInput will return Features of the expected type T when we first created the data source
+        // in initializeFeatureSources()
+        return dataSource.queryAndPrefetch(interval);
+    }
+
+    /**
+     * Get the header associated with a particular FeatureInput
+     *
+     * @param featureDescriptor the FeatureInput whose header we want to retrieve
+     * @param <T> type of Feature in our FeatureInput
+     * @return header for the provided FeatureInput
+     */
+    public <T extends Feature> Object getHeader( final FeatureInput<T> featureDescriptor ) {
+        final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
+        return dataSource.getHeader();
+    }
+
+    /**
+     * Retrieve the data source for a particular FeatureInput. Throws an exception if the provided
+     * FeatureInput is not among our discovered sources of Features.
+     *
+     * @param featureDescriptor FeatureInput whose data source to retrieve
+     * @param <T> type of Feature in our FeatureInput
+     * @return query-able data source for the provided FeatureInput, if it was found
+     */
+    private <T extends Feature> FeatureDataSource<T> lookupDataSource( final FeatureInput<T> featureDescriptor ) {
         @SuppressWarnings("unchecked")
         FeatureDataSource<T> dataSource = (FeatureDataSource<T>)featureSources.get(featureDescriptor);
 
@@ -236,10 +265,7 @@ public final class FeatureManager implements AutoCloseable {
                                                   featureDescriptor.getName(), toolInstance.getClass().getSimpleName()));
         }
 
-        // No danger of a ClassCastException here, since we verified that the FeatureDataSource for this
-        // FeatureInput will return Features of the expected type T when we first created the data source
-        // in initializeFeatureSources()
-        return dataSource.queryAndPrefetch(interval);
+        return dataSource;
     }
 
     /**

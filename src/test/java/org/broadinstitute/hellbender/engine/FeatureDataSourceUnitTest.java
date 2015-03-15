@@ -4,6 +4,7 @@ import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -65,6 +66,15 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName");
         Assert.assertEquals(featureSource.getName(), "CustomName", "Wrong name returned from getName()");
         featureSource.close();
+    }
+
+    @Test
+    public void testGetHeader() {
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName");
+        final Object header = featureSource.getHeader();
+        featureSource.close();
+
+        Assert.assertTrue(header instanceof VCFHeader, "Header for " + QUERY_TEST_VCF.getAbsolutePath() + " not a VCFHeader");
     }
 
     @DataProvider(name = "CompleteIterationTestData")

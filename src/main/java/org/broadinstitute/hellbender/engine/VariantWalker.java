@@ -4,10 +4,12 @@ import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
@@ -78,6 +80,21 @@ public abstract class VariantWalker extends GATKTool {
                           new ReferenceContext(reference, variantInterval),
                           new FeatureContext(features, variantInterval));
                 });
+    }
+
+    /**
+     * Gets the header associated with our driving source of variants as a VCFHeader
+     *
+     * @return VCFHeader for our driving source of variants
+     */
+    public VCFHeader getHeaderForVariants() {
+        Object header = drivingVariants.getHeader();
+
+        if ( ! (header instanceof VCFHeader) ) {
+            throw new GATKException("Header for " + drivingVariantFile.getAbsolutePath() + " is not in VCF header format");
+        }
+
+        return (VCFHeader)header;
     }
 
     /**
