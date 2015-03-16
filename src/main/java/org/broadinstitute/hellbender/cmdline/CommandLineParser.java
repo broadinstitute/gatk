@@ -709,14 +709,12 @@ public class CommandLineParser {
 
     protected static class ArgumentDefinition {
         final Field field;
-        final String fieldName, fullName, shortName;
+        final String fieldName;
+        final String fullName;
+        final String shortName;
         final String doc;
         final boolean optional;
         final boolean isCollection;
-<<<<<<< HEAD
-=======
-        final int minElements, maxElements;
->>>>>>> fixing required collections parsing
         final String defaultValue;
         final boolean isCommon;
         boolean hasBeenSet = false;
