@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.StringUtil;
-import joptsimple.*;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
+import joptsimple.OptionSpecBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -657,7 +660,7 @@ public class CommandLineParser {
                         field.getName());
             }
 
-            // If the Collection's parameterized type is itself parameterized (eg., List<Foo<Bar>>),
+            // If the Collection's parametrized type is itself parametrized (eg., List<Foo<Bar>>),
             // return the raw type of the outer parameter (Foo.class, in this example) to avoid a
             // ClassCastException. Otherwise, return the Collection's type parameter directly as a Class.
             return (Class<?>) (genericTypes[0] instanceof ParameterizedType ?
@@ -756,7 +759,6 @@ public class CommandLineParser {
             this.fullName = annotation.fullName();
             this.shortName = annotation.shortName();
             this.doc = annotation.doc();
-            this.optional = annotation.optional() || getFieldValue() != null ;
             this.isCollection = isCollectionField(field);
 
             if ( this.isFlag()){
@@ -769,7 +771,6 @@ public class CommandLineParser {
             this.isCommon = annotation.common();
             this.isSpecial = annotation.special();
 
-
             this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
 
             Object tmpDefault = getFieldValue();
@@ -778,12 +779,16 @@ public class CommandLineParser {
                     //treat empty collections the same as uninitialized primitive types
                     this.defaultValue = NULL_STRING;
                 } else {
-                    //this is an intialized primitive type or a non-empty collection
+                    //this is an initialized primitive type or a non-empty collection
                     this.defaultValue = tmpDefault.toString();
                 }
             } else {
                 this.defaultValue = NULL_STRING;
             }
+
+            //null collections have been initialized by createCollection which is called in handleArgumentAnnotation
+            //this is optional if it's specified as being optional or if there is a default value specified
+            this.optional = annotation.optional() || ! this.defaultValue.equals(NULL_STRING);
         }
 
 
