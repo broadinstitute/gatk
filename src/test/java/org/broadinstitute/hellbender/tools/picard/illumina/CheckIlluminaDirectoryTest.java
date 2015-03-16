@@ -40,7 +40,7 @@ public class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
     private File intensityDir;
     private File basecallDir;
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return CheckIlluminaDirectory.class.getSimpleName();
     }
 

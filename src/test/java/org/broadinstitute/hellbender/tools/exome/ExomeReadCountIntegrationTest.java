@@ -75,7 +75,7 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             testFile("exome-read-counts-read-group.column-output");
 
     @Override
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return ExomeReadCounts.class.getSimpleName();
     }
 

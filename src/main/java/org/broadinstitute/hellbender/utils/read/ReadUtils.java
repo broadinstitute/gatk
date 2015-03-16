@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.StringLineReader;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -67,6 +68,15 @@ public class ReadUtils {
             sequenceRecordNames[sequenceRecordIndex++] = sequenceRecord.getSequenceName();
         }
         return Arrays.deepToString(sequenceRecordNames);
+    }
+
+    /**
+     * create a SAMFileHeader from a String
+     */
+    public static SAMFileHeader samHeaderFromString(String headerString){
+      final SAMTextHeaderCodec headerCodec = new SAMTextHeaderCodec();
+      headerCodec.setValidationStringency(ValidationStringency.LENIENT);
+      return headerCodec.decode(new StringLineReader(headerString), null);
     }
 
     /**

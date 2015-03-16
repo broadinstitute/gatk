@@ -14,3 +14,6 @@ testSortingFile.txt
 gsalib.tar.gz
 gradlew*
 *.swp
+
+#Please don't commit me
+client_secret.json

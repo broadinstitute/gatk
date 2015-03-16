@@ -22,7 +22,7 @@ public class AddCommentsToBamIntegrationTest extends CommandLineProgramTest {
 
     private static final String[] commentList = new String[]{"test1", "test2", "test3"};
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return AddCommentsToBam.class.getSimpleName();
     }
 

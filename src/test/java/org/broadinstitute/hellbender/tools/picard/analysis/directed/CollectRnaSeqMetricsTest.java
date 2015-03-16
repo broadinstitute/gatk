@@ -21,7 +21,7 @@ import java.io.PrintStream;
 import org.broadinstitute.hellbender.utils.gene.RefFlatReader.RefFlatColumns;
 
 public class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return CollectRnaSeqMetrics.class.getSimpleName();
     }
 

@@ -48,7 +48,7 @@ public class SplitNCigarReadsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Override
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return SplitNCigarReads.class.getSimpleName();
     }
 

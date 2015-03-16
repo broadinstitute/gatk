@@ -58,7 +58,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
     private File dual;
     private File qual;
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return ExtractIlluminaBarcodes.class.getSimpleName();
     }
 

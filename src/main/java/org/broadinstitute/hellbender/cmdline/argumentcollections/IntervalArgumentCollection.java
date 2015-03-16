@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 

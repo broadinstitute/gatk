@@ -13,7 +13,7 @@ public class PrintReadsIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_DATA_DIR = getTestDataDir();
 
     @Override
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return PrintReads.class.getSimpleName();
     }
 

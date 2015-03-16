@@ -23,7 +23,7 @@ public class GatherBamFilesIntegrationTest extends CommandLineProgramTest {
             new File(TEST_DATA_DIR, "indchr8.bam")
     );
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return GatherBamFiles.class.getSimpleName();
     }
 

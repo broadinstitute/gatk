@@ -26,7 +26,7 @@ public class IlluminaBasecallsToSamAdapterClippingTest extends CommandLineProgra
     private static final File BASECALLS_DIR = new File(TEST_DATA_DIR, "Data/Intensities/BaseCalls");
     private static final String RUN_BARCODE = "305PJAAXX080716";
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return IlluminaBasecallsToSam.class.getSimpleName();
     }
 

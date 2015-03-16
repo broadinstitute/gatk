@@ -11,7 +11,7 @@ public class FeatureSupportIntegrationTest extends CommandLineProgramTest {
     private static final String FEATURE_INTEGRATION_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @Override
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return "PrintReadsWithVariants";
     }
 

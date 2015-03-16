@@ -1,22 +1,49 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import htsjdk.samtools.SAMRecord;
 
+import java.io.Serializable;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 @FunctionalInterface
-public interface ReadFilter extends Predicate<SAMRecord> {
+/**
+ * Filters which operate on {@link SAMRecord} should implement this interface by overriding {@link #test(SAMRecord)}
+ *
+ * ReadFilter extends Predicate and SerializableFunction.  It provides a default implementation of apply based on the
+ * implmenting class's implementation of test().
+ */
+public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<SAMRecord, Boolean>{
 
     //HACK: These methods are a hack to get to get the type system to accept compositions of ReadFilters.
-    default ReadFilter and(ReadFilter filter ) {
-        return Predicate.super.and(filter)::test;
+    /**
+     * Specialization of {@link #and(Predicate)} so that ReadFilters anded with other ReadFilters produce a ReadFilter
+     */
+    default ReadFilter and(ReadFilter other ) {
+            Objects.requireNonNull(other);
+            return (t) -> test(t) && other.test(t);
     }
 
-    default ReadFilter or(ReadFilter filter ) {
-        return Predicate.super.or(filter)::test;
+    /**
+     * Specialization of {@link #or(Predicate)} so that ReadFilters ored with other ReadFilters produce a ReadFilter
+     */
+    default ReadFilter or(ReadFilter other ) {
+        Objects.requireNonNull(other);
+        return (t) -> test(t) || other.test(t);
     }
 
+    /**
+     * Specialization of negate so that the resulting object is still a ReadFilter
+     */
+    @Override
     default ReadFilter negate(){
-        return Predicate.super.negate()::test;
+        return (t) -> !test(t);
+    }
+
+    @Override
+    default Boolean apply(SAMRecord read){
+        return test(read);
     }
 }

@@ -1,6 +1,7 @@
 buildscript {
     repositories {
         mavenCentral()
+
      }
 
     dependencies {
@@ -70,6 +71,8 @@ dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
     compile 'com.github.samtools:htsjdk:1.130'
+    compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.6'
+    compile 'com.google.cloud.genomics:gatk-tools-java:1.0'
     compile 'org.apache.logging.log4j:log4j-api:2.1'
     compile 'org.apache.logging.log4j:log4j-core:2.1'
     compile 'org.apache.commons:commons-lang3:3.3.2'
@@ -79,16 +82,21 @@ dependencies {
     compile 'org.reflections:reflections:0.9.9'
     compile 'net.sf.jopt-simple:jopt-simple:4.9-beta-1'
     compile 'com.google.guava:guava:18.0'
-    compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.3.150109'
-    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev26-1.19.1'
-
+    compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.3.150326'
+    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev33-1.20.0'
+    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.22'
+    compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
 
     testCompile 'org.testng:testng:6.8.8'
+    //needed for DataflowAssert
+    testCompile 'org.hamcrest:hamcrest-all:1.3'
+    testCompile 'junit:junit:4.12'
+
+
 }
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-
 
 def String deriveVersion(){
     def stdout = new ByteArrayOutputStream()
@@ -120,7 +128,9 @@ jar {
 test {
     dependsOn installRPackages
     // enable TestNG support (default is JUnit)
-    useTestNG()
+    useTestNG{
+        excludeGroups 'cloud', 'bucket'
+    }
 
     beforeSuite {
         boolean ROk = installRPackages.execResult.exitValue == 0

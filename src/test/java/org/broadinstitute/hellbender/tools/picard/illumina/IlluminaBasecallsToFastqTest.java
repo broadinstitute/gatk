@@ -25,7 +25,7 @@ public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/illumina/25T8B25T/fastq");
     private static final File DUAL_TEST_DATA_DIR = new File(getTestDataDir(), "picard/illumina/25T8B8B25T/fastq");
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return IlluminaBasecallsToFastq.class.getSimpleName();
     }
 
