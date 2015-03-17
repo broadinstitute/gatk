@@ -1,11 +1,13 @@
-package htsjdk.samtools.util;
+package org.broadinstitute.hellbender.utils;
 
+
+import htsjdk.samtools.util.Locatable;
 
 /**
  * Minimal immutable class representing a 1-based closed ended genomic interval
  * SimpleInterval does not allow null contig names.  It cannot represent an unmapped Locatable.
  *
- *@warning 0 length intervals are allowed, which are represented as end = start-1
+ *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
 public class SimpleInterval implements Locatable {
 
@@ -20,14 +22,14 @@ public class SimpleInterval implements Locatable {
      * @param end  1-based inclusive end position
      */
     public SimpleInterval(final String contig, final int start, final int end){
-        if(contig == null){
+        if ( contig == null ) {
             throw new IllegalArgumentException("contig cannot be null");
         }
-        if (start <= 0 ){
+        if ( start <= 0 ) {
             throw new IllegalArgumentException("SimpleInterval is 1 based, so start must be >= 1, start:%d" + start);
         }
-        if (end < start -1){
-            throw new IllegalArgumentException( String.format("end must be >= start -1 . start:%d end:%d", start, end));
+        if ( end < start ) {
+            throw new IllegalArgumentException(String.format("end must be >= start. start:%d end:%d", start, end));
         }
         this.contig = contig;
         this.start = start;
@@ -75,8 +77,43 @@ public class SimpleInterval implements Locatable {
 
     /**
      * @return the 1-based closed-ended end position of the interval on the contig.
-     * @warning in the case of a 0-length interval getEnd() == getStart - 1 */
+     */
     public final int getEnd(){
         return end;
+    }
+
+    /**
+     * @return number of bases covered by this interval (will always be > 0)
+     */
+    public final int size() {
+        return end - start + 1;
+    }
+
+    /**
+     * Determines whether this interval overlaps the provided interval.
+     *
+     * @param other interval to check
+     * @return true if this interval overlaps other, otherwise false
+     */
+    public final boolean overlaps( final SimpleInterval other ) {
+        if ( other == null ) {
+            return false;
+        }
+
+        return this.contig.equals(other.contig) && this.start <= other.end && other.start <= this.end;
+    }
+
+    /**
+     * Determines whether this interval contains the entire region represented by other
+     *
+     * @param other interval to check
+     * @return true if this interval contains all of the bases spanned by other, otherwise false
+     */
+    public final boolean contains( final SimpleInterval other ) {
+        if ( other == null ) {
+            return false;
+        }
+
+        return this.contig.equals(other.contig) && this.start <= other.start && this.end >= other.end;
     }
 }

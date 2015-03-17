@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.util.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;

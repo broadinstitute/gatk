@@ -2,7 +2,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.util.SimpleInterval;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.Genotype;
