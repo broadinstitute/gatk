@@ -43,10 +43,11 @@ public @interface Argument {
     String doc() default "Undocumented option";
 
     /**
-     * If set to false, an exception will be thrown if the option is not specified.
-     * If 2 options are mutually exclusive and both are required it will be
-     * interpreted as one or the other is required and an exception will only be thrown if
-     * neither are specified.
+     * If set to false, a {@link org.broadinstitute.hellbender.exceptions.UserException.MissingArgument} will be thrown
+     * if the option is not specified.
+     * If 2 options are mutually exclusive and both are required it will be interpreted as one or the other is required
+     * and an exception will only be thrown if neither are specified.
+     * An argument with a non-null default value specified will ignore this flag and always be treated as optional
      */
     boolean optional() default false;
 

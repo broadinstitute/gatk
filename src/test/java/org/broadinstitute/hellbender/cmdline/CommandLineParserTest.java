@@ -183,6 +183,23 @@ public class CommandLineParserTest {
         clp.parseArguments(System.err, args);
     }
 
+    class CollectionRequired{
+        @Argument(optional = false)
+        List<Integer> ints;
+
+        @Argument
+        String something;
+    }
+
+    @Test(expectedExceptions = UserException.MissingArgument.class)
+    public void testMissingRequiredCollectionArgument(){
+        final String[] args = {};
+        final CollectionRequired cr = new CollectionRequired();
+        final CommandLineParser clp = new CommandLineParser(cr);
+        clp.parseArguments(System.err, args);
+        Assert.fail("Should have thrown a MissingArgument");
+    }
+
     @Test( expectedExceptions = UserException.BadArgumentValue.class)
     public void testBadValue() {
         final String[] args = {
@@ -416,7 +433,6 @@ public class CommandLineParserTest {
     public void testCollectionThatCannotBeAutoInitialized() {
         final UninitializedCollectionThatCannotBeAutoInitializedArguments o = new UninitializedCollectionThatCannotBeAutoInitializedArguments();
         new CommandLineParser(o);
-        Assert.fail("Exception should have been thrown");
     }
 
     class CollectionWithDefaultValuesArguments {
@@ -535,7 +551,6 @@ public class CommandLineParserTest {
     public void testBadFieldCausesException(){
         WithBadField o = new WithBadField();
         final CommandLineParser clp = new CommandLineParser(o);
-        Assert.fail(); //shouldn't reach here
     }
 
     class PrivateArgument{
