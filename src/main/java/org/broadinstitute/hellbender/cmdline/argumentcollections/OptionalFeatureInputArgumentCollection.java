@@ -16,7 +16,7 @@ import java.util.List;
  */
 public class OptionalFeatureInputArgumentCollection implements ArgumentCollectionDefinition {
 
-    @Argument(fullName = StandardArgumentDefinitions.FEATURE_LONG_NAME, shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME, doc = "One or more files containing features", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.FEATURE_LONG_NAME, shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME, doc = "File containing features", optional = true)
     public List<FeatureInput<Feature>> featureFiles;
 
 }

@@ -51,7 +51,7 @@ public class SplitReads extends ReadWalker {
     @Override
     public void onTraversalStart() {
         IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
-        if ( readArguments.readFiles.size() != 1 ) {
+        if ( readArguments.getReadFiles().size() != 1 ) {
             throw new UserException("This tool only accepts a single SAM/BAM as input");
         }
 
@@ -86,8 +86,8 @@ public class SplitReads extends ReadWalker {
         final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
 
         final SAMFileHeader samFileHeaderIn = getHeaderForReads();
-        final String base = FilenameUtils.getBaseName(readArguments.readFiles.get(0).getName());
-        final String extension = "." + FilenameUtils.getExtension(readArguments.readFiles.get(0).getName());
+        final String base = FilenameUtils.getBaseName(readArguments.getReadFiles().get(0).getName());
+        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadFiles().get(0).getName());
 
         // Build up a list of key options at each level.
         final List<List<?>> splitKeys = splitters.stream()
@@ -98,7 +98,7 @@ public class SplitReads extends ReadWalker {
         addKey(splitKeys, 0, "", key -> {
             final SAMFileHeader samFileHeaderOut = ReadUtils.clone(samFileHeaderIn);
             final File outFile = new File(OUTPUT_DIRECTORY, base + key + extension);
-            outs.put(key, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.referenceFile));
+            outs.put(key, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.getReferenceFile()));
         });
 
         return outs;

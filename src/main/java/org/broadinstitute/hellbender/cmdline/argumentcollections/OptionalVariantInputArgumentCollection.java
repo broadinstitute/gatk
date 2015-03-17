@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class OptionalVariantInputArgumentCollection implements ArgumentCollectionDefinition {
 
-    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more files containing variants", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "Variants file", optional = true)
     public List<FeatureInput<VariantContext>> variantFiles;
 
 }

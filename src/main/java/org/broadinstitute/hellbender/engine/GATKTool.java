@@ -6,9 +6,7 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -23,13 +21,13 @@ import java.util.List;
 public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection
-    protected IntervalArgumentCollection intervalArgumentCollection = new IntervalArgumentCollection();
+    protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
     @ArgumentCollection
-    protected OptionalReadInputArgumentCollection readArguments = new OptionalReadInputArgumentCollection();
+    public final ReadInputArgumentCollection readArguments = requiresReads() ? new RequiredReadInputArgumentCollection() : new OptionalReadInputArgumentCollection();
 
     @ArgumentCollection
-    protected OptionalReferenceInputArgumentCollection referenceArguments = new OptionalReferenceInputArgumentCollection();
+    public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -71,7 +69,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reference data source.
      */
     void initializeReference() {
-        reference = referenceArguments.referenceFile != null ? new ReferenceDataSource(referenceArguments.referenceFile) : null;
+        reference = referenceArguments.getReferenceFile() != null ? new ReferenceDataSource(referenceArguments.getReferenceFile()) : null;
     }
 
     /**
@@ -81,7 +79,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reads data source.
      */
     void initializeReads() {
-        reads = ! readArguments.readFiles.isEmpty() ? new ReadsDataSource(readArguments.readFiles) : null;
+        reads = ! readArguments.getReadFiles().isEmpty() ? new ReadsDataSource(readArguments.getReadFiles()) : null;
     }
 
     /**
@@ -167,20 +165,20 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
+     * Does this tool require features? Traversals types and/or tools that do should override to return true.
+     *
+     * @return true if this tool requires reads, otherwise false
+     */
+    public boolean requiresFeatures() {
+        return false;
+    }
+
+    /**
      * Does this tool require reads? Traversals types and/or tools that do should override to return true.
      *
      * @return true if this tool requires reads, otherwise false
      */
     public boolean requiresReads() {
-        return false;
-    }
-
-    /**
-     * Does this tool require Features? Traversals types and/or tools that do should override to return true.
-     *
-     * @return true if this tool requires Features, otherwise false
-     */
-    public boolean requiresFeatures() {
         return false;
     }
 
@@ -247,21 +245,11 @@ public abstract class GATKTool extends CommandLineProgram {
      * Must be called after data source initialization.
      */
     private void checkToolRequirements() {
-        if ( requiresReads() && ! hasReads() ) {
-            throw new UserException("Tool " + getClass().getSimpleName() + " requires reads, but none were provided");
-        }
-
-        if ( requiresReference() && ! hasReference() ) {
-            throw new UserException("Tool " + getClass().getSimpleName() + " requires a reference, but none was provided");
-        }
 
         if ( requiresFeatures() && ! hasFeatures() ) {
             throw new UserException("Tool " + getClass().getSimpleName() + " requires features, but none were provided");
         }
 
-        if ( requiresIntervals() && ! hasIntervals() ) {
-            throw new UserException("Tool " + getClass().getSimpleName() + " requires intervals, but none were provided");
-        }
     }
 
     /**

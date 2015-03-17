@@ -1,4 +1,3 @@
-
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -10,26 +9,42 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IntervalArgumentCollection implements ArgumentCollectionDefinition {
-    /**
-     * Use this argument to perform the analysis over only part of the genome. This argument can be specified multiple times.
-     * You can use samtools-style intervals either explicitly on the command line (e.g. -L 1 or -L 1:100-200) or
-     * by loading in a file containing a list of intervals (e.g. -L myFile.intervals).
-     */
-    @Argument(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate", optional = true)
-    final protected List<String> intervalStrings = new ArrayList<>();
+/**
+ * Intended to be used as an {@link org.broadinstitute.hellbender.cmdline.ArgumentCollection} for specifying intervals at the command line.
+ * Subclasses must override getIntervalStrings and addToIntervalStrings().
+ */
+public abstract class IntervalArgumentCollection implements ArgumentCollectionDefinition {
+    static private Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
+    final protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
 
+
+    /**
+     * Subclasses must provide a -L argument and override this to return the results of that argument.
+     *
+     * The -L argument specifies intervals to include in analysis and has the following semantics
+     * It can use samtools-style intervals either explicitly on the command line (e.g. -L 1 or -L 1:100-200) or
+     * by loading in a file containing a list of intervals (e.g. -L myFile.intervals).
+     * It can be specified multiple times.
+     *
+     * @return string gathered from the command line -L argument to be parsed into intervals to include
+     */
+    abstract protected List<String> getIntervalStrings();
+
+    /**
+     * Add an extra interval string to the intervals to include.
+     * primarily for testing
+     */
+    abstract protected void addToIntervalStrings(String newInterval);
     /**
      * Use this argument to exclude certain parts of the genome from the analysis (like -L, but the opposite).
      * This argument can be specified multiple times. You can use samtools-style intervals either explicitly on the
      * command line (e.g. -XL 1 or -XL 1:100-200) or by loading in a file containing a list of intervals
      * (e.g. -XL myFile.intervals).
-     *
-     * */
+     * @return strings gathered from the command line -XL argument to be parsed into intervals to exclude
+     */
     @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing", optional = true)
     final protected List<String> excludeIntervalStrings = new ArrayList<>();
 
@@ -44,7 +59,6 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      */
     @Argument(fullName = "interval_set_rule", shortName = "isr", doc = "Set merging approach to use for combining interval inputs")
     protected IntervalSetRule intervalSetRule = IntervalSetRule.UNION;
-
     /**
      * Use this to add padding to the intervals specified using -L and/or -XL. For example, '-L 1:100' with a
      * padding value of 20 would turn into '-L 1:80-120'. This is typically used to add padding around exons when
@@ -52,9 +66,6 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      */
     @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval")
     protected int intervalPadding = 0;
-
-    final protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
-    static private Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
 
     /**
      * Get the intervals specified on the command line.
@@ -78,14 +89,15 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
 
 
         GenomeLocSortedSet includeSortedSet;
-        if (intervalStrings.isEmpty()){
-            // if -L argument isn't given but -XL is, set include to all of the territory
+        if (getIntervalStrings().isEmpty()){
+            // the -L argument isn't specified, which means that -XL was, since we checked intervalsSpecified()
+            // therefore we set the include set to be the entire reference territory
             includeSortedSet = GenomeLocSortedSet.createSetFromSequenceDictionary(genomeLocParser.getSequenceDictionary());
         } else {
             try {
-                includeSortedSet = IntervalUtils.loadIntervals(intervalStrings, intervalSetRule, intervalMerging, intervalPadding, genomeLocParser);
+                includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMerging, intervalPadding, genomeLocParser);
             } catch( UserException.EmptyIntersection e) {
-                throw new UserException.BadArgumentValue("-L, --interval_set_rule", intervalStrings+","+intervalSetRule, "The specified intervals had an empty intersection");
+                throw new UserException.BadArgumentValue("-L, --interval_set_rule", getIntervalStrings()+","+intervalSetRule, "The specified intervals had an empty intersection");
             }
         }
         final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, 0, genomeLocParser);
@@ -100,7 +112,7 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
             intervals = includeSortedSet.subtractRegions(excludeSortedSet);
 
             if( intervals.isEmpty()){
-                throw new UserException.BadArgumentValue("-L,-XL",intervalStrings.toString() + ", "+excludeIntervalStrings.toString(),"The intervals specified for exclusion with -XL removed all territory specified by -L.");
+                throw new UserException.BadArgumentValue("-L,-XL",getIntervalStrings().toString() + ", "+excludeIntervalStrings.toString(),"The intervals specified for exclusion with -XL removed all territory specified by -L.");
             }
             // logging messages only printed when exclude (-XL) arguments are given
             final long toPruneSize = includeSortedSet.coveredSize();
@@ -137,7 +149,8 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      * Have any intervals been specified for inclusion or exclusion
      */
     public boolean intervalsSpecified() {
-        return !( intervalStrings.isEmpty() && excludeIntervalStrings.isEmpty());
+        return !( getIntervalStrings().isEmpty() && excludeIntervalStrings.isEmpty());
     }
-}
 
+
+}

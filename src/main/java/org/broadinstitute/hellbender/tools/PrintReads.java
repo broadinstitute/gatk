@@ -26,7 +26,7 @@ public class PrintReads extends ReadWalker {
     @Override
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
-        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.referenceFile);
+        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile());
     }
 
     @Override
