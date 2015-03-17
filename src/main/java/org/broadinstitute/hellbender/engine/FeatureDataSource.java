@@ -11,23 +11,28 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Manages traversals and queries over sources of Features, which are metadata associated with a location
+ * Enables traversals and queries over sources of Features, which are metadata associated with a location
  * on the genome in a format supported by our file parsing framework, Tribble. Examples of Features are
  * VCF/BCF records and hapmap records.
  *
  * Two basic operations are available on this data source:
  *
- * -Iteration over all Features in this data source, unbounded by intervals
- * -Targeted queries by one interval at a time. This requires that the file has been indexed using
- *  the bundled tool IndexFeatureFile, and that Features in the file are sorted in increasing order
- *  of start position within each contig.
+ * -Iteration over all Features in this data source, optionally restricted to Features overlapping
+ *  a set of intervals if intervals are provided via {@link #setIntervalsForTraversal(List)}. Traversal
+ *  by a set of intervals requires the file to have been indexed using the bundled tool IndexFeatureFile.
+ *  The set of intervals provided MUST be non-overlapping and sorted in increasing order of start position.
  *
- * This class uses a caching scheme that is optimized for the common access pattern of queries over
- * intervals with gradually increasing start positions. It optimizes for this use case by pre-fetching
- * records immediately following each interval during a query and caching them. Performance will
- * suffer if the access pattern is random, involves queries over intervals with DECREASING start
- * positions instead of INCREASING start positions, or involves lots of very large jumps forward on
- * the genome or lots of contig switches.
+ * -Targeted queries by one interval at a time. This also requires the file to have been indexed using
+ *  the bundled tool IndexFeatureFile. Targeted queries by one interval at a time are unaffected by
+ *  any intervals for full traversal set via {@link #setIntervalsForTraversal(List)}.
+ *
+ * To improve performance in the case of targeted queries by one interval at a time, this class uses a caching
+ * scheme that is optimized for the common access pattern of multiple separate queries over intervals with
+ * gradually increasing start positions. It optimizes for this use case by pre-fetching records immediately
+ * following each interval during a query and caching them. Performance will suffer if the access pattern is
+ * random, involves queries over intervals with DECREASING start positions instead of INCREASING start positions,
+ * or involves lots of very large jumps forward on the genome or lots of contig switches. Query caching
+ * can be disabled, if desired.
  *
  * @param <T> The type of Feature returned by this data source
  */
@@ -49,7 +54,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private final FeatureCodec<T, ?> codec;
 
     /**
-     * Iterator representing an open traversal over this data source initiated via a call to iterator()
+     * Iterator representing an open traversal over this data source initiated via a call to {@link #iterator}
      * (null if there is no open traversal). We need this to ensure that each iterator is properly closed,
      * and to enforce the constraint (required by Tribble) that we never have more than one iterator open
      * over our feature reader.
@@ -57,10 +62,18 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private CloseableTribbleIterator<T> currentIterator;
 
     /**
-     * Cache containing Features from recent queries. This is guaranteed to start at the start position
-     * of the most recent query, but will typically end well after the end of the most recent query.
-     * Designed to improve performance of the common access pattern involving multiple queries across
-     * nearby intervals with gradually increasing start positions.
+     * Our intervals for traversal. If set, restricts full traversals initiated via {@link #iterator} to
+     * return only Features overlapping this set of intervals. Does not affect individual queries
+     * initiated via {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(SimpleInterval)}.
+     */
+    private List<SimpleInterval> intervalsForTraversal;
+
+    /**
+     * Cache containing Features from recent queries initiated via {@link #query(SimpleInterval)} and/or
+     * {@link #queryAndPrefetch(SimpleInterval)}. This is guaranteed to start at the start position of the
+     * most recent query, but will typically end well after the end of the most recent query. Designed to
+     * improve performance of the common access pattern involving multiple queries across nearby intervals
+     * with gradually increasing start positions.
      */
     private final FeatureCache<T> queryCache;
 
@@ -92,7 +105,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public static final int DEFAULT_QUERY_LOOKAHEAD_BASES = 1000;
 
     /**
-     * FeatureCache: helper class to manage the cache of Feature records used during query operations.
+     * FeatureCache: helper class to manage the cache of Feature records used during query operations
+     * initiated via {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(SimpleInterval)}.
      *
      * Strategy is to pre-fetch a large number of records AFTER each query interval that produces
      * a cache miss. This optimizes for the use case of intervals with gradually increasing start
@@ -331,6 +345,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
 
         this.currentIterator = null;
+        this.intervalsForTraversal = null;
         this.queryCache = new FeatureCache<>();
         this.queryLookaheadBases = queryLookaheadBases;
         this.codec = codec;
@@ -339,11 +354,36 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     /**
-     * Gets an iterator over all Features in this data source, unbounded by intervals.
+     * Restricts traversals of this data source via {@link #iterator} to only return Features that overlap the provided
+     * intervals. Calls to {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(SimpleInterval)} are not
+     * affected by these intervals.
+     *
+     * Intervals MUST be non-overlapping and sorted in order of increasing start position, otherwise traversal
+     * results will be incorrect.
+     *
+     * Passing in a null or empty interval List clears the intervals for traversal, making future iterations
+     * over this data source unrestricted by intervals.
+     *
+     * @param intervals Our next full traversal will return only Features overlapping these intervals
+     */
+    public void setIntervalsForTraversal( final List<SimpleInterval> intervals ) {
+        // Treat null and empty interval lists the same
+        intervalsForTraversal = (intervals != null && !intervals.isEmpty()) ? intervals : null;
+
+        if ( intervalsForTraversal != null && ! hasIndex ) {
+            throw new UserException("File " + featureFile.getAbsolutePath() + " requires an index to enable traversal by intervals. " +
+                                    "Please index this file using the bundled tool " + IndexFeatureFile.class.getSimpleName());
+        }
+    }
+
+
+    /**
+     * Gets an iterator over all Features in this data source, restricting traversal to Features
+     * overlapping our intervals if intervals were provided via {@link #setIntervalsForTraversal(List)}
      *
      * Calling this method invalidates (closes) any previous iterator obtained from this method.
      *
-     * @return an iterator over all Features in this data source
+     * @return an iterator over all Features in this data source, limited to Features that overlap the intervals supplied via {@link #setIntervalsForTraversal(List)} (if intervals were provided)
      */
     @Override
     public Iterator<T> iterator() {
@@ -353,7 +393,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         try {
             // Save the iterator returned so that we can close it properly later
-            currentIterator = featureReader.iterator();
+            currentIterator = intervalsForTraversal != null ? new FeatureIntervalIterator(intervalsForTraversal)
+                                                            : featureReader.iterator();
             return currentIterator;
         }
         catch ( IOException e ) {
@@ -363,6 +404,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
     /**
      * Gets an iterator over all Features in this data source that overlap the provided interval.
+     *
+     * This operation is not affected by intervals provided via {@link #setIntervalsForTraversal(List)}.
      *
      * Requires the backing file to have been indexed using the IndexFeatureFile tool, and to
      * be sorted in increasing order of start position for each contig.
@@ -383,6 +426,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
     /**
      * Returns a List of all Features in this data source that overlap the provided interval.
+     *
+     * This operation is not affected by intervals provided via {@link #setIntervalsForTraversal(List)}.
      *
      * Requires the backing file to have been indexed using the IndexFeatureFile tool, and to
      * be sorted in increasing order of start position for each contig.
@@ -510,5 +555,142 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             currentIterator.close();
             currentIterator = null;
         }
+    }
+
+    /**
+     * Iterator implementation of Feature traversal by intervals.
+     *
+     * Given a List of intervals, queries our backing data source for Features overlapping
+     * each successive interval and iterates over them, while also guaranteeing that each
+     * Feature overlapping our intervals will only be returned once during the entire iteration.
+     *
+     * Requires that the provided List of intervals consist of non-overlapping intervals
+     * sorted in increasing order of start position.
+     */
+    private class FeatureIntervalIterator implements CloseableTribbleIterator<T> {
+        private Iterator<SimpleInterval> intervalIterator;
+        private CloseableTribbleIterator<T> featuresInCurrentInterval;
+        private T nextFeature;
+        private SimpleInterval currentInterval;
+        private SimpleInterval previousInterval;
+
+        /**
+         * Initialize a FeatureIntervalIterator with a set of intervals.
+         *
+         * Requires that the provided List of intervals consist of non-overlapping intervals
+         * sorted in increasing order of start position.
+         *
+         * @param intervals intervals to use for traversal. must be non-overlapping and sorted by increasing start position.
+         */
+        public FeatureIntervalIterator( final List<SimpleInterval> intervals ) {
+            this.intervalIterator = intervals.iterator();
+            nextFeature = loadNextNovelFeature();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextFeature != null;
+        }
+
+        @Override
+        public T next() {
+            if ( nextFeature == null ) {
+                throw new NoSuchElementException("No more Features for current interval set");
+            }
+
+            final T toReturn = nextFeature;
+            nextFeature = loadNextNovelFeature();
+            return toReturn;
+        }
+
+        /**
+         * @return the next Feature from our data source that we HAVEN'T previously encountered,
+         *         or null if we're out of Features
+         */
+        private T loadNextNovelFeature() {
+            T candidateFeature;
+
+            do {
+                candidateFeature = loadNextFeature();
+
+                if ( candidateFeature != null && featureIsNovel(candidateFeature) ) {
+                    return candidateFeature;
+                }
+            } while ( candidateFeature != null );
+
+            return null;
+        }
+
+        /**
+         * @return the next Feature from our data source (regardless of whether we've encountered it before or not),
+         *         or null if we're out of Features
+         */
+        private T loadNextFeature() {
+            // If we're out of Features for the current interval, repeatedly query the next interval
+            // until we find one with overlapping Features. Return null if we run out of intervals.
+            while ( featuresInCurrentInterval == null || ! featuresInCurrentInterval.hasNext() ) {
+                if ( ! queryNextInterval() ) {
+                    return null;
+                }
+            }
+
+            // If we reach here, we're guaranteed to have at least one Feature left to consume in the current interval.
+            return featuresInCurrentInterval.next();
+        }
+
+        /**
+         * Determines whether a Feature is novel (hasn't been encountered before on this iteration). A Feature
+         * hasn't been encountered before if we're either on the very first query interval, or the Feature doesn't
+         * overlap our previous query interval.
+         *
+         * @param feature Feature to test
+         * @return true if we haven't seen the Feature before on this iteration, otherwise false
+         */
+        private boolean featureIsNovel( final T feature ) {
+            return previousInterval == null || ! previousInterval.overlaps(new SimpleInterval(feature.getChr(), feature.getStart(), feature.getEnd()));
+        }
+
+        /**
+         * Performs a query on the next interval in our interval List, and initializes all members appropriately
+         * to prepare for processing the Features overlapping that interval.
+         *
+         * @return true if we successfully queried the next interval, false if there are no more intervals to query
+         */
+        private boolean queryNextInterval() {
+            // Make sure to close out the query iterator for the previous interval, since Tribble only allows us
+            // to have one iterator open over our FeatureReader at a time.
+            if ( featuresInCurrentInterval != null ) {
+                featuresInCurrentInterval.close();
+                featuresInCurrentInterval = null;
+            }
+
+            if ( ! intervalIterator.hasNext() ) {
+                currentInterval = previousInterval = null;
+                return false;
+            }
+
+            previousInterval = currentInterval;
+            currentInterval = intervalIterator.next();
+            try {
+                featuresInCurrentInterval = featureReader.query(currentInterval.getContig(), currentInterval.getStart(), currentInterval.getEnd());
+                return true;
+            }
+            catch ( IOException e ) {
+                throw new GATKException("Error querying file " + featureFile.getAbsolutePath() + " over interval " + currentInterval, e);
+            }
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return this;
+        }
+
+        @Override
+        public void close() {
+            if ( featuresInCurrentInterval != null ) {
+                featuresInCurrentInterval.close();
+            }
+        }
+
     }
 }

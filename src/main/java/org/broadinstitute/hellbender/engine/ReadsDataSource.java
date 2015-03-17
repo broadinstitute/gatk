@@ -121,8 +121,8 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
     }
 
     /**
-     * Restricts a traversal of this data source via iterator() to only return reads which overlap the given intervals.
-     * Calls to query() are not affected by setting these intervals.
+     * Restricts a traversal of this data source via {@link #iterator} to only return reads which overlap the given intervals.
+     * Calls to {@link #query} are not affected by setting these intervals.
      *
      * @param intervals Our next full traversal will return only reads overlapping these intervals
      */
@@ -148,10 +148,10 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
     }
 
     /**
-     * Iterate over all reads in this data source. If intervals were provided at construction time,
+     * Iterate over all reads in this data source. If intervals were provided via {@link #setIntervalsForTraversal(List)},
      * iteration is limited to reads that overlap that set of intervals.
      *
-     * @return An iterator over the reads in this data source, limited to reads that overlap the intervals supplied at construction (if intervals were provided)
+     * @return An iterator over the reads in this data source, limited to reads that overlap the intervals supplied via {@link #setIntervalsForTraversal(List)} (if intervals were provided)
      */
     @Override
     public Iterator<SAMRecord> iterator() {
