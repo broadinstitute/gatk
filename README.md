@@ -17,6 +17,7 @@ To run a single test class, run something like this, `gradle test -Dtest.single=
 
 To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`.
 
+For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.  This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.  
 
 General guidelines for Hellbender developers
 ----------------
