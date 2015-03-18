@@ -16,6 +16,7 @@ before_install:
   - sudo ln -sFv ~/site-library /usr/local/lib/R/site-library
   - wget -N https://downloads.gradle.org/distributions/gradle-2.2.1-bin.zip
   #necessary for mailing
+  - sudo apt-get update
   - sudo apt-get install -y sharutils
   - sudo apt-get install -y bsd-mailx 
   #end mail
