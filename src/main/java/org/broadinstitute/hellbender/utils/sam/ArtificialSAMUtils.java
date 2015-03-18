@@ -95,8 +95,8 @@ public class ArtificialSAMUtils {
             throw new IllegalArgumentException("Passed in read string is different length then the quality array");
         }
         SAMRecord rec = createArtificialRead(header, name, refIndex, alignmentStart, bases.length);
-        rec.setReadBases(bases);
-        rec.setBaseQualities(qual);
+        rec.setReadBases(Arrays.copyOf(bases, bases.length));
+        rec.setBaseQualities(Arrays.copyOf(qual, qual.length));
         rec.setAttribute(SAMTag.PG.name(), new SAMReadGroupRecord("x").getId());
         if (refIndex == -1) {
             rec.setReadUnmappedFlag(true);
@@ -155,7 +155,7 @@ public class ArtificialSAMUtils {
     }
 
 
-    public final static List<SAMRecord> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
+    public static List<SAMRecord> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
         SAMRecord left = ArtificialSAMUtils.createArtificialRead(header, name, 0, leftStart, readLen);
         SAMRecord right = ArtificialSAMUtils.createArtificialRead(header, name, 0, rightStart, readLen);
 
