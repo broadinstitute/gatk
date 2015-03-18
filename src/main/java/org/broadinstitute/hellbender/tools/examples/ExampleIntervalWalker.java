@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;

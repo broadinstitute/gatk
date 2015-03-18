@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;

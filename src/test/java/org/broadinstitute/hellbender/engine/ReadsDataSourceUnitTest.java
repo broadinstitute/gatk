@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

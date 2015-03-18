@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.util.SimpleInterval;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 /**
  * An IntervalWalker is a tool that processes a single interval at a time, with the ability to query
