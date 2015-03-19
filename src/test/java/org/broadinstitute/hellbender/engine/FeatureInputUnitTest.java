@@ -61,4 +61,13 @@ public class FeatureInputUnitTest extends BaseTest {
         Assert.assertEquals(variantContextFeatureInput.getFeatureType(), VariantContext.class, "Wrong Feature type for FeatureInput<VariantContext>");
         Assert.assertEquals(tableFeatureInput.getFeatureType(), TableFeature.class, "Wrong Feature type for FeatureInput<TableFeature>");
     }
+
+    @Test
+    public void testToString() {
+        final FeatureInput<Feature> namelessFeatureInput = new FeatureInput<>("file1");
+        final FeatureInput<Feature> namedFeatureInput = new FeatureInput<>("name:file1");
+
+        Assert.assertEquals(namelessFeatureInput.toString(), new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput incorrect");
+        Assert.assertEquals(namedFeatureInput.toString(), "name:" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput incorrect");
+    }
 }
