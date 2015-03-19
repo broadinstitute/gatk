@@ -162,4 +162,18 @@ public final class FeatureInput<T extends Feature> {
         FeatureInput<?> otherFeature = (FeatureInput<?>)other;
         return name.equals(otherFeature.name) && featureFile.equals(otherFeature.featureFile);
     }
+
+    /**
+     * Returns a String representation of this FeatureInput. Will be the absolute path to
+     * the featureFile if we have no logical name, or a String of the form
+     * "logical_name:absolute_path_to_featureFile" if we do have a logical name.
+     *
+     * @return String representation of this FeatureInput
+     */
+    @Override
+    public String toString() {
+        final String featureFilePath = featureFile.getAbsolutePath();
+        return name.equals(featureFilePath) ? featureFilePath :
+                                              String.format("%s%s%s", name, FEATURE_ARGUMENT_TAG_DELIMITER, featureFilePath);
+    }
 }
