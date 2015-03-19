@@ -833,6 +833,36 @@ public class CommandLineParser {
             return !fullName.isEmpty() ? fullName : fieldName;
         }
 
+        /**
+         * Helper for pretty printing this option.
+         * @param value A value this argument was given
+         * @return a string
+         *
+         */
+        private String prettyNameValue(Object value) {
+            if(value != null){
+                return String.format("--%s %s", getLongName(), value);
+            }
+            return "";
+        }
+
+        /**
+         * @return A string representation of this argument and it's value(s) which would be valid if copied and pasted
+         * back as a command line argument
+         */
+        public String toCommandLineString(){
+            Object value = getFieldValue();
+            if (this.isCollection){
+                Collection<?> collect = (Collection<?>)value;
+                return collect.stream()
+                        .map(this::prettyNameValue)
+                        .collect(Collectors.joining(" "));
+
+            } else {
+                return prettyNameValue(value);
+            }
+        }
+
     }
 
     /**
@@ -864,24 +894,20 @@ public class CommandLineParser {
         }
 
         //first, append args that were explicitly set
-        argumentDefinitions.stream()
+        commandLineString.append(argumentDefinitions.stream()
                 .filter(argumentDefinition -> argumentDefinition.hasBeenSet)
-                .forEach(argumentDefinition ->
-                        commandLineString.append(" --")
-                                .append(argumentDefinition.getLongName())
-                                .append(" ")
-                                .append(argumentDefinition.getFieldValue()));
+                .map(ArgumentDefinition::toCommandLineString)
+                .collect(Collectors.joining(" "," ","  ")));
 
-        commandLineString.append("   "); //separator to tell the 2 apart
         //next, append args that weren't explicitly set, but have a default value
-        argumentDefinitions.stream()
+        commandLineString.append(argumentDefinitions.stream()
                 .filter(argumentDefinition -> !argumentDefinition.hasBeenSet && !argumentDefinition.defaultValue.equals(NULL_STRING))
-                .forEach(argumentDefinition ->
-                        commandLineString.append(" --").append(argumentDefinition.getLongName()).append(" ")
-                                .append(argumentDefinition.defaultValue));
+                .map(ArgumentDefinition::toCommandLineString)
+                .collect(Collectors.joining(" ")));
 
         return toolName + " " + commandLineString.toString();
     }
+
 
     /**
      * Locates and returns the VALUES of all Argument-annotated fields of a specified type in a given object,

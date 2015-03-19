@@ -149,9 +149,9 @@ public class CommandLineParserTest {
         Assert.assertEquals(clp.getCommandLine(),
                 "org.broadinstitute.hellbender.cmdline.CommandLineParserTest$FrobnicateArguments  " +
                         "positional1 positional2 --FROBNICATION_THRESHOLD 17 --FROBNICATION_FLAVOR BAR " +
-                        "--SHMIGGLE_TYPE [shmiggle1, shmiggle2] --TRUTHINESS true    --help false --version false");
+                        "--SHMIGGLE_TYPE shmiggle1 --SHMIGGLE_TYPE shmiggle2 --TRUTHINESS true  --help false " +
+                        "--version false");
     }
-
 
     @Test
     public void testDefault() {
