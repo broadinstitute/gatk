@@ -39,6 +39,10 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
+    public static final String hg19_chr1_1M_Reference = publicTestDir + "Homo_sapiens_assembly19_chr1_1M.fasta";
+    public static final String hg19_chr1_1M_dbSNP = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
+    public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
+
     public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
 
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
@@ -59,7 +63,7 @@ public abstract class BaseTest {
         hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);
     }
 
-    protected List<GenomeLoc> intervalStringsToGenomeLocs( String... intervals ) {
+    protected List<GenomeLoc> intervalStringsToGenomeLocs( String... intervals) {
         return intervalStringsToGenomeLocs(Arrays.asList(intervals));
     }
 

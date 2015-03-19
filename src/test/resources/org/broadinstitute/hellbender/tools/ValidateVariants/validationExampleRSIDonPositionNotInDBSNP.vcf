@@ -1,0 +1,12 @@
+##fileformat=VCFv4.0
+##INFO=<ID=AC,Number=.,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Allele Number">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1	SAMPLE2
+1	985447	.	G	T	42.22	PASS	.	GT	0/1	0/1
+1	985447	.	G	T	42.22	PASS	AC=2;AN=4	GT	0/1	0/1
+1	985449	.	G	.	42.22	PASS	AC=0;AN=4	GT	0/0	0/0
+1	985449	.	G	AC	42.22	PASS	AC=1;AN=4	GT	0/1	0/0
+1	985449	.	GG	A	42.22	PASS	AC=2;AN=4	GT	0/0	1/1
+1	985449	.	G	T	42.22	PASS	AC=1;AN=2	GT	0/1	./.
+1	990279	rs4275402	A	T	42.22	PASS	AC=1;AN=4	GT	0/0	0/1
