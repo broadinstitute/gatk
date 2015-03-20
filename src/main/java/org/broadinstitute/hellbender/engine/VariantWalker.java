@@ -27,7 +27,7 @@ public abstract class VariantWalker extends GATKTool {
 
     // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features
-    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF/BCF file containing variants", common = false, optional = false, minElements = 1)
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF/BCF file containing variants", common = false, optional = false)
     public File drivingVariantFile;
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool

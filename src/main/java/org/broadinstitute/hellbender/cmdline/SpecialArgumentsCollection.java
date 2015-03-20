@@ -20,7 +20,7 @@ public class SpecialArgumentsCollection implements ArgumentCollectionDefinition 
     @Argument(fullName = VERSION_FULLNAME, doc="display the version number for this tool", special = true)
     public boolean VERSION = false;
 
-    @Argument(fullName = ARGUMENTS_FILE_FULLNAME, doc="read one or more arguments files and add them to the command line", special = true)
+    @Argument(fullName = ARGUMENTS_FILE_FULLNAME, doc="read one or more arguments files and add them to the command line", optional = true, special = true)
     public List<File> ARGUMENTS_FILE = new ArrayList<>();
 
 }

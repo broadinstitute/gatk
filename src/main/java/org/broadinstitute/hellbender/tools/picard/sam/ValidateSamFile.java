@@ -41,8 +41,8 @@ public class ValidateSamFile extends PicardCommandLineProgram {
             doc = "Mode of output")
     public Mode MODE = Mode.VERBOSE;
 
-    @Argument(doc = "List of validation error types to ignore.")
-    public List<SAMValidationError.Type> IGNORE = new ArrayList<SAMValidationError.Type>();
+    @Argument(doc = "List of validation error types to ignore.", optional = true)
+    public List<SAMValidationError.Type> IGNORE = new ArrayList<>();
 
     @Argument(shortName = "MO",
             doc = "The maximum number of lines output in verbose mode")

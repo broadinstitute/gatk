@@ -59,12 +59,6 @@ public @interface Argument {
      */
     String[] mutex() default {};
 
-    /** The minimum number of times that this option is required. */
-    int minElements() default 0;
-
-    /** The maximum number of times this option is allowed. */
-    int maxElements() default Integer.MAX_VALUE;
-
     /**
      * Is this an Option common to all command line programs.  If it is then it will only
      * be displayed in usage info when H or STDHELP is used to display usage.

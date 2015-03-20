@@ -36,7 +36,7 @@ public class CommandLineParserTest {
         @Argument
         public FrobnicationFlavor FROBNICATION_FLAVOR;
 
-        @Argument(doc="Allowed shmiggle types.", minElements=1, maxElements = 3)
+        @Argument(doc="Allowed shmiggle types.", optional = false)
         public List<String> SHMIGGLE_TYPE = new ArrayList<>();
 
         @Argument
@@ -55,7 +55,7 @@ public class CommandLineParserTest {
         @Argument
         public FrobnicationFlavor FROBNICATION_FLAVOR;
 
-        @Argument(doc="Allowed shmiggle types.", minElements=1, maxElements = 3)
+        @Argument(doc="Allowed shmiggle types.", optional = false)
         public List<String> SHMIGGLE_TYPE = new ArrayList<>();
 
         @Argument
@@ -186,9 +186,6 @@ public class CommandLineParserTest {
     class CollectionRequired{
         @Argument(optional = false)
         List<Integer> ints;
-
-        @Argument
-        String something;
     }
 
     @Test(expectedExceptions = UserException.MissingArgument.class)
@@ -197,7 +194,6 @@ public class CommandLineParserTest {
         final CollectionRequired cr = new CollectionRequired();
         final CommandLineParser clp = new CommandLineParser(cr);
         clp.parseArguments(System.err, args);
-        Assert.fail("Should have thrown a MissingArgument");
     }
 
     @Test( expectedExceptions = UserException.BadArgumentValue.class)
@@ -236,23 +232,6 @@ public class CommandLineParserTest {
         final String[] args = {
                 "--FROBNICATION_FLAVOR","BAR",
                 "--TRUTHINESS","False",
-                "positional1",
-                "positional2",
-        };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
-    }
-
-    @Test( expectedExceptions = UserException.CommandLineException.class)
-    public void testTooManyListArgument() {
-        final String[] args = {
-                "--FROBNICATION_FLAVOR","BAR",
-                "--TRUTHINESS","False",
-                "--SHMIGGLE_TYPE","shmiggle1",
-                "--SHMIGGLE_TYPE","shmiggle2",
-                "--SHMIGGLE_TYPE","shmiggle3",
-                "--SHMIGGLE_TYPE","shmiggle4",
                 "positional1",
                 "positional2",
         };
@@ -557,7 +536,7 @@ public class CommandLineParserTest {
         @Argument
         private boolean privateArgument = false;
 
-        @Argument
+        @Argument(optional = true)
         private List<Integer> privateCollection = new ArrayList<>();
 
         @ArgumentCollection
