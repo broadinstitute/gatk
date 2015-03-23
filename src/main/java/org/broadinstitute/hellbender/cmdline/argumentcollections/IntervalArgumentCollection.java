@@ -20,7 +20,7 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      * You can use samtools-style intervals either explicitly on the command line (e.g. -L 1 or -L 1:100-200) or
      * by loading in a file containing a list of intervals (e.g. -L myFile.intervals).
      */
-    @Argument(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate")
+    @Argument(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate", optional = true)
     final protected List<String> intervalStrings = new ArrayList<>();
 
     /**
@@ -30,7 +30,7 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
      * (e.g. -XL myFile.intervals).
      *
      * */
-    @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing")
+    @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing", optional = true)
     final protected List<String> excludeIntervalStrings = new ArrayList<>();
 
     /**

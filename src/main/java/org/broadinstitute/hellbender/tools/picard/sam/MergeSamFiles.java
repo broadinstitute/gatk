@@ -25,7 +25,7 @@ import java.util.List;
 public class MergeSamFiles extends PicardCommandLineProgram {
     private static final Log log = Log.getInstance(MergeSamFiles.class);
 
-    @Argument(shortName = "I", doc = "SAM or BAM input file", minElements = 1)
+    @Argument(shortName = "I", doc = "SAM or BAM input file", optional=false)
     public List<File> INPUT = new ArrayList<File>();
 
     @Argument(shortName = "O", doc = "SAM or BAM file to write merged result to")

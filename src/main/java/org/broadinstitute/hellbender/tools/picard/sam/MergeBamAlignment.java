@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SamPairUtil;
-import htsjdk.samtools.util.Log;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.sam.mergealignment.*;
@@ -96,12 +98,14 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
     public int MAX_INSERTIONS_OR_DELETIONS = 1;
 
     @Argument(doc = "Reserved alignment attributes (tags starting with X, Y, or Z) that should be " +
-            "brought over from the alignment data when merging.")
-    public List<String> ATTRIBUTES_TO_RETAIN = new ArrayList<String>();
+            "brought over from the alignment data when merging.",
+             optional = true)
+    public List<String> ATTRIBUTES_TO_RETAIN = new ArrayList<>();
 
     @Argument(doc = "Attributes from the alignment record that should be removed when merging." +
-            "  This overrides ATTRIBUTES_TO_RETAIN if they share common tags.")
-    public List<String> ATTRIBUTES_TO_REMOVE = new ArrayList<String>();
+            "  This overrides ATTRIBUTES_TO_RETAIN if they share common tags.",
+            optional = true)
+    public List<String> ATTRIBUTES_TO_REMOVE = new ArrayList<>();
 
     @Argument(shortName = "R1_TRIM",
             doc = "The number of bases trimmed from the beginning of read 1 prior to alignment")
@@ -146,8 +150,6 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
 
     @Argument(shortName = "MC", optional = true, doc = "Adds the mate CIGAR tag (MC) if true, does not if false.")
     public Boolean ADD_MATE_CIGAR = true;
-
-    private static final Log log = Log.getInstance(MergeBamAlignment.class);
 
     /**
      * Mechanism to bridge between command line option and PrimaryAlignmentSelectionStrategy implementation.

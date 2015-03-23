@@ -297,12 +297,11 @@ public class CommandLineParser {
                             "' cannot be used in conjunction with argument(s)" +
                             mutextArgumentNames.toString());
                 }
-                if (argumentDefinition.isCollection) {
+                if (argumentDefinition.isCollection && !argumentDefinition.optional) {
                     @SuppressWarnings("rawtypes")
                     final Collection c = (Collection) argumentDefinition.getFieldValue();
-                    if (c.size() < argumentDefinition.minElements) {
-                        throw new UserException.MissingArgument(fullName, "Argument '" + fullName + "' must be specified at least " +
-                                argumentDefinition.minElements + " times.");
+                    if (c.isEmpty()) {
+                        throw new UserException.MissingArgument(fullName, "Argument '" + fullName + "' must be specified at least once.");
                     }
                 } else if (!argumentDefinition.optional && !argumentDefinition.hasBeenSet && mutextArgumentNames.length() == 0) {
                     throw new UserException.MissingArgument(fullName, "Argument '" + fullName + "' is required" +
@@ -379,9 +378,6 @@ public class CommandLineParser {
                 if (value == null) {
                     //user specified this arg=null which is interpreted as empty list
                     c.clear();
-                } else if (c.size() >= argumentDefinition.maxElements) {
-                    throw new UserException.CommandLineException("Argument '" + argumentDefinition.getNames() + "' cannot be used more than " +
-                            argumentDefinition.maxElements + " times.");
                 } else {
                     c.add(value);
                 }
@@ -456,37 +452,21 @@ public class CommandLineParser {
             sb.append(argumentDefinition.doc);
             sb.append("  ");
         }
-        if (argumentDefinition.optional && !argumentDefinition.isCollection) {
+        if (argumentDefinition.isCollection) {
+            if (argumentDefinition.optional) {
+                sb.append("This argument may be specified 0 or more times. ");
+            } else {
+                sb.append("This argument must be specified at least once. ");
+            }
+        }
+        if (argumentDefinition.optional) {
             sb.append("Default value: ");
             sb.append(argumentDefinition.defaultValue);
             sb.append(". ");
-            if (!argumentDefinition.defaultValue.equals(NULL_STRING)) {
-                sb.append("This argument can be set to 'null' to clear the default value. ");
-            }
-        } else if (!argumentDefinition.isCollection) {
+        } else {
             sb.append("Required. ");
         }
         sb.append(getEnumOptions(getUnderlyingType(argumentDefinition.field)));
-        if (argumentDefinition.isCollection) {
-            if (argumentDefinition.minElements == 0) {
-                if (argumentDefinition.maxElements == Integer.MAX_VALUE) {
-                    sb.append("This argument may be specified 0 or more times. ");
-                } else {
-                    sb.append("This argument must be specified no more than ").append(argumentDefinition.maxElements).append(
-                            " times. ");
-                }
-            } else if (argumentDefinition.maxElements == Integer.MAX_VALUE) {
-                sb.append("This argument must be specified at least ").append(argumentDefinition.minElements).append(" times. ");
-            } else {
-                sb.append("This argument may be specified between ").append(argumentDefinition.minElements).append(
-                        " and ").append(argumentDefinition.maxElements).append(" times. ");
-            }
-
-            if (!argumentDefinition.defaultValue.equals(NULL_STRING)) {
-                sb.append("This argument can be set to 'null' to clear the default list. ");
-            }
-
-        }
         if (!argumentDefinition.mutuallyExclusive.isEmpty()) {
             sb.append(" Cannot be used in conjuction with argument(s)");
             for (final String argument : argumentDefinition.mutuallyExclusive) {
@@ -548,14 +528,6 @@ public class CommandLineParser {
             final Argument argumentAnnotation = field.getAnnotation(Argument.class);
             final boolean isCollection = isCollectionField(field);
             if (isCollection) {
-                if (argumentAnnotation.maxElements() == 0) {
-                    throw new GATKException.CommandLineParserInternalException("@Argument member " + field.getName() +
-                            "has maxElements = 0");
-                }
-                if (argumentAnnotation.minElements() > argumentAnnotation.maxElements()) {
-                    throw new GATKException.CommandLineParserInternalException("In @Argument member " + field.getName() +
-                            ", minElements cannot be > maxElements");
-                }
                 field.setAccessible(true);
                 if (field.get(parent) == null) {
                     createCollection(field, parent, "@Argument");
@@ -743,8 +715,6 @@ public class CommandLineParser {
         final String doc;
         final boolean optional;
         final boolean isCollection;
-        final int minElements;
-        final int maxElements;
         final String defaultValue;
         final boolean isCommon;
         boolean hasBeenSet = false;
@@ -761,13 +731,6 @@ public class CommandLineParser {
             this.doc = annotation.doc();
             this.isCollection = isCollectionField(field);
 
-            if ( this.isFlag()){
-                this.minElements = 0;
-                this.maxElements = 1;
-            } else {
-                this.minElements = annotation.minElements();
-                this.maxElements = annotation.maxElements();
-            }
             this.isCommon = annotation.common();
             this.isSpecial = annotation.special();
 
