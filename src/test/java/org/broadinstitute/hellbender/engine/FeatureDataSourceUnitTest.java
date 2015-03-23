@@ -18,6 +18,7 @@ import java.util.*;
 public class FeatureDataSourceUnitTest extends BaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
+    private static final File QUERY_TEST_GVCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test_gvcf.vcf");
     private static final File UNINDEXED_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "unindexed.vcf");
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -91,17 +92,81 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(vcfFile, new VCFCodec()) ) {
             Iterator<VariantContext> iter = featureSource.iterator();
 
-            int recordCount = 0;
-            while ( iter.hasNext() ) {
-                VariantContext record = iter.next();
-                Assert.assertTrue(recordCount < expectedVariantIDs.size(), "Too many records returned during complete iteration over " + vcfFile.getAbsolutePath());
-                Assert.assertEquals(record.getID(), expectedVariantIDs.get(recordCount),
-                                    "Record #" + (recordCount + 1) + " encountered in iteration over " + vcfFile.getAbsolutePath() + " is incorrect");
-                ++recordCount;
-            }
-
-            Assert.assertEquals(recordCount, expectedVariantIDs.size(), "Wrong number of records returned in complete iteration over " + vcfFile.getAbsolutePath());
+            checkTraversalResults(iter, expectedVariantIDs, vcfFile, null);
         }
+    }
+
+    @DataProvider(name = "TraversalByIntervalsTestData")
+    public Object[][] getTraversalByIntervalsTestData() {
+        // Intervals for traversal + expected Variant IDs
+        return new Object[][] {
+                // Single interval
+                { Arrays.asList(new SimpleInterval("1", 100, 200)), Arrays.asList("a", "b", "c") },
+
+                // Two non-adjacent intervals on the same contig
+                { Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1000, 2000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // Some records overlap multiple intervals, and there are gaps between intervals
+                { Arrays.asList(new SimpleInterval("1", 100, 203), new SimpleInterval("1", 205, 284), new SimpleInterval("1", 286, 1000)), Arrays.asList("a", "b", "c", "d", "e", "f", "h", "i", "j", "k") },
+
+                // Some records overlap multiple intervals, and no gaps between intervals
+                { Arrays.asList(new SimpleInterval("1", 100, 203), new SimpleInterval("1", 204, 285), new SimpleInterval("1", 286, 1000)), Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k") },
+
+                // Two intervals on different contigs
+                { Arrays.asList(new SimpleInterval("1", 200, 300), new SimpleInterval("2", 500, 600)), Arrays.asList("b", "c", "d", "e", "f", "g", "h", "p", "q") },
+
+                // More than two intervals spanning different contigs, and some records overlap multiple intervals
+                { Arrays.asList(new SimpleInterval("1", 200, 203), new SimpleInterval("1", 205, 285), new SimpleInterval("2", 200, 548), new SimpleInterval("2", 550, 650), new SimpleInterval("4", 700, 800)), Arrays.asList("b", "c", "d", "e", "f", "g", "o", "p", "q", "r", "y", "z") },
+
+                // One interval with no overlapping records at the beginning of interval list
+                { Arrays.asList(new SimpleInterval("1", 1, 50), new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1000, 2000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // Multiple intervals with no overlapping records at the beginning of interval list
+                { Arrays.asList(new SimpleInterval("1", 1, 50), new SimpleInterval("1", 60, 70), new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1000, 2000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // One interval with no overlapping records in the middle of interval list
+                { Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("1", 500, 600), new SimpleInterval("1", 1000, 2000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // Multiple intervals with no overlapping records in the middle of interval list
+                { Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("1", 500, 600), new SimpleInterval("1", 700, 800), new SimpleInterval("1", 1000, 2000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // One interval with no overlapping records at the end of interval list
+                { Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1000, 2000), new SimpleInterval("1", 2000, 3000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // Multiple intervals with no overlapping records at the end of interval list
+                { Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1000, 2000), new SimpleInterval("1", 2000, 3000), new SimpleInterval("1", 4000, 5000)), Arrays.asList("a", "b", "c", "j", "k", "l", "m", "n") },
+
+                // No records overlap any intervals
+                { Arrays.asList(new SimpleInterval("1", 1, 99), new SimpleInterval("1", 287, 290), new SimpleInterval("1", 500, 600), new SimpleInterval("2", 201, 524), new SimpleInterval("2", 1000, 2000), new SimpleInterval("4", 1, 500)), Collections.<String>emptyList() },
+
+                // No intervals (should traverse the entire file)
+                { Collections.<SimpleInterval>emptyList(), Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z") }
+        };
+    }
+
+    @Test(dataProvider = "TraversalByIntervalsTestData")
+    public void testTraversalByIntervals( final List<SimpleInterval> intervalsForTraversal, final List<String> expectedVariantIDs ) {
+        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec()) ) {
+            featureSource.setIntervalsForTraversal(intervalsForTraversal);
+            Iterator<VariantContext> iter = featureSource.iterator();
+
+            checkTraversalResults(iter, expectedVariantIDs, QUERY_TEST_VCF, intervalsForTraversal);
+        }
+    }
+
+    private void checkTraversalResults( final Iterator<VariantContext> traversalResults, final List<String> expectedVariantIDs, final File vcfFile, final List<SimpleInterval> traversalIntervals ) {
+        final String intervalString = traversalIntervals != null ? " with intervals " + traversalIntervals : "";
+
+        int recordCount = 0;
+        while ( traversalResults.hasNext() ) {
+            VariantContext record = traversalResults.next();
+            Assert.assertTrue(recordCount < expectedVariantIDs.size(), "Too many records returned during iteration over " + vcfFile.getAbsolutePath() + intervalString);
+            Assert.assertEquals(record.getID(), expectedVariantIDs.get(recordCount),
+                                "Record #" + (recordCount + 1) + " encountered in iteration over " + vcfFile.getAbsolutePath() + intervalString + " is incorrect");
+            ++recordCount;
+        }
+
+        Assert.assertEquals(recordCount, expectedVariantIDs.size(), "Wrong number of records returned in iteration over " + vcfFile.getAbsolutePath() + intervalString);
     }
 
     @DataProvider(name = "IndependentFeatureQueryTestData")
@@ -289,6 +354,34 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         }
 
         featureSource.close();
+    }
+
+    @DataProvider(name = "GVCFQueryTestData")
+    public Object[][] getGVCFQueryTestData() {
+
+        // Ensure that queries on a FeatureDataSource take GVCF blocks into account when computing overlap.
+
+        // Query interval + expected variant ID(s)
+        return new Object[][] {
+                { new SimpleInterval("1", 1, 99), Collections.<String>emptyList() },
+                { new SimpleInterval("1", 50, 100), Arrays.asList("aa") },
+                { new SimpleInterval("1", 50, 150), Arrays.asList("aa") },
+                { new SimpleInterval("1", 100, 100), Arrays.asList("aa") },
+                { new SimpleInterval("1", 100, 150), Arrays.asList("aa") },
+                { new SimpleInterval("1", 100, 200), Arrays.asList("aa") },
+                { new SimpleInterval("1", 150, 200), Arrays.asList("aa") },
+                { new SimpleInterval("1", 150, 250), Arrays.asList("aa") },
+                { new SimpleInterval("1", 200, 201), Arrays.asList("aa") },
+                { new SimpleInterval("1", 201, 3000), Collections.<String>emptyList() }
+        };
+    }
+
+    @Test(dataProvider = "GVCFQueryTestData")
+    public void testQueryGVCF( final SimpleInterval queryInterval, final List<String> expectedVariantIDs ) {
+        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_GVCF, new VCFCodec()) ) {
+            final List<VariantContext> queryResults = featureSource.queryAndPrefetch(queryInterval);
+            checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
+        }
     }
 
     /**************************************************

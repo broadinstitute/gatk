@@ -59,13 +59,13 @@ public abstract class VariantWalker extends GATKTool {
         }
 
         if ( hasIntervals() ) {
-            throw new UserException("VariantWalkers do not yet support traversal by intervals");
+            drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
         }
     }
 
     /**
      * Implementation of variant-based traversal.
-     * Subclasses can override to provide own behavior but default implementation should be suitable for most uses.
+     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      */
     @Override
     public void traverse() {
