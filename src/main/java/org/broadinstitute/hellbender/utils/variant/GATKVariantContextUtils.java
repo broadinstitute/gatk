@@ -49,7 +49,7 @@ public class GATKVariantContextUtils {
             return false;
         if (variantContext.getStart() > region.getStop())
             return false;
-        if (!variantContext.getChr().equals(region.getContig()))
+        if (!variantContext.getContig().equals(region.getContig()))
             return false;
         return true;
     }
@@ -88,7 +88,7 @@ public class GATKVariantContextUtils {
                 if ( ref == null || ref.length() < myRef.length() )
                     ref = myRef;
                 else if ( ref.length() == myRef.length() && ! ref.equals(myRef) )
-                    throw new TribbleException(String.format("The provided variant file(s) have inconsistent references for the same position(s) at %s:%d, %s vs. %s", vc.getChr(), vc.getStart(), ref, myRef));
+                    throw new TribbleException(String.format("The provided variant file(s) have inconsistent references for the same position(s) at %s:%d, %s vs. %s", vc.getContig(), vc.getStart(), ref, myRef));
             }
         }
 
@@ -627,7 +627,7 @@ public class GATKVariantContextUtils {
             if ( hasPLIncompatibleAlleles(alleles, vc.getAlleles())) {
                 if ( ! genotypes.isEmpty() ) {
                     logger.debug(String.format("Stripping PLs at %s:%d-%d due to incompatible alleles merged=%s vs. single=%s",
-                            vc.getChr(), vc.getStart(), vc.getEnd(), alleles, vc.getAlleles()));
+                            vc.getContig(), vc.getStart(), vc.getEnd(), alleles, vc.getAlleles()));
                 }
                 genotypes = stripPLsAndAD(genotypes);
                 // this will remove stale AC,AF attributed from vc
@@ -676,7 +676,7 @@ public class GATKVariantContextUtils {
         final String ID = rsIDs.isEmpty() ? VCFConstants.EMPTY_ID_FIELD : Utils.join(",", rsIDs);
 
         final VariantContextBuilder builder = new VariantContextBuilder().source(name).id(ID);
-        builder.loc(longestVC.getChr(), longestVC.getStart(), longestVC.getEnd());
+        builder.loc(longestVC.getContig(), longestVC.getStart(), longestVC.getEnd());
         builder.alleles(alleles);
         builder.genotypes(genotypes);
         builder.log10PError(log10PError);
@@ -1155,7 +1155,7 @@ public class GATKVariantContextUtils {
 
         if ( vc1.getStart() != vc2.getStart() ) return false;
         if ( vc1.getEnd() != vc2.getEnd() ) return false;
-        if ( ! vc1.getChr().equals(vc2.getChr())) return false;
+        if ( !vc1.getContig().equals(vc2.getContig())) return false;
         if ( ! vc1.getAlleles().equals(vc2.getAlleles()) ) return false;
         return true;
     }

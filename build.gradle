@@ -69,7 +69,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
-    compile 'com.github.samtools:htsjdk:1.129'
+    compile 'com.github.samtools:htsjdk:1.130'
     compile 'org.apache.logging.log4j:log4j-api:2.1'
     compile 'org.apache.logging.log4j:log4j-core:2.1'
     compile 'org.apache.commons:commons-lang3:3.3.2'

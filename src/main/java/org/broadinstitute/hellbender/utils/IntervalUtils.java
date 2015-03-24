@@ -132,8 +132,8 @@ public class IntervalUtils {
 
                 int nInvalidIntervals = 0;
                 for (Interval interval : il.getIntervals()) {
-                    if ( glParser.isValidGenomeLoc(interval.getSequence(), interval.getStart(), interval.getEnd(), true))
-                        ret.add(glParser.createGenomeLoc(interval.getSequence(), interval.getStart(), interval.getEnd(), true));
+                    if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true))
+                        ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
                     else {
                         nInvalidIntervals++;
                     }

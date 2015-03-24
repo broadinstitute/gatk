@@ -42,11 +42,16 @@ public class SAMPileupFeature implements Feature {
     SAMPileupFeature() {}
 
     public String getChr() {
-        return contig;
+        return getContig();
     }
 
     protected void setChr(String chr) {
         this.contig = chr;
+    }
+
+    @Override
+    public String getContig() {
+        return contig;
     }
 
     public int getStart() {
@@ -97,9 +102,9 @@ public class SAMPileupFeature implements Feature {
     public String getPileupString()
     {
         if(start == stop)
-            return String.format("%s:%d: %s %s %s", getChr(), getStart(), getRef(), getBasesAsString(), getQualsAsString());
+            return String.format("%s:%d: %s %s %s", getContig(), getStart(), getRef(), getBasesAsString(), getQualsAsString());
         else
-            return String.format("%s:%d-%d: %s %s %s", getChr(), getStart(), getEnd(), getRef(), getBasesAsString(), getQualsAsString());
+            return String.format("%s:%d-%d: %s %s %s", getContig(), getStart(), getEnd(), getRef(), getBasesAsString(), getQualsAsString());
     }
 
     /**

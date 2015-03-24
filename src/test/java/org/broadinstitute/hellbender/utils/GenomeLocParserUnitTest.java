@@ -5,8 +5,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.tribble.BasicFeature;
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -391,9 +391,9 @@ public class GenomeLocParserUnitTest extends BaseTest {
 
     @Test
     public void testCreationFromFeature() {
-        final Feature feature = new BasicFeature("1", 1, 5);
+        final Feature feature = new SimpleFeature("1", 1, 5);
         final GenomeLoc loc = genomeLocParser.createGenomeLoc(feature);
-        Assert.assertEquals(loc.getContig(), feature.getChr());
+        Assert.assertEquals(loc.getContig(), feature.getContig());
         Assert.assertEquals(loc.getStart(), feature.getStart());
         Assert.assertEquals(loc.getStop(), feature.getEnd());
     }
@@ -402,7 +402,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
     public void testCreationFromVariantContext() {
         final VariantContext feature = new VariantContextBuilder("x", "1", 1, 5, Arrays.asList(Allele.create("AAAAA", true))).make();
         final GenomeLoc loc = genomeLocParser.createGenomeLoc(feature);
-        Assert.assertEquals(loc.getContig(), feature.getChr());
+        Assert.assertEquals(loc.getContig(), feature.getContig());
         Assert.assertEquals(loc.getStart(), feature.getStart());
         Assert.assertEquals(loc.getStop(), feature.getEnd());
     }

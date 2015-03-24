@@ -77,7 +77,7 @@ public class ExampleIntervalWalker extends IntervalWalker {
     private void printVariants( final FeatureContext featureContext ) {
         for ( VariantContext variant : featureContext.getValues(optionalVariants.variantFiles) ) {
             outputStream.printf("\tOverlapping variant at %s:%d-%d. Ref: %s Alt(s): %s\n",
-                                variant.getChr(), variant.getStart(), variant.getEnd(), variant.getReference(), variant.getAlternateAlleles());
+                    variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(), variant.getAlternateAlleles());
         }
         outputStream.println();
     }

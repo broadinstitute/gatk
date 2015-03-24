@@ -220,6 +220,11 @@ public class RefSeqFeature implements Transcript, Feature {
     }
 
     public String getChr() {
+        return getContig();
+    }
+
+    @Override
+    public String getContig() {
         return transcript_interval.getContig();
     }
 
