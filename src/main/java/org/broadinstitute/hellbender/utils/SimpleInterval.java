@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 
 /**
  * Minimal immutable class representing a 1-based closed ended genomic interval
@@ -35,6 +36,25 @@ public class SimpleInterval implements Locatable {
         this.start = start;
         this.end = end;
     }
+
+    /**
+     * HACK to avoid refactoring the interval parsing system for now.
+     * Create a SimpleInterval from a String that has the format chr:start-end
+     * @param intervalString in the format chr:start-end
+     */
+    public static SimpleInterval valueOf(String intervalString){
+        String[] pieces = intervalString.split("[:-]");
+        try{
+            if( pieces.length != 3){
+                throw new GATKException("Failed to create a new SimpleInterval from the value, expected a string of the form <chr>:<start>-<end>, got %s.");
+            }
+            return new SimpleInterval(pieces[0], Integer.valueOf(pieces[1]), Integer.valueOf(pieces[2]));
+        } catch( NumberFormatException e ) {
+            throw new GATKException(String.format("Failed to create a new SimpleInterval from the value, expected a string of the form <chr>:<start>-<end>, got %s.",
+                    intervalString), e);
+        }
+    }
+
 
     @Override
     public boolean equals(final Object o) {

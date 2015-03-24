@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -129,5 +130,33 @@ public class SimpleIntervalUnitTest extends BaseTest {
     public void testContains( final SimpleInterval firstInterval, final SimpleInterval secondInterval, final boolean expectedContainsResult ) {
         Assert.assertEquals(firstInterval.contains(secondInterval), expectedContainsResult,
                             "contains() returned incorrect result for intervals " + firstInterval + " and " + secondInterval);
+    }
+
+    @DataProvider(name = "badIntervalStrings")
+    public Object[][] badIntervalStrings(){
+        return new Object[][] {
+                {"1-2"},
+                {"1:1"},
+                {"1:ten"},
+                {"1:10-10-1"}
+        };
+    }
+
+    @Test(expectedExceptions = GATKException.class, dataProvider = "badIntervalStrings")
+    public void testValueOfStringBad(String intervalString){
+        SimpleInterval.valueOf(intervalString);
+    }
+
+    @DataProvider(name = "goodIntervalStrings")
+    public Object[][] goodIntervalStrings() {
+        return new Object[][]{
+                {"chr1:1-10", new SimpleInterval("chr1",1,10)},
+                {"100:20-5000", new SimpleInterval("100",20, 5000)}
+        };
+    }
+
+    @Test(dataProvider = "goodIntervalStrings")
+    public void testValueOfString(String intervalString, SimpleInterval expected){
+        Assert.assertEquals(SimpleInterval.valueOf(intervalString), expected);
     }
 }

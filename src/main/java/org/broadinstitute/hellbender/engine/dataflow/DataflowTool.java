@@ -8,11 +8,16 @@ import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
+import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 public abstract class DataflowTool extends CommandLineProgram implements Serializable {
@@ -37,6 +42,10 @@ public abstract class DataflowTool extends CommandLineProgram implements Seriali
     @Argument(fullName = "staging", doc="dataflow staging location, this should be a google bucket of the form gs://", optional = true)
     String stagingLocation;
 
+    @Argument(fullName = "dataflowIntervals")
+    private List<String> intervalStrings = new ArrayList<>();
+
+    protected final List<SimpleInterval> intervals = new ArrayList<>();
 
     @Override
     protected String[] customCommandLineValidation(){
@@ -50,11 +59,13 @@ public abstract class DataflowTool extends CommandLineProgram implements Seriali
 
     @Override
     protected Object doWork() {
+        intervals.addAll(intervalStrings.stream().map(SimpleInterval::valueOf).collect(Collectors.toList()));
         DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
         options.setProject(projectID);
         options.setStagingLocation(stagingLocation);
         options.setRunner(this.runner.runner);
         Pipeline p = Pipeline.create(options);
+        DataflowWorkarounds.registerGenomicsCoders(p);
         setupPipeline(p);
         p.run();
         return null;

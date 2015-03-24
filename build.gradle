@@ -1,6 +1,7 @@
 buildscript {
     repositories {
         mavenCentral()
+
      }
 
     dependencies {
@@ -82,6 +83,7 @@ dependencies {
     compile 'com.google.guava:guava:18.0'
     compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.3.150109'
     compile 'com.google.apis:google-api-services-genomics:v1beta2-rev26-1.19.1'
+    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.22'
 
 
     testCompile 'org.testng:testng:6.8.8'
