@@ -21,6 +21,11 @@ public class BeagleFeature implements Feature {
 
 
     public String getChr() {
+        return getContig();
+    }
+
+    @Override
+    public String getContig() {
         return chr;
     }
 

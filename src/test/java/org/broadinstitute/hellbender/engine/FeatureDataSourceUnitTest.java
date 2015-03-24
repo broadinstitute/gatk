@@ -402,6 +402,11 @@ public class FeatureDataSourceUnitTest extends BaseTest {
 
         @Override
         public String getChr() {
+            return getContig();
+        }
+
+        @Override
+        public String getContig() {
             return chr;
         }
 
@@ -422,7 +427,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
             }
 
             ArtificialTestFeature otherFeature = (ArtificialTestFeature)other;
-            return chr.equals(otherFeature.getChr()) && start == otherFeature.getStart() && end == otherFeature.getEnd();
+            return chr.equals(otherFeature.getContig()) && start == otherFeature.getStart() && end == otherFeature.getEnd();
         }
 
         @Override

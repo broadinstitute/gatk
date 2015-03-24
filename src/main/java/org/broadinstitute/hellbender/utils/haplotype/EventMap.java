@@ -328,7 +328,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
     public String toString() {
         final StringBuilder b = new StringBuilder("EventMap{");
         for ( final VariantContext vc : getVariantContexts() )
-            b.append(String.format("%s:%d-%d %s,", vc.getChr(), vc.getStart(), vc.getEnd(), vc.getAlleles()));
+            b.append(String.format("%s:%d-%d %s,", vc.getContig(), vc.getStart(), vc.getEnd(), vc.getAlleles()));
         b.append("}");
         return b.toString();
     }

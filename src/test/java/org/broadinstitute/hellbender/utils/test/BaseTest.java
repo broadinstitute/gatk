@@ -273,7 +273,7 @@ public abstract class BaseTest {
 
     public static void assertVariantContextsAreEqual( final VariantContext actual, final VariantContext expected ) {
         Assert.assertNotNull(actual, "VariantContext expected not null");
-        Assert.assertEquals(actual.getChr(), expected.getChr(), "chr");
+        Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
         Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
         Assert.assertEquals(actual.getEnd(), expected.getEnd(), "end");
         Assert.assertEquals(actual.getID(), expected.getID(), "id");

@@ -78,8 +78,8 @@ public class PrintReadsWithVariants extends ReadWalker {
 
     private void printOverlappingVariant( final VariantContext variant ) {
         outputStream.printf("Overlapping variant at %s:%d-%d: Ref: %s Alt(s): %s\n",
-                            variant.getChr(), variant.getStart(), variant.getEnd(),
-                            variant.getReference(), variant.getAlternateAlleles());
+                variant.getContig(), variant.getStart(), variant.getEnd(),
+                variant.getReference(), variant.getAlternateAlleles());
     }
 
     @Override

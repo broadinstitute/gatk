@@ -58,7 +58,7 @@ public class HapMapUnitTest extends BaseTest {
         Assert.assertEquals(feature.getEnd(),556738);
 
         // check the contig
-        Assert.assertTrue("chr1".equals(feature.getChr()));
+        Assert.assertTrue("chr1".equals(feature.getContig()));
                 
         // check the assembly, center, protLSID, assayLSID, panelLSID, and qccode
         Assert.assertTrue("ncbi_b36".equals(feature.getAssembly()));

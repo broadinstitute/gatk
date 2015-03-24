@@ -2,15 +2,16 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -1401,7 +1402,7 @@ public class GATKVariantContextUtilsUnitTest extends BaseTest {
             expected = false;
         else if (vc.getEnd() < genomeLoc.getStart())
             expected = false;
-        else if (!vc.getChr().equals(genomeLoc.getContig()))
+        else if (!vc.getContig().equals(genomeLoc.getContig()))
             expected = false;
         else
             expected = true;

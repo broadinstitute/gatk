@@ -81,6 +81,11 @@ public class RawHapMapFeature implements Feature {
      * @return a string representing the contig
      */
     public String getChr() {
+        return getContig();
+    }
+
+    @Override
+    public String getContig() {
         return contig;
     }
 

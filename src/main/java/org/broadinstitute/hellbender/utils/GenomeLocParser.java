@@ -407,7 +407,7 @@ public final class GenomeLocParser {
      * @return
      */
     public GenomeLoc createGenomeLoc(final Feature feature) {
-        return createGenomeLoc(feature.getChr(), feature.getStart(), feature.getEnd());
+        return createGenomeLoc(feature.getContig(), feature.getStart(), feature.getEnd());
     }
 
     /**
