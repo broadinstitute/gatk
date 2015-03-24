@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 
@@ -32,7 +33,7 @@ public class FlagStat extends ReadWalker {
     }
 
     // what comes out of the flagstat
-    public final static class FlagStatus {
+    public final static class FlagStatus implements Serializable{
         long readCount = 0L;
         long QC_failure = 0L;
         long duplicates = 0L;

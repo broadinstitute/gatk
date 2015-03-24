@@ -4,13 +4,15 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.io.Serializable;
+
 /**
  * Minimal immutable class representing a 1-based closed ended genomic interval
  * SimpleInterval does not allow null contig names.  It cannot represent an unmapped Locatable.
  *
  *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
-public class SimpleInterval implements Locatable {
+public class SimpleInterval implements Locatable, Serializable {
 
     private final int start;
     private final int end;

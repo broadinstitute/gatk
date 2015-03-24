@@ -15,10 +15,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory.OfflineAuth;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -26,6 +23,7 @@ import org.broadinstitute.hellbender.tools.FlagStat;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -34,11 +32,11 @@ import java.util.stream.Collectors;
 public class FlagStatDataflow extends DataflowTool {
     private static final Logger LOG = Logger.getLogger(FlagStatDataflow.class.getName());
 
-    @ArgumentCollection
-    private IntervalArgumentCollection intervalArgs = new IntervalArgumentCollection();
+    //@ArgumentCollection
+    //private IntervalArgumentCollection intervalArgs = new IntervalArgumentCollection();
 
-    @ArgumentCollection
-    private RequiredReadInputArgumentCollection readsArguments = new RequiredReadInputArgumentCollection();
+    //@ArgumentCollection
+    //private RequiredReadInputArgumentCollection readsArguments = new RequiredReadInputArgumentCollection();
 
    // @ArgumentCollection
    // private RequiredReferenceInputArgumentCollection refArgs = new RequiredReferenceInputArgumentCollection();
@@ -46,12 +44,16 @@ public class FlagStatDataflow extends DataflowTool {
     @Argument
     private String outputFile;
 
+    @Argument
+    private File clientSecret = new File("client_secret.json");
 
+    @Argument
+    List<String> bams;
 
     @Override
     protected void setupPipeline(Pipeline pipeline) {
         OfflineAuth auth;
-        GCSOptions ops = PipelineOptionsFactory.fromArgs(getCommandLineParser().getArgv()).as(GCSOptions.class);
+        GCSOptions ops = PipelineOptionsFactory.fromArgs(new String[]{ "--genomicsSecretsFile="+clientSecret.getAbsolutePath()}).as(GCSOptions.class);
         GenomicsOptions.Methods.validateOptions(ops);
         try {
             auth = GCSOptions.Methods.createGCSAuth(ops);
@@ -63,12 +65,14 @@ public class FlagStatDataflow extends DataflowTool {
                 .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                 .collect(Collectors.toList());
 
-        List<String> bams = readsArguments.readFiles.stream().map(File::getPath).collect(Collectors.toList());
+
 
         PCollection<Read> preads= ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, bams);
 
+        preads.apply(Combine.globally(new CombineCounts()))
+                .apply(TextIO.Write.to(outputFile));
         //preads.apply(ParDo.of(new readsToCount()));
-        preads.apply(Combine.globally(new CombineCounts())).apply(TextIO.Write.to(outputFile));
+       // preads.apply(Combine.globally(new CombineCounts()))
 
     }
 
@@ -81,7 +85,7 @@ public class FlagStatDataflow extends DataflowTool {
     }
 
 
-    public class StatCounter implements Accumulator<Read, StatCounter, String> {
+    public class StatCounter implements Accumulator<Read, StatCounter, String>, Serializable {
         private FlagStat.FlagStatus stats = new FlagStat.FlagStatus();
 
         @Override
