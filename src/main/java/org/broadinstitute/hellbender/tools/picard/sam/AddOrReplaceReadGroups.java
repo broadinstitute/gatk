@@ -62,6 +62,12 @@ public class AddOrReplaceReadGroups extends PicardCommandLineProgram {
     @Argument(shortName = "PI", doc = "Read Group predicted insert size", optional = true)
     public Integer RGPI;
 
+    @Argument(shortName = "PG", doc = "Read Group program group", optional = true)
+    public String RGPG;
+
+    @Argument(shortName = "PM", doc = "Read Group platform model", optional = true)
+    public String RGPM;
+
     private final Log log = Log.getInstance(AddOrReplaceReadGroups.class);
 
     protected Object doWork() {
@@ -80,6 +86,8 @@ public class AddOrReplaceReadGroups extends PicardCommandLineProgram {
         if (RGDS != null) rg.setDescription(RGDS);
         if (RGDT != null) rg.setRunDate(RGDT);
         if (RGPI != null) rg.setPredictedMedianInsertSize(RGPI);
+        if (RGPG != null) rg.setProgramGroup(RGPG);
+        if (RGPM != null) rg.setPlatformModel(RGPM);
 
         log.info(String.format("Created read group ID=%s PL=%s LB=%s SM=%s%n", rg.getId(), rg.getPlatform(), rg.getLibrary(), rg.getSample()));
 
