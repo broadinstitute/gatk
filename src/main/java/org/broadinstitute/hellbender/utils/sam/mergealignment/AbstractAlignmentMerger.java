@@ -197,15 +197,6 @@ public abstract class AbstractAlignmentMerger {
         // Open the file of unmapped records and write the read groups to the the header for the merged file
         final SamReader unmappedSam = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).open(this.unmappedBamFile);
 
-        // Check that the program record we are going to insert is not already used in the unmapped SAM
-        if (getProgramRecord() != null) {
-            for (final SAMProgramRecord pg : unmappedSam.getFileHeader().getProgramRecords()) {
-                if (pg.getId().equals(getProgramRecord().getId())) {
-                    throw new GATKException("Program Record ID already in use in unmapped BAM file.");
-                }
-            }
-        }
-
         final CloseableIterator<SAMRecord> unmappedIterator = unmappedSam.iterator();
         this.header.setReadGroups(unmappedSam.getFileHeader().getReadGroups());
 
@@ -215,6 +206,17 @@ public abstract class AbstractAlignmentMerger {
         // Get the aligned records and set up the first one
         alignedIterator = new MultiHitAlignedReadIterator(new FilteringIterator(getQuerynameSortedAlignedRecords(), alignmentFilter), primaryAlignmentSelectionStrategy);
         HitsForInsert nextAligned = nextAligned();
+
+        // Check that the program record we are going to insert is not already used in the unmapped SAM
+        // Must come after calling getQuerynameSortedAlignedRecords() in case opening the aligned records
+        // sets the program group
+        if (getProgramRecord() != null) {
+            for (final SAMProgramRecord pg : unmappedSam.getFileHeader().getProgramRecords()) {
+                if (pg.getId().equals(getProgramRecord().getId())) {
+                    throw new GATKException("Program Record ID already in use in unmapped BAM file.");
+                }
+            }
+        }
 
         // Create the sorting collection that will write the records in the coordinate order
         // to the final bam file

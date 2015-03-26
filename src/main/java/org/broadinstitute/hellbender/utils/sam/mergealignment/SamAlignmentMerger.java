@@ -103,16 +103,6 @@ public class SamAlignmentMerger extends AbstractAlignmentMerger {
         this.read1AlignedSamFile = read1AlignedSamFile;
         this.read2AlignedSamFile = read2AlignedSamFile;
         this.maxGaps = maxGaps;
-        if (programRecord == null) {
-            final File tmpFile = this.alignedSamFile != null && this.alignedSamFile.size() > 0
-                    ? this.alignedSamFile.get(0)
-                    : this.read1AlignedSamFile.get(0);
-            final SamReader tmpReader = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).validationStringency(ValidationStringency.SILENT).open(tmpFile);
-            if (tmpReader.getFileHeader().getProgramRecords().size() == 1) {
-                setProgramRecord(tmpReader.getFileHeader().getProgramRecords().get(0));
-            }
-            CloserUtil.close(tmpReader);
-        }
 
         log.info("Processing SAM file(s): " + alignedSamFile != null ? alignedSamFile : read1AlignedSamFile + "," + read2AlignedSamFile);
     }
@@ -151,6 +141,12 @@ public class SamAlignmentMerger extends AbstractAlignmentMerger {
                 final SamReader r = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).open(f);
                 headers.add(r.getFileHeader());
                 readers.add(r);
+
+                // As we're going through and opening the aligned files, if we don't have a @PG yet
+                // and there is only a single one in the input file, use that!
+                if (getProgramRecord() == null && r.getFileHeader().getProgramRecords().size() == 1) {
+                    setProgramRecord(r.getFileHeader().getProgramRecords().iterator().next());
+                }
             }
 
             final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.queryname, headers, false);
@@ -164,6 +160,12 @@ public class SamAlignmentMerger extends AbstractAlignmentMerger {
         else {
             mergingIterator = new SeparateEndAlignmentIterator(this.read1AlignedSamFile, this.read2AlignedSamFile, referenceFasta);
             header = ((SeparateEndAlignmentIterator) mergingIterator).getHeader();
+
+            // As we're going through and opening the aligned files, if we don't have a @PG yet
+            // and there is only a single one in the input file, use that!
+            if (getProgramRecord() == null && header.getProgramRecords().size() == 1) {
+                setProgramRecord(header.getProgramRecords().iterator().next());
+            }
         }
 
 
