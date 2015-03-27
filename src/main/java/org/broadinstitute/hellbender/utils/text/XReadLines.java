@@ -22,16 +22,29 @@ import java.util.List;
  *   doSomeWork(line);
  * }
  *
- * For the love of god, please use this system for reading lines in a file.
+ * Please use this class for reading lines in a file.
  */
-public class XReadLines implements Iterator<String>, Iterable<String> {
+public final class XReadLines implements Iterator<String>, Iterable<String>, AutoCloseable {
     private final BufferedReader in;      // The stream we're reading from
     private String nextLine = null;       // Return value of next call to next()
     private final boolean trimWhitespace;
     private final String commentPrefix;
 
-    public XReadLines(final File filename) throws IOException {
-        this(IOUtils.makeReaderMaybeGzipped(filename), true, null);
+    /**
+     * Opens the given file for reading lines.
+     * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
+     * By default, it will trim whitespaces.
+     */
+    public XReadLines(final File filename) {
+        this(filename, true);
+    }
+
+    /**
+     * Opens the given file for reading lines and optionally trim whitespaces.
+     * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
+     */
+    public XReadLines(final File filename, final boolean trimWhitespace) {
+        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
     }
 
     /**
