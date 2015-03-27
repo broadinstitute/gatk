@@ -377,6 +377,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
         return -1;
     }
 
+    @Override
     public int compareTo( GenomeLoc that ) {
         int result = 0;
 
@@ -439,7 +440,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
             return 0.0;
     }
 
-    private final static double overlapPercent(final GenomeLoc gl1, final GenomeLoc gl2) {
+    private static double overlapPercent(final GenomeLoc gl1, final GenomeLoc gl2) {
         return (1.0 * gl1.intersect(gl2).size()) / gl1.size();
     }
 

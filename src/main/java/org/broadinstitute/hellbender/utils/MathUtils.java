@@ -103,7 +103,7 @@ public final class MathUtils {
     }
 
     /**
-     * Compares double values for equality (within epsilon), or inequality.
+     * Compares double values (if values are within epsilon, they are treated as equal).
      *
      * @param a       the first double value
      * @param b       the second double value
@@ -118,6 +118,18 @@ public final class MathUtils {
             return -1;
         }
         return 1;
+    }
+
+    /**
+     * Compares double values for equality (within epsilon), or inequality.
+     *
+     * @param a       the first double value
+     * @param b       the second double value
+     * @param epsilon the precision within which two double values will be considered equal
+     * @return -1 if a is greater than b, 0 if a is equal to be within epsilon, 1 if b is greater than a.
+     */
+    public static boolean equalDoubles(final double a, final double b, final double epsilon) {
+        return compareDoubles(a,b,epsilon) == 0;
     }
 
     /**
