@@ -19,7 +19,10 @@ public class FeatureInputUnitTest extends BaseTest {
                 { "name:file:file2" },
                 { "name:" },
                 { ":file" },
+                { ",:file" },
+                { "name,key=value=fred:file" },
                 { ":" },
+                { ",:" },
                 { "::" },
                 { "" }
         };
@@ -45,6 +48,34 @@ public class FeatureInputUnitTest extends BaseTest {
 
         Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"), "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "myName", "Wrong name in FeatureInput");
+    }
+
+    @Test
+    public void testFeatureValuesSpecified() {
+       FeatureInput<Feature> featureInput = new FeatureInput<>("myName,key1=value1,key2=value2:myFile");
+
+       Assert.assertEquals(featureInput.getAttribute("key1"), "value1", "wrong attribute value for key1");
+       Assert.assertEquals(featureInput.getAttribute("key2"), "value2", "wrong attribute value for key2");
+       Assert.assertEquals(featureInput.getAttribute("key3"), null, "wrong attribute value for key3 (not present)");
+    }
+
+
+    @DataProvider(name = "KeyValuesDataProvider")
+    public Object[][] getKeyValuesDataProvider() {
+        return new Object[][] {
+                { "myName,key1=value1,key2=value2:myFile" },
+                { "myName:myFile" },
+                { "myFile" },
+                { "null" },
+                { "null:myFile" },
+                { "null:null" },
+        };
+    }
+
+    @Test(dataProvider = "KeyValuesDataProvider", expectedExceptions = IllegalArgumentException.class)
+    public void testFeatureValuesForNullKey(final String featureInputArgument ) {
+        FeatureInput<Feature> featureInput = new FeatureInput<>(featureInputArgument);
+        featureInput.getAttribute(null);
     }
 
     @Test
