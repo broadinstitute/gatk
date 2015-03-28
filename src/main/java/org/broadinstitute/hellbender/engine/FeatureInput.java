@@ -26,7 +26,7 @@ import java.util.Map;
  *
  * Furthermore, a list of comma-separated key=value pairs may be provided as follows:
  *
- *     --argument_name logical_name,key1=value=1,key2=value2:feature_file
+ *     --argument_name logical_name,key1=value1,key2=value2:feature_file
  *
  * the string value provided for a given key can be retrieved via {@link #getAttribute(String)}.
  *
@@ -59,6 +59,16 @@ public final class FeatureInput<T extends Feature> {
     public static final String FEATURE_ARGUMENT_TAG_DELIMITER = ":";
 
     /**
+     * Delimiter between key-value pairs in the --argument_name logical_name,key1=value1,key2=value2:feature_file syntax.
+     */
+    public static final String FEATURE_ARGUMENT_KEY_VALUE_PAIR_DELIMITER = ",";
+
+    /**
+     * Sepatator between keys and values in the --argument_name logical_name,key1=value1,key2=value2:feature_file syntax.
+     */
+    public static final String FEATURE_ARGUMENT_KEY_VALUE_SEPARATOR = "=";
+
+    /**
      * Represents a parsed argument for the FeatureInput.
      * Always has a file and a name.
      * May have attributes.
@@ -69,17 +79,19 @@ public final class FeatureInput<T extends Feature> {
         private final File file;
 
         /**
-         * Parses an argument value String of the form "logical_name:feature_file" or "feature_file"
-         * into logical name and file name components. The absolute path of the file is used as the
-         * logical name if none is present.
+         * Parses an argument value String of the forms:
+         * "logical_name(,key=value)*:feature_file" or
+         * "logical_name:feature_file" or
+         * "feature_file"
+         * into logical name and file name and key=value pairs.
+         *
+         * The absolute path of the file is used as the logical name if none is present.
          *
          * @param rawArgumentValue argument value from the command line to parse
-         * @return A Pair in which the first element is the parsed logical name, and the second element
-         *         is the File containing Features
          */
         public static ParsedArgument of( final String rawArgumentValue ) {
             final String[] tokens = rawArgumentValue.split(FEATURE_ARGUMENT_TAG_DELIMITER, -1);
-            final String usage = "Argument must either be a file, or of the form logical_name:file";
+            final String usage = "Argument must either be a file, or of the form logical_name:file or logical_name(,key=value)*:feature_file";
 
             // Check for malformed argument values
             if ( tokens.length > 2 || tokens.length == 0 ) {
@@ -99,17 +111,17 @@ public final class FeatureInput<T extends Feature> {
 
             // User specified a logical name (and optional list of key-value pairs)
             // for this FeatureInput using name(,key=value)*:File syntax.
-            // eg foo:file.bam
+            // eg foo:file.vcf
             // eg foo,a=3,b=false,c=fred:file.vcf
-            final String[] subtokens= tokens[0].split(",", -1);
-            if (subtokens.length == 0){
+            final String[] subtokens= tokens[0].split(FEATURE_ARGUMENT_KEY_VALUE_PAIR_DELIMITER, -1);
+            if (subtokens[0].isEmpty()){
                 throw new UserException.BadArgumentValue("", rawArgumentValue, usage);
             }
             ParsedArgument pa= new ParsedArgument(subtokens[0], new File(tokens[1]));
             //note: starting from 1 because 0 is the name
             for (int i = 1; i < subtokens.length; i++){
-                String[] kv = subtokens[i].split("=", -1);
-                if (kv.length != 2){
+                String[] kv = subtokens[i].split(FEATURE_ARGUMENT_KEY_VALUE_SEPARATOR, -1);
+                if (kv.length != 2 || kv[0].isEmpty() || kv[1].isEmpty()){
                     throw new UserException.BadArgumentValue("", rawArgumentValue, usage);
                 }
                 pa.addKeyValue(kv[0], kv[1]);
