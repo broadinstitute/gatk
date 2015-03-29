@@ -30,7 +30,10 @@ public class FeatureInputUnitTest extends BaseTest {
                 { ":" },
                 { ",:" },
                 { "::" },
-                { "" }
+                { "" },
+                {"myName,key1=value,myFile"},  //key value pairs without a file
+                { "name,key=value1,key=value2:file" },   //duplicate key
+                { "name,key=value,key=value:file" }      //duplicate key
         };
     }
 
@@ -92,6 +95,17 @@ public class FeatureInputUnitTest extends BaseTest {
 
         Assert.assertEquals(featureInput.getAttribute("key1"), "value1", "wrong attribute value for key1");
         Assert.assertEquals(featureInput.getAttribute("key2"), null, "wrong attribute value for key2 (not present)");
+
+        Assert.assertEquals(featureInput.getName(), "myName");
+        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"));
+    }
+
+    @Test
+    public void testFeatureKeyValuePairsSpecifiedSameValue() {
+        FeatureInput<Feature> featureInput = new FeatureInput<>("myName,key1=value,key2=value:myFile");
+
+        Assert.assertEquals(featureInput.getAttribute("key1"), "value", "wrong attribute value for key1");
+        Assert.assertEquals(featureInput.getAttribute("key2"), "value", "wrong attribute value for key2");
 
         Assert.assertEquals(featureInput.getName(), "myName");
         Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"));

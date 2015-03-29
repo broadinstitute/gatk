@@ -28,7 +28,7 @@ import java.util.Map;
  *
  *     --argument_name logical_name,key1=value1,key2=value2:feature_file
  *
- * the string value provided for a given key can be retrieved via {@link #getAttribute(String)}.
+ * the string value provided for a given key can be retrieved via {@link #getAttribute(String)}. Keys must be unique.
  *
  * @param <T> the type of Feature that this FeatureInput file contains (eg., VariantContext, BEDFeature, etc.)
  */
@@ -104,6 +104,9 @@ public final class FeatureInput<T extends Feature> {
             }
 
             if ( tokens.length == 1 ) {
+                if (tokens[0].contains(FEATURE_ARGUMENT_KEY_VALUE_PAIR_DELIMITER)){
+                    throw new UserException.BadArgumentValue("", rawArgumentValue, "Key-value pairs are only allowed if logical name is provided. " + usage);
+                }
                 // No user-specified logical name for this FeatureInput, so use the absolute path to the File as its name
                 final File featureFile = new File(tokens[0]);
                 return new ParsedArgument(featureFile.getAbsolutePath(), featureFile);
@@ -123,6 +126,9 @@ public final class FeatureInput<T extends Feature> {
                 String[] kv = subtokens[i].split(FEATURE_ARGUMENT_KEY_VALUE_SEPARATOR, -1);
                 if (kv.length != 2 || kv[0].isEmpty() || kv[1].isEmpty()){
                     throw new UserException.BadArgumentValue("", rawArgumentValue, usage);
+                }
+                if (pa.containsKey(kv[0])){
+                    throw new UserException.BadArgumentValue("", rawArgumentValue, "Duplicate key " + kv[0] + "\n" + usage);
                 }
                 pa.addKeyValue(kv[0], kv[1]);
             }
@@ -152,6 +158,10 @@ public final class FeatureInput<T extends Feature> {
 
         public void addKeyValue(String k, String v) {
             keyValueMap.put(k, v);
+        }
+
+        private boolean containsKey(String k) {
+            return keyValueMap.containsKey(k);
         }
     }
     /**
