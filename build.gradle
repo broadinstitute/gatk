@@ -70,7 +70,8 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
-    compile files("/Users/louisb/Workspace/dataflow-java/target/google-genomics-dataflow-v1beta2-0.4-SNAPSHOT.jar")
+    compile files("/Users/louisb/Workspace/dataflow-java/target/google-genomics-dataflow-v1beta2-0.6-SNAPSHOT.jar")
+    compile files("/Users/louisb/.m2/repository/com/google/cloud/genomics/gatk-tools-java/1.1-SNAPSHOT/gatk-tools-java-1.1-SNAPSHOT.jar")
     compile 'com.github.samtools:htsjdk:1.129'
     compile 'org.apache.logging.log4j:log4j-api:2.1'
     compile 'org.apache.logging.log4j:log4j-core:2.1'
@@ -86,6 +87,7 @@ dependencies {
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.22'
 
 
+
     testCompile 'org.testng:testng:6.8.8'
 }
 
@@ -94,11 +96,16 @@ targetCompatibility = 1.8
 
 //set version
 def stdout = new ByteArrayOutputStream()
-exec{
-    commandLine "git","describe","--always","--long"
-    standardOutput = stdout;
+try {
+    exec {
+        commandLine "git", "describe", "--always", "--long"
+        standardOutput = stdout;
 
-    ignoreExitValue = true
+        ignoreExitValue = true
+    }
+} catch (GradleException e){
+    logger.error("Couldn't determine version.  " + e.getMessage())
+    e.printStackTrace();
 }
 version = stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
 

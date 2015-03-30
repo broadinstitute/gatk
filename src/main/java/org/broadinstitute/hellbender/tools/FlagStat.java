@@ -86,26 +86,30 @@ public class FlagStat extends ReadWalker {
 
 
         public FlagStatus add(final Read read){
-            this. readCount++;
+            if(read == null){
+                return this;
+            }
 
-            if (read.getFailedVendorQualityChecks()) {
+            this.readCount++;
+
+            if (read.getFailedVendorQualityChecks() != null && read.getFailedVendorQualityChecks()) {
                 this.QC_failure++;
             }
-            if (read.getDuplicateFragment()) {
+            if (read.getDuplicateFragment() != null && read.getDuplicateFragment()) {
                 this.duplicates++;
             }
             if (read.getAlignment() != null) {
                 this.mapped++;
             }
-            if (read.getNumberReads() == 2) {
+            if (read.getNumberReads() != null && read.getNumberReads() == 2) {
                 this.paired_in_sequencing++;
 
-                if (read.getReadNumber() == 2) {
+                if (read.getReadNumber() != null && read.getReadNumber() == 2) {
                     this.read2++;
-                } else if (read.getReadNumber() == 1) {
+                } else if (read.getReadNumber() != null && read.getReadNumber() == 1) {
                     this.read1++;
                 }
-                if (read.getProperPlacement()) {
+                if (read.getProperPlacement() != null && read.getProperPlacement()) {
                     this.properly_paired++;
                 }
                 if (read.getAlignment() != null && read.getNextMatePosition() != null){

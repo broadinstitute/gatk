@@ -150,7 +150,7 @@ public final class IntegrationTestSpec {
         }
     }
 
-    public void assertMatchingFiles(List<File> resultFiles, List<String> expectedFiles) throws IOException {
+    public static void assertMatchingFiles(List<File> resultFiles, List<String> expectedFiles) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
             File resultFile = resultFiles.get(i);
@@ -164,13 +164,13 @@ public final class IntegrationTestSpec {
         }
     }
 
-    private void compareTextFiles(File resultFile, File expectedFile) throws IOException {
+    private static void compareTextFiles(File resultFile, File expectedFile) throws IOException {
         List<String> actualLines = new XReadLines(resultFile).readLines();
         List<String> expectedLines = new XReadLines(expectedFile).readLines();
         Assert.assertEquals(actualLines.toString(), expectedLines.toString());
     }
 
-    private void compareBamFiles(File resultFile, File expectedFile) throws IOException {
+    private static void compareBamFiles(File resultFile, File expectedFile) throws IOException {
         SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
     }
 }
