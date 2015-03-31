@@ -9,17 +9,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.lang.reflect.Modifier;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * This is the main class of Hellbender and is the way of executing individual command line programs.
@@ -51,6 +41,16 @@ public class Main {
      * The name of this unified command line program *
      */
     private final static String COMMAND_LINE_NAME = Main.class.getSimpleName();
+
+    /**
+     * exit value when an unrecoverable {@link UserException} occurs
+     */
+    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
+    
+    /**
+     * exit value when any unrecoverable exception other than {@link UserException} occurs
+     */
+    private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 1;
 
     /**
      * The packages we wish to include in our command line *
@@ -90,13 +90,19 @@ public class Main {
     public static void main(final String[] args) {
         try {
             Object result = new Main().instanceMain(args, getPackageList(), COMMAND_LINE_NAME);
-            System.out.println("Tool returned:\n" + result);
+            if (result != null) {
+              System.out.println("Tool returned:\n" + result);
+            }
         } catch (UserException e){
             System.err.println("***********************************************************************");
             System.err.println();
             System.err.println(e.getMessage());
             System.err.println();
             System.err.println("***********************************************************************");
+            System.exit(USER_EXCEPTION_EXIT_VALUE);
+        } catch (Exception e){
+            e.printStackTrace();
+            System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
 
@@ -151,7 +157,7 @@ public class Main {
                     }
                 }
                 printUsage(classes, commandLineName);
-                printUnknown(classes, args[0]);
+                throw new UserException(getUnknownCommandMessage(classes, args[0]));
             }
         }
         return null;
@@ -231,15 +237,16 @@ public class Main {
     }
 
     /**
-     * similarity floor for matching in printUnknown *
+     * similarity floor for matching in getUnknownCommandMessage *
      */
     private final static int HELP_SIMILARITY_FLOOR = 7;
     private final static int MINIMUM_SUBSTRING_LENGTH = 5;
 
     /**
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *
+     * @return returns an error message including the closes match if relevant.
      */
-    public static void printUnknown(final Set<Class<?>> classes, final String command) {
+    public static String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
         final Map<Class<?>, Integer> distances = new HashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;
@@ -272,15 +279,19 @@ public class Main {
             bestDistance = HELP_SIMILARITY_FLOOR + 1;
         }
 
+        StringBuilder message = new StringBuilder();
         // Output similar matches
-        System.err.println(String.format("'%s' is not a valid command. See Main --help for more information.", command));
+        message.append(String.format("'%s' is not a valid command.", command));
+        message.append(System.lineSeparator());
         if (bestDistance < HELP_SIMILARITY_FLOOR) {
-            System.err.println(String.format("Did you mean %s?", (bestN < 2) ? "this" : "one of these"));
+            message.append(String.format("Did you mean %s?", (bestN < 2) ? "this" : "one of these"));
+            message.append(System.lineSeparator());
             for (final Class<?> clazz : classes) {
                 if (bestDistance == distances.get(clazz)) {
-                    System.err.println(String.format("        %s", clazz.getSimpleName()));
+                    message.append(String.format("        %s", clazz.getSimpleName()));
                 }
             }
         }
+        return message.toString();
     }
 }
