@@ -31,7 +31,6 @@ public class FeatureInputUnitTest extends BaseTest {
                 { ",:" },
                 { "::" },
                 { "" },
-                {"myName,key1=value,myFile"},  //key value pairs without a file
                 { "name,key=value1,key=value2:file" },   //duplicate key
                 { "name,key=value,key=value:file" }      //duplicate key
         };
@@ -42,13 +41,24 @@ public class FeatureInputUnitTest extends BaseTest {
         FeatureInput<Feature> featureInput = new FeatureInput<>(invalidFeatureArgumentValue);
     }
 
-    @Test
-    public void testNoFeatureNameSpecified() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("myFile");
+    @DataProvider(name = "ValidFileOnlyFeatureArgumentValuesDataProvider")
+    public Object[][] getValidFileOnlyFeatureArgumentValues() {
+        return new Object[][] {
+                {"myFile"},
+                {"myName,key1=value,myFile"},     //allowed - all of this is treated as a file name
+                {"=myFile"},                      //allowed - all of this is treated as a file name
+                {",myFile"},                    //allowed - all of this is treated as a file name
+                {"=,myFile"},                    //allowed - all of this is treated as a file name
+                {"key1=value,myFile"}             //allowed - all of this is treated as a file name
+        };
+    }
+    @Test(dataProvider = "ValidFileOnlyFeatureArgumentValuesDataProvider")
+    public void testNoFeatureNameSpecified(final String validFileOnlyFeatureArgumentValue) {
+        FeatureInput<Feature> featureInput = new FeatureInput<>(validFileOnlyFeatureArgumentValue);   //"myName,key1=value,myFile"
 
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"), "Wrong File in FeatureInput");
+        Assert.assertEquals(featureInput.getFeatureFile(), new File(validFileOnlyFeatureArgumentValue), "Wrong File in FeatureInput");
         // Name should default to the absolute path of the File when no name is specified
-        Assert.assertEquals(featureInput.getName(), new File("myFile").getAbsolutePath(), "Wrong default name in FeatureInput");
+        Assert.assertEquals(featureInput.getName(), new File(validFileOnlyFeatureArgumentValue).getAbsolutePath(), "Wrong default name in FeatureInput");
     }
 
     @Test

@@ -64,7 +64,7 @@ public final class FeatureInput<T extends Feature> {
     public static final String FEATURE_ARGUMENT_KEY_VALUE_PAIR_DELIMITER = ",";
 
     /**
-     * Sepatator between keys and values in the --argument_name logical_name,key1=value1,key2=value2:feature_file syntax.
+     * Separator between keys and values in the --argument_name logical_name,key1=value1,key2=value2:feature_file syntax.
      */
     public static final String FEATURE_ARGUMENT_KEY_VALUE_SEPARATOR = "=";
 
@@ -88,6 +88,7 @@ public final class FeatureInput<T extends Feature> {
          * The absolute path of the file is used as the logical name if none is present.
          *
          * @param rawArgumentValue argument value from the command line to parse
+         * @return The argument parsed from the provided string.
          */
         public static ParsedArgument of( final String rawArgumentValue ) {
             final String[] tokens = rawArgumentValue.split(FEATURE_ARGUMENT_TAG_DELIMITER, -1);
@@ -104,9 +105,6 @@ public final class FeatureInput<T extends Feature> {
             }
 
             if ( tokens.length == 1 ) {
-                if (tokens[0].contains(FEATURE_ARGUMENT_KEY_VALUE_PAIR_DELIMITER)){
-                    throw new UserException.BadArgumentValue("", rawArgumentValue, "Key-value pairs are only allowed if logical name is provided. " + usage);
-                }
                 // No user-specified logical name for this FeatureInput, so use the absolute path to the File as its name
                 final File featureFile = new File(tokens[0]);
                 return new ParsedArgument(featureFile.getAbsolutePath(), featureFile);
