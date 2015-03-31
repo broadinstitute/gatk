@@ -89,15 +89,24 @@ dependencies {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-//set version
-def stdout = new ByteArrayOutputStream()
-exec{
-    commandLine "git","describe","--always","--long"
-    standardOutput = stdout;
 
-    ignoreExitValue = true
+def String deriveVersion(){
+    def stdout = new ByteArrayOutputStream()
+    try {
+        logger.info("path is $System.env.PATH")
+        exec {
+            commandLine "git", "describe", "--always", "--long"
+            standardOutput = stdout;
+
+            ignoreExitValue = true
+        }
+    } catch (GradleException e) {
+        logger.error("Couldn't determine version.  " + e.getMessage())
+    }
+    return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
 }
-version = stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
+
+version = deriveVersion()
 
 
 jar {
