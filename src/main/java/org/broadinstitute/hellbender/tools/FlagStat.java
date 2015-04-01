@@ -104,9 +104,9 @@ public class FlagStat extends ReadWalker {
             if (read.getNumberReads() != null && read.getNumberReads() == 2) {
                 this.paired_in_sequencing++;
 
-                if (read.getReadNumber() != null && read.getReadNumber() == 2) {
+                if (read.getReadNumber() != null && read.getReadNumber() == 1) {
                     this.read2++;
-                } else if (read.getReadNumber() != null && read.getReadNumber() == 1) {
+                } else if (read.getReadNumber() != null && read.getReadNumber() == 0) {
                     this.read1++;
                 }
                 if (read.getProperPlacement() != null && read.getProperPlacement()) {
