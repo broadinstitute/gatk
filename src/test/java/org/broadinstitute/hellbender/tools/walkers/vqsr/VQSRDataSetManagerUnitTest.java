@@ -5,6 +5,8 @@ import joptsimple.internal.Strings;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
@@ -121,6 +123,11 @@ public class VQSRDataSetManagerUnitTest extends BaseTest {
     }
 
     //----------------------------------------------------------
+    @CommandLineProgramProperties(
+            usage = "Test",
+            usageShort = "Test",
+            programGroup = ReadProgramGroup.class
+    )
     private static class TestCLP extends CommandLineProgram{
         @Argument(fullName = "resource", shortName = "resource")
         private List<FeatureInput<VariantContext>> resource= new ArrayList<>();
