@@ -1,21 +1,20 @@
 package org.broadinstitute.hellbender.engine.filters;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.Serializable;
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
-@FunctionalInterface
+
 /**
- * Filters which operate on {@link SAMRecord} should implement this interface by overriding {@link #test(SAMRecord)}
+ * Filters which operate on {@link GATKRead} should implement this interface by overriding {@link #test(GATKRead)}
  *
  * ReadFilter extends Predicate and SerializableFunction.  It provides a default implementation of apply based on the
  * implmenting class's implementation of test().
  */
-public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<SAMRecord, Boolean>{
+@FunctionalInterface
+public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GATKRead, Boolean> {
 
     // It turns out, this is necessary. Please don't remove it.
     // Without this line, we see the following error:
@@ -27,7 +26,7 @@ public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<S
     /**
      * Specialization of {@link #and(Predicate)} so that ReadFilters anded with other ReadFilters produce a ReadFilter
      */
-    default ReadFilter and(ReadFilter other ) {
+    default ReadFilter and( ReadFilter other ) {
             Objects.requireNonNull(other);
             return (t) -> test(t) && other.test(t);
     }
@@ -35,7 +34,7 @@ public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<S
     /**
      * Specialization of {@link #or(Predicate)} so that ReadFilters ored with other ReadFilters produce a ReadFilter
      */
-    default ReadFilter or(ReadFilter other ) {
+    default ReadFilter or( ReadFilter other ) {
         Objects.requireNonNull(other);
         return (t) -> test(t) || other.test(t);
     }
@@ -49,10 +48,10 @@ public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<S
     }
 
     @Override
-    default Boolean apply(SAMRecord read){
+    default Boolean apply( GATKRead read ) {
         return test(read);
     }
 
     @Override
-    boolean test(SAMRecord read);
+    boolean test( GATKRead read );
 }

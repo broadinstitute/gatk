@@ -236,7 +236,8 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
 
-    @Test
+    // TODO: re-enable this once sequence dictionary validation is in
+    @Test(enabled = false)
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
 

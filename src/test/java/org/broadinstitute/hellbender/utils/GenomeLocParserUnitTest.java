@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils;
 
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
@@ -13,7 +12,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -38,7 +39,7 @@ public final class GenomeLocParserUnitTest extends BaseTest {
 
     @BeforeClass
     public void init() {
-        header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 10);
+        header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10);
         genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
     }
 
@@ -251,7 +252,7 @@ public final class GenomeLocParserUnitTest extends BaseTest {
     @DataProvider(name = "flankingGenomeLocs")
     public Object[][] getFlankingGenomeLocs() {
         int contigLength = 10000;
-        SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, contigLength);
+        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, contigLength);
         GenomeLocParser parser = new GenomeLocParser(header.getSequenceDictionary());
 
         new FlankingGenomeLocTestData("atStartBase1", parser, 1,
@@ -351,7 +352,7 @@ public final class GenomeLocParserUnitTest extends BaseTest {
 
     @Test( dataProvider = "parseGenomeLoc")
     public void testParsingPositions(final String string, final String contig, final int start) {
-        SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 10000000);
+        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000000);
         GenomeLocParser genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
         final GenomeLoc loc = genomeLocParser.parseGenomeLoc(string);
         Assert.assertEquals(loc.getContig(), contig);
@@ -361,33 +362,32 @@ public final class GenomeLocParserUnitTest extends BaseTest {
 
     @Test( )
     public void testCreationFromSAMRecord() {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "foo", 0, 1, 5);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "foo", 0, 1, 5);
         final GenomeLoc loc = genomeLocParser.createGenomeLoc(read);
-        Assert.assertEquals(loc.getContig(), read.getReferenceName());
-        Assert.assertEquals(loc.getContigIndex(), (int) read.getReferenceIndex());
-        Assert.assertEquals(loc.getStart(), read.getAlignmentStart());
-        Assert.assertEquals(loc.getStop(), read.getAlignmentEnd());
+        Assert.assertEquals(loc.getContig(), read.getContig());
+        Assert.assertEquals(loc.getContigIndex(), ReadUtils.getReferenceIndex(read, header));
+        Assert.assertEquals(loc.getStart(), read.getStart());
+        Assert.assertEquals(loc.getStop(), read.getEnd());
     }
 
     @Test( )
     public void testCreationFromSAMRecordUnmapped() {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "foo", 0, 1, 5);
-        read.setReadUnmappedFlag(true);
-        read.setReferenceIndex(-1);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "foo", 0, 1, 5);
+        read.setIsUnmapped();
         final GenomeLoc loc = genomeLocParser.createGenomeLoc(read);
         Assert.assertTrue(loc.isUnmapped());
     }
 
     @Test( )
     public void testCreationFromSAMRecordUnmappedButOnGenome() {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "foo", 0, 1, 5);
-        read.setReadUnmappedFlag(true);
-        read.setCigarString("*");
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "foo", 0, 1, 5);
+        read.setIsUnmapped();
+        read.setCigar("*");
         final GenomeLoc loc = genomeLocParser.createGenomeLoc(read);
-        Assert.assertEquals(loc.getContig(), read.getReferenceName());
-        Assert.assertEquals(loc.getContigIndex(), (int) read.getReferenceIndex());
-        Assert.assertEquals(loc.getStart(), read.getAlignmentStart());
-        Assert.assertEquals(loc.getStop(), read.getAlignmentStart());
+        Assert.assertEquals(loc.getContig(), read.getContig());
+        Assert.assertEquals(loc.getContigIndex(), ReadUtils.getReferenceIndex(read, header));
+        Assert.assertEquals(loc.getStart(), read.getStart());
+        Assert.assertEquals(loc.getStop(), read.getStart());
     }
 
     @Test

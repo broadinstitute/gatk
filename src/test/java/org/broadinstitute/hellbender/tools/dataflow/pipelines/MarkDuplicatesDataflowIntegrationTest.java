@@ -2,16 +2,16 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.tools.picard.sam.markduplicates.MarkDuplicatesIntegrationTest;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 
 
 public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTest{
@@ -30,15 +30,26 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--"+StandardArgumentDefinitions.INPUT_LONG_NAME); args.add(input.getPath());
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        File placeHolder = createTempFile("markdups", ".txt");
-        args.add(placeHolder.getPath());
+        File outputFile = createTempFile("markdups", ".bam");
+        args.add(outputFile.getAbsolutePath());
 
         runCommandLine(args.getArgsArray());
-        File outputFile = findDataflowOutput(placeHolder);
 
-        Assert.assertTrue(outputFile.exists());
-        Assert.assertEquals(new XReadLines(outputFile).readLines().size(), totalExpected);
+        Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
 
-        Assert.assertEquals(new XReadLines(outputFile).readLines().stream().filter(line -> line.contains("duplicateFragment\":true")).count(), dupsExpected);
+        int totalReads = 0;
+        int duplicateReads = 0;
+        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile) ) {
+            for ( GATKRead read : outputReads ) {
+                ++totalReads;
+
+                if ( read.isDuplicate() ) {
+                    ++duplicateReads;
+                }
+            }
+        }
+
+        Assert.assertEquals(totalReads, totalExpected, "Wrong number of reads in output BAM");
+        Assert.assertEquals(duplicateReads, dupsExpected, "Wrong number of duplicate reads in output BAM");
     }
 }

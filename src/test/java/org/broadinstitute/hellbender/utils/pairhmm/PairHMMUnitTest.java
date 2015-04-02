@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.base.Strings;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -483,8 +483,8 @@ public final class PairHMMUnitTest extends BaseTest {
         final Haplotype refH= new Haplotype(refBases, true);
 
         final byte[] readQuals= Utils.dupBytes(baseQual, readBases.length);
-        final List<SAMRecord> reads = Arrays.asList(ArtificialSAMUtils.createArtificialRead(readBases, readQuals, readBases.length + "M"));
-        final Map<SAMRecord, byte[]> gpcs = buildGapContinuationPenalties(reads, gcp);
+        final List<GATKRead> reads = Arrays.asList(ArtificialReadUtils.createArtificialRead(readBases, readQuals, readBases.length + "M"));
+        final Map<GATKRead, byte[]> gpcs = buildGapContinuationPenalties(reads, gcp);
 
         hmm.computeLikelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), gpcs);
         Assert.assertEquals(hmm.getLikelihoodArray(), null);
@@ -501,7 +501,7 @@ public final class PairHMMUnitTest extends BaseTest {
     private LikelihoodMatrix<Haplotype> matrix(final List<Haplotype> haplotypes) {
         return new LikelihoodMatrix<Haplotype>() {
             @Override
-            public List<SAMRecord> reads() {
+            public List<GATKRead> reads() {
                 throw new UnsupportedOperationException();
             }
 
@@ -526,7 +526,7 @@ public final class PairHMMUnitTest extends BaseTest {
             }
 
             @Override
-            public int readIndex(SAMRecord read) {
+            public int readIndex(GATKRead read) {
                 throw new UnsupportedOperationException();
             }
 
@@ -546,7 +546,7 @@ public final class PairHMMUnitTest extends BaseTest {
             }
 
             @Override
-            public SAMRecord readAt(int readIndex) {
+            public GATKRead readAt(int readIndex) {
                 throw new UnsupportedOperationException();
             }
 
@@ -557,10 +557,10 @@ public final class PairHMMUnitTest extends BaseTest {
         };
     }
 
-    private static Map<SAMRecord, byte[]> buildGapContinuationPenalties(final List<SAMRecord> processedReads, final byte gcp) {
-        final Map<SAMRecord,byte[]> result = new HashMap<>(processedReads.size());
-        for (final SAMRecord read : processedReads) {
-            final byte[] readGcpArray = new byte[read.getReadLength()];
+    private static Map<GATKRead, byte[]> buildGapContinuationPenalties(final List<GATKRead> processedReads, final byte gcp) {
+        final Map<GATKRead,byte[]> result = new HashMap<>(processedReads.size());
+        for (final GATKRead read : processedReads) {
+            final byte[] readGcpArray = new byte[read.getLength()];
             Arrays.fill(readGcpArray,gcp);
             result.put(read,readGcpArray);
         }

@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -74,7 +74,7 @@ public final class StandardCovariateListUnitTest extends BaseTest {
             private static final long serialVersionUID = 1L;
 
             @Override
-            public void recordValues(SAMRecord read, ReadCovariates values) {
+            public void recordValues(GATKRead read, SAMFileHeader header, ReadCovariates values) {
 
             }
 

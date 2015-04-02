@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -19,7 +20,7 @@ import java.util.*;
 
 public final class ReadUtilsUnitTest extends BaseTest {
     private interface GetAdaptorFunc {
-        public int getAdaptor(final SAMRecord record);
+        public int getAdaptor(final GATKRead record);
     }
 
     @DataProvider(name = "AdaptorGetter")
@@ -27,25 +28,25 @@ public final class ReadUtilsUnitTest extends BaseTest {
         final List<Object[]> tests = new LinkedList<>();
 
         tests.add( new Object[]{ new GetAdaptorFunc() {
-            @Override public int getAdaptor(final SAMRecord record) { return ReadUtils.getAdaptorBoundary(record); }
+            @Override public int getAdaptor(final GATKRead record) { return ReadUtils.getAdaptorBoundary(record); }
         }});
 
         tests.add( new Object[]{ new GetAdaptorFunc() {
-            @Override public int getAdaptor(final SAMRecord record) { return ReadUtils.getAdaptorBoundary(record); }
+            @Override public int getAdaptor(final GATKRead record) { return ReadUtils.getAdaptorBoundary(record); }
         }});
 
         return tests.toArray(new Object[][]{});
     }
 
-    private SAMRecord makeRead(final int fragmentSize, final int mateStart) {
+    private GATKRead makeRead(final int fragmentSize, final int mateStart) {
         final byte[] bases = {'A', 'C', 'G', 'T', 'A', 'C', 'G', 'T'};
         final byte[] quals = {30, 30, 30, 30, 30, 30, 30, 30};
         final String cigar = "8M";
-        SAMRecord read = ArtificialSAMUtils.createArtificialRead(bases, quals, cigar);
-        read.setProperPairFlag(true);
-        read.setReadPairedFlag(true);
-        read.setMateAlignmentStart(mateStart);
-        read.setInferredInsertSize(fragmentSize);
+        GATKRead read = ArtificialReadUtils.createArtificialRead(bases, quals, cigar);
+        read.setIsProperlyPaired(true);
+        read.setIsPaired(true);
+        read.setMatePosition(read.getContig(), mateStart);
+        read.setFragmentLength(fragmentSize);
         return read;
     }
 
@@ -56,63 +57,62 @@ public final class ReadUtilsUnitTest extends BaseTest {
         final int BEFORE = mateStart - 2;
         final int AFTER = mateStart + 2;
         int myStart, boundary;
-        SAMRecord read;
+        GATKRead read;
 
         // Test case 1: positive strand, first read
         read = makeRead(fragmentSize, mateStart);
         myStart = BEFORE;
-        read.setAlignmentStart(myStart);
-        read.setReadNegativeStrandFlag(false);
-        read.setMateNegativeStrandFlag(true);
+        read.setPosition(read.getContig(), myStart);
+        read.setIsReverseStrand(false);
+        read.setMateIsReverseStrand(true);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, myStart + fragmentSize + 1);
 
         // Test case 2: positive strand, second read
         read = makeRead(fragmentSize, mateStart);
         myStart = AFTER;
-        read.setAlignmentStart(myStart);
-        read.setReadNegativeStrandFlag(false);
-        read.setMateNegativeStrandFlag(true);
+        read.setPosition(read.getContig(), myStart);
+        read.setIsReverseStrand(false);
+        read.setMateIsReverseStrand(true);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, myStart + fragmentSize + 1);
 
         // Test case 3: negative strand, second read
         read = makeRead(fragmentSize, mateStart);
         myStart = AFTER;
-        read.setAlignmentStart(myStart);
-        read.setReadNegativeStrandFlag(true);
-        read.setMateNegativeStrandFlag(false);
+        read.setPosition(read.getContig(), myStart);
+        read.setIsReverseStrand(true);
+        read.setMateIsReverseStrand(false);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, mateStart - 1);
 
         // Test case 4: negative strand, first read
         read = makeRead(fragmentSize, mateStart);
         myStart = BEFORE;
-        read.setAlignmentStart(myStart);
-        read.setReadNegativeStrandFlag(true);
-        read.setMateNegativeStrandFlag(false);
+        read.setPosition(read.getContig(), myStart);
+        read.setIsReverseStrand(true);
+        read.setMateIsReverseStrand(false);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, mateStart - 1);
 
         // Test case 5: mate is mapped to another chromosome (test both strands)
         read = makeRead(fragmentSize, mateStart);
-        read.setInferredInsertSize(0);
-        read.setReadNegativeStrandFlag(true);
-        read.setMateNegativeStrandFlag(false);
+        read.setFragmentLength(0);
+        read.setIsReverseStrand(true);
+        read.setMateIsReverseStrand(false);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY);
-        read.setReadNegativeStrandFlag(false);
-        read.setMateNegativeStrandFlag(true);
+        read.setIsReverseStrand(false);
+        read.setMateIsReverseStrand(true);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY);
-        read.setInferredInsertSize(10);
+        read.setFragmentLength(10);
 
         // Test case 6: read is unmapped
         read = makeRead(fragmentSize, mateStart);
-        read.setReadUnmappedFlag(true);
+        read.setIsUnmapped();
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY);
-        read.setReadUnmappedFlag(false);
 
         // Test case 7:  reads don't overlap and look like this:
         //    <--------|
@@ -120,44 +120,44 @@ public final class ReadUtilsUnitTest extends BaseTest {
         // first read:
         read = makeRead(fragmentSize, mateStart);
         myStart = 980;
-        read.setAlignmentStart(myStart);
-        read.setInferredInsertSize(20);
-        read.setReadNegativeStrandFlag(true);
+        read.setPosition(read.getContig(), myStart);
+        read.setFragmentLength(20);
+        read.setIsReverseStrand(true);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY);
 
         // second read:
         read = makeRead(fragmentSize, mateStart);
         myStart = 1000;
-        read.setAlignmentStart(myStart);
-        read.setInferredInsertSize(20);
-        read.setMateAlignmentStart(980);
-        read.setReadNegativeStrandFlag(false);
+        read.setPosition(read.getContig(), myStart);
+        read.setFragmentLength(20);
+        read.setMatePosition(read.getContig(), 980);
+        read.setIsReverseStrand(false);
         boundary = get.getAdaptor(read);
         Assert.assertEquals(boundary, ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY);
 
         // Test case 8: read doesn't have proper pair flag set
         read = makeRead(fragmentSize, mateStart);
-        read.setReadPairedFlag(true);
-        read.setProperPairFlag(false);
+        read.setIsPaired(true);
+        read.setIsProperlyPaired(false);
         Assert.assertEquals(get.getAdaptor(read), ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY);
 
         // Test case 9: read and mate have same negative flag setting
         for ( final boolean negFlag: Arrays.asList(true, false) ) {
             read = makeRead(fragmentSize, mateStart);
-            read.setAlignmentStart(BEFORE);
-            read.setReadPairedFlag(true);
-            read.setProperPairFlag(true);
-            read.setReadNegativeStrandFlag(negFlag);
-            read.setMateNegativeStrandFlag(!negFlag);
+            read.setPosition(read.getContig(), BEFORE);
+            read.setIsPaired(true);
+            read.setIsProperlyPaired(true);
+            read.setIsReverseStrand(negFlag);
+            read.setMateIsReverseStrand(!negFlag);
             Assert.assertTrue(get.getAdaptor(read) != ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY, "Get adaptor should have succeeded");
 
             read = makeRead(fragmentSize, mateStart);
-            read.setAlignmentStart(BEFORE);
-            read.setReadPairedFlag(true);
-            read.setProperPairFlag(true);
-            read.setReadNegativeStrandFlag(negFlag);
-            read.setMateNegativeStrandFlag(negFlag);
+            read.setPosition(read.getContig(), BEFORE);
+            read.setIsPaired(true);
+            read.setIsProperlyPaired(true);
+            read.setIsReverseStrand(negFlag);
+            read.setMateIsReverseStrand(negFlag);
             Assert.assertEquals(get.getAdaptor(read), ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY, "Get adaptor should have failed for reads with bad alignment orientation");
         }
     }
@@ -168,8 +168,8 @@ public final class ReadUtilsUnitTest extends BaseTest {
         Random random = Utils.getRandomGenerator();
         while(iterations-- > 0) {
             final int l = random.nextInt(1000);
-            SAMRecord read = ArtificialSAMUtils.createRandomRead(l);
-            byte [] original = read.getReadBases();
+            GATKRead read = ArtificialReadUtils.createRandomRead(l);
+            byte [] original = read.getBases();
             byte [] reconverted = new byte[l];
             String revComp = ReadUtils.getBasesReverseComplement(read);
             for (int i=0; i<l; i++) {
@@ -183,15 +183,15 @@ public final class ReadUtilsUnitTest extends BaseTest {
     public void testGetMaxReadLength() {
         for( final int minLength : Arrays.asList( 5, 30, 50 ) ) {
             for( final int maxLength : Arrays.asList( 50, 75, 100 ) ) {
-                final List<SAMRecord> reads = new ArrayList<>();
+                final List<GATKRead> reads = new ArrayList<>();
                 for( int readLength = minLength; readLength <= maxLength; readLength++ ) {
-                    reads.add( ArtificialSAMUtils.createRandomRead( readLength ) );
+                    reads.add( ArtificialReadUtils.createRandomRead( readLength ) );
                 }
                 Assert.assertEquals(ReadUtils.getMaxReadLength(reads), maxLength, "max length does not match");
             }
         }
 
-        final List<SAMRecord> reads = new LinkedList<>();
+        final List<GATKRead> reads = new LinkedList<>();
         Assert.assertEquals(ReadUtils.getMaxReadLength(reads), 0, "Empty list should have max length of zero");
     }
 
@@ -199,13 +199,13 @@ public final class ReadUtilsUnitTest extends BaseTest {
     public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
 
         final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
-        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final int readLength = 76;
 
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
-        read.setReadBases(Utils.dupBytes((byte) 'A', readLength));
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
+        read.setBases(Utils.dupBytes((byte) 'A', readLength));
         read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
-        read.setCigarString("3M414N1D73M");
+        read.setCigar("3M414N1D73M");
 
         final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9392, ReadUtils.ClippingTail.LEFT_TAIL);
         Assert.assertEquals(result, 2);
@@ -215,13 +215,13 @@ public final class ReadUtilsUnitTest extends BaseTest {
     public void testReadWithNsRefAfterDeletion() throws FileNotFoundException {
 
         final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
-        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final int readLength = 76;
 
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
-        read.setReadBases(Utils.dupBytes((byte) 'A', readLength));
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
+        read.setBases(Utils.dupBytes((byte) 'A', readLength));
         read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
-        read.setCigarString("3M414N1D73M");
+        read.setCigar("3M414N1D73M");
 
         final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9393, ReadUtils.ClippingTail.LEFT_TAIL);
         Assert.assertEquals(result, 3);
@@ -232,77 +232,75 @@ public final class ReadUtilsUnitTest extends BaseTest {
         final List<Object[]> tests = new LinkedList<>();
 
         // setup a basic read that will work
-        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader();
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "read1", 0, 10, 10);
-        read.setReadPairedFlag(true);
-        read.setProperPairFlag(true);
-        read.setReadUnmappedFlag(false);
-        read.setMateUnmappedFlag(false);
-        read.setAlignmentStart(100);
-        read.setCigarString("50M");
-        read.setMateAlignmentStart(130);
-        read.setInferredInsertSize(80);
-        read.setFirstOfPairFlag(true);
-        read.setReadNegativeStrandFlag(false);
-        read.setMateNegativeStrandFlag(true);
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 10, 10);
+        read.setIsPaired(true);
+        read.setIsProperlyPaired(true);
+        read.setPosition(read.getContig(), 100);
+        read.setCigar("50M");
+        read.setMatePosition(read.getContig(), 130);
+        read.setFragmentLength(80);
+        read.setIsFirstOfPair();
+        read.setIsReverseStrand(false);
+        read.setMateIsReverseStrand(true);
 
-        tests.add( new Object[]{ "basic case", ReadUtils.clone(read), true });
+        tests.add( new Object[]{ "basic case", read.copy(), true });
 
         {
-            final SAMRecord bad1 = ReadUtils.clone(read);
-            bad1.setReadPairedFlag(false);
+            final GATKRead bad1 = read.copy();
+            bad1.setIsPaired(false);
             tests.add( new Object[]{ "not paired", bad1, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setProperPairFlag(false);
+            final GATKRead bad = read.copy();
+            bad.setIsProperlyPaired(false);
             // we currently don't require the proper pair flag to be set
             tests.add( new Object[]{ "not proper pair", bad, true });
 //            tests.add( new Object[]{ "not proper pair", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setReadUnmappedFlag(true);
+            final GATKRead bad = read.copy();
+            bad.setIsUnmapped();
             tests.add( new Object[]{ "read is unmapped", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setMateUnmappedFlag(true);
+            final GATKRead bad = read.copy();
+            bad.setMateIsUnmapped();
             tests.add( new Object[]{ "mate is unmapped", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setMateNegativeStrandFlag(false);
+            final GATKRead bad = read.copy();
+            bad.setMateIsReverseStrand(false);
             tests.add( new Object[]{ "read and mate both on positive strand", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setReadNegativeStrandFlag(true);
+            final GATKRead bad = read.copy();
+            bad.setIsReverseStrand(true);
             tests.add( new Object[]{ "read and mate both on negative strand", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setInferredInsertSize(0);
+            final GATKRead bad = read.copy();
+            bad.setFragmentLength(0);
             tests.add( new Object[]{ "insert size is 0", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setAlignmentStart(1000);
+            final GATKRead bad = read.copy();
+            bad.setPosition(bad.getContig(), 1000);
             tests.add( new Object[]{ "positve read starts after mate end", bad, false });
         }
 
         {
-            final SAMRecord bad = ReadUtils.clone(read);
-            bad.setReadNegativeStrandFlag(true);
-            bad.setMateNegativeStrandFlag(false);
-            bad.setMateAlignmentStart(1000);
+            final GATKRead bad = read.copy();
+            bad.setIsReverseStrand(true);
+            bad.setMateIsReverseStrand(false);
+            bad.setMatePosition(bad.getMateContig(), 1000);
             tests.add( new Object[]{ "negative strand read ends before mate starts", bad, false });
         }
 
@@ -310,30 +308,83 @@ public final class ReadUtilsUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "HasWellDefinedFragmentSizeData")
-    private void testHasWellDefinedFragmentSize(final String name, final SAMRecord read, final boolean expected) {
+    private void testHasWellDefinedFragmentSize(final String name, final GATKRead read, final boolean expected) {
         Assert.assertEquals(ReadUtils.hasWellDefinedFragmentSize(read), expected);
     }
 
-    @Test
-    public void testReadGroupSetAndGet() {
-        int readLength = 100;
-        SAMRecord read = ArtificialSAMUtils.createRandomRead(readLength);
+    @DataProvider(name = "ReadsWithReadGroupData")
+    public Object[][] readsWithReadGroupData() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 1000000);
+        final SAMReadGroupRecord readGroup = new SAMReadGroupRecord("FOO");
+        readGroup.setPlatform("FOOPLATFORM");
+        readGroup.setPlatformUnit("FOOPLATFORMUNIT");
+        readGroup.setLibrary("FOOLIBRARY");
+        readGroup.setSample("FOOSAMPLE");
+        header.addReadGroup(readGroup);
 
-        String id= "MY.ID";
-        SAMReadGroupRecord rg = new SAMReadGroupRecord(id);
-        ReadUtils.setReadGroup(read, rg);
+        final GATKRead googleBackedRead = new GoogleGenomicsReadToGATKReadAdapter(ArtificialReadUtils.createArtificialGoogleGenomicsRead("google", "1", 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
+        googleBackedRead.setReadGroup("FOO");
 
-        Assert.assertNotNull(read.getHeader(), "header");
+        final GATKRead samBackedRead = new SAMRecordToGATKReadAdapter(ArtificialReadUtils.createArtificialSAMRecord(header, "sam", header.getSequenceIndex("1"), 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
+        samBackedRead.setReadGroup("FOO");
 
-        final SAMReadGroupRecord readGroupFromHD = read.getHeader().getReadGroup(id);
-        Assert.assertNotNull(readGroupFromHD, "read group from header");
-        Assert.assertEquals(readGroupFromHD, rg, "read group from header");
+        return new Object[][] {
+                { googleBackedRead, header, "FOO" },
+                { samBackedRead, header, "FOO" }
+        };
+    }
 
-        Assert.assertNotNull(read.getReadGroup(), "read group from read");
-        Assert.assertEquals(read.getReadGroup(), rg, "read group from read");
+    @Test(dataProvider = "ReadsWithReadGroupData")
+    public void testReadGroupOperations( final GATKRead read, final SAMFileHeader header, final String expectedReadGroupID ) {
+        final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
+        Assert.assertEquals(readGroup.getId(), expectedReadGroupID, "Wrong read group returned from ReadUtils.getSAMReadGroupRecord()");
 
-        String pl = "illumina";
-        read.getReadGroup().setPlatform(pl);
-        Assert.assertEquals(read.getReadGroup().getPlatform(), pl, "platform");
+        Assert.assertEquals(ReadUtils.getPlatform(read, header), readGroup.getPlatform(), "Wrong platform returned from ReadUtils.getPlatform()");
+        Assert.assertEquals(ReadUtils.getPlatformUnit(read, header), readGroup.getPlatformUnit(), "Wrong platform unit returned from ReadUtils.getPlatformUnit()");
+        Assert.assertEquals(ReadUtils.getLibrary(read, header), readGroup.getLibrary(), "Wrong library returned from ReadUtils.getLibrary()");
+        Assert.assertEquals(ReadUtils.getSampleName(read, header), readGroup.getSample(), "Wrong sample name returned from ReadUtils.getSampleName()");
+    }
+
+    @Test(dataProvider = "ReadsWithReadGroupData")
+    public void testReadGroupOperationsOnReadWithNoReadGroup( final GATKRead read, final SAMFileHeader header, final String expectedReadGroupID ) {
+        read.setReadGroup(null);
+
+        Assert.assertNull(ReadUtils.getSAMReadGroupRecord(read, header), "Read group should be null");
+        Assert.assertNull(ReadUtils.getPlatform(read, header), "Platform should be null");
+        Assert.assertNull(ReadUtils.getPlatformUnit(read, header), "Platform unit should be null");
+        Assert.assertNull(ReadUtils.getLibrary(read, header), "Library should be null");
+        Assert.assertNull(ReadUtils.getSampleName(read, header), "Sample name should be null");
+    }
+
+    @DataProvider(name = "ReferenceIndexTestData")
+    public Object[][] referenceIndexTestData() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 1000000);
+
+        final GATKRead googleBackedRead = new GoogleGenomicsReadToGATKReadAdapter(ArtificialReadUtils.createArtificialGoogleGenomicsRead("google", "2", 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
+        googleBackedRead.setMatePosition("1", 1);
+
+        final GATKRead samBackedRead = new SAMRecordToGATKReadAdapter(ArtificialReadUtils.createArtificialSAMRecord(header, "sam", header.getSequenceIndex("2"), 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
+        samBackedRead.setMatePosition("1", 5);
+
+        final GATKRead unmappedGoogleBackedRead = new GoogleGenomicsReadToGATKReadAdapter(ArtificialReadUtils.createArtificialGoogleGenomicsRead("google", "1", 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
+        unmappedGoogleBackedRead.setIsUnmapped();
+        unmappedGoogleBackedRead.setMateIsUnmapped();
+
+        final GATKRead unmappedSamBackedRead = new SAMRecordToGATKReadAdapter(ArtificialReadUtils.createArtificialSAMRecord(header, "sam", header.getSequenceIndex("1"), 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
+        unmappedSamBackedRead.setIsUnmapped();
+        unmappedSamBackedRead.setMateIsUnmapped();
+
+        return new Object[][] {
+                { googleBackedRead, header, 1, 0 },
+                { samBackedRead, header, 1, 0 },
+                { unmappedGoogleBackedRead, header, -1, -1 },
+                { unmappedSamBackedRead, header, -1, -1 }
+        };
+    }
+
+    @Test(dataProvider = "ReferenceIndexTestData")
+    public void testGetReferenceIndex( final GATKRead read, final SAMFileHeader header, final int expectedReferenceIndex, final int expectedMateReferenceIndex ) {
+        Assert.assertEquals(ReadUtils.getReferenceIndex(read, header), expectedReferenceIndex, "Wrong reference index for read");
+        Assert.assertEquals(ReadUtils.getMateReferenceIndex(read, header), expectedMateReferenceIndex, "Wrong reference index for read's mate");
     }
 }

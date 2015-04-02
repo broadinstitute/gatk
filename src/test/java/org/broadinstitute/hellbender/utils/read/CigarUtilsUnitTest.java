@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.Cigar;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
@@ -76,7 +75,7 @@ public final class CigarUtilsUnitTest {
     @Test(dataProvider = "testData_reclipCigar")
     public void testReclipCigar(final String cigarStrIn1, final String cigarStrIn2, final String expectedCigarStrOut){
         final Cigar cigarIn = TextCigarCodec.decode(cigarStrIn1);
-        final SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn2);
+        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn2);
         final Cigar cigarOut = CigarUtils.reclipCigar(cigarIn, read);
         final String actualCigarStrOut = TextCigarCodec.encode(cigarOut);
         Assert.assertEquals(actualCigarStrOut, expectedCigarStrOut);
@@ -180,7 +179,7 @@ public final class CigarUtilsUnitTest {
 
     @Test(dataProvider = "testData_countRefBasesBasedOnCigar")
     public void testCountRefBasesBasedOnCigar(final String cigarStrIn, final int start, final int end, final int expected){
-        final SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
+        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
         final int actual = CigarUtils.countRefBasesBasedOnCigar(read, start, end);
         Assert.assertEquals(actual, expected, cigarStrIn);
     }
@@ -192,19 +191,19 @@ public final class CigarUtilsUnitTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart1(){
         final String cigarStrIn = "1M1=1X";
-        final SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
+        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
         CigarUtils.countRefBasesBasedOnCigar(read, -1, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart2(){
         final String cigarStrIn = "1M1=1X";
-        final SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
+        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
         CigarUtils.countRefBasesBasedOnCigar(read, 2, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarEnd2(){
         final String cigarStrIn = "1M1=1X";
-        final SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
+        final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
         CigarUtils.countRefBasesBasedOnCigar(read, 1, 6);
     }
 

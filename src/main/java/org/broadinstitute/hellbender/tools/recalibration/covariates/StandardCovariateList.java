@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.report.GATKReport;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
 import java.util.*;
@@ -119,11 +118,11 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * For each covariate compute the values for all positions in this read and
      * record the values in the provided storage object.
       */
-    public void recordAllValuesInStorage(final SAMRecord read, final ReadCovariates resultsStorage) {
+    public void recordAllValuesInStorage(final GATKRead read, final SAMFileHeader header, final ReadCovariates resultsStorage) {
         forEach(cov -> {
             final int index = indexByClass(cov.getClass());
             resultsStorage.setCovariateIndex(index);
-            cov.recordValues(read, resultsStorage);
+            cov.recordValues(read, header, resultsStorage);
         });
     }
 

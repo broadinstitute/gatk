@@ -1,18 +1,17 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.Closeable;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -88,7 +87,7 @@ public abstract class PairHMM implements Closeable{
      * @param haplotypeMaxLength the max length of haplotypes we want to use with this PairHMM
      * @param readMaxLength the max length of reads we want to use with this PairHMM
      */
-    public void initialize( final List<Haplotype> haplotypes, final Map<String, List<SAMRecord>> perSampleReadList, final int readMaxLength, final int haplotypeMaxLength ) {
+    public void initialize( final List<Haplotype> haplotypes, final Map<String, List<GATKRead>> perSampleReadList, final int readMaxLength, final int haplotypeMaxLength ) {
         initialize(readMaxLength, haplotypeMaxLength);
     }
 
@@ -103,10 +102,10 @@ public abstract class PairHMM implements Closeable{
         return max;
     }
 
-    static int findMaxReadLength(final List<SAMRecord> reads) {
+    static int findMaxReadLength(final List<GATKRead> reads) {
         int listMaxReadLength = 0;
-        for(final SAMRecord read : reads){
-            final int readLength = read.getReadLength();
+        for(final GATKRead read : reads){
+            final int readLength = read.getLength();
             if( readLength > listMaxReadLength ) {
                 listMaxReadLength = readLength;
             }
@@ -126,8 +125,8 @@ public abstract class PairHMM implements Closeable{
      * @return never {@code null}.
      */
     public void computeLikelihoods(final LikelihoodMatrix<Haplotype> likelihoods,
-                                   final List<SAMRecord> processedReads,
-                                   final Map<SAMRecord, byte[]> gcp) {
+                                   final List<GATKRead> processedReads,
+                                   final Map<GATKRead, byte[]> gcp) {
         if (processedReads.isEmpty()) {
             return;
         }
@@ -147,8 +146,8 @@ public abstract class PairHMM implements Closeable{
         mLikelihoodArray = new double[readCount * alleleCount];
         int idx = 0;
         int readIndex = 0;
-        for(final SAMRecord read : processedReads){
-            final byte[] readBases = read.getReadBases();
+        for(final GATKRead read : processedReads){
+            final byte[] readBases = read.getBases();
             final byte[] readQuals = read.getBaseQualities();
             final byte[] readInsQuals = ReadUtils.getBaseInsertionQualities(read);
             final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(read);

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -303,7 +303,7 @@ public final class GenomeLocUnitTest extends BaseTest {
     @Test
     public void testDistanceAcrossContigs() {
         final int chrSize = 1000;
-        SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(10, 0, chrSize);
+        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(10, 0, chrSize);
         GenomeLocParser parser = new GenomeLocParser(header.getSequenceDictionary());
         GenomeLoc loc1 = parser.createGenomeLoc("3", 500);  // to check regular case
         GenomeLoc loc2 = parser.createGenomeLoc("7", 200);  // to check regular case

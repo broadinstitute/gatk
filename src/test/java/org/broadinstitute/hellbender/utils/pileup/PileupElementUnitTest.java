@@ -2,13 +2,13 @@ package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSTest;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBS_position;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByStateBaseTest;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -30,7 +30,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
 
     @Test(dataProvider = "PileupElementTest")
     public void testPileupElementTest(LIBSTest params) {
-        final SAMRecord read = params.makeRead();
+        final GATKRead read = params.makeRead();
         final AlignmentStateMachine state = new AlignmentStateMachine(read);
         final LIBS_position tester = new LIBS_position(read);
 
@@ -57,7 +57,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
             Assert.assertEquals(pe.atEndOfCurrentCigar(), state.getOffsetIntoCurrentCigarElement() == state.getCurrentCigarElement().getLength() - 1, "atEndOfCurrentCigar failed");
             Assert.assertEquals(pe.atStartOfCurrentCigar(), state.getOffsetIntoCurrentCigarElement() == 0, "atStartOfCurrentCigar failed");
 
-            Assert.assertEquals(pe.getBase(), pe.isDeletion() ? PileupElement.DELETION_BASE : read.getReadBases()[state.getReadOffset()]);
+            Assert.assertEquals(pe.getBase(), pe.isDeletion() ? PileupElement.DELETION_BASE : read.getBases()[state.getReadOffset()]);
             Assert.assertEquals(pe.getQual(), pe.isDeletion() ? PileupElement.DELETION_QUAL : read.getBaseQualities()[state.getReadOffset()]);
 
             Assert.assertEquals(pe.getCurrentCigarElement(), state.getCurrentCigarElement());
@@ -68,7 +68,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
             //pe.getBasesOfImmediatelyFollowingInsertion();
 
             // Don't test -- pe.getBaseIndex();
-            if ( pe.atEndOfCurrentCigar() && state.getCurrentCigarElementOffset() < read.getCigarLength() - 1 ) {
+            if ( pe.atEndOfCurrentCigar() && state.getCurrentCigarElementOffset() < read.getCigar().numCigarElements() - 1 ) {
                 final CigarElement nextElement = read.getCigar().getCigarElement(state.getCurrentCigarElementOffset() + 1);
                 if ( nextElement.getOperator() == CigarOperator.I ) {
                     Assert.assertTrue(pe.getBetweenNextPosition().size() >= 1);
@@ -112,14 +112,14 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
                 for ( final int nIntermediate : Arrays.asList(1, 2, 3) ) {
                     for ( final List<CigarOperator> combination : Utils.makePermutations(operators, nIntermediate, false) ) {
                         final int readLength = 2 + combination.size();
-                        SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "read", 0, 1, readLength);
-                        read.setReadBases(Utils.dupBytes((byte) 'A', readLength));
+                        GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read", 0, 1, readLength);
+                        read.setBases(Utils.dupBytes((byte) 'A', readLength));
                         read.setBaseQualities(Utils.dupBytes((byte) 30, readLength));
 
                         String cigar = "1" + firstOp;
                         for ( final CigarOperator op : combination ) cigar += "1" + op;
                         cigar += "1" + lastOp;
-                        read.setCigarString(cigar);
+                        read.setCigar(cigar);
 
                         tests.add(new Object[]{read, firstOp, lastOp, combination});
                     }
@@ -131,7 +131,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
     }
 
     @Test(dataProvider = "PrevAndNextTest")
-    public void testPrevAndNextTest(final SAMRecord read, final CigarOperator firstOp, final CigarOperator lastOp, final List<CigarOperator> ops) {
+    public void testPrevAndNextTest(final GATKRead read, final CigarOperator firstOp, final CigarOperator lastOp, final List<CigarOperator> ops) {
         final AlignmentStateMachine state = new AlignmentStateMachine(read);
 
         state.stepForwardOnGenome();

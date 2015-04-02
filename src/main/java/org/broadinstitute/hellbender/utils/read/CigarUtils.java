@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.ArrayList;
@@ -122,7 +121,7 @@ public final class CigarUtils {
      * If you remove the 2M3I it is still 12. If you remove 2M3I2D (not reasonable cigar), you will get position 14.
      */
     @SuppressWarnings("fallthru")
-    public static int countRefBasesBasedOnCigar(final SAMRecord read, final int cigarStartIndex, final int cigarEndIndex){
+    public static int countRefBasesBasedOnCigar(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
         if (read == null){
             throw new IllegalArgumentException("null read");
         }
@@ -187,7 +186,7 @@ public final class CigarUtils {
      * then
      * cigar3 = leftClip2 + cigar1 + rightClip2
      */
-    public static Cigar reclipCigar(final Cigar cigar, final SAMRecord read) {
+    public static Cigar reclipCigar(final Cigar cigar, final GATKRead read) {
         if (cigar == null || read == null){
             throw new IllegalArgumentException("null argument");
         }

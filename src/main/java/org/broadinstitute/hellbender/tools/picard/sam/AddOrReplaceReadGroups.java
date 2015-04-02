@@ -93,7 +93,7 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
 
         // create the new header and output file
         final SAMFileHeader inHeader = in.getFileHeader();
-        final SAMFileHeader outHeader = ReadUtils.clone(inHeader);
+        final SAMFileHeader outHeader = ReadUtils.cloneSAMFileHeader(inHeader);
         outHeader.setReadGroups(Arrays.asList(rg));
         if (SORT_ORDER != null) outHeader.setSortOrder(SORT_ORDER);
 

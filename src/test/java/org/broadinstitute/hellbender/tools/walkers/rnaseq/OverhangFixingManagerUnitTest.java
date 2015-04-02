@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -14,10 +15,16 @@ import java.util.List;
 
 public final class OverhangFixingManagerUnitTest extends BaseTest {
 
+    private SAMFileHeader getHG19Header() {
+        final SAMFileHeader header = new SAMFileHeader();
+        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        return header;
+    }
+
     @Test
     public void testCleanSplices() {
 
-        final OverhangFixingManager manager = new OverhangFixingManager(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
 
         final int offset = 10;
         for ( int i = 0; i < OverhangFixingManager.MAX_SPLICES_TO_KEEP + 1; i++ )
@@ -82,7 +89,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test(dataProvider = "MismatchEdgeConditionTest")
     public void testMismatchEdgeCondition(final byte[] read, final int readStart, final byte[] ref, final int refStart, final int overhang) {
-        final OverhangFixingManager manager = new OverhangFixingManager(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
         Assert.assertFalse(manager.overhangingBasesMismatch(read, readStart, ref, refStart, overhang));
     }
 
@@ -108,22 +115,20 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test(dataProvider = "MismatchTest")
     public void testMismatch(final byte[] read, final int readStart, final byte[] ref, final int refStart, final int overhang, final boolean expected) {
-        final OverhangFixingManager manager = new OverhangFixingManager(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
         Assert.assertEquals(manager.overhangingBasesMismatch(read, readStart, ref, refStart, overhang), expected, new String(read) + " vs. " + new String(ref) + " @" + overhang);
     }
 
     @Test
     public void testUnmappedReadsDoNotFail() {
         // create an unmapped read
-        final SAMRecord read = new SAMRecord(ArtificialSAMUtils.createArtificialSamHeader());
-        read.setReadName("foo");
-        read.setReferenceName("*");
-        read.setAlignmentStart(100);
-        read.setCigarString("*");
-        read.setReadUnmappedFlag(true);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(100);
+        read.setName("foo");
+        read.setCigar("*");
+        read.setIsUnmapped();
 
         // try to add it to the manager
-        final OverhangFixingManager manager = new OverhangFixingManager(null, null, null, 100, 1, 30, false);
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, null, null, 100, 1, 30, false);
         manager.addRead(read); // we just want to make sure that the following call does not fail
         Assert.assertTrue(true);
     }

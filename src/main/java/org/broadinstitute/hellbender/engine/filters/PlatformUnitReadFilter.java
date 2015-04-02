@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -18,8 +19,14 @@ public final class PlatformUnitReadFilter implements ReadFilter {
     @Argument(fullName = "blackListedLanes", shortName = "blackListedLanes", doc="Keep reads with platform units not on the list", optional=true)
     public Set<String> blackListedLanes = new HashSet<>();
 
+    private final SAMFileHeader header;
+
+    public PlatformUnitReadFilter( final SAMFileHeader header ) {
+        this.header = header;
+    }
+
     @Override
-    public boolean test(final SAMRecord read) {
+    public boolean test( final GATKRead read ) {
         if (blackListedLanes.isEmpty()) {
             return true;
         }
@@ -27,15 +34,12 @@ public final class PlatformUnitReadFilter implements ReadFilter {
         return pu_attr == null || !blackListedLanes.contains(pu_attr);
     }
 
-    private String getPlatformUnit(final SAMRecord read) {
-        final String pu_attr = read.getStringAttribute(SAMTag.PU.name());
-        if (pu_attr != null) {
+    private String getPlatformUnit( final GATKRead read ) {
+        final String pu_attr = read.getAttributeAsString(SAMTag.PU.name());
+        if ( pu_attr != null ) {
             return pu_attr;
         }
-        SAMReadGroupRecord rgr = read.getReadGroup();
-        if (rgr == null) {
-            return null;
-        }
-        return rgr.getPlatformUnit();
+
+        return ReadUtils.getPlatformUnit(read, header);
     }
 }

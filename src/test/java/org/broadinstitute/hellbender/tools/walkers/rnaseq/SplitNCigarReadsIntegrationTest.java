@@ -3,12 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -40,11 +41,14 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
 
     private IndexedFastaSequenceFile referenceReader;
     private GenomeLocParser genomeLocParser;
+    private SAMFileHeader header;
 
     @BeforeClass
     public void setup() throws FileNotFoundException {
         referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_FASTA);
         genomeLocParser = new GenomeLocParser(referenceReader.getSequenceDictionary());
+        header = new SAMFileHeader();
+        header.setSequenceDictionary(referenceReader.getSequenceDictionary());
     }
 
     @Override
@@ -54,7 +58,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
 
     private final class TestManager extends OverhangFixingManager {
         public TestManager() {
-            super(null, genomeLocParser, referenceReader, 10000, 1, 40, false);
+            super(header, null, genomeLocParser, referenceReader, 10000, 1, 40, false);
         }
     }
 
@@ -66,7 +70,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
         // For Debugging use those lines (instead of above cigarList) to create specific read:
         //------------------------------------------------------------------------------------
         // final GATKSAMRecord tmpRead = GATKSAMRecord.createRandomRead(6);
-        // tmpRead.setCigarString("1M1N1M");
+        // tmpRead.setCigar("1M1N1M");
 
         // final List<Cigar> cigarList = new ArrayList<>();
         // cigarList.add(tmpRead.getCigar());
@@ -78,7 +82,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
             if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
 
                 final TestManager manager = new TestManager();
-                SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigar);
+                GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
                 SplitNCigarReads.splitNCigarRead(read, manager);
                 List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
                 final int expectedReads = numOfSplits+1;
@@ -88,12 +92,12 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
                 int offsetFromStart = 0;
                 for(final OverhangFixingManager.SplitRead splitRead: splitReads){
                     int expectedLength = readLengths.get(index);
-                    Assert.assertTrue(splitRead.read.getReadLength() == expectedLength,
+                    Assert.assertTrue(splitRead.read.getLength() == expectedLength,
                             "the "+index+" (starting with 0) split read has a wrong length.\n" +
                                     "cigar of original read: "+cigar+"\n"+
                                     "expected length: "+expectedLength+"\n"+
-                                    "actual length: "+splitRead.read.getReadLength()+"\n");
-                    assertBases(splitRead.read.getReadBases(), read.getReadBases(), offsetFromStart);
+                                    "actual length: "+splitRead.read.getLength()+"\n");
+                    assertBases(splitRead.read.getBases(), read.getBases(), offsetFromStart);
                     index++;
                     offsetFromStart += expectedLength;
                 }

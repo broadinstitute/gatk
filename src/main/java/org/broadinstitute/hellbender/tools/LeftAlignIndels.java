@@ -8,9 +8,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.*;
 
 import java.io.File;
 
@@ -53,7 +51,7 @@ public final class LeftAlignIndels extends ReadWalker {
     @Argument(doc="Output BAM")
     private File OUTPUT;
 
-    private SAMFileWriter outputWriter = null;
+    private SAMFileGATKReadWriter outputWriter = null;
 
     @Override
     public boolean requiresReference() {
@@ -62,15 +60,15 @@ public final class LeftAlignIndels extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
-        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile());
+        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
+        outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext ref, FeatureContext featureContext ) {
+    public void apply( GATKRead read, ReferenceContext ref, FeatureContext featureContext ) {
         // we can not deal with screwy records
-        if ( read.getReadUnmappedFlag() || read.getCigar().numCigarElements() == 0 ) {
-            outputWriter.addAlignment(read);
+        if ( read.isUnmapped() || read.getCigar().numCigarElements() == 0 ) {
+            outputWriter.addRead(read);
             return;
         }
 
@@ -78,11 +76,19 @@ public final class LeftAlignIndels extends ReadWalker {
         int numBlocks = AlignmentUtils.getNumAlignmentBlocks(read);
         if ( numBlocks == 2 ) {
             // We checked in onTraversalStart() that a reference is present, so ref.get() is safe
-            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.trimReadToUnclippedBases(read.getCigar()), ref.getBases(), read.getReadBases(), 0, 0, true);
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.trimReadToUnclippedBases(read.getCigar()), ref.getBases(), read.getBases(), 0, 0, true);
             newCigar = CigarUtils.reclipCigar(newCigar, read);
             read.setCigar(newCigar);
         }
 
-        outputWriter.addAlignment(read);
+        outputWriter.addRead(read);
+    }
+
+    @Override
+    public Object onTraversalDone() {
+        if ( outputWriter != null ) {
+            outputWriter.close();
+        }
+        return null;
     }
 }

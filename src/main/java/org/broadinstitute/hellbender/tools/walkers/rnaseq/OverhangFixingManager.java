@@ -1,15 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordCoordinateComparator;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.*;
 
 import java.util.*;
 
@@ -36,8 +34,11 @@ public class OverhangFixingManager {
     // should we not bother fixing overhangs?
     private final boolean doNotFixOverhangs;
 
+    // header for the reads
+    private final SAMFileHeader header;
+
     // where we ultimately write out our records
-    private final SAMFileWriter writer;
+    private final SAMFileGATKReadWriter writer;
 
     // fasta reference reader to check overhanging edges in the exome reference sequence
     private final IndexedFastaSequenceFile referenceReader;
@@ -47,7 +48,7 @@ public class OverhangFixingManager {
 
     // the read cache
     private final static int initialCapacity = 5000;
-    private PriorityQueue<SplitRead> waitingReads = new PriorityQueue<>(initialCapacity, new SplitReadComparator());
+    private PriorityQueue<SplitRead> waitingReads;
 
     // the set of current splices to use
     private final Set<Splice> splices = new TreeSet<>(new SpliceComparator());
@@ -57,6 +58,7 @@ public class OverhangFixingManager {
 
     /**
      *
+     * @param header                   header for the reads
      * @param writer                   actual writer
      * @param genomeLocParser          the GenomeLocParser object
      * @param referenceReader          the reference reader
@@ -65,13 +67,15 @@ public class OverhangFixingManager {
      * @param maxBasesInOverhangs      max number of bases permitted in the overhangs before deciding not to clip
      * @param doNotFixOverhangs        if true, don't clip overhangs at all
      */
-    public OverhangFixingManager(final SAMFileWriter writer,
+    public OverhangFixingManager(final SAMFileHeader header,
+                                 final SAMFileGATKReadWriter writer,
                                  final GenomeLocParser genomeLocParser,
                                  final IndexedFastaSequenceFile referenceReader,
                                  final int maxRecordsInMemory,
                                  final int maxMismatchesInOverhangs,
                                  final int maxBasesInOverhangs,
                                  final boolean doNotFixOverhangs) {
+        this.header = header;
         this.writer = writer;
         this.genomeLocParser = genomeLocParser;
         this.referenceReader = referenceReader;
@@ -79,6 +83,7 @@ public class OverhangFixingManager {
         this.MAX_MISMATCHES_IN_OVERHANG = maxMismatchesInOverhangs;
         this.MAX_BASES_IN_OVERHANG = maxBasesInOverhangs;
         this.doNotFixOverhangs = doNotFixOverhangs;
+        this.waitingReads = new PriorityQueue<>(initialCapacity, new SplitReadComparator());
     }
 
     public final int getNReadsInQueue() { return waitingReads.size(); }
@@ -141,21 +146,21 @@ public class OverhangFixingManager {
      *
      * @param read  the read to add
      */
-    public void addRead(final SAMRecord read) {
+    public void addRead(final GATKRead read) {
         if ( read == null ) throw new IllegalArgumentException("read added to manager is null, which is not allowed");
 
         // if the new read is on a different contig or we have too many reads, then we need to flush the queue and clear the map
         final boolean tooManyReads = getNReadsInQueue() >= MAX_RECORDS_IN_MEMORY;
-        final boolean encounteredNewContig = getNReadsInQueue() > 0 && !waitingReads.peek().read.getReferenceIndex().equals(read.getReferenceIndex());
+        final boolean encounteredNewContig = getNReadsInQueue() > 0 && !waitingReads.peek().read.getContig().equals(read.getContig());
 
         if ( tooManyReads || encounteredNewContig ) {
-            if ( DEBUG ) logger.warn("Flushing queue on " + (tooManyReads ? "too many reads" : ("move to new contig: " + read.getReferenceName() + " from " + waitingReads.peek().read.getReferenceName())) + " at " + read.getAlignmentStart());
+            if ( DEBUG ) logger.warn("Flushing queue on " + (tooManyReads ? "too many reads" : ("move to new contig: " + read.getContig() + " from " + waitingReads.peek().read.getContig())) + " at " + read.getStart());
 
             final int targetQueueSize = encounteredNewContig ? 0 : MAX_RECORDS_IN_MEMORY / 2;
 
             // write the required number of waiting reads to disk
             while ( getNReadsInQueue() > targetQueueSize )
-                writer.addAlignment(waitingReads.poll().read);
+                writer.addRead(waitingReads.poll().read);
         }
 
         final SplitRead splitRead = new SplitRead(read);
@@ -193,15 +198,15 @@ public class OverhangFixingManager {
 
         if ( isLeftOverhang(read.loc, splice.loc) ) {
             final int overhang = splice.loc.getStop() - read.loc.getStart() + 1;
-            if ( overhangingBasesMismatch(read.read.getReadBases(), 0, splice.reference, splice.reference.length - overhang, overhang) ) {
-                final SAMRecord clippedRead = ReadClipper.hardClipByReadCoordinates(read.read, 0, overhang - 1);
+            if ( overhangingBasesMismatch(read.read.getBases(), 0, splice.reference, splice.reference.length - overhang, overhang) ) {
+                final GATKRead clippedRead = ReadClipper.hardClipByReadCoordinates(read.read, 0, overhang - 1);
                 read.setRead(clippedRead);
             }
         }
         else if ( isRightOverhang(read.loc, splice.loc) ) {
             final int overhang = read.loc.getStop() - splice.loc.getStart() + 1;
-            if ( overhangingBasesMismatch(read.read.getReadBases(), read.read.getReadLength() - overhang, splice.reference, 0, overhang) ) {
-                final SAMRecord clippedRead = ReadClipper.hardClipByReadCoordinates(read.read, read.read.getReadLength() - overhang, read.read.getReadLength() - 1);
+            if ( overhangingBasesMismatch(read.read.getBases(), read.read.getLength() - overhang, splice.reference, 0, overhang) ) {
+                final GATKRead clippedRead = ReadClipper.hardClipByReadCoordinates(read.read, read.read.getLength() - overhang, read.read.getLength() - 1);
                 read.setRead(clippedRead);
             }
         }
@@ -266,25 +271,24 @@ public class OverhangFixingManager {
     public void close() {
         // write out all of the remaining reads
         while ( ! waitingReads.isEmpty() )
-            writer.addAlignment(waitingReads.poll().read);
+            writer.addRead(waitingReads.poll().read);
     }
 
     // class to represent the reads with their soft-clip-included GenomeLocs
     public final class SplitRead {
 
-        public SAMRecord read;
+        public GATKRead read;
         public GenomeLoc loc;
 
-        public SplitRead(final SAMRecord read) {
+        public SplitRead(final GATKRead read) {
             setRead(read);
         }
 
-        public void setRead(final SAMRecord read) {
-            boolean readIsEmpty = ReadUtils.isEmpty(read);
-            if ( !readIsEmpty ) {
+        public void setRead(final GATKRead read) {
+            if ( ! read.isEmpty() ) {
                 this.read = read;
-                if ( ! read.getReadUnmappedFlag() )
-                    loc = genomeLocParser.createGenomeLoc(read.getReferenceName(), ReadUtils.getSoftStart(read), ReadUtils.getSoftEnd(read));
+                if ( ! read.isUnmapped() )
+                    loc = genomeLocParser.createGenomeLoc(read.getContig(), ReadUtils.getSoftStart(read), ReadUtils.getSoftEnd(read));
             }
         }
     }
@@ -292,10 +296,10 @@ public class OverhangFixingManager {
     // class to represent the comparator for the split reads
     private final class SplitReadComparator implements Comparator<SplitRead> {
 
-        private final SAMRecordCoordinateComparator readComparator;
+        private final ReadCoordinateComparator readComparator;
 
         public SplitReadComparator() {
-            readComparator = new SAMRecordCoordinateComparator();
+            readComparator = new ReadCoordinateComparator(header);
         }
 
         public int compare(final SplitRead read1, final SplitRead read2) {

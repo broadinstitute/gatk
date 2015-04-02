@@ -1,10 +1,7 @@
 
 package org.broadinstitute.hellbender.dev.pipelines.bqsr;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorWorker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -13,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.util.List;
@@ -74,17 +72,16 @@ public final class CalibrationTablesBuilder {
      *
      * The skipIntervals have to be 1-based, close-ended.
      */
-    public void add(final Iterable<Read> reads, final List<SimpleInterval> skipIntervals) {
+    public void add(final Iterable<GATKRead> reads, final List<SimpleInterval> skipIntervals) {
         if (done) throw new GATKException("Can't call add after done");
 
-        for (final Read r : reads) {
-            final SAMRecord sr = GenomicsConverter.makeSAMRecord(r, header);
-            final SimpleInterval readInterval = sr.getReadUnmappedFlag() ? null : new SimpleInterval(sr);
+        for (final GATKRead read : reads) {
+            final SimpleInterval readInterval = read.isUnmapped() ? null : new SimpleInterval(read);
             // TODO: this could probably be sped up by taking advantage of a sorted order.
             final List<SimpleInterval> knownSitesOverlappingReadInterval =
                     skipIntervals.stream().filter(x -> x.overlaps(readInterval))
                             .collect(Collectors.toList());
-            br.apply(sr, new ReferenceContext(reference, readInterval), knownSitesOverlappingReadInterval);
+            br.apply(read, new ReferenceContext(reference, readInterval), knownSitesOverlappingReadInterval);
         }
     }
 

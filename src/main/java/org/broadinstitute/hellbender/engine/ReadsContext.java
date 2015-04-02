@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -17,7 +17,7 @@ import java.util.Iterator;
  * return empty iterators. You can determine whether there is a backing source of reads data
  * via {@link #hasBackingDataSource()}, and whether there is an interval via {@link #getInterval}.
  */
-public final class ReadsContext implements Iterable<SAMRecord> {
+public final class ReadsContext implements Iterable<GATKRead> {
 
     private final ReadsDataSource dataSource;
 
@@ -70,10 +70,10 @@ public final class ReadsContext implements Iterable<SAMRecord> {
      * @return iterator over the reads in this context
      */
     @Override
-    public Iterator<SAMRecord> iterator() {
+    public Iterator<GATKRead> iterator() {
         // We can't perform a query if we lack either a dataSource or an interval to query on
         if ( dataSource == null || interval == null ) {
-            return Collections.<SAMRecord>emptyList().iterator();
+            return Collections.<GATKRead>emptyList().iterator();
         }
 
         return dataSource.query(interval);

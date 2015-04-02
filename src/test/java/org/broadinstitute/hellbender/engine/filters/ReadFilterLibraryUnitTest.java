@@ -2,9 +2,10 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,11 +24,14 @@ public final class ReadFilterLibraryUnitTest {
     private static final int CHR_SIZE = 1000;
     private static final int GROUP_COUNT = 5;
 
-    private final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeaderWithGroups(CHR_COUNT, CHR_START, CHR_SIZE, GROUP_COUNT);
+    private SAMFileHeader createHeaderWithReadGroups() {
+        return ArtificialReadUtils.createArtificialSamHeaderWithGroups(CHR_COUNT, CHR_START, CHR_SIZE, GROUP_COUNT);
+    }
 
     /**
      * Creates a read record.
      *
+     * @param header header for the new record
      * @param cigar the new record CIGAR.
      * @param group the new record group index that must be in the range \
      *              [0,{@link #GROUP_COUNT})
@@ -36,20 +40,31 @@ public final class ReadFilterLibraryUnitTest {
      *              (1-based)
      * @return never <code>null</code>
      */
-    private SAMRecord createRead(final Cigar cigar, final int group, final int reference, final int start) {
-        final SAMRecord record = ArtificialSAMUtils.createArtificialRead(cigar);
-        record.setHeader(header);
-        record.setAlignmentStart(start);
-        record.setReferenceIndex(reference);
-        record.setAttribute(SAMTag.RG.toString(), header.getReadGroups().get(group).getReadGroupId());
+    private GATKRead createRead( final SAMFileHeader header, final Cigar cigar, final int group, final int reference, final int start ) {
+        final GATKRead record = ArtificialReadUtils.createArtificialRead(header, cigar);
+        record.setPosition(header.getSequence(reference).getSequenceName(), start);
+        record.setReadGroup(header.getReadGroups().get(group).getReadGroupId());
         return record;
+    }
+
+    private GATKRead createRead( final SAMFileHeader header, final String cigarString ) {
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        return createRead(header, cigar, 1, 0, 10);
+    }
+
+    private GATKRead simpleGoodRead( final SAMFileHeader header ) {
+        final String cigarString = "101M";
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        GATKRead read = createRead(header, cigar, 1, 0, 10);
+        read.setMappingQuality(50);
+        return read;
     }
 
     @Test
     public void testCheckSeqStored() {
-        final SAMRecord goodRead = ArtificialSAMUtils.createArtificialRead(new byte[]{(byte) 'A'}, new byte[]{(byte) 'A'}, "1M");
-        final SAMRecord badRead = ArtificialSAMUtils.createArtificialRead(new byte[]{}, new byte[]{}, "1M");
-        badRead.setReadString("*");
+        final GATKRead goodRead = ArtificialReadUtils.createArtificialRead(new byte[]{(byte) 'A'}, new byte[]{(byte) 'A'}, "1M");
+        final GATKRead badRead = ArtificialReadUtils.createArtificialRead(new byte[]{}, new byte[]{}, "1M");
+        badRead.setBases(new byte[0]);
 
         Assert.assertTrue(SEQ_IS_STORED.test(goodRead));
         Assert.assertFalse(SEQ_IS_STORED.test(badRead));
@@ -57,18 +72,12 @@ public final class ReadFilterLibraryUnitTest {
 
     @Test(dataProvider = "UnsupportedCigarOperatorDataProvider")
     public void testCigarNOperatorFilter(String cigarString) {
-
-        final ReadFilter filter = ReadFilterLibrary.WELLFORMED;
-        final SAMRecord read = buildSAMRecord(cigarString);
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final ReadFilter filter = new WellformedReadFilter(header);
+        final GATKRead read = createRead(header, cigarString);
         final boolean containsN = cigarString.contains("N");
         Assert.assertEquals(containsN, !filter.test(read), cigarString);
     }
-
-    private SAMRecord buildSAMRecord(final String cigarString) {
-        final Cigar nContainingCigar = TextCigarCodec.decode(cigarString);
-        return this.createRead(nContainingCigar, 1, 0, 10);
-    }
-
 
     @DataProvider(name = "UnsupportedCigarOperatorDataProvider")
     public Iterator<Object[]> unsupportedOperatorDataProvider(final Method testMethod) {
@@ -99,17 +108,11 @@ public final class ReadFilterLibraryUnitTest {
         return result.iterator();
     }
 
-    private SAMRecord simpleGoodRead() {
-        String cigarString = "101M";
-        final Cigar nContainingCigar = TextCigarCodec.decode(cigarString);
-        SAMRecord read =  createRead(nContainingCigar, 1, 0, 10);
-        read.setMappingQuality(50);
-        return read;
-    }
-
     @Test
     public void passesAllFilters() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+
         Assert.assertTrue(MAPPED.test(read), "MAPPED " + read.toString());
         Assert.assertTrue(PRIMARY_ALIGNMENT.test(read), "PRIMARY_ALIGNMENT " + read.toString());
         Assert.assertTrue(NOT_DUPLICATE.test(read), "NOT_DUPLICATE " + read.toString());
@@ -118,120 +121,123 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertTrue(MAPPING_QUALITY_NOT_ZERO.test(read), "MAPPING_QUALITY_NOT_ZERO " + read.toString());
         Assert.assertTrue(VALID_ALIGNMENT_START.test(read), "VALID_ALIGNMENT_START " + read.toString());
         Assert.assertTrue(VALID_ALIGNMENT_END.test(read), "VALID_ALIGNMENT_END " + read.toString());
-        Assert.assertTrue(ALIGNMENT_AGREES_WITH_HEADER.test(read), "ALIGNMENT_AGREES_WITH_HEADER " + read.toString());
         Assert.assertTrue(HAS_READ_GROUP.test(read), "HAS_READ_GROUP " + read.toString());
         Assert.assertTrue(HAS_MATCHING_BASES_AND_QUALS.test(read), "HAS_MATCHING_BASES_AND_QUALS " + read.toString());
         Assert.assertTrue(SEQ_IS_STORED.test(read), "SEQ_IS_STORED " + read.toString());
         Assert.assertTrue(CIGAR_IS_SUPPORTED.test(read), "CIGAR_IS_SUPPORTED " + read.toString());
 
-        Assert.assertTrue(WELLFORMED.test(read), "WELLFORMED " + read.toString());
+        final WellformedReadFilter wellformed = new WellformedReadFilter(header);
+        Assert.assertTrue(wellformed.test(read), "WELLFORMED " + read.toString());
     }
 
     @Test
     public void failsMAPPED_flag() {
-        SAMRecord read = simpleGoodRead();
-        read.setReadUnmappedFlag(true);
-        Assert.assertFalse(MAPPED.test(read), read.toString());
-    }
-
-    @Test
-    public void failsMAPPED_alignmenStart() {
-        SAMRecord read = simpleGoodRead();
-        read.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setIsUnmapped();
         Assert.assertFalse(MAPPED.test(read), read.toString());
     }
 
     @Test
     public void failsNOT_DUPLICATE() {
-        SAMRecord read = simpleGoodRead();
-        read.setDuplicateReadFlag(true);
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setIsDuplicate(true);
         Assert.assertFalse(NOT_DUPLICATE.test(read), read.toString());
     }
 
     @Test
     public void failsPASSES_VENDOR_QUALITY_CHECK() {
-        SAMRecord read = simpleGoodRead();
-        read.setReadFailsVendorQualityCheckFlag(true);
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setFailsVendorQualityCheck(true);
         Assert.assertFalse(PASSES_VENDOR_QUALITY_CHECK.test(read), read.toString());
     }
 
     @Test
     public void failsMAPPING_QUALITY_AVAILABLE() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         read.setMappingQuality(QualityUtils.MAPPING_QUALITY_UNAVAILABLE);
         Assert.assertFalse(MAPPING_QUALITY_AVAILABLE.test(read), read.toString());
     }
 
     @Test
     public void failsMAPPING_QUALITY_NOT_ZERO() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         read.setMappingQuality(0);
         Assert.assertFalse(MAPPING_QUALITY_NOT_ZERO.test(read), read.toString());
     }
 
     @Test
-    public void failsVALID_ALIGNMENT_START_case1() {
-        SAMRecord read = simpleGoodRead();
-        read.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
-        Assert.assertFalse(VALID_ALIGNMENT_START.test(read), read.toString());
+    public void VALID_ALIGNMENT_START_allows_unmapped_case1() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setIsUnmapped();
+        Assert.assertTrue(VALID_ALIGNMENT_START.test(read), "VALID_ALIGNMENT_START failed on an unmapped read");
     }
 
     @Test
-    public void failsVALID_ALIGNMENT_START_case2() {
-        SAMRecord read = simpleGoodRead();
-        read.setAlignmentStart(-1);
-        Assert.assertFalse(VALID_ALIGNMENT_START.test(read), read.toString());
+    public void VALID_ALIGNMENT_START_allows_unmapped_case2() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        final SAMRecord samWithUnmappedPosition = read.convertToSAMRecord(header); // GATKRead interface will not let us set invalid alignment starts,
+                                                                                   // so we need to convert to SAMRecord here
+        samWithUnmappedPosition.setAlignmentStart(0);
+
+        // Reads with a start position of 0 are considered unmapped in our Read interface
+        GATKRead readWithUnmappedPosition = new SAMRecordToGATKReadAdapter(samWithUnmappedPosition);
+        Assert.assertTrue(VALID_ALIGNMENT_START.test(readWithUnmappedPosition), "VALID_ALIGNMENT_START failed on an unmapped read (with start position == 0)");
     }
 
     @Test
-    public void failsALIGNMENT_AGREES_WITH_HEADER_case1() {
-        SAMRecord read = simpleGoodRead();
-        read.setReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
-        read.setAlignmentStart(10);
-        Assert.assertFalse(ALIGNMENT_AGREES_WITH_HEADER.test(read), read.toString());
-    }
-
-    @Test
-    public void failsALIGNMENT_AGREES_WITH_HEADER_case2() {
-        SAMRecord read = simpleGoodRead();
-        final int length = read.getHeader().getSequence(0).getSequenceLength();
-        read.setAlignmentStart(length + 10);
-        Assert.assertFalse(ALIGNMENT_AGREES_WITH_HEADER.test(read), read.toString());
+    public void failsVALID_ALIGNMENT_START() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        final SAMRecord corruptSAM = read.convertToSAMRecord(header); // GATKRead interface will not let us set invalid alignment starts,
+                                                                      // so we need to convert to SAMRecord here
+        corruptSAM.setAlignmentStart(-1);
+        Assert.assertFalse(VALID_ALIGNMENT_START.test(new SAMRecordToGATKReadAdapter(corruptSAM)), read.toString());
     }
 
     @Test
     public void failsHAS_READ_GROUP() {
-        SAMRecord read = simpleGoodRead();
-        read.setAttribute(SAMTag.RG.name(), null);
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setReadGroup(null);
         Assert.assertFalse(HAS_READ_GROUP.test(read), read.toString());
     }
 
     @Test
     public void failsHAS_MATCHING_BASES_AND_QUALS() {
-        SAMRecord read = simpleGoodRead();
-        read.setBaseQualities(new byte[]{1, 2, 3});
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setBaseQualities(new byte[]{1,2,3});
         Assert.assertFalse(HAS_MATCHING_BASES_AND_QUALS.test(read), read.toString());
     }
 
     @Test
     public void failsSEQ_IS_STORED() {
-        SAMRecord read = simpleGoodRead();
-        read.setReadBases(SAMRecord.NULL_SEQUENCE);
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setBases(new byte[0]);
         Assert.assertFalse(SEQ_IS_STORED.test(read), read.toString());
     }
 
     @Test
     public void failsCIGAR_IS_SUPPORTED() {
-        SAMRecord read = simpleGoodRead();
-        read.setCigarString("10M2N10M");
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        read.setCigar("10M2N10M");
         Assert.assertFalse(CIGAR_IS_SUPPORTED.test(read), read.toString());
     }
 
     @Test(dataProvider = "nonZeroReferenceLengthAlignmentFilterData")
     public void testNonZeroReferenceLengthAlignmentFilter(final String cigarString, final boolean expected) {
-
+        final SAMFileHeader header = createHeaderWithReadGroups();
         final ReadFilter filter = ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT;
-        final SAMRecord read = buildSAMRecord(cigarString);
+        final GATKRead read = createRead(header, cigarString);
         Assert.assertEquals(filter.test(read), expected, cigarString);
     }
 
@@ -298,20 +304,20 @@ public final class ReadFilterLibraryUnitTest {
     }
     @Test(dataProvider = "badCigars")
     public void testWonkyCigars (String cigarString) {
-        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
-        Assert.assertFalse(GOOD_CIGAR.test(read), read.getCigarString());
+        GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
+        Assert.assertFalse(GOOD_CIGAR.test(read), read.getCigar().toString());
     }
 
     @Test
     public void testReadCigarLengthMismatch() {
-        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar("4M", 1);
-        Assert.assertFalse(READLENGTH_EQUALS_CIGARLENGTH.test(read), read.getCigarString());
+        GATKRead read = ReadClipperTestUtils.makeReadFromCigar("4M", 1);
+        Assert.assertFalse(READLENGTH_EQUALS_CIGARLENGTH.test(read), read.getCigar().toString());
     }
 
     @Test
     public void testEmptyCigar(){
-        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar("");
-        Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigarString());
+        GATKRead read = ReadClipperTestUtils.makeReadFromCigar("");
+        Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigar().toString());
     }
 
     @DataProvider(name = "goodCigars")
@@ -326,26 +332,40 @@ public final class ReadFilterLibraryUnitTest {
 
     @Test(dataProvider = "goodCigars")
     public void testGoodCigars (String cigarString) {
-        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
-        Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigarString());
+        GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
+        Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigar().toString());
     }
     @Test
     public void testGoodCigarsUpToSize() {
         //Note: not using data providers here because it's super slow to print (many minutes vs few seconds).
         List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(10);
         for (Cigar cigar : cigarList) {
-            SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigar);
-            Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigarString());
+            GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
+            Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigar().toString());
         }
     }
 
     @Test
-    public void testLibraryReadFilter(){
-        SAMRecord read = simpleGoodRead();
-        final LibraryReadFilter f = new LibraryReadFilter();
+    public void testAlignmentAgreesWithHeader() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final AlignmentAgreesWithHeaderReadFilter filter = new AlignmentAgreesWithHeaderReadFilter(header);
+        final GATKRead read = simpleGoodRead(header);
+
+        read.setPosition("BAD_CONTIG", 1);
+        Assert.assertFalse(filter.test(read), "AlignmentAgreesWithHeader read filter should have failed on read with bad contig");
+
+        read.setPosition(Integer.toString(CHR_START), CHR_SIZE + 1);
+        Assert.assertFalse(filter.test(read), "AlignmentAgreesWithHeader read filter should have failed on read with start position past the end of its contig");
+    }
+
+    @Test
+    public void testLibraryReadFilter() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        final LibraryReadFilter f = new LibraryReadFilter(header);
 
         final String foo = "Foo";
-        read.getReadGroup().setLibrary(foo);
+        header.getReadGroup(read.getReadGroup()).setLibrary(foo);
 
         Assert.assertFalse(f.test(read), read.toString());//fail
         f.libraryToKeep = foo;
@@ -353,8 +373,9 @@ public final class ReadFilterLibraryUnitTest {
     }
 
     @Test
-    public void testMappingQualityFilter(){
-        SAMRecord read = simpleGoodRead();
+    public void testMappingQualityFilter() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         final MappingQualityReadFilter f = new MappingQualityReadFilter();
 
         f.minMappingQualtyScore = 17;
@@ -366,187 +387,195 @@ public final class ReadFilterLibraryUnitTest {
     }
 
     @Test
-    public void testMaxInsertSizeFilter(){
-        SAMRecord pairedRead = simpleGoodRead();
-        SAMRecord unpairedRead = simpleGoodRead();
-        pairedRead.setReadPairedFlag(true);
+    public void testMaxInsertSizeFilter() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead pairedRead = simpleGoodRead(header);
+        final GATKRead unpairedRead = simpleGoodRead(header);
+        pairedRead.setIsPaired(true);
 
-        final InsertSizeReadFilter f = new InsertSizeReadFilter();
+        final FragmentLengthReadFilter f = new FragmentLengthReadFilter();
 
-        pairedRead.setInferredInsertSize(150);
-        unpairedRead.setInferredInsertSize(150);
+        pairedRead.setFragmentLength(150);
+        unpairedRead.setFragmentLength(150);
 
-        f.maxInsertSize = 180;
+        f.maxFragmentLength = 180;
         Assert.assertTrue(f.test(pairedRead), pairedRead.toString());//pass
         Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
 
-        f.maxInsertSize = 90;
+        f.maxFragmentLength = 90;
         Assert.assertFalse(f.test(pairedRead), pairedRead.toString());//fail
         Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
 
-        pairedRead.setInferredInsertSize(-150);
+        pairedRead.setFragmentLength(-150);
 
-        f.maxInsertSize = 180;
+        f.maxFragmentLength = 180;
         Assert.assertTrue(f.test(pairedRead), pairedRead.toString());//pass
         Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
 
-        f.maxInsertSize = 90;
+        f.maxFragmentLength = 90;
         Assert.assertFalse(f.test(pairedRead), pairedRead.toString());//fail
         Assert.assertTrue(f.test(unpairedRead), pairedRead.toString());//pass
     }
 
     @Test
     public void testPlatformFilter() {
-        SAMRecord read = simpleGoodRead();
-        PlatformReadFilter f = new PlatformReadFilter();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        PlatformReadFilter f = new PlatformReadFilter(header);
 
         f.PLFilterNames = new HashSet<>(Arrays.asList("PL1", "PL2"));
-        read.getReadGroup().setPlatform("PL1");
+        header.getReadGroup(read.getReadGroup()).setPlatform("PL1");
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        read.getReadGroup().setPlatform(null);
+        header.getReadGroup(read.getReadGroup()).setPlatform(null);
         Assert.assertFalse(f.test(read), read.toString());//fail - no match
 
-        read.getReadGroup().setPlatform("prefix pl1 suffix");  //not exact matching
+        header.getReadGroup(read.getReadGroup()).setPlatform("prefix pl1 suffix");  //not exact matching
         Assert.assertTrue(f.test(read), read.toString());//pass
 
         f.PLFilterNames = new HashSet<>(Arrays.asList("Fred"));
-        read.getReadGroup().setPlatform("PL1");
+        header.getReadGroup(read.getReadGroup()).setPlatform("PL1");
         Assert.assertFalse(f.test(read), read.toString());//fail
     }
 
     @Test
     public void testReadLengthFilter() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         ReadLengthReadFilter f = new ReadLengthReadFilter();
         f.minReadLength = 10;
         f.maxReadLength = 20;
 
-        read.setReadBases(new byte[5]);
+        read.setBases(new byte[5]);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
-        read.setReadBases(new byte[10]);
+        read.setBases(new byte[10]);
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        read.setReadBases(new byte[15]);
+        read.setBases(new byte[15]);
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        read.setReadBases(new byte[20]);
+        read.setBases(new byte[20]);
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        read.setReadBases(new byte[25]);
+        read.setBases(new byte[25]);
         Assert.assertFalse(f.test(read), read.toString());//fail
     }
 
     @Test
     public void testReadNameFilter() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         ReadNameReadFilter f = new ReadNameReadFilter();
 
         final String fred= "fred";
         f.readName = fred;
-        read.setReadName(fred);
+        read.setName(fred);
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        read.setReadName(fred.toUpperCase());
+        read.setName(fred.toUpperCase());
         Assert.assertFalse(f.test(read), read.toString());//fail
     }
 
     @Test
     public void testReadStrandFilter() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         ReadStrandFilter f = new ReadStrandFilter();
 
         f.keepOnlyReverse = false;
-        read.setReadNegativeStrandFlag(false);
+        read.setIsReverseStrand(false);
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        read.setReadNegativeStrandFlag(true);
+        read.setIsReverseStrand(true);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
         f.keepOnlyReverse = true;
-        read.setReadNegativeStrandFlag(false);
+        read.setIsReverseStrand(false);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
-        read.setReadNegativeStrandFlag(true);
+        read.setIsReverseStrand(true);
         Assert.assertTrue(f.test(read), read.toString());//pass
     }
 
     @Test
     public void testSampleFilter() {
-        SAMRecord read = simpleGoodRead();
-        SampleReadFilter f = new SampleReadFilter();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+        SampleReadFilter f = new SampleReadFilter(header);
 
         final String fred = "fred";
         f.samplesToKeep = Collections.emptySet();
-        read.getReadGroup().setSample(fred);
+        header.getReadGroup(read.getReadGroup()).setSample(fred);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
         f.samplesToKeep = Collections.singleton(fred);
-        read.getReadGroup().setSample(fred);
+        header.getReadGroup(read.getReadGroup()).setSample(fred);
         Assert.assertTrue(f.test(read), read.toString());//pass
 
         f.samplesToKeep = Collections.singleton(fred);
-        read.getReadGroup().setSample(fred + "suffix");
+        header.getReadGroup(read.getReadGroup()).setSample(fred + "suffix");
         Assert.assertFalse(f.test(read), read.toString());//fail - exact matching
 
         f.samplesToKeep = Collections.singleton(fred);
-        read.getReadGroup().setSample(fred.toUpperCase());
+        header.getReadGroup(read.getReadGroup()).setSample(fred.toUpperCase());
         Assert.assertFalse(f.test(read), read.toString());//fail - case sensitive matching
 
         f.samplesToKeep = new HashSet<>(Arrays.asList(fred, "bozo"));
-        read.getReadGroup().setSample(fred);
+        header.getReadGroup(read.getReadGroup()).setSample(fred);
         Assert.assertTrue(f.test(read), read.toString());//pass
     }
 
     @Test
     public void testSingleReadGroupFilter() {
-        SAMRecord read = simpleGoodRead();
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
         final String fred = "fred";
 
         ReadGroupReadFilter f = new ReadGroupReadFilter();
 
         f.readGroup = "";
-        ReadUtils.setReadGroup(read, new SAMReadGroupRecord(fred));
+        read.setReadGroup(fred);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
         f.readGroup = fred;
         Assert.assertTrue(f.test(read), read.toString());//pass
 
         f.readGroup = fred;
-        ReadUtils.setReadGroup(read, new SAMReadGroupRecord(fred + "suffix"));
+        read.setReadGroup(fred + "suffix");
         Assert.assertFalse(f.test(read), read.toString());//fail - exact matching
 
         f.readGroup = fred;
-        ReadUtils.setReadGroup(read, new SAMReadGroupRecord(fred.toUpperCase()));
+        read.setReadGroup(fred.toUpperCase());
         Assert.assertFalse(f.test(read), read.toString());//fail - case sensitive matching
     }
 
     @Test
-    public void testPlatformUnitFilter(){
-        PlatformUnitReadFilter f = new PlatformUnitReadFilter();
-        SAMRecord read = simpleGoodRead();
+    public void testPlatformUnitFilter() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final PlatformUnitReadFilter f = new PlatformUnitReadFilter(header);
+        final GATKRead read = simpleGoodRead(header);
         final String fred = "fred";
-        read.getReadGroup().setPlatformUnit(fred);
+        header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred);
 
         f.blackListedLanes = Collections.emptySet();
-        read.getReadGroup().setPlatformUnit(fred);
+        header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred);
         Assert.assertTrue(f.test(read), read.toString());//pass - no blacklist
 
         f.blackListedLanes = Collections.singleton(fred);
-        read.getReadGroup().setPlatformUnit(fred);
+        header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
         f.blackListedLanes = Collections.singleton(fred);
-        read.getReadGroup().setPlatformUnit(fred + "suffix");
+        header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred + "suffix");
         Assert.assertTrue(f.test(read), read.toString());//pass - exact matching
 
         f.blackListedLanes = Collections.singleton(fred);
-        read.getReadGroup().setPlatformUnit(fred.toUpperCase());
+        header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred.toUpperCase());
         Assert.assertTrue(f.test(read), read.toString());//pass - case sensitive matching
 
         f.blackListedLanes = new HashSet<>(Arrays.asList(fred, "bozo"));
-        read.getReadGroup().setPlatformUnit(fred);
+        header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
         f.blackListedLanes = Collections.singleton(fred);

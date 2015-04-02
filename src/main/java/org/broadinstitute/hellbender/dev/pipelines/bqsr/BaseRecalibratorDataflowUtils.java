@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.dev.pipelines.bqsr;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.coders.KvCoder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -13,8 +10,9 @@ import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.*;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
+import com.google.cloud.dataflow.sdk.values.KV;
+import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Iterables;
@@ -31,6 +29,7 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
@@ -53,7 +52,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   // how many bases until we move on to the next shard
   static final int BLOCKSIZE = 1000000;
   private static final long serialVersionUID = 1L;
-  public static final TupleTag<Read> readTag = new TupleTag<>();
+  public static final TupleTag<GATKRead> readTag = new TupleTag<>();
   public static final TupleTag<SimpleInterval> intervalTag = new TupleTag<>();
   public static final TupleTag<RecalibrationTables> tablesTag = new TupleTag<>();
 
@@ -62,7 +61,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
    * <p>
    * The reference file (*.fasta) must also have a .dict and a .fasta.fai next to it.
    */
-  public static PCollection<BaseRecalOutput> getRecalibrationOutput(SAMFileHeader readsHeader, PCollection<Read> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
+  public static PCollection<BaseRecalOutput> getRecalibrationOutput(SAMFileHeader readsHeader, PCollection<GATKRead> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
     PCollection<RecalibrationTables> recalibrationTables = getRecalibrationTables(readsHeader, reads, referenceFileName, toolArgs, placesToIgnore);
     return addQuantizationInfo(readsHeader, toolArgs, recalibrationTables);
   }
@@ -72,9 +71,9 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
    * <p>
    * The reference file (*.fasta) must also have a .dict and a .fasta.fai next to it.
    */
-  public static PCollection<RecalibrationTables> getRecalibrationTables(SAMFileHeader readsHeader, PCollection<Read> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
-    final ReadFilter readFilter = BaseRecalibratorWorker.readFilter();
-    PCollection<Read> filteredReads = reads.apply(new ReadsFilter(readFilter, readsHeader));
+  public static PCollection<RecalibrationTables> getRecalibrationTables(SAMFileHeader readsHeader, PCollection<GATKRead> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
+    final ReadFilter readFilter = BaseRecalibratorWorker.readFilter(readsHeader);
+    PCollection<GATKRead> filteredReads = reads.apply(new DataflowReadFilter(readFilter, readsHeader));
     PCollection<RecalibrationTables> stats = computeBlockStatistics(readsHeader, referenceFileName, toolArgs, groupByBlock(filteredReads, placesToIgnore));
     PCollection<RecalibrationTables> oneStat = aggregateStatistics(stats);
     return oneStat;
@@ -148,10 +147,9 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   }
 
   // a key to group intervals by (aka sharding)
-  private static String posKey(final Read r) {
-    // Reads are 0-based, SimpleIntervals are 1-based
-    int start = r.getAlignment().getPosition().getPosition().intValue() + 1;
-    return posKey(new SimpleInterval(r.getAlignment().getPosition().getReferenceName(),
+  private static String posKey(final GATKRead r) {
+    int start = r.getStart();
+    return posKey(new SimpleInterval(r.getContig(),
             start,
             start));
   }
@@ -166,42 +164,39 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   /**
    * returns union(reads,placestoIgnore).groupBy(x->posKey(x))
    */
-  private static PCollection<KV<String, CoGbkResult>> groupByBlock(final PCollection<Read> reads, final PCollection<SimpleInterval> placesToIgnore) {
+  private static PCollection<KV<String, CoGbkResult>> groupByBlock(final PCollection<GATKRead> reads, final PCollection<SimpleInterval> placesToIgnore) {
     // shard reads
-    PCollection<KV<String, Read>> shardedReads = reads.apply(ParDo
-        .named("shard reads")
-        .of(
-            new DoFn<Read, KV<String, Read>>() {
-                private static final long serialVersionUID = 1L;
-              @Override
-              public void processElement(ProcessContext c) {
-                Read r = c.element();
-                c.output(KV.of(posKey(r), r));
-              }
+    PCollection<KV<String, GATKRead>> shardedReads = reads.apply(ParDo
+            .named("shard reads")
+            .of(
+                    new DoFn<GATKRead, KV<String, GATKRead>>() {
+                      private static final long serialVersionUID = 1L;
 
-            }))
-        // Dataflow boilerplate
-        .setCoder(KvCoder.of(StringUtf8Coder.of(), GenericJsonCoder.of(Read.class)));
+                      @Override
+                      public void processElement( ProcessContext c ) {
+                        GATKRead r = c.element();
+                        c.output(KV.of(posKey(r), r));
+                      }
+
+                    }));
     // send ignores to every shard that overlaps with them (so, possibly more than one).
     // (for now we assume they can't span more than two)
     PCollection<KV<String, SimpleInterval>> shardedIgnore = placesToIgnore.apply(ParDo
-        .named("shard known intervals")
-        .of(
-            new DoFn<SimpleInterval, KV<String, SimpleInterval>>() {
-              private static final long serialVersionUID = 1L;
-              @Override
-              public void processElement(ProcessContext c) {
-                SimpleInterval i = c.element();
-                String firstPos = posKey(i);
-                c.output(KV.of(firstPos, i));
-                String secondPos = posKeyEnd(i);
-                if (null!=secondPos) {
-                  c.output(KV.of(secondPos, i));
-                }
-              }
-            }))
-        // Dataflow boilerplate
-        .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(SimpleInterval.class)));
+            .named("shard known intervals")
+            .of(
+                    new DoFn<SimpleInterval, KV<String, SimpleInterval>>() {
+                      private static final long serialVersionUID = 1L;
+                      @Override
+                      public void processElement( ProcessContext c ) {
+                        SimpleInterval i = c.element();
+                        String firstPos = posKey(i);
+                        c.output(KV.of(firstPos, i));
+                        String secondPos = posKeyEnd(i);
+                        if ( null != secondPos ) {
+                          c.output(KV.of(secondPos, i));
+                        }
+                      }
+                    }));
 
     return KeyedPCollectionTuple.of(readTag, shardedReads)
         .and(intervalTag, shardedIgnore)
@@ -219,7 +214,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
     PCollection<RecalibrationTables> ret = readsAndIgnores.apply(ParDo
             .named("computeBlockStatistics")
             .of(new DoFn<KV<String, CoGbkResult>, RecalibrationTables>() {
-                private static final long serialVersionUID = 1L;
+              private static final long serialVersionUID = 1L;
               CalibrationTablesBuilder ct;
               Stopwatch timer;
               int nBlocks = 0;
@@ -268,12 +263,12 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                 nBlocks++;
                 // get the reads
                 KV<String, CoGbkResult> e = c.element();
-                List<Read> reads = new ArrayList<Read>();
-                Iterable<Read> readsIter = e.getValue().getAll(BaseRecalibratorDataflowUtils.readTag);
+                List<GATKRead> reads = new ArrayList<>();
+                Iterable<GATKRead> readsIter = e.getValue().getAll(BaseRecalibratorDataflowUtils.readTag);
                 Iterables.addAll(reads, readsIter);
                 nReads += reads.size();
                 // get the skip intervals
-                List<SimpleInterval> skipIntervals = new ArrayList<SimpleInterval>();
+                List<SimpleInterval> skipIntervals = new ArrayList<>();
                 Iterables.addAll(skipIntervals, e.getValue().getAll(BaseRecalibratorDataflowUtils.intervalTag));
                 Collections.sort(skipIntervals, new Comparator<SimpleInterval>() {
                   @Override
@@ -312,7 +307,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
         .apply(ParDo
             .named("finalizeRecalTables")
             .of(new DoFn<RecalibrationTables, RecalibrationTables>() {
-                private static final long serialVersionUID = 1L;
+              private static final long serialVersionUID = 1L;
               @Override
               public void processElement(ProcessContext c) throws Exception {
                 RecalibrationTables tables = c.element();

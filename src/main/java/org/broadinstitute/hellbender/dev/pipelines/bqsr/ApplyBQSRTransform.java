@@ -1,26 +1,22 @@
 package org.broadinstitute.hellbender.dev.pipelines.bqsr;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
-import com.google.cloud.genomics.gatk.common.GenomicsConverter;
-import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * This transforms applies BQSR to the input reads.
  */
-public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCollection<Read>> {
+public final class ApplyBQSRTransform extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
     private static final long serialVersionUID = 1L;
 
     private final SAMFileHeader header;
@@ -42,14 +38,14 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
      * @return The same reads as the input, but with updated quality scores.
      */
     @Override
-    public PCollection<Read> apply(PCollection<Read> input) {
+    public PCollection<GATKRead> apply(PCollection<GATKRead> input) {
         return input.apply(ParDo
                 .named("ApplyBQSR")
                 .withSideInputs(recalView)
                 .of(new ApplyBQSR()));
     }
 
-    private class ApplyBQSR extends DoFn<Read, Read> {
+    private class ApplyBQSR extends DoFn<GATKRead, GATKRead> {
         private static final long serialVersionUID = 1L;
         private final transient Logger logger = LogManager.getLogger(ApplyBQSR.class);
         private transient BQSRReadTransformer transformer;
@@ -59,20 +55,12 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
             if (null==transformer) {
                 // set up the transformer, as needed
                 BaseRecalOutput info = c.sideInput(recalView);
-                transformer = new BQSRReadTransformer(info, args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
+                transformer = new BQSRReadTransformer(header, info, args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
                 // it's OK if this same object is used for multiple bundles
             }
-            Read r = c.element();
-            final SAMRecord sr = GenomicsConverter.makeSAMRecord(r, header);
-            final SAMRecord transformed = transformer.apply(sr);
-            try {
-                Read e = ReadConverter.makeRead(transformed);
-                c.output(e);
-            } catch (SAMException x) {
-                logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it ("+x.getMessage()+").");
-            } catch (NullPointerException y) {
-                logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
-            }
+            GATKRead r = c.element();
+            final GATKRead transformed = transformer.apply(r);
+            c.output(transformed);
         }
 
     }

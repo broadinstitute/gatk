@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -129,8 +129,8 @@ public final class BaseRecalibratorUnitTest {
 
     @Test(dataProvider = "CalculateIsIndelData")
     public void testCalculateIsIndel(final String cigar, final boolean negStrand, final EventType mode, final int[] expected) {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(TextCigarCodec.decode(cigar));
-        read.setReadNegativeStrandFlag(negStrand);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(cigar));
+        read.setIsReverseStrand(negStrand);
         final int[] actual = BaseRecalibrator.calculateIsIndel(read, mode);
         Assert.assertEquals(actual, expected, "CalculateIsIndel failed with " + mode + " and cigar " + cigar + " Expected " + Arrays.toString(expected) + " but got " + Arrays.toString(actual));
     }

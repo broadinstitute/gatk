@@ -17,11 +17,13 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.GoogleGenomicsReadToGATKRead;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
 import java.io.File;
@@ -95,30 +97,31 @@ public final class ReadsSource {
     }
 
     /**
-     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * Create a {@link PCollection<GATKRead>} containing all the reads overlapping the given intervals.
      * Reads that are malformed or unmapped are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
-    public PCollection<Read> getReadPCollection(List<SimpleInterval> intervals) {
+    public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals) {
         return getReadPCollection(intervals, ValidationStringency.SILENT);
     }
 
     /**
-     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * Create a {@link PCollection<GATKRead>} containing all the reads overlapping the given intervals.
      * Reads that are unmapped are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @param stringency how to react to malformed reads.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
-    public PCollection<Read> getReadPCollection(List<SimpleInterval> intervals, ValidationStringency stringency) {
-        PCollection<Read> preads;
+    public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals, ValidationStringency stringency) {
+        PCollection<GATKRead> preads;
         if(cloudStorageUrl){
             Iterable<Contig> contigs = intervals.stream()
                     .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                     .collect(Collectors.toList());
 
-            preads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, stringency, ImmutableList.of(bam));
+            PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, stringency, ImmutableList.of(bam));
+            preads = rawReads.apply(new GoogleGenomicsReadToGATKRead());
         } else if (hadoopUrl) {
             preads = DataflowUtils.getReadsFromHadoopBam(pipeline, intervals, stringency, bam);
         } else {

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.cmdline.*;
@@ -13,7 +12,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.util.*;
@@ -46,7 +47,7 @@ public final class SplitReads extends ReadWalker {
     public boolean READ_GROUP;
 
     private List<ReaderSplitter<?>> splitters = new ArrayList<>();
-    private Map<String, SAMFileWriter> outs = null;
+    private Map<String, SAMFileGATKReadWriter> outs = null;
 
     @Override
     public void onTraversalStart() {
@@ -65,13 +66,15 @@ public final class SplitReads extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outs.get(getKey(splitters, read)).addAlignment(read);
+    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+        outs.get(getKey(splitters, read)).addRead(read);
     }
 
     @Override
     public Object onTraversalDone() {
-        outs.values().forEach(CloserUtil::close);
+        if ( outs != null ) {
+            outs.values().forEach(writer -> writer.close());
+        }
         return null;
     }
 
@@ -80,8 +83,8 @@ public final class SplitReads extends ReadWalker {
      * @param splitters Reader splitters.
      * @return A map of file name keys to SAMFileWriter.
      */
-    private Map<String, SAMFileWriter> createWriters(final List<ReaderSplitter<?>> splitters) {
-        final Map<String, SAMFileWriter> outs = new HashMap<>();
+    private Map<String, SAMFileGATKReadWriter> createWriters(final List<ReaderSplitter<?>> splitters) {
+        final Map<String, SAMFileGATKReadWriter> outs = new HashMap<>();
 
         final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
 
@@ -96,9 +99,9 @@ public final class SplitReads extends ReadWalker {
 
         // For every combination of keys, add a SAMFileWriter.
         addKey(splitKeys, 0, "", key -> {
-            final SAMFileHeader samFileHeaderOut = ReadUtils.clone(samFileHeaderIn);
+            final SAMFileHeader samFileHeaderOut = ReadUtils.cloneSAMFileHeader(samFileHeaderIn);
             final File outFile = new File(OUTPUT_DIRECTORY, base + key + extension);
-            outs.put(key, samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.getReferenceFile()));
+            outs.put(key, new SAMFileGATKReadWriter(samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.getReferenceFile())));
         });
 
         return outs;
@@ -128,9 +131,9 @@ public final class SplitReads extends ReadWalker {
      * @param record The record to analyze.
      * @return The generated key that may then be used to find the appropriate SAMFileWriter.
      */
-    private String getKey(final List<ReaderSplitter<?>> splitters, final SAMRecord record) {
+    private String getKey(final List<ReaderSplitter<?>> splitters, final GATKRead record) {
         return splitters.stream()
-                .map(s -> s.getSplitBy(record).toString())
+                .map(s -> s.getSplitBy(record, getHeaderForReads()).toString())
                 .reduce("", (acc, item) -> acc + "." + item);
     }
 }

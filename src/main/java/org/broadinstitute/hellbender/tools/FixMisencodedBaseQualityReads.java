@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -14,6 +11,8 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.transformers.MisencodedBaseQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 
@@ -27,25 +26,27 @@ public final class FixMisencodedBaseQualityReads extends ReadWalker {
     @Argument(fullName = "output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
 
-    private SAMFileWriter outputWriter;
+    private SAMFileGATKReadWriter outputWriter;
 
     private ReadTransformer transform;
 
     @Override
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = getHeaderForReads().clone();
-        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile());
+        outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
         transform = new MisencodedBaseQualityReadTransformer();
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputWriter.addAlignment(transform.apply(read));
+    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+        outputWriter.addRead(transform.apply(read));
     }
 
     @Override
     public Object onTraversalDone() {
-        CloserUtil.close(outputWriter);
+        if ( outputWriter != null ) {
+            outputWriter.close();
+        }
         return null;
     }
 }

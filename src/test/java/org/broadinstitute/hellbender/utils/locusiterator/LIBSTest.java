@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.utils.locusiterator;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
 
@@ -32,15 +33,15 @@ public final class LIBSTest {
         return elements;
     }
 
-    public SAMRecord makeRead() {
-        SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 1000);
-        SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "read", 0, locus, readLength);
-        read.setReadBases(Utils.dupBytes((byte) 'A', readLength));
+    public GATKRead makeRead() {
+        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
+        GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read", 0, locus, readLength);
+        read.setBases(Utils.dupBytes((byte) 'A', readLength));
         final byte[] quals = new byte[readLength];
         for ( int i = 0; i < readLength; i++ )
             quals[i] = (byte)(i % QualityUtils.MAX_SAM_QUAL_SCORE);
         read.setBaseQualities(quals);
-        read.setCigarString(cigarString);
+        read.setCigar(cigarString);
         return read;
     }
 }

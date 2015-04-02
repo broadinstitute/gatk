@@ -1,27 +1,26 @@
 package org.broadinstitute.hellbender.dev.pipelines.bqsr;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Both BQSR phases, together.
  *
  * Create the inputs like this:
  *
- * PCollection<Read> reads = ...
+ * PCollection<GATKRead> reads = ...
  * PCollection<SimpleInterval> knownIntervals = ...
  * PCollectionTuple inputs =
  *     PCollectionTuple.of(BaseRecalibratorDataflowUtils.readTag, reads)
  *                     .and(BaseRecalibratorDataflowUtils.intervalTag, intervals);
  */
-public class ApplyWholeBQSRTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
+public class ApplyWholeBQSRTransform extends PTransform<PCollectionTuple, PCollection<GATKRead>> {
     private static final long serialVersionUID = 1L;
-
 
     private final SAMFileHeader header;
     // local or GCS
@@ -46,7 +45,7 @@ public class ApplyWholeBQSRTransform extends PTransform<PCollectionTuple, PColle
      * @return The same reads as the input, but with updated quality scores.
      */
     @Override
-    public PCollection<Read> apply(PCollectionTuple input) {
+    public PCollection<GATKRead> apply(PCollectionTuple input) {
         PCollection<BaseRecalOutput> step1 = input.apply(new BQSRTransform(header, referencePath, recalArgs));
         ApplyBQSRTransform step2 = new ApplyBQSRTransform(header, step1, applyArgs);
         return input.get(BaseRecalibratorDataflowUtils.readTag).apply(step2);

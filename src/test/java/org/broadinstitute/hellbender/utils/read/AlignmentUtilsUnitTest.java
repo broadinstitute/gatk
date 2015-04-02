@@ -16,90 +16,34 @@ public final class AlignmentUtilsUnitTest {
     private SAMFileHeader header;
 
     /** Basic aligned and mapped read. */
-    private SAMRecord readMapped;
-
-    /** Read with no contig specified in the read, -L UNMAPPED */
-    private SAMRecord readNoReference;
+    private GATKRead readMapped;
 
     /** This read has a start position, but is flagged that it's not mapped. */
-    private SAMRecord readUnmappedFlag;
+    private GATKRead readUnmappedFlag;
 
     /** This read says it's aligned, but to a contig not in the header. */
-    private SAMRecord readUnknownContig;
-
-    /** This read says it's aligned, but actually has an unknown start. */
-    private SAMRecord readUnknownStart;
+    private GATKRead readUnknownContig;
 
     @BeforeClass
     public void init() {
-        header = ArtificialSAMUtils.createArtificialSamHeader(3, 1, ArtificialSAMUtils.DEFAULT_READ_LENGTH * 2);
+        header = ArtificialReadUtils.createArtificialSamHeader(3, 1, ArtificialReadUtils.DEFAULT_READ_LENGTH * 2);
 
         readMapped = createMappedRead("mapped", 1);
 
-        readNoReference = createUnmappedRead("unmappedNoReference");
-
         readUnmappedFlag = createMappedRead("unmappedFlagged", 2);
-        readUnmappedFlag.setReadUnmappedFlag(true);
+        readUnmappedFlag.setIsUnmapped();
 
         readUnknownContig = createMappedRead("unknownContig", 3);
-        readUnknownContig.setReferenceName("unknownContig");
-
-        readUnknownStart = createMappedRead("unknownStart", 1);
-        readUnknownStart.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        readUnknownContig.setPosition("unknownContig", 3);
     }
 
-    /**
-     * Test for -L UNMAPPED
-     */
-    @DataProvider(name = "genomeLocUnmappedReadTests")
-    public Object[][] getGenomeLocUnmappedReadTests() {
-        return new Object[][] {
-                new Object[] {readNoReference, true},
-                new Object[] {readMapped, false},
-                new Object[] {readUnmappedFlag, false},
-                new Object[] {readUnknownContig, false},
-                new Object[] {readUnknownStart, false}
-        };
-    }
-    @Test(enabled = !DEBUG, dataProvider = "genomeLocUnmappedReadTests")
-    public void testIsReadGenomeLocUnmapped(SAMRecord read, boolean expected) {
-        Assert.assertEquals(AlignmentUtils.isReadGenomeLocUnmapped(read), expected);
-    }
-
-    /**
-     * Test for read being truly unmapped
-     */
-    @DataProvider(name = "unmappedReadTests")
-    public Object[][] getUnmappedReadTests() {
-        return new Object[][] {
-                new Object[] {readNoReference, true},
-                new Object[] {readMapped, false},
-                new Object[] {readUnmappedFlag, true},
-                new Object[] {readUnknownContig, false},
-                new Object[] {readUnknownStart, true}
-        };
-    }
-    @Test(enabled = !DEBUG, dataProvider = "unmappedReadTests")
-    public void testIsReadUnmapped(SAMRecord read, boolean expected) {
-        Assert.assertEquals(AlignmentUtils.isReadUnmapped(read), expected);
-    }
-
-    private SAMRecord createUnmappedRead(String name) {
-        return ArtificialSAMUtils.createArtificialRead(
-                header,
-                name,
-                SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX,
-                SAMRecord.NO_ALIGNMENT_START,
-                ArtificialSAMUtils.DEFAULT_READ_LENGTH);
-    }
-
-    private SAMRecord createMappedRead(String name, int start) {
-        return ArtificialSAMUtils.createArtificialRead(
+    private GATKRead createMappedRead(String name, int start) {
+        return ArtificialReadUtils.createArtificialRead(
                 header,
                 name,
                 0,
                 start,
-                ArtificialSAMUtils.DEFAULT_READ_LENGTH);
+                ArtificialReadUtils.DEFAULT_READ_LENGTH);
     }
 
     private final List<List<CigarElement>> makeCigarElementCombinations() {
@@ -165,7 +109,7 @@ public final class AlignmentUtilsUnitTest {
 
     @Test(enabled = !DEBUG, dataProvider = "NumAlignedBasesCountingSoftClips")
     public void testNumAlignedBasesCountingSoftClips(final Cigar cigar, final int expected) {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, cigar == null ? 10 : cigar.getReadLength());
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, cigar == null ? 10 : cigar.getReadLength());
         read.setCigar(cigar);
         Assert.assertEquals(AlignmentUtils.getNumAlignedBasesCountingSoftClips(read), expected, "Cigar " + cigar + " failed NumAlignedBasesCountingSoftClips");
     }
@@ -205,7 +149,7 @@ public final class AlignmentUtilsUnitTest {
 
     @Test(enabled = !DEBUG, dataProvider = "NumHardClipped")
     public void testNumHardClipped(final Cigar cigar, final int expected) {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, cigar == null ? 10 : cigar.getReadLength());
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, cigar == null ? 10 : cigar.getReadLength());
         read.setCigar(cigar);
         Assert.assertEquals(AlignmentUtils.getNumHardClippedBases(read), expected, "Cigar " + cigar + " failed num hard clips");
     }
@@ -232,7 +176,7 @@ public final class AlignmentUtilsUnitTest {
 
     @Test(enabled = !DEBUG, dataProvider = "NumAlignedBlocks")
     public void testNumAlignedBlocks(final Cigar cigar, final int expected) {
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, cigar == null ? 10 : cigar.getReadLength());
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, cigar == null ? 10 : cigar.getReadLength());
         read.setCigar(cigar);
         Assert.assertEquals(AlignmentUtils.getNumAlignmentBlocks(read), expected, "Cigar " + cigar + " failed NumAlignedBlocks");
     }
@@ -315,13 +259,13 @@ public final class AlignmentUtilsUnitTest {
     @Test(enabled = !DEBUG, dataProvider = "SoftClipsDataProvider")
     public void testSoftClipsData(final byte[] qualsOfSoftClipsOnLeft, final int middleSize, final String middleOp, final byte[] qualOfSoftClipsOnRight, final int qualThreshold, final int numExpected) {
         final int readLength = (middleOp.equals("D") ? 0 : middleSize) + qualOfSoftClipsOnRight.length + qualsOfSoftClipsOnLeft.length;
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
         final byte[] bases = Utils.dupBytes((byte) 'A', readLength);
         final byte[] matchBytes = middleOp.equals("D") ? new byte[]{} : Utils.dupBytes((byte)30, middleSize);
         final byte[] quals = ArrayUtils.addAll(ArrayUtils.addAll(qualsOfSoftClipsOnLeft, matchBytes), qualOfSoftClipsOnRight);
 
         // set the read's bases and quals
-        read.setReadBases(bases);
+        read.setBases(bases);
         read.setBaseQualities(quals);
 
         final StringBuilder cigar = new StringBuilder();
@@ -329,10 +273,10 @@ public final class AlignmentUtilsUnitTest {
         if (middleSize > 0 ) cigar.append(middleSize + middleOp);
         if (qualOfSoftClipsOnRight.length > 0 ) cigar.append(qualOfSoftClipsOnRight.length + "S");
 
-        read.setCigarString(cigar.toString());
+        read.setCigar(cigar.toString());
 
         final int actual = AlignmentUtils.calcNumHighQualitySoftClips(read, (byte) qualThreshold);
-        Assert.assertEquals(actual, numExpected, "Wrong number of soft clips detected for read " + read.getSAMString());
+        Assert.assertEquals(actual, numExpected, "Wrong number of soft clips detected for read " + read.toString());
     }
 
     ////////////////////////////////////////////
@@ -357,18 +301,18 @@ public final class AlignmentUtilsUnitTest {
                         for ( final char middleOp : Arrays.asList('M', 'D', 'I') ) {
                             for ( final int mismatchLocation : Arrays.asList(-1, 0, 5, 10, 15, 19) ) {
 
-                                final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
+                                final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
 
                                 // set the read's bases and quals
                                 final byte[] readBases = Arrays.copyOf(reference, reference.length);
                                 // create the mismatch if requested
                                 if ( mismatchLocation != -1 )
                                     readBases[mismatchLocation] = (byte)'C';
-                                read.setReadBases(readBases);
+                                read.setBases(readBases);
                                 read.setBaseQualities(quals);
 
                                 // create the CIGAR string
-                                read.setCigarString(buildTestCigarString(middleOp, lengthOfSoftClip, lengthOfFirstM, lengthOfIndel, readLength));
+                                read.setCigar(buildTestCigarString(middleOp, lengthOfSoftClip, lengthOfFirstM, lengthOfIndel, readLength));
 
                                 // now, determine whether or not there's a mismatch
                                 final boolean isMismatch;
@@ -390,20 +334,20 @@ public final class AlignmentUtilsUnitTest {
 
         // Adding test to make sure soft-clipped reads go through the exceptions thrown at the beginning of the getMismatchCount method
         // todo: incorporate cigars with right-tail soft-clips in the systematic tests above.
-        SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 10, 20);
-        read.setReadBases(reference);
+        GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 10, 20);
+        read.setBases(reference);
         read.setBaseQualities(quals);
-        read.setCigarString("10S5M5S");
-        tests.add(new Object[]{read, 10, read.getAlignmentStart(), read.getReadLength(), false});
+        read.setCigar("10S5M5S");
+        tests.add(new Object[]{read, 10, read.getStart(), read.getLength(), false});
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(enabled = !DEBUG, dataProvider = "MismatchCountDataProvider")
-    public void testMismatchCountData(final SAMRecord read, final int refIndex, final int startOnRead, final int basesToRead, final boolean isMismatch) {
+    public void testMismatchCountData(final GATKRead read, final int refIndex, final int startOnRead, final int basesToRead, final boolean isMismatch) {
         final byte[] reference = Utils.dupBytes((byte)'A', 100);
         final int actual = AlignmentUtils.getMismatchCount(read, reference, refIndex, startOnRead, basesToRead).numMismatches;
-        Assert.assertEquals(actual, isMismatch ? 1 : 0, "Wrong number of mismatches detected for read " + read.getSAMString());
+        Assert.assertEquals(actual, isMismatch ? 1 : 0, "Wrong number of mismatches detected for read " + read.toString());
     }
 
     private static String buildTestCigarString(final char middleOp, final int lengthOfSoftClip, final int lengthOfFirstM, final int lengthOfIndel, final int readLength) {
@@ -453,9 +397,9 @@ public final class AlignmentUtilsUnitTest {
                 for ( final int lengthOfFirstM : Arrays.asList(0, 3) ) {
                     for ( final char middleOp : Arrays.asList('M', 'D', 'I') ) {
 
-                        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
+                        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
                         // create the CIGAR string
-                        read.setCigarString(buildTestCigarString(middleOp, lengthOfSoftClip, lengthOfFirstM, lengthOfIndel, readLength));
+                        read.setCigar(buildTestCigarString(middleOp, lengthOfSoftClip, lengthOfFirstM, lengthOfIndel, readLength));
 
                         // now, determine the expected alignment offset
                         final int expected;
@@ -506,9 +450,9 @@ public final class AlignmentUtilsUnitTest {
             for ( final int lengthOfFirstM : Arrays.asList(0, 3) ) {
                 for ( final char middleOp : Arrays.asList('M', 'D', 'I') ) {
 
-                    final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
+                    final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, locationOnReference, readLength);
                     // create the CIGAR string
-                    read.setCigarString(buildTestCigarString(middleOp, lengthOfSoftClip, lengthOfFirstM, lengthOfIndel, readLength));
+                    read.setCigar(buildTestCigarString(middleOp, lengthOfSoftClip, lengthOfFirstM, lengthOfIndel, readLength));
 
                     // now, determine the byte array size
                     final int expected = readLength - lengthOfSoftClip - (middleOp == 'I' ? lengthOfIndel : (middleOp == 'D' ? -lengthOfIndel : 0));
@@ -566,8 +510,8 @@ public final class AlignmentUtilsUnitTest {
                     final int readLength = referenceLength - (indelOp == 'D' ? indelSize : -indelSize);
 
                     // create the original CIGAR string
-                    final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
-                    read.setCigarString(buildTestCigarString(indelSize == 0 ? 'M' : indelOp, 0, indelStart, indelSize, readLength));
+                    final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
+                    read.setCigar(buildTestCigarString(indelSize == 0 ? 'M' : indelOp, 0, indelStart, indelSize, readLength));
                     final Cigar originalCigar = read.getCigar();
 
                     final Cigar expectedCigar1 = makeExpectedCigar1(originalCigar, indelOp, indelStart, indelSize, readLength);
@@ -592,8 +536,8 @@ public final class AlignmentUtilsUnitTest {
         if ( indelSize == 0 || indelStart < 17 || indelStart > (26 - (indelOp == 'D' ? indelSize : 0)) )
             return originalCigar;
 
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
-        read.setCigarString(buildTestCigarString(indelOp, 0, 16, indelSize, readLength));
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
+        read.setCigar(buildTestCigarString(indelOp, 0, 16, indelSize, readLength));
         return read.getCigar();
     }
 
@@ -601,12 +545,12 @@ public final class AlignmentUtilsUnitTest {
         if ( indelStart < 17 || indelStart > (26 - (indelOp == 'D' ? indelSize : 0)) )
             return originalCigar;
 
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
 
         if ( indelOp == 'I' && (indelSize == 1 || indelSize == 3) && indelStart % 2 == 1 )
-            read.setCigarString(buildTestCigarString(indelOp, 0, Math.max(indelStart - indelSize, 16), indelSize, readLength));
+            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(indelStart - indelSize, 16), indelSize, readLength));
         else if ( (indelSize == 2 || indelSize == 4) && (indelOp == 'D' || indelStart % 2 == 0) )
-            read.setCigarString(buildTestCigarString(indelOp, 0, 16, indelSize, readLength));
+            read.setCigar(buildTestCigarString(indelOp, 0, 16, indelSize, readLength));
         else
             return originalCigar;
 
@@ -617,14 +561,14 @@ public final class AlignmentUtilsUnitTest {
         if ( indelStart < 17 || indelStart > (28 - (indelOp == 'D' ? indelSize : 0)) )
             return originalCigar;
 
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
 
         if ( indelSize == 3 && (indelOp == 'D' || indelStart % 3 == 1) )
-            read.setCigarString(buildTestCigarString(indelOp, 0, 16, indelSize, readLength));
+            read.setCigar(buildTestCigarString(indelOp, 0, 16, indelSize, readLength));
         else if ( (indelOp == 'I' && indelSize == 4 && indelStart % 3 == 2) ||
                 (indelOp == 'I' && indelSize == 2 && indelStart % 3 == 0) ||
                 (indelOp == 'I' && indelSize == 1 && indelStart < 28 && indelStart % 3 == 2) )
-            read.setCigarString(buildTestCigarString(indelOp, 0, Math.max(indelStart - indelSize, 16), indelSize, readLength));
+            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(indelStart - indelSize, 16), indelSize, readLength));
         else
             return originalCigar;
 

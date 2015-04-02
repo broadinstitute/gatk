@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Only use reads from the specified read group.
@@ -14,8 +13,8 @@ public final class ReadGroupReadFilter implements ReadFilter {
     public String readGroup = null;
 
     @Override
-    public boolean test(final SAMRecord read) {
-        final SAMReadGroupRecord rg = read.getReadGroup();
-        return readGroup != null && rg.getReadGroupId().equals(this.readGroup);
+    public boolean test( final GATKRead read ) {
+        final String rg = read.getReadGroup();
+        return readGroup != null && rg.equals(this.readGroup);
     }
 }

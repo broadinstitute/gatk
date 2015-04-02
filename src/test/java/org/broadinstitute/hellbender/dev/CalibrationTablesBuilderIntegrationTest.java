@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.dev;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
@@ -9,6 +7,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.CalibrationTablesBuilder;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorWorker;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
@@ -17,6 +16,7 @@ import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCova
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -107,9 +107,13 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
 
         // 1. Grab the needed inputs.
         String toolCmdLine = String.format(params.getCommandLine(), outputDest);
-        SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(new File(params.bam));
-        SAMFileHeader header = reader.getFileHeader();
-        List<Read> input = getReads(reader);
+
+        SAMFileHeader header;
+        List<GATKRead> input;
+        try ( ReadsDataSource readsSource = new ReadsDataSource(new File(params.bam)) ) {
+            header = readsSource.getHeader();
+            input = getReads(readsSource);
+        }
         List<SimpleInterval> knownSites = getKnownSites(params);
 
         // 2. Run the computation.
@@ -171,19 +175,12 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
     }
 
 
-    private List<Read> getReads(SamReader reader) {
-        List<Read> ret = new ArrayList<>();
-        ReadFilter readFilter = BaseRecalibratorWorker.readFilter();
-        for (SAMRecord sr : reader) {
-            if (!readFilter.test(sr)) continue;
-            try {
-                Read e = ReadConverter.makeRead(sr);
-                ret.add(e);
-            } catch (SAMException x) {
-                System.out.println("Skipping read " + sr.getReadName() + " because we can't convert it.");
-            } catch (NullPointerException y) {
-                System.out.println("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
-            }
+    private List<GATKRead> getReads(ReadsDataSource readsSource) {
+        List<GATKRead> ret = new ArrayList<>();
+        ReadFilter readFilter = BaseRecalibratorWorker.readFilter(readsSource.getHeader());
+        for ( GATKRead read : readsSource ) {
+            if (!readFilter.test(read)) continue;
+            ret.add(read);
         }
         return ret;
     }

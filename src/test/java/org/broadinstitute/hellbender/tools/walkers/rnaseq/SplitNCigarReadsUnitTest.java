@@ -4,7 +4,8 @@ import com.google.common.primitives.Ints;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -31,8 +32,8 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
     };
 
     private final class TestManager extends OverhangFixingManager {
-        public TestManager() {
-            super(null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        public TestManager( final SAMFileHeader header ) {
+            super(header, null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
         }
     }
 
@@ -41,22 +42,16 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
         final int maxCigarElements = 9;
         final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(maxCigarElements, cigarElements);
 
-        // For Debugging use those lines (instead of above cigarList) to create specific read:
-        //------------------------------------------------------------------------------------
-        // final GATKSAMRecord tmpRead = GATKSAMRecord.createRandomRead(6);
-        // tmpRead.setCigarString("1M1N1M");
-
-        // final List<Cigar> cigarList = new ArrayList<>();
-        // cigarList.add(tmpRead.getCigar());
-
         for(Cigar cigar: cigarList){
 
             final int numOfSplits = numOfNElements(cigar.getCigarElements());
 
             if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
+                final SAMFileHeader header = new SAMFileHeader();
+                header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+                final TestManager manager = new TestManager(header);
 
-                final TestManager manager = new TestManager();
-                SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigar);
+                GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
                 SplitNCigarReads.splitNCigarRead(read, manager);
                 List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
                 final int expectedReads = numOfSplits+1;
@@ -66,12 +61,12 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
                 int offsetFromStart = 0;
                 for(final OverhangFixingManager.SplitRead splitRead: splitReads){
                     int expectedLength = readLengths.get(index);
-                    Assert.assertTrue(splitRead.read.getReadLength() == expectedLength,
+                    Assert.assertTrue(splitRead.read.getLength() == expectedLength,
                             "the " + index + " (starting with 0) split read has a wrong length.\n" +
                                     "cigar of original read: " + cigar + "\n" +
                                     "expected length: " + expectedLength + "\n" +
-                                    "actual length: " + splitRead.read.getReadLength() + "\n");
-                    assertBases(splitRead.read.getReadBases(), read.getReadBases(), offsetFromStart);
+                                    "actual length: " + splitRead.read.getLength() + "\n");
+                    assertBases(splitRead.read.getBases(), read.getBases(), offsetFromStart);
                     index++;
                     offsetFromStart += expectedLength;
                 }

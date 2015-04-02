@@ -2,17 +2,14 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.ReadGroupCovariate;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,7 +45,7 @@ public final class ReadGroupCovariateUnitTest {
         final String id = "MY.ID";
         final String expected = "SAMPLE.1";
         final ReadGroupCovariate covariate = new ReadGroupCovariate(new RecalibrationArgumentCollection(), Arrays.asList(expected));
-        final SAMFileHeader headerWithGroups = ArtificialSAMUtils.createArtificialSamHeaderWithGroups(1, 0, 100, 2);
+        final SAMFileHeader headerWithGroups = ArtificialReadUtils.createArtificialSamHeaderWithGroups(1, 0, 100, 2);
         final List<String> rgs = Arrays.asList("rg1", "rg2");
         Assert.assertEquals(ReadGroupCovariate.getReadGroupIDs(headerWithGroups), headerWithGroups.getReadGroups().stream().map(rg -> ReadGroupCovariate.getID(rg)).collect(Collectors.toList()));
     }
@@ -78,10 +75,13 @@ public final class ReadGroupCovariateUnitTest {
     }
 
     private static void runTest(final SAMReadGroupRecord rg, final String expected, final ReadGroupCovariate covariate) {
-        SAMRecord read = ArtificialSAMUtils.createRandomRead(10);
-        ReadUtils.setReadGroup(read, rg);
-        ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), 1);
-        covariate.recordValues(read, readCovariates);
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithReadGroup(rg);
+
+        GATKRead read = ArtificialReadUtils.createRandomRead(header, 10);
+        read.setReadGroup(rg.getReadGroupId());
+
+        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
+        covariate.recordValues(read, header, readCovariates);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), expected, covariate);
 
     }

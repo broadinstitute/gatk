@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -68,7 +68,7 @@ public final class ReadRecalibrationInfoUnitTest extends BaseTest {
         quals.put(EventType.BASE_INSERTION, insertionQuals);
         quals.put(EventType.BASE_DELETION, deletionQuals);
 
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(bases, baseQuals, readLength + "M");
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, baseQuals, readLength + "M");
         if ( includeIndelErrors ) {
             ReadUtils.setInsertionBaseQualities(read, insertionQuals);
             ReadUtils.setDeletionBaseQualities(read, deletionQuals);

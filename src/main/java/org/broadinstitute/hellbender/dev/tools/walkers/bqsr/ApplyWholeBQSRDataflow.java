@@ -1,24 +1,12 @@
 package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
-import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamInputResource;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -27,35 +15,22 @@ import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyWholeBQSRTransform;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BQSRTransform;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.ReadsFilter;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.SmallBamWriter;
+import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.ApplyBQSRWithoutMinQScoreArgumentCollection;
-import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.io.Serializable;
-import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -99,7 +74,7 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(sequenceDictionary) :
                 IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
 
-        PCollection<Read> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
         PCollection<SimpleInterval> knownIntervals = ingestKnownIntervals(pipeline, BRAC.RAC.knownSites);
 
         PCollectionTuple inputs =
@@ -109,7 +84,7 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
         String referencePath = BRAC.referenceArguments.getReferenceFileName();
 
         // future way
-        PCollection<Read> output2 = inputs.apply(new ApplyWholeBQSRTransform(header, referencePath, BRAC, applyArgs));
+        PCollection<GATKRead> output2 = inputs.apply(new ApplyWholeBQSRTransform(header, referencePath, BRAC, applyArgs));
         SmallBamWriter.writeToFile(pipeline, output2, header, OUTPUT);
     }
 

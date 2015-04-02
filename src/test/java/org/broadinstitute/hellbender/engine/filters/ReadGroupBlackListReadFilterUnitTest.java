@@ -2,9 +2,10 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -21,24 +22,24 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
     private static final int CHR_SIZE = 1000;
     private static final int GROUP_COUNT = 5;
 
-    private SAMFileHeader header= ArtificialSAMUtils.createArtificialSamHeaderWithGroups(CHR_COUNT, CHR_START, CHR_SIZE, GROUP_COUNT);
+    private SAMFileHeader header= ArtificialReadUtils.createArtificialSamHeaderWithGroups(CHR_COUNT, CHR_START, CHR_SIZE, GROUP_COUNT);
 
     @Test(expectedExceptions=UserException.class)
     public void testBadFilter() throws IOException {
         List<String> badFilters = Collections.singletonList("bad");
-        new ReadGroupBlackListReadFilter(badFilters);
+        new ReadGroupBlackListReadFilter(badFilters, header);
     }
 
     @Test(expectedExceptions=UserException.class)
     public void testBadFilterTag() throws IOException {
         List<String> badFilters = Collections.singletonList("bad:filter");
-        new ReadGroupBlackListReadFilter(badFilters);
+        new ReadGroupBlackListReadFilter(badFilters, header);
     }
 
     @Test(expectedExceptions=UserException.class)
     public void testBadFilterFile() throws IOException {
         List<String> badFilters = Collections.singletonList("/foo/bar/rgbl.txt");
-        new ReadGroupBlackListReadFilter(badFilters);
+        new ReadGroupBlackListReadFilter(badFilters, header);
     }
 
     private String getReadGroupId(final int index) {
@@ -51,32 +52,32 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
 
     @Test
     public void testFilterReadGroup() throws IOException {
-        SAMRecord filteredRecord = ArtificialSAMUtils.createArtificialRead(header, "readUno", 0, 1, 20);
-        filteredRecord.setAttribute("RG", getReadGroupId(1));
+        GATKRead filteredRecord = ArtificialReadUtils.createArtificialRead(header, "readUno", 0, 1, 20);
+        filteredRecord.setReadGroup(getReadGroupId(1));
 
-        SAMRecord unfilteredRecord = ArtificialSAMUtils.createArtificialRead(header, "readDos", 0, 2, 20);
-        unfilteredRecord.setAttribute("RG", getReadGroupId(2));
+        GATKRead unfilteredRecord = ArtificialReadUtils.createArtificialRead(header, "readDos", 0, 2, 20);
+        unfilteredRecord.setReadGroup(getReadGroupId(2));
 
         List<String> filterList = new ArrayList<>();
         filterList.add("RG:" + getReadGroupId(1));
 
-        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList);
+        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         Assert.assertTrue(!filter.test(filteredRecord));
         Assert.assertFalse(!filter.test(unfilteredRecord));
     }
 
     @Test
     public void testFilterPlatformUnit() throws IOException {
-        SAMRecord filteredRecord = ArtificialSAMUtils.createArtificialRead(header, "readUno", 0, 1, 20);
-        filteredRecord.setAttribute("RG", getReadGroupId(1));
+        GATKRead filteredRecord = ArtificialReadUtils.createArtificialRead(header, "readUno", 0, 1, 20);
+        filteredRecord.setReadGroup(getReadGroupId(1));
 
-        SAMRecord unfilteredRecord = ArtificialSAMUtils.createArtificialRead(header, "readDos", 0, 2, 20);
-        unfilteredRecord.setAttribute("RG", getReadGroupId(2));
+        GATKRead unfilteredRecord = ArtificialReadUtils.createArtificialRead(header, "readDos", 0, 2, 20);
+        unfilteredRecord.setReadGroup(getReadGroupId(2));
 
         List<String> filterList = new ArrayList<>();
         filterList.add("PU:" + getPlatformUnit(1));
 
-        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList);
+        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         Assert.assertTrue(!filter.test(filteredRecord));
         Assert.assertFalse(!filter.test(unfilteredRecord));
     }
@@ -84,13 +85,13 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
     @Test
     public void testFilterOutByReadGroup() throws IOException {
         int recordsPerGroup = 3;
-        List<SAMRecord> records = new ArrayList<>();
+        List<GATKRead> records = new ArrayList<>();
         int alignmentStart = 0;
         for (int x = 0; x < GROUP_COUNT; x++) {
             SAMReadGroupRecord groupRecord = header.getReadGroup(getReadGroupId(x));
             for (int y = 1; y <= recordsPerGroup; y++) {
-                SAMRecord record = ArtificialSAMUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
-                record.setAttribute("RG", groupRecord.getReadGroupId());
+                GATKRead record = ArtificialReadUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
+                record.setReadGroup(groupRecord.getReadGroupId());
                 records.add(record);
             }
         }
@@ -99,11 +100,11 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
         filterList.add("RG:" + getReadGroupId(1));
         filterList.add("RG:" + getReadGroupId(3));
 
-        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList);
+        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         int filtered = 0;
         int unfiltered = 0;
-        for (SAMRecord record : records) {
-            String readGroupName = record.getReadGroup().getReadGroupId();
+        for (GATKRead record : records) {
+            String readGroupName = record.getReadGroup();
             if (!filter.test(record)) {
                 if (!filterList.contains("RG:" + readGroupName))
                     Assert.fail("Read group " + readGroupName + " was filtered");
@@ -124,13 +125,13 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
     @Test
     public void testFilterOutByAttribute() throws IOException {
         int recordsPerGroup = 3;
-        List<SAMRecord> records = new ArrayList<>();
+        List<GATKRead> records = new ArrayList<>();
         int alignmentStart = 0;
         for (int x = 0; x < GROUP_COUNT; x++) {
             SAMReadGroupRecord groupRecord = header.getReadGroup(getReadGroupId(x));
             for (int y = 1; y <= recordsPerGroup; y++) {
-                SAMRecord record = ArtificialSAMUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
-                record.setAttribute("RG", groupRecord.getReadGroupId());
+                GATKRead record = ArtificialReadUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
+                record.setReadGroup(groupRecord.getReadGroupId());
                 records.add(record);
             }
         }
@@ -138,11 +139,11 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
         List<String> filterList = new ArrayList<>();
         filterList.add("PU:" + getPlatformUnit(1));
 
-        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList);
+        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         int filtered = 0;
         int unfiltered = 0;
-        for (SAMRecord record : records) {
-            String platformUnit = record.getReadGroup().getPlatformUnit();
+        for (GATKRead record : records) {
+            String platformUnit = ReadUtils.getPlatformUnit(record, header);
             if (!filter.test(record)) {
                 if (!filterList.contains("PU:" + platformUnit))
                     Assert.fail("Platform unit " + platformUnit + " was filtered");
@@ -163,13 +164,13 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
     @Test
     public void testFilterOutByFile() throws IOException {
         int recordsPerGroup = 3;
-        List<SAMRecord> records = new ArrayList<>();
+        List<GATKRead> records = new ArrayList<>();
         int alignmentStart = 0;
         for (int x = 0; x < GROUP_COUNT; x++) {
             SAMReadGroupRecord groupRecord = header.getReadGroup(getReadGroupId(x));
             for (int y = 1; y <= recordsPerGroup; y++) {
-                SAMRecord record = ArtificialSAMUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
-                record.setAttribute("RG", groupRecord.getReadGroupId());
+                GATKRead record = ArtificialReadUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
+                record.setReadGroup(groupRecord.getReadGroupId());
                 records.add(record);
             }
         }
@@ -177,11 +178,11 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
         List<String> filterList = new ArrayList<>();
         filterList.add(publicTestDir + "readgroupblacklisttest.txt");
 
-        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList);
+        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         int filtered = 0;
         int unfiltered = 0;
-        for (SAMRecord record : records) {
-            String readGroup = record.getReadGroup().getReadGroupId();
+        for (GATKRead record : records) {
+            String readGroup = record.getReadGroup();
             if (!filter.test(record)) {
                 if (!("ReadGroup3".equals(readGroup) || "ReadGroup4".equals(readGroup)))
                     Assert.fail("Read group " + readGroup + " was filtered");
@@ -202,13 +203,13 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
     @Test
     public void testFilterOutByListFile() throws IOException {
         int recordsPerGroup = 3;
-        List<SAMRecord> records = new ArrayList<>();
+        List<GATKRead> records = new ArrayList<>();
         int alignmentStart = 0;
         for (int x = 0; x < GROUP_COUNT; x++) {
             SAMReadGroupRecord groupRecord = header.getReadGroup(getReadGroupId(x));
             for (int y = 1; y <= recordsPerGroup; y++) {
-                SAMRecord record = ArtificialSAMUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
-                record.setAttribute("RG", groupRecord.getReadGroupId());
+                GATKRead record = ArtificialReadUtils.createArtificialRead(header, "readUno", 0, ++alignmentStart, 20);
+                record.setReadGroup(groupRecord.getReadGroupId());
                 records.add(record);
             }
         }
@@ -216,11 +217,11 @@ public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
         List<String> filterList = new ArrayList<>();
         filterList.add(publicTestDir + "readgroupblacklisttestlist.txt");
 
-        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList);
+        ReadGroupBlackListReadFilter filter = new ReadGroupBlackListReadFilter(filterList, header);
         int filtered = 0;
         int unfiltered = 0;
-        for (SAMRecord record : records) {
-            String readGroup = record.getReadGroup().getReadGroupId();
+        for (GATKRead record : records) {
+            String readGroup = record.getReadGroup();
             if (!filter.test(record)) {
                 if (!("ReadGroup3".equals(readGroup) || "ReadGroup4".equals(readGroup)))
                     Assert.fail("Read group " + readGroup + " was filtered");

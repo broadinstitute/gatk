@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.examples;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -11,6 +10,8 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -50,8 +51,8 @@ public final class PrintReadsWithVariants extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputStream.printf("Read at %s:%d-%d:\n%s\n", read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd(), read.getReadString());
+    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+        outputStream.printf("Read at %s:%d-%d:\n%s\n", read.getContig(), read.getStart(), read.getEnd(), read.getBasesString());
 
         if ( groupVariantsBySource ) {
             // We can keep the variants from each source separate by passing in the FeatureInputs

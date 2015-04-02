@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 @CommandLineProgramProperties(
 	usage = "Count reads.",
@@ -16,7 +16,7 @@ public final class CountReads extends ReadWalker {
 
     private long count = 0;
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         ++count;
     }
 

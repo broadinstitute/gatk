@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -28,7 +28,7 @@ public final class ReadClipperTestUtils {
      * @param cigarString string used to create a CIGAR
      * @return artificial read
      */
-    public static SAMRecord makeReadFromCigar(String cigarString) {
+    public static GATKRead makeReadFromCigar(String cigarString) {
         return makeReadFromCigar(TextCigarCodec.decode(cigarString));
     }
 
@@ -38,16 +38,16 @@ public final class ReadClipperTestUtils {
      * @param cigar
      * @return artificial read
      */
-    public static SAMRecord makeReadFromCigar(Cigar cigar) {
+    public static GATKRead makeReadFromCigar(Cigar cigar) {
         return makeReadFromCigar(cigar, 0);
     }
 
-    private static SAMRecord makeReadFromCigar(Cigar cigar, int lengthChange) {
+    private static GATKRead makeReadFromCigar(Cigar cigar, int lengthChange) {
         int readLength = cigar.getReadLength();
         if (readLength >= -lengthChange) {
             readLength += lengthChange;
         }
-        return ArtificialSAMUtils.createArtificialRead(arrayFromArrayWithLength(BASES, readLength), arrayFromArrayWithLength(QUALS, readLength), cigar.toString());
+        return ArtificialReadUtils.createArtificialRead(arrayFromArrayWithLength(BASES, readLength), arrayFromArrayWithLength(QUALS, readLength), cigar.toString());
     }
 
     private static byte [] arrayFromArrayWithLength(final byte[] array, final int length) {
@@ -65,7 +65,7 @@ public final class ReadClipperTestUtils {
      * @param lengthChange change in read length relative the CIGAR length
      * @return artificial read
      */
-    public static SAMRecord makeReadFromCigar(String cigarString, int lengthChange) {
+    public static GATKRead makeReadFromCigar(String cigarString, int lengthChange) {
         return makeReadFromCigar(TextCigarCodec.decode(cigarString), lengthChange);
     }
 

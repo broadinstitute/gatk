@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.StringLineReader;
+import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -9,10 +9,12 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 /**
- * A miscellaneous collection of utilities for working with SAM files, headers, etc.
+ * A miscellaneous collection of utilities for working with reads, headers, etc.
  * Static methods only, please.
  */
 public final class ReadUtils {
@@ -31,15 +33,19 @@ public final class ReadUtils {
 
     public static final int CLIPPING_GOAL_NOT_REACHED = -1;
 
+    public static final String ORIGINAL_BASE_QUALITIES_TAG = SAMTag.OQ.name();
+
+
     /**
      * HACK: This is used to make a copy of a read.
      * Really, SAMRecord should provide a copy constructor or a factory method.
      */
-    public static SAMRecord clone(SAMRecord originalRead) {
-        if (originalRead == null) return null;
+    public static SAMRecord cloneSAMRecord( final SAMRecord originalRead ) {
+        if ( originalRead == null ) return null;
         try {
-            return (SAMRecord)originalRead.clone();
-        } catch (CloneNotSupportedException e) {
+            return (SAMRecord) originalRead.clone();
+        }
+        catch ( CloneNotSupportedException e ) {
             throw new IllegalStateException(e);
         }
     }
@@ -48,16 +54,139 @@ public final class ReadUtils {
      * HACK: This is used to make a copy of a header.
      * Really, SAMFileHeader should provide a copy constructor or a factory method.
      */
-    public static SAMFileHeader clone(SAMFileHeader header) {
+    public static SAMFileHeader cloneSAMFileHeader( final SAMFileHeader header ) {
         if (header == null) return null;
         return header.clone();
     }
 
-    public static boolean isEmpty(SAMRecord read) {
-        return read.getReadBases() == null || read.getReadLength() == 0;
+    /**
+     * Retrieve the original base qualities of the given read, if present,
+     * as stored in the OQ attribute.
+     *
+     * @param read read to check
+     * @return original base qualities as stored in the OQ attribute, or null
+     *         if the OQ attribute is not present
+     */
+    public static byte[] getOriginalBaseQualities( final GATKRead read ) {
+        if ( ! read.hasAttribute(ORIGINAL_BASE_QUALITIES_TAG) ) {
+            return null;
+        }
+        final String oqString = read.getAttributeAsString(ORIGINAL_BASE_QUALITIES_TAG);
+        return oqString.length() > 0 ? SAMUtils.fastqToPhred(oqString) : null;
     }
 
-    public static String prettyPrintSequenceRecords ( SAMSequenceDictionary sequenceDictionary ) {
+    /**
+     * Returns the reference index in the given header of the read's contig,
+     * or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read is unmapped.
+     *
+     * @param read read whose reference index to look up
+     * @param header SAM header defining contig indices
+     * @return the reference index in the given header of the read's contig,
+     *         or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read is unmapped.
+     */
+    public static int getReferenceIndex( final GATKRead read, final SAMFileHeader header ) {
+        if ( read.isUnmapped() ) {
+            return SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX;
+        }
+
+        return header.getSequenceIndex(read.getContig());
+    }
+
+    /**
+     * Returns the reference index in the given header of the contig of the read's mate,
+     * or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read's mate is unmapped.
+     *
+     * @param read read whose mate's reference index to look up
+     * @param header SAM header defining contig indices
+     * @return the reference index in the given header of the contig of the read's mate,
+     *         or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read's mate is unmapped.
+     */
+    public static int getMateReferenceIndex( final GATKRead read, final SAMFileHeader header ) {
+        if ( read.mateIsUnmapped() ) {
+            return SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX;
+        }
+
+        return header.getSequenceIndex(read.getMateContig());
+    }
+
+    /**
+     * Returns a {@link SAMReadGroupRecord} object corresponding to the provided read's read group.
+     *
+     * @param read read whose read group to retrieve
+     * @param header SAM header containing read groups
+     * @return a {@link SAMReadGroupRecord} object corresponding to the provided read's read group,
+     *         or null if the read has no read group
+     */
+    public static SAMReadGroupRecord getSAMReadGroupRecord( final GATKRead read, final SAMFileHeader header ) {
+        final String readGroupName = read.getReadGroup();
+        return readGroupName != null ? header.getReadGroup(readGroupName) : null;
+    }
+
+    /**
+     * Returns the platform associated with the provided read's read group.
+     *
+     * @param read read whose platform information to retrieve
+     * @param header SAM header containing read groups
+     * @return the platform for the provided read's read group as a String,
+     *         or null if the read has no read group.
+     */
+    public static String getPlatform( final GATKRead read, final SAMFileHeader header ) {
+        final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
+        return readGroup != null ? readGroup.getPlatform() : null;
+    }
+
+    /**
+     * Returns the platform unit associated with the provided read's read group.
+     *
+     * @param read read whose platform unit to retrieve
+     * @param header SAM header containing read groups
+     * @return the platform unit for the provided read's read group as a String,
+     *         or null if the read has no read group.
+     */
+    public static String getPlatformUnit( final GATKRead read, final SAMFileHeader header ) {
+        final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
+        return readGroup != null ? readGroup.getPlatformUnit() : null;
+    }
+
+    /**
+     * Returns the library associated with the provided read's read group.
+     *
+     * @param read read whose library to retrieve
+     * @param header SAM header containing read groups
+     * @return the library for the provided read's read group as a String,
+     *         or null if the read has no read group.
+     */
+    public static String getLibrary( final GATKRead read, final SAMFileHeader header ) {
+        final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
+        return readGroup != null ? readGroup.getLibrary() : null;
+    }
+
+    /**
+     * Returns the sample name associated with the provided read's read group.
+     *
+     * @param read read whose sample name to retrieve
+     * @param header SAM header containing read groups
+     * @return the sample name for the provided read's read group as a String,
+     *         or null if the read has no read group.
+     */
+    public static String getSampleName( final GATKRead read, final SAMFileHeader header ) {
+        final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
+        return readGroup != null ? readGroup.getSample() : null;
+    }
+
+    /**
+     * Returns the read's unclipped start if the read is on the forward strand,
+     * or the read's unclipped end if the read is on the reverse strand.
+     *
+     * @param read read whose stranded unclipped start to retrieve
+     * @return the read's unclipped start if the read is on the forward strand,
+     *         or the read's unclipped end if the read is on the reverse strand.
+     */
+    public static int getStrandedUnclippedStart( final GATKRead read ) {
+        return read.isReverseStrand() ? read.getUnclippedEnd() : read.getUnclippedStart();
+    }
+
+    public static String prettyPrintSequenceRecords( SAMSequenceDictionary sequenceDictionary ) {
         String[] sequenceRecordNames = new String[sequenceDictionary.size()];
         int sequenceRecordIndex = 0;
         for (SAMSequenceRecord sequenceRecord : sequenceDictionary.getSequences()) {
@@ -67,11 +196,100 @@ public final class ReadUtils {
     }
 
     /**
+     * @param read read to check
+     * @return true if the read is paired and has a mapped mate, otherwise false
+     */
+    public static boolean readHasMappedMate( final GATKRead read ) {
+        return read.isPaired() && ! read.mateIsUnmapped();
+    }
+
+    /**
+     * Check whether the given String represents a legal attribute name according to the SAM spec,
+     * and throw an exception if it doesn't.
+     *
+     * Legal attribute names are two characters long, start with a letter, and end with a letter or digit.
+     *
+     * @param attributeName name to check
+     * @throws IllegalArgumentException if the attribute name is illegal according to the SAM spec.
+     */
+    public static void assertAttributeNameIsLegal( final String attributeName ) {
+        if ( attributeName == null ||
+             attributeName.length() != 2 ||
+             ! Character.isLetter(attributeName.charAt(0)) ||
+             ! Character.isLetterOrDigit(attributeName.charAt(1)) ) {
+
+            throw new IllegalArgumentException("Read attribute " + attributeName + " invalid: attribute names must be non-null two-character Strings matching the pattern /[A-Za-z][A-Za-z0-9]/");
+        }
+    }
+
+    /**
      * A marker to tell which end of the read has been clipped
      */
     public enum ClippingTail {
         LEFT_TAIL,
         RIGHT_TAIL
+    }
+
+    public static final int SAM_READ_PAIRED_FLAG = 0x1;
+    public static final int SAM_PROPER_PAIR_FLAG = 0x2;
+    public static final int SAM_READ_UNMAPPED_FLAG = 0x4;
+    public static final int SAM_MATE_UNMAPPED_FLAG = 0x8;
+    public static final int SAM_READ_STRAND_FLAG = 0x10;
+    public static final int SAM_MATE_STRAND_FLAG = 0x20;
+    public static final int SAM_FIRST_OF_PAIR_FLAG = 0x40;
+    public static final int SAM_SECOND_OF_PAIR_FLAG = 0x80;
+    public static final int SAM_NOT_PRIMARY_ALIGNMENT_FLAG = 0x100;
+    public static final int SAM_READ_FAILS_VENDOR_QUALITY_CHECK_FLAG = 0x200;
+    public static final int SAM_DUPLICATE_READ_FLAG = 0x400;
+    public static final int SAM_SUPPLEMENTARY_ALIGNMENT_FLAG = 0x800;
+
+    /**
+     * Construct a set of SAM bitwise flags from a GATKRead
+     *
+     * @param read read from which to construct the flags
+     * @return SAM-compliant set of bitwise flags reflecting the properties in the given read
+     */
+    public static int getSAMFlagsForRead( final GATKRead read ) {
+        int samFlags = 0;
+
+        if ( read.isPaired() ) {
+            samFlags |= SAM_READ_PAIRED_FLAG;
+        }
+        if ( read.isProperlyPaired() ) {
+            samFlags |= SAM_PROPER_PAIR_FLAG;
+        }
+        if ( read.isUnmapped() ) {
+            samFlags |= SAM_READ_UNMAPPED_FLAG;
+        }
+        if ( read.mateIsUnmapped() ) {
+            samFlags |= SAM_MATE_UNMAPPED_FLAG;
+        }
+        if ( read.isReverseStrand() ) {
+            samFlags |= SAM_READ_STRAND_FLAG;
+        }
+        if ( read.mateIsReverseStrand() ) {
+            samFlags |= SAM_MATE_STRAND_FLAG;
+        }
+        if ( read.isFirstOfPair() ) {
+            samFlags |= SAM_FIRST_OF_PAIR_FLAG;
+        }
+        if ( read.isSecondOfPair() ) {
+            samFlags |= SAM_SECOND_OF_PAIR_FLAG;
+        }
+        if ( read.isSecondaryAlignment() ) {
+            samFlags |= SAM_NOT_PRIMARY_ALIGNMENT_FLAG;
+        }
+        if ( read.failsVendorQualityCheck() ) {
+            samFlags |= SAM_READ_FAILS_VENDOR_QUALITY_CHECK_FLAG;
+        }
+        if ( read.isDuplicate() ) {
+            samFlags |= SAM_DUPLICATE_READ_FLAG;
+        }
+        if ( read.isSupplementaryAlignment() ) {
+            samFlags |= SAM_SUPPLEMENTARY_ALIGNMENT_FLAG;
+        }
+
+        return samFlags;
     }
 
     /**
@@ -100,14 +318,14 @@ public final class ReadUtils {
      * @return the reference coordinate for the adaptor boundary (effectively the first base IN the adaptor, closest to the read.
      * CANNOT_COMPUTE_ADAPTOR_BOUNDARY if the read is unmapped or the mate is mapped to another contig.
      */
-    public static int getAdaptorBoundary(final SAMRecord read) {
+    public static int getAdaptorBoundary(final GATKRead read) {
         if ( ! hasWellDefinedFragmentSize(read) ) {
             return CANNOT_COMPUTE_ADAPTOR_BOUNDARY;
-        } else if ( read.getReadNegativeStrandFlag() ) {
-            return read.getMateAlignmentStart() - 1;           // case 1 (see header)
+        } else if ( read.isReverseStrand() ) {
+            return read.getMateStart() - 1;           // case 1 (see header)
         } else {
-            final int insertSize = Math.abs(read.getInferredInsertSize());    // the inferred insert size can be negative if the mate is mapped before the read (so we take the absolute value)
-            return read.getAlignmentStart() + insertSize + 1;  // case 2 (see header)
+            final int insertSize = Math.abs(read.getFragmentLength());    // the inferred insert size can be negative if the mate is mapped before the read (so we take the absolute value)
+            return read.getStart() + insertSize + 1;  // case 2 (see header)
         }
     }
 
@@ -120,30 +338,30 @@ public final class ReadUtils {
      * @param read the read to check
      * @return true if it can, false otherwise
      */
-    public static boolean hasWellDefinedFragmentSize(final SAMRecord read) {
-        if ( read.getInferredInsertSize() == 0 )
+    public static boolean hasWellDefinedFragmentSize(final GATKRead read) {
+        if ( read.getFragmentLength() == 0 )
             // no adaptors in reads with mates in another chromosome or unmapped pairs
             return false;
-        if ( ! read.getReadPairedFlag() )
+        if ( ! read.isPaired() )
             // only reads that are paired can be adaptor trimmed
             return false;
-        if ( read.getReadUnmappedFlag() || read.getMateUnmappedFlag() )
+        if ( read.isUnmapped() || read.mateIsUnmapped() )
             // only reads when both reads are mapped can be trimmed
             return false;
-//        if ( ! read.getProperPairFlag() )
+//        if ( ! read.isProperlyPaired() )
 //            // note this flag isn't always set properly in BAMs, can will stop us from eliminating some proper pairs
 //            // reads that aren't part of a proper pair (i.e., have strange alignments) can't be trimmed
 //            return false;
-        if ( read.getReadNegativeStrandFlag() == read.getMateNegativeStrandFlag() )
-            // sanity check on getProperPairFlag to ensure that read1 and read2 aren't on the same strand
+        if ( read.isReverseStrand() == read.mateIsReverseStrand() )
+            // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
             return false;
 
-        if ( read.getReadNegativeStrandFlag() ) {
+        if ( read.isReverseStrand() ) {
             // we're on the negative strand, so our read runs right to left
-            return read.getAlignmentEnd() > read.getMateAlignmentStart();
+            return read.getEnd() > read.getMateStart();
         } else {
             // we're on the positive strand, so our mate should be to our right (his start + insert size should be past our start)
-            return read.getAlignmentStart() <= read.getMateAlignmentStart() + read.getInferredInsertSize();
+            return read.getStart() <= read.getMateStart() + read.getFragmentLength();
         }
     }
 
@@ -155,7 +373,7 @@ public final class ReadUtils {
      * @param read
      * @return the length of the first insertion, or 0 if there is none (see warning).
      */
-    public static int getFirstInsertionOffset(SAMRecord read) {
+    public static int getFirstInsertionOffset(GATKRead read) {
         CigarElement e = read.getCigar().getCigarElement(0);
         if ( e.getOperator() == CigarOperator.I )
             return e.getLength();
@@ -171,8 +389,8 @@ public final class ReadUtils {
      * @param read
      * @return the length of the last insertion, or 0 if there is none (see warning).
      */
-    public static int getLastInsertionOffset(SAMRecord read) {
-        CigarElement e = read.getCigar().getCigarElement(read.getCigarLength() - 1);
+    public static int getLastInsertionOffset(GATKRead read) {
+        CigarElement e = read.getCigar().getCigarElement(read.getCigar().numCigarElements() - 1);
         if ( e.getOperator() == CigarOperator.I )
             return e.getLength();
         else
@@ -186,8 +404,8 @@ public final class ReadUtils {
      *
      * @return the unclipped start of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftStart(SAMRecord read) {
-        int softStart = read.getAlignmentStart();
+    public static int getSoftStart(GATKRead read) {
+        int softStart = read.getStart();
         for (final CigarElement cig : read.getCigar().getCigarElements()) {
             final CigarOperator op = cig.getOperator();
 
@@ -207,9 +425,9 @@ public final class ReadUtils {
      *
      * @return the unclipped end of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftEnd(SAMRecord read) {
+    public static int getSoftEnd(GATKRead read) {
         boolean foundAlignedBase = false;
-        int softEnd = read.getAlignmentEnd();
+        int softEnd = read.getEnd();
         final List<CigarElement> cigs = read.getCigar().getCigarElements();
         for (int i = cigs.size() - 1; i >= 0; --i) {
             final CigarElement cig = cigs.get(i);
@@ -223,13 +441,22 @@ public final class ReadUtils {
             }
         }
         if( !foundAlignedBase ) { // for example 64H14S, the soft end is actually the same as the alignment end
-            softEnd = read.getAlignmentEnd();
+            softEnd = read.getEnd();
         }
         return softEnd;
     }
 
+    public static int getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord, ClippingTail tail) {
+        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
+    }
+
+    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(GATKRead read, int refCoord, ClippingTail tail) {
+        final int leftmostSafeVariantPosition = Math.max(getSoftStart(read), refCoord);
+        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), leftmostSafeVariantPosition, tail, false);
+    }
+
     /**
-     * Pre-processes the results of getReadCoordinateForReferenceCoordinate(SAMRecord, int) to take care of
+     * Pre-processes the results of {@link #getReadCoordinateForReferenceCoordinate(int, Cigar, int, boolean)} to take care of
      * two corner cases:
      *
      * 1. If clipping the right tail (end of the read) getReadCoordinateForReferenceCoordinate and fall inside
@@ -240,20 +467,8 @@ public final class ReadUtils {
      * read starts with an insertion, and you're requesting the first read based coordinate, it will skip
      * the leading insertion (because it has the same reference coordinate as the following base).
      *
-     * @param read the read to clip
-     * @param refCoord reference coorinate
-     * @param tail which tail to clip
      * @return the read coordinate corresponding to the requested reference coordinate for clipping.
      */
-    public static int getReadCoordinateForReferenceCoordinate(SAMRecord read, int refCoord, ClippingTail tail) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
-    }
-
-    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(SAMRecord read, int refCoord, ClippingTail tail) {
-        final int leftmostSafeVariantPosition = Math.max(getSoftStart(read), refCoord);
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), leftmostSafeVariantPosition, tail, false);
-    }
-
     public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
         Pair<Integer, Boolean> result = getReadCoordinateForReferenceCoordinate(alignmentStart, cigar, refCoord, allowGoalNotReached);
         int readCoord = result.getLeft();
@@ -392,8 +607,8 @@ public final class ReadUtils {
      * @param referenceCoordinate the reference coordinate of the base to test
      * @return true if it is inside the read, false otherwise.
      */
-    public static boolean isInsideRead(final SAMRecord read, final int referenceCoordinate) {
-        return referenceCoordinate >= read.getAlignmentStart() && referenceCoordinate <= read.getAlignmentEnd();
+    public static boolean isInsideRead(final GATKRead read, final int referenceCoordinate) {
+        return referenceCoordinate >= read.getStart() && referenceCoordinate <= read.getEnd();
     }
 
     /**
@@ -441,8 +656,8 @@ public final class ReadUtils {
      * @param read the read
      * @return the reverse complement of the read bases
      */
-    public static String getBasesReverseComplement(SAMRecord read) {
-        return getBasesReverseComplement(read.getReadBases());
+    public static String getBasesReverseComplement(GATKRead read) {
+        return getBasesReverseComplement(read.getBases());
     }
 
     /**
@@ -450,83 +665,72 @@ public final class ReadUtils {
      * @param reads list of reads
      * @return      non-negative integer
      */
-    public static int getMaxReadLength( final List<SAMRecord> reads ) {
+    public static int getMaxReadLength( final List<GATKRead> reads ) {
         if( reads == null ) { throw new IllegalArgumentException("Attempting to check a null list of reads."); }
 
         int maxReadLength = 0;
-        for( final SAMRecord read : reads ) {
-            maxReadLength = Math.max(maxReadLength, read.getReadLength());
+        for( final GATKRead read : reads ) {
+            maxReadLength = Math.max(maxReadLength, read.getLength());
         }
         return maxReadLength;
     }
 
     /**
-     * Creates an empty GATKSAMRecord with the read's header, read group and mate
+     * Creates an "empty" MutableRead with the provided read's read group and mate
      * information, but empty (not-null) fields:
      *  - Cigar String
      *  - Read Bases
      *  - Base Qualities
      *
-     * Use this method if you want to create a new empty GATKSAMRecord based on
-     * another GATKSAMRecord
+     * Use this method if you want to create a new empty MutableRead based on
+     * another MutableRead
      *
-     * @param read a read to copy the header from
+     * @param read a read to copy fields from
      * @return a read with no bases but safe for the GATK
      */
-    public static SAMRecord emptyRead(SAMRecord read) {
-        BAMRecord emptyRead = DefaultSAMRecordFactory.getInstance().createBAMRecord(read.getHeader(),
-                read.getReferenceIndex(),
-                0,
-                (short) 0,
-                (short) 0,
-                0,
-                0,
-                read.getFlags(),
-                0,
-                read.getMateReferenceIndex(),
-                read.getMateAlignmentStart(),
-                read.getInferredInsertSize(),
-                null);
+    public static GATKRead emptyRead( final GATKRead read ) {
+        final GATKRead emptyRead = read.copy();
 
-        emptyRead.setCigarString("");
-        emptyRead.setReadBases(new byte[0]);
+        emptyRead.setCigar("");
+        emptyRead.setBases(new byte[0]);
         emptyRead.setBaseQualities(new byte[0]);
 
-        SAMReadGroupRecord samRG = read.getReadGroup();
         emptyRead.clearAttributes();
-        if (samRG != null) {
-            emptyRead.setAttribute(SAMTag.RG.name(), samRG.getId());
+        String readGroup = read.getReadGroup();
+        if (readGroup != null) {
+            emptyRead.setAttribute(SAMTag.RG.name(), readGroup);
         }
+
         return emptyRead;
     }
 
-    public static void setInsertionBaseQualities( SAMRecord read, final byte[] quals) {
+    public static void setInsertionBaseQualities( GATKRead read, final byte[] quals) {
         read.setAttribute(BQSR_BASE_INSERTION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals));
     }
 
-    public static void setDeletionBaseQualities( SAMRecord read, final byte[] quals) {
+    public static void setDeletionBaseQualities( GATKRead read, final byte[] quals) {
         read.setAttribute(BQSR_BASE_DELETION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals));
     }
 
     /**
      * @return whether or not this read has base insertion or deletion qualities (one of the two is sufficient to return true)
      */
-    public static boolean hasBaseIndelQualities(SAMRecord read) {
-        return read.getAttribute(BQSR_BASE_INSERTION_QUALITIES) != null || read.getAttribute(BQSR_BASE_DELETION_QUALITIES ) != null;
+    public static boolean hasBaseIndelQualities(GATKRead read) {
+        return read.hasAttribute(BQSR_BASE_INSERTION_QUALITIES) || read.hasAttribute(BQSR_BASE_DELETION_QUALITIES);
     }
 
     /**
      * @return the base deletion quality or null if read doesn't have one
      */
-    public static byte[] getExistingBaseInsertionQualities(SAMRecord read) {
-        return SAMUtils.fastqToPhred(read.getStringAttribute(BQSR_BASE_INSERTION_QUALITIES));
+    public static byte[] getExistingBaseInsertionQualities(GATKRead read) {
+        return SAMUtils.fastqToPhred(read.getAttributeAsString(BQSR_BASE_INSERTION_QUALITIES));
     }
 
     /**
      * @return the base deletion quality or null if read doesn't have one
      */
-    public static byte[] getExistingBaseDeletionQualities(SAMRecord read) {
-        return SAMUtils.fastqToPhred( read.getStringAttribute(BQSR_BASE_DELETION_QUALITIES));
+    public static byte[] getExistingBaseDeletionQualities(GATKRead read) {
+        return SAMUtils.fastqToPhred( read.getAttributeAsString(BQSR_BASE_DELETION_QUALITIES));
     }
 
     /**
@@ -535,7 +739,7 @@ public final class ReadUtils {
      *
      * @return the base insertion quality array
      */
-    public static byte[] getBaseInsertionQualities(SAMRecord read) {
+    public static byte[] getBaseInsertionQualities(GATKRead read) {
         byte [] quals = getExistingBaseInsertionQualities(read);
         if( quals == null ) {
             quals = new byte[read.getBaseQualities().length];
@@ -551,7 +755,7 @@ public final class ReadUtils {
      *
      * @return the base deletion quality array
      */
-    public static byte[] getBaseDeletionQualities(SAMRecord read) {
+    public static byte[] getBaseDeletionQualities(GATKRead read) {
         byte[] quals = getExistingBaseDeletionQualities(read);
         if( quals == null ) {
             quals = new byte[read.getBaseQualities().length];
@@ -561,14 +765,7 @@ public final class ReadUtils {
         return quals;
     }
 
-    public static void setReadGroup(SAMRecord read, SAMReadGroupRecord readGroup) {
-        final SAMFileHeader header= read.getHeader();
-        header.addReadGroup(readGroup);
-        read.setHeader(header);
-        read.setAttribute(SAMTag.RG.name(), readGroup.getId());
-    }
-
-    public static byte[] getBaseQualities( final SAMRecord read, final EventType errorModel ) {
+    public static byte[] getBaseQualities( final GATKRead read, final EventType errorModel ) {
         switch( errorModel ) {
             case BASE_SUBSTITUTION:
                 return read.getBaseQualities();
@@ -584,7 +781,7 @@ public final class ReadUtils {
     /**
      * Setters and Accessors for base insertion and base deletion quality scores
      */
-    public static void setBaseQualities( final SAMRecord read, final byte[] quals, final EventType errorModel ) {
+    public static void setBaseQualities( final GATKRead read, final byte[] quals, final EventType errorModel ) {
         switch( errorModel ) {
             case BASE_SUBSTITUTION:
                 read.setBaseQualities(quals);
@@ -604,17 +801,18 @@ public final class ReadUtils {
      * is the read a SOLiD read?
      *
      * @param read the read to test
+     * @param header SAM header for the read
      * @return checks the read group tag PL for the default SOLiD tag
      */
-    public static boolean isSOLiDRead(SAMRecord read) {
-        return NGSPlatform.fromRead(read) == NGSPlatform.SOLID;
+    public static boolean isSOLiDRead(final GATKRead read, final SAMFileHeader header) {
+        return NGSPlatform.fromReadGroupPL(ReadUtils.getPlatform(read, header)) == NGSPlatform.SOLID;
     }
 
     /**
      * Resets the quality scores of the reads to the orginal (pre-BQSR) ones.
      */
-    public static SAMRecord resetOriginalBaseQualities(SAMRecord read) {
-        byte[] originalQuals = read.getOriginalBaseQualities();
+    public static GATKRead resetOriginalBaseQualities(GATKRead read) {
+        byte[] originalQuals = ReadUtils.getOriginalBaseQualities(read);
         if ( originalQuals != null )
             read.setBaseQualities(originalQuals);
         return read;
@@ -626,15 +824,16 @@ public final class ReadUtils {
      * @param read The read to verify.
      * @return true if alignment agrees with header, false otherwise.
      */
-    public static boolean alignmentAgreesWithHeader(final SAMFileHeader header, final SAMRecord read) {
+    public static boolean alignmentAgreesWithHeader(final SAMFileHeader header, final GATKRead read) {
+        final int referenceIndex = getReferenceIndex(read, header);
         // Read is aligned to nonexistent contig
-        if( read.getReferenceIndex() == SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX && read.getAlignmentStart() != SAMRecord.NO_ALIGNMENT_START )
+        if( ! read.isUnmapped() && referenceIndex == SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX ) {
             return false;
-        final SAMSequenceRecord contigHeader = header.getSequence( read.getReferenceIndex() );
+        }
+        final SAMSequenceRecord contigHeader = header.getSequence(referenceIndex);
         // Read is aligned to a point after the end of the contig
-        if( !read.getReadUnmappedFlag() && read.getAlignmentStart() > contigHeader.getSequenceLength() )
+        if( ! read.isUnmapped() && read.getStart() > contigHeader.getSequenceLength() )
             return false;
         return true;
     }
-
 }

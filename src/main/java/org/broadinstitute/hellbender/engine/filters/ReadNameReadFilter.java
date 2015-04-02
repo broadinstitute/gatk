@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Keep only reads with this read name.
@@ -14,7 +14,7 @@ public final class ReadNameReadFilter implements ReadFilter {
     public String readName;
 
     @Override
-    public boolean test(final SAMRecord read) {
-        return read.getReadName().equals(readName);
+    public boolean test( final GATKRead read ) {
+        return read.getName() != null && read.getName().equals(readName);
     }
 }

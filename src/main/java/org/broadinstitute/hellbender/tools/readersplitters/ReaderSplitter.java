@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.readersplitters;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
 
@@ -20,7 +20,8 @@ public abstract class ReaderSplitter<T> {
     /**
      * Returns the value from this record for this splitter.
      * @param record The record.
+     * @param header Header for the record
      * @return The value from the record for this splitter.
      */
-    public abstract T getSplitBy(final SAMRecord record);
+    public abstract T getSplitBy(final GATKRead record, final SAMFileHeader header);
 }

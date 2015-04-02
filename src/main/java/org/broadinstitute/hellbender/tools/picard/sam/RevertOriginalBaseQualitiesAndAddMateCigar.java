@@ -66,7 +66,7 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
         final SAMFileHeader inHeader = in.getFileHeader();
 
         // Build the output writer based on the correct sort order
-        final SAMFileHeader outHeader = ReadUtils.clone(inHeader);
+        final SAMFileHeader outHeader = ReadUtils.cloneSAMFileHeader(inHeader);
         if (null == SORT_ORDER) this.SORT_ORDER = inHeader.getSortOrder(); // same as the input
         outHeader.setSortOrder(SORT_ORDER);
         SAMFileWriterFactory.setDefaultCreateIndexWhileWriting(CREATE_INDEX);

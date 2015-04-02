@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Set;
 
@@ -16,19 +17,22 @@ public final class PlatformReadFilter implements ReadFilter {
     @Argument(fullName = "PLFilterName", shortName = "PLFilterName", doc="Keep reads with RG:PL attribute containing this string", optional=true)
     public Set<String> PLFilterNames;
 
+    private final SAMFileHeader header;
+
+    public PlatformReadFilter( final SAMFileHeader header ) {
+        this.header = header;
+    }
+
     @Override
-    public boolean test(final SAMRecord read) {
-        final SAMReadGroupRecord readGroup = read.getReadGroup();
-        if (readGroup == null) {
+    public boolean test( final GATKRead read ) {
+        String platform = ReadUtils.getPlatform(read, header);
+        if ( platform == null ) {
             return false;
         }
-        final String readPlatformAttr = readGroup.getPlatform();
-        if (readPlatformAttr == null) {
-            return false;
-        }
-        final String platformUppercase = readPlatformAttr.toUpperCase();
-        for (final String name : PLFilterNames) {
-            if (platformUppercase.contains(name.toUpperCase())){
+        platform = platform.toUpperCase();
+
+        for ( final String name : PLFilterNames ) {
+            if ( platform.contains(name.toUpperCase()) ) {
                 return true;
             }
         }

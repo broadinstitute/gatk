@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
 
@@ -16,7 +15,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * List of reads in the matrix sorted by their index therein.
      * @return never {@code null}.
      */
-    public List<SAMRecord> reads();
+    public List<GATKRead> reads();
 
     /**
      * List of alleles in the matrix sorted by their index in the collection.
@@ -70,7 +69,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @return -1 if there is not such a read in the matrix, otherwise its index
      *    which is 0 or greater.
      */
-    public int readIndex(final SAMRecord read);
+    public int readIndex(final GATKRead read);
 
     /**
      * Number of allele in the matrix.
@@ -102,7 +101,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @throws IllegalArgumentException if {@code readIndex} is not a valid read index.
      * @return never {@code null}.
      */
-    public SAMRecord readAt(final int readIndex);
+    public GATKRead readAt(final int readIndex);
 
 
     /**

@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.tools.readersplitters;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
 import java.util.function.Function;
@@ -14,8 +15,8 @@ import java.util.stream.Collectors;
  */
 public abstract class ReadGroupSplitter<T> extends ReaderSplitter<T> {
     @Override
-    public T getSplitBy(final SAMRecord record) {
-        return getSplitByFunction().apply(record.getReadGroup());
+    public T getSplitBy(final GATKRead record, final SAMFileHeader header) {
+        return getSplitByFunction().apply(ReadUtils.getSAMReadGroupRecord(record, header));
     }
 
     @Override

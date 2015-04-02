@@ -2,13 +2,12 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.utils.iterators.GATKSAMIterator;
 
 import java.util.Iterator;
 
 
 /** this fake iterator allows us to look at how specific piles of reads are handled */
-public abstract class ArtificialSAMIterator implements GATKSAMIterator {
+public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATKRead> {
 
 
     protected int currentChromo = 0;
@@ -17,7 +16,7 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
     protected int unmappedRemaining = 0;
     protected boolean done = false;
     // the next record
-    protected SAMRecord next = null;
+    protected GATKRead next = null;
     protected SAMFileHeader header = null;
 
     // the passed in parameters
@@ -42,7 +41,7 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
      * @param readCount   the number of reads in each chromosome
      * @param header      the associated header
      */
-    ArtificialSAMIterator( int startingChr, int endingChr, int readCount, SAMFileHeader header ) {
+    ArtificialReadIterator( int startingChr, int endingChr, int readCount, SAMFileHeader header ) {
         sChr = startingChr;
         eChromosomeCount = (endingChr - startingChr) + 1;
         rCount = readCount;
@@ -69,7 +68,7 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
      * @param readCount   the number of reads in each chromosome
      * @param header      the associated header
      */
-    ArtificialSAMIterator( int startingChr, int endingChr, int readCount, int unmappedReadCount, SAMFileHeader header ) {
+    ArtificialReadIterator( int startingChr, int endingChr, int readCount, int unmappedReadCount, SAMFileHeader header ) {
         sChr = startingChr;
         eChromosomeCount = (endingChr - startingChr) + 1;
         rCount = readCount;
@@ -81,6 +80,10 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
 
     public void close() {
         open = false;
+    }
+
+    public SAMFileHeader getHeader() {
+        return header;
     }
 
     public boolean hasNext() {
@@ -108,7 +111,7 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
                 return false;
             } else {
                 ++totalReadCount;
-                this.next = ArtificialSAMUtils.createArtificialRead(this.header,
+                this.next = ArtificialReadUtils.createArtificialRead(this.header,
                         String.valueOf(totalReadCount),
                         SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX,
                         SAMRecord.NO_ALIGNMENT_START,
@@ -118,16 +121,16 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
             }
         }
         ++totalReadCount;
-        this.next = ArtificialSAMUtils.createArtificialRead(this.header, String.valueOf(totalReadCount), currentChromo, currentRead, 50);
+        this.next = ArtificialReadUtils.createArtificialRead(this.header, String.valueOf(totalReadCount), currentChromo, currentRead, 50);
         ++currentRead;
         return true;
     }
 
 
-    public SAMRecord next() {
+    public GATKRead next() {
         open = true;
 
-        SAMRecord ret = next;
+        GATKRead ret = next;
         createNextRead();
         return ret;
     }
@@ -139,7 +142,7 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
     /**
      * return this iterator, for the iterable interface
      */
-    public Iterator<SAMRecord> iterator() {
+    public Iterator<GATKRead> iterator() {
         return this;
     }
 
@@ -153,7 +156,7 @@ public abstract class ArtificialSAMIterator implements GATKSAMIterator {
     /**
      * peek at the next sam record
      */
-    public SAMRecord peek() {
+    public GATKRead peek() {
         return this.next;
     }
 }

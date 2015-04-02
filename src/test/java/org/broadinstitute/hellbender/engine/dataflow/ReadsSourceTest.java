@@ -1,24 +1,16 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
+import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Count;
-import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.ImmutableList;
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-import org.apache.spark.SparkException;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -43,30 +35,30 @@ public final class ReadsSourceTest extends BaseTest {
     public void testGetReadPCollectionLocal(){
         Pipeline p = GATKTestPipeline.create();
         ReadsSource source = new ReadsSource(bam.getAbsolutePath(), p);
-        DataflowWorkarounds.registerGenomicsCoders(p);
-        PCollection<Read> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)), ValidationStringency.DEFAULT_STRINGENCY);
+        DataflowUtils.registerGATKCoders(p);
+        PCollection<GATKRead> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)), ValidationStringency.DEFAULT_STRINGENCY);
         PCollection<Long> count = reads.apply(Count.globally());
         DataflowAssert.thatSingleton(count).isEqualTo(7L);
         p.run();
     }
-    /*
-    // TODO: once ReadsSource has an option for including unmapped reads, we can add this test.
-    @Test
+
+    // TODO: once ReadsSource has an option for including unmapped reads, we can enable this test.
+    @Test(enabled = false)
     public void testLocalFile() {
         final String bam2 = "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/HiSeq.1mb.1RG.2k_lines.alternate.bam";
         Pipeline pipeline = TestPipeline.create();
-        DataflowWorkarounds.registerGenomicsCoders(pipeline);
+        DataflowUtils.registerGATKCoders(pipeline);
         ReadsSource readsSource = new ReadsSource(bam2, pipeline);
         SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        PCollection<Read> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
         PCollection<Long> count = reads.apply(Count.globally());
         // for now we only get 1649, because it removes unmapped reads.
         DataflowAssert.thatSingleton(count).isEqualTo(1674L);
         pipeline.run();
     }
-    */
+
 
     @Test
     public void testGetInvalidPCollectionLocal() {
@@ -75,27 +67,11 @@ public final class ReadsSourceTest extends BaseTest {
         ReadsSource source = new ReadsSource(hiSeqBam, p);
         SAMFileHeader header = source.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-        DataflowWorkarounds.registerGenomicsCoders(p);
-        PCollection<Read> reads = source.getReadPCollection(IntervalUtils.getAllIntervalsForReference(sequenceDictionary), ValidationStringency.SILENT);
+        DataflowUtils.registerGATKCoders(p);
+        PCollection<GATKRead> reads = source.getReadPCollection(IntervalUtils.getAllIntervalsForReference(sequenceDictionary), ValidationStringency.SILENT);
         PCollection<Long> count = reads.apply(Count.globally());
-        DataflowAssert.thatSingleton(count).isEqualTo(1674L);
+        // There are 1677 total reads in this file
+        DataflowAssert.thatSingleton(count).isEqualTo(1677L);
         p.run();
-    }
-
-    @Test(expectedExceptions = { SAMException.class, SparkException.class }) // Spark doesn't unwrap exceptions
-    public void testGetInvalidPCollectionLocalStrict() throws Throwable {
-        // ValidationStringency.STRICT should trigger an error on an invalid file
-        try {
-            Pipeline p = GATKTestPipeline.create();
-            ReadsSource source = new ReadsSource(hiSeqBam, p);
-            SAMFileHeader header = source.getHeader();
-            final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-            DataflowWorkarounds.registerGenomicsCoders(p);
-            PCollection<Read> reads = source.getReadPCollection(IntervalUtils.getAllIntervalsForReference(sequenceDictionary), ValidationStringency.STRICT);
-            PCollection<Long> count = reads.apply(Count.globally());
-            p.run();
-        } catch (RuntimeException x) {
-            throw x.getCause();
-        }
     }
 }

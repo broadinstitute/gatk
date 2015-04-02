@@ -208,7 +208,7 @@ public final class MarkQueue {
                 final ReadEndsForMateCigar duplicate = sortedSet.first();
 
                 /** mark as duplicate and nonDuplicateReadEndsSet that it has been through duplicate marking
-                 * duplicate.getRecord().setDuplicateReadFlag(true); HANDLED BY THE METHOD CALL BELOW*/
+                 * duplicate.getRecord().setIsDuplicate(true); HANDLED BY THE METHOD CALL BELOW*/
                 outputBuffer.setResultState(duplicate.getSamRecordIndex(), true);
 
                 // remove from the nonDuplicateReadEndsSet

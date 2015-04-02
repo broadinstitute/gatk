@@ -8,6 +8,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,7 +24,7 @@ import java.util.stream.Collectors;
  * -Iteration over all reads, optionally restricted to reads that overlap a set of intervals
  * -Targeted queries by one interval at a time
  */
-public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable {
+public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoCloseable {
     protected static final Logger logger = LogManager.getLogger(ReadsDataSource.class);
 
     /**
@@ -57,11 +59,6 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * Used to create a merged Sam header when we're dealing with multiple readers. Null if we only have a single reader.
      */
     private SamFileHeaderMerger headerMerger;
-
-    /**
-     * Merges iterators from multiple readers into a single sorted stream of reads. Null if we only have a single reader.
-     */
-    private MergingSamRecordIterator mergingIterator;
 
     /**
      * Are indices available for all files?
@@ -138,7 +135,6 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
 
         // Prepare a header merger only if we have multiple readers
         headerMerger = samFiles.size() > 1 ? createHeaderMerger() : null;
-        mergingIterator = null;
     }
 
     /**
@@ -183,9 +179,9 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * @return An iterator over the reads in this data source, limited to reads that overlap the intervals supplied via {@link #setIntervalsForTraversal(List)} (if intervals were provided)
      */
     @Override
-    public Iterator<SAMRecord> iterator() {
+    public Iterator<GATKRead> iterator() {
         logger.info("Preparing readers for traversal");
-        final Iterator<SAMRecord> traversalIter = prepareIteratorsForTraversal(preparedIntervals);
+        final Iterator<GATKRead> traversalIter = prepareIteratorsForTraversal(preparedIntervals);
         logger.info("Done preparing readers for traversal");
 
         return traversalIter;
@@ -198,7 +194,7 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * @return Iterator over reads overlapping the query interval
      */
     @Override
-    public Iterator<SAMRecord> query( final SimpleInterval interval ) {
+    public Iterator<GATKRead> query( final SimpleInterval interval ) {
         if ( ! indicesAvailable )
             raiseExceptionForMissingIndex("Cannot query reads data source by interval unless all files are indexed");
 
@@ -225,7 +221,7 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * @param queryIntervals Intervals to bound the iteration (reads must overlap one of these intervals). If null, iteration is unbounded.
      * @return Iterator over all reads in this data source, limited to overlap with the supplied intervals
      */
-    private Iterator<SAMRecord> prepareIteratorsForTraversal( final QueryInterval[] queryIntervals ) {
+    private Iterator<GATKRead> prepareIteratorsForTraversal( final QueryInterval[] queryIntervals ) {
         // htsjdk requires that only one iterator be open at a time per reader, so close out
         // any previous iterations
         closePreviousIterationsIfNecessary();
@@ -243,24 +239,10 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
             startingIterator = readers.entrySet().iterator().next().getValue();
         }
         else {
-            startingIterator= new MergingSamRecordIterator(headerMerger, readers, true);
+            startingIterator = new MergingSamRecordIterator(headerMerger, readers, true);
         }
 
-        // Apply any additional transformations on the read stream before returning it
-        return applyDecoratingIterators(startingIterator);
-    }
-
-    /**
-     * Apply arbitrary transformations to the read stream (such as read filtering, downsampling, etc.)
-     *
-     * @param startingIterator basic iterator over all reads in this data source
-     * @return an iterator (or chain of iterators) that wraps the startingIterator to transform the read stream in some way
-     */
-    private Iterator<SAMRecord> applyDecoratingIterators( final Iterator<SAMRecord> startingIterator ) {
-        // For now, just return the iterator we are given. But, in the future, if we want
-        // to inject additional iterators into the read stream to modify it in some way,
-        // this is the place to do it.
-        return startingIterator;
+        return new SAMRecordToReadIterator(startingIterator);
     }
 
     /**
@@ -336,11 +318,6 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * Close any previously-opened iterations over our readers (htsjdk allows only one open iteration per reader).
      */
     private void closePreviousIterationsIfNecessary() {
-        if ( mergingIterator != null ) {
-            mergingIterator.close();
-            mergingIterator = null;
-        }
-
         for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readers.entrySet() ) {
             CloseableIterator<SAMRecord> readerIterator = readerEntry.getValue();
             if ( readerIterator != null ) {
