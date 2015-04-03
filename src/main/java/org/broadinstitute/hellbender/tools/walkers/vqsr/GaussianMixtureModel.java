@@ -21,8 +21,7 @@ import static java.lang.Double.isInfinite;
 import static java.lang.Math.log10;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.minBy;
-import static org.broadinstitute.hellbender.utils.MathUtils.NATURAL_LOG_OF_TEN;
-import static org.broadinstitute.hellbender.utils.MathUtils.nanTolerantLog10SumLog10;
+import static org.broadinstitute.hellbender.utils.MathUtils.*;
 import static org.broadinstitute.hellbender.utils.Utils.getRandomGenerator;
 
 /**
@@ -64,11 +63,18 @@ final class GaussianMixtureModel {
         this.failedToConverge = false;
     }
 
+    /**
+     * Makes an empty gaussian mixture model.
+     * This is useful mostly in testing, where we want to set the gaussians rather than infer them.
+     */
     public static GaussianMixtureModel makeEmptyModel(final int numGaussians, final int numAnnotations,
                                 final double shrinkage, final double dirichletParameter, final double priorCounts) {
         return new GaussianMixtureModel(numGaussians, numAnnotations, shrinkage, dirichletParameter, priorCounts);
     }
 
+    /**
+     * Fits a model to the provided data and returns a fitted model.
+     */
     public static GaussianMixtureModel makeFittedModel( final List<VariantDatum> data, final int maxGaussians, final VariantRecalibratorArgumentCollection VRAC) {
         if( data == null || data.isEmpty() ) { throw new IllegalArgumentException("No data found."); }
         if( maxGaussians <= 0 ) { throw new IllegalArgumentException("maxGaussians must be a positive integer but found: " + maxGaussians); }
@@ -81,7 +87,7 @@ final class GaussianMixtureModel {
 
     /**
      * Sets the gaussians to the arguments.
-     * Note that the actual data is deep copied, for safety.
+     * Note that the actual data is deep copied, for safety. For testing only.
      */
     @VisibleForTesting
     void setGaussians(Collection<MultivariateGaussian> mvgs) {
@@ -92,7 +98,7 @@ final class GaussianMixtureModel {
     }
 
     /**
-     * Returns the (deep copies of) gaussians.
+     * Returns the (deep copies of the) gaussians. Mostly for testing but not limited to it.
      */
     @VisibleForTesting
     List<MultivariateGaussian> getGaussians() {
@@ -110,16 +116,16 @@ final class GaussianMixtureModel {
     public void variationalBayesExpectationMaximization( final List<VariantDatum> data, int maxIterations, double minProbConvergence ) {
 
         // The VBEM loop
-        this.normalizePMixtureLog10();
-        this.expectationStep(data);
+        normalizePMixtureLog10();
+        expectationStep(data);
         double currentChangeInMixtureCoefficients;
         int iteration = 0;
         logger.info("Finished iteration " + iteration + ".");
         while( iteration < maxIterations ) {
             iteration++;
-            this.maximizationStep( data );
-            currentChangeInMixtureCoefficients = this.normalizePMixtureLog10();
-            this.expectationStep( data );
+            maximizationStep(data);
+            currentChangeInMixtureCoefficients = normalizePMixtureLog10();
+            expectationStep(data);
             if( iteration % 5 == 0 ) { // cut down on the number of output lines so that users can read the warning messages
                 logger.info("Finished iteration " + iteration + ". \tCurrent change in mixture coefficients = " + String.format("%.5f", currentChangeInMixtureCoefficients));
             }
@@ -129,12 +135,11 @@ final class GaussianMixtureModel {
             }
         }
 
-        this.evaluateFinalModelParameters(data);
+        evaluateFinalModelParameters(data);
     }
 
     /**
      * Initializes the model by running k-means on the data. K is the same as the number of gaussians.
-     * Needs a random number generator.
      */
     public void initializeRandomModel( final List<VariantDatum> data, final int numKMeansIterations, Random rand) {
 
@@ -147,13 +152,14 @@ final class GaussianMixtureModel {
         for( final MultivariateGaussian gaussian : gaussians ) {
             gaussian.setpMixtureLog10(log10(1.0 / ((double) gaussians.size())));
             gaussian.setSumProb (1.0 / ((double) gaussians.size()));
-            gaussian.initializeRandomSigma( rand );
-            gaussian.setHyperParameter_a( priorCounts );
-            gaussian.setHyperParameter_b( shrinkage );
+            gaussian.initializeRandomSigma(rand);
+            gaussian.setHyperParameter_a(priorCounts);
+            gaussian.setHyperParameter_b(shrinkage);
             gaussian.setHyperParameter_lambda(dirichletParameter);
         }
     }
 
+    //performs k-means clusteting for a fixed number of iterations to initialize the gaussian means.
     private void initializeMeansUsingKMeans( final List<VariantDatum> data, final int numIterations, final Random rand ) {
 
         final Map<VariantDatum, MultivariateGaussian> assignment = new HashMap<>(data.size());
@@ -169,16 +175,20 @@ final class GaussianMixtureModel {
                 gaussian.zeroOutMu();
                 int numAssigned = 0;
 
+                //XXX: This code computes the means by accumulating
+                //the sum for each dimension and finally dividing by the number of elements.
+                //This may lead to numerical round errors or overflow if too many values are used.
+                //We need to switch to java8 streams are average computations in collectors.
                 for( final VariantDatum datum : data ) {
                     if( assignment.get(datum).equals(gaussian) ) {
                         numAssigned++;
-                        gaussian.incrementMu( datum );
+                        gaussian.incrementMu(datum);
                     }
                 }
                 if( numAssigned != 0 ) {
                     gaussian.divideEqualsMu((double) numAssigned);
                 } else {
-                    gaussian.initializeRandomMu(rand);
+                    gaussian.initializeRandomMu(rand);//no data item assigned to this gaussian - reset the mean randomly
                 }
             }
         }
@@ -192,10 +202,9 @@ final class GaussianMixtureModel {
             final double[] pVarInGaussianLog10 = new double[gaussians.size()];
             int gaussianIndex = 0;
             for( final MultivariateGaussian gaussian : gaussians ) {
-                final double pVarLog10 = gaussian.evaluateDatumLog10( datum );
-                pVarInGaussianLog10[gaussianIndex++] = pVarLog10;
+                pVarInGaussianLog10[gaussianIndex++] = gaussian.evaluateDatumLog10(datum);
             }
-            final double[] pVarInGaussianNormalized = MathUtils.normalizeFromLog10( pVarInGaussianLog10, false );
+            final double[] pVarInGaussianNormalized = normalizeFromLog10(pVarInGaussianLog10);
             gaussianIndex = 0;
             for( final MultivariateGaussian gaussian : gaussians ) {
                 gaussian.assignPVarInGaussian( pVarInGaussianNormalized[gaussianIndex++] );
@@ -204,9 +213,7 @@ final class GaussianMixtureModel {
     }
 
     private void maximizationStep( final List<VariantDatum> data ) {
-        for( final MultivariateGaussian gaussian : gaussians ) {
-            gaussian.maximizeGaussian( data, empiricalMu, empiricalSigma, shrinkage, dirichletParameter, priorCounts);
-        }
+        gaussians.forEach(g -> g.maximizeGaussian( data, empiricalMu, empiricalSigma, shrinkage, dirichletParameter, priorCounts));
     }
 
     private double getSumHyperParameterLambda() {
@@ -219,20 +226,21 @@ final class GaussianMixtureModel {
     }
 
     private double normalizePMixtureLog10() {
-        double sumDiff = 0.0;
-        double sumPK = gaussians.stream().mapToDouble(MultivariateGaussian::getSumProb).sum();
+        final double sumPK = gaussians.stream().mapToDouble(MultivariateGaussian::getSumProb).sum();
+        final double log10SumPK = log10(sumPK);
 
         int gaussianIndex = 0;
-        double[] pGaussianLog10 = new double[gaussians.size()];
+        final double[] pGaussianLog10 = new double[gaussians.size()];
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pGaussianLog10[gaussianIndex++] = log10(gaussian.getSumProb() / sumPK);
+            pGaussianLog10[gaussianIndex++] = log10(gaussian.getSumProb()) - log10SumPK;
         }
-        pGaussianLog10 = MathUtils.normalizeFromLog10( pGaussianLog10, true );
+        final double[] pGaussianLog10Normalized = normalizeFromLog10(pGaussianLog10, true);
 
+        double sumDiff = 0.0;
         gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            sumDiff += Math.abs(pGaussianLog10[gaussianIndex] - gaussian.getpMixtureLog10());
-            gaussian.setpMixtureLog10( pGaussianLog10[gaussianIndex++] );
+            sumDiff += Math.abs(pGaussianLog10Normalized[gaussianIndex] - gaussian.getpMixtureLog10());
+            gaussian.setpMixtureLog10( pGaussianLog10Normalized[gaussianIndex++] );
         }
         return sumDiff;
     }
@@ -307,11 +315,11 @@ final class GaussianMixtureModel {
         final int numIterPerMissingAnnotation = 1000; // Trade off here between speed of computation and accuracy of the marginalization
         final double[] pVarInGaussianLog10 = new double[gaussians.size()];
         // for each dimension
-        for( int iii = 0; iii < datum.annotations.length; iii++ ) {
-            // if it is missing marginalize over the missing dimension by drawing X random values for the missing annotation and averaging the lod
-            if( datum.isNull[iii] ) {
-                for( int ttt = 0; ttt < numIterPerMissingAnnotation; ttt++ ) {
-                    datum.annotations[iii] = Utils.getRandomGenerator().nextGaussian(); // draw a random sample from the standard normal distribution
+        for( int i = 0; i < datum.annotations.length; i++ ) {
+            // if it is missing then marginalize over the missing dimension by drawing X random values for the missing annotation and averaging the lod
+            if( datum.isNull[i] ) {
+                for( int j = 0; j < numIterPerMissingAnnotation; j++ ) {
+                    datum.annotations[i] = Utils.getRandomGenerator().nextGaussian(); // draw a random sample from the standard normal distribution
 
                     // evaluate this random data point
                     int gaussianIndex = 0;
@@ -479,14 +487,14 @@ final class GaussianMixtureModel {
 
         void initializeRandomSigma(final Random rand) {
             final double[][] randSigma = new double[getNumDimensions()][getNumDimensions()];
-            for (int iii = 0; iii < getNumDimensions(); iii++) {
-                for (int jjj = iii; jjj < getNumDimensions(); jjj++) {
-                    randSigma[jjj][iii] = 0.55 + 1.25 * rand.nextDouble();
+            for (int i = 0; i < getNumDimensions(); i++) {
+                for (int j = i; j < getNumDimensions(); j++) {
+                    randSigma[j][i] = 0.55 + 1.25 * rand.nextDouble();
                     if (rand.nextBoolean()) {
-                        randSigma[jjj][iii] *= -1.0;
+                        randSigma[j][i] *= -1.0;
                     }
-                    if (iii != jjj) {
-                        randSigma[iii][jjj] = 0.0;
+                    if (i != j) {
+                        randSigma[i][j] = 0.0;
                     } // Sigma is a symmetric, positive-definite matrix created by taking a lower diagonal matrix and multiplying it by its transpose
                 }
             }
@@ -495,7 +503,7 @@ final class GaussianMixtureModel {
         }
 
         double calculateDistanceFromMeanSquared(final VariantDatum datum) {
-            return MathUtils.distanceSquared(datum.annotations, mu);
+            return distanceSquared(datum.annotations, mu);
         }
 
         void incrementMu(final VariantDatum datum) {
@@ -503,14 +511,14 @@ final class GaussianMixtureModel {
         }
 
         void incrementMu(final VariantDatum datum, final double prob) {
-            for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                mu[jjj] += prob * datum.annotations[jjj];
+            for (int i = 0; i < getNumDimensions(); i++) {
+                mu[i] += prob * datum.annotations[i];
             }
         }
 
         void divideEqualsMu(final double x) {
-            for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                mu[jjj] /= x;
+            for (int i = 0; i < getNumDimensions(); i++) {
+                mu[i] /= x;
             }
         }
 
@@ -541,8 +549,8 @@ final class GaussianMixtureModel {
             precomputeInverse();
             cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(hyperParameter_a);
             double sum = 0.0;
-            for (int jjj = 1; jjj <= getNumDimensions(); jjj++) {
-                sum += Gamma.digamma((hyperParameter_a + 1.0 - jjj) / 2.0);
+            for (int i = 1; i <= getNumDimensions(); i++) {
+                sum += Gamma.digamma((hyperParameter_a + 1.0 - i) / 2.0);
             }
             sum -= Math.log(determinant(sigma));
             sum += Math.log(2.0) * getNumDimensions();
@@ -558,13 +566,13 @@ final class GaussianMixtureModel {
         double evaluateDatumLog10(final VariantDatum datum) {
             double sumKernel = 0.0;
             final double[] crossProdTmp = new double[getNumDimensions()];
-            for (int iii = 0; iii < getNumDimensions(); iii++) {
-                for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                    crossProdTmp[iii] += (datum.annotations[jjj] - mu[jjj]) * cachedSigmaInverse.getEntry(jjj, iii);
+            for (int i = 0; i < getNumDimensions(); i++) {
+                for (int j = 0; j < getNumDimensions(); j++) {
+                    crossProdTmp[i] += (datum.annotations[j] - mu[j]) * cachedSigmaInverse.getEntry(j, i);
                 }
             }
-            for (int iii = 0; iii < getNumDimensions(); iii++) {
-                sumKernel += crossProdTmp[iii] * (datum.annotations[iii] - mu[iii]);
+            for (int j = 0; j < getNumDimensions(); j++) {
+                sumKernel += crossProdTmp[j] * (datum.annotations[j] - mu[j]);
             }
 
             return ((-0.5 * sumKernel) / NATURAL_LOG_OF_TEN) + cachedDenomLog10; // This is the definition of a Gaussian PDF Log10
@@ -585,38 +593,22 @@ final class GaussianMixtureModel {
             zeroOutMu();
             zeroOutSigma();
 
-            int datumIndex = 0;
-            for (final VariantDatum datum : data) {
-                final double prob = pVarInGaussian.get(datumIndex++);
-                sumProb += prob;
-                incrementMu(datum, prob);
-            }
-            divideEqualsMu(sumProb);
+            updateMu(data);
 
             final double shrinkageFactor = (SHRINKAGE * sumProb) / (SHRINKAGE + sumProb);
-            for (int iii = 0; iii < getNumDimensions(); iii++) {
-                for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                    wishart.setEntry(iii, jjj, shrinkageFactor * (mu[iii] - empiricalMu[iii]) * (mu[jjj] - empiricalMu[jjj]));
+            for (int i = 0; i < getNumDimensions(); i++) {
+                for (int j = 0; j < getNumDimensions(); j++) {
+                    wishart.setEntry(i, j, shrinkageFactor * (mu[i] - empiricalMu[i]) * (mu[j] - empiricalMu[j]));
                 }
             }
 
-            datumIndex = 0;
-            final RealMatrix pVarSigma = new Array2DRowRealMatrix(getNumDimensions(), getNumDimensions());
-            for (final VariantDatum datum : data) {
-                final double prob = pVarInGaussian.get(datumIndex++);
-                for (int iii = 0; iii < getNumDimensions(); iii++) {
-                    for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                        pVarSigma.setEntry(iii, jjj, prob * (datum.annotations[iii] - mu[iii]) * (datum.annotations[jjj] - mu[jjj]));
-                    }
-                }
-                sigma = sigma.add(pVarSigma);
-            }
+            updateSigma(data);
 
             sigma = sigma.add(empiricalSigma);
             sigma = sigma.add(wishart);
 
-            for (int iii = 0; iii < getNumDimensions(); iii++) {
-                mu[iii] = (sumProb * mu[iii] + SHRINKAGE * empiricalMu[iii]) / (sumProb + SHRINKAGE);
+            for (int i = 0; i < getNumDimensions(); i++) {
+                mu[i] = (sumProb * mu[i] + SHRINKAGE * empiricalMu[i]) / (sumProb + SHRINKAGE);
             }
 
             hyperParameter_a = sumProb + DEGREES_OF_FREEDOM;
@@ -630,7 +622,14 @@ final class GaussianMixtureModel {
             sumProb = 0.0;
             zeroOutMu();
             zeroOutSigma();
+            updateMu(data);
+            updateSigma(data);
+            sigma = sigma.scalarMultiply(1.0 / sumProb);
 
+            resetPVarInGaussian(); // clean up some memory
+        }
+
+        private void updateMu(List<VariantDatum> data) {
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
@@ -638,21 +637,21 @@ final class GaussianMixtureModel {
                 incrementMu(datum, prob);
             }
             divideEqualsMu(sumProb);
+        }
 
-            datumIndex = 0;
-            final RealMatrix pVarSigma = new Array2DRowRealMatrix(getNumDimensions(), getNumDimensions());
+        private void updateSigma(List<VariantDatum> data) {
+            int datumIndex = 0;
+            final int dims = getNumDimensions();
+            final RealMatrix pVarSigma = new Array2DRowRealMatrix(dims, dims);
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
-                for (int iii = 0; iii < getNumDimensions(); iii++) {
-                    for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                        pVarSigma.setEntry(iii, jjj, prob * (datum.annotations[iii] - mu[iii]) * (datum.annotations[jjj] - mu[jjj]));
+                for (int i = 0; i < dims; i++) {
+                    for (int j = 0; j < dims; j++) {
+                        pVarSigma.setEntry(i, j, prob * (datum.annotations[i] - mu[i]) * (datum.annotations[j] - mu[j]));
                     }
                 }
                 sigma = sigma.add(pVarSigma);
             }
-            sigma = sigma.scalarMultiply(1.0 / sumProb);
-
-            resetPVarInGaussian(); // clean up some memory
         }
 
         double getpMixtureLog10() {
