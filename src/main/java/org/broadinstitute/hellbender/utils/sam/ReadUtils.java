@@ -632,35 +632,6 @@ public class ReadUtils {
         return read;
     }
 
-    public static boolean hasReadGroup(final SAMRecord read) {
-        return read.getReadGroup() != null;
-    }
-
-    /**
-     * Check for the case in which the alignment start is consistent with the read unmapped flag.
-     * @param read The read to validate.
-     * @return true if read start is valid, false otherwise.
-     */
-    public static boolean hasValidAlignmentStart(final SAMRecord read) {
-        // read is not flagged as 'unmapped', but alignment start is NO_ALIGNMENT_START
-        if( !read.getReadUnmappedFlag() && read.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START )
-            return false;
-        // Read is not flagged as 'unmapped', but alignment start is -1
-        if( !read.getReadUnmappedFlag() && read.getAlignmentStart() == -1 )
-            return false;
-        return true;
-    }
-
-    /**
-     * Check for valid end of alignments.
-     * @param read The read to validate.
-     * @return true if read end is valid, false otherwise.
-     */
-    public static boolean hasValidAlignmentEnd(final SAMRecord read) {
-        // Alignment aligns to negative number of bases in the reference.
-        return read.getReadUnmappedFlag() || read.getAlignmentEnd() == -1 || (read.getAlignmentEnd() - read.getAlignmentStart() + 1) >= 0;
-    }
-
     /**
      * Check to ensure that the alignment makes sense based on the contents of the header.
      * @param header The SAM file header.
@@ -678,55 +649,4 @@ public class ReadUtils {
         return true;
     }
 
-    /**
-     * Check for consistency between the cigar string and the alignment.
-     * @param read The read to validate.
-     * @return true if cigar agrees with alignment, false otherwise.
-     */
-    public static boolean cigarAgreesWithAlignement(final SAMRecord read) {
-        // Read has a valid alignment start, but the CIGAR string is empty
-        return read.getReadUnmappedFlag() || read.getAlignmentStart() == -1 || read.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START || read.getAlignmentBlocks().size() >= 0;
-    }
-
-    /**
-     * Check that the CIGAR operators are supported.
-     * Currently the N operator is not supported.
-     * @param read The read to validate.
-     * @return <code>true</code> if the read CIGAR operations are
-     * fully supported, otherwise <code>false</code>.
-     */
-    public static boolean cigarIsSupported(final SAMRecord read) {
-        return !containsNOperator(read);
-    }
-
-    private static boolean containsNOperator(final SAMRecord read) {
-        final Cigar cigar = read.getCigar();
-        if (cigar == null)   {
-            return false;
-        }
-        for (final CigarElement ce : cigar.getCigarElements()) {
-            if (ce.getOperator() == CigarOperator.N) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Check if the read has the same number of bases and base qualities
-     * @param read the read to validate
-     * @return true if they have the same number. False otherwise.
-     */
-    public static boolean hasMatchingBasesAndQuals(final SAMRecord read) {
-        return read.getReadLength() == read.getBaseQualities().length;
-    }
-
-    /**
-     * Check if the read has its base sequence stored
-     * @param read the read to validate
-     * @return true if the sequence is stored and false otherwise ("*" in the SEQ field).
-     */
-    public static boolean seqIsStored(final SAMRecord read) {
-        return read.getReadBases() != SAMRecord.NULL_SEQUENCE ;
-    }
 }

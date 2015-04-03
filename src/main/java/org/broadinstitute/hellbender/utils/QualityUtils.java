@@ -6,7 +6,7 @@ import htsjdk.samtools.SAMUtils;
  * QualityUtils is a static class with some utility methods for manipulating
  * quality scores.
  */
-public class QualityUtils {
+public final class QualityUtils {
     /**
      * Maximum quality score that can be encoded in a SAM/BAM file
      */
