@@ -34,16 +34,18 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * Opens the given file for reading lines.
      * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
      * By default, it will trim whitespaces.
+     * @throws IOException if an IO error occurs during reading the file.
      */
-    public XReadLines(final File filename) {
+    public XReadLines(final File filename) throws IOException {
         this(filename, true);
     }
 
     /**
      * Opens the given file for reading lines and optionally trim whitespaces.
      * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
+     * @throws IOException if an IO error occurs during reading the file.
      */
-    public XReadLines(final File filename, final boolean trimWhitespace) {
+    public XReadLines(final File filename, final boolean trimWhitespace) throws IOException {
         this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
     }
 
@@ -53,16 +55,13 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * @param reader file name
      * @param trimWhitespace trim whitespace
      * @param commentPrefix prefix for comments or null if no prefix is set
+     * @throws IOException if an IO error occurs during reading the file.
      */
-    public XReadLines(final Reader reader, final boolean trimWhitespace, final String commentPrefix) {
+    public XReadLines(final Reader reader, final boolean trimWhitespace, final String commentPrefix) throws IOException {
         this.in = (reader instanceof BufferedReader) ? (BufferedReader)reader : new BufferedReader(reader);
         this.trimWhitespace = trimWhitespace;
         this.commentPrefix = commentPrefix;
-        try {
-            this.nextLine = readNextLine();
-        } catch(IOException e) {
-            throw new IllegalArgumentException(e);
-        }
+        this.nextLine = readNextLine();
     }
 
     /**

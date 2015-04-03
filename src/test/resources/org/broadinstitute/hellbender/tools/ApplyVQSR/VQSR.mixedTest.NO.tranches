@@ -1,0 +1,3 @@
+# Variant quality score tranches file
+# Version number 4
+targetTruthSensitivity,numKnown,numNovel,knownTiTv,novelTiTv,minVQSLod,filterName,model,accessibleTruthSites,callsAtTruthSites,truthSensitivity

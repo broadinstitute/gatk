@@ -34,7 +34,7 @@ final class Tranche {
     final int numKnown;      //number of known sites in this tranche
     final int numNovel;      //number of novel sites in this tranche
     final String name;       //Name of the tranche
-    private final VariantRecalibratorArgumentCollection.Mode model;    //this is a SNP VQSR tranche or Indel tranche?
+    final VariantRecalibratorArgumentCollection.Mode model;    //this is a SNP VQSR tranche or Indel tranche?
 
     private final int accessibleTruthSites;
     private final int callsAtTruthSites;
