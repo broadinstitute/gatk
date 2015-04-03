@@ -7,7 +7,6 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DiagonalMatrix;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -21,6 +20,7 @@ import static java.lang.Double.isInfinite;
 import static java.lang.Math.log10;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.minBy;
+import static org.apache.commons.math3.special.Gamma.digamma;
 import static org.broadinstitute.hellbender.utils.MathUtils.*;
 import static org.broadinstitute.hellbender.utils.Utils.getRandomGenerator;
 
@@ -80,7 +80,7 @@ final class GaussianMixtureModel {
         if( maxGaussians <= 0 ) { throw new IllegalArgumentException("maxGaussians must be a positive integer but found: " + maxGaussians); }
 
         final GaussianMixtureModel model = GaussianMixtureModel.makeEmptyModel(maxGaussians, data.get(0).annotations.length, VRAC.SHRINKAGE, VRAC.DIRICHLET_PARAMETER, VRAC.PRIOR_COUNTS );
-        model.initializeRandomModel( data, VRAC.NUM_KMEANS_ITERATIONS, Utils.getRandomGenerator());
+        model.initializeRandomModel(data, VRAC.NUM_KMEANS_ITERATIONS, Utils.getRandomGenerator());
         model.variationalBayesExpectationMaximization(data, VRAC.MAX_ITERATIONS, MIN_PROB_CONVERGENCE);
         return model;
     }
@@ -151,7 +151,7 @@ final class GaussianMixtureModel {
         // initialize uniform mixture coefficients, random covariance matrices, and initial hyperparameters
         for( final MultivariateGaussian gaussian : gaussians ) {
             gaussian.setpMixtureLog10(log10(1.0 / ((double) gaussians.size())));
-            gaussian.setSumProb (1.0 / ((double) gaussians.size()));
+            gaussian.setSumProb ((1.0 * data.size()) / ((double) gaussians.size()));
             gaussian.initializeRandomSigma(rand);
             gaussian.setHyperParameter_a(priorCounts);
             gaussian.setHyperParameter_b(shrinkage);
@@ -226,7 +226,7 @@ final class GaussianMixtureModel {
     }
 
     private double normalizePMixtureLog10() {
-        final double sumPK = gaussians.stream().mapToDouble(MultivariateGaussian::getSumProb).sum();
+        final double sumPK = gaussians.stream().mapToDouble(MultivariateGaussian::getSumProb).sum();  //Note: sumPK should be == data size here
         final double log10SumPK = log10(sumPK);
 
         int gaussianIndex = 0;
@@ -411,10 +411,10 @@ final class GaussianMixtureModel {
      * This class represents one gaussian in the mixture model.
      */
     static final class MultivariateGaussian {
-        private double pMixtureLog10;
-        private double sumProb;
-        private double[] mu;
-        private RealMatrix sigma;
+        private double pMixtureLog10;  //log10 of the mixture weight for this gaussian
+        private double sumProb;        //sum of the fractional weigths assigned to this gaussian from all the data points
+        private double[] mu;           //mean vector
+        private RealMatrix sigma;      //covariance matrix
         private double hyperParameter_a;
         private double hyperParameter_b;
         private double hyperParameter_lambda;
@@ -480,12 +480,14 @@ final class GaussianMixtureModel {
         public static final double MU_SPAN = MU_MAX - MU_MIN;
 
         void initializeRandomMu(final Random rand) {
-            for (int jjj = 0; jjj < getNumDimensions(); jjj++) {
-                mu[jjj] = MU_MIN + MU_SPAN * rand.nextDouble();
+            for (int i = 0; i < getNumDimensions(); i++) {
+                mu[i] = MU_MIN + MU_SPAN * rand.nextDouble();
             }
         }
 
         void initializeRandomSigma(final Random rand) {
+            //This is equiv to drawing from Wishart.
+            //Note: maybe we want empirical cov from kmeans clusters
             final double[][] randSigma = new double[getNumDimensions()][getNumDimensions()];
             for (int i = 0; i < getNumDimensions(); i++) {
                 for (int j = i; j < getNumDimensions(); j++) {
@@ -493,11 +495,11 @@ final class GaussianMixtureModel {
                     if (rand.nextBoolean()) {
                         randSigma[j][i] *= -1.0;
                     }
-                    if (i != j) {
-                        randSigma[i][j] = 0.0;
-                    } // Sigma is a symmetric, positive-definite matrix created by taking a lower diagonal matrix and multiplying it by its transpose
                 }
             }
+            // Sigma is a symmetric, positive-definite matrix created by taking a lower triangular
+            // matrix and multiplying it by its transpose
+
             RealMatrix tmp = new Array2DRowRealMatrix(randSigma);
             sigma = tmp.multiply(tmp.transpose());
         }
@@ -550,14 +552,14 @@ final class GaussianMixtureModel {
             cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(hyperParameter_a);
             double sum = 0.0;
             for (int i = 1; i <= getNumDimensions(); i++) {
-                sum += Gamma.digamma((hyperParameter_a + 1.0 - i) / 2.0);
+                sum += digamma((hyperParameter_a + 1.0 - i) / 2.0);
             }
             sum -= Math.log(determinant(sigma));
             sum += Math.log(2.0) * getNumDimensions();
             final double lambda = 0.5 * sum;
 
             //(Bishop eq 10.66 ?)
-            final double pi = Gamma.digamma(hyperParameter_lambda) - Gamma.digamma(sumHyperParameterLambda);
+            final double pi = digamma(hyperParameter_lambda) - digamma(sumHyperParameterLambda);
 
             final double beta = (-1.0 * getNumDimensions()) / (2.0 * hyperParameter_b);
             cachedDenomLog10 = (pi / NATURAL_LOG_OF_TEN) + (lambda / NATURAL_LOG_OF_TEN) + (beta / NATURAL_LOG_OF_TEN);
