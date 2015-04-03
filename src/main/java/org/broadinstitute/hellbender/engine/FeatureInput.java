@@ -267,6 +267,6 @@ public final class FeatureInput<T extends Feature> {
     public String toString() {
         final String featureFilePath = featureFile.getAbsolutePath();
         return name.equals(featureFilePath) ? featureFilePath :
-                                              String.format("%s%s%s", name, FEATURE_ARGUMENT_TAG_DELIMITER, featureFilePath);
+                String.format("%s%s%s", name, FEATURE_ARGUMENT_TAG_DELIMITER, featureFilePath);
     }
 }
