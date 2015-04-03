@@ -133,4 +133,13 @@ public class CigarUtils {
 
         return new Cigar(elements);
     }
+
+    public static boolean containsNOperator(final Cigar cigar) {
+        for (final CigarElement ce : cigar.getCigarElements()) {
+            if (ce.getOperator() == CigarOperator.N) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
