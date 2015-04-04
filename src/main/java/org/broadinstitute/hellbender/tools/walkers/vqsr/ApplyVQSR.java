@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -84,8 +85,8 @@ public final class ApplyVQSR extends VariantWalker {
     /////////////////////////////
     // Outputs
     /////////////////////////////
-    @Argument( doc="The output filtered and recalibrated VCF file in which each variant is annotated with its VQSLOD value")
-    private VariantContextWriter vcfWriter = null;
+    @Argument( shortName = "vcfOut", fullName = "vcfOut" , doc="The output filtered and recalibrated VCF file in which each variant is annotated with its VQSLOD value")
+    private File vcfOut = null;
 
     /////////////////////////////
     // Command Line Arguments
@@ -100,13 +101,13 @@ public final class ApplyVQSR extends VariantWalker {
      * For this to work properly, the -ignoreFilter argument should also be applied to the VariantRecalibration command.
      */
     @Argument(fullName="ignore_filter", shortName="ignoreFilter", doc="If specified, the recalibration will be applied to variants marked as filtered by the specified filter name in the input VCF file", optional = true)
-    private String[] IGNORE_INPUT_FILTERS = null;
+    private List<String> IGNORE_INPUT_FILTERS = null;
 
     @Argument(fullName="ignore_all_filters", shortName="ignoreAllFilters", doc="If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.", optional = true)
-    private boolean IGNORE_ALL_FILTERS = false;
+    private Boolean IGNORE_ALL_FILTERS = false;
 
     @Argument(fullName="excludeFiltered", shortName="ef", doc="Don't output filtered loci after applying the recalibration", optional = true)
-    protected boolean EXCLUDE_FILTERED = false;
+    protected Boolean EXCLUDE_FILTERED = false;
 
     @Argument(fullName = "mode", shortName = "mode", doc = "Recalibration mode to employ: 1.) SNP for recalibrating only SNPs (emitting indels untouched in the output VCF); 2.) INDEL for indels; and 3.) BOTH for recalibrating both SNPs and indels simultaneously.", optional = true)
     public VariantRecalibratorArgumentCollection.Mode MODE = VariantRecalibratorArgumentCollection.Mode.SNP;
@@ -117,15 +118,27 @@ public final class ApplyVQSR extends VariantWalker {
     final private List<Tranche> tranches = new ArrayList<>();
     final private Set<String> ignoreInputFilterSet = new TreeSet<>();
 
+    private VariantContextWriter vcfWriter;
+
+
     //---------------------------------------------------------------------------------------------------------------
     //
     // initialize
     //
     //---------------------------------------------------------------------------------------------------------------
 
-    public void initialize() {
+    @Override
+    public void onTraversalStart() {
         tranches.addAll(initializeTrancheSet());
         ignoreInputFilterSet.addAll(makeListOfInputsToIgnore());
+
+          VariantContextWriterBuilder builder = new VariantContextWriterBuilder()
+                      .unsetBuffering();
+
+        vcfWriter = builder
+                      .setOutputFile(vcfOut)
+                      .setOutputFileType(VariantContextWriterBuilder.OutputType.VCF)
+                      .build();
         vcfWriter.writeHeader(makeVCFHeaderForOutput());
     }
 
@@ -156,7 +169,7 @@ public final class ApplyVQSR extends VariantWalker {
     }
 
     private List<String> makeListOfInputsToIgnore() {
-        return IGNORE_INPUT_FILTERS == null ? Collections.emptyList() : Arrays.asList(IGNORE_INPUT_FILTERS);
+        return IGNORE_INPUT_FILTERS == null ? Collections.emptyList() : IGNORE_INPUT_FILTERS;
     }
 
     private Set<VCFHeaderLine> makeNewVcfHeaderLines(VCFHeader inputHeader) {

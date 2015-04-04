@@ -10,13 +10,25 @@ import java.util.Arrays;
 public class ApplyVQSRIntegrationTest extends CommandLineProgramTest{
 
     @Test
+    public void testApplyRecalibrationSnpAndIndelTogetherNoIntervals() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                        " -mode BOTH" +
+                        " -variant " + getToolTestDataDir() + "VQSR.mixedTest.input" +
+                        " -vcfOut %s" +
+                        " -tranchesFile " + getToolTestDataDir() + "VQSR.mixedTest.tranches" +
+                        " -recalFile " + getToolTestDataDir() + "VQSR.mixedTest.recal",
+                Arrays.asList("expected.txt")
+        );
+        spec.executeTest("testApplyRecalibrationSnpAndIndelTogether", this);
+    }
+
+    @Test
     public void testApplyRecalibrationSnpAndIndelTogether() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                         " -L 20:1000100-1000500" +
                         " -mode BOTH" +
-                        " --no_cmdline_in_header" +
-                        " -input " + getToolTestDataDir() + "VQSR.mixedTest.input" +
-                        " -o %s" +
+                        " -variant " + getToolTestDataDir() + "VQSR.mixedTest.input" +
+                        " -vcfOut %s" +
                         " -tranchesFile " + getToolTestDataDir() + "VQSR.mixedTest.tranches" +
                         " -recalFile " + getToolTestDataDir() + "VQSR.mixedTest.recal",
                 Arrays.asList("expected.txt")
