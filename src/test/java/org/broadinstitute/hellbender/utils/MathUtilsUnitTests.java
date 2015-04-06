@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.Assert;
@@ -141,6 +143,26 @@ public class MathUtilsUnitTests {
             Assert.assertEquals(MathUtils.log10Factorial(med_start+i),log10factorial_middle,1e-3);
             Assert.assertEquals(MathUtils.log10Factorial(large_start+i),log10factorial_large,1e-1);
         }
+    }
+
+    @Test
+    public void testCovarianceDivergences() {
+        logger.warn("Executing testCovarianceDivergences");
+        int size = 3;
+        //two symmetric positive-definite matrices
+        double[][] cov1 = { {5, 2, 3},
+                            {2, 7, 5},
+                            {3, 5, 6}};
+
+        double[][] cov2 = { {11, 3, 3},
+                            {3, 7, 5},
+                            {3, 5, 13}};
+
+        RealMatrix mat1 = new Array2DRowRealMatrix(cov1);
+        RealMatrix mat2 = new Array2DRowRealMatrix(cov2);
+
+        Assert.assertEquals(MathUtils.covarianceKLDivergence(mat1, mat2), 3.65393, 1e-4);
+        Assert.assertEquals(MathUtils.covarianceGeodesicDistance(mat1, mat2), 1.86205,1e-4);
     }
 
 }
