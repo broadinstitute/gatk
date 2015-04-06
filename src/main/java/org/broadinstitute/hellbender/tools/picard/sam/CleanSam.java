@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.utils.sam.mergealignment.AbstractAlignmentMerger;
+import org.broadinstitute.hellbender.utils.read.mergealignment.AbstractAlignmentMerger;
 
 import java.io.File;
 

@@ -6,14 +6,14 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
 import java.util.Vector;
 
-import static org.broadinstitute.hellbender.utils.sam.ReadUtils.*;
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
 
 /**
  * Represents a clip on a read.  It has a type (see the enum) along with a start and stop in the bases

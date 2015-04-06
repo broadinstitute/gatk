@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import java.util.*;

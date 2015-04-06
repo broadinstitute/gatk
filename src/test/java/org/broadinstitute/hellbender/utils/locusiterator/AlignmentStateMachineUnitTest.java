@@ -1,16 +1,11 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class AlignmentStateMachineUnitTest extends LocusIteratorByStateBaseTest {
     @DataProvider(name = "AlignmentStateMachineTest")

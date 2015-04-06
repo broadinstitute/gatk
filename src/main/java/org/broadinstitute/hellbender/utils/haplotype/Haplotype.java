@@ -7,8 +7,8 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.HasGenomeLocation;
-import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.Arrays;
 

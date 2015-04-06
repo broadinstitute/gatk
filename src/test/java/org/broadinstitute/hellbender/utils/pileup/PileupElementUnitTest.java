@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSTest;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBS_position;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByStateBaseTest;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
