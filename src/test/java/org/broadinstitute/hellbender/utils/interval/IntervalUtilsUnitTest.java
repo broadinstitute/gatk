@@ -4,9 +4,11 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -1039,4 +1041,72 @@ public class IntervalUtilsUnitTest extends BaseTest {
     public void loadIntervalsEmptyFile(){
         IntervalUtils.loadIntervals(Arrays.asList(emptyIntervals), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
+
+    @Test(dataProvider = "genomeLocsFromLocatablesData",expectedExceptions = IllegalArgumentException.class)
+    public void testGenomeLocsFromLocatablesNullParser(final GenomeLocParser parser,
+                                                       final List<? extends Locatable> locatables) {
+        IntervalUtils.genomeLocsFromLocatables(null, locatables);
+    }
+
+    @Test(dataProvider = "genomeLocsFromLocatablesData",expectedExceptions = IllegalArgumentException.class)
+    public void testGenomeLocsFromLocatablesNullLocatables(final GenomeLocParser parser,
+                                                       final List<? extends Locatable> locatables) {
+        IntervalUtils.genomeLocsFromLocatables(parser,null);
+    }
+
+    @Test(dataProvider = "genomeLocsFromLocatablesData",expectedExceptions = IllegalArgumentException.class)
+    public void testGenomeLocsFromLocatablesNullContainingLocatables(final GenomeLocParser parser,
+                                                           final List<? extends Locatable> locatables) {
+        if (locatables.size() == 0) {
+            IntervalUtils.genomeLocsFromLocatables(parser,null);
+        } else {
+            final List<? extends Locatable> withNull = new ArrayList<>(locatables);
+            withNull.set(withNull.size() / 2,null);
+            IntervalUtils.genomeLocsFromLocatables(parser,withNull);
+        }
+    }
+
+
+    @Test(dataProvider = "genomeLocsFromLocatablesData")
+    public void testGenomeLocsFromLocatables(final GenomeLocParser parser, final List<? extends Locatable> locatables) {
+        final List<GenomeLoc> result = IntervalUtils.genomeLocsFromLocatables(parser, locatables);
+        Assert.assertNotNull(result);
+        Assert.assertEquals(result.size(), locatables.size());
+        for (int i = 0; i < result.size(); i++) {
+            final GenomeLoc resultLoc = result.get(i);
+            final Locatable inputLoc = locatables.get(i);
+            Assert.assertEquals(resultLoc.getContig(),inputLoc.getContig());
+            Assert.assertEquals(resultLoc.getStart(),inputLoc.getStart());
+            Assert.assertEquals(resultLoc.getStop(),inputLoc.getEnd());
+        }
+        // is it real only:
+        try {
+            result.add(parser.createGenomeLoc("1",1,2));
+            Assert.fail("the result collection should not allow to call add");
+        } catch (final UnsupportedOperationException ex) {
+            // ok.
+        }
+        if (result.size() > 0) {
+            try {
+                result.set(0,parser.createGenomeLoc("1",1,2));
+                Assert.fail("the result collection should not allow to call set");
+            } catch (final UnsupportedOperationException ex) {
+                // ok.
+            }
+        }
+    }
+
+    @DataProvider(name="genomeLocsFromLocatablesData")
+    public Object[][] genomeLocsFromLocatablesData() {
+        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 10);
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
+
+        return new Object[][] {
+                { genomeLocParser, Collections.emptyList() },
+                { genomeLocParser, Collections.singletonList(new SimpleInterval("1",1,2)) },
+                { genomeLocParser, Arrays.asList(new SimpleInterval("1", 1, 2), new SimpleInterval("1", 1, 1), new SimpleInterval("1", 5, 9)) },
+                { genomeLocParser, Arrays.asList(new SimpleInterval("1",9,10),new SimpleInterval("1",5,9), new SimpleInterval("1",1,9)) }
+        };
+    }
+
 }

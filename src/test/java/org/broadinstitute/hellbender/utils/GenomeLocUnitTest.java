@@ -331,7 +331,6 @@ public class GenomeLocUnitTest extends BaseTest {
 
         Assert.assertEquals(loc7.distanceAcrossContigs(loc8, header), chrSize + chrSize-loc7.stop + loc8.getStart()); // across contigs, smaller first
         Assert.assertEquals(loc8.distanceAcrossContigs(loc7, header), chrSize + chrSize-loc7.stop + loc8.getStart()); // across congits, bigger first
-
     }
 
 }

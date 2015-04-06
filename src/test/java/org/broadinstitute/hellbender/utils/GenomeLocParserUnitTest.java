@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.variantcontext.Allele;
@@ -399,6 +400,20 @@ public class GenomeLocParserUnitTest extends BaseTest {
     }
 
     @Test
+    public void testCreationFromLocatable() {
+        final Locatable locatable = new SimpleInterval("1", 1, 5);
+        final GenomeLoc loc = genomeLocParser.createGenomeLoc(locatable);
+        Assert.assertEquals(loc.getContig(), locatable.getContig());
+        Assert.assertEquals(loc.getStart(), locatable.getStart());
+        Assert.assertEquals(loc.getStop(), locatable.getEnd());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCreationFromNullLocatable() {
+        genomeLocParser.createGenomeLoc((Locatable)null);
+    }
+
+    @Test
     public void testCreationFromVariantContext() {
         final VariantContext feature = new VariantContextBuilder("x", "1", 1, 5, Arrays.asList(Allele.create("AAAAA", true))).make();
         final GenomeLoc loc = genomeLocParser.createGenomeLoc(feature);
@@ -476,4 +491,5 @@ public class GenomeLocParserUnitTest extends BaseTest {
         Assert.assertEquals(padded.getStart(), Math.max(input.getStart() - pad, 1));
         Assert.assertEquals(padded.getStop(), Math.min(input.getStop() + pad, contigLength));
     }
+
 }

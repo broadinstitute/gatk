@@ -104,6 +104,32 @@ public class Utils {
     }
 
     /**
+     * Returns a string of the values in an {@link Object} array joined by a separator.
+     *
+     * @param separator separator character
+     * @param objects  the array with values
+     *
+     * @throws IllegalArgumentException if {@code separator} or {@code objects} is {@code null}.
+     * @return a string with the values separated by the separator
+     */
+    public static String join(final String separator, final Object ... objects) {
+        if (separator == null) {
+            throw new IllegalArgumentException("the separator cannot be null");
+        } else if (objects == null) {
+            throw new IllegalArgumentException("the value array cannot be null");
+        } else if (objects.length == 0) {
+            return "";
+        } else {
+            final StringBuilder ret = new StringBuilder();
+            ret.append(String.valueOf(objects[0]));
+            for (int i = 1; i < objects.length; i++) {
+                ret.append(separator).append(String.valueOf(objects[i]));
+            }
+            return ret.toString();
+        }
+    }
+
+    /**
      * Returns a string of the values in ints joined by separator, such as A,B,C
      *
      * @param separator separator character

@@ -347,6 +347,20 @@ public final class GenomeLocParser {
     }
 
     /**
+     * Creates a GenomeLoc from a {@link Locatable}.
+     *
+     * @param locatable the input locatable.
+     * @throws IllegalArgumentException if {@code locatable} is {@code null}.
+     * @return never {@code null}.
+     */
+    public GenomeLoc createGenomeLoc(final Locatable locatable) {
+        if (locatable == null) {
+            throw new IllegalArgumentException("the input locatable cannot be null");
+        }
+        return createGenomeLoc(locatable.getContig(), locatable.getStart(), locatable.getEnd());
+    }
+
+    /**
      * Creates a GenomeLoc than spans the entire contig.
      * @param contigName Name of the contig.
      * @return A locus spanning the entire contig.

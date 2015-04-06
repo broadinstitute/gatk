@@ -1,0 +1,5 @@
+@HD	VN:1.4	SO:unsorted
+@SQ	SN:chr1	LN:1000	M5:a17a423f15bd230b9a4ff01b04b71ec1	UR:file:/Users/valentin/Developer/hellbender/./src/test/resources/org/broadinstitute/hellbender/tools/exome/test_reference.fasta
+@SQ	SN:chr2	LN:750	M5:8d80acafffd672cfe32a4e8e0453f3e9	UR:file:/Users/valentin/Developer/hellbender/./src/test/resources/org/broadinstitute/hellbender/tools/exome/test_reference.fasta
+@SQ	SN:MT	LN:500	M5:07bc8daf3685e4396d5d1706f8167a68	UR:file:/Users/valentin/Developer/hellbender/./src/test/resources/org/broadinstitute/hellbender/tools/exome/test_reference.fasta
+@SQ	SN:Unknown	LN:2000	M5:b1e4d41dcfbb114aa1c80eae536bd5ed	UR:file:/Users/valentin/Developer/hellbender/./src/test/resources/org/broadinstitute/hellbender/tools/exome/test_reference.fasta

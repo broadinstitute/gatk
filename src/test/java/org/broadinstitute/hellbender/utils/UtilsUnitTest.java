@@ -60,6 +60,12 @@ public class UtilsUnitTest extends BaseTest {
         double[] emptydbl = null;
         Assert.assertEquals(Utils.join(",", emptydbl), "");
         Assert.assertEquals(Utils.join(",",dbls), "1.0,2.0,3.0,4.0");
+
+        Assert.assertEquals(Utils.join(",", new Object[] {}),"");
+        Assert.assertEquals(Utils.join(",", new Object[] { true , -12, "Blah", this.getClass() }),
+                "true,-12,Blah," + this.getClass().toString());
+        Assert.assertEquals(Utils.join(",", true, -13, "Blah", this.getClass()),"true,-13,Blah," + this.getClass().toString());
+        Assert.assertEquals(Utils.join(",",Boolean.TRUE),"true");
     }
 
     @Test
