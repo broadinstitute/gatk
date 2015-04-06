@@ -132,12 +132,13 @@ public final class ApplyVQSR extends VariantWalker {
         tranches.addAll(initializeTrancheSet());
         ignoreInputFilterSet.addAll(makeListOfInputsToIgnore());
 
-          VariantContextWriterBuilder builder = new VariantContextWriterBuilder()
+        VariantContextWriterBuilder builder = new VariantContextWriterBuilder()
                       .unsetBuffering();
 
         vcfWriter = builder
                       .setOutputFile(vcfOut)
                       .setOutputFileType(VariantContextWriterBuilder.OutputType.VCF)
+                      .setOptions(VariantContextWriterBuilder.NO_OPTIONS)
                       .build();
         vcfWriter.writeHeader(makeVCFHeaderForOutput());
     }
@@ -180,7 +181,7 @@ public final class ApplyVQSR extends VariantWalker {
         if( TS_FILTER_LEVEL != null ) {
             // if the user specifies both ts_filter_level and lodCutoff then throw a user error
             if( VQSLOD_CUTOFF != null ) {
-                throw new UserException("Arguments --ts_filter_level and --lodCutoff are mutually exclusive. Please only specify one option.");
+                throw new UserException.CommandLineException("Arguments --ts_filter_level and --lodCutoff are mutually exclusive. Please only specify one option.");
             }
 
             if( tranches.size() >= 2 ) {
@@ -192,7 +193,7 @@ public final class ApplyVQSR extends VariantWalker {
             if( tranches.size() >= 1 ) {
                 headerLines.add(new VCFFilterHeaderLine(tranches.get(0).name + "+", String.format("Truth sensitivity tranche level for " + tranches.get(0).model.toString() + " model at VQS Lod < " + tranches.get(0).minVQSLod)));
             } else {
-                throw new UserException("No tranches were found in the file or were above the truth sensitivity filter level " + TS_FILTER_LEVEL);
+                throw new UserException.BadInput("No tranches were found in the file or were above the truth sensitivity filter level " + TS_FILTER_LEVEL);
             }
 
             logger.info("Keeping all variants in tranche " + tranches.get(tranches.size()-1));
@@ -230,18 +231,18 @@ public final class ApplyVQSR extends VariantWalker {
 
             final VariantContext recalDatum = getMatchingRecalVC(vc, recals);
             if( recalDatum == null ) {
-                throw new UserException("Encountered input variant which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyVQSR were run on the same set of input variants. First seen at: " + vc );
+                throw new UserException.BadInput("Encountered input variant which isn't found in the input recal file. Please make sure VariantRecalibrator and ApplyVQSR were run on the same set of input variants. First seen at: " + vc );
             }
 
             final String lodString = recalDatum.getAttributeAsString(VQS_LOD_KEY, null);
             if( lodString == null ) {
-                throw new UserException("Encountered a malformed record in the input recal file. There is no lod for the record at: " + vc );
+                throw new UserException.BadInput("Encountered a malformed record in the input recal file. There is no lod for the record at: " + vc );
             }
             final double lod;
             try {
                 lod = Double.valueOf(lodString);
             } catch (NumberFormatException e) {
-                throw new UserException("Encountered a malformed record in the input recal file. The lod is unreadable for the record at: " + vc );
+                throw new UserException.BadInput("Encountered a malformed record in the input recal file. The lod is unreadable for the record at: " + vc );
             }
 
             VariantContextBuilder builder = new VariantContextBuilder(vc);
@@ -249,10 +250,12 @@ public final class ApplyVQSR extends VariantWalker {
             // Annotate the new record with its VQSLOD and the worst performing annotation
             builder.attribute(VQS_LOD_KEY, lod);
             builder.attribute(CULPRIT_KEY, recalDatum.getAttribute(CULPRIT_KEY));
-            if ( recalDatum.hasAttribute(POSITIVE_LABEL_KEY))
+            if ( recalDatum.hasAttribute(POSITIVE_LABEL_KEY)) {
                 builder.attribute(POSITIVE_LABEL_KEY, true);
-            if ( recalDatum.hasAttribute(NEGATIVE_LABEL_KEY))
+            }
+            if ( recalDatum.hasAttribute(NEGATIVE_LABEL_KEY)) {
                 builder.attribute(NEGATIVE_LABEL_KEY, true);
+            }
 
             final String filterString = generateFilterString(lod);
 
@@ -267,7 +270,7 @@ public final class ApplyVQSR extends VariantWalker {
                 vcfWriter.add( outputVC );
             }
         } else { // valid VC but not compatible with this mode, so just emit the variant untouched
-            vcfWriter.add( vc );
+            vcfWriter.add(vc);
         }
     }
 
