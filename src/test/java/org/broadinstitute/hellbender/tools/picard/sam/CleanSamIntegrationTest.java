@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.read.testers.CleanSamTester;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,13 +21,15 @@ public class CleanSamIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "testCleanSamDataProvider")
     public void testCleanSam(final String samFile, final String expectedCigar) throws IOException {
+        final File inputFile = new File(TEST_DATA_DIR, samFile);
         final File cleanedFile = File.createTempFile(samFile + ".", ".sam");
         cleanedFile.deleteOnExit();
-        final String[] args = new ArgumentsBuilder(new Object[]{
-                "INPUT=" + new File(TEST_DATA_DIR, samFile).getAbsolutePath(),
-                "OUTPUT=" + cleanedFile.getAbsolutePath()
-        }).getArgsArray();
-        Assert.assertEquals(runCommandLine(args), null);
+        final String[] args = new String[]{
+                "--INPUT", inputFile.getAbsolutePath(),
+                "--OUTPUT", cleanedFile.getAbsolutePath()
+        };
+
+        runCommandLine(args);
 
         final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
         validator.setIgnoreWarnings(true);
@@ -58,10 +60,10 @@ public class CleanSamIntegrationTest extends CommandLineProgramTest {
     //identical test case using the SamFileTester to generate that SAM file on the fly
     @Test(dataProvider = "testCleanSamTesterDataProvider")
     public void testCleanSamTester(final String originalCigar, final String expectedCigar, final int defaultChromosomeLength, final int alignStart) throws IOException {
-        final org.broadinstitute.hellbender.utils.read.testers.CleanSamIntegrationTest cleanSamIntegrationTest = new org.broadinstitute.hellbender.utils.read.testers.CleanSamIntegrationTest(expectedCigar, 100, defaultChromosomeLength);
+        final CleanSamTester cleanSamTester = new CleanSamTester(expectedCigar, 100, defaultChromosomeLength);
         // NB: this will add in the mate cigar, when enabled in SamPairUtil, for additional validation
-        cleanSamIntegrationTest.addMappedPair(0, alignStart, alignStart, false, false, originalCigar, originalCigar, false, 50);
-        cleanSamIntegrationTest.runTest();
+        cleanSamTester.addMappedPair(0, alignStart, alignStart, false, false, originalCigar, originalCigar, false, 50);
+        cleanSamTester.runTest();
     }
 
     @DataProvider(name = "testCleanSamTesterDataProvider")

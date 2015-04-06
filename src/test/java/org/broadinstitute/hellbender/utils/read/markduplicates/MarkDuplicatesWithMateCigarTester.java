@@ -14,8 +14,8 @@ public class MarkDuplicatesWithMateCigarTester extends AbstractMarkDuplicatesTes
         // NB: to be equivalent to MarkDuplicates we need to use SUM_OF_BASE_QUALITIES
         super(ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH);
 
-        addArg("MAX_RECORDS_IN_RAM=1000");
-        addArg("BLOCK_SIZE=250");
+        addArg("--MAX_RECORDS_IN_RAM", "1000");
+        addArg("--BLOCK_SIZE", "250");
     }
 
     @Override

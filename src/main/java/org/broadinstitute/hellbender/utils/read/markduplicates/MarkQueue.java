@@ -7,7 +7,6 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.SamRecordTrackingBuffer;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 
 import java.util.Comparator;
 import java.util.Set;

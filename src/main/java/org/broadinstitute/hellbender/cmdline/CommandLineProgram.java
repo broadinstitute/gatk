@@ -7,13 +7,11 @@ import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 

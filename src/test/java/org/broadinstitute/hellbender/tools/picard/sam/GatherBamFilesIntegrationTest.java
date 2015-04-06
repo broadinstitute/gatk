@@ -3,12 +3,10 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.BamFileIoUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class GatherBamFilesIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/GatherBamFiles");
@@ -32,24 +30,15 @@ public class GatherBamFilesIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testTheGathering() throws Exception {
         final File outputFile = File.createTempFile("gatherBamFilesTest.samFile.", BamFileIoUtils.BAM_FILE_EXTENSION);
-        final ArgumentsBuilder args = new ArgumentsBuilder();
+        final List<String> args = new ArrayList<>();
         for (final File splitBam : SPLIT_BAMS) {
-            args.add("INPUT=" + splitBam.getAbsolutePath());
+            args.add("--INPUT");
+            args.add(splitBam.getAbsolutePath());
         }
-        args.add("OUTPUT=" + outputFile);
-        runCommandLine(args.getArgsList());
+        args.add("--OUTPUT");
+        args.add(outputFile.getAbsolutePath());
+        runCommandLine(args);
         SamAssertionUtils.assertSamsEqual(ORIG_BAM, outputFile);
-    }
-
-    @Test
-    public void sanityCheckTheGathering() throws Exception {
-        final File outputFile = File.createTempFile("gatherBamFilesTest.samFile.", BamFileIoUtils.BAM_FILE_EXTENSION);
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        for (final File splitBam : SPLIT_BAMS) {
-            args.add("INPUT=" + splitBam.getAbsolutePath());
-        }
-        args.add("OUTPUT=" + outputFile);
-        runCommandLine(args.getArgsList());
-        SamAssertionUtils.assertSamsEqual(ORIG_BAM, outputFile);
+        SamAssertionUtils.assertSamsNonEqual(ORIG_BAM, SPLIT_BAMS.get(0)); // sanity check
     }
 }

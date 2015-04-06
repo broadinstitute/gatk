@@ -63,18 +63,24 @@ public class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesCommand
             final MarkDuplicates markDuplicates = new MarkDuplicates();
             final ArgumentsBuilder args = new ArgumentsBuilder();
             for (int i = 1; i <= 3; ++i) {
-                args.add("INPUT=" + new File(TEST_DATA_DIR, "merge" + i + ".sam").getAbsolutePath());
+                args.add("--INPUT");
+                args.add(new File(TEST_DATA_DIR, "merge" + i + ".sam").getAbsolutePath());
             }
             final File outputSam = new File(outputDir, TEST_BASE_NAME + ".sam");
-            args.add("OUTPUT=" + outputSam.getAbsolutePath());
-            args.add("METRICS_FILE=" + new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics").getAbsolutePath());
-            if (suppressPg) args.add("PROGRAM_RECORD_ID=null");
+            args.add("--OUTPUT");
+            args.add(outputSam.getAbsolutePath());
+            args.add("--METRICS_FILE");
+            args.add(new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics").getAbsolutePath());
+            if (suppressPg) {
+                args.add("--PROGRAM_RECORD_ID");
+                args.add("null");
+            }
 
             // I generally prefer to call doWork rather than invoking the argument parser, but it is necessary
             // in this case to initialize the command line.
             // Note that for the unit test, version won't come through because it is obtained through jar
             // manifest, and unit test doesn't run code from a jar.
-            Assert.assertEquals(markDuplicates.instanceMain(args.getArgsArray()), null);
+            markDuplicates.instanceMain(args.getArgsArray());
 
             // Read the MarkDuplicates output file, and get the PG ID for each read.  In this particular test,
             // the PG ID should be the same for both ends of a pair.

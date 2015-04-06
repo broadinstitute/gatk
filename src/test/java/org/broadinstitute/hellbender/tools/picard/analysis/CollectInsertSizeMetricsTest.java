@@ -1,0 +1,177 @@
+package org.broadinstitute.hellbender.tools.picard.analysis;
+
+import htsjdk.samtools.metrics.MetricsFile;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+
+/**
+ * Tests multi-level CollectInsertSizeMetrics
+ */
+public class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
+    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
+
+    public String getCommandLineProgramName() {
+        return CollectInsertSizeMetrics.class.getSimpleName();
+    }
+
+    @Test
+    public void test() throws IOException {
+        final File input = new File(TEST_DATA_DIR, "insert_size_metrics_test.sam");
+        final File outfile   = File.createTempFile("test", ".insert_size_metrics");
+        final File pdf   = File.createTempFile("test", ".pdf");
+        outfile.deleteOnExit();
+        pdf.deleteOnExit();
+        final String[] args = new String[] {
+                "--INPUT", input.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--HISTOGRAM_FILE", pdf.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        final MetricsFile<InsertSizeMetrics, Comparable<?>> output = new MetricsFile<InsertSizeMetrics, Comparable<?>>();
+        output.read(new FileReader(outfile));
+
+        for (final InsertSizeMetrics metrics : output.getMetrics()) {
+            Assert.assertEquals(metrics.PAIR_ORIENTATION.name(), "FR");
+            if (metrics.LIBRARY==null) {  // SAMPLE or ALL_READS level
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 45);
+                Assert.assertEquals(metrics.READ_PAIRS, 13);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 7);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 7);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 7);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 9);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 11);
+
+            }
+            else if (metrics.LIBRARY.equals("Solexa-41753")) { // one LIBRARY and one READ_GROUP
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 44);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 44);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 44);
+                Assert.assertEquals(metrics.READ_PAIRS, 2);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 1);
+
+            }
+            else if (metrics.LIBRARY.equals("Solexa-41748") && metrics.READ_GROUP == null) {
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 40);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 45);
+                Assert.assertEquals(metrics.READ_PAIRS, 9);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 3);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 3);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 3);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 5);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 5);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 9);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 9);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 11);
+
+            }
+            else if (metrics.LIBRARY.equals("Solexa-41734") && metrics.READ_GROUP == null) {
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 26);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.READ_PAIRS, 9);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 11);
+            }
+            else if (metrics.READ_GROUP.equals("62A79AAXX100907.7")) {
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.READ_PAIRS, 4);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 5);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 5);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 11);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 11);
+            }
+            else if (metrics.READ_GROUP.equals("62A79AAXX100907.6")) {
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 38);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 45);
+                Assert.assertEquals(metrics.READ_PAIRS, 5);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 3);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 3);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 7);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 7);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 9);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 9);
+            }
+            else if (metrics.READ_GROUP.equals("62A79AAXX100907.5")) {
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 41);
+                Assert.assertEquals(metrics.READ_PAIRS, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 1);
+            }
+            else if (metrics.READ_GROUP.equals("62A79AAXX100907.3")) {
+                Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MIN_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.MAX_INSERT_SIZE, 36);
+                Assert.assertEquals(metrics.READ_PAIRS, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 1);
+                Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 1);
+            }
+            else {
+                Assert.fail("Unexpected metric: " + metrics);
+            }
+        }
+    }
+}

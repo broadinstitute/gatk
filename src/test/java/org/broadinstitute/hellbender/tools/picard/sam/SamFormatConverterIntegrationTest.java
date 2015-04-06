@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -57,7 +56,7 @@ public class SamFormatConverterIntegrationTest extends CommandLineProgramTest {
         final File converterOutput = File.createTempFile("SamFileConverterTest." + inputFile.getName(), extension);
         samFileConverterArgs.add("--OUTPUT");
         samFileConverterArgs.add(converterOutput.getAbsolutePath());
-        Assert.assertEquals(runCommandLine(samFileConverterArgs), null);
+        runCommandLine(samFileConverterArgs);
         SamAssertionUtils.assertSamValid(converterOutput);
         SamAssertionUtils.assertSamsEqual(converterOutput, fileToCompare);
     }

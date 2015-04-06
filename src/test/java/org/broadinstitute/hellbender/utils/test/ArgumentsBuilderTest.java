@@ -1,13 +1,9 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class ArgumentsBuilderTest{
     @Test

@@ -44,7 +44,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
     }
 
     private void convertFile(final String [] args) {
-        Assert.assertEquals(runCommandLine(args), null);
+        runCommandLine(args);
     }
 
     @Test(dataProvider = "clippingTests")
@@ -201,7 +201,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
                 "--OUTPUT_PER_RG",
                 "--OUTPUT_DIR", tmpDir,
         };
-        Assert.assertEquals(runCommandLine(args), null);
+        runCommandLine(args);
 
         File f1;
         File f2;
@@ -263,7 +263,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
                 "--OUTPUT_PER_RG",
                 "--OUTPUT_DIR", tmpDir,
         };
-        Assert.assertEquals(runCommandLine(args), null);
+        runCommandLine(args);
 
         File f1;
         File f2;

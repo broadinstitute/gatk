@@ -93,6 +93,18 @@ public final class MathUtils {
         return total;
     }
 
+    public static long sum(final long[] x) {
+        int total = 0;
+        for (long v : x)
+            total += v;
+        return total;
+    }
+
+    /** Returns the sum of the elements in the array starting with start and ending before stop. */
+    public static long sum(final long[] arr, final int start, final int stop) {
+        return sum(Arrays.copyOfRange(arr, start, stop));
+    }
+
     /**
      * Compares double values for equality (within 1e-6), or inequality.
      *
@@ -699,4 +711,39 @@ public final class MathUtils {
 
     }
 
+    /** Calculate the mean of an array of doubles. */
+    public static double mean(final double[] in, final int start, final int stop) {
+        if ((stop - start) <= 0 ) return Double.NaN;
+
+        double total = 0;
+        for (int i = start; i < stop; ++i) {
+            total += in[i];
+        }
+
+        return total / (stop - start);
+    }
+
+    /** Calculate the (population) standard deviation of an array of doubles. */
+    public static double stddev(final double[] in, final int start, final int length) {
+        return stddev(in, start, length, mean(in, start, length));
+    }
+
+    /** Calculate the (population) standard deviation of an array of doubles. */
+    public static double stddev(final double[] in, final int start, final int stop, final double mean) {
+        if ((stop - start) <= 0) return Double.NaN;
+
+        double total = 0;
+        for (int i = start; i < stop; ++i) {
+            total += (in[i] * in[i]);
+        }
+
+        return Math.sqrt((total / (stop - start)) - (mean * mean));
+    }
+
+    /** "Promotes" an int[] into a double array with the same values (or as close as precision allows). */
+    public static double[] promote(final int[] is) {
+        final double[] ds = new double[is.length];
+        for (int i = 0; i < is.length; ++i) ds[i] = is[i];
+        return ds;
+    }
 }

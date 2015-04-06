@@ -36,7 +36,7 @@ public class MarkDuplicatesWithMateCigarIntegrationTest extends AbstractMarkDupl
     @Test
     public void testTwoFragmentsLargeSoftClipWithMinimumDistanceOK() {
         final AbstractMarkDuplicatesTester tester = getTester();
-        tester.addArg("MINIMUM_DISTANCE=990");
+        tester.addArg("--MINIMUM_DISTANCE", "990");
         tester.addMappedFragment(0, 1000, false, "100M", DEFAULT_BASE_QUALITY);
         tester.addMappedFragment(0, 2000, false, "10S100M", DEFAULT_BASE_QUALITY);
         tester.addMappedFragment(0, 3000, true, "2000S100M", DEFAULT_BASE_QUALITY);
@@ -46,7 +46,7 @@ public class MarkDuplicatesWithMateCigarIntegrationTest extends AbstractMarkDupl
     @Test(expectedExceptions = {GATKException.class, UserException.class})
     public void testTwoFragmentsLargeSoftClipWithMinimumDistanceFailure() {
         final AbstractMarkDuplicatesTester tester = getTester();
-        tester.addArg("MINIMUM_DISTANCE=989");
+        tester.addArg("--MINIMUM_DISTANCE", "989");
         tester.addMappedFragment(0, 1000, false, "100M", DEFAULT_BASE_QUALITY);
         tester.addMappedFragment(0, 2000, false, "10S100M", DEFAULT_BASE_QUALITY);
         tester.addMappedFragment(0, 3000, true, "2000S100M", DEFAULT_BASE_QUALITY);

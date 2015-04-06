@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,10 +25,10 @@ public class CreateSequenceDictionaryIntegrationTest extends CommandLineProgramT
         outputDict.delete();
         outputDict.deleteOnExit();
         final String[] argv = {
-                "REFERENCE=" + BASIC_FASTA,
-                "OUTPUT=" + outputDict,
+                "--REFERENCE", BASIC_FASTA.getAbsolutePath(),
+                "--OUTPUT", outputDict.getAbsolutePath()
         };
-        Assert.assertEquals(runCommandLine(new ArgumentsBuilder(argv).getArgsArray()), null);
+        runCommandLine(argv);
     }
 
     /**
@@ -41,10 +40,10 @@ public class CreateSequenceDictionaryIntegrationTest extends CommandLineProgramT
         outputDict.delete();
         outputDict.deleteOnExit();
         final String[] argv = {
-                "REFERENCE=" + DUPLICATE_FASTA,
-                "OUTPUT=" + outputDict,
+                "--REFERENCE", DUPLICATE_FASTA.getAbsolutePath(),
+                "--OUTPUT", outputDict.getAbsolutePath(),
         };
-        Assert.assertEquals(runCommandLine(new ArgumentsBuilder(argv).getArgsArray()), null);
+        runCommandLine(argv);
         Assert.fail("Exception should have been thrown.");
     }
 }

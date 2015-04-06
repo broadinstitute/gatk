@@ -4,13 +4,9 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.testng.Assert;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Abstract class for doing basic on the fly SAM file testing.
@@ -24,7 +20,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private int readNameCounter = 0;
     private boolean noMateCigars = false;
     private boolean deleteOnExit = true;
-    private final ArgumentsBuilder args = new ArgumentsBuilder();
+    private final List args = new ArrayList<>();
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy) {
         this.deleteOnExit = deleteOnExit;
@@ -71,8 +67,12 @@ public abstract class SamFileTester extends CommandLineProgramTest {
         args.add(arg);
     }
 
+    public void addArg(final String key, final String value) {
+        args.add(key); args.add(value);
+    }
+
     public List<String> getArgs() {
-        return args.getArgsList();
+        return args;
     }
 
     public File getOutputDir() {
@@ -277,9 +277,9 @@ public abstract class SamFileTester extends CommandLineProgramTest {
         final File input = createInputFile();
 
         output = new File(outputDir, "output.sam");
-        args.add("INPUT=" + input.getAbsoluteFile());
-        args.add("OUTPUT=" + output.getAbsoluteFile());
-        Assert.assertEquals(runCommandLine(args.getArgsList()), null);
+        addArg("--INPUT", input.getAbsolutePath());
+        addArg("--OUTPUT", output.getAbsolutePath());
+        runCommandLine(args);
         test();
     }
 

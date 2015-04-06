@@ -1,0 +1,4 @@
+#:GATKTable:0:0:;
+#:GATKTable:testSortingTable:table with random values sorted by columns
+
+

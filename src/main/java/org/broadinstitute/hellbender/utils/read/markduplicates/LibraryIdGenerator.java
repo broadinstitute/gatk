@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Histogram;
-import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 
 import java.util.HashMap;
 import java.util.Map;
