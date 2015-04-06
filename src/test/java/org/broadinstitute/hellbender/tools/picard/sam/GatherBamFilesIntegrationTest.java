@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.BamFileIoUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.annotations.Test;
 

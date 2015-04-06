@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.*;
 import java.util.*;

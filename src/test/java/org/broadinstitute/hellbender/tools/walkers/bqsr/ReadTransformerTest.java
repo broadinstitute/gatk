@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;

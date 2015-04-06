@@ -58,7 +58,7 @@ public class CleanSamIntegrationTest extends CommandLineProgramTest {
     //identical test case using the SamFileTester to generate that SAM file on the fly
     @Test(dataProvider = "testCleanSamTesterDataProvider")
     public void testCleanSamTester(final String originalCigar, final String expectedCigar, final int defaultChromosomeLength, final int alignStart) throws IOException {
-        final org.broadinstitute.hellbender.utils.sam.testers.CleanSamIntegrationTest cleanSamIntegrationTest = new org.broadinstitute.hellbender.utils.sam.testers.CleanSamIntegrationTest(expectedCigar, 100, defaultChromosomeLength);
+        final org.broadinstitute.hellbender.utils.read.testers.CleanSamIntegrationTest cleanSamIntegrationTest = new org.broadinstitute.hellbender.utils.read.testers.CleanSamIntegrationTest(expectedCigar, 100, defaultChromosomeLength);
         // NB: this will add in the mate cigar, when enabled in SamPairUtil, for additional validation
         cleanSamIntegrationTest.addMappedPair(0, alignStart, alignStart, false, false, originalCigar, originalCigar, false, 50);
         cleanSamIntegrationTest.runTest();

@@ -4,8 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.sam.SamComparison;
+import org.broadinstitute.hellbender.utils.read.SamComparison;
 
 import java.io.File;
 import java.util.*;

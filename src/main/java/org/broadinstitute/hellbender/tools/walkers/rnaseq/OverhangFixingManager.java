@@ -9,7 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 

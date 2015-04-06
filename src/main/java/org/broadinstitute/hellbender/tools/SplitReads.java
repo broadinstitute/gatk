@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.util.*;

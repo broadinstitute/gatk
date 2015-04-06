@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.sam.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.util.*;
 

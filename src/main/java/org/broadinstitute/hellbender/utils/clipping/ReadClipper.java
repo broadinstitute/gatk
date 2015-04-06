@@ -4,13 +4,13 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.sam.CigarUtils;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.utils.sam.ReadUtils.*;
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
 
 /**
  * A comprehensive clipping tool.

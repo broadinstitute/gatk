@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.tools.recalibration.covariates.RepeatLength
 import org.broadinstitute.hellbender.tools.recalibration.covariates.RepeatUnitAndLengthCovariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.RepeatUnitCovariate;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;

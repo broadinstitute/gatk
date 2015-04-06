@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.sam.mergealignment.*;
+import org.broadinstitute.hellbender.utils.read.mergealignment.*;
 
 import java.io.File;
 import java.util.ArrayList;

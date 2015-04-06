@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

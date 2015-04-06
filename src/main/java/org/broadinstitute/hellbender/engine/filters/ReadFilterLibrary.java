@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.sam.CigarUtils;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 /**
  * Standard ReadFilters

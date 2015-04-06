@@ -6,8 +6,8 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.sam.ReadUtils;
-import org.broadinstitute.hellbender.utils.sam.markduplicates.*;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 
 import java.io.File;
 import java.util.ArrayList;

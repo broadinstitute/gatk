@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

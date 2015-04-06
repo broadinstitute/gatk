@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

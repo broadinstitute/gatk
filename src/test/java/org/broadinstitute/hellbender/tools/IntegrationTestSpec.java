@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.sam.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;

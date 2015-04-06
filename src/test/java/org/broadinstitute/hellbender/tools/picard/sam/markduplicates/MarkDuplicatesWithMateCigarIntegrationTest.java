@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.sam.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.sam.markduplicates.AbstractMarkDuplicatesTester;
-import org.broadinstitute.hellbender.utils.sam.markduplicates.MarkDuplicatesWithMateCigarTester;
+import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractMarkDuplicatesTester;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesWithMateCigarTester;
 import org.testng.annotations.Test;
 
 /**

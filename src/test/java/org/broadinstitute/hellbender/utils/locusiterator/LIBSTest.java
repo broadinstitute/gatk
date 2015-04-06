@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.locusiterator;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.sam.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 
 import java.util.List;
 
