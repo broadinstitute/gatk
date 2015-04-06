@@ -8,7 +8,6 @@ import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 
 import java.io.File;
 import java.util.*;

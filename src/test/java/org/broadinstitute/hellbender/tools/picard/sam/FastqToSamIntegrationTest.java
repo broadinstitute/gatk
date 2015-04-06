@@ -6,14 +6,13 @@ import htsjdk.samtools.util.FastqQualityFormat;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.*;
 
 /**
  * Tests for FastqToBam
@@ -151,18 +150,28 @@ public class FastqToSamIntegrationTest extends CommandLineProgramTest {
         final File fastq2 = (fastqFilename2 != null) ? new File(TEST_DATA_DIR, fastqFilename2) : null;
         final File samFile = newTempSamFile(fastq1.getName());
 
-        final ArgumentsBuilder args =new ArgumentsBuilder();
+        final List<String> args = new ArrayList<>();
 
-        args.add("FASTQ=" + fastq1.getAbsolutePath());
-        args.add("OUTPUT=" + samFile.getAbsolutePath());
-        args.add("QUALITY_FORMAT=" + version);
-        args.add("READ_GROUP_NAME=rg");
-        args.add("SAMPLE_NAME=s1");
+        args.add("--FASTQ");
+        args.add(fastq1.getAbsolutePath());
+        if (fastqFilename2 != null) {
+            args.add("--FASTQ2");
+            args.add(fastq2.getAbsolutePath());
+        }
+        args.add("--OUTPUT");
+        args.add(samFile.getAbsolutePath());
+        args.add("--QUALITY_FORMAT");
+        args.add(version.toString());
+        args.add("--READ_GROUP_NAME");
+        args.add("rg");
+        args.add("--SAMPLE_NAME");
+        args.add("s1");
+        if (permissiveFormat) {
+            args.add("--ALLOW_AND_IGNORE_EMPTY_LINES");
+            args.add("true");
+        }
 
-        if(fastqFilename2 != null) args.add("FASTQ2=" + fastq2.getAbsolutePath());
-        if(permissiveFormat) args.add("ALLOW_AND_IGNORE_EMPTY_LINES=true");
-
-        Assert.assertEquals(runCommandLine(args.getArgsList()), null);
+        runCommandLine(args);
         return samFile;
     }
 

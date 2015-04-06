@@ -1325,7 +1325,7 @@ public class MergeBamAlignmentIntegrationTest extends CommandLineProgramTest {
         if (includeSecondary != null) {
             args.add("--INCLUDE_SECONDARY_ALIGNMENTS"); args.add(String.valueOf(includeSecondary));
         }
-        Assert.assertEquals(runCommandLine(args), null, "Merge did not succeed");
+        runCommandLine(args);
     }
 
     private void addAlignmentsForBestFragmentMapqStrategy(

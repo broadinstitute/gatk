@@ -4,7 +4,6 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 
 import java.io.File;

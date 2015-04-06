@@ -1,0 +1,7 @@
+
+## METRICS CLASS	org.broadinstitute.hellbender.tools.picard.illumina.metrics.IlluminaPhasingMetrics
+LANE	TYPE_NAME	PHASING_APPLIED	PREPHASING_APPLIED
+1	FIRST	0.347214	0.101558
+1	SECOND	0.365492	0.120183
+
+

@@ -7,7 +7,6 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -25,16 +24,19 @@ public class MergeSamFilesIntegrationTest extends CommandLineProgramTest {
     @Test
     public void unsortedInputSortedOutputTest() throws Exception {
         final File unsortedInputTestDataDir = new File(TEST_DATA_DIR, "unsorted_input");
+        final File sam1 = new File(unsortedInputTestDataDir, "1.sam");
+        final File sam2 = new File(unsortedInputTestDataDir, "2.sam");
         final File mergedOutput = File.createTempFile("unsortedInputSortedOutputTest.", BamFileIoUtils.BAM_FILE_EXTENSION);
         mergedOutput.deleteOnExit();
-        final ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.add("I=" + new File(unsortedInputTestDataDir, "1.sam").getAbsolutePath());
-        args.add("I=" + new File(unsortedInputTestDataDir, "2.sam").getAbsolutePath());
-        args.add("O=" + mergedOutput.getAbsolutePath());
-        args.add("SO=coordinate");
-
-        Assert.assertEquals(runCommandLine(args.getArgsList()), null);
+        final String[] args = new String[]{
+                "--INPUT", sam1.getAbsolutePath(),
+                "--INPUT", sam2.getAbsolutePath(),
+                "--OUTPUT", mergedOutput.getAbsolutePath(),
+                "--SO", "coordinate"
+        };
+        
+        runCommandLine(args);
         final SamReader reader = SamReaderFactory.makeDefault().open(mergedOutput);
         Assert.assertEquals(reader.getFileHeader().getSortOrder(), SAMFileHeader.SortOrder.coordinate);
         SamAssertionUtils.assertSamValid(mergedOutput);

@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.tools.picard.sam.CleanSam;
 import org.testng.Assert;
 
 import java.io.PrintWriter;
-import java.util.Arrays;
+import java.util.*;
 
 /**
  * This class is the extension of the SamFileTester to test CleanSam with SAM files generated on the fly.
@@ -31,7 +31,7 @@ public class CleanSamIntegrationTest extends SamFileTester {
             // Validate it has the expected cigar
             validator.setIgnoreWarnings(true);
             validator.setVerbose(true, 1000);
-            validator.setErrorsToIgnore(Arrays.asList(SAMValidationError.Type.MISSING_READ_GROUP));
+            validator.setErrorsToIgnore(Collections.singletonList(SAMValidationError.Type.MISSING_READ_GROUP));
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT);
             SamReader samReader = factory.open(getOutput());
             final SAMRecordIterator iterator = samReader.iterator();

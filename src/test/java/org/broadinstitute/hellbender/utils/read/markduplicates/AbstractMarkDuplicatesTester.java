@@ -11,7 +11,6 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.metrics.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.testers.SamFileTester;
 import org.testng.Assert;
 
@@ -35,8 +34,8 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
         expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;
 
         metricsFile = new File(getOutputDir(), "metrics.txt");
-        addArg("METRICS_FILE=" + metricsFile);
-        addArg("DUPLICATE_SCORING_STRATEGY=" + duplicateScoringStrategy.name());
+        addArg("--METRICS_FILE", metricsFile.getAbsolutePath());
+        addArg("--DUPLICATE_SCORING_STRATEGY", duplicateScoringStrategy.name());
     }
 
 

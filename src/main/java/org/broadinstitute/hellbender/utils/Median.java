@@ -42,7 +42,7 @@ public class Median<T extends Comparable<T>> {
     }
 
     /**
-     * Returns the floor(n + 1 / 2) item from the list of values if the list
+     * Returns the floor((n + 1) / 2) item from the list of values if the list
      * has values, or defaultValue is the list is empty.
      */
     public T getMedian(final T defaultValue) {

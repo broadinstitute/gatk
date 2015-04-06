@@ -165,4 +165,40 @@ public class MathUtilsUnitTests {
         Assert.assertEquals(MathUtils.covarianceGeodesicDistance(mat1, mat2), 1.86205,1e-4);
     }
 
+    @Test
+    public void testSum() {
+        double[] doubleTest = {-1,0,1,2,3};
+        long[] longTest = {-1,0,1,2,3};
+        byte[] byteTest = {-1,0,1,2,3};
+        int[] intTest = {-1,0,1,2,3};
+        Assert.assertEquals(MathUtils.sum(doubleTest), 5.0);
+        Assert.assertEquals(MathUtils.sum(longTest), 5);
+        Assert.assertEquals(MathUtils.sum(byteTest), 5);
+        Assert.assertEquals(MathUtils.sum(intTest), 5);
+    }
+
+    @Test
+    public void testMean() {
+        double[] test = {0,1,101};
+        Assert.assertEquals(MathUtils.mean(test, 0, 0), Double.NaN);
+        Assert.assertEquals(MathUtils.mean(test, 0, 1), 0.0);
+        Assert.assertEquals(MathUtils.mean(test, 0, 3), 34.0);
+    }
+
+    @Test
+    public void testStddev() {
+        double[] test = {0, -1, 1, -2, 2, -3};
+        Assert.assertEquals(MathUtils.stddev(test, 0, 0), Double.NaN);
+        Assert.assertEquals(MathUtils.stddev(test, 0, 1), 0.0);
+        Assert.assertEquals(MathUtils.stddev(test, 0, 6), 1.707825127659933, 1e-14);
+    }
+
+    @Test
+    public void testPromote() {
+        int[] test = {0, 100, (int)1e10, (int)1e20};
+        double[] prom = MathUtils.promote(test);
+        for (int i = 0; i < test.length; i++) {
+            Assert.assertEquals(test[i], prom[i], 1e-14);
+        }
+    }
 }
