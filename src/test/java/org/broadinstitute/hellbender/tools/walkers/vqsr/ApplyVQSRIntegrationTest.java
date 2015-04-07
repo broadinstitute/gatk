@@ -112,6 +112,20 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest{
     }
 
     @Test
+    public void testApplyRecalibrationSnpNoIntervalsVeryLowLOD() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -mode SNP" +
+                        " -ts_filter_level 90.0" +
+                        " -variant " + getToolTestDataDir() + "VQSR.mixedTest.lowLOD.input" +
+                        " -vcfOut %s" +
+                        " -tranchesFile " + getToolTestDataDir() + "VQSR.mixedTest.tranches" +
+                        " -recalFile " + getToolTestDataDir() + "VQSR.mixedTest.lowLOD.recal",
+                Arrays.asList(getToolTestDataDir() + "expected.VQSR.mixedTest.noRanges.modeSNP.lowLOD.vcf")
+        );
+        spec.executeTest("testApplyRecalibrationSnpNoIntervalsVeryLowLOD", this);
+    }
+
+    @Test
     public void testApplyRecalibrationSnpNoIntervals() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 " -mode SNP" +
