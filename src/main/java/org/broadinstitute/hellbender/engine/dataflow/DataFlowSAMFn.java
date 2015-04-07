@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
@@ -10,6 +11,7 @@ import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.StringLineReader;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
