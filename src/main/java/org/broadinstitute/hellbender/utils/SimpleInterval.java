@@ -9,7 +9,7 @@ import htsjdk.samtools.util.Locatable;
  *
  *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
-public class SimpleInterval implements Locatable {
+public final class SimpleInterval implements Locatable {
 
     private final int start;
     private final int end;

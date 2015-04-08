@@ -1,26 +1,27 @@
 package org.broadinstitute.hellbender.utils.codecs.table;
 
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
+
+import static org.broadinstitute.hellbender.utils.Utils.join;
 
 /**
  * A feature representing a single row out of a text table
  */
-public class TableFeature implements Feature {
-    // stores the values for the columns seperated out
+public final class TableFeature implements Feature {
+    // stores the values for the columns separated out
     private final List<String> values;
 
     // if we have column names, we store them here
     private final List<String> keys;
 
     // our location
-    private final GenomeLoc position;
+    private final Locatable position;
 
-    public TableFeature(GenomeLoc position, List<String> values, List<String> keys) {
+    public TableFeature(Locatable position, List<String> values, List<String> keys) {
         this.values = values;
         this.keys = keys;
         this.position = position;
@@ -43,7 +44,7 @@ public class TableFeature implements Feature {
 
     @Override
     public int getEnd() {
-        return position.getStop();
+        return position.getEnd();
     }
 
     public String getValue(int columnPosition) {
@@ -52,7 +53,7 @@ public class TableFeature implements Feature {
     }
 
     public String toString() {
-        return String.format("%s\t%s",position.toString(), Utils.join("\t", values));
+        return String.format("%s\t%s",position.toString(), join("\t", values));
     }
 
     public String get(String columnName) {
@@ -61,16 +62,8 @@ public class TableFeature implements Feature {
         return values.get(position);
     }
 
-    public GenomeLoc getLocation() {
+    public Locatable getLocation() {
         return this.position;
-    }
-
-    public List<String> getAllValues() {
-        return getValuesTo(values.size());
-    }
-
-    public List<String> getValuesTo(int columnPosition) {
-        return values.subList(0,columnPosition);
     }
 
     public List<String> getHeader() {
