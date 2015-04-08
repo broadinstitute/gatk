@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
  * -Targeted queries by one interval at a time
  */
 public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoCloseable {
+    protected static final Logger logger = LogManager.getLogger(ReadsDataSource.class);
 
     /**
      * Mapping from SamReaders to iterators over the reads from each reader. Only one
@@ -130,10 +133,18 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
         // Treat null and empty interval lists the same
         this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
 
-        if ( this.intervals != null && ! indicesAvailable ) {
-            raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
+        if ( this.intervals != null ) {
+            if ( ! indicesAvailable ) {
+                raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
+            }
+
+            logger.info("Preparing intervals for traversal");
+            preparedIntervals = prepareIntervalsForTraversal();
+            logger.info("Done preparing intervals for traversal");
         }
-        preparedIntervals = this.intervals != null ? prepareIntervalsForTraversal() : null;
+        else {
+            preparedIntervals = null;
+        }
     }
 
     private void raiseExceptionForMissingIndex(String reason) {
@@ -155,7 +166,11 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      */
     @Override
     public Iterator<SAMRecord> iterator() {
-        return prepareIteratorsForTraversal(preparedIntervals);
+        logger.info("Preparing readers for traversal");
+        final Iterator<SAMRecord> traversalIter = prepareIteratorsForTraversal(preparedIntervals);
+        logger.info("Done preparing readers for traversal");
+
+        return traversalIter;
     }
 
     /**
