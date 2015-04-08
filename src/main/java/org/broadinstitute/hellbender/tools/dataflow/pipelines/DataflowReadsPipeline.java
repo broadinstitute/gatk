@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.dataflow;
+package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
@@ -14,14 +14,13 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.engine.dataflow.DataFlowSAMFn;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
 import org.broadinstitute.hellbender.engine.dataflow.SAMSerializableFunction;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 
 import java.io.File;
@@ -41,18 +40,16 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
     @Argument
     String bam;
 
-    private static final Logger LOG = Logger.getLogger(DataflowReadsPipeline.class.getName());
 
-    private final PTransformSAM f;
-    private final ImmutableList<ReadFilter> readFilters;
-    private final ImmutableList<ReadTransformer> readTransformers;
 
-    public DataflowReadsPipeline(PTransformSAM f,
-                                 ImmutableList<ReadFilter> readFilters,
-                                 ImmutableList<ReadTransformer> readTransformers) {
-        this.f = f;
-        this.readFilters = readFilters;
-        this.readTransformers = readTransformers;
+    abstract protected PTransformSAM getTool();
+
+    protected ImmutableList<ReadFilter> getReadFilters(){
+        return ImmutableList.of();
+    }
+
+    protected ImmutableList<ReadTransformer> getReadTransformers(){
+        return ImmutableList.of();
     }
 
     private GenomicsFactory.OfflineAuth getAuth(GCSOptions options){
@@ -81,7 +78,7 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
 
 
     @Override
-    protected void setupPipeline(Pipeline pipeline) {
+    final protected void setupPipeline(Pipeline pipeline) {
         GCSOptions ops = PipelineOptionsFactory.fromArgs(new String[]{"--genomicsSecretsFile=" + clientSecret.getAbsolutePath()}).as(GCSOptions.class);
         GenomicsOptions.Methods.validateOptions(ops);
 
@@ -97,11 +94,13 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
 
         PCollection<Read> preads= ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, ImmutableList.of(bam));
 
-        for (ReadFilter filter : readFilters) {
+        for (ReadFilter filter : getReadFilters()) {
             preads = preads.apply(Filter.by(wrapFilter(filter, headerString)));
         }
 
+        PTransformSAM f = getTool();
         f.setHeaderString(headerString);
+
         PCollection<String> pstrings = preads.apply(f);
         pstrings.apply(TextIO.Write.to(outputFile));
     }
