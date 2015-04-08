@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -345,6 +347,14 @@ public class UserException extends RuntimeException {
             this.type = type;
         }
     }
+
+    public static class MissingContigInSequenceDictionary extends UserException {
+        public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict1) {
+            super(String.format("Contig %s not present in the sequence dictionary %s\n",
+                    contigName, ReadUtils.prettyPrintSequenceRecords(dict1)));
+        }
+    }
+
 }
 
 

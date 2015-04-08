@@ -282,6 +282,9 @@ public class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
         } else {
             // todo -- potential optimization is to check if contig.name == contig, as this in general will be true
             SAMSequenceRecord contigInfo = super.getSequenceDictionary().getSequence(contig);
+            if (contigInfo == null){
+                throw new UserException.MissingContigInSequenceDictionary(contig, super.getSequenceDictionary());
+            }
 
             if (stop > contigInfo.getSequenceLength())
                 throw new SAMException("Query asks for data past end of contig. Query contig " + contig + " start:" + start + " stop:" + stop + " contigLength:" +  contigInfo.getSequenceLength());

@@ -91,4 +91,19 @@ public class BaseRecalibratorIntegrationTest extends CommandLineProgramTest{
                 UserException.CommandLineException.class);
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
+
+    @Test
+    public void testBQSRFailWithIncompatibleReference() throws IOException {
+        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+
+        final String HiSeqBam_Hg18 = resourceDir + "HiSeq.1mb.1RG.2k_lines.bam";
+
+        final String  NO_ARGS = "";
+        final BQSRTest params = new BQSRTest(hg19MiniReference, HiSeqBam_Hg18, hg19_chr1_1M_dbSNP, NO_ARGS, resourceDir + "expected.txt");
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                params.getCommandLine(),
+                1,
+                UserException.MissingContigInSequenceDictionary.class);
+        spec.executeTest("testBQSRFailWithIncompatibleReference", this);
+    }
 }
