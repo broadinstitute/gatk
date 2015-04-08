@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 /**
  * Minimal immutable class representing a 1-based closed ended genomic interval
@@ -9,7 +10,11 @@ import htsjdk.samtools.util.Locatable;
  *
  *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
-public class SimpleInterval implements Locatable {
+public final class SimpleInterval implements Locatable {
+
+    public static final char CONTIG_SEPARATOR = ':';
+    public static final char START_END_SEPARATOR = '-';
+    public static final String END_OF_CONTIG = "+"; //note: needs to be a String because it's used in an endsWith call.
 
     private final int start;
     private final int end;
@@ -34,6 +39,76 @@ public class SimpleInterval implements Locatable {
         this.contig = contig;
         this.start = start;
         this.end = end;
+    }
+
+    /**
+     * Makes an interval by parsing the string.
+     *
+     * @Warning this method does not fill in the true contig end values
+     * for intervals that reach to the end of their contig,
+     * uses {@link Integer#MAX_VALUE} instead.
+     *
+     * Semantics of start and end are defined in {@link Locatable}.
+     * The format is one of:
+     *
+     * contig           (Represents the whole contig, from position 1 to the {@link Integer#MAX_VALUE})
+     *
+     * contig:start     (Represents the 1-element range start-start on the given contig)
+     *
+     * contig:start-end (Represents the range start-end on the given contig)
+     *
+     * contig:start+    (Represents the prefix of the contig starting at the given start position and ending at {@link Integer#MAX_VALUE})
+     *
+     * examples (note that _all_ commas in numbers are simply ignored, for human convenience):
+     *
+     * 'chr2', 'chr2:1000000' or 'chr2:1,000,000-2,000,000' or 'chr2:1000000+'
+     */
+    public SimpleInterval(final String str){
+        /* Note: we want to keep the class immutable. So all fields need to be final.
+         * But only constructors can assign to final fields.
+         * So we can either keep this parsing code in the constructor or make a static factory method
+         * and make multiple objects. We chose the former.
+         */
+        final String contig;
+        final int start;
+        final int end;
+
+        final int colonIndex = str.lastIndexOf(CONTIG_SEPARATOR);
+        if (colonIndex == -1) {
+            contig = str;  // chr1
+            start = 1;
+            end = Integer.MAX_VALUE;
+        } else {
+            contig = str.substring(0, colonIndex);
+            final int dashIndex = str.indexOf(START_END_SEPARATOR, colonIndex);
+            if(dashIndex == -1) {
+                if(str.endsWith(END_OF_CONTIG)) {
+                    start = parsePosition(str.substring(colonIndex + 1, str.length() - 1));  // chr:1+
+                    end = Integer.MAX_VALUE;
+                } else {
+                    start = parsePosition(str.substring(colonIndex + 1));   // chr1:1
+                    end = start;
+                }
+            } else {
+                start = parsePosition(str.substring(colonIndex + 1, dashIndex));  // chr1:1-1
+                end = parsePosition(str.substring(dashIndex + 1));
+            }
+        }
+
+        this.contig = contig;
+        this.start = start;
+        this.end = end;
+    }
+
+    /**
+     * Parses a number like 100000 or 1,000,000 into an int.
+     */
+    private static int parsePosition(final String pos) {
+        try {
+            return Integer.parseInt(pos.replaceAll(",", "")); //strip commas
+        } catch (NumberFormatException e){
+            throw new UserException("Problem parsing start/end value in interval string. Value was: " + pos, e);
+        }
     }
 
     @Override

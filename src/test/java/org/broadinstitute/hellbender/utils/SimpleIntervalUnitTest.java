@@ -22,6 +22,28 @@ public class SimpleIntervalUnitTest extends BaseTest {
         SimpleInterval interval = new SimpleInterval(contig, start, end);
     }
 
+    @DataProvider(name = "goodIntervals")
+    public Object[][] goodIntervals(){
+        return new Object[][]{
+                {"1", "1", 1, Integer.MAX_VALUE},
+                {"1:2", "1", 2, 2},
+                {"1:3+", "1", 3, Integer.MAX_VALUE},
+                {"1:4-5", "1", 4, 5},
+                {"1:2,000", "1", 2000, 2000},
+                {"1:3,000+", "1", 3000, Integer.MAX_VALUE},
+                {"1:4,000-5,000", "1", 4000, 5000},
+                {"1:4,0,0,0-5,0,0,0", "1", 4000, 5000}, //this is OK too, we just remove commas wherever they are
+        };
+    }
+
+    @Test(dataProvider = "goodIntervals")
+    public void testGoodIntervals(String str, String contig, int start, int end){
+        SimpleInterval interval = new SimpleInterval(str);
+        Assert.assertEquals(interval.getContig(), contig, "contig");
+        Assert.assertEquals(interval.getStart(), start, "start");
+        Assert.assertEquals(interval.getEnd(), end, "end");
+    }
+
     @Test
     public void testEquality(){
         final SimpleInterval i1 = new SimpleInterval("1",1,100);
@@ -29,10 +51,14 @@ public class SimpleIntervalUnitTest extends BaseTest {
         final SimpleInterval i3 = new SimpleInterval("chr1", 1, 100);
         final SimpleInterval i4 = new SimpleInterval("chr1", 2, 100);
         final SimpleInterval i5 = new SimpleInterval("chr1", 1, 200);
+        final SimpleInterval i6 = new SimpleInterval("1:1-100");
 
         Assert.assertTrue(i1.equals(i1));
         Assert.assertTrue(i1.equals(i2));
         Assert.assertTrue(i2.equals(i1));
+        Assert.assertTrue(i1.equals(i6));
+        Assert.assertTrue(i6.equals(i1));
+
         Assert.assertFalse(i1.equals(i3));
         Assert.assertFalse(i1.equals(i4));
         Assert.assertFalse(i1.equals(i5));
