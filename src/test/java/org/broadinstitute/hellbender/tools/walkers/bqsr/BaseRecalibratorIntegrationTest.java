@@ -52,8 +52,11 @@ public class BaseRecalibratorIntegrationTest extends CommandLineProgramTest{
         final String origQualsBam = resourceDir + "originalQuals.1kg.chr1.1-1K.1RG.dictFix.bam";
         final String dbSNPb36 = resourceDir + "dbsnp_132.b36.excluding_sites_after_129.chr1_1k.vcf";
 
+        final String moreSites = resourceDir + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
+
         return new Object[][]{
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "", resourceDir + "expected.NA12878.chr17_69k_70k.txt")},
+                {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "-knownSites " + moreSites, resourceDir + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--no_standard_covs -cov ContextCovariate", resourceDir + "expected.NA12878.chr17_69k_70k.ContextCovariate.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--no_standard_covs -cov CycleCovariate", resourceDir + "expected.NA12878.chr17_69k_70k.CycleCovariate.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam, dbSNPb37, "--indels_context_size 4", resourceDir + "expected.NA12878.chr17_69k_70k.indels_context_size4.txt")},
