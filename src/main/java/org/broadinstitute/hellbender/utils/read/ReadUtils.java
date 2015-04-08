@@ -60,6 +60,15 @@ public class ReadUtils {
         return read.getReadBases() == null || read.getReadLength() == 0;
     }
 
+    public static String prettyPrintSequenceRecords ( SAMSequenceDictionary sequenceDictionary ) {
+        String[] sequenceRecordNames = new String[sequenceDictionary.size()];
+        int sequenceRecordIndex = 0;
+        for (SAMSequenceRecord sequenceRecord : sequenceDictionary.getSequences()) {
+            sequenceRecordNames[sequenceRecordIndex++] = sequenceRecord.getSequenceName();
+        }
+        return Arrays.deepToString(sequenceRecordNames);
+    }
+
     /**
      * A marker to tell which end of the read has been clipped
      */
