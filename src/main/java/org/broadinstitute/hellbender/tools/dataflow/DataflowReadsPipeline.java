@@ -11,15 +11,12 @@ import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.StringLineReader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataFlowSAMFn;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
 import org.broadinstitute.hellbender.engine.dataflow.SAMSerializableFunction;
@@ -29,12 +26,11 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
-import java.util.List;
-import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public abstract class DataflowReadsPipeline extends DataflowTool{
+
 
     @Argument
     private String outputFile;
@@ -45,11 +41,13 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
     @Argument
     String bam;
 
-    private final DataFlowSAMFn<?> f;
+    private static final Logger LOG = Logger.getLogger(DataflowReadsPipeline.class.getName());
+
+    private final PTransformSAM f;
     private final ImmutableList<ReadFilter> readFilters;
     private final ImmutableList<ReadTransformer> readTransformers;
 
-    public DataflowReadsPipeline(DataFlowSAMFn<?> f,
+    public DataflowReadsPipeline(PTransformSAM f,
                                  ImmutableList<ReadFilter> readFilters,
                                  ImmutableList<ReadTransformer> readTransformers) {
         this.f = f;
@@ -99,28 +97,12 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
 
         PCollection<Read> preads= ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, ImmutableList.of(bam));
 
-        //ReadFilter masterFilter = r -> true;
-        //for (ReadFilter filter : readFilters){
-        //    masterFilter = masterFilter.and(filter);
-        //}
+        for (ReadFilter filter : readFilters) {
+            preads = preads.apply(Filter.by(wrapFilter(filter, headerString)));
+        }
 
-        preads.apply(Filter.by(wrapFilter(r -> true, headerString)));
-
-
-        preads.apply(ParDo.of(new DataFlowSAMFn<Long>(headerString) {
-            @Override
-            protected void apply(SAMRecord read) {
-                Long bases = (long) read.getReadBases().length;
-                output(bases);
-            }
-        }))
-                .apply(Sum.longsGlobally())
-                .apply(ParDo.of(new DoFn<Long, String>() {
-                    @Override
-                    public void processElement(DoFn<Long, String>.ProcessContext c) throws Exception {
-                        c.output(String.valueOf(c.element()));
-                    }
-                }))
-                .apply(TextIO.Write.to(outputFile));
+        f.setHeaderString(headerString);
+        PCollection<String> pstrings = preads.apply(f);
+        pstrings.apply(TextIO.Write.to(outputFile));
     }
 }
