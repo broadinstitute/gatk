@@ -47,8 +47,12 @@ public final class TableFeature implements Feature {
         return position.getEnd();
     }
 
+    public int columnCount(){
+        return values.size();
+    }
+
     public String getValue(int columnPosition) {
-        if (columnPosition >= values.size()) throw new IllegalArgumentException("We only have " + values.size() + "columns, the requested column = " + columnPosition);
+        if (columnPosition >= columnCount()) throw new IllegalArgumentException("We only have " + values.size() + " columns, the requested column = " + columnPosition);
         return values.get(columnPosition);
     }
 

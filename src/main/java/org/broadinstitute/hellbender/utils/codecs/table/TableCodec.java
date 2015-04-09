@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.utils.codecs.table;
 
-import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,17 +55,13 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
         }
         String[] split = line.split(delimiterRegex);
         if (split.length < 1) {
-            throw new IllegalArgumentException("TableCodec line = " + line + " doesn't appear to be a valid table format");
+            throw new IllegalArgumentException("TableCodec line = " + line + " is not a valid table format");
         }
-        return new TableFeature(parseLocatable(split[0]), Arrays.asList(split), header);
-    }
-
-    private static Locatable parseLocatable(String s) {
-        return null;
+        return new TableFeature(new SimpleInterval(split[0]), Arrays.asList(split), header);
     }
 
     @Override
-    public Object readActualHeader(final LineIterator reader) {
+    public List<String> readActualHeader(final LineIterator reader) {
         boolean isFirst = true;
         while (reader.hasNext()) {
             final String line = reader.peek(); // Peek to avoid reading non-header data
@@ -75,7 +71,9 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
             isFirst &= line.startsWith(commentDelimiter);
             if (line.startsWith(headerDelimiter)) {
                 reader.next(); // "Commit" the peek
-                if (header.size() > 0) throw new IllegalStateException("Input table file seems to have two header lines.  The second is = " + line);
+                if (header.size() > 0) {
+                    throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
+                }
                 final String spl[] = line.split(delimiterRegex);
                 Collections.addAll(header, spl);
                 return header;
