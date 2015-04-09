@@ -33,7 +33,7 @@ public class CountBasesFiltered extends DataflowReadsPipeline {
         return new CountBases();
     }
 
-    public static class CountBases extends PTransformSAM {
+    private static class CountBases extends PTransformSAM {
         @Override
         public PCollection<String> apply(PCollection<Read> reads) {
 

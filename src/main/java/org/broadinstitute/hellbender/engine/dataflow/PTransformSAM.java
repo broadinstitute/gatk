@@ -5,10 +5,8 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-/**
- * Created by louisb on 4/7/15.
- */
-public class PTransformSAM extends PTransform<PCollection<Read>,PCollection<String>> {
+
+public abstract class PTransformSAM extends PTransform<PCollection<Read>,PCollection<String>> {
     private String headerString;
     public String getHeaderString(){
         if (headerString == null){

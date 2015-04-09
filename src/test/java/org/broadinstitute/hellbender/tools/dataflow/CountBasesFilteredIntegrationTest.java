@@ -11,11 +11,30 @@ import java.util.List;
 
 public class CountBasesFilteredIntegrationTest extends CommandLineProgramTest{
 
+
+
     @Test(groups = {"dataflow", "bucket"})
-    public void testCountBasesFilteredIntegrationTest(){
+    public void testCountBasesFilteredIntegrationTestBucket(){
 
         List<String> args = new ArrayList<>();
         args.add("--bam"); args.add("gs://louisb_genomics/test/flag_stat.bam");
+        args.add("--dataflowIntervals"); args.add("chr7:1-100000");
+        args.add("--dataflowIntervals"); args.add("chr8:1-100000");
+        args.add("--outputFile");
+        File outputFile = createTempFile("countbasestest", ".txt");
+        args.add(outputFile.getPath());
+
+        runCommandLine(args);
+
+        Assert.assertTrue(outputFile.exists());
+
+    }
+
+    @Test(groups = {"dataflow",})
+    public void testCountBasesFilteredIntegrationTestLocal(){
+
+        List<String> args = new ArrayList<>();
+        args.add("--bam"); args.add(new File(getTestDataDir(),"flag_stat.bam").getPath());
         args.add("--dataflowIntervals"); args.add("chr7:1-100000");
         args.add("--dataflowIntervals"); args.add("chr8:1-100000");
         args.add("--outputFile");

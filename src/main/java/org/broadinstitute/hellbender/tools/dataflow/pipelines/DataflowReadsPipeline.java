@@ -6,16 +6,22 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.*;
+import com.google.cloud.dataflow.sdk.values.PBegin;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
+import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
 import org.broadinstitute.hellbender.engine.dataflow.SAMSerializableFunction;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -25,12 +31,14 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public abstract class DataflowReadsPipeline extends DataflowTool{
 
 
+    public static final String GCS_PREFIX = "gs://";
     @Argument
     private String outputFile;
 
@@ -61,13 +69,16 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
     }
 
     private String getHeaderString(GCSOptions options, String bamPath) {
-        try {
-            Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, getAuth(options));
-            final BAMIO.ReaderAndIndex r = BAMIO.openBAMAndExposeIndex(storageClient, bamPath);
-            SamReader reader = r.reader;
-            return reader.getFileHeader().getTextHeader();
-        } catch (IOException e) {
-            throw new GATKException("Failed to read bam header from "+ bamPath+".", e);
+        if(isCloudStorageUrl(bamPath)) {
+            try {
+                Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, getAuth(options));
+                final SamReader reader = BAMIO.openBAM(storageClient, bamPath);
+                return reader.getFileHeader().getTextHeader();
+            } catch (IOException e) {
+                throw new GATKException("Failed to read bam header from " + bamPath + ".", e);
+            }
+        } else {
+            return SamReaderFactory.makeDefault().getFileHeader(new File(bamPath)).getTextHeader();
         }
     }
 
@@ -91,8 +102,22 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
                 .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                 .collect(Collectors.toList());
 
-
-        PCollection<Read> preads= ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, ImmutableList.of(bam));
+        PCollection<Read> preads;
+        if( isCloudStorageUrl(bam)) {
+            preads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, ImmutableList.of(bam));
+        } else {
+            preads = pipeline.apply(Create.of(ImmutableList.of(bam)))
+                    .apply(ParDo.of(new DoFn<String, Read>() {
+                        @Override
+                        public void processElement(ProcessContext c) throws Exception {
+                            ReadsDataSource sams = new ReadsDataSource(new File(c.element()));
+                            sams.setIntervalsForTraversal(intervals);
+                            for (SAMRecord sam : sams) {
+                                c.output(ReadConverter.makeRead(sam));
+                            }
+                        }
+                    }));
+        }
 
         for (ReadFilter filter : getReadFilters()) {
             preads = preads.apply(Filter.by(wrapFilter(filter, headerString)));
@@ -103,5 +128,9 @@ public abstract class DataflowReadsPipeline extends DataflowTool{
 
         PCollection<String> pstrings = preads.apply(f);
         pstrings.apply(TextIO.Write.to(outputFile));
+    }
+
+    private boolean isCloudStorageUrl(String path) {
+        return path.startsWith(GCS_PREFIX);
     }
 }
