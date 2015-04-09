@@ -7,6 +7,8 @@ import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -32,6 +34,7 @@ import java.util.List;
  *
  */
 public abstract class CommandLineProgram {
+    protected static final Logger logger = LogManager.getLogger(CommandLineProgram.class);
 
     @Argument(common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
@@ -85,9 +88,12 @@ public abstract class CommandLineProgram {
      */
     public final Object runTool(){
         try {
+            logger.info("Initializing engine");
             onStartup();
+            logger.info("Done initializing engine");
             return doWork();
         } finally {
+            logger.info("Shutting down engine");
             onShutdown();
         }
     }
