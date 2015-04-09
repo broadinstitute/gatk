@@ -1,10 +1,12 @@
 [![Build Status](https://magnum.travis-ci.com/broadinstitute/hellbender.svg?token=WFzCX7pDpMhnHx5RX8kq&branch=master)](https://magnum.travis-ci.com/broadinstitute/hellbender)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/hellbender?branch=master)
 
+**This project is in an early stage of development.  It is subject to change without warning.**  
+
 Hellbender
 ================
 
-The (eventually public) parts of the next generation of GATK/Picard/Prometheus methods engine and tools.
+The public parts of the next generation of GATK/Picard/Prometheus methods engine and tools.
 
 
 To build, run `gradle install` (gradle 2.2.1 recommended).
