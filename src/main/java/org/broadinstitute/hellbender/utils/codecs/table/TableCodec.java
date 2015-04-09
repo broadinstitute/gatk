@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.utils.codecs.table;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.codecs.ReferenceDependentFeatureCodec;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Reads tab deliminated tabular text files
@@ -35,48 +35,33 @@ import java.util.Collections;
  *     1:2  4   5   6
  *     1:3  7   8   9
  * </pre>
- *
- * @author Mark DePristo
- * @since 2009
  */
-public class TableCodec extends AsciiFeatureCodec<TableFeature> implements ReferenceDependentFeatureCodec {
-    final static protected String delimiterRegex = "\\s+";
-    final static protected String headerDelimiter = "HEADER";
-    final static protected String igvHeaderDelimiter = "track";
-    final static protected String commentDelimiter = "#";
+public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
+    protected final static String delimiterRegex = "\\s+";
+    protected final static String headerDelimiter = "HEADER";
+    protected final static String igvHeaderDelimiter = "track";
+    protected final static String commentDelimiter = "#";
 
-    protected ArrayList<String> header = new ArrayList<String>();
-
-    /**
-     * The parser to use when resolving genome-wide locations.
-     */
-    protected GenomeLocParser genomeLocParser;
+    protected List<String> header = new ArrayList<>();
 
     public TableCodec() {
         super(TableFeature.class);
     }
 
-    /**
-     * Set the parser to use when resolving genetic data.
-     * @param genomeLocParser The supplied parser.
-     */
-    @Override
-    public void setGenomeLocParser(GenomeLocParser genomeLocParser) {
-        this.genomeLocParser =  genomeLocParser;
-    }
-
     @Override
     public TableFeature decode(String line) {
-        if (line.startsWith(headerDelimiter) || line.startsWith(commentDelimiter) || line.startsWith(igvHeaderDelimiter))
+        if (line.startsWith(headerDelimiter) || line.startsWith(commentDelimiter) || line.startsWith(igvHeaderDelimiter)) {
             return null;
+        }
         String[] split = line.split(delimiterRegex);
-        if (split.length < 1)
-            throw new IllegalArgumentException("TableCodec line = " + line + " doesn't appear to be a valid table format");
-        return new TableFeature(genomeLocParser.parseGenomeLoc(split[0]),Arrays.asList(split), header);
+        if (split.length < 1) {
+            throw new IllegalArgumentException("TableCodec line = " + line + " is not a valid table format");
+        }
+        return new TableFeature(new SimpleInterval(split[0]), Arrays.asList(split), header);
     }
 
     @Override
-    public Object readActualHeader(final LineIterator reader) {
+    public List<String> readActualHeader(final LineIterator reader) {
         boolean isFirst = true;
         while (reader.hasNext()) {
             final String line = reader.peek(); // Peek to avoid reading non-header data
@@ -86,7 +71,9 @@ public class TableCodec extends AsciiFeatureCodec<TableFeature> implements Refer
             isFirst &= line.startsWith(commentDelimiter);
             if (line.startsWith(headerDelimiter)) {
                 reader.next(); // "Commit" the peek
-                if (header.size() > 0) throw new IllegalStateException("Input table file seems to have two header lines.  The second is = " + line);
+                if (header.size() > 0) {
+                    throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
+                }
                 final String spl[] = line.split(delimiterRegex);
                 Collections.addAll(header, spl);
                 return header;

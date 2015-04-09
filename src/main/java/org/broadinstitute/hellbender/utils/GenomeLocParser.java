@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -289,73 +290,23 @@ public final class GenomeLocParser {
         // 'chr2', 'chr2:1000000' or 'chr2:1,000,000-2,000,000'
         //System.out.printf("Parsing location '%s'%n", str);
 
-        String contig = null;
-        int start = 1;
-        int stop = -1;
+        final Locatable locatable = new SimpleInterval(str);
+        final String contig = locatable.getContig();
+        final int start = locatable.getStart();
+        int stop = locatable.getStart();
 
-        final int colonIndex = str.lastIndexOf(":");
-        if(colonIndex == -1) {
-            contig = str.substring(0, str.length());  // chr1
-            stop = Integer.MAX_VALUE;
-        } else {
-            contig = str.substring(0, colonIndex);
-            final int dashIndex = str.indexOf('-', colonIndex);
-            try {
-                if(dashIndex == -1) {
-                    if(str.charAt(str.length() - 1) == '+') {
-                        start = parsePosition(str.substring(colonIndex + 1, str.length() - 1));  // chr:1+
-                        stop = Integer.MAX_VALUE;
-                    } else {
-                        start = parsePosition(str.substring(colonIndex + 1));   // chr1:1
-                        stop = start;
-                    }
-                } else {
-                    start = parsePosition(str.substring(colonIndex + 1, dashIndex));  // chr1:1-1
-                    stop = parsePosition(str.substring(dashIndex + 1));
-                }
-            } catch(Exception e) {
-                throw new UserException.MalformedGenomeLoc("Failed to parse Genome Location string: " + str, e);
-            }
+        if (!contigIsInDictionary(contig)) {
+            throw new UserException.MalformedGenomeLoc("Contig '" + contig + "' does not match any contig in the GATK sequence dictionary derived from the reference; are you sure you are using the correct reference fasta file?");
         }
 
-        // is the contig valid?
-        if (!contigIsInDictionary(contig))
-            throw new UserException.MalformedGenomeLoc("Contig '" + contig + "' does not match any contig in the GATK sequence dictionary derived from the reference; are you sure you are using the correct reference fasta file?");
-
-        if (stop == Integer.MAX_VALUE)
+        if (stop == Integer.MAX_VALUE) {
             // lookup the actually stop position!
             stop = getContigInfo(contig).getSequenceLength();
+        }
 
         return createGenomeLoc(contig, getContigIndex(contig), start, stop, true);
     }
 
-    /**
-     * Parses a number like 1,000,000 into a long.
-     * @param pos
-     */
-    protected int parsePosition(final String pos) {
-        if(pos.indexOf('-') != -1) {
-            throw new NumberFormatException("Position: '" + pos + "' can't contain '-'." );
-        }
-
-        if(pos.indexOf(',') != -1) {
-            final StringBuilder buffer = new StringBuilder();
-            for(int i = 0; i < pos.length(); i++) {
-                final char c = pos.charAt(i);
-
-                if(c == ',') {
-                    continue;
-                } else if(c < '0' || c > '9') {
-                    throw new NumberFormatException("Position: '" + pos + "' contains invalid chars." );
-                } else {
-                    buffer.append(c);
-                }
-            }
-            return Integer.parseInt(buffer.toString());
-        } else {
-            return Integer.parseInt(pos);
-        }
-    }
 
     // --------------------------------------------------------------------------------------------------------------
     //
@@ -379,25 +330,6 @@ public final class GenomeLocParser {
             // Use Math.max to ensure that end >= start (Picard assigns the end to reads that are entirely within an insertion as start-1)
             final int end = read.getReadUnmappedFlag() ? read.getAlignmentStart() : Math.max(read.getAlignmentEnd(), read.getAlignmentStart());
             return createGenomeLoc(read.getReferenceName(), read.getReferenceIndex(), read.getAlignmentStart(), end, false);
-        }
-    }
-
-    /**
-     * Create a genome loc, given a read using its unclipped alignment. If the read is unmapped, *and* yet the read has a contig and start position,
-     * then a GenomeLoc is returned for contig:start-start, otherwise an UNMAPPED GenomeLoc is returned.
-     *
-     * @param read the read from which to create a genome loc
-     *
-     * @return the GenomeLoc that was created
-     */
-    public GenomeLoc createGenomeLocUnclipped(final SAMRecord read) {
-        if ( read.getReadUnmappedFlag() && read.getReferenceIndex() == -1 )
-            // read is unmapped and not placed anywhere on the genome
-            return GenomeLoc.UNMAPPED;
-        else {
-            // Use Math.max to ensure that end >= start (Picard assigns the end to reads that are entirely within an insertion as start-1)
-            final int end = read.getReadUnmappedFlag() ? read.getUnclippedEnd() : Math.max(read.getUnclippedEnd(), read.getUnclippedStart());
-            return createGenomeLoc(read.getReferenceName(), read.getReferenceIndex(), read.getUnclippedStart(), end, false);
         }
     }
 

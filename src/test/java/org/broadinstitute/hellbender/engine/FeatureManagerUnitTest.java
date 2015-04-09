@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
@@ -13,7 +12,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.codecs.hapmap.RawHapMapCodec;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -33,7 +32,6 @@ public class FeatureManagerUnitTest extends BaseTest {
                 { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_vcf3_file.vcf"), VCF3Codec.class },
                 { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bcf_file.bcf"), BCF2Codec.class },
                 { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bed_file.bed"), BEDCodec.class},
-                { new File(publicTestDir + "org/broadinstitute/hellbender/utils/codecs/hapmap/genotypes_chr1_ASW_phase3.3_first500.hapmap"), RawHapMapCodec.class },
               // TODO: Table codec (and other "reference-dependent" codecs) currently broken. Need to
               // TODO: refactor them so that they don't require a GenomeLocParser
               //  { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_table_file.table"), TableCodec.class}

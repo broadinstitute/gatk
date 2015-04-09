@@ -29,10 +29,14 @@ public class SimpleIntervalUnitTest extends BaseTest {
         final SimpleInterval i3 = new SimpleInterval("chr1", 1, 100);
         final SimpleInterval i4 = new SimpleInterval("chr1", 2, 100);
         final SimpleInterval i5 = new SimpleInterval("chr1", 1, 200);
+        final SimpleInterval i6 = new SimpleInterval("1:1-100");
 
         Assert.assertTrue(i1.equals(i1));
         Assert.assertTrue(i1.equals(i2));
         Assert.assertTrue(i2.equals(i1));
+        Assert.assertTrue(i1.equals(i6));
+        Assert.assertTrue(i6.equals(i1));
+
         Assert.assertFalse(i1.equals(i3));
         Assert.assertFalse(i1.equals(i4));
         Assert.assertFalse(i1.equals(i5));

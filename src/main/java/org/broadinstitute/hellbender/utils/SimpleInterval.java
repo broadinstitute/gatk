@@ -9,7 +9,7 @@ import htsjdk.samtools.util.Locatable;
  *
  *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
-public class SimpleInterval implements Locatable {
+public final class SimpleInterval implements Locatable {
 
     private final int start;
     private final int end;
@@ -34,6 +34,60 @@ public class SimpleInterval implements Locatable {
         this.contig = contig;
         this.start = start;
         this.end = end;
+    }
+
+    /**
+     * Makes an interval by parting the string. The required format is
+     * contig or contig:start or contig:start-end
+     *
+     * example:
+     *
+     * 'chr2', 'chr2:1000000' or 'chr2:1,000,000-2,000,000'
+     */
+    public SimpleInterval(final String string){
+        Locatable loc = parse(string);
+        this.contig = loc.getContig();
+        this.start = loc.getStart();
+        this.end = loc.getEnd();
+    }
+
+    private static Locatable parse(final String str){
+        // 'chr2', 'chr2:1000000' or 'chr2:1,000,000-2,000,000'
+        //System.out.printf("Parsing location '%s'%n", str);
+
+        final String contig;
+        final int start;
+        final int stop;
+
+        final int colonIndex = str.lastIndexOf(":");
+        if (colonIndex == -1) {
+            contig = str;  // chr1
+            start = 1;
+            stop = Integer.MAX_VALUE;
+        } else {
+            contig = str.substring(0, colonIndex);
+            final int dashIndex = str.indexOf('-', colonIndex);
+            if(dashIndex == -1) {
+                if(str.endsWith("+")) {
+                    start = parsePosition(str.substring(colonIndex + 1, str.length() - 1));  // chr:1+
+                    stop = Integer.MAX_VALUE;
+                } else {
+                    start = parsePosition(str.substring(colonIndex + 1));   // chr1:1
+                    stop = start;
+                }
+            } else {
+                start = parsePosition(str.substring(colonIndex + 1, dashIndex));  // chr1:1-1
+                stop = parsePosition(str.substring(dashIndex + 1));
+            }
+        }
+        return new SimpleInterval(contig, start, stop);
+    }
+
+    /**
+     * Parses a number like 100000 or 1,000,000 into an int.
+     */
+    private static int parsePosition(final String pos) {
+        return Integer.parseInt(pos.replaceAll(",", ""));
     }
 
     @Override
