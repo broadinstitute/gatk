@@ -17,7 +17,7 @@ To run all tests, run `gradle test`. Report is in `build/reports/tests/index.htm
 
 To run a single test class, run something like this, `gradle test -Dtest.single=ReadUtilsUnitTest`.
 
-To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`.
+To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`. (IntelliJ 14 has a good coverage tool that is preferable for development).
 
 For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.  This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.  
 
@@ -30,21 +30,23 @@ General guidelines for Hellbender developers
 
 * Hellbender is  BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
-* Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code). New code without tests should not be accepted as pull requests.
+* Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code).
 
-* Do use Java 8 features liberally, in particular streams, functional programming etc.
+* Don't accept pull requests that introduce warnings. Warnings need to be addressed or suppressed.
 
-* Don't override `clone()` unless you really know what you're doing. If you do override it, document thoroughly.
+* Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
+
+* All newly written code must have good test coverage (>90%).
+
+* Hellbender is written in Java 8. Enjoy the new features in particular streams, lambdas, methods in interfaces.
+
+* Don't override `clone()` unless you really know what you're doing. If you do override it, document thoroughly. Otherwise, prefer other means of making copies of objects.
 
 * Don't override or call `finalize()` even when you think you know what you're doing.
 
 * Don't use `toString()` for anything other than human consumption (ie. don't base your code on it.)
 
-* When in doubt, follow the Google Java Style guide: http://google-styleguide.googlecode.com/svn/trunk/javaguide.html
-
-* Don't accept pull requests that introduce warnings. Warnings need to be addressed or supressed.
-
-* Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
+* We mostly follow the Google Java Style guide: http://google-styleguide.googlecode.com/svn/trunk/javaguide.html
 
 R Dependency
 ----------------
