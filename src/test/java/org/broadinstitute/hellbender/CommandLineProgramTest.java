@@ -11,13 +11,6 @@ import java.util.*;
 public abstract class CommandLineProgramTest extends BaseTest {
 
     /**
-     * Returns the location of the resource directory. The default implementation points to the common directory for tools.
-     */
-    public static File getTestDataDir(){
-        return new File("src/test/resources/org/broadinstitute/hellbender/tools/");
-    }
-
-    /**
      * Returns the location of the resource directory for the command line program.
      */
     public String getToolTestDataDir(){

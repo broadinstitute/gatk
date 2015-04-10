@@ -29,6 +29,13 @@ import java.util.function.Consumer;
 public abstract class BaseTest {
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.gatk");
 
+    /**
+     * Returns the location of the resource directory. The default implementation points to the common directory for tools.
+     */
+    public static File getTestDataDir(){
+        return new File("src/test/resources/org/broadinstitute/hellbender/tools/");
+    }
+
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
     public static final String baseDirectory = System.getProperty("basedir", CURRENT_DIRECTORY) + "/";
