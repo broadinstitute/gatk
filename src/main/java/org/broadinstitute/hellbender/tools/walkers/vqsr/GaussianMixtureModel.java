@@ -586,25 +586,20 @@ final class GaussianMixtureModel {
                                      final double prior_beta, final double prior_alpha, final double prior_nu) {
             recomputeMuAndSigma(data);
 
-            final RealMatrix wishart = new Array2DRowRealMatrix(getNumDimensions(), getNumDimensions());
-            final double shrinkageFactor = (prior_beta * N_k) / (prior_beta + N_k);
-            for (int i = 0; i < getNumDimensions(); i++) {
-                for (int j = 0; j < getNumDimensions(); j++) {
-                    wishart.setEntry(i, j, shrinkageFactor * muV.getEntry(i) * muV.getEntry(j));
-//                    wishart.setEntry(i, j, shrinkageFactor * (mu[i] - prior_m[i]) * (mu[j] - prior_m[j]));
-                }
-            }
-
-            sigma = sigma.add(inversePrior_L);
-            sigma = sigma.add(wishart);
+            sigma = sigma.add(inversePrior_L);        //eq 21.144 in Murphy (first part)
+                                                      //eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by N_k)
+            //this is the third term in eq 21.144 in Murphy
+            final RealVector muMinusPriorM = muV.subtract(prior_m);
+            final RealMatrix wishart = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * N_k) / (prior_beta + N_k));
+            sigma = sigma.add(wishart);                      //eq 21.144 in Murphy (third part)
 
             for (int i = 0; i < getNumDimensions(); i++) {
                 muV.setEntry(i, (N_k * muV.getEntry(i) + prior_beta * prior_m.getEntry(i)) / (N_k + prior_beta));
             }
 
-            hyperParameter_alpha = prior_alpha + N_k;
-            hyperParameter_beta  = prior_beta + N_k;
-            hyperParameter_nu    = prior_nu + N_k;
+            hyperParameter_alpha = prior_alpha + N_k;       //Murphy eq. 21.139
+            hyperParameter_beta  = prior_beta  + N_k;       //Murphy eq. 21.142
+            hyperParameter_nu    = prior_nu    + N_k;   //Murphy eq. 21.145
 
             resetPVarInGaussian(); // clean up some memory
         }
