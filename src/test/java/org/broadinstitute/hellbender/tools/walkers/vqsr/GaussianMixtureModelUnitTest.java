@@ -48,7 +48,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         VRAC.SHRINKAGE = 1.0;
         VRAC.MAX_GAUSSIANS = 2;
         VRAC.DIRICHLET_PARAMETER = 0.001;
-        VRAC.PRIOR_COUNTS = 20.0;
+        VRAC.PRIOR_COUNTS = 19.0;
         final GaussianMixtureModel gmm = GaussianMixtureModel.makeFittedModel(data, VRAC.MAX_GAUSSIANS, VRAC);
         assertTrue(!gmm.failedToConverge());
         assertTrue(!gmm.readyForEvaluation());
