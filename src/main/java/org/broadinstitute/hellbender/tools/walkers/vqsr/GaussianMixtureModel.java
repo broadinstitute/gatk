@@ -168,7 +168,7 @@ final class GaussianMixtureModel {
         int iter = 0;
         while( iter++ < numIterations ) {
             // E step: assign each variant to the nearest cluster
-            data.forEach(d -> assignment.put(d, gaussians.stream().collect(minBy(comparing(mvg -> mvg.calculateDistanceFromMeanSquared(d)))).get()));
+            data.forEach(d -> assignment.put(d, gaussians.stream().collect(minBy(comparing(mvg -> mvg.distanceFromMean(d)))).get()));
 
             // M step: update gaussian means based on assigned variants
             //NOTE: this could be sped up by traversing data only once
@@ -505,8 +505,8 @@ final class GaussianMixtureModel {
             sigma = tmp.multiply(tmp.transpose());
         }
 
-        double calculateDistanceFromMeanSquared(final VariantDatum datum) {
-            return distanceSquared(datum.annotations, mu);
+        double distanceFromMean(final VariantDatum datum) {
+            return distance(datum.annotations, mu);
         }
 
         void incrementMu(final VariantDatum datum) {
