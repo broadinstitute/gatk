@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import com.google.common.annotations.VisibleForTesting;
 import joptsimple.internal.Strings;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.DiagonalMatrix;
-import org.apache.commons.math3.linear.LUDecomposition;
-import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -42,7 +39,7 @@ final class GaussianMixtureModel {
     private final double hyperPriorParameter_alpha;  //parameter of the symmetric dirichlet prior on the mixture weigths
     private final double hyperPriorParameter_nu;
 
-    private final double[] empiricalMu;      //Note: stays fixed as 0 vector
+    private final RealVector empiricalMu;      //Note: stays fixed as 0 vector
     private final RealMatrix empiricalSigma; //Note: stays fixed as diagonal matrix of 1/200.
 
     private boolean isModelReadyForEvaluation;    //set to true after the EM iterations converge and the precomputeDenominatorForEvaluation method is called
@@ -57,7 +54,7 @@ final class GaussianMixtureModel {
         this.hyperPriorParameter_beta = hyperPriorParameter_beta;
         this.hyperPriorParameter_alpha = hyperPriorParameter_alpha;
         this.hyperPriorParameter_nu = hyperPriorParameter_nu;
-        this.empiricalMu = new double[numAnnotations];
+        this.empiricalMu = new ArrayRealVector(numAnnotations);
         this.empiricalSigma = MultivariateGaussian.inverse(identityMatrix(numAnnotations).scalarMultiply(200.0));
 
         this.isModelReadyForEvaluation = false;
@@ -347,7 +344,7 @@ final class GaussianMixtureModel {
         sb.add("hyperPriorParameter_beta:" + hyperPriorParameter_beta);
         sb.add("hyperPriorParameter_alpha:" + hyperPriorParameter_alpha);
         sb.add("hyperPriorParameter_nu:" + hyperPriorParameter_nu);
-        sb.add("empiricalMu:" + Arrays.toString(empiricalMu));
+        sb.add("empiricalMu:" + empiricalMu);
         sb.add("empiricalSigma:" + Arrays.deepToString(empiricalSigma.getData()));
 
         sb.add("numGaussians:" +  gaussians.size());
@@ -413,13 +410,17 @@ final class GaussianMixtureModel {
      * This class represents one gaussian in the mixture model.
      */
     static final class MultivariateGaussian {
-        private double pMixtureLog10;  //log10 of the mixture weight for this gaussian
-        private double N_k;        //sum of the fractional weigths assigned to this gaussian from all the data points
-        private double[] mu;           //mean vector
-        private RealMatrix sigma;      //covariance matrix
-        private double hyperParameter_nu;
-        private double hyperParameter_beta;
-        private double hyperParameter_alpha;
+        public static final double MU_MIN = -4.0;
+        public static final double MU_MAX = 4.0;
+        public static final double MU_SPAN = MU_MAX - MU_MIN;
+
+        private double pMixtureLog10;        //log10 of the mixture weight for this gaussian
+        private double N_k;                  //sum of the fractional weigths assigned to this gaussian from all the data points (N_k from Murphy section 21.6.1.3)
+        private double[] mu;                 //mean vector
+        private RealMatrix sigma;            //covariance matrix
+        private double hyperParameter_nu;    //from Murphy (prior counts)
+        private double hyperParameter_beta;  //from Murphy (shrinkage)
+        private double hyperParameter_alpha; //from Murphy (dirichlet parameter)
         private final ExpandingArrayList<Double> pVarInGaussian;
 
         //caches
@@ -476,10 +477,6 @@ final class GaussianMixtureModel {
         void zeroOutSigma() {
             sigma = new Array2DRowRealMatrix(new double[getNumDimensions()][getNumDimensions()]);
         }
-
-        public static final double MU_MIN = -4.0;
-        public static final double MU_MAX = 4.0;
-        public static final double MU_SPAN = MU_MAX - MU_MIN;
 
         void initializeRandomMu(final Random rand) {
             for (int i = 0; i < getNumDimensions(); i++) {
@@ -596,8 +593,8 @@ final class GaussianMixtureModel {
             pVarInGaussian.clear();
         }
 
-        void maximizeGaussian(final List<VariantDatum> data, final double[] empiricalMu, final RealMatrix empiricalSigma,
-                                     final double SHRINKAGE, final double DIRICHLET_PARAMETER, final double DEGREES_OF_FREEDOM) {
+        void maximizeGaussian(final List<VariantDatum> data, final RealVector empiricalMu, final RealMatrix empiricalSigma,
+                                     final double prior_beta, final double prior_alpha, final double prior_nu) {
             N_k = 1E-10;
             final RealMatrix wishart = new Array2DRowRealMatrix(getNumDimensions(), getNumDimensions());
             zeroOutMu();
@@ -605,7 +602,7 @@ final class GaussianMixtureModel {
 
             updateMu(data);
 
-            final double shrinkageFactor = (SHRINKAGE * N_k) / (SHRINKAGE + N_k);
+            final double shrinkageFactor = (prior_beta * N_k) / (prior_beta + N_k);
             for (int i = 0; i < getNumDimensions(); i++) {
                 for (int j = 0; j < getNumDimensions(); j++) {
                     wishart.setEntry(i, j, shrinkageFactor * mu[i] * mu[j]);
@@ -619,12 +616,12 @@ final class GaussianMixtureModel {
             sigma = sigma.add(wishart);
 
             for (int i = 0; i < getNumDimensions(); i++) {
-                mu[i] = (N_k * mu[i] + SHRINKAGE * empiricalMu[i]) / (N_k + SHRINKAGE);
+                mu[i] = (N_k * mu[i] + prior_beta * empiricalMu.getEntry(i)) / (N_k + prior_beta);
             }
 
-            hyperParameter_nu = N_k + DEGREES_OF_FREEDOM;
-            hyperParameter_beta = N_k + SHRINKAGE;
-            hyperParameter_alpha = N_k + DIRICHLET_PARAMETER;
+            hyperParameter_alpha = prior_alpha + N_k;
+            hyperParameter_beta  = prior_beta + N_k;
+            hyperParameter_nu    = prior_nu + N_k;
 
             resetPVarInGaussian(); // clean up some memory
         }
