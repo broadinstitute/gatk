@@ -212,44 +212,44 @@ public final class MathUtils {
         return normalizeFromLog10(array, takeLog10OfOutput, false);
     }
 
+    public static double arraySum(final double[] arr){
+        double sum = 0.0;
+        for (double anArr : arr) {
+            sum += anArr;
+        }
+        return sum;
+    }
     /**
      * See #normalizeFromLog10 but with the additional option to use an approximation that keeps the calculation always in log-space
-     *
-     * @param array
-     * @param takeLog10OfOutput
-     * @param keepInLogSpace
-     *
-     * @return
      */
     public static double[] normalizeFromLog10(final double[] array, final boolean takeLog10OfOutput, final boolean keepInLogSpace) {
         // for precision purposes, we need to add (or really subtract, since they're
         // all negative) the largest value; also, we need to convert to normal-space.
-        double maxValue = arrayMax(array);
+        final double maxValue = arrayMax(array);
 
         // we may decide to just normalize in log space without converting to linear space
         if (keepInLogSpace) {
             for (int i = 0; i < array.length; i++) {
-                array[i] -= maxValue;
+                array[i] = array[i] - maxValue;
             }
             return array;
         }
 
         // default case: go to linear space
-        double[] normalized = new double[array.length];
-
-        for (int i = 0; i < array.length; i++)
+        final double[] normalized = new double[array.length];
+        for (int i = 0; i < array.length; i++) {
             normalized[i] = Math.pow(10, array[i] - maxValue);
+        }
 
         // normalize
-        double sum = 0.0;
-        for (int i = 0; i < array.length; i++)
-            sum += normalized[i];
+        final double sum = arraySum(normalized);
         for (int i = 0; i < array.length; i++) {
             double x = normalized[i] / sum;
             if (takeLog10OfOutput) {
                 x = Math.log10(x);
-                if ( x < LOG10_P_OF_ZERO || Double.isInfinite(x) )
+                if ( x < LOG10_P_OF_ZERO || Double.isInfinite(x) ) {
                     x = array[i] - maxValue;
+                }
             }
 
             normalized[i] = x;
