@@ -34,27 +34,19 @@ final class GaussianMixtureModel {
     //The gaussians we're fitting. Order is undefined.
     private final Collection<MultivariateGaussian> gaussians;
 
-    private final double hyperPriorParameter_beta;
-    private final double hyperPriorParameter_alpha;  //parameter of the symmetric dirichlet prior on the mixture weigths
-    private final double hyperPriorParameter_nu;
-
-    private final RealVector prior_m;      //Note: stays fixed as 0 vector
-    private final RealMatrix inversePriorL; //Note: stays fixed as diagonal matrix of 1/200.
-
     private boolean isModelReadyForEvaluation;    //set to true after the EM iterations converge and the precomputeDenominatorForEvaluation method is called
     private boolean failedToConverge;             //set to true if something went wrong in the fitting
 
     private GaussianMixtureModel(final int numGaussians, final int numAnnotations,
-                                                  final double hyperPriorParameter_beta, final double hyperPriorParameter_alpha, final double hyperPriorParameter_nu) {
-        gaussians = new HashSet<>( numGaussians );
+                                                  final double prior_alpha, final double prior_beta, final double prior_nu) {
+        this.gaussians = new HashSet<>( numGaussians );
+        final RealVector prior_m = new ArrayRealVector(numAnnotations);
+        final RealMatrix inversePriorL = MultivariateGaussian.inverse(identityMatrix(numAnnotations).scalarMultiply(200.0));
+
         for( int i = 0; i < numGaussians; i++ ) {
-            gaussians.add( new MultivariateGaussian( numAnnotations ) );
+            MultivariateGaussian g = new MultivariateGaussian( numAnnotations, prior_alpha, prior_beta, prior_nu, prior_m, inversePriorL);
+            gaussians.add( g );
         }
-        this.hyperPriorParameter_beta = hyperPriorParameter_beta;
-        this.hyperPriorParameter_alpha = hyperPriorParameter_alpha;
-        this.hyperPriorParameter_nu = hyperPriorParameter_nu;
-        this.prior_m = new ArrayRealVector(numAnnotations);
-        this.inversePriorL = MultivariateGaussian.inverse(identityMatrix(numAnnotations).scalarMultiply(200.0));
 
         this.isModelReadyForEvaluation = false;
         this.failedToConverge = false;
@@ -65,8 +57,8 @@ final class GaussianMixtureModel {
      * This is useful mostly in testing, where we want to set the gaussians rather than infer them.
      */
     public static GaussianMixtureModel makeEmptyModel(final int numGaussians, final int numAnnotations,
-                                final double shrinkage, final double dirichletParameter, final double priorCounts) {
-        return new GaussianMixtureModel(numGaussians, numAnnotations, shrinkage, dirichletParameter, priorCounts);
+                                                      final double prior_alpha, final double prior_beta, final double prior_nu) {
+        return new GaussianMixtureModel(numGaussians, numAnnotations, prior_alpha, prior_beta, prior_nu);
     }
 
     /**
@@ -76,7 +68,7 @@ final class GaussianMixtureModel {
         if( data == null || data.isEmpty() ) { throw new IllegalArgumentException("No data found."); }
         if( maxGaussians <= 0 ) { throw new IllegalArgumentException("maxGaussians must be a positive integer but found: " + maxGaussians); }
 
-        final GaussianMixtureModel model = GaussianMixtureModel.makeEmptyModel(maxGaussians, data.get(0).annotations.getDimension(), VRAC.SHRINKAGE, VRAC.DIRICHLET_PARAMETER, VRAC.PRIOR_COUNTS );
+        final GaussianMixtureModel model = GaussianMixtureModel.makeEmptyModel(maxGaussians, data.get(0).annotations.getDimension(), VRAC.DIRICHLET_PARAMETER, VRAC.SHRINKAGE, VRAC.PRIOR_COUNTS );
         model.initializeRandomModel(data, VRAC.NUM_KMEANS_ITERATIONS, Utils.getRandomGenerator());
         model.variationalBayesExpectationMaximization(data, VRAC.MAX_ITERATIONS, MIN_PROB_CONVERGENCE);
         return model;
@@ -146,13 +138,10 @@ final class GaussianMixtureModel {
         initializeMeansUsingKMeans(data, numKMeansIterations, rand);
 
         // initialize uniform mixture coefficients, random covariance matrices, and initial hyperparameters
-        for( final MultivariateGaussian gaussian : gaussians ) {
+        for( final MultivariateGaussian gaussian : gaussians) {
             gaussian.setpMixtureLog10(log10(1.0 / ((double) gaussians.size())));
             gaussian.setN_k((1.0 * data.size()) / ((double) gaussians.size()));
             gaussian.initializeRandomSigma(rand);
-            gaussian.setHyperParameter_nu(hyperPriorParameter_nu);
-            gaussian.setHyperParameter_beta(hyperPriorParameter_beta);
-            gaussian.setHyperParameter_alpha(hyperPriorParameter_alpha);
         }
     }
 
@@ -167,7 +156,6 @@ final class GaussianMixtureModel {
             data.forEach(d -> assignment.put(d, gaussians.stream().collect(minBy(comparing(mvg -> mvg.distanceFromMean(d)))).get()));
 
             // M step: update gaussian means based on assigned variants
-            //NOTE: this could be sped up by traversing data only once
             gaussians.forEach(g -> g.zeroOutMu());
             final Map<MultivariateGaussian, Integer> numAssigned = new HashMap<>();
             gaussians.forEach(g -> numAssigned.put(g, 0));
@@ -211,7 +199,7 @@ final class GaussianMixtureModel {
     }
 
     private void maximizationStep( final List<VariantDatum> data ) {
-        gaussians.forEach(g -> g.maximizeGaussian( data, prior_m, inversePriorL, hyperPriorParameter_beta, hyperPriorParameter_alpha, hyperPriorParameter_nu));
+        gaussians.forEach(g -> g.maximizeGaussian( data ));
     }
 
     private void evaluateFinalModelParameters( final List<VariantDatum> data ) {
@@ -236,12 +224,6 @@ final class GaussianMixtureModel {
             gaussian.setpMixtureLog10( pGaussianLog10Normalized[gaussianIndex2++] );
         }
         return sumDiff;
-    }
-
-    private static RealMatrix identityMatrix(int n){
-        double[] ones = new double[n];
-        Arrays.fill(ones, 1);
-        return new DiagonalMatrix(ones);
     }
 
     /**
@@ -335,12 +317,6 @@ final class GaussianMixtureModel {
     @Override
     public String toString() {
         List<String> sb = new ArrayList<>();
-        sb.add("hyperPriorParameter_beta:" + hyperPriorParameter_beta);
-        sb.add("hyperPriorParameter_alpha:" + hyperPriorParameter_alpha);
-        sb.add("hyperPriorParameter_nu:" + hyperPriorParameter_nu);
-        sb.add("prior_m:" + prior_m);
-        sb.add("inversePriorL:" + Arrays.deepToString(inversePriorL.getData()));
-
         sb.add("numGaussians:" +  gaussians.size());
         for (MultivariateGaussian mvg: gaussians){
             sb.add("------------");
@@ -408,6 +384,12 @@ final class GaussianMixtureModel {
         public static final double MU_MAX = 4.0;
         public static final double MU_SPAN = MU_MAX - MU_MIN;
 
+        private final double prior_nu;    //from Murphy (prior counts)
+        private final double prior_beta;  //from Murphy (shrinkage)
+        private final double prior_alpha; //from Murphy (dirichlet parameter)
+        private final RealVector prior_m;
+        private final RealMatrix priorInverseL;
+
         private double pMixtureLog10;        //log10 of the mixture weight for this gaussian
         private double N_k;                  //sum of the fractional weigths assigned to this gaussian from all the data points (N_k from Murphy section 21.6.1.3)
         private RealVector muV;              //mean vector
@@ -421,32 +403,39 @@ final class GaussianMixtureModel {
         private double cachedDenomLog10;
         private RealMatrix cachedSigmaInverse;
 
-        MultivariateGaussian(double pMixtureLog10, double N_k, double[] mu, double[][] sigmaData, double hyperParameter_nu, double hyperParameter_beta, double hyperParameter_alpha) {
-            this.pMixtureLog10 = pMixtureLog10;
-            this.N_k = N_k;
-            this.muV = new ArrayRealVector(mu); //makes a copy of the array
-            this.sigma = new Array2DRowRealMatrix(sigmaData);   //makes a copy of the array
-            this.hyperParameter_nu = hyperParameter_nu;
-            this.hyperParameter_beta = hyperParameter_beta;
-            this.hyperParameter_alpha = hyperParameter_alpha;
+        MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix priorInverseL) {
+            this.prior_alpha = prior_alpha;
+            this.prior_beta = prior_beta;
+            this.prior_nu = prior_nu;
+            this.prior_m = prior_m;
+            this.priorInverseL = priorInverseL;
+
+            this.muV = new ArrayRealVector(numDimensions); //empty
+            this.sigma = new Array2DRowRealMatrix(numDimensions,numDimensions);   //empty
+            this.hyperParameter_alpha = prior_alpha;
+            this.hyperParameter_beta = prior_beta;
+            this.hyperParameter_nu = prior_nu;
             this.pVarInGaussian = new   ArrayList<>();
             //TODO: add checks for the parameter values
         }
 
-        MultivariateGaussian(final int numAnnotations) {
-            this(0, 0, new double[numAnnotations], new double[numAnnotations][numAnnotations], 0, 0, 0);
-        }
-
         MultivariateGaussian deepCopy() {
-            return new MultivariateGaussian(
-                    pMixtureLog10,
-                    N_k,
-                    muV.toArray(),   //makes a copy
-                    sigma.getData(), //data copied by the constructor so pass the array here (no copy)
-                    hyperParameter_nu,
-                    hyperParameter_beta,
-                    hyperParameter_alpha
+            MultivariateGaussian g= new MultivariateGaussian(
+                    this.getNumDimensions(),
+                    prior_alpha,
+                    prior_beta,
+                    prior_nu,
+                    prior_m.copy(),
+                    priorInverseL.copy()
             );
+            g.setpMixtureLog10(this.pMixtureLog10);
+            g.setN_k(this.N_k);
+            g.muV = this.muV.copy();
+            g.sigma = this.sigma.copy();
+            g.setHyperParameter_alpha(this.hyperParameter_alpha);
+            g.setHyperParameter_beta(this.hyperParameter_beta);
+            g.setHyperParameter_nu(this.hyperParameter_nu);
+            return g;
         }
 
         @Override
@@ -571,11 +560,10 @@ final class GaussianMixtureModel {
             pVarInGaussian.clear();
         }
 
-        void maximizeGaussian(final List<VariantDatum> data, final RealVector prior_m, final RealMatrix inversePrior_L,
-                                     final double prior_beta, final double prior_alpha, final double prior_nu) {
+        void maximizeGaussian(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
 
-            sigma = sigma.add(inversePrior_L);        //eq 21.144 in Murphy (first part)
+            sigma = sigma.add(this.priorInverseL);        //eq 21.144 in Murphy (first part)
                                                       //eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by N_k)
             //this is the third term in eq 21.144 in Murphy
             final RealVector muMinusPriorM = muV.subtract(prior_m);
@@ -593,12 +581,12 @@ final class GaussianMixtureModel {
         }
 
         private void recomputeMuAndSigma(List<VariantDatum> data) {
-             updateN_k(data);    //equation 21.140 from Murphy
-             updateMu(data);     //equation 21.146 from Murphy
-             updateSigma(data);  //equation 21.147 from Murphy (without the division by N_k at the end)
+             recomputeN_k(data);    //equation 21.140 from Murphy
+             recomputeMu(data);     //equation 21.146 from Murphy
+             recomputeSigma(data);  //equation 21.147 from Murphy (without the division by N_k at the end)
         }
 
-        private void updateN_k(List<VariantDatum> data) {
+        private void recomputeN_k(List<VariantDatum> data) {
             //this is equation 21.140 from Murphy
             N_k = 0.0;
             for (int i = 0; i < data.size(); i++) {
@@ -610,11 +598,10 @@ final class GaussianMixtureModel {
         void evaluateFinalModelParameters(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
             sigma = sigma.scalarMultiply(1.0 / N_k);
-
             resetPVarInGaussian(); // clean up some memory
         }
 
-        private void updateMu(List<VariantDatum> data) {
+        private void recomputeMu(List<VariantDatum> data) {
             zeroOutMu();
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
@@ -624,7 +611,7 @@ final class GaussianMixtureModel {
             divideEqualsMu(N_k);
         }
 
-        private void updateSigma(List<VariantDatum> data) {
+        private void recomputeSigma(List<VariantDatum> data) {
             sigma = new Array2DRowRealMatrix(new double[getNumDimensions()][getNumDimensions()]);
             //equation 21.147 from Murphy (without the division by N_k at the end)
             int datumIndex = 0;
@@ -671,6 +658,12 @@ final class GaussianMixtureModel {
         void setpMixtureLog10(double pMixtureLog10) {
             this.pMixtureLog10 = pMixtureLog10;
         }
+
+        @VisibleForTesting
+        void setMu(RealVector mu) { this.muV = mu.copy();}
+
+        @VisibleForTesting
+        void setSigma(RealMatrix sigma) { this.sigma = sigma.copy();}
 
         double getN_k() {
             return N_k;
