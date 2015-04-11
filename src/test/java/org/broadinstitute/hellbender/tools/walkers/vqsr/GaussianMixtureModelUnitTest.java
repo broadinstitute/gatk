@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.ml.distance.ChebyshevDistance;
 import org.apache.commons.math3.ml.distance.DistanceMeasure;
@@ -58,9 +59,9 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         for ( String line : new XReadLines(f, true) ) {
             String[] parts = line.split(",");
             VariantDatum datum = new VariantDatum();
-            datum.annotations = new double[parts.length];
+            datum.annotations = new ArrayRealVector(parts.length);
             for(int i = 0; i < parts.length; i++){
-                datum.annotations[i] = Double.valueOf(parts[i]);
+                datum.annotations.setEntry(i, Double.valueOf(parts[i]));
             }
             vd.add(datum);
         }
@@ -176,7 +177,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         final int ndimensions = mus[0].length;
         gmm.setGaussians(mvns);
         VariantDatum vdZero= new VariantDatum();
-        vdZero.annotations = new double[ndimensions];
+        vdZero.annotations = new ArrayRealVector(ndimensions);
         vdZero.isNull = new boolean[ndimensions];//init to false
         vdZero.prior = prior;
 
@@ -302,7 +303,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
 
     public static VariantDatum makeDatum(double[] ds){
         VariantDatum vd = new VariantDatum();
-        vd.annotations = Arrays.copyOf(ds, ds.length);
+        vd.annotations = new ArrayRealVector(ds);
         vd.isNull = new boolean[ds.length];//initialized to false
         return vd;
     }
