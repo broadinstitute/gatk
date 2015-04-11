@@ -416,7 +416,7 @@ final class GaussianMixtureModel {
 
         private double pMixtureLog10;        //log10 of the mixture weight for this gaussian
         private double N_k;                  //sum of the fractional weigths assigned to this gaussian from all the data points (N_k from Murphy section 21.6.1.3)
-        private double[] mu;                 //mean vector
+        private RealVector muV;              //mean vector
         private RealMatrix sigma;            //covariance matrix
         private double hyperParameter_nu;    //from Murphy (prior counts)
         private double hyperParameter_beta;  //from Murphy (shrinkage)
@@ -430,7 +430,7 @@ final class GaussianMixtureModel {
         MultivariateGaussian(double pMixtureLog10, double N_k, double[] mu, double[][] sigmaData, double hyperParameter_nu, double hyperParameter_beta, double hyperParameter_alpha) {
             this.pMixtureLog10 = pMixtureLog10;
             this.N_k = N_k;
-            this.mu = Arrays.copyOf(mu, mu.length);
+            this.muV = new ArrayRealVector(mu); //makes a copy of the array
             this.sigma = new Array2DRowRealMatrix(sigmaData);   //makes a copy of the array
             this.hyperParameter_nu = hyperParameter_nu;
             this.hyperParameter_beta = hyperParameter_beta;
@@ -447,8 +447,8 @@ final class GaussianMixtureModel {
             return new MultivariateGaussian(
                     pMixtureLog10,
                     N_k,
-                    mu,              //data copies by the constructor so pass the array here (no copy)
-                    sigma.getData(), //data copies by the constructor so pass the array here (no copy)
+                    muV.toArray(),   //makes a copy
+                    sigma.getData(), //data copied by the constructor so pass the array here (no copy)
                     hyperParameter_nu,
                     hyperParameter_beta,
                     hyperParameter_alpha
@@ -460,7 +460,7 @@ final class GaussianMixtureModel {
             List<String> sb = new ArrayList<>();
             sb.add("pMixtureLog10:" + pMixtureLog10);
             sb.add("N_k:" + N_k);
-            sb.add("mu:" + Arrays.toString(mu));
+            sb.add("mu:" + muV.toString());
             sb.add("sigma:" + Arrays.deepToString(sigma.getData()));
             sb.add("hyperParameter_nu:" + hyperParameter_nu);
             sb.add("hyperParameter_beta:" + hyperParameter_beta);
@@ -471,7 +471,7 @@ final class GaussianMixtureModel {
             return Strings.join(sb, "\n");
         }
         void zeroOutMu() {
-            Arrays.fill(mu, 0.0);
+            muV.set(0.0);
         }
 
         void zeroOutSigma() {
@@ -480,7 +480,7 @@ final class GaussianMixtureModel {
 
         void initializeRandomMu(final Random rand) {
             for (int i = 0; i < getNumDimensions(); i++) {
-                mu[i] = MU_MIN + MU_SPAN * rand.nextDouble();
+                muV.setEntry(i, MU_MIN + MU_SPAN * rand.nextDouble());
             }
         }
 
@@ -504,7 +504,7 @@ final class GaussianMixtureModel {
         }
 
         double distanceFromMean(final VariantDatum datum) {
-            return distance(datum.annotations, mu);
+            return distance(datum.annotations, muV.toArray());
         }
 
         void incrementMu(final VariantDatum datum) {
@@ -513,14 +513,12 @@ final class GaussianMixtureModel {
 
         void incrementMu(final VariantDatum datum, final double prob) {
             for (int i = 0; i < getNumDimensions(); i++) {
-                mu[i] += prob * datum.annotations[i];
+                muV.setEntry(i, muV.getEntry(i) + prob * datum.annotations[i]);
             }
         }
 
         void divideEqualsMu(final double x) {
-            for (int i = 0; i < getNumDimensions(); i++) {
-                mu[i] /= x;
-            }
+            muV.mapDivideToSelf(x);
         }
 
         private void precomputeInverse() {
@@ -558,12 +556,12 @@ final class GaussianMixtureModel {
             for (int j = 1; j <= getNumDimensions(); j++) {    //note: using j to conform with Murphy
                 logOfLambdaTilde += digamma((hyperParameter_nu + 1.0 - j) / 2.0);
             }
+            logOfLambdaTilde += getNumDimensions() * log(2.0);
             logOfLambdaTilde -= log(determinant(sigma));
-            logOfLambdaTilde += log(2.0) * getNumDimensions();
 
-            //Murphy eq. 21.134 (multiplicative factor that does not depend on i -- index over data)
-            final double x = (-1.0 * getNumDimensions()) / (2.0 * hyperParameter_beta);
-            cachedDenomLog10 = lnToLog10(logOfPiTilde + 0.5 * logOfLambdaTilde + x);
+            //Murphy eq. 21.133 (multiplicative factor that does not depend on i -- index over data).
+            // The second part of this equation is in evaluateDatumLog10
+            cachedDenomLog10 = lnToLog10(logOfPiTilde + (0.5 * logOfLambdaTilde) + ((-1.0 * getNumDimensions()) / (2.0 * hyperParameter_beta)));
         }
 
         private static double lnToLog10(final double x){
@@ -575,11 +573,11 @@ final class GaussianMixtureModel {
             final double[] crossProdTmp = new double[getNumDimensions()];
             for (int i = 0; i < getNumDimensions(); i++) {
                 for (int j = 0; j < getNumDimensions(); j++) {
-                    crossProdTmp[i] += (datum.annotations[j] - mu[j]) * cachedSigmaInverse.getEntry(j, i);
+                    crossProdTmp[i] += (datum.annotations[j] - muV.getEntry(j)) * cachedSigmaInverse.getEntry(j, i);
                 }
             }
             for (int j = 0; j < getNumDimensions(); j++) {
-                sumKernel += crossProdTmp[j] * (datum.annotations[j] - mu[j]);
+                sumKernel += crossProdTmp[j] * (datum.annotations[j] - muV.getEntry(j));
             }
 
             return ((-0.5 * sumKernel) / NATURAL_LOG_OF_TEN) + cachedDenomLog10; // This is the definition of a Gaussian PDF Log10
@@ -593,7 +591,7 @@ final class GaussianMixtureModel {
             pVarInGaussian.clear();
         }
 
-        void maximizeGaussian(final List<VariantDatum> data, final RealVector empiricalMu, final RealMatrix empiricalSigma,
+        void maximizeGaussian(final List<VariantDatum> data, final RealVector prior_m, final RealMatrix inversePrior_L,
                                      final double prior_beta, final double prior_alpha, final double prior_nu) {
             N_k = 1E-10;
             final RealMatrix wishart = new Array2DRowRealMatrix(getNumDimensions(), getNumDimensions());
@@ -605,18 +603,18 @@ final class GaussianMixtureModel {
             final double shrinkageFactor = (prior_beta * N_k) / (prior_beta + N_k);
             for (int i = 0; i < getNumDimensions(); i++) {
                 for (int j = 0; j < getNumDimensions(); j++) {
-                    wishart.setEntry(i, j, shrinkageFactor * mu[i] * mu[j]);
-//                    wishart.setEntry(i, j, shrinkageFactor * (mu[i] - empiricalMu[i]) * (mu[j] - empiricalMu[j]));
+                    wishart.setEntry(i, j, shrinkageFactor * muV.getEntry(i) * muV.getEntry(j));
+//                    wishart.setEntry(i, j, shrinkageFactor * (mu[i] - prior_m[i]) * (mu[j] - prior_m[j]));
                 }
             }
 
             updateSigma(data);
 
-            sigma = sigma.add(empiricalSigma);
+            sigma = sigma.add(inversePrior_L);
             sigma = sigma.add(wishart);
 
             for (int i = 0; i < getNumDimensions(); i++) {
-                mu[i] = (N_k * mu[i] + prior_beta * empiricalMu.getEntry(i)) / (N_k + prior_beta);
+                muV.setEntry(i, (N_k * muV.getEntry(i) + prior_beta * prior_m.getEntry(i)) / (N_k + prior_beta));
             }
 
             hyperParameter_alpha = prior_alpha + N_k;
@@ -655,7 +653,7 @@ final class GaussianMixtureModel {
                 final double prob = pVarInGaussian.get(datumIndex++);
                 for (int i = 0; i < dims; i++) {
                     for (int j = 0; j < dims; j++) {
-                        pVarSigma.setEntry(i, j, prob * (datum.annotations[i] - mu[i]) * (datum.annotations[j] - mu[j]));
+                        pVarSigma.setEntry(i, j, prob * (datum.annotations[i] - muV.getEntry(i)) * (datum.annotations[j] - muV.getEntry(j)));
                     }
                 }
                 sigma = sigma.add(pVarSigma);
@@ -667,11 +665,11 @@ final class GaussianMixtureModel {
         }
 
         int getNumDimensions() {
-            return mu.length;
+            return muV.getDimension();
         }
 
         double getMu(int i) {
-            return mu[i];
+            return muV.getEntry(i);
         }
 
         /**
@@ -679,7 +677,7 @@ final class GaussianMixtureModel {
          * A copy is made to avoid representation exposure.
          */
         double[] getMu() {
-            return Arrays.copyOf(mu, mu.length);
+            return muV.toArray();
         }
 
         /**
