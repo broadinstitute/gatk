@@ -5,6 +5,7 @@ import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.ml.distance.ChebyshevDistance;
 import org.apache.commons.math3.ml.distance.DistanceMeasure;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.Double.isFinite;
 import static java.lang.Math.*;
+import static org.broadinstitute.hellbender.utils.MathUtils.identityMatrix;
 import static org.testng.Assert.*;
 
 public class GaussianMixtureModelUnitTest extends BaseTest{
@@ -150,7 +152,8 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         double[][] mus = tc.mus;
         double[][][] sigmas = tc.sigmas;
         double[] weights = tc.weigths;
-        int ngaussians = mus.length;
+        final int ngaussians = mus.length;
+        final int ndimensions = mus[0].length;
 
         VariantRecalibratorArgumentCollection VRAC = new VariantRecalibratorArgumentCollection();
         VRAC.SHRINKAGE = 1.0;
@@ -159,22 +162,22 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         VRAC.PRIOR_COUNTS = 20.0;
         final GaussianMixtureModel gmm = GaussianMixtureModel.makeEmptyModel(VRAC.MAX_GAUSSIANS, mus[0].length, VRAC.SHRINKAGE, VRAC.DIRICHLET_PARAMETER, VRAC.PRIOR_COUNTS);
         List<MultivariateGaussian> mvns = new ArrayList<>();
-        for(int i =0; i< ngaussians; i++){
+        for(int i = 0; i< ngaussians; i++){
             double pMixtureLog10  = log10(weights[i]);
             double[] mu = mus[i];
             double[][] sigmaData = sigmas[i];
 
-            //We don't need those 4 values
-            double sumProb = Double.NaN;
-            double hyperParameter_a = Double.NaN;
-            double hyperParameter_b = Double.NaN;
-            double hyperParameter_lambda = Double.NaN;
+            final RealVector prior_m = new ArrayRealVector(ndimensions);
+            final RealMatrix inversePriorL = MultivariateGaussian.inverse(identityMatrix(ndimensions).scalarMultiply(200.0));
 
-            mvns.add(new MultivariateGaussian(pMixtureLog10, sumProb, mu, sigmaData, hyperParameter_a, hyperParameter_b, hyperParameter_lambda));
+            MultivariateGaussian g = new MultivariateGaussian(ndimensions, VRAC.DIRICHLET_PARAMETER, VRAC.SHRINKAGE, VRAC.PRIOR_COUNTS, prior_m, inversePriorL);
+            g.setpMixtureLog10(pMixtureLog10);
+            g.setMu(new ArrayRealVector(mu));
+            g.setSigma(new Array2DRowRealMatrix(sigmaData));
+            mvns.add(g);
         }
 
         final double prior = 17.0;
-        final int ndimensions = mus[0].length;
         gmm.setGaussians(mvns);
         VariantDatum vdZero= new VariantDatum();
         vdZero.annotations = new ArrayRealVector(ndimensions);

@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.linear.DiagonalMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -608,20 +611,10 @@ public final class MathUtils {
         return new NormalDistribution(mean, sd).logDensity(x)/NATURAL_LOG_OF_TEN;
     }
 
-    public static double distanceSquared(final double[] x, final double[] y) {
-        double dist = 0.0;
-        for (int iii = 0; iii < x.length; iii++) {
-            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
-        }
-        return dist;
-    }
-
-    public static double distance(final double[] x, final double[] y) {
-        double dist = 0.0;
-        for (int iii = 0; iii < x.length; iii++) {
-            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
-        }
-        return Math.sqrt(dist);
+    public static RealMatrix identityMatrix(int n){
+        double[] ones = new double[n];
+        Arrays.fill(ones, 1);
+        return new DiagonalMatrix(ones);
     }
 
 }
