@@ -597,9 +597,8 @@ final class GaussianMixtureModel {
             hyperParameter_beta  = prior_beta  + N_k;        //Murphy eq. 21.142
             hyperParameter_nu    = prior_nu    + N_k + 1.0;  //Murphy eq. 21.145
 
-            //eq. 21.143 from Murphy
-            final RealVector m = (prior_m.mapMultiply(prior_beta).add(muV.mapMultiply(N_k))).mapDivide(hyperParameter_beta);
-            muV = m;
+            //eq. 21.143 from Murphy (XXX: Murphy distinguishes between m and x-hat)
+            muV = (prior_m.mapMultiply(prior_beta).add(muV.mapMultiply(N_k))).mapDivide(hyperParameter_beta);
 
             resetPVarInGaussian(); // clean up some memory
         }
@@ -638,16 +637,12 @@ final class GaussianMixtureModel {
 
         private void updateSigma(List<VariantDatum> data) {
             zeroOutSigma();
+            //equation 21.147 from Murphy (without the division by N_k at the end)
             int datumIndex = 0;
-            final int dims = getNumDimensions();
-            final RealMatrix pVarSigma = new Array2DRowRealMatrix(dims, dims);
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
-                for (int i = 0; i < dims; i++) {
-                    for (int j = 0; j < dims; j++) {
-                        pVarSigma.setEntry(i, j, prob * (datum.annotations.getEntry(i) - muV.getEntry(i)) * (datum.annotations.getEntry(j) - muV.getEntry(j)));
-                    }
-                }
+                RealVector rv = datum.annotations.subtract(muV);
+                final RealMatrix pVarSigma = rv.outerProduct(rv).scalarMultiply(prob);
                 sigma = sigma.add(pVarSigma);
             }
         }
