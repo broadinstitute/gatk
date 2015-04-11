@@ -584,13 +584,9 @@ final class GaussianMixtureModel {
 
         void maximizeGaussian(final List<VariantDatum> data, final RealVector prior_m, final RealMatrix inversePrior_L,
                                      final double prior_beta, final double prior_alpha, final double prior_nu) {
-            N_k = 1E-10;
+            recomputeMuAndSigma(data);
+
             final RealMatrix wishart = new Array2DRowRealMatrix(getNumDimensions(), getNumDimensions());
-            zeroOutMu();
-            zeroOutSigma();
-
-            updateMu(data);
-
             final double shrinkageFactor = (prior_beta * N_k) / (prior_beta + N_k);
             for (int i = 0; i < getNumDimensions(); i++) {
                 for (int j = 0; j < getNumDimensions(); j++) {
@@ -598,8 +594,6 @@ final class GaussianMixtureModel {
 //                    wishart.setEntry(i, j, shrinkageFactor * (mu[i] - prior_m[i]) * (mu[j] - prior_m[j]));
                 }
             }
-
-            updateSigma(data);
 
             sigma = sigma.add(inversePrior_L);
             sigma = sigma.add(wishart);
@@ -615,28 +609,40 @@ final class GaussianMixtureModel {
             resetPVarInGaussian(); // clean up some memory
         }
 
-        void evaluateFinalModelParameters(final List<VariantDatum> data) {
+        private void recomputeMuAndSigma(List<VariantDatum> data) {
+             updateN_k(data);    //equation 21.140 from Murphy
+             updateMu(data);     //equation 21.146 from Murphy
+             updateSigma(data);  //equation 21.147 from Murphy (without the division by N_k at the end)
+        }
+
+        private void updateN_k(List<VariantDatum> data) {
+            //this is equation 21.140 from Murphy
             N_k = 0.0;
-            zeroOutMu();
-            zeroOutSigma();
-            updateMu(data);
-            updateSigma(data);
+            for (int i = 0; i < data.size(); i++) {
+                final double prob = pVarInGaussian.get(i);
+                N_k += prob;
+            }
+        }
+
+        void evaluateFinalModelParameters(final List<VariantDatum> data) {
+            recomputeMuAndSigma(data);
             sigma = sigma.scalarMultiply(1.0 / N_k);
 
             resetPVarInGaussian(); // clean up some memory
         }
 
         private void updateMu(List<VariantDatum> data) {
+            zeroOutMu();
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
-                N_k += prob;
                 incrementMu(datum, prob);
             }
             divideEqualsMu(N_k);
         }
 
         private void updateSigma(List<VariantDatum> data) {
+            zeroOutSigma();
             int datumIndex = 0;
             final int dims = getNumDimensions();
             final RealMatrix pVarSigma = new Array2DRowRealMatrix(dims, dims);
