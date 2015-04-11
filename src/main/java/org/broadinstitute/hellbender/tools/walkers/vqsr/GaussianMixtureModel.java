@@ -196,16 +196,20 @@ final class GaussianMixtureModel {
 
         gaussians.forEach(g -> g.precomputeDenominatorForVariationalBayes(getSumHyperParameterAlpha()));
 
+        //This loop recomputes the partial responsibilities of each gaussian for each data item
+        //it implements eq. 21.133 from Murphy
         for( final VariantDatum datum : data ) {
-            final double[] pVarInGaussianLog10 = new double[gaussians.size()];
-            int gaussianIndex = 0;
+            //first get the values for each gaussian
+            final double[] valueLog10 = new double[gaussians.size()];
+            int gaussianIndex1 = 0;
             for( final MultivariateGaussian gaussian : gaussians ) {
-                pVarInGaussianLog10[gaussianIndex++] = gaussian.evaluateDatumLog10(datum);
+                valueLog10[gaussianIndex1++] = gaussian.evaluateDatumLog10(datum);
             }
-            final double[] pVarInGaussianNormalized = normalizeFromLog10(pVarInGaussianLog10);
-            gaussianIndex = 0;
+            //second normalize them to sum to 1
+            final double[] pVarInGaussianNormalized = normalizeFromLog10(valueLog10);
+            int gaussianIndex2 = 0;
             for( final MultivariateGaussian gaussian : gaussians ) {
-                gaussian.assignPVarInGaussian( pVarInGaussianNormalized[gaussianIndex++] );
+                gaussian.assignPVarInGaussian( pVarInGaussianNormalized[gaussianIndex2++] );
             }
         }
     }
@@ -225,23 +229,20 @@ final class GaussianMixtureModel {
 
     private double normalizePMixtureLog10(int dataSize) {
         final double sumPK = gaussians.stream().mapToDouble(MultivariateGaussian::getN_k).sum();  //Note: sumPK should be == data size here
-        if (Math.abs(sumPK - (double)dataSize) > 0.1) {
-            throw new IllegalStateException("wrong sum of responsibilities " + sumPK + " dataSize:" + dataSize);
-        }
         final double log10SumPK = log10(sumPK);
 
-        int gaussianIndex = 0;
+        int gaussianIndex1 = 0;
         final double[] pGaussianLog10 = new double[gaussians.size()];
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pGaussianLog10[gaussianIndex++] = log10(gaussian.getN_k()) - log10SumPK;
+            pGaussianLog10[gaussianIndex1++] = log10(gaussian.getN_k()) - log10SumPK;
         }
         final double[] pGaussianLog10Normalized = normalizeFromLog10(pGaussianLog10, true);
 
         double sumDiff = 0.0;
-        gaussianIndex = 0;
+        int gaussianIndex2 = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            sumDiff += Math.abs(pGaussianLog10Normalized[gaussianIndex] - gaussian.getpMixtureLog10());
-            gaussian.setpMixtureLog10( pGaussianLog10Normalized[gaussianIndex++] );
+            sumDiff += Math.abs(pGaussianLog10Normalized[gaussianIndex2] - gaussian.getpMixtureLog10());
+            gaussian.setpMixtureLog10( pGaussianLog10Normalized[gaussianIndex2++] );
         }
         return sumDiff;
     }
@@ -293,19 +294,19 @@ final class GaussianMixtureModel {
      * Return the likelihood of the data under the current model but using only 1 dimension of the gaussians.
      * Used only to decide which covariate dimension is most divergent in order to report in the culprit info field annotation
      */
-    public Double evaluateDatumInOneDimension( final VariantDatum datum, final int iii ) {
+    public Double evaluateDatumInOneDimension( final VariantDatum datum, final int i ) {
         if( !readyForEvaluation() ) {
             precomputeDenominatorForEvaluation();
         }
 
-        if(datum.isNull[iii]) {
+        if(datum.isNull[i]) {
             return null;
         }
 
         final double[] pVarInGaussianLog10 = new double[gaussians.size()];
         int gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + MathUtils.normalDistributionLog10(gaussian.getMu(iii), gaussian.getSigma(iii, iii), datum.annotations[iii]);
+            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + MathUtils.normalDistributionLog10(gaussian.getMu(i), gaussian.getSigma(i, i), datum.annotations[i]);
         }
         return nanTolerantLog10SumLog10(pVarInGaussianLog10); // Sum(pi_k * p(v|n,k))
     }
