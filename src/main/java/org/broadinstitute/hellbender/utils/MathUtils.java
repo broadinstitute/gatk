@@ -615,4 +615,13 @@ public final class MathUtils {
         }
         return dist;
     }
+
+    public static double distance(final double[] x, final double[] y) {
+        double dist = 0.0;
+        for (int iii = 0; iii < x.length; iii++) {
+            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
+        }
+        return Math.sqrt(dist);
+    }
+
 }
