@@ -593,13 +593,13 @@ final class GaussianMixtureModel {
             final RealMatrix wishart = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * N_k) / (prior_beta + N_k));
             sigma = sigma.add(wishart);                      //eq 21.144 in Murphy (third part)
 
-            for (int i = 0; i < getNumDimensions(); i++) {
-                muV.setEntry(i, (N_k * muV.getEntry(i) + prior_beta * prior_m.getEntry(i)) / (N_k + prior_beta));
-            }
+            hyperParameter_alpha = prior_alpha + N_k;        //Murphy eq. 21.139
+            hyperParameter_beta  = prior_beta  + N_k;        //Murphy eq. 21.142
+            hyperParameter_nu    = prior_nu    + N_k + 1.0;  //Murphy eq. 21.145
 
-            hyperParameter_alpha = prior_alpha + N_k;       //Murphy eq. 21.139
-            hyperParameter_beta  = prior_beta  + N_k;       //Murphy eq. 21.142
-            hyperParameter_nu    = prior_nu    + N_k;   //Murphy eq. 21.145
+            //eq. 21.143 from Murphy
+            final RealVector m = (prior_m.mapMultiply(prior_beta).add(muV.mapMultiply(N_k))).mapDivide(hyperParameter_beta);
+            muV = m;
 
             resetPVarInGaussian(); // clean up some memory
         }

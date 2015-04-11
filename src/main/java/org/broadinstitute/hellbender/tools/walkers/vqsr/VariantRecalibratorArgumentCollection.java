@@ -64,7 +64,7 @@ final class VariantRecalibratorArgumentCollection {
     public double DIRICHLET_PARAMETER = 0.001;
 
     @Argument(fullName = "priorCounts", shortName = "priorCounts", doc = "The number of prior counts to use in the variational Bayes algorithm.", optional = true)
-    public double PRIOR_COUNTS = 20.0;
+    public double PRIOR_COUNTS = 19.0;
 
     /**
      * The number of variants to use in building the Gaussian mixture model. Training sets larger than this will be randomly downsampled.
