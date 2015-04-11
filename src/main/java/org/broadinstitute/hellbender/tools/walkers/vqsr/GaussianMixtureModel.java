@@ -505,17 +505,15 @@ final class GaussianMixtureModel {
         }
 
         double distanceFromMean(final VariantDatum datum) {
-            return distance(datum.annotations.toArray(), muV.toArray());
+            return datum.annotations.getDistance(muV);
         }
 
         void incrementMu(final VariantDatum datum) {
-            incrementMu(datum, 1.0);
+            muV = muV.add(datum.annotations);
         }
 
         void incrementMu(final VariantDatum datum, final double prob) {
-            for (int i = 0; i < getNumDimensions(); i++) {
-                muV.setEntry(i, muV.getEntry(i) + prob * datum.annotations.getEntry(i));
-            }
+            muV = muV.add(datum.annotations.mapMultiply(prob));
         }
 
         void divideEqualsMu(final double x) {
@@ -570,18 +568,10 @@ final class GaussianMixtureModel {
         }
 
         double evaluateDatumLog10(final VariantDatum datum) {
-            double sumKernel = 0.0;
-            final double[] crossProdTmp = new double[getNumDimensions()];
-            for (int i = 0; i < getNumDimensions(); i++) {
-                for (int j = 0; j < getNumDimensions(); j++) {
-                    crossProdTmp[i] += (datum.annotations.getEntry(j) - muV.getEntry(j)) * cachedSigmaInverse.getEntry(j, i);
-                }
-            }
-            for (int j = 0; j < getNumDimensions(); j++) {
-                sumKernel += crossProdTmp[j] * (datum.annotations.getEntry(j) - muV.getEntry(j));
-            }
-
-            return ((-0.5 * sumKernel) / NATURAL_LOG_OF_TEN) + cachedDenomLog10; // This is the definition of a Gaussian PDF Log10
+            //This is the rest of Murphy eq. 21.133 <- the part that is dependent on the data
+            final RealVector dataMinusMu = datum.annotations.subtract(muV);
+            final double sumKernel = cachedSigmaInverse.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
+            return lnToLog10(-0.5 * sumKernel) + cachedDenomLog10; // XXX: is this missing a multiplication by hyperParameter_nu ?
         }
 
         void assignPVarInGaussian(final double pVar) {
