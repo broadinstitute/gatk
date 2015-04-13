@@ -415,7 +415,7 @@ final class GaussianMixtureModel {
             this.hyperParameter_alpha = prior_alpha;
             this.hyperParameter_beta = prior_beta;
             this.hyperParameter_nu = prior_nu;
-            this.pVarInGaussian = new   ArrayList<>();
+            this.pVarInGaussian = new ArrayList<>();
             //TODO: add checks for the parameter values
         }
 
@@ -563,8 +563,9 @@ final class GaussianMixtureModel {
         void maximizeGaussian(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
 
-            sigma = sigma.add(this.priorInverseL);        //eq 21.144 in Murphy (first part)
-                                                      //eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by N_k)
+            sigma = this.priorInverseL.add(sigma.scalarMultiply(N_k));  //eq 21.144 in Murphy (first part)
+                                                                        //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by N_k)
+
             //this is the third term in eq 21.144 in Murphy
             final RealVector muMinusPriorM = muV.subtract(prior_m);
             final RealMatrix wishart = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * N_k) / (prior_beta + N_k));
@@ -597,7 +598,6 @@ final class GaussianMixtureModel {
 
         void evaluateFinalModelParameters(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
-            sigma = sigma.scalarMultiply(1.0 / N_k);
             resetPVarInGaussian(); // clean up some memory
         }
 
@@ -613,7 +613,7 @@ final class GaussianMixtureModel {
 
         private void recomputeSigma(List<VariantDatum> data) {
             sigma = new Array2DRowRealMatrix(new double[getNumDimensions()][getNumDimensions()]);
-            //equation 21.147 from Murphy (without the division by N_k at the end)
+            //equation 21.147 from Murphy
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
@@ -621,6 +621,7 @@ final class GaussianMixtureModel {
                 final RealMatrix pVarSigma = rv.outerProduct(rv).scalarMultiply(prob);
                 sigma = sigma.add(pVarSigma);
             }
+            sigma = sigma.scalarMultiply(1.0 / N_k);
         }
 
         double getpMixtureLog10() {
