@@ -140,7 +140,7 @@ final class GaussianMixtureModel {
         // initialize uniform mixture coefficients, random covariance matrices, and initial hyperparameters
         for( final MultivariateGaussian gaussian : gaussians) {
             gaussian.setpMixtureLog10(log10(1.0 / ((double) gaussians.size())));
-            gaussian.setN_k((1.0 * data.size()) / ((double) gaussians.size()));
+            gaussian.setParam_N((1.0 * data.size()) / ((double) gaussians.size()));
             gaussian.initializeRandomSigma(rand);
         }
     }
@@ -177,7 +177,7 @@ final class GaussianMixtureModel {
     }
 
     private void expectationStep( final List<VariantDatum> data ) {
-        final double sumOfAlphas = gaussians.stream().mapToDouble(MultivariateGaussian::getHyperParameter_alpha).sum();
+        final double sumOfAlphas = gaussians.stream().mapToDouble(MultivariateGaussian::getParam_alpha).sum();
         gaussians.forEach(g -> g.precomputeDenominatorForVariationalBayes(sumOfAlphas));
 
         //This loop recomputes the partial responsibilities of each gaussian for each data item
@@ -213,7 +213,7 @@ final class GaussianMixtureModel {
         int gaussianIndex1 = 0;
         final double[] pGaussianLog10 = new double[gaussians.size()];
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pGaussianLog10[gaussianIndex1++] = log10(gaussian.getN_k()) - log10SumPK;
+            pGaussianLog10[gaussianIndex1++] = log10(gaussian.getParam_N()) - log10SumPK;
         }
         final double[] pGaussianLog10Normalized = normalizeFromLog10(pGaussianLog10, true);
 
@@ -279,7 +279,7 @@ final class GaussianMixtureModel {
         final double[] pVarInGaussianLog10 = new double[gaussians.size()];
         int gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + MathUtils.normalDistributionLog10(gaussian.getMu(i), gaussian.getSigma(i, i), datum.annotations.getEntry(i));
+            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + MathUtils.normalDistributionLog10(gaussian.getXBar(i), gaussian.getParam_S(i, i), datum.annotations.getEntry(i));
         }
         return nanTolerantLog10SumLog10(pVarInGaussianLog10); // Sum(pi_k * p(v|n,k))
     }
@@ -390,14 +390,15 @@ final class GaussianMixtureModel {
         private final RealVector prior_m;
         private final RealMatrix priorInverseL;
 
-        private double pMixtureLog10;        //log10 of the mixture weight for this gaussian
-        private double N_k;                  //sum of the fractional weigths assigned to this gaussian from all the data points (N_k from Murphy section 21.6.1.3)
-        private RealVector muV;              //mean vector
-        private RealMatrix sigma;            //covariance matrix
-        private double hyperParameter_nu;    //from Murphy (prior counts)
-        private double hyperParameter_beta;  //from Murphy (shrinkage)
-        private double hyperParameter_alpha; //from Murphy (dirichlet parameter)
+        private double param_N;                  //sum of the fractional weigths assigned to this gaussian from all the data points (param_N from Murphy section 21.6.1.3)
+        private RealVector param_xbar;              //mean vector
+        private RealMatrix param_S;            //covariance matrix
+        private double param_nu;    //from Murphy (prior counts)
+        private double param_beta;  //from Murphy (shrinkage)
+        private double param_alpha; //from Murphy (dirichlet parameter)
         private final List<Double> pVarInGaussian;
+
+        private double pMixtureLog10;        //log10 of the mixture weight for this gaussian
 
         //caches
         private double cachedDenomLog10;
@@ -410,11 +411,11 @@ final class GaussianMixtureModel {
             this.prior_m = prior_m;
             this.priorInverseL = priorInverseL;
 
-            this.muV = new ArrayRealVector(numDimensions); //empty
-            this.sigma = new Array2DRowRealMatrix(numDimensions,numDimensions);   //empty
-            this.hyperParameter_alpha = prior_alpha;
-            this.hyperParameter_beta = prior_beta;
-            this.hyperParameter_nu = prior_nu;
+            this.param_xbar = new ArrayRealVector(numDimensions); //empty
+            this.param_S = new Array2DRowRealMatrix(numDimensions,numDimensions);   //empty
+            this.param_alpha = prior_alpha;
+            this.param_beta = prior_beta;
+            this.param_nu = prior_nu;
             this.pVarInGaussian = new ArrayList<>();
             //TODO: add checks for the parameter values
         }
@@ -429,12 +430,12 @@ final class GaussianMixtureModel {
                     priorInverseL.copy()
             );
             g.setpMixtureLog10(this.pMixtureLog10);
-            g.setN_k(this.N_k);
-            g.muV = this.muV.copy();
-            g.sigma = this.sigma.copy();
-            g.setHyperParameter_alpha(this.hyperParameter_alpha);
-            g.setHyperParameter_beta(this.hyperParameter_beta);
-            g.setHyperParameter_nu(this.hyperParameter_nu);
+            g.setParam_N(this.param_N);
+            g.param_xbar = this.param_xbar.copy();
+            g.param_S = this.param_S.copy();
+            g.setParam_alpha(this.param_alpha);
+            g.setParam_beta(this.param_beta);
+            g.setParam_nu(this.param_nu);
             return g;
         }
 
@@ -442,24 +443,24 @@ final class GaussianMixtureModel {
         public String toString() {
             List<String> sb = new ArrayList<>();
             sb.add("pMixtureLog10:" + pMixtureLog10);
-            sb.add("N_k:" + N_k);
-            sb.add("mu:" + muV.toString());
-            sb.add("sigma:" + Arrays.deepToString(sigma.getData()));
-            sb.add("hyperParameter_nu:" + hyperParameter_nu);
-            sb.add("hyperParameter_beta:" + hyperParameter_beta);
-            sb.add("hyperParameter_alpha:" + hyperParameter_alpha);
+            sb.add("param_N:" + param_N);
+            sb.add("mu:" + param_xbar.toString());
+            sb.add("param_S:" + Arrays.deepToString(param_S.getData()));
+            sb.add("param_nu:" + param_nu);
+            sb.add("param_beta:" + param_beta);
+            sb.add("param_alpha:" + param_alpha);
             sb.add("cachedDenomLog10:" + cachedDenomLog10);
             sb.add("pVarInGaussian:" + pVarInGaussian);
 
             return Strings.join(sb, "\n");
         }
         void zeroOutMu() {
-            muV.set(0.0);
+            param_xbar.set(0.0);
         }
 
         void initializeRandomMu(final Random rand) {
             for (int i = 0; i < getNumDimensions(); i++) {
-                muV.setEntry(i, MU_MIN + MU_SPAN * rand.nextDouble());
+                param_xbar.setEntry(i, MU_MIN + MU_SPAN * rand.nextDouble());
             }
         }
 
@@ -479,28 +480,28 @@ final class GaussianMixtureModel {
             // matrix and multiplying it by its transpose
 
             RealMatrix tmp = new Array2DRowRealMatrix(randSigma);
-            sigma = tmp.multiply(tmp.transpose());
+            param_S = tmp.multiply(tmp.transpose());
         }
 
         double distanceFromMean(final VariantDatum datum) {
-            return datum.annotations.getDistance(muV);
+            return datum.annotations.getDistance(param_xbar);
         }
 
         void incrementMu(final VariantDatum datum) {
-            muV = muV.add(datum.annotations);
+            param_xbar = param_xbar.add(datum.annotations);
         }
 
         void incrementMu(final VariantDatum datum, final double prob) {
-            muV = muV.add(datum.annotations.mapMultiply(prob));
+            param_xbar = param_xbar.add(datum.annotations.mapMultiply(prob));
         }
 
         void divideEqualsMu(final double x) {
-            muV.mapDivideToSelf(x);
+            param_xbar.mapDivideToSelf(x);
         }
 
         private void precomputeInverse() {
             try {
-                cachedSigmaInverse = inverse(sigma);
+                cachedSigmaInverse = inverse(param_S);
             } catch (MathIllegalArgumentException e) {
                 throw new UserException("Error during clustering. Most likely there are too few variants used during Gaussian mixture modeling. Please consider raising the number of variants used to train the negative model (via --percentBadVariants 0.05, for example) or lowering the maximum number of Gaussians to use in the model (via --maxGaussians 4, for example).");
             }
@@ -516,29 +517,29 @@ final class GaussianMixtureModel {
 
         void precomputeDenominatorForEvaluation() {
             precomputeInverse();
-            cachedDenomLog10 = log10(Math.pow(2.0 * Math.PI, -1.0 * ((double) getNumDimensions()) / 2.0)) + log10(Math.pow(determinant(sigma), -0.5));
+            cachedDenomLog10 = log10(Math.pow(2.0 * Math.PI, -1.0 * ((double) getNumDimensions()) / 2.0)) + log10(Math.pow(determinant(param_S), -0.5));
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
             precomputeInverse();
 
             //Note: from now on,  cachedSigmaInverse actually means cachedSigmaInverse * nu
-            cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(hyperParameter_nu);
+            cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(param_nu);
 
             //Murphy eq. 21.129
-            final double logOfPiTilde = digamma(hyperParameter_alpha) - digamma(sumHyperParameterAlpha);
+            final double logOfPiTilde = digamma(param_alpha) - digamma(sumHyperParameterAlpha);
 
             //Murphy eq. 21.131
             double logOfLambdaTilde = 0.0;
             for (int j = 1; j <= getNumDimensions(); j++) {    //note: using j to conform with Murphy
-                logOfLambdaTilde += digamma((hyperParameter_nu + 1.0 - j) / 2.0);
+                logOfLambdaTilde += digamma((param_nu + 1.0 - j) / 2.0);
             }
             logOfLambdaTilde += getNumDimensions() * log(2.0);
-            logOfLambdaTilde -= log(determinant(sigma));
+            logOfLambdaTilde -= log(determinant(param_S));
 
             //Murphy eq. 21.133 (multiplicative factor that does not depend on i -- index over data).
             // The second part of this equation is in evaluateDatumLog10
-            cachedDenomLog10 = lnToLog10(logOfPiTilde + (0.5 * logOfLambdaTilde) + ((-1.0 * getNumDimensions()) / (2.0 * hyperParameter_beta)));
+            cachedDenomLog10 = lnToLog10(logOfPiTilde + (0.5 * logOfLambdaTilde) + ((-1.0 * getNumDimensions()) / (2.0 * param_beta)));
         }
 
         private static double lnToLog10(final double x){
@@ -547,9 +548,9 @@ final class GaussianMixtureModel {
 
         double evaluateDatumLog10(final VariantDatum datum) {
             //This is the rest of Murphy eq. 21.133 <- the part that is dependent on the data
-            final RealVector dataMinusMu = datum.annotations.subtract(muV);
+            final RealVector dataMinusMu = datum.annotations.subtract(param_xbar);
             final double sumKernel = cachedSigmaInverse.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
-            return lnToLog10(-0.5 * sumKernel) + cachedDenomLog10; // XXX: is this missing a multiplication by hyperParameter_nu ?
+            return lnToLog10(-0.5 * sumKernel) + cachedDenomLog10; // XXX: is this missing a multiplication by param_nu ?
         }
 
         void assignPVarInGaussian(final double pVar) {
@@ -563,36 +564,36 @@ final class GaussianMixtureModel {
         void maximizeGaussian(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
 
-            sigma = this.priorInverseL.add(sigma.scalarMultiply(N_k));  //eq 21.144 in Murphy (first part)
-                                                                        //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by N_k)
+            param_S = this.priorInverseL.add(param_S.scalarMultiply(param_N));  //eq 21.144 in Murphy (first part)
+                                                                        //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by param_N)
 
             //this is the third term in eq 21.144 in Murphy
-            final RealVector muMinusPriorM = muV.subtract(prior_m);
-            final RealMatrix wishart = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * N_k) / (prior_beta + N_k));
-            sigma = sigma.add(wishart);                      //eq 21.144 in Murphy (third part)
+            final RealVector muMinusPriorM = param_xbar.subtract(prior_m);
+            final RealMatrix wishart = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
+            param_S = param_S.add(wishart);                      //eq 21.144 in Murphy (third part)
 
-            hyperParameter_alpha = prior_alpha + N_k;        //Murphy eq. 21.139
-            hyperParameter_beta  = prior_beta  + N_k;        //Murphy eq. 21.142
-            hyperParameter_nu    = prior_nu    + N_k + 1.0;  //Murphy eq. 21.145
+            param_alpha = prior_alpha + param_N;        //Murphy eq. 21.139
+            param_beta = prior_beta  + param_N;        //Murphy eq. 21.142
+            param_nu = prior_nu    + param_N + 1.0;  //Murphy eq. 21.145
 
             //eq. 21.143 from Murphy (XXX: Murphy distinguishes between m and x-hat)
-            muV = (prior_m.mapMultiply(prior_beta).add(muV.mapMultiply(N_k))).mapDivide(hyperParameter_beta);
+            param_xbar = (prior_m.mapMultiply(prior_beta).add(param_xbar.mapMultiply(param_N))).mapDivide(param_beta);
 
             resetPVarInGaussian(); // clean up some memory
         }
 
         private void recomputeMuAndSigma(List<VariantDatum> data) {
-             recomputeN_k(data);    //equation 21.140 from Murphy
-             recomputeMu(data);     //equation 21.146 from Murphy
-             recomputeSigma(data);  //equation 21.147 from Murphy (without the division by N_k at the end)
+             recompute_paramN(data);    //equation 21.140 from Murphy
+             recompute_paramXBar(data);     //equation 21.146 from Murphy
+             recompute_paramS(data);  //equation 21.147 from Murphy (without the division by param_N at the end)
         }
 
-        private void recomputeN_k(List<VariantDatum> data) {
+        private void recompute_paramN(List<VariantDatum> data) {
             //this is equation 21.140 from Murphy
-            N_k = 0.0;
+            param_N = 0.0;
             for (int i = 0; i < data.size(); i++) {
                 final double prob = pVarInGaussian.get(i);
-                N_k += prob;
+                param_N += prob;
             }
         }
 
@@ -601,27 +602,27 @@ final class GaussianMixtureModel {
             resetPVarInGaussian(); // clean up some memory
         }
 
-        private void recomputeMu(List<VariantDatum> data) {
+        private void recompute_paramXBar(List<VariantDatum> data) {
             zeroOutMu();
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
                 incrementMu(datum, prob);
             }
-            divideEqualsMu(N_k);
+            divideEqualsMu(param_N);
         }
 
-        private void recomputeSigma(List<VariantDatum> data) {
-            sigma = new Array2DRowRealMatrix(new double[getNumDimensions()][getNumDimensions()]);
+        private void recompute_paramS(List<VariantDatum> data) {
+            param_S = new Array2DRowRealMatrix(new double[getNumDimensions()][getNumDimensions()]);
             //equation 21.147 from Murphy
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
-                RealVector rv = datum.annotations.subtract(muV);
+                RealVector rv = datum.annotations.subtract(param_xbar);
                 final RealMatrix pVarSigma = rv.outerProduct(rv).scalarMultiply(prob);
-                sigma = sigma.add(pVarSigma);
+                param_S = param_S.add(pVarSigma);
             }
-            sigma = sigma.scalarMultiply(1.0 / N_k);
+            param_S = param_S.scalarMultiply(1.0 / param_N);
         }
 
         double getpMixtureLog10() {
@@ -629,31 +630,31 @@ final class GaussianMixtureModel {
         }
 
         int getNumDimensions() {
-            return muV.getDimension();
+            return param_xbar.getDimension();
         }
 
-        double getMu(int i) {
-            return muV.getEntry(i);
+        double getXBar(int i) {
+            return param_xbar.getEntry(i);
         }
 
         /**
          * Returns (a copy of) the mean vector.
          * A copy is made to avoid representation exposure.
          */
-        double[] getMu() {
-            return muV.toArray();
+        double[] getXBar() {
+            return param_xbar.toArray();
         }
 
         /**
          * Returns (a copy of) the covariance matrix.
          * A copy is made to avoid representation exposure.
          */
-        RealMatrix getSigma() {
-            return sigma.copy();
+        RealMatrix getParam_S() {
+            return param_S.copy();
         }
 
-        double getSigma(int i, int j) {
-            return sigma.getEntry(i, j);
+        double getParam_S(int i, int j) {
+            return param_S.getEntry(i, j);
         }
 
         void setpMixtureLog10(double pMixtureLog10) {
@@ -661,33 +662,33 @@ final class GaussianMixtureModel {
         }
 
         @VisibleForTesting
-        void setMu(RealVector mu) { this.muV = mu.copy();}
+        void setMu(RealVector mu) { this.param_xbar = mu.copy();}
 
         @VisibleForTesting
-        void setSigma(RealMatrix sigma) { this.sigma = sigma.copy();}
+        void setParam_S(RealMatrix param_S) { this.param_S = param_S.copy();}
 
-        double getN_k() {
-            return N_k;
+        double getParam_N() {
+            return param_N;
         }
 
-        double getHyperParameter_alpha() {
-            return hyperParameter_alpha;
+        double getParam_alpha() {
+            return param_alpha;
         }
 
-        void setHyperParameter_alpha(double hyperParameter_alpha) {
-            this.hyperParameter_alpha = hyperParameter_alpha;
+        void setParam_alpha(double param_alpha) {
+            this.param_alpha = param_alpha;
         }
 
-        void setHyperParameter_beta(double hyperParameter_beta) {
-            this.hyperParameter_beta = hyperParameter_beta;
+        void setParam_beta(double param_beta) {
+            this.param_beta = param_beta;
         }
 
-        void setHyperParameter_nu(double hyperParameter_nu) {
-            this.hyperParameter_nu = hyperParameter_nu;
+        void setParam_nu(double param_nu) {
+            this.param_nu = param_nu;
         }
 
-        void setN_k(double n_k) {
-            this.N_k = n_k;
+        void setParam_N(double param_N) {
+            this.param_N = param_N;
         }
 
     }
