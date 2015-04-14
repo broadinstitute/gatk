@@ -173,7 +173,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
             MultivariateGaussian g = new MultivariateGaussian(ndimensions, VRAC.DIRICHLET_PARAMETER, VRAC.SHRINKAGE, VRAC.PRIOR_COUNTS, prior_m, inversePriorL);
             g.setpMixtureLog10(pMixtureLog10);
             g.setMu(new ArrayRealVector(mu));
-            g.setSigma(new Array2DRowRealMatrix(sigmaData));
+            g.setParam_S(new Array2DRowRealMatrix(sigmaData));
             mvns.add(g);
         }
 
@@ -264,7 +264,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
     }
 
     private void compareMeans(double[][] mus, MultivariateGaussian result1, MultivariateGaussian result2, double okDistance) {
-        final double[][] resultMeans = {result1.getMu(), result2.getMu()};
+        final double[][] resultMeans = {result1.getXBar(), result2.getXBar()};
         for (int i = 0 ; i < resultMeans.length; i++) {
             double dist = distance(resultMeans[i], mus[i]);
             assertTrue(dist < okDistance, "expected:" + Arrays.toString(mus[i]) + " actual:" + Arrays.toString(resultMeans[i]) + " distance:" + dist);
@@ -272,7 +272,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
     }
 
     private void compareCovariances(double[][][] sigmas, MultivariateGaussian result1, MultivariateGaussian result2, double okDistance) {
-        final double[][][] resultCovars = {result1.getSigma().getData(), result2.getSigma().getData()};
+        final double[][][] resultCovars = {result1.getParam_S().getData(), result2.getParam_S().getData()};
         for (int i = 0 ; i < resultCovars.length; i++) {
             assertTrue(distance(resultCovars[i], sigmas[i]) < okDistance, "expected:" + Arrays.deepToString(sigmas[i]) + " actual:" + Arrays.deepToString(resultCovars[i])) ;
         }
