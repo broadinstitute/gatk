@@ -2,20 +2,16 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import com.google.common.annotations.VisibleForTesting;
 import joptsimple.internal.Strings;
-import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.linear.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
 import static java.lang.Double.isInfinite;
-import static java.lang.Math.log;
-import static java.lang.Math.log10;
-import static java.lang.Math.pow;
+import static java.lang.Math.*;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.minBy;
 import static org.apache.commons.math3.special.Gamma.digamma;
@@ -403,7 +399,6 @@ final class GaussianMixtureModel {
 
         //caches
         private double cachedDenomLog10;
-        private RealMatrix cachedSigmaInverse;
 
         MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix prior_L) {
             this.dim = numDimensions;
@@ -482,14 +477,6 @@ final class GaussianMixtureModel {
             param_xbar.mapDivideToSelf(x);
         }
 
-        private void precomputeInverse() {
-            try {
-                cachedSigmaInverse = inverse(param_S);
-            } catch (MathIllegalArgumentException e) {
-                throw new UserException("Error during clustering. Most likely there are too few variants used during Gaussian mixture modeling. Please consider raising the number of variants used to train the negative model (via --percentBadVariants 0.05, for example) or lowering the maximum number of Gaussians to use in the model (via --maxGaussians 4, for example).");
-            }
-        }
-
         static RealMatrix inverse(RealMatrix m) {
             return new LUDecomposition(m).getSolver().getInverse();
         }
@@ -499,17 +486,17 @@ final class GaussianMixtureModel {
         }
 
         void precomputeDenominatorForEvaluation() {
-            precomputeInverse();
+            param_L = inverse(param_S);
             //HACK: need this dance because the final evaluation step
             //needs to be independent of param_nu but the eval function mutliplies by it.
             //So we divide by it here. But for the determimant, we use the real matrix.
-            final double det1 = 1.0 / determinant(cachedSigmaInverse);
-            cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(1.0/param_nu);
+            final double det1 = 1.0 / determinant(param_L);
+            param_L = param_L.scalarMultiply(1.0/param_nu);
             cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) dim) / 2.0)) + log10(pow(det1, -0.5));
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
-            precomputeInverse();
+            param_L = inverse(param_S);
 
             //Murphy eq. 21.129
             final double logOfPiTilde = digamma(param_alpha) - digamma(sumHyperParameterAlpha);
@@ -520,7 +507,7 @@ final class GaussianMixtureModel {
                 logOfLambdaTilde += digamma((param_nu + 1.0 - j) / 2.0);
             }
             logOfLambdaTilde += dim * log(2.0);
-            logOfLambdaTilde += log(determinant(cachedSigmaInverse));
+            logOfLambdaTilde += log(determinant(param_L));
 
             //Murphy eq. 21.133 (multiplicative factor that does not depend on i -- index over data).
             // The second part of this equation is in evaluateDatumLog10
@@ -534,7 +521,7 @@ final class GaussianMixtureModel {
         double evaluateDatumLog10(final VariantDatum datum) {
             //This is the rest of Murphy eq. 21.133 <- the part that is dependent on the data
             final RealVector dataMinusMu = datum.annotations.subtract(param_xbar);
-            final double sumKernel = cachedSigmaInverse.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
+            final double sumKernel = param_L.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
             return lnToLog10(-0.5 * param_nu * sumKernel) + cachedDenomLog10;
         }
 
@@ -556,7 +543,9 @@ final class GaussianMixtureModel {
             //this is the third term in eq 21.144 in Murphy
             final RealVector muMinusPriorM = param_xbar.subtract(prior_m);
             final RealMatrix term3 = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
-            param_S = term1.add(term2).add(term3);                      //eq 21.144 in Murphy (third part)
+            final RealMatrix sum = term1.add(term2).add(term3);                      //eq 21.144 in Murphy (third part)
+            param_S = sum;
+            param_L = inverse(sum);
 
             param_alpha = prior_alpha + param_N;        //Murphy eq. 21.139
             param_beta = prior_beta  + param_N;        //Murphy eq. 21.142
