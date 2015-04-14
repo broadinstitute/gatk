@@ -15,6 +15,7 @@ import java.util.*;
 import static java.lang.Double.isInfinite;
 import static java.lang.Math.log;
 import static java.lang.Math.log10;
+import static java.lang.Math.pow;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.minBy;
 import static org.apache.commons.math3.special.Gamma.digamma;
@@ -128,16 +129,16 @@ final class GaussianMixtureModel {
      */
     public void initializeRandomModel( final List<VariantDatum> data, final int numKMeansIterations, Random rand) {
 
-        gaussians.forEach(g -> g.initializeRandomMu(rand));
+        gaussians.forEach(g -> g.initializeRandomXBar(rand));
 
-        logger.info( "Initializing model with " + numKMeansIterations + " k-means iterations..." );
+        logger.info("Initializing model with " + numKMeansIterations + " k-means iterations...");
         initializeMeansUsingKMeans(data, numKMeansIterations, rand);
 
         // initialize uniform mixture coefficients, random covariance matrices, and initial hyperparameters
         for( final MultivariateGaussian gaussian : gaussians) {
             gaussian.setpMixtureLog10(log10(1.0 / ((double) gaussians.size())));
             gaussian.setParam_N((1.0 * data.size()) / ((double) gaussians.size()));
-            gaussian.initializeRandomSigma(rand);
+            gaussian.initializeRandomS(rand);
         }
     }
 
@@ -149,24 +150,24 @@ final class GaussianMixtureModel {
         int iter = 0;
         while( iter++ < numIterations ) {
             // E step: assign each variant to the nearest cluster
-            data.forEach(d -> assignment.put(d, gaussians.stream().collect(minBy(comparing(mvg -> mvg.distanceFromMean(d)))).get()));
+            data.forEach(d -> assignment.put(d, gaussians.stream().collect(minBy(comparing(mvg -> mvg.distanceFromXBar(d)))).get()));
 
             // M step: update gaussian means based on assigned variants
-            gaussians.forEach(g -> g.zeroOutMu());
+            gaussians.forEach(g -> g.zeroOutXBar());
             final Map<MultivariateGaussian, Integer> numAssigned = new HashMap<>();
             gaussians.forEach(g -> numAssigned.put(g, 0));
 
             for( Map.Entry<VariantDatum, MultivariateGaussian> kv : assignment.entrySet() ) {
                 MultivariateGaussian mvg = kv.getValue();
-                mvg.incrementMu(kv.getKey());
+                mvg.incrementXBar(kv.getKey());
                 numAssigned.put(mvg, 1 + numAssigned.get(mvg));
             }
             gaussians.forEach(g -> {
                 final int n = numAssigned.get(g);
                 if( n != 0 ) {
-                    g.divideEqualsMu((double) n);
+                    g.divideEqualsXBar((double) n);
                 } else {
-                    g.initializeRandomMu(rand);//no data item assigned to this gaussian - reset the mean randomly
+                    g.initializeRandomXBar(rand);//no data item assigned to this gaussian - reset the mean randomly
                 }
             });
         }
@@ -299,7 +300,7 @@ final class GaussianMixtureModel {
                     }
 
                     // add this sample's probability to the pile in order to take an average in the end
-                    sumPVarInGaussian += Math.pow(10.0, nanTolerantLog10SumLog10(pVarInGaussianLog10)); // p = 10 ^ Sum(pi_k * p(v|n,k))
+                    sumPVarInGaussian += pow(10.0, nanTolerantLog10SumLog10(pVarInGaussianLog10)); // p = 10 ^ Sum(pi_k * p(v|n,k))
                     numRandomDraws++;
                 }
             }
@@ -380,6 +381,7 @@ final class GaussianMixtureModel {
         public static final double MU_MAX = 4.0;
         public static final double MU_SPAN = MU_MAX - MU_MIN;
 
+        private final int dim;
         private final double prior_nu;    //from Murphy (prior counts)
         private final double prior_beta;  //from Murphy (shrinkage)
         private final double prior_alpha; //from Murphy (dirichlet parameter)
@@ -401,6 +403,7 @@ final class GaussianMixtureModel {
         private RealMatrix cachedSigmaInverse;
 
         MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix prior_L) {
+            this.dim = numDimensions;
             this.prior_alpha = prior_alpha;
             this.prior_beta = prior_beta;
             this.prior_nu = prior_nu;
@@ -450,17 +453,17 @@ final class GaussianMixtureModel {
 
             return Strings.join(sb, "\n");
         }
-        void zeroOutMu() {
+        void zeroOutXBar() {
             param_xbar.set(0.0);
         }
 
-        void initializeRandomMu(final Random rand) {
+        void initializeRandomXBar(final Random rand) {
             for (int i = 0; i < getNumDimensions(); i++) {
                 param_xbar.setEntry(i, MU_MIN + MU_SPAN * rand.nextDouble());
             }
         }
 
-        void initializeRandomSigma(final Random rand) {
+        void initializeRandomS(final Random rand) {
             //This is equiv to drawing from Wishart.
             //Note: maybe we want empirical cov from kmeans clusters
             final double[][] randSigma = new double[getNumDimensions()][getNumDimensions()];
@@ -479,19 +482,19 @@ final class GaussianMixtureModel {
             param_S = tmp.multiply(tmp.transpose());
         }
 
-        double distanceFromMean(final VariantDatum datum) {
+        double distanceFromXBar(final VariantDatum datum) {
             return datum.annotations.getDistance(param_xbar);
         }
 
-        void incrementMu(final VariantDatum datum) {
+        void incrementXBar(final VariantDatum datum) {
             param_xbar = param_xbar.add(datum.annotations);
         }
 
-        void incrementMu(final VariantDatum datum, final double prob) {
+        void incrementXBar(final VariantDatum datum, final double prob) {
             param_xbar = param_xbar.add(datum.annotations.mapMultiply(prob));
         }
 
-        void divideEqualsMu(final double x) {
+        void divideEqualsXBar(final double x) {
             param_xbar.mapDivideToSelf(x);
         }
 
@@ -513,7 +516,7 @@ final class GaussianMixtureModel {
 
         void precomputeDenominatorForEvaluation() {
             precomputeInverse();
-            cachedDenomLog10 = log10(Math.pow(2.0 * Math.PI, -1.0 * ((double) getNumDimensions()) / 2.0)) + log10(Math.pow(determinant(param_S), -0.5));
+            cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) getNumDimensions()) / 2.0)) + log10(pow(determinant(param_S), -0.5));
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
@@ -599,13 +602,13 @@ final class GaussianMixtureModel {
         }
 
         private void recompute_paramXBar(List<VariantDatum> data) {
-            zeroOutMu();
+            zeroOutXBar();
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
-                incrementMu(datum, prob);
+                incrementXBar(datum, prob);
             }
-            divideEqualsMu(param_N);
+            divideEqualsXBar(param_N);
         }
 
         private void recompute_paramS(List<VariantDatum> data) {
