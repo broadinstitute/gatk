@@ -421,7 +421,7 @@ final class GaussianMixtureModel {
 
         MultivariateGaussian deepCopy() {
             MultivariateGaussian g= new MultivariateGaussian(
-                    this.getNumDimensions(),
+                    dim,
                     prior_alpha,
                     prior_beta,
                     prior_nu,
@@ -458,7 +458,7 @@ final class GaussianMixtureModel {
         }
 
         void initializeRandomXBar(final Random rand) {
-            for (int i = 0; i < getNumDimensions(); i++) {
+            for (int i = 0; i < dim; i++) {
                 param_xbar.setEntry(i, MU_MIN + MU_SPAN * rand.nextDouble());
             }
         }
@@ -466,9 +466,9 @@ final class GaussianMixtureModel {
         void initializeRandomS(final Random rand) {
             //This is equiv to drawing from Wishart.
             //Note: maybe we want empirical cov from kmeans clusters
-            final double[][] randSigma = new double[getNumDimensions()][getNumDimensions()];
-            for (int i = 0; i < getNumDimensions(); i++) {
-                for (int j = i; j < getNumDimensions(); j++) {
+            final double[][] randSigma = new double[dim][dim];
+            for (int i = 0; i < dim; i++) {
+                for (int j = i; j < dim; j++) {
                     randSigma[j][i] = 0.55 + 1.25 * rand.nextDouble();
                     if (rand.nextBoolean()) {
                         randSigma[j][i] *= -1.0;
@@ -516,7 +516,7 @@ final class GaussianMixtureModel {
 
         void precomputeDenominatorForEvaluation() {
             precomputeInverse();
-            cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) getNumDimensions()) / 2.0)) + log10(pow(determinant(param_S), -0.5));
+            cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) dim) / 2.0)) + log10(pow(determinant(param_S), -0.5));
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
@@ -530,15 +530,15 @@ final class GaussianMixtureModel {
 
             //Murphy eq. 21.131
             double logOfLambdaTilde = 0.0;
-            for (int j = 1; j <= getNumDimensions(); j++) {    //note: using j to conform with Murphy
+            for (int j = 1; j <= dim; j++) {    //note: using j to conform with Murphy
                 logOfLambdaTilde += digamma((param_nu + 1.0 - j) / 2.0);
             }
-            logOfLambdaTilde += getNumDimensions() * log(2.0);
+            logOfLambdaTilde += dim * log(2.0);
             logOfLambdaTilde -= log(determinant(param_S));
 
             //Murphy eq. 21.133 (multiplicative factor that does not depend on i -- index over data).
             // The second part of this equation is in evaluateDatumLog10
-            cachedDenomLog10 = lnToLog10(logOfPiTilde + (0.5 * logOfLambdaTilde) + ((-1.0 * getNumDimensions()) / (2.0 * param_beta)));
+            cachedDenomLog10 = lnToLog10(logOfPiTilde + (0.5 * logOfLambdaTilde) + ((-1.0 * dim) / (2.0 * param_beta)));
         }
 
         private static double lnToLog10(final double x){
@@ -612,7 +612,7 @@ final class GaussianMixtureModel {
         }
 
         private void recompute_paramS(List<VariantDatum> data) {
-            param_S = new Array2DRowRealMatrix(new double[getNumDimensions()][getNumDimensions()]);
+            param_S = new Array2DRowRealMatrix(new double[dim][dim]);
             //equation 21.147 from Murphy
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
@@ -626,10 +626,6 @@ final class GaussianMixtureModel {
 
         double getpMixtureLog10() {
             return pMixtureLog10;
-        }
-
-        int getNumDimensions() {
-            return param_xbar.getDimension();
         }
 
         double getXBar(int i) {
