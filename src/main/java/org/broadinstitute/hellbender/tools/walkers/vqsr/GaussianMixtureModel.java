@@ -41,10 +41,10 @@ final class GaussianMixtureModel {
                                                   final double prior_alpha, final double prior_beta, final double prior_nu) {
         this.gaussians = new HashSet<>( numGaussians );
         final RealVector prior_m = new ArrayRealVector(numAnnotations);
-        final RealMatrix inversePriorL = MultivariateGaussian.inverse(identityMatrix(numAnnotations).scalarMultiply(200.0));
+        final RealMatrix prior_L = identityMatrix(numAnnotations).scalarMultiply(200.0);
 
         for( int i = 0; i < numGaussians; i++ ) {
-            MultivariateGaussian g = new MultivariateGaussian( numAnnotations, prior_alpha, prior_beta, prior_nu, prior_m, inversePriorL);
+            MultivariateGaussian g = new MultivariateGaussian( numAnnotations, prior_alpha, prior_beta, prior_nu, prior_m, prior_L);
             gaussians.add( g );
         }
 
@@ -387,8 +387,8 @@ final class GaussianMixtureModel {
         private final double prior_nu;    //from Murphy (prior counts)
         private final double prior_beta;  //from Murphy (shrinkage)
         private final double prior_alpha; //from Murphy (dirichlet parameter)
-        private final RealVector prior_m;
-        private final RealMatrix priorInverseL;
+        private final RealVector prior_m;  //prior mean is the zero vector
+        private final RealMatrix prior_L;
 
         private double param_N;                  //sum of the fractional weigths assigned to this gaussian from all the data points (param_N from Murphy section 21.6.1.3)
         private RealVector param_xbar;              //mean vector
@@ -404,12 +404,12 @@ final class GaussianMixtureModel {
         private double cachedDenomLog10;
         private RealMatrix cachedSigmaInverse;
 
-        MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix priorInverseL) {
+        MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix prior_L) {
             this.prior_alpha = prior_alpha;
             this.prior_beta = prior_beta;
             this.prior_nu = prior_nu;
             this.prior_m = prior_m;
-            this.priorInverseL = priorInverseL;
+            this.prior_L = prior_L;
 
             this.param_xbar = new ArrayRealVector(numDimensions); //empty
             this.param_S = new Array2DRowRealMatrix(numDimensions,numDimensions);   //empty
@@ -427,7 +427,7 @@ final class GaussianMixtureModel {
                     prior_beta,
                     prior_nu,
                     prior_m.copy(),
-                    priorInverseL.copy()
+                    prior_L.copy()
             );
             g.setpMixtureLog10(this.pMixtureLog10);
             g.setParam_N(this.param_N);
@@ -564,7 +564,7 @@ final class GaussianMixtureModel {
         void maximizeGaussian(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
 
-            param_S = this.priorInverseL.add(param_S.scalarMultiply(param_N));  //eq 21.144 in Murphy (first part)
+            param_S = inverse(prior_L).add(param_S.scalarMultiply(param_N));  //eq 21.144 in Murphy (first part)
                                                                         //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by param_N)
 
             //this is the third term in eq 21.144 in Murphy

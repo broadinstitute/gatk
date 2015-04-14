@@ -168,9 +168,9 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
             double[][] sigmaData = sigmas[i];
 
             final RealVector prior_m = new ArrayRealVector(ndimensions);
-            final RealMatrix inversePriorL = MultivariateGaussian.inverse(identityMatrix(ndimensions).scalarMultiply(200.0));
+            final RealMatrix prior_L = identityMatrix(ndimensions).scalarMultiply(200.0);
 
-            MultivariateGaussian g = new MultivariateGaussian(ndimensions, VRAC.DIRICHLET_PARAMETER, VRAC.SHRINKAGE, VRAC.PRIOR_COUNTS, prior_m, inversePriorL);
+            MultivariateGaussian g = new MultivariateGaussian(ndimensions, VRAC.DIRICHLET_PARAMETER, VRAC.SHRINKAGE, VRAC.PRIOR_COUNTS, prior_m, prior_L);
             g.setpMixtureLog10(pMixtureLog10);
             g.setMu(new ArrayRealVector(mu));
             g.setParam_S(new Array2DRowRealMatrix(sigmaData));
