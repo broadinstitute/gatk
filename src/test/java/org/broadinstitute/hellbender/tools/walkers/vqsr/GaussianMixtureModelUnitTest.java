@@ -185,11 +185,11 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         vdZero.prior = prior;
 
         gmm.setLodFromModel(Arrays.asList(vdZero), true);
-        assertEquals(vdZero.lod, tc.zeroZeroEval);
+        assertEquals(vdZero.lod, tc.zeroZeroEval, 1.0 / 100000);
         gmm.setLodFromModel(Arrays.asList(vdZero), false);
-        assertEquals(vdZero.lod, prior);  //after this it should be prior + positive - negative = prior (because here pos = neg).
+        assertEquals(vdZero.lod, prior,1.0 / 100000);  //after this it should be prior + positive - negative = prior (because here pos = neg).
 
-        assertEquals(gmm.evaluateDatum(vdZero), tc.zeroZeroEval);
+        assertEquals(gmm.evaluateDatum(vdZero), tc.zeroZeroEval, 1.0 / 100000);
         for(int dim = 0; dim < ndimensions; dim++){
             vdZero.isNull = new boolean[ndimensions];  //init to false
             assertEquals(gmm.evaluateDatumInOneDimension(vdZero, dim), tc.zeroZeroEvalPerDim[dim], 1.0 / 100000, "dim:" + dim + " diff:" + abs(gmm.evaluateDatumInOneDimension(vdZero, dim) - tc.zeroZeroEvalPerDim[dim]));

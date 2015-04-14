@@ -521,15 +521,15 @@ final class GaussianMixtureModel {
 
         void precomputeDenominatorForEvaluation() {
             precomputeInverse();
+            //HACK: need this dance because the final evaluation step
+            //needs to be independent of param_nu but the eval function mutliplies by it.
+            //So we divide by it here.
             cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(1.0/param_nu);
             cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) dim) / 2.0)) + log10(pow(determinant(param_S), -0.5));
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
             precomputeInverse();
-
-            //Note: from now on,  cachedSigmaInverse actually means cachedSigmaInverse * nu
-//            cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(param_nu);
 
             //Murphy eq. 21.129
             final double logOfPiTilde = digamma(param_alpha) - digamma(sumHyperParameterAlpha);
@@ -554,10 +554,8 @@ final class GaussianMixtureModel {
         double evaluateDatumLog10(final VariantDatum datum) {
             //This is the rest of Murphy eq. 21.133 <- the part that is dependent on the data
             final RealVector dataMinusMu = datum.annotations.subtract(param_xbar);
-            RealMatrix x = cachedSigmaInverse.scalarMultiply(param_nu);
-            final double sumKernel = x.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
-//            final double sumKernel = cachedSigmaInverse.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
-            return lnToLog10(-0.5 * sumKernel) + cachedDenomLog10; // XXX: is this missing a multiplication by param_nu ?
+            final double sumKernel = cachedSigmaInverse.preMultiply(dataMinusMu).dotProduct(dataMinusMu);
+            return lnToLog10(-0.5 * param_nu * sumKernel) + cachedDenomLog10;
         }
 
         void assignPVarInGaussian(final double pVar) {
