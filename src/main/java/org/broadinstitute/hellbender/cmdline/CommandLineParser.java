@@ -17,6 +17,7 @@ import java.io.PrintStream;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Annotation-driven utility for parsing command-line arguments, checking for errors, and producing usage message.
@@ -47,7 +48,8 @@ public class CommandLineParser {
     private static final int ARGUMENT_COLUMN_WIDTH = 30;
     private static final int DESCRIPTION_COLUMN_WIDTH = 90;
 
-    private static final Boolean[] TRUE_FALSE_VALUES = {Boolean.TRUE, Boolean.FALSE};
+    private static final String ENUM_OPTION_DOC_PREFIX = "Possible values: {";
+    private static final String ENUM_OPTION_DOC_SUFFIX = "} ";
 
     // Use these if no @Usage annotation
     private static final String defaultUsagePreamble = "Usage: program [arguments...]\n";
@@ -466,7 +468,7 @@ public class CommandLineParser {
         } else {
             sb.append("Required. ");
         }
-        sb.append(getEnumOptions(getUnderlyingType(argumentDefinition.field)));
+        sb.append(getOptions(getUnderlyingType(argumentDefinition.field)));
         if (!argumentDefinition.mutuallyExclusive.isEmpty()) {
             sb.append(" Cannot be used in conjuction with argument(s)");
             for (final String argument : argumentDefinition.mutuallyExclusive) {
@@ -486,32 +488,86 @@ public class CommandLineParser {
         return sb.toString();
     }
 
-    private String getEnumOptions(Class<?> clazz) {
-        StringBuilder sb = new StringBuilder();
-        Object[] enumConstants = clazz.getEnumConstants();
-        if (enumConstants == null && clazz == Boolean.class) {
-            enumConstants = TRUE_FALSE_VALUES;
+    /**
+     * Generates the option help string for a {@code boolean} or {@link Boolean} typed argument.
+     * @return never {@code null}.
+     */
+    private String getBooleanOptions() {
+        return String.format("%s%s, %s%s", ENUM_OPTION_DOC_PREFIX, Boolean.TRUE, Boolean.FALSE, ENUM_OPTION_DOC_SUFFIX);
+    }
+
+    /**
+     * Composes the help string on the possible options an {@link Enum} typed argument can take.
+     *
+     * @param clazz target enum class. Assumed no to be {@code null}.
+     * @param <T> enum class type.
+     * @param <U> ClpEnum implementing version of <code>&lt;T&gt</code>;.
+     * @throws GATKException if {@code &lt;T&gt;} has no constants.
+     * @return never {@code null}.
+     */
+    private <T extends Enum<T>,U extends Enum<U> & ClpEnum> String getEnumOptions(final Class<T> clazz) {
+        // We assume that clazz is guaranteed to be a Class<? extends Enum>, thus
+        // getEnumConstants() won't ever return a null.
+        final T[] enumConstants = clazz.getEnumConstants();
+        if (enumConstants.length == 0) {
+            throw new GATKException(String.format("Bad argument enum type '%s' with no options", clazz.getName()));
         }
 
-        if (enumConstants != null) {
-            final Boolean isClpEnum = enumConstants.length > 0 && (enumConstants[0] instanceof ClpEnum);
-
-            sb.append("Possible values: {");
-            if (isClpEnum) sb.append("\n");
-
-            for (int i = 0; i < enumConstants.length; ++i) {
-                if (i > 0 && !isClpEnum) {
-                    sb.append(", ");
-                }
-                sb.append(enumConstants[i].toString());
-
-                if (isClpEnum) {
-                    sb.append(" (").append(((ClpEnum) enumConstants[i]).getHelpDoc()).append(")\n");
-                }
-            }
-            sb.append("} ");
+        if (ClpEnum.class.isAssignableFrom(clazz)) {
+            @SuppressWarnings("unchecked")
+            final U[] clpEnumCastedConstants = (U[]) enumConstants;
+            return getEnumOptionsWithDescription(clpEnumCastedConstants);
+        } else {
+            return getEnumOptionsWithoutDescription(enumConstants);
         }
-        return sb.toString();
+    }
+
+    /**
+     * Composes the help string for enum options that do not provide additional help documentation.
+     * @param enumConstants the enum constants. Assumed non-null.
+     * @param <T> the enum type.
+     * @return never {@code null}.
+     */
+    private <T extends Enum<T>> String getEnumOptionsWithoutDescription(final T[] enumConstants) {
+        return Stream.of(enumConstants)
+                .map(T::name)
+                .collect(Collectors.joining(", ",ENUM_OPTION_DOC_PREFIX,ENUM_OPTION_DOC_SUFFIX));
+    }
+
+    /**
+     * Composes the help string for enum options that provide additional documentation.
+     * @param enumConstants the enum constants. Assumed non-null.
+     * @param <T> the enum type.
+     * @return never {@code null}.
+     */
+    private <T extends Enum<T> & ClpEnum> String getEnumOptionsWithDescription(final T[] enumConstants) {
+        final String optionsString = Stream.of(enumConstants)
+                .map(c -> String.format("%s (%s)",c.name(),c.getHelpDoc()))
+                .collect(Collectors.joining("\n"));
+        return String.join("\n",ENUM_OPTION_DOC_PREFIX,optionsString,ENUM_OPTION_DOC_SUFFIX);
+    }
+
+    /**
+     * Returns the help string with details about valid options for the given argument class.
+     *
+     * <p>
+     *     Currently this only make sense with {@link Boolean} and {@link Enum}. Any other class
+     *     will result in an empty string.
+     * </p>
+     *
+     * @param clazz the target argument's class.
+     * @return never {@code null}.
+     */
+    private String getOptions(final Class<?> clazz) {
+        if (clazz == Boolean.class) {
+            return getBooleanOptions();
+        } else if (clazz.isEnum()) {
+            @SuppressWarnings("unchecked")
+            final Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
+            return getEnumOptions(enumClass);
+        } else {
+            return "";
+        }
     }
 
     private void printSpaces(final PrintStream stream, final int numSpaces) {
