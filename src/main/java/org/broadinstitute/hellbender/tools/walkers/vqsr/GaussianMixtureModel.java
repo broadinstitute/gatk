@@ -421,27 +421,7 @@ final class GaussianMixtureModel {
             this.param_nu = prior_nu;
             this.param_m = prior_m;
             this.pVarInGaussian = new ArrayList<>();
-            //TODO: add checks for the parameter values
         }
-
-//        MultivariateGaussian deepCopy() {
-//            MultivariateGaussian g= new MultivariateGaussian(
-//                    dim,
-//                    prior_alpha,
-//                    prior_beta,
-//                    prior_nu,
-//                    prior_m.copy(),
-//                    prior_L.copy()
-//            );
-//            g.setpMixtureLog10(this.pMixtureLog10);
-//            g.setParam_N(this.param_N);
-//            g.param_xbar = this.param_xbar.copy();
-//            g.param_S = this.param_S.copy();
-//            g.setParam_alpha(this.param_alpha);
-//            g.setParam_beta(this.param_beta);
-//            g.setParam_nu(this.param_nu);
-//            return g;
-//        }
 
         @Override
         public String toString() {
@@ -449,7 +429,6 @@ final class GaussianMixtureModel {
             sb.add("pMixtureLog10:" + pMixtureLog10);
             sb.add("param_N:" + param_N);
             sb.add("mu:" + param_xbar.toString());
-            sb.add("param_S:" + Arrays.deepToString(param_S.getData()));
             sb.add("param_nu:" + param_nu);
             sb.add("param_beta:" + param_beta);
             sb.add("param_alpha:" + param_alpha);
@@ -569,13 +548,14 @@ final class GaussianMixtureModel {
         void maximizeGaussian(final List<VariantDatum> data) {
             recomputeMuAndSigma(data);
 
-            param_S = inverse(prior_L).add(param_S.scalarMultiply(param_N));  //eq 21.144 in Murphy (first part)
+            RealMatrix term1 = inverse(prior_L);
+            RealMatrix term2 = param_S.scalarMultiply(param_N);  //eq 21.144 in Murphy (first part)
                                                                         //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by param_N)
 
             //this is the third term in eq 21.144 in Murphy
             final RealVector muMinusPriorM = param_xbar.subtract(prior_m);
-            final RealMatrix wishart = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
-            param_S = param_S.add(wishart);                      //eq 21.144 in Murphy (third part)
+            final RealMatrix term3 = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
+            param_S = term1.add(term2).add(term3);                      //eq 21.144 in Murphy (third part)
 
             param_alpha = prior_alpha + param_N;        //Murphy eq. 21.139
             param_beta = prior_beta  + param_N;        //Murphy eq. 21.142
