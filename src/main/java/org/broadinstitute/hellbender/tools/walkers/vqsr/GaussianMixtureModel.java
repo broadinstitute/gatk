@@ -40,8 +40,8 @@ final class GaussianMixtureModel {
     private GaussianMixtureModel(final int numGaussians, final int numAnnotations,
                                                   final double prior_alpha, final double prior_beta, final double prior_nu) {
         this.gaussians = new HashSet<>( numGaussians );
-        final RealVector prior_m = new ArrayRealVector(numAnnotations);
-        final RealMatrix prior_L = identityMatrix(numAnnotations).scalarMultiply(200.0);
+        final RealVector prior_m = new ArrayRealVector(numAnnotations);                  //prior mean is the zero vector
+        final RealMatrix prior_L = identityMatrix(numAnnotations).scalarMultiply(200.0); //prior precision is diagonal 200.0
 
         for( int i = 0; i < numGaussians; i++ ) {
             MultivariateGaussian g = new MultivariateGaussian( numAnnotations, prior_alpha, prior_beta, prior_nu, prior_m, prior_L);
@@ -75,27 +75,23 @@ final class GaussianMixtureModel {
     }
 
     /**
-     * Sets the gaussians to the arguments.
-     * Note that the actual data is deep copied, for safety. For testing only.
+     * Sets the gaussians to the arguments (removes the current one).
+     * Note that the actual data is not copied, just set.
+     * Strictly for testing only.
      */
     @VisibleForTesting
     void setGaussians(Collection<MultivariateGaussian> mvgs) {
         gaussians.clear();
-        for(MultivariateGaussian mvg : mvgs ){
-            gaussians.add(mvg.deepCopy());
-        }
+        gaussians.addAll(mvgs);
     }
 
     /**
-     * Returns the (deep copies of the) gaussians. Mostly for testing but not limited to it.
+     * Returns the gaussians.
+     * Use with caution - the live objects are returned and must not be modified.
      */
     @VisibleForTesting
-    List<MultivariateGaussian> getGaussians() {
-        List<MultivariateGaussian> result = new ArrayList<>(gaussians.size());
-        for(MultivariateGaussian mvg : gaussians ){
-            result.add(mvg.deepCopy());
-        }
-        return result;
+    Collection<MultivariateGaussian> getGaussians() {
+        return gaussians;
     }
 
     /**
