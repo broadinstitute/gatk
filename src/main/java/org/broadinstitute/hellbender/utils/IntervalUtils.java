@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -769,4 +770,30 @@ public class IntervalUtils {
         }
         return splits;
     }
+
+    /**
+     * Generates a list of {@link GenomeLoc} instances given the appropriate {@link GenomeLocParser} factory
+     * and a collection of {@link Locatable} instances.
+     *
+     * <p>
+     *     The order in the result list is will correspond to the traversal order in the input collection.
+     * </p>
+     * @param locatables input locatable collection.
+     * @throws IllegalArgumentException if {@code locatable} is {@code null} or contains any {@code null}.
+     * @return never {@code null}. The result is an unmodifiable list.
+     */
+    public static List<GenomeLoc> genomeLocsFromLocatables(final GenomeLocParser parser, final Collection<? extends Locatable> locatables) {
+        if (parser == null) {
+            throw new IllegalArgumentException("the input genome-loc parser cannot be null");
+        }
+        if (locatables == null) {
+            throw new IllegalArgumentException("the input locatable collection cannot be null");
+        };
+        if (locatables.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("some element in the locatable input collection is null");
+        }
+        final List<GenomeLoc> result = locatables.stream().map(parser::createGenomeLoc).collect(Collectors.toList());
+        return Collections.unmodifiableList(result);
+    }
+
 }
