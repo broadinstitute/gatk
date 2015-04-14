@@ -39,6 +39,7 @@ public final class ReadFilterLibrary {
     public static final ReadFilter HAS_MATCHING_BASES_AND_QUALS = read -> read.getReadLength() == read.getBaseQualities().length;
     public static final ReadFilter SEQ_IS_STORED = read -> read.getReadBases() != SAMRecord.NULL_SEQUENCE ;
     public static final ReadFilter CIGAR_IS_SUPPORTED = read -> read.getCigar() == null || !CigarUtils.containsNOperator(read.getCigar());
+    public static final ReadFilter NON_ZERO_LENGTH_ALIGNMENT = read -> read.getAlignmentStart() <= read.getAlignmentEnd();
 
     public static final ReadFilter WELLFORMED =
             VALID_ALIGNMENT_START
@@ -47,5 +48,6 @@ public final class ReadFilterLibrary {
             .and(HAS_READ_GROUP)
             .and(HAS_MATCHING_BASES_AND_QUALS)
             .and(SEQ_IS_STORED)
-            .and(CIGAR_IS_SUPPORTED);
+            .and(CIGAR_IS_SUPPORTED)
+            .and(NON_ZERO_LENGTH_ALIGNMENT);
 }
