@@ -381,19 +381,22 @@ final class GaussianMixtureModel {
         public static final double MU_MAX = 4.0;
         public static final double MU_SPAN = MU_MAX - MU_MIN;
 
-        private final int dim;
-        private final double prior_nu;    //from Murphy (prior counts)
-        private final double prior_beta;  //from Murphy (shrinkage)
-        private final double prior_alpha; //from Murphy (dirichlet parameter)
-        private final RealVector prior_m;  //prior mean is the zero vector
-        private final RealMatrix prior_L;
+        private final int dim;            //number of dimensions of this gaussian
+        private final double prior_nu;    //prior counts
+        private final double prior_beta;  //shrinkage
+        private final double prior_alpha; //dirichlet parameter
+        private final RealVector prior_m;  //prior on the mean vector. Size = dim
+        private final RealMatrix prior_L;  //prior on the inverse variance matrix. Size = dim x dim
 
-        private double param_N;                  //sum of the fractional weigths assigned to this gaussian from all the data points (param_N from Murphy section 21.6.1.3)
+        //Parameters fitted by the model. They corresponds to parameters indexed by subscript k in Murphy chapter 21.6.1.3
+        private double param_N;                 //sum of the fractional weigths assigned to this gaussian from all the data points
         private RealVector param_xbar;              //mean vector
+        private RealVector param_m;              //mean vector
+        private RealMatrix param_L;            //precision matrix
         private RealMatrix param_S;            //covariance matrix
-        private double param_nu;    //from Murphy (prior counts)
-        private double param_beta;  //from Murphy (shrinkage)
-        private double param_alpha; //from Murphy (dirichlet parameter)
+        private double param_nu;
+        private double param_beta;
+        private double param_alpha;
         private final List<Double> pVarInGaussian;
 
         private double pMixtureLog10;        //log10 of the mixture weight for this gaussian
@@ -412,31 +415,33 @@ final class GaussianMixtureModel {
 
             this.param_xbar = new ArrayRealVector(numDimensions); //empty
             this.param_S = new Array2DRowRealMatrix(numDimensions,numDimensions);   //empty
+            this.param_L = new Array2DRowRealMatrix(numDimensions,numDimensions);   //empty
             this.param_alpha = prior_alpha;
             this.param_beta = prior_beta;
             this.param_nu = prior_nu;
+            this.param_m = prior_m;
             this.pVarInGaussian = new ArrayList<>();
             //TODO: add checks for the parameter values
         }
 
-        MultivariateGaussian deepCopy() {
-            MultivariateGaussian g= new MultivariateGaussian(
-                    dim,
-                    prior_alpha,
-                    prior_beta,
-                    prior_nu,
-                    prior_m.copy(),
-                    prior_L.copy()
-            );
-            g.setpMixtureLog10(this.pMixtureLog10);
-            g.setParam_N(this.param_N);
-            g.param_xbar = this.param_xbar.copy();
-            g.param_S = this.param_S.copy();
-            g.setParam_alpha(this.param_alpha);
-            g.setParam_beta(this.param_beta);
-            g.setParam_nu(this.param_nu);
-            return g;
-        }
+//        MultivariateGaussian deepCopy() {
+//            MultivariateGaussian g= new MultivariateGaussian(
+//                    dim,
+//                    prior_alpha,
+//                    prior_beta,
+//                    prior_nu,
+//                    prior_m.copy(),
+//                    prior_L.copy()
+//            );
+//            g.setpMixtureLog10(this.pMixtureLog10);
+//            g.setParam_N(this.param_N);
+//            g.param_xbar = this.param_xbar.copy();
+//            g.param_S = this.param_S.copy();
+//            g.setParam_alpha(this.param_alpha);
+//            g.setParam_beta(this.param_beta);
+//            g.setParam_nu(this.param_nu);
+//            return g;
+//        }
 
         @Override
         public String toString() {
