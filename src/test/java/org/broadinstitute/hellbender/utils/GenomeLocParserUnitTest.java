@@ -192,7 +192,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
         assertEquals(loc.getStart(), 1);
     }
 
-    @Test(expectedExceptions=UserException.class)
+    @Test(expectedExceptions=UserException.MalformedGenomeLoc.class)
     public void testGenomeLocBad2() {
         GenomeLoc loc = genomeLocParser.parseGenomeLoc("1:1-500-0");
         assertEquals(loc.getContigIndex(), 0);
@@ -200,7 +200,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
         assertEquals(loc.getStart(), 1);
     }
 
-    @Test(expectedExceptions=UserException.class)
+    @Test(expectedExceptions=UserException.MalformedGenomeLoc.class)
     public void testGenomeLocBad3() {
         GenomeLoc loc = genomeLocParser.parseGenomeLoc("1:1--0");
         assertEquals(loc.getContigIndex(), 0);
