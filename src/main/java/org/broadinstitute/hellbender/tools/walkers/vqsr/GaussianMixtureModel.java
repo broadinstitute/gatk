@@ -519,7 +519,7 @@ final class GaussianMixtureModel {
                 logOfLambdaTilde += digamma((param_nu + 1.0 - j) / 2.0);
             }
             logOfLambdaTilde += dim * log(2.0);
-            logOfLambdaTilde -= log(determinant(param_S));
+            logOfLambdaTilde += log(determinant(cachedSigmaInverse));
 
             //Murphy eq. 21.133 (multiplicative factor that does not depend on i -- index over data).
             // The second part of this equation is in evaluateDatumLog10
