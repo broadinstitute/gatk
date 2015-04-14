@@ -502,9 +502,10 @@ final class GaussianMixtureModel {
             precomputeInverse();
             //HACK: need this dance because the final evaluation step
             //needs to be independent of param_nu but the eval function mutliplies by it.
-            //So we divide by it here.
+            //So we divide by it here. But for the determimant, we use the real matrix.
+            final double det1 = 1.0 / determinant(cachedSigmaInverse);
             cachedSigmaInverse = cachedSigmaInverse.scalarMultiply(1.0/param_nu);
-            cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) dim) / 2.0)) + log10(pow(determinant(param_S), -0.5));
+            cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) dim) / 2.0)) + log10(pow(det1, -0.5));
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
