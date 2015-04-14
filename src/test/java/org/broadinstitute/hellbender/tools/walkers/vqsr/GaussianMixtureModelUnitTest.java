@@ -243,7 +243,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
     private void compareFitModelToExpected(double[][] mus, double[][][] sigmas, double[] weights, GaussianMixtureModel gmm, double[] okDistances) {
         //Note: sort inferred gaussians because the model is not fully identifiable (up to reordering).
         //we sort them by the mixture weights
-        final List<MultivariateGaussian> gaussians = gmm.getGaussians();
+        final List<MultivariateGaussian> gaussians = new ArrayList<>(gmm.getGaussians());
         gaussians.sort((g1, g2) -> Double.compare(g1.getpMixtureLog10(), g2.getpMixtureLog10()));
 
         //now compare inferred results to truth
