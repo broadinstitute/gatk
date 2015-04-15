@@ -21,6 +21,14 @@ import static org.broadinstitute.hellbender.utils.Utils.getRandomGenerator;
 
 /**
  * Defines functionality for fitting gaussian mixture models to data and computing likelihood of data points.
+ * This class implements the Variational Bayes Expectation Maximization algorithm to fit the model to the data.
+ *
+ * The implementation follows the textbook, using the same names for parameters whenever possible:
+ * Kevin P. Murphy "Machine Learning: A probabilistic perspective"
+ * Equation numbers correspond to the first edition, first printing.
+ *
+ * Note: certain parts of the implementation require a random number generator.
+ * Right now, this class uses the generator from {@link Utils#apacheRandomGenerator}.
  */
 final class GaussianMixtureModel {
 
@@ -38,7 +46,7 @@ final class GaussianMixtureModel {
     private GaussianMixtureModel(final int numGaussians, final int numAnnotations,
                                                   final double prior_alpha, final double prior_beta, final double prior_nu) {
         this.gaussians = new HashSet<>( numGaussians );
-        final RealVector prior_m = new ArrayRealVector(numAnnotations);                  //prior mean is the zero vector
+        final RealVector prior_m = new ArrayRealVector(numAnnotations, 0.0);             //prior mean is the zero vector
         final RealMatrix prior_L = identityMatrix(numAnnotations).scalarMultiply(200.0); //prior precision is diagonal 200.0
 
         for( int i = 0; i < numGaussians; i++ ) {
@@ -86,6 +94,7 @@ final class GaussianMixtureModel {
     /**
      * Returns the gaussians.
      * Use with caution - the live objects are returned and must not be modified.
+     * Only for testing.
      */
     @VisibleForTesting
     Collection<MultivariateGaussian> getGaussians() {
@@ -96,8 +105,7 @@ final class GaussianMixtureModel {
      * Fits the Gaussian Mixture model to the data.
      * The model is assumed to have been initialized (eg by k-means).
      */
-    public void variationalBayesExpectationMaximization( final List<VariantDatum> data, int maxIterations, double minProbConvergence ) {
-
+    private void variationalBayesExpectationMaximization( final List<VariantDatum> data, int maxIterations, double minProbConvergence ) {
         // The VBEM loop
         normalizePMixtureLog10(data.size());
         expectationStep(data);
@@ -124,9 +132,9 @@ final class GaussianMixtureModel {
     /**
      * Initializes the model by running k-means on the data. K is the same as the number of gaussians.
      */
-    public void initializeRandomModel( final List<VariantDatum> data, final int numKMeansIterations, RandomGenerator rand) {
+    private void initializeRandomModel( final List<VariantDatum> data, final int numKMeansIterations, RandomGenerator rand) {
 
-        gaussians.forEach(g -> g.initializeRandomXBar(rand));
+        gaussians.forEach(g -> g.initializeRandomXBar(rand)); //XXX: this should be removable but a test fails
 
         logger.info("Initializing model with " + numKMeansIterations + " k-means iterations...");
         initializeMeansUsingKMeans(data, numKMeansIterations, rand);
@@ -139,7 +147,9 @@ final class GaussianMixtureModel {
         }
     }
 
-    //performs k-means clustering for a fixed number of iterations to initialize the gaussian means.
+    /*
+     * Performs k-means clustering for a fixed number of iterations to initialize the gaussian means.
+     */
     private void initializeMeansUsingKMeans(final List<VariantDatum> data, final int numIterations, final RandomGenerator rand) {
         final KMeansPlusPlusClusterer<VariantDatum> kmeans = new KMeansPlusPlusClusterer<>(gaussians.size(), numIterations, new EuclideanDistance(), rand);
         final List<CentroidCluster<VariantDatum>> clusters = kmeans.cluster(data);
@@ -203,7 +213,7 @@ final class GaussianMixtureModel {
     /**
      * Before data is evaluated, this methods needs to be called to precompute some numbers that are used for all values.
      */
-    public void precomputeDenominatorForEvaluation() {
+    private void precomputeDenominatorForEvaluation() {
         gaussians.forEach(MultivariateGaussian::precomputeDenominatorForEvaluation);
 
         isModelReadyForEvaluation = true;
@@ -316,6 +326,7 @@ final class GaussianMixtureModel {
 
     /**
      * Computes the lod score for each data item and assigns it to the item.
+     * TODO: refactor this - setting fields like this is not great.
      */
     public void setLodFromModel( final List<VariantDatum> data, final boolean isPositiveModel) {
         if( !readyForEvaluation() ) {
@@ -349,10 +360,10 @@ final class GaussianMixtureModel {
         return datum.prior + positiveLod - negativeLod;
     }
 
-    @VisibleForTesting
     /**
      * This class represents one gaussian in the mixture model.
      */
+    @VisibleForTesting
     static final class MultivariateGaussian {
         public static final double MU_MIN = -4.0;
         public static final double MU_MAX = 4.0;
@@ -366,9 +377,9 @@ final class GaussianMixtureModel {
         private final RealMatrix prior_L;  //prior on the inverse variance matrix. Size = dim x dim
 
         //Parameters fitted by the model. They corresponds to parameters indexed by subscript k in Murphy chapter 21.6.1.3
-        private double param_N;                 //sum of the fractional weigths assigned to this gaussian from all the data points
-        private RealVector param_xbar;              //mean vector
-        private RealVector param_m;              //mean vector
+        private double param_N;                //sum of the fractional weigths assigned to this gaussian from all the data points
+        private RealVector param_xbar;         //mean vector
+        private RealVector param_m;
         private RealMatrix param_L;            //precision matrix
         private RealMatrix param_S;            //covariance matrix
         private double param_nu;
@@ -380,7 +391,6 @@ final class GaussianMixtureModel {
 
         //caches
         private double cachedDenomLog10;
-        private ArrayRealVector param_XBar;
 
         MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix prior_L) {
             this.dim = numDimensions;
