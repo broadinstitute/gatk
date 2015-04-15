@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import com.google.common.annotations.VisibleForTesting;
 import joptsimple.internal.Strings;
 import org.apache.commons.math3.linear.*;
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -11,8 +14,6 @@ import java.util.*;
 
 import static java.lang.Double.isInfinite;
 import static java.lang.Math.*;
-import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.minBy;
 import static org.apache.commons.math3.special.Gamma.digamma;
 import static org.broadinstitute.hellbender.utils.MathUtils.*;
 import static org.broadinstitute.hellbender.utils.Utils.getRandomGenerator;
@@ -138,33 +139,13 @@ final class GaussianMixtureModel {
     }
 
     //performs k-means clustering for a fixed number of iterations to initialize the gaussian means.
-    private void initializeMeansUsingKMeans( final List<VariantDatum> data, final int numIterations, final Random rand ) {
+    private void initializeMeansUsingKMeans(final List<VariantDatum> data, final int numIterations, final Random rand) {
+        final KMeansPlusPlusClusterer<VariantDatum> kmeans = new KMeansPlusPlusClusterer<>(gaussians.size(), numIterations, new EuclideanDistance());
+        final List<CentroidCluster<VariantDatum>> clusters = kmeans.cluster(data);
 
-        final Map<VariantDatum, MultivariateGaussian> assignment = new HashMap<>(data.size());
-
-        int iter = 0;
-        while( iter++ < numIterations ) {
-            // E step: assign each variant to the nearest cluster
-            data.forEach(d -> assignment.put(d, gaussians.stream().collect(minBy(comparing(mvg -> mvg.distanceFromXBar(d)))).get()));
-
-            // M step: update gaussian means based on assigned variants
-            gaussians.forEach(g -> g.zeroOutXBar());
-            final Map<MultivariateGaussian, Integer> numAssigned = new HashMap<>();
-            gaussians.forEach(g -> numAssigned.put(g, 0));
-
-            for( Map.Entry<VariantDatum, MultivariateGaussian> kv : assignment.entrySet() ) {
-                MultivariateGaussian mvg = kv.getValue();
-                mvg.incrementXBar(kv.getKey());
-                numAssigned.put(mvg, 1 + numAssigned.get(mvg));
-            }
-            gaussians.forEach(g -> {
-                final int n = numAssigned.get(g);
-                if( n != 0 ) {
-                    g.divideEqualsXBar((double) n);
-                } else {
-                    g.initializeRandomXBar(rand);//no data item assigned to this gaussian - reset the mean randomly
-                }
-            });
+        final MultivariateGaussian[] aArr = this.gaussians.toArray(new MultivariateGaussian[this.gaussians.size()]);
+        for (int i = 0; i < aArr.length; i++) {
+            aArr[i].setParam_XBar(new ArrayRealVector(clusters.get(i).getCenter().getPoint()));
         }
     }
 
@@ -213,7 +194,7 @@ final class GaussianMixtureModel {
         int gaussianIndex2 = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
             sumDiff += Math.abs(pGaussianLog10Normalized[gaussianIndex2] - gaussian.getpMixtureLog10());
-            gaussian.setpMixtureLog10( pGaussianLog10Normalized[gaussianIndex2++] );
+            gaussian.setpMixtureLog10(pGaussianLog10Normalized[gaussianIndex2++]);
         }
         return sumDiff;
     }
@@ -246,7 +227,7 @@ final class GaussianMixtureModel {
         final double[] pVarInGaussianLog10 = new double[gaussians.size()];
         int gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + gaussian.evaluateDatumLog10( datum );
+            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + gaussian.evaluateDatumLog10(datum);
         }
         final double result = nanTolerantLog10SumLog10(pVarInGaussianLog10); // Sum(pi_k * p(v|n,k))
         if (Double.isNaN(result)){
@@ -291,7 +272,7 @@ final class GaussianMixtureModel {
                     // evaluate this random data point
                     int gaussianIndex = 0;
                     for( final MultivariateGaussian gaussian : gaussians ) {
-                        pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + gaussian.evaluateDatumLog10( datum );
+                        pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + gaussian.evaluateDatumLog10(datum);
                     }
 
                     // add this sample's probability to the pile in order to take an average in the end
@@ -398,6 +379,7 @@ final class GaussianMixtureModel {
 
         //caches
         private double cachedDenomLog10;
+        private ArrayRealVector param_XBar;
 
         MultivariateGaussian(int numDimensions, double prior_alpha, double prior_beta, double prior_nu, RealVector prior_m, RealMatrix prior_L) {
             this.dim = numDimensions;
@@ -494,7 +476,7 @@ final class GaussianMixtureModel {
             //needs to be independent of param_nu but the eval function mutliplies by it.
             //So we divide by it here. But for the determimant, we use the real matrix.
             final double det1 = 1.0 / determinant(param_L);
-            param_L = param_L.scalarMultiply(1.0/param_nu);
+            param_L = param_L.scalarMultiply(1.0 / param_nu);
             cachedDenomLog10 = log10(pow(2.0 * Math.PI, -1.0 * ((double) dim) / 2.0)) + log10(pow(det1, -0.5));
         }
 
@@ -609,8 +591,8 @@ final class GaussianMixtureModel {
          * Returns (a copy of) the mean vector.
          * A copy is made to avoid representation exposure.
          */
-        double[] getXBar() {
-            return param_xbar.toArray();
+        RealVector getXBar() {
+            return param_xbar.copy();
         }
 
         /**
@@ -644,6 +626,10 @@ final class GaussianMixtureModel {
 
         void setParam_N(double param_N) {
             this.param_N = param_N;
+        }
+
+        public void setParam_XBar(RealVector param_XBar) {
+            this.param_xbar = param_XBar.copy();
         }
     }
 }

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.util.Comparator;
@@ -10,7 +11,7 @@ import java.util.List;
  * Represents a data item for VQSR (a site).
  * Package private because it's not usable outside of VQSR.
  */
-final class VariantDatum {
+final class VariantDatum implements Clusterable {
 
     public RealVector annotations; //values of the annotations
     public boolean[] isNull;     //is any of these values "null" (empty) - used for marginalization for plotting
@@ -53,5 +54,10 @@ final class VariantDatum {
             }
         }
         this.worstAnnotation = worstAnnotation;
+    }
+
+    @Override
+    public double[] getPoint() {
+        return annotations.toArray();
     }
 }
