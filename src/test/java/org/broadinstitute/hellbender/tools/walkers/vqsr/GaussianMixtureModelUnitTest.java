@@ -8,8 +8,6 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.ml.distance.ChebyshevDistance;
 import org.apache.commons.math3.ml.distance.DistanceMeasure;
-import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.Well19937c;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.GaussianMixtureModel.MultivariateGaussian;
@@ -33,12 +31,9 @@ import static org.broadinstitute.hellbender.utils.MathUtils.identityMatrix;
 import static org.testng.Assert.*;
 
 public class GaussianMixtureModelUnitTest extends BaseTest{
-    private static final int SEED = 1337;
-    private RandomGenerator rng;
 
     @BeforeMethod
     private void resetRandom(){
-        rng = new Well19937c(SEED);
         Utils.resetRandomGenerator();
     }
 
@@ -317,11 +312,11 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
         //Note: This is the apache math Pair, not the apache lang Pair.
         List<Pair<MultivariateNormalDistribution, Double>> pmf = new ArrayList<>(nGaussians);
         for(int i = 0; i < nGaussians; i++){
-            MultivariateNormalDistribution mvn = new MultivariateNormalDistribution(rng, mus[i], sigmas[i]);
+            MultivariateNormalDistribution mvn = new MultivariateNormalDistribution(Utils.getApacheRandomGenerator(), mus[i], sigmas[i]);
             pmf.add(new Pair<>(mvn, weigths[i]));
         }
 
-        EnumeratedDistribution<MultivariateNormalDistribution> catDistro = new EnumeratedDistribution<>(rng, pmf);
+        EnumeratedDistribution<MultivariateNormalDistribution> catDistro = new EnumeratedDistribution<>(Utils.getApacheRandomGenerator(), pmf);
         List<double[]> result = new ArrayList<>(nSamples);
         for (int i = 0; i < nSamples; i++) {
             MultivariateNormalDistribution mvn = catDistro.sample();

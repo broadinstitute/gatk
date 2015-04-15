@@ -6,6 +6,7 @@ import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.apache.commons.math3.ml.distance.EuclideanDistance;
+import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -66,7 +67,7 @@ final class GaussianMixtureModel {
         if( maxGaussians <= 0 ) { throw new IllegalArgumentException("maxGaussians must be a positive integer but found: " + maxGaussians); }
 
         final GaussianMixtureModel model = GaussianMixtureModel.makeEmptyModel(maxGaussians, data.get(0).annotations.getDimension(), VRAC.DIRICHLET_PARAMETER, VRAC.SHRINKAGE, VRAC.PRIOR_COUNTS );
-        model.initializeRandomModel(data, VRAC.NUM_KMEANS_ITERATIONS, Utils.getRandomGenerator());
+        model.initializeRandomModel(data, VRAC.NUM_KMEANS_ITERATIONS, Utils.getApacheRandomGenerator());
         model.variationalBayesExpectationMaximization(data, VRAC.MAX_ITERATIONS, MIN_PROB_CONVERGENCE);
         return model;
     }
@@ -123,7 +124,7 @@ final class GaussianMixtureModel {
     /**
      * Initializes the model by running k-means on the data. K is the same as the number of gaussians.
      */
-    public void initializeRandomModel( final List<VariantDatum> data, final int numKMeansIterations, Random rand) {
+    public void initializeRandomModel( final List<VariantDatum> data, final int numKMeansIterations, RandomGenerator rand) {
 
         gaussians.forEach(g -> g.initializeRandomXBar(rand));
 
@@ -139,8 +140,8 @@ final class GaussianMixtureModel {
     }
 
     //performs k-means clustering for a fixed number of iterations to initialize the gaussian means.
-    private void initializeMeansUsingKMeans(final List<VariantDatum> data, final int numIterations, final Random rand) {
-        final KMeansPlusPlusClusterer<VariantDatum> kmeans = new KMeansPlusPlusClusterer<>(gaussians.size(), numIterations, new EuclideanDistance());
+    private void initializeMeansUsingKMeans(final List<VariantDatum> data, final int numIterations, final RandomGenerator rand) {
+        final KMeansPlusPlusClusterer<VariantDatum> kmeans = new KMeansPlusPlusClusterer<>(gaussians.size(), numIterations, new EuclideanDistance(), rand);
         final List<CentroidCluster<VariantDatum>> clusters = kmeans.cluster(data);
 
         final MultivariateGaussian[] aArr = this.gaussians.toArray(new MultivariateGaussian[this.gaussians.size()]);
@@ -417,13 +418,13 @@ final class GaussianMixtureModel {
             param_xbar.set(0.0);
         }
 
-        void initializeRandomXBar(final Random rand) {
+        void initializeRandomXBar(final RandomGenerator rand) {
             for (int i = 0; i < dim; i++) {
                 param_xbar.setEntry(i, MU_MIN + MU_SPAN * rand.nextDouble());
             }
         }
 
-        void initializeRandomS(final Random rand) {
+        void initializeRandomS(final RandomGenerator rand) {
             //This is equiv to drawing from Wishart.
             //Note: maybe we want empirical cov from kmeans clusters
             final double[][] randSigma = new double[dim][dim];
