@@ -264,7 +264,7 @@ public class GaussianMixtureModelUnitTest extends BaseTest{
     }
 
     private void compareMeans(double[][] mus, MultivariateGaussian result1, MultivariateGaussian result2, double okDistance) {
-        final double[][] resultMeans = {result1.getXBar(), result2.getXBar()};
+        final double[][] resultMeans = {result1.getXBar().toArray(), result2.getXBar().toArray()};
         for (int i = 0 ; i < resultMeans.length; i++) {
             double dist = distance(resultMeans[i], mus[i]);
             assertTrue(dist < okDistance, "expected:" + Arrays.toString(mus[i]) + " actual:" + Arrays.toString(resultMeans[i]) + " distance:" + dist);
