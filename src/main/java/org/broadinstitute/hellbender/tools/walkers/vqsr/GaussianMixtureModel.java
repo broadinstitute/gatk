@@ -485,7 +485,7 @@ final class GaussianMixtureModel {
         }
 
         void evaluateFinalModelParameters(final List<VariantDatum> data) {
-            final RealMatrix param_S = recomputeMuAndSigma(data);
+            param_S = recomputeMuAndSigma(data);
             resetPVarInGaussian(); // clean up some memory
         }
 
@@ -540,7 +540,7 @@ final class GaussianMixtureModel {
         }
 
         void maximizeGaussian(final List<VariantDatum> data) {
-            final RealMatrix param_S = recomputeMuAndSigma(data);
+            param_S = recomputeMuAndSigma(data);
 
             final RealMatrix term1 = inverse(prior_L);
             final RealMatrix term2 = param_S.scalarMultiply(param_N);  //eq 21.144 in Murphy (first part)
@@ -588,17 +588,17 @@ final class GaussianMixtureModel {
         }
 
         private RealMatrix recompute_paramS(List<VariantDatum> data) {
-            RealMatrix param_S = new Array2DRowRealMatrix(new double[dim][dim]);
+            RealMatrix pS = new Array2DRowRealMatrix(new double[dim][dim]);
             //equation 21.147 from Murphy
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
                 RealVector rv = datum.annotations.subtract(param_xbar);
                 final RealMatrix pVarSigma = rv.outerProduct(rv).scalarMultiply(prob);
-                param_S = param_S.add(pVarSigma);
+                pS = pS.add(pVarSigma);
             }
-            param_S = param_S.scalarMultiply(1.0 / param_N);
-            return param_S;
+            pS = pS.scalarMultiply(1.0 / param_N);
+            return pS;
         }
 
         double getpMixtureLog10() {
