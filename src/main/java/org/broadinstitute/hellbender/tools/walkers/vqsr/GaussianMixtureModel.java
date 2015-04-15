@@ -5,7 +5,6 @@ import joptsimple.internal.Strings;
 import org.apache.commons.math3.linear.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -272,7 +271,7 @@ final class GaussianMixtureModel {
         final double[] pVarInGaussianLog10 = new double[gaussians.size()];
         int gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
-            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + MathUtils.normalDistributionLog10(gaussian.getXBar(i), gaussian.getParam_S(i, i), datum.annotations.getEntry(i));
+            pVarInGaussianLog10[gaussianIndex++] = gaussian.getpMixtureLog10() + gaussian.evaluateDatumInOneDimension(datum, i);
         }
         return nanTolerantLog10SumLog10(pVarInGaussianLog10); // Sum(pi_k * p(v|n,k))
     }
@@ -458,7 +457,7 @@ final class GaussianMixtureModel {
             // matrix and multiplying it by its transpose
 
             RealMatrix tmp = new Array2DRowRealMatrix(randSigma);
-            param_S = tmp.multiply(tmp.transpose());
+            setParam_S(tmp.multiply(tmp.transpose()));
         }
 
         double distanceFromXBar(final VariantDatum datum) {
@@ -485,8 +484,12 @@ final class GaussianMixtureModel {
             return new LUDecomposition(m).getDeterminant();
         }
 
+        void evaluateFinalModelParameters(final List<VariantDatum> data) {
+            final RealMatrix param_S = recomputeMuAndSigma(data);
+            resetPVarInGaussian(); // clean up some memory
+        }
+
         void precomputeDenominatorForEvaluation() {
-            param_L = inverse(param_S);
             //HACK: need this dance because the final evaluation step
             //needs to be independent of param_nu but the eval function mutliplies by it.
             //So we divide by it here. But for the determimant, we use the real matrix.
@@ -496,7 +499,6 @@ final class GaussianMixtureModel {
         }
 
         void precomputeDenominatorForVariationalBayes(final double sumHyperParameterAlpha) {
-            param_L = inverse(param_S);
 
             //Murphy eq. 21.129
             final double logOfPiTilde = digamma(param_alpha) - digamma(sumHyperParameterAlpha);
@@ -525,6 +527,10 @@ final class GaussianMixtureModel {
             return lnToLog10(-0.5 * param_nu * sumKernel) + cachedDenomLog10;
         }
 
+        public double evaluateDatumInOneDimension(VariantDatum datum, int i) {
+            return normalDistributionLog10(param_xbar.getEntry(i), param_S.getEntry(i, i), datum.annotations.getEntry(i));
+        }
+
         void assignPVarInGaussian(final double pVar) {
             pVarInGaussian.add(pVar);
         }
@@ -534,17 +540,16 @@ final class GaussianMixtureModel {
         }
 
         void maximizeGaussian(final List<VariantDatum> data) {
-            recomputeMuAndSigma(data);
+            final RealMatrix param_S = recomputeMuAndSigma(data);
 
-            RealMatrix term1 = inverse(prior_L);
-            RealMatrix term2 = param_S.scalarMultiply(param_N);  //eq 21.144 in Murphy (first part)
+            final RealMatrix term1 = inverse(prior_L);
+            final RealMatrix term2 = param_S.scalarMultiply(param_N);  //eq 21.144 in Murphy (first part)
                                                                         //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by param_N)
 
             //this is the third term in eq 21.144 in Murphy
             final RealVector muMinusPriorM = param_xbar.subtract(prior_m);
             final RealMatrix term3 = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
             final RealMatrix sum = term1.add(term2).add(term3);                      //eq 21.144 in Murphy (third part)
-            param_S = sum;
             param_L = inverse(sum);
 
             param_alpha = prior_alpha + param_N;        //Murphy eq. 21.139
@@ -557,10 +562,10 @@ final class GaussianMixtureModel {
             resetPVarInGaussian(); // clean up some memory
         }
 
-        private void recomputeMuAndSigma(List<VariantDatum> data) {
+        private RealMatrix recomputeMuAndSigma(List<VariantDatum> data) {
              recompute_paramN(data);    //equation 21.140 from Murphy
              recompute_paramXBar(data);     //equation 21.146 from Murphy
-             recompute_paramS(data);  //equation 21.147 from Murphy (without the division by param_N at the end)
+             return recompute_paramS(data);  //equation 21.147 from Murphy (without the division by param_N at the end)
         }
 
         private void recompute_paramN(List<VariantDatum> data) {
@@ -570,11 +575,6 @@ final class GaussianMixtureModel {
                 final double prob = pVarInGaussian.get(i);
                 param_N += prob;
             }
-        }
-
-        void evaluateFinalModelParameters(final List<VariantDatum> data) {
-            recomputeMuAndSigma(data);
-            resetPVarInGaussian(); // clean up some memory
         }
 
         private void recompute_paramXBar(List<VariantDatum> data) {
@@ -587,8 +587,8 @@ final class GaussianMixtureModel {
             divideEqualsXBar(param_N);
         }
 
-        private void recompute_paramS(List<VariantDatum> data) {
-            param_S = new Array2DRowRealMatrix(new double[dim][dim]);
+        private RealMatrix recompute_paramS(List<VariantDatum> data) {
+            RealMatrix param_S = new Array2DRowRealMatrix(new double[dim][dim]);
             //equation 21.147 from Murphy
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
@@ -598,14 +598,11 @@ final class GaussianMixtureModel {
                 param_S = param_S.add(pVarSigma);
             }
             param_S = param_S.scalarMultiply(1.0 / param_N);
+            return param_S;
         }
 
         double getpMixtureLog10() {
             return pMixtureLog10;
-        }
-
-        double getXBar(int i) {
-            return param_xbar.getEntry(i);
         }
 
         /**
@@ -624,10 +621,6 @@ final class GaussianMixtureModel {
             return param_S.copy();
         }
 
-        double getParam_S(int i, int j) {
-            return param_S.getEntry(i, j);
-        }
-
         void setpMixtureLog10(double pMixtureLog10) {
             this.pMixtureLog10 = pMixtureLog10;
         }
@@ -636,7 +629,10 @@ final class GaussianMixtureModel {
         void setMu(RealVector mu) { this.param_xbar = mu.copy();}
 
         @VisibleForTesting
-        void setParam_S(RealMatrix param_S) { this.param_S = param_S.copy();}
+        void setParam_S(RealMatrix param_S) {
+            this.param_S = param_S;
+            this.param_L = inverse(param_S);
+        }
 
         double getParam_N() {
             return param_N;
@@ -646,21 +642,8 @@ final class GaussianMixtureModel {
             return param_alpha;
         }
 
-        void setParam_alpha(double param_alpha) {
-            this.param_alpha = param_alpha;
-        }
-
-        void setParam_beta(double param_beta) {
-            this.param_beta = param_beta;
-        }
-
-        void setParam_nu(double param_nu) {
-            this.param_nu = param_nu;
-        }
-
         void setParam_N(double param_N) {
             this.param_N = param_N;
         }
-
     }
 }
