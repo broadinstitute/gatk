@@ -414,9 +414,6 @@ final class GaussianMixtureModel {
 
             return Strings.join(sb, "\n");
         }
-        void zeroOutXBar() {
-            param_xbar.set(0.0);
-        }
 
         void initializeRandomXBar(final RandomGenerator rand) {
             for (int i = 0; i < dim; i++) {
@@ -443,22 +440,6 @@ final class GaussianMixtureModel {
             setParam_S(tmp.multiply(tmp.transpose()));
         }
 
-        double distanceFromXBar(final VariantDatum datum) {
-            return datum.annotations.getDistance(param_xbar);
-        }
-
-        void incrementXBar(final VariantDatum datum) {
-            param_xbar = param_xbar.add(datum.annotations);
-        }
-
-        void incrementXBar(final VariantDatum datum, final double prob) {
-            param_xbar = param_xbar.add(datum.annotations.mapMultiply(prob));
-        }
-
-        void divideEqualsXBar(final double x) {
-            param_xbar.mapDivideToSelf(x);
-        }
-
         static RealMatrix inverse(RealMatrix m) {
             return new LUDecomposition(m).getSolver().getInverse();
         }
@@ -468,7 +449,9 @@ final class GaussianMixtureModel {
         }
 
         void evaluateFinalModelParameters(final List<VariantDatum> data) {
-            param_S = recomputeMuAndSigma(data);
+            recompute_paramN(data);    //equation 21.140 from Murphy
+            recompute_paramXBar(data);     //equation 21.146 from Murphy
+            recompute_paramS(data);  //equation 21.147 from Murphy (without the division by param_N at the end)
             resetPVarInGaussian(); // clean up some memory
         }
 
@@ -523,32 +506,35 @@ final class GaussianMixtureModel {
         }
 
         void maximizeGaussian(final List<VariantDatum> data) {
-            param_S = recomputeMuAndSigma(data);
-
-            final RealMatrix term1 = inverse(prior_L);
-            final RealMatrix term2 = param_S.scalarMultiply(param_N);  //eq 21.144 in Murphy (first part)
-                                                                        //Note: eq 21.144 in Murphy second part is computed inside of updateSigma (without the multiplication by param_N)
-
-            //this is the third term in eq 21.144 in Murphy
-            final RealVector muMinusPriorM = param_xbar.subtract(prior_m);
-            final RealMatrix term3 = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
-            final RealMatrix sum = term1.add(term2).add(term3);                      //eq 21.144 in Murphy (third part)
-            param_L = inverse(sum);
+            recompute_paramN(data);    //equation 21.140 from Murphy
 
             param_alpha = prior_alpha + param_N;        //Murphy eq. 21.139
-            param_beta = prior_beta  + param_N;        //Murphy eq. 21.142
-            param_nu = prior_nu    + param_N + 1.0;  //Murphy eq. 21.145
 
-            //eq. 21.143 from Murphy (XXX: Murphy distinguishes between m and x-hat)
-            param_xbar = (prior_m.mapMultiply(prior_beta).add(param_xbar.mapMultiply(param_N))).mapDivide(param_beta);
+            recompute_paramXBar(data);//eq. 21.146 from Murphy
+
+            param_nu    = prior_nu + param_N + 1.0;  //Murphy eq. 21.145
+            recompute_paramS(data);                  //equation 21.147 from Murphy (without the division by param_N at the end)
+            param_beta  = prior_beta  + param_N;     //Murphy eq. 21.142
+
+            recompute_paramM();//equation 21.143 from Murphy();
+            recompute_paramL();
 
             resetPVarInGaussian(); // clean up some memory
         }
 
-        private RealMatrix recomputeMuAndSigma(List<VariantDatum> data) {
-             recompute_paramN(data);    //equation 21.140 from Murphy
-             recompute_paramXBar(data);     //equation 21.146 from Murphy
-             return recompute_paramS(data);  //equation 21.147 from Murphy (without the division by param_N at the end)
+        private void recompute_paramM() {
+            param_m = (prior_m.mapMultiply(prior_beta).add(param_xbar.mapMultiply(param_N))).mapDivide(param_beta);
+        }
+
+        private void recompute_paramL() {
+            //eq 21.144 in Murphy
+            final RealMatrix term1 = inverse(prior_L);
+            final RealMatrix term2 = param_S.scalarMultiply(param_N);
+
+            final RealVector muMinusPriorM = param_xbar.subtract(prior_m);
+            final RealMatrix term3 = muMinusPriorM.outerProduct(muMinusPriorM).scalarMultiply((prior_beta * param_N) / (prior_beta + param_N));
+            final RealMatrix sum = term1.add(term2).add(term3);                      //eq 21.144 in Murphy (third part)
+            param_L = inverse(sum);
         }
 
         private void recompute_paramN(List<VariantDatum> data) {
@@ -561,16 +547,16 @@ final class GaussianMixtureModel {
         }
 
         private void recompute_paramXBar(List<VariantDatum> data) {
-            zeroOutXBar();
+            param_xbar.set(0.0);
             int datumIndex = 0;
             for (final VariantDatum datum : data) {
                 final double prob = pVarInGaussian.get(datumIndex++);
-                incrementXBar(datum, prob);
+                param_xbar = param_xbar.add(datum.annotations.mapMultiply(prob));
             }
-            divideEqualsXBar(param_N);
+            param_xbar.mapDivideToSelf(param_N);
         }
 
-        private RealMatrix recompute_paramS(List<VariantDatum> data) {
+        private void recompute_paramS(List<VariantDatum> data) {
             RealMatrix pS = new Array2DRowRealMatrix(new double[dim][dim]);
             //equation 21.147 from Murphy
             int datumIndex = 0;
@@ -581,7 +567,7 @@ final class GaussianMixtureModel {
                 pS = pS.add(pVarSigma);
             }
             pS = pS.scalarMultiply(1.0 / param_N);
-            return pS;
+            param_S = pS;
         }
 
         double getpMixtureLog10() {
