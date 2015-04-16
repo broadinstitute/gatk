@@ -19,6 +19,8 @@ public final class ReadFilterLibrary {
     public static final ReadFilter PASSES_VENDOR_QUALITY_CHECK = read -> !read.getReadFailsVendorQualityCheckFlag();
     public static final ReadFilter MAPPING_QUALITY_AVAILABLE = read -> read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     public static final ReadFilter MAPPING_QUALITY_NOT_ZERO = read -> read.getMappingQuality() != 0;
+    public static final ReadFilter READLENGTH_EQUALS_CIGARLENGTH = read -> read.getReadLength() == read.getCigar().getReadLength();
+    public static final ReadFilter GOOD_CIGAR =  read -> CigarUtils.isGood(read.getCigar());
 
     public static final ReadFilter VALID_ALIGNMENT_START = read -> {
         if (read.getReadUnmappedFlag()) {

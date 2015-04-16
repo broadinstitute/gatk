@@ -22,14 +22,49 @@ public class ReadClipperTestUtils {
             new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH)};
 
 
-    public static SAMRecord makeReadFromCigar(Cigar cigar) {
-        return ArtificialSAMUtils.createArtificialRead(Utils.arrayFromArrayWithLength(BASES, cigar.getReadLength()), Utils.arrayFromArrayWithLength(QUALS, cigar.getReadLength()), cigar.toString());
-    }
-
+    /**
+     * Make a read from the CIGAR string
+     *
+     * @param cigarString string used to create a CIGAR
+     * @return artificial read
+     */
     public static SAMRecord makeReadFromCigar(String cigarString) {
         return makeReadFromCigar(TextCigarCodec.decode(cigarString));
     }
 
+    /**
+     * Make a read from the CIGAR.
+     *
+     * @param cigar
+     * @return artificial read
+     */
+    public static SAMRecord makeReadFromCigar(Cigar cigar) {
+        return makeReadFromCigar(cigar, 0);
+    }
+
+    private static SAMRecord makeReadFromCigar(Cigar cigar, int lengthChange) {
+        int readLength = cigar.getReadLength();
+        if (readLength >= -lengthChange) {
+            readLength += lengthChange;
+        }
+        return ArtificialSAMUtils.createArtificialRead(Utils.arrayFromArrayWithLength(BASES, readLength), Utils.arrayFromArrayWithLength(QUALS, readLength), cigar.toString());
+    }
+
+    /**
+     * Make a read from the CIGAR
+     *
+     * @param cigarString  string used to create a CIGAR
+     * @param lengthChange change in read length relative the CIGAR length
+     * @return artificial read
+     */
+    public static SAMRecord makeReadFromCigar(String cigarString, int lengthChange) {
+        return makeReadFromCigar(TextCigarCodec.decode(cigarString), lengthChange);
+    }
+
+    /**
+     * This function generates every valid permutation of cigar strings (with a given set of cigarElement) with a given length.
+     * See {@link ReadClipperTestUtils#generateCigarList(int, CigarElement[]) for a full description.}
+     */
     public static List<Cigar> generateCigarList(int maximumLength) {
         return generateCigarList(maximumLength, cigarElements);
     }
@@ -56,7 +91,7 @@ public class ReadClipperTestUtils {
         while (true) {
             Cigar cigar = createCigarFromCombination(cigarCombination, cigarElements);    // create the cigar
             cigar = CigarUtils.combineAdjacentCigarElements(cigar);                   // combine adjacent elements
-            if (CigarUtils.isCigarValid(cigar)) {                                     // check if it's valid
+            if (CigarUtils.isGood(cigar)) {                                     // check if it's valid
                 cigarList.add(cigar);                                      // add it
             }
 
@@ -88,5 +123,4 @@ public class ReadClipperTestUtils {
         }
         return cigar;
     }
-
 }
