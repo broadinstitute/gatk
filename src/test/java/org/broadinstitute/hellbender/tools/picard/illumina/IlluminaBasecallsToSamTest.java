@@ -32,7 +32,7 @@ public class IlluminaBasecallsToSamTest extends CommandLineProgramTest {
         return IlluminaBasecallsToSam.class.getSimpleName();
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testTileNumberComparator() {
         assertTrue(TILE_NUMBER_COMPARATOR.compare(100, 10) < 0, "");
         assertTrue(TILE_NUMBER_COMPARATOR.compare(20, 200) > 0, "");
@@ -40,23 +40,23 @@ public class IlluminaBasecallsToSamTest extends CommandLineProgramTest {
     }
 
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testNonBarcoded() throws Exception {
         runStandardTest(1, "nonBarcode.", "non_barcoded.params", 1, "25S8S25T", BASECALLS_DIR, TEST_DATA_DIR);
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testMultiplexed() throws Exception {
         runStandardTest(1, "multiplexedBarcode.", "barcode.params", 1, "25T8B25T", BASECALLS_DIR, TEST_DATA_DIR);
     }
 
     //Same as testMultiplexed except we use BARCODE_1 instead of BARCODE
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testMultiplexedWithAlternateBarcodeName() throws Exception {
         runStandardTest(1, "singleBarcodeAltName.", "multiplexed_positive_rgtags.params", 1, "25T8B25T", BASECALLS_DIR, TEST_DATA_DIR);
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testDualBarcodes() throws Exception {
         runStandardTest(1, "dualBarcode.", "barcode_double.params", 2, "25T8B8B25T", DUAL_BASECALLS_DIR, DUAL_TEST_DATA_DIR);
     }
@@ -67,7 +67,7 @@ public class IlluminaBasecallsToSamTest extends CommandLineProgramTest {
      * TODO: This testcase isn't broken, but can spawn an issue with FileChannelJDKBugWorkAround since it expects
      * an exception to be thrown.
      */
-    @Test(groups = {"broken"})
+    @Test(groups = {"broken"}, enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testCorruptDataReturnCode() throws Exception {
         boolean exceptionThrown = false;
         try {
