@@ -367,15 +367,11 @@ public class IOUtils {
     /**
      * Makes a reader for a file, unzipping if the file's name ends with '.gz'.
      */
-    public static Reader makeReaderMaybeGzipped(File file) {
-        try {
-            if (file.getPath().endsWith(".gz")) {
-                return new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
-            } else {
-                return new FileReader(file);
-            }
-        } catch (IOException e){
-            throw new GATKException("Cannot open file " + file, e);
+    public static Reader makeReaderMaybeGzipped(File file) throws IOException {
+        if (file.getPath().endsWith(".gz")) {
+            return new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
+        } else {
+            return new FileReader(file);
         }
     }
 

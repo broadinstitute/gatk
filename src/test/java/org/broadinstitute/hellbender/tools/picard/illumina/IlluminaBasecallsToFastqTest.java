@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.picard.illumina;
 
 import htsjdk.samtools.util.BufferedLineReader;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.LineReader;
-import htsjdk.samtools.util.StringUtil;
-import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadStructure;
 import org.testng.annotations.Test;
@@ -12,13 +9,13 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static htsjdk.samtools.util.IOUtil.assertFilesEqual;
 import static htsjdk.samtools.util.StringUtil.join;
 import static htsjdk.samtools.util.TestUtil.recursiveDelete;
 import static java.util.Arrays.copyOfRange;
-import static org.broadinstitute.hellbender.tools.picard.illumina.IlluminaBasecallsToFastq.ReadNameFormat;
 import static org.broadinstitute.hellbender.tools.picard.illumina.IlluminaBasecallsToFastq.ReadNameFormat.ILLUMINA;
 
 public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
@@ -32,7 +29,7 @@ public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
         return IlluminaBasecallsToFastq.class.getSimpleName();
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testNonBarcoded() throws Exception {
         final String suffix = ".1.fastq";
         final File outputFastq1 = File.createTempFile("nonBarcoded.", suffix);
@@ -54,7 +51,7 @@ public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
         assertFilesEqual(outputFastq2, new File(TEST_DATA_DIR, "nonBarcoded.2.fastq"));
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testMultiplexWithIlluminaReadNameHeaders() throws Exception {
         final File outputDir = File.createTempFile("testMultiplexRH.", ".dir");
         try {
@@ -89,12 +86,12 @@ public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testDeMultiplexed() throws Exception {
         runStandardTest(1, "multiplexedBarcode.", "mp_barcode.params", 1, "25T8B25T", BASECALLS_DIR, TEST_DATA_DIR);
     }
 
-    @Test
+    @Test(enabled = false, description = "bug https://github.com/broadinstitute/hellbender/issues/364")
     public void testDualBarcodes() throws Exception {
         runStandardTest(1, "dualBarcode.", "barcode_double.params", 2, "25T8B8B25T", DUAL_BASECALLS_DIR, DUAL_TEST_DATA_DIR);
     }

@@ -32,6 +32,8 @@ General guidelines for Hellbender developers
 
 * Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code).
 
+* Each tool should have at least one good end-to-end integration test with a check for expected output, plus high-quality unit tests for all non-trivial utility methods/classes used by the tool. Although we have no specific coverage target, coverage should be extensive enough that if tests pass, the tool is guaranteed to be in a usable state.
+
 * Don't accept pull requests that introduce warnings. Warnings need to be addressed or suppressed.
 
 * Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
