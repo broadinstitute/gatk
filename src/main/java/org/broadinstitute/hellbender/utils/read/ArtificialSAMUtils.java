@@ -10,6 +10,11 @@ import java.util.*;
 public class ArtificialSAMUtils {
     public static final int DEFAULT_READ_LENGTH = 50;
 
+    private static final String DEFAULT_READ_GROUP_PREFIX = "ReadGroup";
+    private static final String DEFAULT_PLATFORM_UNIT_PREFIX = "Lane";
+    private static final String DEFAULT_PLATFORM_PREFIX = "Platform";
+    private static final String DEFAULT_SAMPLE_NAME = "SampleX";
+
     /**
      * Creates an artificial sam header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
      *
@@ -29,6 +34,34 @@ public class ArtificialSAMUtils {
             dict.addSequence(rec);
         }
         header.setSequenceDictionary(dict);
+        return header;
+    }
+
+    /**
+     * Creates an artificial sam header, matching the parameters, chromosomes which will be labeled chr1, chr2, etc
+     * It also adds read groups.
+     *
+     * @param numberOfChromosomes the number of chromosomes to create
+     * @param startingChromosome  the starting number for the chromosome (most likely set to 1)
+     * @param chromosomeSize      the length of each chromosome
+     * @param groupCount          the number of groups to make
+     */
+    public static SAMFileHeader createArtificialSamHeaderWithGroups(int numberOfChromosomes, int startingChromosome, int chromosomeSize, int groupCount) {
+        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(numberOfChromosomes, startingChromosome, chromosomeSize);
+
+        final List<SAMReadGroupRecord> readGroups = new ArrayList<>();
+        for (int i = 0; i < groupCount; i++) {
+            SAMReadGroupRecord rec = new SAMReadGroupRecord(DEFAULT_READ_GROUP_PREFIX + i);
+            rec.setSample(DEFAULT_SAMPLE_NAME);
+            readGroups.add(rec);
+        }
+        header.setReadGroups(readGroups);
+
+        for (int i = 0; i < groupCount; i++) {
+            final SAMReadGroupRecord groupRecord = header.getReadGroup(readGroups.get(i).getId());
+            groupRecord.setAttribute("PL", DEFAULT_PLATFORM_PREFIX + ((i % 2)+1));
+            groupRecord.setAttribute("PU", DEFAULT_PLATFORM_UNIT_PREFIX + ((i % 3)+1));
+        }
         return header;
     }
 
@@ -154,38 +187,6 @@ public class ArtificialSAMUtils {
         return ArtificialSAMUtils.createArtificialRead(header, "default_read", 0, 10000, bases, quals, cigar.toString());
     }
 
-
-    public static List<SAMRecord> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
-        SAMRecord left = ArtificialSAMUtils.createArtificialRead(header, name, 0, leftStart, readLen);
-        SAMRecord right = ArtificialSAMUtils.createArtificialRead(header, name, 0, rightStart, readLen);
-
-        left.setReadPairedFlag(true);
-        right.setReadPairedFlag(true);
-
-        left.setProperPairFlag(true);
-        right.setProperPairFlag(true);
-
-        left.setFirstOfPairFlag(leftIsFirst);
-        right.setFirstOfPairFlag(!leftIsFirst);
-
-        left.setReadNegativeStrandFlag(leftIsNegative);
-        left.setMateNegativeStrandFlag(!leftIsNegative);
-        right.setReadNegativeStrandFlag(!leftIsNegative);
-        right.setMateNegativeStrandFlag(leftIsNegative);
-
-        left.setMateAlignmentStart(right.getAlignmentStart());
-        right.setMateAlignmentStart(left.getAlignmentStart());
-
-        left.setMateReferenceIndex(0);
-        right.setMateReferenceIndex(0);
-
-        int isize = rightStart + readLen - leftStart;
-        left.setInferredInsertSize(isize);
-        right.setInferredInsertSize(-isize);
-
-        return Arrays.asList(left, right);
-    }
-
     public static SAMRecord createRandomRead(int length) {
         List<CigarElement> cigarElements = new LinkedList<>();
         cigarElements.add(new CigarElement(length, CigarOperator.M));
@@ -285,30 +286,6 @@ public class ArtificialSAMUtils {
         SAMFileHeader header = new SAMFileHeader();
         header.setSortOrder(htsjdk.samtools.SAMFileHeader.SortOrder.coordinate);
         header.setSequenceDictionary(dict);
-        return header;
-    }
-
-    /**
-     * setup read groups for the specified read groups and sample names
-     *
-     * @param header       the header to set
-     * @param readGroupIDs the read group ID tags
-     * @param sampleNames  the sample names
-     * @return the adjusted SAMFileHeader
-     */
-    public static SAMFileHeader createEnumeratedReadGroups(SAMFileHeader header, List<String> readGroupIDs, List<String> sampleNames) {
-        if (readGroupIDs.size() != sampleNames.size()) {
-            throw new GATKException("read group count and sample name count must be the same");
-        }
-
-        List<SAMReadGroupRecord> readGroups = new ArrayList<SAMReadGroupRecord>();
-
-        for (int x = 0; x < readGroupIDs.size(); x++) {
-            SAMReadGroupRecord rec = new SAMReadGroupRecord(readGroupIDs.get(x));
-            rec.setSample(sampleNames.get(x));
-            readGroups.add(rec);
-        }
-        header.setReadGroups(readGroups);
         return header;
     }
 }
