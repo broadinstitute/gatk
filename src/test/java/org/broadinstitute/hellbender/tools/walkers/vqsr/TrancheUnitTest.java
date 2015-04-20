@@ -74,8 +74,7 @@ public final class TrancheUnitTest extends BaseTest {
 
     private static List<Tranche> findMyTranches(ArrayList<VariantDatum> vd, double[] tranches) {
         final int nCallsAtTruth = VariantDatum.countCallsAtTruth( vd, Double.NEGATIVE_INFINITY );
-        final Tranche.TruthSensitivityMetric metric = new Tranche.TruthSensitivityMetric( nCallsAtTruth );
-        return Tranche.findTranches(vd, tranches, metric, VariantRecalibratorArgumentCollection.Mode.SNP);
+        return Tranche.findTranches(vd, tranches, nCallsAtTruth, VariantRecalibratorArgumentCollection.Mode.SNP);
     }
 
     @Test

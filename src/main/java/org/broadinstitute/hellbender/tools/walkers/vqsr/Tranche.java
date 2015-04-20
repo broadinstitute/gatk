@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -117,7 +116,7 @@ final class Tranche {
      */
     public static List<Tranche> readTranches(File f) throws IOException{
         String[] header = null;
-        List<Tranche> tranches = new ArrayList<>();
+        final List<Tranche> tranches = new ArrayList<>();
 
         try (XReadLines xrl = new XReadLines(f) ) {
             for (final String line : xrl) {
@@ -129,7 +128,7 @@ final class Tranche {
                 if (header == null) {  //reading the header
                     header = vals;
                     if (header.length != EXPECTED_COLUMN_COUNT) {
-                        throw new UserException.MalformedFile(f, "Expected 11 elements in header line " + line);
+                        throw new UserException.MalformedFile(f, "Expected " + EXPECTED_COLUMN_COUNT + " elements in header line " + line);
                     }
                 } else {
                     if (header.length != vals.length) {
@@ -159,54 +158,24 @@ final class Tranche {
         }
     }
 
-    @VisibleForTesting
-    static final class TruthSensitivityMetric {
-        private final String name;
-        private double[] runningSensitivity;
-        private final int nTrueSites;
-
-        public TruthSensitivityMetric(int nTrueSites) {
-            this.name = "TruthSensitivity";
-            this.nTrueSites = nTrueSites;
-        }
-
-        public String getName(){
-            return name;
-        }
-
-        public double getThreshold(double tranche) {
-            return 1.0 - tranche/100.0; // tranche of 1 => 99% sensitivity target
-        }
-
-        public void calculateRunningMetric(List<VariantDatum> data) {
-            int nCalledAtTruth = 0;
-            runningSensitivity = new double[data.size()];
-
-            for ( int i = data.size() - 1; i >= 0; i-- ) {
-                VariantDatum datum = data.get(i);
-                nCalledAtTruth += datum.atTruthSite ? 1 : 0;
-                runningSensitivity[i] = 1 - nCalledAtTruth / (1.0 * nTrueSites);
-            }
-        }
-
-        public double getRunningMetric(int i) {
-            return runningSensitivity[i];
-        }
-    }
-
-    public static List<Tranche> findTranches( final List<VariantDatum> data, final double[] trancheThresholds, final TruthSensitivityMetric metric, final VariantRecalibratorArgumentCollection.Mode model) {
+    /**
+     * Creates and returns a list of variant tranches for given levels
+     * of thresholds in truth sensitivity.
+     */
+    public static List<Tranche> findTranches( final List<VariantDatum> data, final double[] trancheThresholds, final int nCallsAtTruth, final VariantRecalibratorArgumentCollection.Mode model) {
         logger.info(String.format("Finding %d tranches for %d variants", trancheThresholds.length, data.size()));
 
         Collections.sort(data, VariantDatum.VariantDatumLODComparator);
-        metric.calculateRunningMetric(data);
+        final double[] runningSensitivity = calculateRunningSensitivity(data, nCallsAtTruth);
 
-        List<Tranche> tranches = new ArrayList<>();
+        final List<Tranche> tranches = new ArrayList<>(trancheThresholds.length);
         for ( double trancheThreshold : trancheThresholds ) {
-            Tranche t = findTranche(data, metric, trancheThreshold, model);
+            final Tranche t = findTranche(data, runningSensitivity, trancheThreshold, model);
 
             if ( t == null ) {
-                if ( tranches.size() == 0 ) {
-                    throw new UserException(String.format("Couldn't find any tranche containing variants with a %s > %.2f. Are you sure the truth files contain unfiltered variants which overlap the input data?", metric.getName(), metric.getThreshold(trancheThreshold)));
+                if ( tranches.isEmpty() ) {
+                    throw new UserException(String.format("Couldn't find any tranche containing variants with TruthSensitivity > %.2f. " +
+                            "Are you sure the truth files contain unfiltered variants which overlap the input data?", getSensitivityThreshold(trancheThreshold)));
                 }
                 break;
             }
@@ -218,17 +187,42 @@ final class Tranche {
         return tranches;
     }
 
-    private static Tranche findTranche( final List<VariantDatum> data, final TruthSensitivityMetric metric, final double trancheThreshold, final VariantRecalibratorArgumentCollection.Mode model ) {
-        logger.debug(String.format("  Tranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, metric.getThreshold(trancheThreshold)));
+    public static double getSensitivityThreshold(double tranche) {
+        return 1.0 - tranche/100.0; // tranche of 1 => 99% sensitivity target
+    }
 
-        double metricThreshold = metric.getThreshold(trancheThreshold);
-        int n = data.size();
-        for ( int i = 0; i < n; i++ ) {
-            if ( metric.getRunningMetric(i) >= metricThreshold ) {
+    /**
+     * Given a list of data points sorted by quality (we use LOD), returns the array
+     * of sensitivity scores of variants with LOD scored above the given.
+     * That is, the resulting array has the same length as the input list and at each position i
+     * it contains the sensitivity of variants with indices at least equal to i.
+     */
+    private static double[] calculateRunningSensitivity(final List<VariantDatum> data, final int nTrueSites) {
+        final double[] runningSensitivity = new double[data.size()];
+        int nCalledAtTruth = 0;
+
+        for ( int i = data.size() - 1; i >= 0; i-- ) {
+            VariantDatum datum = data.get(i);
+            nCalledAtTruth += datum.atTruthSite ? 1 : 0;
+            runningSensitivity[i] = 1 - nCalledAtTruth / (1.0 * nTrueSites);
+        }
+        return runningSensitivity;
+    }
+
+    /**
+     * Creates a tranche of variants that have the truth sensitivity better than the threshold.
+     * Returns null if no such tranche exists.
+     */
+    private static Tranche findTranche( final List<VariantDatum> data, final double[] runningSensitivity, final double trancheThreshold, final VariantRecalibratorArgumentCollection.Mode model ) {
+        final double metricThreshold = getSensitivityThreshold(trancheThreshold);
+        logger.debug(String.format("  Tranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, metricThreshold));
+
+        for ( int i = 0; i < data.size(); i++ ) {
+            if ( runningSensitivity[i] >= metricThreshold ) {
                 // we've found the largest group of variants with sensitivity >= our target truth sensitivity
-                Tranche t = trancheOfVariants(data, i, trancheThreshold, model);
+                Tranche t = trancheOfVariants(data, data.get(i).lod, trancheThreshold, model);
                 logger.debug(String.format("  Found tranche for %.3f: %.3f threshold starting with variant %d; running score is %.3f ",
-                        trancheThreshold, metricThreshold, i, metric.getRunningMetric(i)));
+                        trancheThreshold, metricThreshold, i, runningSensitivity[i]));
                 logger.debug(String.format("  Tranche is %s", t));
                 return t;
             }
@@ -237,10 +231,12 @@ final class Tranche {
         return null;
     }
 
-    private static Tranche trancheOfVariants( final List<VariantDatum> data, int minI, double ts, final VariantRecalibratorArgumentCollection.Mode model ) {
+    /**
+     * Creates the tranche of variants with with minimal LOD given by {@param minLod}.
+     */
+    private static Tranche trancheOfVariants( final List<VariantDatum> data, final double minLod, final double ts, final VariantRecalibratorArgumentCollection.Mode model ) {
         int numKnown = 0, numNovel = 0, knownTi = 0, knownTv = 0, novelTi = 0, novelTv = 0;
 
-        double minLod = data.get(minI).lod;
         for ( final VariantDatum datum : data ) {
             if ( datum.lod >= minLod ) {
                 if ( datum.isKnown ) {
@@ -257,11 +253,11 @@ final class Tranche {
             }
         }
 
-        double knownTiTv = knownTi / Math.max(1.0 * knownTv, 1.0);
-        double novelTiTv = novelTi / Math.max(1.0 * novelTv, 1.0);
+        final double knownTiTv = knownTi / Math.max(1.0 * knownTv, 1.0);
+        final double novelTiTv = novelTi / Math.max(1.0 * novelTv, 1.0);
 
-        int accessibleTruthSites = VariantDatum.countCallsAtTruth(data, Double.NEGATIVE_INFINITY);
-        int nCallsAtTruth = VariantDatum.countCallsAtTruth(data, minLod);
+        final int accessibleTruthSites = VariantDatum.countCallsAtTruth(data, Double.NEGATIVE_INFINITY);
+        final int nCallsAtTruth = VariantDatum.countCallsAtTruth(data, minLod);
 
         return new Tranche(ts, minLod, numKnown, knownTiTv, numNovel, novelTiTv, accessibleTruthSites, nCallsAtTruth, model, DEFAULT_TRANCHE_NAME);
     }
