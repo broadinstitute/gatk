@@ -22,7 +22,7 @@ Installation
 ------------
 To build and run all tests, run `gradle check`. Test report is in `build/reports/tests/index.html`.
 
-To only build, run `gradle install`.
+To only build, run `gradle installApp`.
 
 To run all tests, run `gradle test`. 
 
@@ -140,3 +140,31 @@ If there are dependency changes in `build.gradle` it is necessary to refresh the
 
 * Open the gradle tool window  ( "View" -> "Tool Windows" -> "Gradle" )
 * Click the refresh button in the Gradle tool window.  It is in the top left of the gradle view and is represented by two blue arrows.
+
+Uploading Archives to Sonatype
+-------------------
+To upload snapshots to sonatype you'll need the following:
+
+*You must have a registered account on the sonatype JIRA (and be approved as a hellbender uploader)
+*You need to configure several additional properties in your `/~.gradle/gradle.properties` file
+
+*If you want to upload a release instead of a snapshot you will additionally need to have access to the hellbender signing key and password
+
+```
+#needed for snapshot upload
+sonatypeUsername=<your sonatype username>
+sonatypePassword=<your sonatype password>
+
+#needed for signing a release
+signing.keyId=<hellbender key id>
+signing.password=<hellbender key password>
+signing.secretKeyRingFile=/Users/<username>/.gnupg/secring.gpg
+```
+
+To perform an upload, use
+```
+gradle uploadArchives
+```
+
+Currently all builds are considered snapshots.  The archive name is based off of `git describe`.
+
