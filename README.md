@@ -6,20 +6,33 @@
 Hellbender
 ================
 
-The public parts of the next generation of GATK/Picard/Prometheus methods engine and tools.
+The public parts of the next generation of GATK/Picard methods engine and tools.
 
 
-To build, run `gradle install` (gradle 2.2.1 recommended).
+Requirements
+------------
+* Java 8
 
-To run the main program, run `build/install/hellbender/bin/hellbender`.
+* Gradle 2.2.1
 
-To run all tests, run `gradle test`. Report is in `build/reports/tests/index.html`.
+* R 3.1.3 
+
+
+Installation
+------------
+To build and run all tests, run `gradle check`. Test report is in `build/reports/tests/index.html`.
+
+To only build, run `gradle install`.
+
+To run all tests, run `gradle test`. 
 
 To run a single test class, run something like this, `gradle test -Dtest.single=ReadUtilsUnitTest`.
 
 To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`. (IntelliJ 14 has a good coverage tool that is preferable for development).
 
-For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.  This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.  
+To run the main program, run `build/install/hellbender/bin/hellbender`.
+
+Note: for faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.  This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.  
 
 General guidelines for Hellbender developers
 ----------------
@@ -30,25 +43,29 @@ General guidelines for Hellbender developers
 
 * Hellbender is  BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
+* Hellbender is written in Java 8. Enjoy the new features in particular streams, lambdas, methods in interfaces.
+
 * Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code).
 
 * Each tool should have at least one good end-to-end integration test with a check for expected output, plus high-quality unit tests for all non-trivial utility methods/classes used by the tool. Although we have no specific coverage target, coverage should be extensive enough that if tests pass, the tool is guaranteed to be in a usable state.
 
-* Don't accept pull requests that introduce warnings. Warnings need to be addressed or suppressed.
-
-* Don't accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
-
 * All newly written code must have good test coverage (>90%).
 
-* Hellbender is written in Java 8. Enjoy the new features in particular streams, lambdas, methods in interfaces.
+* Don't issue or accept pull requests that introduce warnings. Warnings need to be addressed or suppressed.
+
+* Don't issue or accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
 
 * Don't override `clone()` unless you really know what you're doing. If you do override it, document thoroughly. Otherwise, prefer other means of making copies of objects.
 
-* Don't override or call `finalize()` even when you think you know what you're doing.
-
-* Don't use `toString()` for anything other than human consumption (ie. don't base your code on it.)
+* Don't use `toString()` for anything other than human consumption (ie. don't base the logic of your code on results of `toString()`.)
 
 * We mostly follow the Google Java Style guide: http://google-styleguide.googlecode.com/svn/trunk/javaguide.html
+
+* Git: Don't push directly to master - make a pull request instead. 
+
+* Git: Rebase and squash commits when merging.
+
+* If you push to master or mess the commit history, you owe us 1 growler at happy hour. If you break the master build, you owe 3 growlers. 
 
 R Dependency
 ----------------
