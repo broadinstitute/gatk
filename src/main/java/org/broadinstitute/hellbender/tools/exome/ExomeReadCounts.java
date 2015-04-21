@@ -12,8 +12,12 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramG
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +37,7 @@ import java.util.stream.IntStream;
         usageShort = "Count overlapping reads exon by exon",
         programGroup = ExomeAnalysisProgramGroup.class
 )
+
 public final class ExomeReadCounts extends ReadWalker {
 
     /**
@@ -208,7 +213,7 @@ public final class ExomeReadCounts extends ReadWalker {
     /**
      * Exon database reference.
      */
-    private ExonCollection<GenomeLoc> exonCollection;
+    private ExonCollection<SimpleInterval> exonCollection;
 
     /**
      * Counts table.
@@ -216,18 +221,18 @@ public final class ExomeReadCounts extends ReadWalker {
     private CountColumns countColumns;
 
     /**
-     * {@link GenomeLoc} instance factory.
-     */
-    private GenomeLocParser genomeLocFactory;
-
-    /**
      * Count matrix indexed by count column and then exon.
      */
     private int[][] counts;
 
     @Override
+    public ReadFilter makeReadFilter() {
+        return super.makeReadFilter()
+                .and(ReadFilterLibrary.MAPPED);
+    }
+
+    @Override
     public void onTraversalStart() {
-        super.onTraversalStart();
 
         // Initializing meta-data structures (about samples, exons and so forth):
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -238,15 +243,12 @@ public final class ExomeReadCounts extends ReadWalker {
         if (!intervalArgumentCollection.intervalsSpecified()) {
             throw new UserException("you must indicate the set of exon as input intervals");
         }
-        genomeLocFactory = new GenomeLocParser(sequenceDictionary);
         sampleCollection = new SampleCollection(getHeaderForReads());
 
         logger.log(Level.INFO, "Reading exons locations from intervals...");
-        final List<GenomeLoc> locations = IntervalUtils.genomeLocsFromLocatables(genomeLocFactory,
+
+        exonCollection = new IntervalBackedExonCollection(
                 intervalArgumentCollection.getIntervals(sequenceDictionary));
-        exonCollection = new IntervalBackedExonCollection(locations);
-        logger.log(Level.INFO, String.format("Found %d exons.", exonCollection.exonCount()));
-        logger.log(Level.INFO, "Reading exons locations from intervals done.");
 
         // Initializing count and count column management member fields:
         countColumns = groupBy.countColumns(this);
@@ -289,7 +291,8 @@ public final class ExomeReadCounts extends ReadWalker {
 
     @Override
     public void apply(final SAMRecord read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final GenomeLoc readLocation = genomeLocFactory.createGenomeLoc(read);
+
+        final SimpleInterval readLocation = new SimpleInterval(read);
 
         final int columnIndex = countColumns.columnIndex(read);
         if (columnIndex >= 0) { // < 0 would means that the read is to be ignored.
@@ -308,7 +311,7 @@ public final class ExomeReadCounts extends ReadWalker {
 
         for (int i = 0; i < exonCount; i++) {
             final int[] countBuffer = new int[columnCount];
-            final GenomeLoc exonInterval = exonCollection.exon(i);
+            final SimpleInterval exonInterval = exonCollection.exon(i);
             for (int j = 0; j < columnCount; j++) {
                 countBuffer[j] = counts[j][i];
             }
@@ -362,19 +365,19 @@ public final class ExomeReadCounts extends ReadWalker {
      * @param countBuffer the counts for the target exon.
      * @param exonInterval genomic location of the target exon.
      */
-    private void writeOutputRows(final int[] countBuffer, final GenomeLoc exonInterval) {
+    private void writeOutputRows(final int[] countBuffer, final SimpleInterval exonInterval) {
         final String countString = Utils.join("\t", countBuffer);
         outputWriter.println(Utils.join("\t",
                 exonInterval.getContig(),
                 exonInterval.getStart(),
-                exonInterval.getStop(),
+                exonInterval.getEnd(),
                 countString));
         if (rowSummaryOutputWriter != null) {
             final long sum = MathUtils.sum(countBuffer);
             rowSummaryOutputWriter.println(Utils.join("\t",
                     exonInterval.getContig(),
                     exonInterval.getStart(),
-                    exonInterval.getStop(),
+                    exonInterval.getEnd(),
                     sum, String.format(OUTPUT_DOUBLE_FORMAT,
                             sum / ((float) countColumns.columnCount() * exonInterval.size()))));
         }

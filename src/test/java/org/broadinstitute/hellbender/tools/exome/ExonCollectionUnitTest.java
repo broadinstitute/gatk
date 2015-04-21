@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -34,14 +32,14 @@ public final class ExonCollectionUnitTest extends BaseTest {
     public void setUp() {
         final Random rdn = new Random(11131719);
         final List<Object[]> exonDBTestData = new ArrayList<>(30);
-        exonDBTestData.add(new Object[] { new ExonCollectionStub(0,ExomeToolsTestUtils.GENOME_LOC_FACTORY,rdn) });
-        exonDBTestData.add(new Object[] { new ExonCollectionStub(1,ExomeToolsTestUtils.GENOME_LOC_FACTORY,rdn) });
-        exonDBTestData.add(new Object[] { new ExonCollectionStub(33,ExomeToolsTestUtils.GENOME_LOC_FACTORY,rdn) });
+        exonDBTestData.add(new Object[] { new ExonCollectionStub(0,rdn) });
+        exonDBTestData.add(new Object[] { new ExonCollectionStub(1,rdn) });
+        exonDBTestData.add(new Object[] { new ExonCollectionStub(33,rdn) });
         final int maxExonCount = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength() / 50;
         final int minExonCount = 2;
         while (exonDBTestData.size() < 30) {
             final int exonCount = rdn.nextInt(maxExonCount - minExonCount + 1) + minExonCount;
-            exonDBTestData.add(new Object[] { new ExonCollectionStub(exonCount,ExomeToolsTestUtils.GENOME_LOC_FACTORY,rdn)});
+            exonDBTestData.add(new Object[] { new ExonCollectionStub(exonCount,rdn)});
         }
         EXON_DB_TEST_DATA = exonDBTestData.toArray(new Object[exonDBTestData.size()][]);
     }
@@ -58,14 +56,13 @@ public final class ExonCollectionUnitTest extends BaseTest {
     public void testExonByLocationExactMatch(final ExonCollection<SimpleInterval> exonCollection) {
         for (int i = 0; i < exonCollection.exonCount(); i++) {
             final SimpleInterval si = exonCollection.exon(i);
-            final GenomeLoc gl = ExomeToolsTestUtils.createGenomeLoc(si.getContig(),si.getStart(),si.getEnd());
-            Assert.assertEquals(exonCollection.exon(gl), si);
+            Assert.assertEquals(exonCollection.exon(si), si);
         }
     }
 
     @Test(dataProvider = "exonDBData")
     public void testExonByLocationNonOverlapping(final ExonCollection<SimpleInterval> exonCollection) {
-        final GenomeLoc otherChromosome = ExomeToolsTestUtils.createOverEntireContig(ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(1).getSequenceName());
+        final SimpleInterval otherChromosome =  ExomeToolsTestUtils.createOverEntireContig(2);
         Assert.assertNull(exonCollection.exon(otherChromosome));
         for (int i = 0; i < exonCollection.exonCount() - 1; i++) {
             final int start = exonCollection.exon(i).getEnd() + 1;
@@ -73,10 +70,9 @@ public final class ExonCollectionUnitTest extends BaseTest {
             if (end < start) {   // avoid zero-length intra-exon intervals (due to artificial data construction).
                 continue;
             }
-            final GenomeLoc loc = ExomeToolsTestUtils.createGenomeLoc(exonCollection.exon(i).getContig(),start,end);
-            Assert.assertNull(exonCollection.exon(loc));
+            final SimpleInterval loc = ExomeToolsTestUtils.createInterval(exonCollection.exon(i).getContig(), start, end);
+            Assert.assertNull(exonCollection.exon(loc),"query = " + exonCollection.exon(i).getContig() + ":" + start + "-" + end);
         }
-        Assert.assertNull(exonCollection.exon(GenomeLoc.UNMAPPED));
     }
 
     @Test(dataProvider = "twoOrMoreExonDBData")
@@ -84,7 +80,7 @@ public final class ExonCollectionUnitTest extends BaseTest {
         for (int i = 0; i < exonCollection.exonCount() - 1; i++) {
             final int start = exonCollection.exon(i).getEnd() - 1;
             final int end = exonCollection.exon(i+1).getStart() + 1;
-            final GenomeLoc loc = ExomeToolsTestUtils.createGenomeLoc(exonCollection.exon(i).getContig(),start,end);
+            final SimpleInterval loc = ExomeToolsTestUtils.createInterval(exonCollection.exon(i).getContig(), start, end);
             try {
                 exonCollection.exon(loc);
                 Assert.fail("expected exception. Index == " + i);
@@ -96,50 +92,20 @@ public final class ExonCollectionUnitTest extends BaseTest {
         }
     }
 
-    @Test(dataProvider = "twoOrMoreExonDBData", expectedExceptions = ExonCollection.AmbiguousExonException.class)
-    public void testExonByLocationMultipleOverlapWholeGenome(final ExonCollection<SimpleInterval> exonCollection) {
-        exonCollection.exon(GenomeLoc.WHOLE_GENOME);
-    }
-
-    @Test
-    public void testExonByLocationWholeGenomeOnEmptyDB() {
-        Assert.assertNull(
-                new ExonCollectionStub(0, ExomeToolsTestUtils.GENOME_LOC_FACTORY, null).exon(GenomeLoc.WHOLE_GENOME)
-        );
-    }
-
-    @Test
-    public void testExonByLocationWholeGenomeOnSingleExonDB() {
-        final ExonCollection<SimpleInterval> exonCollection = new ExonCollectionStub(1,ExomeToolsTestUtils.GENOME_LOC_FACTORY,new Random(13));
-        Assert.assertEquals(exonCollection.exon(GenomeLoc.WHOLE_GENOME), exonCollection.exon(0));
-    }
-
-    @Test(dataProvider = "exonDBData")
-    public void testForEachWholeGenome(final ExonCollection<SimpleInterval> exonCollection) {
-        final List<SimpleInterval> intervalsFound = new ArrayList<>(exonCollection.exonCount());
-        exonCollection.forEachExon(GenomeLoc.WHOLE_GENOME, (i, e) -> {
-            Assert.assertEquals(e, exonCollection.exon(i));
-            intervalsFound.add(e);
-
-        });
-        Assert.assertEquals(intervalsFound.size(), exonCollection.exonCount());
-        Assert.assertEquals(intervalsFound, exonCollection.exons());
-    }
-
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testForEachNullTask() {
-        final ExonCollection<SimpleInterval> exonCollection = new ExonCollectionStub(0,ExomeToolsTestUtils.GENOME_LOC_FACTORY,new Random(13));
-        exonCollection.forEachExon(GenomeLoc.WHOLE_GENOME, null);
+        final ExonCollection<SimpleInterval> exonCollection = new ExonCollectionStub(0,new Random(13));
+        exonCollection.forEachExon(ExomeToolsTestUtils.createOverEntireContig(0), null);
     }
 
     @Test(dataProvider = "exonDBData")
     public void testForEachSingleCallExactMatch(final ExonCollection<SimpleInterval> exonCollection) {
         for (int i = 0; i < exonCollection.exonCount(); i++) {
             final SimpleInterval simpleInterval = exonCollection.exon(i);
-            final GenomeLoc genomeLoc = ExomeToolsTestUtils.createGenomeLoc(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+            final SimpleInterval loc = ExomeToolsTestUtils.createInterval(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
             final int expectedIdx = i;
             final int[] totalCalls = new int[] { 0 };
-            exonCollection.forEachExon(genomeLoc,(idx,exon) -> {
+            exonCollection.forEachExon(loc,(idx,exon) -> {
                 Assert.assertEquals(exon,simpleInterval);
                 Assert.assertEquals(idx,expectedIdx);
                 totalCalls[0]++;
@@ -166,7 +132,7 @@ public final class ExonCollectionUnitTest extends BaseTest {
                 if (start > end) {
                     continue;
                 }
-                final GenomeLoc loc = ExomeToolsTestUtils.createGenomeLoc(contig, start, end);
+                final SimpleInterval loc = ExomeToolsTestUtils.createInterval(contig, start, end);
                 final List<SimpleInterval> visited = new ArrayList<>(j - i + 1);
                 final int iFinal = i;
                 exonCollection.forEachExon(loc, (idx, e) -> {
@@ -204,7 +170,7 @@ public final class ExonCollectionUnitTest extends BaseTest {
             if (start < end)
                 continue;
             exonCollection.forEachExon(
-                    ExomeToolsTestUtils.createGenomeLoc(iInterval.getContig(), start, end),
+                    ExomeToolsTestUtils.createInterval(iInterval.getContig(), start, end),
                     (idx, e) -> Assert.fail("no exon should be call"));
         }
     }
@@ -222,20 +188,10 @@ public final class ExonCollectionUnitTest extends BaseTest {
             final int end = jInterval.getStart() - 1;
             if (start < end)
                 continue;
-            final List<SimpleInterval> observed = exonCollection.exons(ExomeToolsTestUtils.createGenomeLoc(iInterval.getContig(),start,end));
+            final List<SimpleInterval> observed = exonCollection.exons(ExomeToolsTestUtils.createInterval(iInterval.getContig(), start, end));
             Assert.assertEquals(observed.size(), 0);
         }
     }
-
-    @Test(dataProvider = "exonDBData")
-    public void testForEachWithUnmapped(final ExonCollection<SimpleInterval> exonCollection) {
-        if (exonCollection.exonCount()  == 0)
-            return;
-        exonCollection.forEachExon(GenomeLoc.UNMAPPED,
-                (i, e) -> Assert.fail("should not call on any exon"));
-
-    }
-
 
     @Test(dataProvider = "exonDBData")
     public void testExonSize(final ExonCollection<SimpleInterval> exonCollection) {
@@ -299,17 +255,14 @@ public final class ExonCollectionUnitTest extends BaseTest {
 
         private final List<SimpleInterval> intervals;
 
-        private final GenomeLocParser genomeLocParser;
-
-        public ExonCollectionStub(final int numberOfExons, final GenomeLocParser glp, final Random rdn) {
-            genomeLocParser = glp;
+        public ExonCollectionStub(final int numberOfExons, final Random rdn) {
             if (numberOfExons == 0) {
                 this.intervals = Collections.emptyList();
                 return;
             }
             List<SimpleInterval> intervals = new ArrayList<>(numberOfExons);
-            final String contig = glp.getSequenceDictionary().getSequence(0).getSequenceName();
-            final int contigLength = glp.getSequenceDictionary().getSequence(0).getSequenceLength();
+            final String contig = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName();
+            final int contigLength = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength();
             final float avgSlotSize = contigLength / numberOfExons;
 
             int nextBasePos = 0;
@@ -336,6 +289,14 @@ public final class ExonCollectionUnitTest extends BaseTest {
         }
 
         @Override
+        public String name(final SimpleInterval exon) {
+            if (exon == null) {
+                throw new IllegalArgumentException("the input exon cannot be null");
+            }
+            return exon.toString();
+        }
+
+        @Override
         public int index(final String name) {
             if (name.matches("^\\d+$")) {
                 int index = Integer.valueOf(name);
@@ -355,47 +316,42 @@ public final class ExonCollectionUnitTest extends BaseTest {
         }
 
         @Override
-        public GenomeLoc location(final int index) {
+        public SimpleInterval location(final int index) {
             if (index < 0) {
                 throw new IndexOutOfBoundsException();
             } if (index >= exonCount()) {
                 throw new IndexOutOfBoundsException();
             }
-            final SimpleInterval si = intervals.get(index);
-            return genomeLocParser.createGenomeLoc(si.getContig(),si.getStart(),si.getEnd());
+            return intervals.get(index);
         }
 
         @Override
-        public GenomeLoc location(final SimpleInterval exon) {
-            return genomeLocParser.createGenomeLoc(exon.getContig(), exon.getStart(), exon.getEnd());
+        public SimpleInterval location(final SimpleInterval exon) {
+            return exon;
         }
 
         @Override
-        public IndexRange indexRange(final GenomeLoc location) {
-            if (location == GenomeLoc.WHOLE_GENOME)
-                return new IndexRange(0,exonCount());
-            else if (location.isUnmapped())
+        public IndexRange indexRange(final SimpleInterval location) {
+            if (!location.getContig().equals(ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName()))
                 return new IndexRange(exonCount(),exonCount());
             else {
-                if (!location.getContig().equals(genomeLocParser.getSequenceDictionary().getSequence(0).getSequenceName()))
-                    return new IndexRange(exonCount(),exonCount());
-                else {
-                    int from = 0;
-                    while (from < intervals.size()) {
-                        final SimpleInterval nextInterval = intervals.get(from);
-                        if (nextInterval.getEnd() >= location.getStart())
-                            break;
-                        from++;
+                int from = 0;
+                while (from < intervals.size()) {
+                    final SimpleInterval nextInterval = intervals.get(from);
+                    if (nextInterval.getEnd() >= location.getStart()) {
+                        break;
                     }
-                    int to = from;
-                    while (to < intervals.size()) {
-                        final SimpleInterval nextInterval = intervals.get(to);
-                        if (nextInterval.getStart() > location.getStop())
-                            break;
-                        to++;
-                    }
-                    return new IndexRange(from,to);
+                    from++;
                 }
+                int to = from;
+                while (to < intervals.size()) {
+                    final SimpleInterval nextInterval = intervals.get(to);
+                    if (nextInterval.getStart() > location.getEnd()) {
+                        break;
+                    }
+                    to++;
+                }
+                return new IndexRange(from,to);
             }
         }
     }

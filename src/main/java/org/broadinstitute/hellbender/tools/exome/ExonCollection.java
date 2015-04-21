@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Exon collection.
@@ -40,6 +41,24 @@ public interface ExonCollection<E> {
      *                                   valid bounds <code>[0 .. ({@link #exonCount()})</code>.
      */
     E exon(final int index);
+
+    /**
+     * Returns the name of an exon.
+     *
+     * <p>
+     *     This method is guaranteed to return the name of the exon in this collection as long as it is indeed
+     *     included in it.
+     * </p>
+     *
+     * <p>
+     *     Otherwise it should return a reasonable name for it or {@code null}.
+     * </p>
+     *
+     * @param exon target exon.
+     *
+     * @throws IllegalArgumentException if {@code exon} is {@code null}.
+     */
+    String name(final E exon);
 
     /**
      * Returns the exon given its name.
@@ -83,7 +102,7 @@ public interface ExonCollection<E> {
      * @throws IllegalArgumentException if {@code overlapRegion} is {@code null}.
      * @throws AmbiguousExonException if the query location overlaps more than one exon.
      */
-    default E exon(final GenomeLoc overlapRegion) {
+    default E exon(final SimpleInterval overlapRegion) {
         final int index = index(overlapRegion);
         return index < 0 ? null : exon(index);
     }
@@ -111,7 +130,7 @@ public interface ExonCollection<E> {
      * @throws IllegalArgumentException   if {@code location} is {@code null}.
      * @throws AmbiguousExonException if the query location overlaps more than one exon.
      */
-    default int index(final GenomeLoc location) {
+    default int index(final SimpleInterval location) {
         final IndexRange range = indexRange(location);
         switch (range.size()) {
             case 1:
@@ -137,7 +156,7 @@ public interface ExonCollection<E> {
      * @param consumer the task to be run on each overlapped exon.
      * @throws IllegalArgumentException if any, {@code overlapRegion} or {@code exonTask}, is {@code null}.
      */
-    default void forEachExon(final GenomeLoc overlapRegion, final IndexedExonConsumer<E> consumer) {
+    default void forEachExon(final SimpleInterval overlapRegion, final IndexedExonConsumer<E> consumer) {
         if (consumer == null) {
             throw new IllegalArgumentException("the indexed exon consumer cannot be null");
         }
@@ -153,12 +172,8 @@ public interface ExonCollection<E> {
      * @return 0 or greater.
      */
     default long exomeSize() {
-        final int exonCount = exonCount();
-        long result = 0;
-        for (int i = 0; i < exonCount; i++) {
-            result += location(i).size();
-        }
-        return result;
+        return IntStream.range(0,exonCount())
+                .map(i -> location(i).size()).sum();
     }
 
     /**
@@ -168,24 +183,23 @@ public interface ExonCollection<E> {
      * @return never {@code null}.
      * @throws java.lang.IndexOutOfBoundsException if {@code index} is not valid.
      */
-    GenomeLoc location(final int index);
+    SimpleInterval location(final int index);
 
     /**
      * Returns the genome location of an exon.
      * <p>
-     * It guarantees to return the location associated with the exon in this db if indeed it is included in
+     * It guarantees to return the location associated with the exon in this collection if indeed it is included in
      * it.
      * </p>
      * <p>
-     * Otherwise a plausible location might be returned based on the {@code exon} value alone or {@link GenomeLoc#UNMAPPED}
-     * if none can be determined.
+     * Otherwise a plausible location might be returned based on the {@code exon} value alone or {@code null}.
      * </p>
      *
      * @param exon the target exon.
-     * @return never {@code null} but perhaps an {@code GenomeLoc#UNMAPPED} if the location could no be resolved.
+     * @return never {@code null}.
      * @throws IllegalArgumentException if {@code exon} is {@code null}.
      */
-    GenomeLoc location(final E exon);
+    SimpleInterval location(final E exon);
 
     /**
      * Returns exons that overlap a genomic locations.
@@ -200,7 +214,7 @@ public interface ExonCollection<E> {
      *  unmodifiable.
      * @throws IllegalArgumentException if {@code overlapRegion} is {@code null}.
      */
-    default List<E> exons(final GenomeLoc overlapRegion) {
+    default List<E> exons(final SimpleInterval overlapRegion) {
         final IndexRange range = indexRange(overlapRegion);
         return exons().subList(range.from,range.to);
     }
@@ -254,7 +268,7 @@ public interface ExonCollection<E> {
      * @throws IllegalArgumentException if {@code location} is {@code null}.
      * @return never {@code null} but perhaps an empty range.
      */
-    IndexRange indexRange(final GenomeLoc location);
+    IndexRange indexRange(final SimpleInterval location);
 
     /**
      * Returns a list of all exons sorted by genomic coordinates.

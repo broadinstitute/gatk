@@ -1,8 +1,9 @@
-##fileFormat = tsv
-##commandLine = org.broadinstitute.hellbender.tools.exome.ExomeReadCounts  --output /tmp/1 --summaryPerColumnOutput /tmp/2 --summaryPerRowOutput /tmp/3 --groupBy READ_GROUP --intervals ./src/test/resources/org/broadinstitute/hellbender/tools//exome-read-counts-intervals.list --input ./src/test/resources/org/broadinstitute/hellbender/tools/exome-read-counts-NA12872.bam --input ./src/test/resources/org/broadinstitute/hellbender/tools/exome-read-counts-NA12778.bam --input ./src/test/resources/org/broadinstitute/hellbender/tools/exome-read-counts-NA12878.bam  --cohortName <ALL> --countColumnFormat %^ --disable_all_read_filters false --interval_set_rule UNION --interval_padding 0 --help false --version false --VERBOSITY INFO --QUIET false
-##metaData = { 
-##      exonCount   = 5,
-##      exomeBpSize = 476,
+##fileFormat  = tsv
+##commandLine = org.broadinstitute.hellbender.tools.exome.ExomeReadCounts  --output /tmp/output.txt --columnSummaryOutput /tmp/cols.txt --rowSummaryOutput /tmp/rows.txt --groupBy read group --intervals src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-intervals.list --input src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12878.bam --input src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12778.bam --input src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12872.bam  --cohortName <ALL> --disable_all_read_filters false --interval_set_rule UNION --interval_padding 0 --help false --version false --VERBOSITY INFO --QUIET false
+##title       = Summary counts per read group
+##metaData    = {
+##    exonCount = 5,
+##    exomeSize = 476 (bp)
 ##}
 GROUP	SUM	AVG.BP
 ERR015474	9	0.0189
@@ -55,5 +56,5 @@ ERR244978	2	0.0042
 ERR244994	0	0.0000
 ERR246119	2	0.0042
 SRR741366	60	0.1261
-SRR741367	57	0.1197
+SRR741367	55	0.1155
 SRR622461	70	0.1471
