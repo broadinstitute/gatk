@@ -94,8 +94,9 @@ public final class IntegrationTestSpec {
      * @return a pair of file and string lists
      */
     private void executeTest(String testName, CommandLineProgramTest testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
-        if (outputFileLocation != null)
+        if (outputFileLocation != null) {
             args += " -O " + outputFileLocation.getAbsolutePath();
+        }
         executeTest(testName, testClass, args, expectedException);
 
         if (expectedException == null && !expectedFileNames.isEmpty()) {
@@ -164,13 +165,13 @@ public final class IntegrationTestSpec {
         }
     }
 
-    private static void compareTextFiles(File resultFile, File expectedFile) throws IOException {
+    public static void compareTextFiles(File resultFile, File expectedFile) throws IOException {
         List<String> actualLines = new XReadLines(resultFile).readLines();
         List<String> expectedLines = new XReadLines(expectedFile).readLines();
         Assert.assertEquals(actualLines.toString(), expectedLines.toString());
     }
 
-    private static void compareBamFiles(File resultFile, File expectedFile) throws IOException {
+    public static void compareBamFiles(File resultFile, File expectedFile) throws IOException {
         SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
     }
 }
