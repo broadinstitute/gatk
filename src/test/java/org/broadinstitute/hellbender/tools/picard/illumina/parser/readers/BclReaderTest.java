@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class BclReaderTest {
+public final class BclReaderTest {
 
     public static final File TestDataDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/readerTests");
     public static final File PASSING_BCL_FILE = new File(TestDataDir, "bcl_passing.bcl");

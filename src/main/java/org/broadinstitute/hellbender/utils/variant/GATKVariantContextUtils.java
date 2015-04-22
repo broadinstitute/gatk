@@ -15,7 +15,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class GATKVariantContextUtils {
+public final class GATKVariantContextUtils {
 
     private static Logger logger = LogManager.getLogger(GATKVariantContextUtils.class);
 

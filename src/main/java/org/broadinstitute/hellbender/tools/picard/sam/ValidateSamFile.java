@@ -24,7 +24,7 @@ import java.util.List;
         usageShort = "Validates a SAM or BAM file",
         programGroup = ReadProgramGroup.class
 )
-public class ValidateSamFile extends PicardCommandLineProgram {
+public final class ValidateSamFile extends PicardCommandLineProgram {
 
     public enum Mode {VERBOSE, SUMMARY}
 

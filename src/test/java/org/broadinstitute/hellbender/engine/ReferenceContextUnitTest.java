@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class ReferenceContextUnitTest extends BaseTest {
+public final class ReferenceContextUnitTest extends BaseTest {
 
     private static final File TEST_REFERENCE = new File(hg19MiniReference);
 

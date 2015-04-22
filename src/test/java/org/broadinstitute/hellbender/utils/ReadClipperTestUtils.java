@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ReadClipperTestUtils {
+public final class ReadClipperTestUtils {
     //Should contain all the utils needed for tests to mass produce
     //reads, cigars, and other needed classes
 

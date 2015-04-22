@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 
 import static htsjdk.samtools.util.CollectionUtil.makeList;
 
-public class IlluminaFileUtilTest {
+public final class IlluminaFileUtilTest {
     private static final int DEFAULT_LANE = 7;
     private static final List<Integer> DEFAULT_TILES = makeList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
     private static final List<Integer> DEFAULT_TILE_TEST_SUBSET = makeList(1, 4, 5, 6, 9, 10);

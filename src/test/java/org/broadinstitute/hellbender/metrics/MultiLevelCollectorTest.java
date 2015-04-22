@@ -16,7 +16,7 @@ import java.util.*;
 
 import static htsjdk.samtools.util.CollectionUtil.makeSet;
 
-public class MultiLevelCollectorTest {
+public final class MultiLevelCollectorTest {
 
     public static File TESTFILE = new File("src/test/resources/org/broadinstitute/hellbender/metrics/test.sam");
 

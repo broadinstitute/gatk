@@ -21,7 +21,7 @@ import java.util.*;
  * This class defines the individual test cases to run. The actual running of the test is done
  * by MarkDuplicatesTester (see getTester).
  */
-public class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
+public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
     protected static String TEST_BASE_NAME = null;
 
     @BeforeClass

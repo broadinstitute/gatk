@@ -32,7 +32,7 @@ import java.io.File;
         usageShort = "Takes a VCF and a second file that contains a sequence dictionary and updates the VCF with the new sequence dictionary.",
         programGroup = VariantProgramGroup.class
 )
-public class UpdateVcfSequenceDictionary extends PicardCommandLineProgram {
+public final class UpdateVcfSequenceDictionary extends PicardCommandLineProgram {
      @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF")
     public File INPUT;
 

@@ -32,7 +32,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
 
 import static htsjdk.samtools.util.CollectionUtil.makeList;
 
-public class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
+public final class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
 
     private File illuminaDir;
     private File dataDir;

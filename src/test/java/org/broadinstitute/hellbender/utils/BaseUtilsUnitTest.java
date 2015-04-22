@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.PrintStream;
 
 
-public class BaseUtilsUnitTest extends BaseTest {
+public final class BaseUtilsUnitTest extends BaseTest {
     @BeforeClass
     public void init() { }
 

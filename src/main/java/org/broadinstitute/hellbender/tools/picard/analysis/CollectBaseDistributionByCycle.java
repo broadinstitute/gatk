@@ -22,7 +22,7 @@ import java.util.*;
         usageShort = "Program to chart the nucleotide distribution per cycle in a SAM or BAM file.",
         programGroup = QCProgramGroup.class
 )
-public class CollectBaseDistributionByCycle extends SinglePassSamProgram {
+public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {
     private static final String R_SCRIPT = "baseDistributionByCycle.R";
 
     @Argument(shortName = "CHART", doc = "A file (with .pdf extension) to write the chart to.")

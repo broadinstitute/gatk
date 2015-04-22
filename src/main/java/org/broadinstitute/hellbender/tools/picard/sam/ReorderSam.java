@@ -28,7 +28,7 @@ import java.util.Map;
         usageShort = "Reorders reads in a SAM or BAM file to match ordering in reference",
         programGroup = ReadProgramGroup.class
 )
-public class ReorderSam extends PicardCommandLineProgram {
+public final class ReorderSam extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam) to extract reads from.")
     public File INPUT;

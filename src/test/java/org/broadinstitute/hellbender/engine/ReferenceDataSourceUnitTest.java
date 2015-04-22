@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class ReferenceDataSourceUnitTest extends BaseTest {
+public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     private static final File TEST_REFERENCE = new File(hg19MiniReference);
 

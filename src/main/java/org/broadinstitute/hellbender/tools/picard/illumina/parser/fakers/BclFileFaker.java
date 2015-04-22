@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers;
 
 import java.nio.ByteBuffer;
 
-public class BclFileFaker extends FileFaker {
+public final class BclFileFaker extends FileFaker {
 
     @Override
     public void fakeFile(final ByteBuffer buffer) {

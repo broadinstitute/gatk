@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class ReadsContextUnitTest extends BaseTest {
+public final class ReadsContextUnitTest extends BaseTest {
 
     @DataProvider(name = "EmptyReadsContextDataProvider")
     public Object[][] getEmptyReadsContextData() {

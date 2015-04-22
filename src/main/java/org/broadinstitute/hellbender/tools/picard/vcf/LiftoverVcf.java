@@ -47,7 +47,7 @@ import java.util.*;
         usageShort = "Lifts a VCF between genome builds.",
         programGroup = VariantProgramGroup.class
 )
-public class LiftoverVcf extends PicardCommandLineProgram {
+public final class LiftoverVcf extends PicardCommandLineProgram {
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input VCF/BCF file to be lifted over.")
     public File INPUT;
 

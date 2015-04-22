@@ -17,7 +17,7 @@ import java.util.List;
  *
  * @author ktibbett@broadinstitute.org
  */
-public class SamAlignmentMerger extends AbstractAlignmentMerger {
+public final class SamAlignmentMerger extends AbstractAlignmentMerger {
 
     private final Log log = Log.getInstance(SamAlignmentMerger.class);
     private final List<File> alignedSamFile;

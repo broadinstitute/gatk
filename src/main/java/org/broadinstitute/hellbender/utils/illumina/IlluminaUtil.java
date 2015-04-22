@@ -13,7 +13,7 @@ import java.util.*;
  *
  * @author jburke@broadinstitute.org
  */
-public class IlluminaUtil {
+public final class IlluminaUtil {
 
     public static final String BARCODE_DELIMITER = "-";
 

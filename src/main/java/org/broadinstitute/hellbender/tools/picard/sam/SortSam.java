@@ -19,7 +19,7 @@ import java.io.File;
         usageShort = "Sorts a SAM or BAM file",
         programGroup = ReadProgramGroup.class
 )
-public class SortSam extends PicardCommandLineProgram {
+public final class SortSam extends PicardCommandLineProgram {
 
     @Argument(doc = "The BAM or SAM file to sort.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
@@ -37,7 +37,7 @@ public class SortSam extends PicardCommandLineProgram {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
         final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
-        ;
+
         reader.getFileHeader().setSortOrder(SORT_ORDER);
         final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, OUTPUT);
         writer.setProgressLogger(

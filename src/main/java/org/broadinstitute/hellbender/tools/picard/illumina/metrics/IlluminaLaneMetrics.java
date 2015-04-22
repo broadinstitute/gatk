@@ -6,7 +6,7 @@ import htsjdk.samtools.metrics.MetricBase;
  * Embodies characteristics that describe a lane.  
  * @author mccowan
  */
-public class IlluminaLaneMetrics extends MetricBase {
+public final class IlluminaLaneMetrics extends MetricBase {
     /** The number of clusters per unit area on the this lane expressed in units of [cluster / mm^2]. */
     public Double CLUSTER_DENSITY;
     

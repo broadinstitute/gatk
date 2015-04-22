@@ -8,7 +8,7 @@ import htsjdk.samtools.util.SamRecordWithOrdinal;
  *
  * @author nhomer
  */
-public class SamRecordWithOrdinalAndSetDuplicateReadFlag extends SamRecordWithOrdinal {
+public final class SamRecordWithOrdinalAndSetDuplicateReadFlag extends SamRecordWithOrdinal {
 
     public SamRecordWithOrdinalAndSetDuplicateReadFlag() {
         super();

@@ -76,7 +76,7 @@ import static org.broadinstitute.hellbender.utils.illumina.IlluminaUtil.barcodeS
         usageShort = IlluminaBasecallsToSam.USAGE,
         programGroup = IlluminaProgramGroup.class
 )
-public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
+public final class IlluminaBasecallsToSam extends PicardCommandLineProgram {
     public static final String USAGE = "Generate a SAM or BAM file from data in an Illumina basecalls output directory";
 
     @Argument(doc = "The basecalls directory. ", shortName = "B")

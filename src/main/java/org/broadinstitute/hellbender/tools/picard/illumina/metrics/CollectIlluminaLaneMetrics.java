@@ -37,7 +37,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.TileMet
         usageShort = CollectIlluminaLaneMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CollectIlluminaLaneMetrics extends PicardCommandLineProgram {
+public final class CollectIlluminaLaneMetrics extends PicardCommandLineProgram {
     static final String USAGE = "Collects Illumina lane metrics for the given basecalling analysis directory";
 
     @Argument(doc = "The Illumina run directory of the run for which the lane metrics are to be generated")

@@ -15,7 +15,7 @@ import java.util.*;
 /**
  * Collection of utilities for making common assertions about SAM files for unit testing purposes.
  */
-public class SamAssertionUtils {
+public final class SamAssertionUtils {
 
     public static void assertSamsEqual(final File sam1, final File sam2) throws IOException {
         final SamReader reader1 = SamReaderFactory.makeDefault().open(sam1);

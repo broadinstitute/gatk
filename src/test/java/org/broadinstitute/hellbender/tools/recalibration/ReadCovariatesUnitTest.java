@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 
 import java.util.Random;
 
-public class ReadCovariatesUnitTest {
+public final class ReadCovariatesUnitTest {
 
     @BeforeMethod
     public void init() {

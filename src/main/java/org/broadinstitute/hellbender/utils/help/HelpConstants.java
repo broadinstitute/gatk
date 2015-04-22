@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.help;
 
-public class HelpConstants {
+public final class HelpConstants {
 
     public final static String BASE_GATK_URL = "http://www.broadinstitute.org/gatk";
     public final static String GATK_DOCS_URL = BASE_GATK_URL + "/tooldocs/";

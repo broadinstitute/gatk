@@ -52,7 +52,7 @@ import org.broadinstitute.hellbender.utils.variant.DbSnpBitSetUtil;
         usageShort = CollectSequencingArtifactMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
+public final class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
     static final String USAGE = "Collect metrics to quantify single-base sequencing artifacts.";
 
     @Argument(doc = "An optional list of intervals to restrict analysis to.", optional = true)

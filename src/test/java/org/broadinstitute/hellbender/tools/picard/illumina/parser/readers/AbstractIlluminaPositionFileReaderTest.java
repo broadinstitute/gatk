@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class AbstractIlluminaPositionFileReaderTest {
+public final class AbstractIlluminaPositionFileReaderTest {
 
     //Pos values should never be negative
     private static final float [] X_COORDS = new float[] {

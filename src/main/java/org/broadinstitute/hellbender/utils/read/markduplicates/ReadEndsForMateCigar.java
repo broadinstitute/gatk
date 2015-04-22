@@ -16,7 +16,7 @@ import java.util.Set;
  * be compared when we mark duplicates.  We also store the original SAMRecord and its ordinal in the input file (in SamRecordWithOrdinal) to
  * access optional tags (mate cigar) and other information.
  */
-public class ReadEndsForMateCigar extends ReadEnds {
+public final class ReadEndsForMateCigar extends ReadEnds {
     // to see if either end is unmapped
     byte hasUnmapped = 0;
 

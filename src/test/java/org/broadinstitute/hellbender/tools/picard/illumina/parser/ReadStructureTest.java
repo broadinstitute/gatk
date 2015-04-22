@@ -9,7 +9,7 @@ import java.util.*;
 import static org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadType.*;
 import static htsjdk.samtools.util.CollectionUtil.makeList;
 
-public class ReadStructureTest {
+public final class ReadStructureTest {
 
     //to make construction of lists more intelligible
     public ReadDescriptor rd(final int length, final ReadType rt) {

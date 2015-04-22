@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 
-public class DataFlowProgramGroup implements CommandLineProgramGroup {
+public final class DataFlowProgramGroup implements CommandLineProgramGroup {
 
     @Override
     public String getName() {

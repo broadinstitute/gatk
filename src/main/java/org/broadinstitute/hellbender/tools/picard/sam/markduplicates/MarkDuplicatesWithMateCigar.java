@@ -37,7 +37,7 @@ import java.util.Set;
         usageShort = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules.",
         programGroup = ReadProgramGroup.class
 )
-public class MarkDuplicatesWithMateCigar extends AbstractMarkDuplicatesCommandLineProgram {
+public final class MarkDuplicatesWithMateCigar extends AbstractMarkDuplicatesCommandLineProgram {
     private final Log log = Log.getInstance(MarkDuplicatesWithMateCigar.class);
 
     @Argument(doc = "The minimum distance to buffer records to account for clipping on the 5' end of the records." +

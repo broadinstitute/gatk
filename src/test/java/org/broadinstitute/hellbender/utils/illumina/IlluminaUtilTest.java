@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
  *
  * @author Tim Fennell
  */
-public class IlluminaUtilTest {
+public final class IlluminaUtilTest {
     @Test(dataProvider="readNames") public void testFindTileInReadName(final String readName, final Integer tile) {
         final Integer otherTile = IlluminaUtil.getTileFromReadName(readName);
         Assert.assertEquals(otherTile, tile, "Tile numbers do not match for read name: " + readName);

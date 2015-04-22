@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class ClocsFileReaderTest {
+public final class ClocsFileReaderTest {
 
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/readerTests");
     private static final File PASSING_CLOCS_FILE = new File(TEST_DIR, "s_2_1101.clocs");

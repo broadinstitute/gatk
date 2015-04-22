@@ -9,7 +9,7 @@ import java.util.*;
 
 import static htsjdk.samtools.util.CollectionUtil.makeList;
 
-public class PosParserTest {
+public final class PosParserTest {
 
     public static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/parserTests/posParser");
     public static final File S_1_1_POS = new File(TEST_DIR, "s_1_1_pos.txt");

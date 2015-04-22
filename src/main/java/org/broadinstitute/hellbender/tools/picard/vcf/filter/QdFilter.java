@@ -12,7 +12,7 @@ import java.util.*;
  *
  * @author Tim Fennell
  */
-public class QdFilter implements VariantFilter {
+public final class QdFilter implements VariantFilter {
     public static final String FILTER_NAME = "LowQD";
     private final double minimumQd;
 

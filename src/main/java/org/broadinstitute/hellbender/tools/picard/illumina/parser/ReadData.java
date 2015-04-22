@@ -5,7 +5,7 @@ package org.broadinstitute.hellbender.tools.picard.illumina.parser;
  *
  * @author jburke@broadinstitute.org
  */
-public class ReadData {
+public final class ReadData {
     private byte[] bases;
     private byte[] qualities;
     private FourChannelIntensityData rawIntensities;

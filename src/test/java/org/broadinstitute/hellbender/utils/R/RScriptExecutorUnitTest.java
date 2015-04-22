@@ -11,7 +11,7 @@ import java.io.File;
 /**
  * Basic unit test for RScriptExecutor in reduced reads
  */
-public class RScriptExecutorUnitTest extends BaseTest {
+public final class RScriptExecutorUnitTest extends BaseTest {
 
     private static final String HELLO_WORLD_SCRIPT = "print('hello, world')";
     private static final String GSALIB_LOADED_SCRIPT = "if (!'package:gsalib' %in% search()) stop('gsalib not loaded')";

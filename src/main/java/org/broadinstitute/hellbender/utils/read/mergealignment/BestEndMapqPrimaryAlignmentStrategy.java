@@ -13,7 +13,7 @@ import java.util.Random;
  * make that the primary.  The primary alignments are then correlated so that their mate info points to each
  * other, but all non-primary alignments are uncorrelated.
  */
-public class BestEndMapqPrimaryAlignmentStrategy implements PrimaryAlignmentSelectionStrategy {
+public final class BestEndMapqPrimaryAlignmentStrategy implements PrimaryAlignmentSelectionStrategy {
     private static final MapqComparator MAPQ_COMPARATOR = new MapqComparator();
 
     // Give random number generator a seed so results are repeatable.  Used to pick a primary alignment from

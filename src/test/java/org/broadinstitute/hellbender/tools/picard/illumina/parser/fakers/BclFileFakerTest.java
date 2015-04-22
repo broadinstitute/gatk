@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class BclFileFakerTest {
+public final class BclFileFakerTest {
 
     @Test
     public void testFileLengthMatchesHeaderLength() throws Exception {

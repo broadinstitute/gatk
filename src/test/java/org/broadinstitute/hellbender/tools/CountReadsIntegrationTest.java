@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class CountReadsIntegrationTest extends CommandLineProgramTest {
+public final class CountReadsIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "filenames")
     public void testCountBases(String fileIn) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);

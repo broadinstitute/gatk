@@ -35,7 +35,7 @@ import java.io.IOException;
         usageShort = "Creates indices for Feature-containing files",
         programGroup = VariantProgramGroup.class
 )
-public class IndexFeatureFile extends CommandLineProgram {
+public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
     @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file (eg., VCF/BCF/etc. file) to index. Must be in a tribble-supported format")

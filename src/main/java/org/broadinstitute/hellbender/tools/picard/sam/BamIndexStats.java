@@ -24,7 +24,7 @@ import java.io.File;
         usageShort = "Generates index statistics from a BAM file",
         programGroup = ReadProgramGroup.class
 )
-public class BamIndexStats extends PicardCommandLineProgram {
+public final class BamIndexStats extends PicardCommandLineProgram {
 
     private static final Log log = Log.getInstance(BamIndexStats.class);
 

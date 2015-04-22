@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.recalibration.covariates;
 
-public class RepeatUnitAndLengthCovariate extends RepeatCovariate {
+public final class RepeatUnitAndLengthCovariate extends RepeatCovariate {
 
     protected String getCovariateValueFromUnitAndLength(final byte[] repeatFromUnitAndLength, final int repeatLength) {
         return new String(repeatFromUnitAndLength) + String.format("%d", repeatLength);

@@ -26,7 +26,7 @@ import java.util.List;
         usageShort = "Concatenates one or more BAM files together as efficiently as possible",
         programGroup = ReadProgramGroup.class
 )
-public class GatherBamFiles extends PicardCommandLineProgram {
+public final class GatherBamFiles extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more BAM files or text files containing lists of BAM files one per line.")

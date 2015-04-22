@@ -15,7 +15,7 @@ import java.util.Random;
  * is used (assuming one of those alignments is not filtered out).  Otherwise the alignment pair with best MapQ is
  * selected.
  */
-public class BestMapqPrimaryAlignmentSelectionStrategy implements PrimaryAlignmentSelectionStrategy {
+public final class BestMapqPrimaryAlignmentSelectionStrategy implements PrimaryAlignmentSelectionStrategy {
     // Give random number generator a seed so results are repeatable.  Used to pick a primary alignment from
     // multiple alignments with equal mapping quality.
     private final Random random = new Random(1);

@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Basic unit test for Haplotype Class
  */
-public class HaplotypeUnitTest extends BaseTest {
+public final class HaplotypeUnitTest extends BaseTest {
     @Test
     public void testSimpleInsertionAllele() {
         final String bases = "ACTGGTCAACTGGTCAACTGGTCAACTGGTCA";

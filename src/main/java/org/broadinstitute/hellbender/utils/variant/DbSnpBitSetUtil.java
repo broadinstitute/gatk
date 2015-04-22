@@ -13,7 +13,7 @@ import java.util.*;
  * Utility class to use with DbSnp files to determine is a locus is
  * a dbSnp site.
  */
-public class DbSnpBitSetUtil {
+public final class DbSnpBitSetUtil {
 
     private final Map<String, BitSet> sequenceToBitSet = new HashMap<String,BitSet>();
 

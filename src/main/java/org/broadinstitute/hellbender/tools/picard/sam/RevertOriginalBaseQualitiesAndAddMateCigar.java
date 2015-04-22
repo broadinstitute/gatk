@@ -22,7 +22,7 @@ import java.util.Iterator;
         usageShort = "Reverts the original base qualities and adds the mate cigar tag to read-group BAMs",
         programGroup = ReadProgramGroup.class
 )
-public class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardCommandLineProgram {
+public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
     public File INPUT;

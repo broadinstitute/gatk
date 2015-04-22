@@ -36,7 +36,7 @@ import java.util.*;
         usageShort = "Collects information about GC bias in the reads in the provided SAM or BAM",
         programGroup = QCProgramGroup.class
 )
-public class CollectGcBiasMetrics extends SinglePassSamProgram {
+public final class CollectGcBiasMetrics extends SinglePassSamProgram {
     /** The location of the R script to do the plotting. */
     private static final String R_SCRIPT = "gcBias.R";
 

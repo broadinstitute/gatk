@@ -16,7 +16,7 @@ import java.util.*;
 /**
  * Created by farjoun on 3/26/14.
  */
-public class ScatterIntervalsByNsTest extends CommandLineProgramTest {
+public final class ScatterIntervalsByNsTest extends CommandLineProgramTest {
 
     @DataProvider(name = "testSegregate")
     public Object[][] testSegregate() {

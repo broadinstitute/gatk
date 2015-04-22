@@ -17,7 +17,7 @@ import java.util.Set;
  * remove duplicates as appropriate.  This class relies on the coordinate sort order as
  * well as the mate cigar (MC) optional SAM tag.
  */
-public class MarkDuplicatesWithMateCigarIterator implements SAMRecordIterator {
+public final class MarkDuplicatesWithMateCigarIterator implements SAMRecordIterator {
 
     private SAMFileHeader header = null;
 

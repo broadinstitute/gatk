@@ -30,7 +30,7 @@ import static java.nio.channels.FileChannel.MapMode.READ_ONLY;
  * This class IS thread-safe and immutable though the iterator and ByteBuffers it produces are NOT.
  * The values read are assumed to be signed, NO promoting/sign conversion happens in this class.
  */
-public class MMapBackedIteratorFactory {
+public final class MMapBackedIteratorFactory {
     private static int BYTE_SIZE = 1;
     private static int INT_SIZE = 4;
     private static int FLOAT_SIZE = 4;

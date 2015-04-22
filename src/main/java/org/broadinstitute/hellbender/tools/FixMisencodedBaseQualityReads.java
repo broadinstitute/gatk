@@ -22,7 +22,7 @@ import java.io.File;
     usageShort = "Fix Illumina base quality scores.",
     programGroup = ReadProgramGroup.class
 )
-public class FixMisencodedBaseQualityReads extends ReadWalker {
+public final class FixMisencodedBaseQualityReads extends ReadWalker {
 
     @Argument(fullName = "output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;

@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.SequencerFlowClass;
  * For SOLiD the cycle is a more complicated mixture of ligation cycle and primer round
  */
 
-public class CycleCovariate implements Covariate {
+public final class CycleCovariate implements Covariate {
 
     private int MAXIMUM_CYCLE_VALUE;
     public static final int CUSHION_FOR_INDELS = 4;

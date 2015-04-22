@@ -8,7 +8,7 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.util.*;
 
-public class FilterParserTest {
+public final class FilterParserTest {
     private static final File TestDataDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/parserTests");
     private static final File BaseCallsDir = new File(TestDataDir, "filterParser");
 

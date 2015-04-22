@@ -9,7 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-public class Utils {
+public final class Utils {
     private Utils(){}
 
     /**

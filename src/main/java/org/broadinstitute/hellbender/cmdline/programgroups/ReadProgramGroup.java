@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 
-public class ReadProgramGroup implements CommandLineProgramGroup {
+public final class ReadProgramGroup implements CommandLineProgramGroup {
     @Override
     public String getName() { return "SAM/BAM/CRAM"; }
     @Override

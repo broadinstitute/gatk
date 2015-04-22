@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import java.util.ArrayList;
 import java.util.Stack;
 
-public class CigarUtils {
+public final class CigarUtils {
 
     /**
      * Combines equal adjacent elements of a Cigar object

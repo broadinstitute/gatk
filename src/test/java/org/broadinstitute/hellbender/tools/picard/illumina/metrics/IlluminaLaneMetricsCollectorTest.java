@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 /** @author mccowan */
-public class IlluminaLaneMetricsCollectorTest extends CommandLineProgramTest {
+public final class IlluminaLaneMetricsCollectorTest extends CommandLineProgramTest {
     final static File TEST_DIRECTORY = new File(getTestDataDir(), "picard/illumina/metrics/IlluminaLaneMetricsCollector");
 
     private static File buildOutputFile(final File directory, final String prefix, final String extension) {

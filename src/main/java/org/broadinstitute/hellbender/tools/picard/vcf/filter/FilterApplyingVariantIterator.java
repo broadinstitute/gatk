@@ -16,7 +16,7 @@ import java.util.*;
  *
  * @author tfennell
  */
-public class FilterApplyingVariantIterator implements CloseableIterator<VariantContext> {
+public final class FilterApplyingVariantIterator implements CloseableIterator<VariantContext> {
     /** Filter string that is used to filter a Variant when all variant genotypes are filtered out. */
     public static final String ALL_GTS_FILTERED = "AllGtsFiltered";
     /** The "PASS"ing filter String. */

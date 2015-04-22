@@ -12,7 +12,7 @@ import java.nio.ByteBuffer;
  * Bytes 8-11 : unsigned int numClusters
  * Bytes 12...: boolean encoded in a byte representing whether the cluster passing or failing.
  */
-public class FilterFileFaker extends FileFaker {
+public final class FilterFileFaker extends FileFaker {
 
     @Override
     protected void fakeFile(final ByteBuffer buffer) {

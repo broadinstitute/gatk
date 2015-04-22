@@ -25,7 +25,7 @@ import java.util.Random;
         usageShort = "Down-sample a SAM or BAM file to retain a random subset of the reads",
         programGroup = ReadProgramGroup.class
 )
-public class DownsampleSam extends PicardCommandLineProgram {
+public final class DownsampleSam extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to downsample.")
     public File INPUT;

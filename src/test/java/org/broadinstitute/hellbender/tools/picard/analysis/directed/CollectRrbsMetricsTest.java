@@ -16,7 +16,7 @@ import java.util.*;
  * @author jgentry@broadinstitute.org
  */
 
-public class CollectRrbsMetricsTest extends CommandLineProgramTest {
+public final class CollectRrbsMetricsTest extends CommandLineProgramTest {
 	public static final File CHR_M_SAM = new File(getTestDataDir(), "picard/analysis/directed/CollectRrbsMetrics/chrMReads.sam");
 	public static final File CHR_M_REFERENCE = new File(getTestDataDir(), "picard/analysis/directed/CollectRrbsMetrics/chrM.reference.fasta");
 

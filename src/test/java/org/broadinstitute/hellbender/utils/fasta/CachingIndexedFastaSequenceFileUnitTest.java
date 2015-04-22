@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Basic unit test for CachingIndexedFastaSequenceFile
  */
-public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
+public final class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
     private File simpleFasta = new File(publicTestDir + "/exampleFASTA.fasta");
     private static final int STEP_SIZE = 1;
     private final static boolean DEBUG = false;

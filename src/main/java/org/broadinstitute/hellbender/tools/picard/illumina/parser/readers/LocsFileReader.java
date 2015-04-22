@@ -20,7 +20,7 @@ import static org.broadinstitute.hellbender.utils.UnsignedTypeUtil.uIntToLong;
  * The remaining bytes of the file store the X and Y coordinates of the remaining clusters.
  */
 
-public class LocsFileReader extends AbstractIlluminaPositionFileReader {
+public final class LocsFileReader extends AbstractIlluminaPositionFileReader {
     /**
      * Size of the opening file header, this is skipped by the iterator below
      */

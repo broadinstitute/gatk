@@ -31,7 +31,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
  *
  * @author jburke@broadinstitute.org
  */
-public class IlluminaFileUtil {
+public final class IlluminaFileUtil {
     public static final Pattern CYCLE_SUBDIRECTORY_PATTERN = compile("^C(\\d+)\\.1$");
 
     public enum SupportedIlluminaFormat {

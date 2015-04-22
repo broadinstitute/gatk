@@ -35,7 +35,7 @@ import static org.testng.Assert.assertTrue;
 /**
  * @author alecw@broadinstitute.org
  */
-public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
+public final class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
     private static final File SINGLE_DATA_DIR = new File(getTestDataDir(), "picard/illumina/25T8B25T/Data/Intensities/BaseCalls");
     private static final File DUAL_DATA_DIR = new File(getTestDataDir(), "picard/illumina/25T8B8B25T/Data/Intensities/BaseCalls");
     private static final String[] BARCODES = {

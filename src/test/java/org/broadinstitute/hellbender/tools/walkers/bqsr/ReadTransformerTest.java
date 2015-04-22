@@ -8,7 +8,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-public class ReadTransformerTest {
+public final class ReadTransformerTest {
     static final SAMFileHeader header =ArtificialSAMUtils.createArtificialSamHeader();
     SAMRecord sam;
 

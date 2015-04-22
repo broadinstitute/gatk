@@ -87,7 +87,7 @@ import static org.broadinstitute.hellbender.utils.illumina.IlluminaUtil.barcodeS
         usageShort = "Tool to determine the barcode for each read in an Illumina lane",
         programGroup = IlluminaProgramGroup.class
 )
-public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
+public final class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
 
     @Argument(doc = "The Illumina basecalls directory. ", shortName = "B")
     public File BASECALLS_DIR;

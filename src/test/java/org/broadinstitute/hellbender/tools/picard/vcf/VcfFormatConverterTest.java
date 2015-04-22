@@ -10,7 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public class VcfFormatConverterTest extends CommandLineProgramTest {
+public final class VcfFormatConverterTest extends CommandLineProgramTest {
     private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/vcf/vcfFormatTest");
     private static final String TEST_FILE_BASE = "vcfFormatTest";
 

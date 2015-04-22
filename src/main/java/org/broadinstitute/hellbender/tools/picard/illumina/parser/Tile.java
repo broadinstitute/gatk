@@ -15,7 +15,7 @@ import static java.util.Collections.unmodifiableMap;
  *
  * @author jgentry
  */
-public class Tile {
+public final class Tile {
     private final int lane, tile;
     private final float density, clusters;
 

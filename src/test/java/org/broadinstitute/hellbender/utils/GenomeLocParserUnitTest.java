@@ -32,7 +32,7 @@ import static org.testng.Assert.assertTrue;
 /**
  *         Test out the functionality of the new genome loc parser
  */
-public class GenomeLocParserUnitTest extends BaseTest {
+public final class GenomeLocParserUnitTest extends BaseTest {
     private GenomeLocParser genomeLocParser;
     private SAMFileHeader header;
 

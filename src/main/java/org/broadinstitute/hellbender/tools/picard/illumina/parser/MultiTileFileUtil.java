@@ -90,7 +90,7 @@ public abstract class MultiTileFileUtil<OUTPUT_RECORD extends IlluminaData> exte
 
 }
 
-class MultiTileFilterFileUtil extends MultiTileFileUtil<PfData> {
+final class MultiTileFilterFileUtil extends MultiTileFileUtil<PfData> {
 
     /**
      * @param basecallLaneDir location of .filter file and also .bci file
@@ -105,7 +105,7 @@ class MultiTileFilterFileUtil extends MultiTileFileUtil<PfData> {
     }
 }
 
-class MultiTileLocsFileUtil extends MultiTileFileUtil<PositionalData> {
+final class MultiTileLocsFileUtil extends MultiTileFileUtil<PositionalData> {
 
     MultiTileLocsFileUtil(final File basecallLaneDir, final File bciDir, final int lane) {
         super(".locs", basecallLaneDir, bciDir, new MultiTileLocsFileFaker(), lane);

@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Class that encapsulates the information necessary for quality score quantization for BQSR
  */
-public class QuantizationInfo {
+public final class QuantizationInfo {
     private List<Byte> quantizedQuals;
     private List<Long> empiricalQualCounts;
     private int quantizationLevels;

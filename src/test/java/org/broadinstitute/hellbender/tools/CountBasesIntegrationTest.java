@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class CountBasesIntegrationTest extends CommandLineProgramTest {
+public final class CountBasesIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "filenames")
     public void testCountBases(String fileIn) throws Exception {

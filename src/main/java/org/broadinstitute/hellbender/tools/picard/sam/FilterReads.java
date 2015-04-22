@@ -28,7 +28,7 @@ import java.text.DecimalFormat;
         usageShort = "Creates a new SAM or BAM file by including or excluding aligned reads",
         programGroup = ReadProgramGroup.class
 )
-public class FilterReads extends PicardCommandLineProgram {
+public final class FilterReads extends PicardCommandLineProgram {
 
     private static final Log log = Log.getInstance(FilterReads.class);
 

@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 
-public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
+public final class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
 
     private final CycleIlluminaFileMap cycleFileMap;
     private final Set<Integer> detectedCycles = new TreeSet<Integer>();

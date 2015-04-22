@@ -17,7 +17,7 @@ package org.broadinstitute.hellbender.tools.picard.vcf.concordance;
  *
  * @author nhomer
  */
-public class GenotypeConcordanceStates {
+public final class GenotypeConcordanceStates {
     /**
      * These states represent the relationship between a truth genotype and the reference sequence.
      */

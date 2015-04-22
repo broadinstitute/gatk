@@ -12,7 +12,7 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.*;
 
-public class BQSRGatherer extends Gatherer {
+public final class BQSRGatherer extends Gatherer {
 
     private static final Logger logger = LogManager.getLogger(BQSRGatherer.class);
     private static final String EMPTY_INPUT_LIST = "list of inputs files is empty or there is no usable data in any input file";

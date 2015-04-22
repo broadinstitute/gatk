@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IntervalArgumentCollection implements ArgumentCollectionDefinition {
+public final class IntervalArgumentCollection implements ArgumentCollectionDefinition {
     /**
      * Use this argument to perform the analysis over only part of the genome. This argument can be specified multiple times.
      * You can use samtools-style intervals either explicitly on the command line (e.g. -L 1 or -L 1:100-200) or

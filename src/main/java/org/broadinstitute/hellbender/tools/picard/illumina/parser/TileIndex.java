@@ -24,7 +24,7 @@ import static java.nio.ByteOrder.LITTLE_ENDIAN;
  * number of clusters in tile: 4-byte int
  * Number of records to read is determined by reaching EOF.
  */
-public class TileIndex implements Iterable<TileIndex.TileIndexRecord> {
+public final class TileIndex implements Iterable<TileIndex.TileIndexRecord> {
     private final File tileIndexFile;
     private final List<TileIndexRecord> tiles = new ArrayList<TileIndexRecord>();
 

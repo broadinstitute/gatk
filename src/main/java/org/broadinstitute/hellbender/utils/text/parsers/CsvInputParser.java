@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.text.parsers;
 import java.io.File;
 import java.io.InputStream;
 
-public class CsvInputParser extends BasicInputParser {
+public final class CsvInputParser extends BasicInputParser {
     /**
      * Constructor
      *

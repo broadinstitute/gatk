@@ -11,7 +11,7 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.*;
 
-public class MMapBackedIteratorFactoryTest {
+public final class MMapBackedIteratorFactoryTest {
     public static File TestDataDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/readerTests");
     public static File BinFile     = new File(TestDataDir, "binary_passing.bin");
 

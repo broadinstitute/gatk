@@ -54,7 +54,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.readers
         programGroup = QCProgramGroup.class
 )
 
-public class CollectHiSeqXPfFailMetrics extends PicardCommandLineProgram {
+public final class CollectHiSeqXPfFailMetrics extends PicardCommandLineProgram {
     @Argument(doc = "The Illumina basecalls directory. ", shortName = "B")
     public File BASECALLS_DIR;
 

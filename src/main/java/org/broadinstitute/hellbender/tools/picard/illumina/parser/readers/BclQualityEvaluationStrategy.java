@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 
  * @author mccowan
  */
-public class BclQualityEvaluationStrategy {
+public final class BclQualityEvaluationStrategy {
     public static final int ILLUMINA_ALLEGED_MINIMUM_QUALITY = 2;
     private final int minimumRevisedQuality;
     /** A thread-safe defaulting map that injects an AtomicInteger starting at 0 when a uninitialized key is get-ted. */

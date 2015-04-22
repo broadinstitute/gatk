@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class GATKVariantContextUtilsUnitTest extends BaseTest {
+public final class GATKVariantContextUtilsUnitTest extends BaseTest {
 
     Allele Aref, T, C, G, Cref, ATC, ATCATC;
     Allele ATCATCT;

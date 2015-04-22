@@ -14,7 +14,7 @@ import java.util.Objects;
  * Supplementary and secondary alignments are skipped. The inputs are assumed to be valid (as per SamFileValidator),
  * otherwise undefined behavior may occur.
  */
-public class SamComparison {
+public final class SamComparison {
     private SamReader reader1;
     private SamReader reader2;
 

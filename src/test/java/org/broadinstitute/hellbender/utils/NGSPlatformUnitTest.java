@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class NGSPlatformUnitTest extends BaseTest {
+public final class NGSPlatformUnitTest extends BaseTest {
     // example genome loc parser for this test, can be deleted if you don't use the reference
     private GenomeLocParser genomeLocParser;
 

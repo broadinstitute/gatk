@@ -9,7 +9,7 @@ import org.testng.reporters.TextReporter;
  * @author hanna
  * @version 0.1
  */
-public class GATKTextReporter extends TextReporter {
+public final class GATKTextReporter extends TextReporter {
     public GATKTextReporter() {
         super("GATK test suite",2);
     }

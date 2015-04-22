@@ -23,7 +23,7 @@ import java.util.List;
  * secondOfPair(5) should be null in order not to set the mate info.  In that case the mate info will indicate that
  * the other end is unmapped.
  */
-public class HitsForInsert {
+public final class HitsForInsert {
 
     private static final HitIndexComparator comparator = new HitIndexComparator();
 

@@ -8,7 +8,7 @@ import static java.lang.String.format;
  * Metric for Illumina Basecalling that stores means and standard deviations on a per-barcode per-lane basis.  Averages
  * and means are taken over all tiles.
  */
-public class IlluminaBasecallingMetrics extends MetricBase {
+public final class IlluminaBasecallingMetrics extends MetricBase {
     /**
      * The lane for which the metrics were calculated.
      */

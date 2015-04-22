@@ -42,7 +42,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
  *
  * @param <CLUSTER_OUTPUT_RECORD> The class to which a ClusterData is converted in preparation for writing.
  */
-public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
+public final class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
     /**
      * Describes the state of a barcode's data's processing in the context of a tile.  It is either not available in
      * that tile, has been read, has been queued to be written to file, or has been written to file.  A barcode only

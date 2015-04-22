@@ -36,7 +36,7 @@ import java.util.*;
         usageShort = CollectRrbsMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CollectRrbsMetrics extends PicardCommandLineProgram {
+public final class CollectRrbsMetrics extends PicardCommandLineProgram {
     final static String USAGE = "Collects metrics about bisulfite conversion for RRBS data";
     private static final String R_SCRIPT = "rrbsQc.R";
 

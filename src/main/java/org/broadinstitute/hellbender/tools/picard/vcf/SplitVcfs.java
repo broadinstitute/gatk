@@ -36,7 +36,7 @@ import java.io.File;
         usageShort = "Splits an input VCF or BCF file into two VCF or BCF files",
         programGroup = VariantProgramGroup.class
 )
-public class SplitVcfs extends PicardCommandLineProgram {
+public final class SplitVcfs extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The VCF or BCF input file")
     public File INPUT;

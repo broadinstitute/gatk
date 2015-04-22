@@ -21,7 +21,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
  * and test classes.  Check out AbstractIlluminaFileReader, PosFileReader, LocsFileReader, and ClocsFileReader for
  * more information on Position related illumina files.
  */
-public class PosParser extends PerTileParser<PositionalData> {
+public final class PosParser extends PerTileParser<PositionalData> {
     private static Set<IlluminaDataType> supportedTypes = unmodifiableSet(makeSet(Position));
 
     /**

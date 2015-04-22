@@ -21,7 +21,7 @@ import java.util.*;
         usageShort = "Compares two input SAM or BAM files",
         programGroup = ReadProgramGroup.class
 )
-public class CompareSAMs extends PicardCommandLineProgram {
+public final class CompareSAMs extends PicardCommandLineProgram {
 
     @PositionalArguments(minElements = 2, maxElements = 2)
     public List<File> samFiles;

@@ -55,7 +55,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.readers
         usageShort = CollectIlluminaBasecallingMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CollectIlluminaBasecallingMetrics extends PicardCommandLineProgram {
+public final class CollectIlluminaBasecallingMetrics extends PicardCommandLineProgram {
     //Command Line Arguments
     static final String USAGE = "Given an Illumina basecalling and a lane, produces per-lane-barcode basecalling metrics";
 

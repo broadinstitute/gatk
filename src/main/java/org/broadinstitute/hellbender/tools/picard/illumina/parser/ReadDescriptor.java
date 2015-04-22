@@ -4,7 +4,7 @@ package org.broadinstitute.hellbender.tools.picard.illumina.parser;
  * Represents one set of cycles in an ReadStructure (e.g. if the ReadStructure is 36TB836T then
  * 36T, 8B, and 36T are invidually represented internally as a ReadDescriptor).
  */
-public class ReadDescriptor {
+public final class ReadDescriptor {
     public final int length;
     public final ReadType type;
 

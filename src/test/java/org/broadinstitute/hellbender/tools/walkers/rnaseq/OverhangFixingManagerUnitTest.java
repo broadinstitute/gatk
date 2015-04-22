@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class OverhangFixingManagerUnitTest extends BaseTest {
+public final class OverhangFixingManagerUnitTest extends BaseTest {
 
     @Test
     public void testCleanSplices() {

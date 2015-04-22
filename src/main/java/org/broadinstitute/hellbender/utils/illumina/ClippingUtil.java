@@ -10,7 +10,7 @@ import htsjdk.samtools.util.SequenceUtil;
  *
  * @author Tim Fennell
  */
-public class ClippingUtil {
+public final class ClippingUtil {
 
     /**
      * The default value used for the minimum number of contiguous bases to match against.

@@ -8,7 +8,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 
-public class TabbedTextFileWithHeaderParserTest {
+public final class TabbedTextFileWithHeaderParserTest {
     @Test
     public void basicParsingTest() throws Exception {
         final String[][] data = new String[][] {

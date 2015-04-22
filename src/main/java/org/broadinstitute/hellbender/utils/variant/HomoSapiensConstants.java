@@ -5,7 +5,7 @@ package org.broadinstitute.hellbender.utils.variant;
  *
  * <p>NOTE: reference to these constants is an indication that your code is (human) species assumption dependant.</p>
  */
-public class HomoSapiensConstants {
+public final class HomoSapiensConstants {
 
     /**
      * Standard heterozygous rate for SNP variation.

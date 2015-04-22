@@ -4,7 +4,7 @@ package org.broadinstitute.hellbender.tools.picard.illumina.parser;
  * One BclData object is returned to IlluminaDataProvider per cluster and each
  * first level array in bases and qualities represents a single read in that
  * cluster */
-public class BclData implements BaseData, QualityData {
+public final class BclData implements BaseData, QualityData {
     public final byte [][] bases;
     public final byte [][] qualities;
 

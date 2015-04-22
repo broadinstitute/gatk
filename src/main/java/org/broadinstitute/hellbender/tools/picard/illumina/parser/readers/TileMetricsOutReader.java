@@ -24,7 +24,7 @@ import java.util.*;
  * byte 4-5 (unisgned short) = metrics code, see Theory of RTA document by Illumina for definition
  * byte 6-9 (float)          = metrics value, see Theory of RTA document by Illumina for definition
  */
-public class TileMetricsOutReader implements Iterator<TileMetricsOutReader.IlluminaTileMetrics> {
+public final class TileMetricsOutReader implements Iterator<TileMetricsOutReader.IlluminaTileMetrics> {
     private static final int HEADER_SIZE = 2;
     private static final int EXPECTED_RECORD_SIZE = 10;
     private static final int EXPECTED_VERSION = 2;

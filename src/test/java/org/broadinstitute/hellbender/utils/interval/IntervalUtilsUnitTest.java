@@ -22,7 +22,7 @@ import java.util.*;
 /**
  * test out the interval utility methods
  */
-public class IntervalUtilsUnitTest extends BaseTest {
+public final class IntervalUtilsUnitTest extends BaseTest {
     public static final String emptyIntervals = BaseTest.publicTestDir + "empty_intervals.list";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;

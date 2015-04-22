@@ -224,7 +224,7 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
     /**
      * Collect the Target Metrics for one unit of "accumulation" (i.e. for one sample, or for one library ...)
      */
-    public class PerUnitTargetMetricCollector implements PerUnitMetricCollector<METRIC_TYPE, Integer, SAMRecord> {
+    public final class PerUnitTargetMetricCollector implements PerUnitMetricCollector<METRIC_TYPE, Integer, SAMRecord> {
 
         private final Map<Interval,Double> intervalToGc;
         private File perTargetOutput;

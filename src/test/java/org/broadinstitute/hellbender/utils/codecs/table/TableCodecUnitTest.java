@@ -54,12 +54,12 @@ public final class TableCodecUnitTest extends BaseTest {
     @Test
     public void testChrs(){
         TableCodec tc = new TableCodec();
-        Assert.assertEquals(tc.decode("1:1  1   2   3").getChr(), "1");
-        Assert.assertEquals(tc.decode("chr1:1  1   2   3").getChr(), "chr1");
-        Assert.assertEquals(tc.decode("1:1+  1   2   3").getChr(), "1");
-        Assert.assertEquals(tc.decode("1  1   2   3").getChr(), "1");
-        Assert.assertEquals(tc.decode("fred  1   2   3").getChr(), "fred");
-        Assert.assertEquals(tc.decode("2:1,000  1   2   3").getChr(), "2");
+        Assert.assertEquals(tc.decode("1:1  1   2   3").getContig(), "1");
+        Assert.assertEquals(tc.decode("chr1:1  1   2   3").getContig(), "chr1");
+        Assert.assertEquals(tc.decode("1:1+  1   2   3").getContig(), "1");
+        Assert.assertEquals(tc.decode("1  1   2   3").getContig(), "1");
+        Assert.assertEquals(tc.decode("fred  1   2   3").getContig(), "fred");
+        Assert.assertEquals(tc.decode("2:1,000  1   2   3").getContig(), "2");
     }
 
     @DataProvider(name = "dataLines")

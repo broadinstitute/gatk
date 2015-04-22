@@ -34,7 +34,7 @@ import java.util.*;
         usageShort = "General tool for manipulating interval lists",
         programGroup = IntervalProgramGroup.class
 )
-public class IntervalListTools extends PicardCommandLineProgram {
+public final class IntervalListTools extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more interval lists. If multiple interval lists are provided the output is the" +

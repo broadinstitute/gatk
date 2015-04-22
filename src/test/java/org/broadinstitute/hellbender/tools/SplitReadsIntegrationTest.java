@@ -20,7 +20,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public class SplitReadsIntegrationTest extends CommandLineProgramTest {
+public final class SplitReadsIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_DATA_PREFIX = "split_reads";
     private static final String REFERENCE_SEQUENCE = TEST_DATA_PREFIX + ".fasta";

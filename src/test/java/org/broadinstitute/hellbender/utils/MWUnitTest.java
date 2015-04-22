@@ -6,7 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-public class MWUnitTest extends BaseTest {
+public final class MWUnitTest extends BaseTest {
     @BeforeClass
     public void init() { }
 

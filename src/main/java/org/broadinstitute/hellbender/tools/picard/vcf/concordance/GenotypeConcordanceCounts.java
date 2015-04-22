@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcor
  * scheme, summary metrics can be returned.
  * @author nhomer
  */
-public class GenotypeConcordanceCounts {
+public final class GenotypeConcordanceCounts {
 
     /**
      * Pre-defined sets based on if the caller wishes to return the sensitivity given the common homozygous reference, heterozygous, and homozygous variant cases.

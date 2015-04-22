@@ -25,7 +25,7 @@ import java.io.PrintStream;
         usageShort = "Print intervals with optional contextual data",
         programGroup = IntervalProgramGroup.class
 )
-public class ExampleIntervalWalker extends IntervalWalker {
+public final class ExampleIntervalWalker extends IntervalWalker {
 
     @ArgumentCollection
     public OptionalVariantInputArgumentCollection optionalVariants = new OptionalVariantInputArgumentCollection();

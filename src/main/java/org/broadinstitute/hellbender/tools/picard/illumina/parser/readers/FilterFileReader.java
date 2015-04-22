@@ -17,7 +17,7 @@ import static org.broadinstitute.hellbender.utils.UnsignedTypeUtil.uIntToLong;
  * Bytes 4-7  : unsigned int version
  * Bytes 8-11 : unsigned int numClusters
  */
-public class FilterFileReader implements Iterator<Boolean> {
+public final class FilterFileReader implements Iterator<Boolean> {
     /**
      * Number of bytes in the files header that will be skipped by the iterator
      */

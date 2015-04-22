@@ -11,7 +11,7 @@ import java.util.*;
  *
  * @author jburke@broadinstitute.org
  */
-public class FourChannelIntensityData {
+public final class FourChannelIntensityData {
     /**
      * Major index: channel number; minor index: cycle number (zero based)
      */

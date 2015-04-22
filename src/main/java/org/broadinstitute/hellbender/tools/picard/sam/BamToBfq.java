@@ -38,7 +38,7 @@ import java.util.*;
         usageShort = "Create BFQ files from a BAM file for use by the Maq aligner.",
         programGroup = ReadProgramGroup.class
 )
-public class BamToBfq extends PicardCommandLineProgram {
+public final class BamToBfq extends PicardCommandLineProgram {
     @Argument(doc="The BAM file to parse.", shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
@@ -99,7 +99,7 @@ public class BamToBfq extends PicardCommandLineProgram {
      * one or two of them, depending on whether it's a paired-end read.  This relies on the unmapped
      * BAM file having all paired reads together in order.
      */
-    private class BamToBfqWriter {
+    private final class BamToBfqWriter {
         private static final int SEED_REGION_LENGTH = 28;
         private static final int MAX_SEED_REGION_NOCALL_FIXES = 2;
 

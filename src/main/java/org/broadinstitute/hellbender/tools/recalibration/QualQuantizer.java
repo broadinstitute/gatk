@@ -30,7 +30,7 @@ import java.util.*;
  * This map would then be used to look up the appropriate original -> quantized
  * quals for each read as it comes in.
  */
-public class QualQuantizer {
+public final class QualQuantizer {
     final private static Set<QualInterval> MY_EMPTY_SET = Collections.emptySet();
 
     private static Logger logger = LogManager.getLogger(QualQuantizer.class);
