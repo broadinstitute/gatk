@@ -5,7 +5,6 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 /**
@@ -14,11 +13,6 @@ import org.testng.annotations.Test;
 public class MathUtilsUnitTests {
 
     private final static Logger logger = LogManager.getLogger(MathUtilsUnitTests.class);
-
-    @BeforeClass
-    public void init() {
-    }
-
 
     @Test
     public void testLog10Gamma() {

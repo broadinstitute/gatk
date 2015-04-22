@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.linear.DiagonalMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.LUDecomposition;
 import java.util.*;
@@ -22,6 +24,8 @@ public final class MathUtils {
      * where the real-space value is 0.0.
      */
     public static final double LOG10_P_OF_ZERO = -1000000.0;
+    public static final double NATURAL_LOG_OF_TEN = Math.log(10.0);
+
 
     /**
      * A helper class to maintain a cache of log10 values
@@ -157,6 +161,23 @@ public final class MathUtils {
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
     }
 
+    /**
+     * A version of Log10SumLog10 that tolerates NaN values in the array
+     *
+     * In the case where one or more of the values are NaN, this function returns NaN
+     *
+     * @param values a non-null vector of doubles
+     * @return log10 of the sum of the log10 values, or NaN
+     */
+    public static double nanTolerantLog10SumLog10(final double[] values) {
+        for ( final double value : values ) {
+            if (Double.isNaN(value)) {
+                return Double.NaN;
+            }
+        }
+        return MathUtils.log10sumLog10(values);
+    }
+
     public static double log10sumLog10(final double[] log10p, final int start) {
         return log10sumLog10(log10p, start, log10p.length);
     }
@@ -206,44 +227,44 @@ public final class MathUtils {
         return normalizeFromLog10(array, takeLog10OfOutput, false);
     }
 
+    public static double arraySum(final double[] arr){
+        double sum = 0.0;
+        for (double anArr : arr) {
+            sum += anArr;
+        }
+        return sum;
+    }
     /**
      * See #normalizeFromLog10 but with the additional option to use an approximation that keeps the calculation always in log-space
-     *
-     * @param array
-     * @param takeLog10OfOutput
-     * @param keepInLogSpace
-     *
-     * @return
      */
     public static double[] normalizeFromLog10(final double[] array, final boolean takeLog10OfOutput, final boolean keepInLogSpace) {
         // for precision purposes, we need to add (or really subtract, since they're
         // all negative) the largest value; also, we need to convert to normal-space.
-        double maxValue = arrayMax(array);
+        final double maxValue = arrayMax(array);
 
         // we may decide to just normalize in log space without converting to linear space
         if (keepInLogSpace) {
             for (int i = 0; i < array.length; i++) {
-                array[i] -= maxValue;
+                array[i] = array[i] - maxValue;
             }
             return array;
         }
 
         // default case: go to linear space
-        double[] normalized = new double[array.length];
-
-        for (int i = 0; i < array.length; i++)
+        final double[] normalized = new double[array.length];
+        for (int i = 0; i < array.length; i++) {
             normalized[i] = Math.pow(10, array[i] - maxValue);
+        }
 
         // normalize
-        double sum = 0.0;
-        for (int i = 0; i < array.length; i++)
-            sum += normalized[i];
+        final double sum = arraySum(normalized);
         for (int i = 0; i < array.length; i++) {
             double x = normalized[i] / sum;
             if (takeLog10OfOutput) {
                 x = Math.log10(x);
-                if ( x < LOG10_P_OF_ZERO || Double.isInfinite(x) )
+                if ( x < LOG10_P_OF_ZERO || Double.isInfinite(x) ) {
                     x = array[i] - maxValue;
+                }
             }
 
             normalized[i] = x;
@@ -746,4 +767,22 @@ public final class MathUtils {
         for (int i = 0; i < is.length; ++i) ds[i] = is[i];
         return ds;
     }
+    
+    /**
+     * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
+     * @param mean the mean of the Normal distribution
+     * @param sd the standard deviation of the Normal distribution
+     * @param x the value to evaluate
+     * @return a well-formed double
+     */
+    public static double normalDistributionLog10(final double mean, final double sd, final double x) {
+        return new NormalDistribution(mean, sd).logDensity(x)/NATURAL_LOG_OF_TEN;
+    }
+
+    public static RealMatrix identityMatrix(int n){
+        double[] ones = new double[n];
+        Arrays.fill(ones, 1);
+        return new DiagonalMatrix(ones);
+    }
+
 }

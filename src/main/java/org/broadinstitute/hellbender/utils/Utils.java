@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,9 +19,19 @@ public class Utils {
      */
     private static final long GATK_RANDOM_SEED = 47382911L;
     private static Random randomGenerator = new Random(GATK_RANDOM_SEED);
+    private static RandomGenerator apacheRandomGenerator = new Well19937c(GATK_RANDOM_SEED);
+
     public static Random getRandomGenerator() { return randomGenerator; }
-    public static void resetRandomGenerator() { randomGenerator.setSeed(GATK_RANDOM_SEED); }
-    public static void resetRandomGenerator(long seed) { randomGenerator.setSeed(seed); }
+    public static RandomGenerator getApacheRandomGenerator() { return apacheRandomGenerator; }
+
+    public static void resetRandomGenerator() {
+        randomGenerator.setSeed(GATK_RANDOM_SEED);
+        apacheRandomGenerator.setSeed(GATK_RANDOM_SEED);
+    }
+    public static void resetRandomGenerator(long seed) {
+        randomGenerator.setSeed(seed);
+        apacheRandomGenerator.setSeed(seed);
+    }
 
     private static final int TEXT_WARNING_WIDTH = 68;
     private static final String TEXT_WARNING_PREFIX = "* ";
