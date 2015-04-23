@@ -531,7 +531,7 @@ public final class CommandLineParser {
     private <T extends Enum<T>> String getEnumOptionsWithoutDescription(final T[] enumConstants) {
         return Stream.of(enumConstants)
                 .map(T::name)
-                .collect(Collectors.joining(", ", ENUM_OPTION_DOC_PREFIX, ENUM_OPTION_DOC_SUFFIX));
+                .collect(Collectors.joining(", ",ENUM_OPTION_DOC_PREFIX,ENUM_OPTION_DOC_SUFFIX));
     }
 
     /**
