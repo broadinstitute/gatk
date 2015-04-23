@@ -565,7 +565,7 @@ public final class CommandLineParser {
             @SuppressWarnings({"unchecked", "rawtypes"})
             final Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
             @SuppressWarnings("unchecked")
-            String Temp = getEnumOptions(enumClass);//Created Temporary variable because SuppressWarnings is not allowed just before return statement.
+            String Temp = getEnumOptions(enumClass);//Created Temp variable because SuppressWarnings is not allowed just before return statement.
             return Temp;
         } else {
             return "";
