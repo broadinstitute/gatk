@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.Assert;
@@ -19,13 +15,39 @@ import java.util.List;
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
 /**
- * Tests for the Wellformed read filter. .
+ * Tests for the read filter library.
  */
-public final class WellformedReadFilterUnitTest extends ReadFilterTest {
+public final class ReadFilterLibraryUnitTest {
+    private static final int CHR_COUNT = 1;
+    private static final int CHR_START = 1;
+    private static final int CHR_SIZE = 1000;
+    private static final int GROUP_COUNT = 5;
+
+    private final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeaderWithGroups(CHR_COUNT, CHR_START, CHR_SIZE, GROUP_COUNT);
+
+    /**
+     * Creates a read record.
+     *
+     * @param cigar the new record CIGAR.
+     * @param group the new record group index that must be in the range \
+     *              [0,{@link #GROUP_COUNT})
+     * @param reference the reference sequence index (0-based)
+     * @param start the start position of the read alignment in the reference
+     *              (1-based)
+     * @return never <code>null</code>
+     */
+    private SAMRecord createRead(final Cigar cigar, final int group, final int reference, final int start) {
+        final SAMRecord record = ArtificialSAMUtils.createArtificialRead(cigar);
+        record.setHeader(header);
+        record.setAlignmentStart(start);
+        record.setReferenceIndex(reference);
+        record.setAttribute(SAMTag.RG.toString(), header.getReadGroups().get(group).getReadGroupId());
+        return record;
+
+    }
 
     @Test
     public void testCheckSeqStored() {
-
         final SAMRecord goodRead = ArtificialSAMUtils.createArtificialRead(new byte[]{(byte) 'A'}, new byte[]{(byte) 'A'}, "1M");
         final SAMRecord badRead = ArtificialSAMUtils.createArtificialRead(new byte[]{}, new byte[]{}, "1M");
         badRead.setReadString("*");
@@ -43,7 +65,7 @@ public final class WellformedReadFilterUnitTest extends ReadFilterTest {
         Assert.assertEquals(containsN, !filter.test(read), cigarString);
     }
 
-    protected SAMRecord buildSAMRecord(final String cigarString) {
+    private SAMRecord buildSAMRecord(final String cigarString) {
         final Cigar nContainingCigar = TextCigarCodec.decode(cigarString);
         return this.createRead(nContainingCigar, 1, 0, 10);
     }
@@ -81,7 +103,7 @@ public final class WellformedReadFilterUnitTest extends ReadFilterTest {
     private SAMRecord simpleGoodRead() {
         String cigarString = "101M";
         final Cigar nContainingCigar = TextCigarCodec.decode(cigarString);
-        SAMRecord read =  this.createRead(nContainingCigar, 1, 0, 10);
+        SAMRecord read =  createRead(nContainingCigar, 1, 0, 10);
         read.setMappingQuality(50);
         return read;
     }
