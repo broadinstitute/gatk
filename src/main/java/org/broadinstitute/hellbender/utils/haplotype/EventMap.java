@@ -75,7 +75,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
                 case I:
                 {
                     if( refPos > 0 ) { // protect against trying to create insertions/deletions at the beginning of a contig
-                        final List<Allele> insertionAlleles = new ArrayList<Allele>();
+                        final List<Allele> insertionAlleles = new ArrayList<>();
                         final int insertionStart = refLoc.getStart() + refPos - 1;
                         final byte refByte = ref[refPos-1];
                         if( BaseUtils.isRegularBase(refByte) ) {
@@ -108,7 +108,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
                 {
                     if( refPos > 0 ) { // protect against trying to create insertions/deletions at the beginning of a contig
                         final byte[] deletionBases = Arrays.copyOfRange( ref, refPos - 1, refPos + elementLength );  // add padding base
-                        final List<Allele> deletionAlleles = new ArrayList<Allele>();
+                        final List<Allele> deletionAlleles = new ArrayList<>();
                         final int deletionStart = refLoc.getStart() + refPos - 1;
                         final byte refByte = ref[refPos-1];
                         if( BaseUtils.isRegularBase(refByte) && BaseUtils.isAllRegularBases(deletionBases) ) {
@@ -129,7 +129,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
                         final byte altByte = alignment[alignmentPos];
                         if( refByte != altByte ) { // SNP!
                             if( BaseUtils.isRegularBase(refByte) && BaseUtils.isRegularBase(altByte) ) {
-                                final List<Allele> snpAlleles = new ArrayList<Allele>();
+                                final List<Allele> snpAlleles = new ArrayList<>();
                                 snpAlleles.add( Allele.create( refByte, true ) );
                                 snpAlleles.add( Allele.create( altByte, false ) );
                                 proposedEvents.add(new VariantContextBuilder(sourceNameToAdd, refLoc.getContig(), refLoc.getStart() + refPos, refLoc.getStart() + refPos, snpAlleles).make());
@@ -283,7 +283,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
      * @return a list that contains at least one element (leftMost)
      */
     protected List<VariantContext> getNeighborhood(final VariantContext leftMost, final int maxBPBetweenEvents) {
-        final List<VariantContext> neighbors = new LinkedList<VariantContext>();
+        final List<VariantContext> neighbors = new LinkedList<>();
 
         VariantContext left = leftMost;
         for ( final VariantContext vc : getVariantContexts() ) {
@@ -348,7 +348,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
                                                                 final GenomeLoc refLoc,
                                                                 final boolean debug) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        final TreeSet<Integer> startPosKeySet = new TreeSet<Integer>();
+        final TreeSet<Integer> startPosKeySet = new TreeSet<>();
         int hapNumber = 0;
 
         if( debug ) logger.info("=== Best Haplotypes ===");
@@ -381,7 +381,7 @@ public class EventMap extends TreeMap<Integer, VariantContext> {
      */
     public static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        final TreeSet<VariantContext> vcs = new TreeSet<VariantContext>(new VariantContextComparator());
+        final TreeSet<VariantContext> vcs = new TreeSet<>(new VariantContextComparator());
 
         for( final Haplotype h : haplotypes ) {
             vcs.addAll(h.getEventMap().getVariantContexts());

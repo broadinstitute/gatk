@@ -25,7 +25,7 @@ public class MostDistantPrimaryAlignmentSelectionStrategy implements PrimaryAlig
         final BestEndAlignmentsAccumulator firstEndBest = new BestEndAlignmentsAccumulator();
         final BestEndAlignmentsAccumulator secondEndBest = new BestEndAlignmentsAccumulator();
         final CollectionUtil.MultiMap<Integer, SAMRecord> firstEndBySequence =
-                new CollectionUtil.MultiMap<Integer, SAMRecord>();
+                new CollectionUtil.MultiMap<>();
         final BestPairAlignmentsAccumulator pairBest = new BestPairAlignmentsAccumulator();
 
         for (final SAMRecord rec : hitsForInsert.firstOfPairOrFragment) {
@@ -110,7 +110,7 @@ public class MostDistantPrimaryAlignmentSelectionStrategy implements PrimaryAlig
 
     private static class BestEndAlignmentsAccumulator {
         public int bestMapq = -1;
-        public List<SAMRecord> bestAlignments = new ArrayList<SAMRecord>();
+        public List<SAMRecord> bestAlignments = new ArrayList<>();
 
         public void considerBest(final SAMRecord rec) {
             if (bestMapq == -1) {
@@ -137,7 +137,7 @@ public class MostDistantPrimaryAlignmentSelectionStrategy implements PrimaryAlig
         public int bestDistance = -1;
         public int bestPairMapq = -1;
         public List<Map.Entry<SAMRecord, SAMRecord>> bestAlignmentPairs =
-                new ArrayList<Map.Entry<SAMRecord, SAMRecord>>();
+                new ArrayList<>();
 
         public void considerBest(final SAMRecord firstEnd, final SAMRecord secondEnd) {
             final int thisPairMapq = SAMUtils.combineMapqs(firstEnd.getMappingQuality(), secondEnd.getMappingQuality());
@@ -147,9 +147,9 @@ public class MostDistantPrimaryAlignmentSelectionStrategy implements PrimaryAlig
                 bestDistance = thisDistance;
                 bestPairMapq = thisPairMapq;
                 bestAlignmentPairs.clear();
-                bestAlignmentPairs.add(new AbstractMap.SimpleEntry<SAMRecord, SAMRecord>(firstEnd, secondEnd));
+                bestAlignmentPairs.add(new AbstractMap.SimpleEntry<>(firstEnd, secondEnd));
             } else if (thisDistance == bestDistance && thisPairMapq == bestPairMapq) {
-                bestAlignmentPairs.add(new AbstractMap.SimpleEntry<SAMRecord, SAMRecord>(firstEnd, secondEnd));
+                bestAlignmentPairs.add(new AbstractMap.SimpleEntry<>(firstEnd, secondEnd));
             }
         }
 

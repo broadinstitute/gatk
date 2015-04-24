@@ -93,7 +93,7 @@ public class QualQuantizerUnitTest extends BaseTest {
     // --------------------------------------------------------------------------------
 
     private class QuantizerTestProvider extends TestDataProvider {
-        final List<Long> nObservationsPerQual = new ArrayList<Long>();
+        final List<Long> nObservationsPerQual = new ArrayList<>();
         final int nLevels;
         final List<Integer> expectedMap;
 

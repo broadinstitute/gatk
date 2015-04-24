@@ -10,7 +10,7 @@ import java.util.*;
  * The transcripts must all be relative to the same strand.
  */
 public class Gene extends Interval implements Iterable<Gene.Transcript> {
-    private final Map<String, Transcript> transcripts = new HashMap<String, Transcript>();
+    private final Map<String, Transcript> transcripts = new HashMap<>();
 
 
     public Gene(final String sequence, final int start, final int end, final boolean negative, final String name) {

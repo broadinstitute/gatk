@@ -73,7 +73,7 @@ public class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenceMulti
 
     /** Converts the supplied adapter sequences to byte arrays in both fwd and rc. */
     private byte [][] prepareAdapterSequences() {
-        final Set<String> kmers = new HashSet<String>();
+        final Set<String> kmers = new HashSet<>();
 
         // Make a set of all kmers of adapterMatchLength
         for (final String seq : adapterSequence) {
@@ -194,7 +194,7 @@ public class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenceMulti
          */
         private class IndividualAlignmentSummaryMetricsCollector {
             private long numPositiveStrand = 0;
-            private final Histogram<Integer> readLengthHistogram = new Histogram<Integer>();
+            private final Histogram<Integer> readLengthHistogram = new Histogram<>();
             private AlignmentSummaryMetrics metrics;
             private long chimeras;
             private long chimerasDenominator;
@@ -203,9 +203,9 @@ public class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenceMulti
 
             private long nonBisulfiteAlignedBases = 0;
             private long hqNonBisulfiteAlignedBases = 0;
-            private final Histogram<Long> mismatchHistogram = new Histogram<Long>();
-            private final Histogram<Long> hqMismatchHistogram = new Histogram<Long>();
-            private final Histogram<Integer> badCycleHistogram = new Histogram<Integer>();
+            private final Histogram<Long> mismatchHistogram = new Histogram<>();
+            private final Histogram<Long> hqMismatchHistogram = new Histogram<>();
+            private final Histogram<Integer> badCycleHistogram = new Histogram<>();
 
             public IndividualAlignmentSummaryMetricsCollector(final AlignmentSummaryMetrics.Category pairingCategory,
                                                               final String sample,

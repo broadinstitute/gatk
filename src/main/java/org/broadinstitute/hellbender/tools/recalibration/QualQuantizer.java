@@ -203,7 +203,7 @@ public class QualQuantizer {
             final long nCombinedErr = left.nErrors + right.nErrors;
 
             final int level = Math.max(left.level, right.level) + 1;
-            final Set<QualInterval> subIntervals = new HashSet<QualInterval>(Arrays.asList(left, right));
+            final Set<QualInterval> subIntervals = new HashSet<>(Arrays.asList(left, right));
             QualInterval merged = new QualInterval(left.qStart, right.qEnd, nCombinedObs, nCombinedErr, level, subIntervals);
 
             return merged;
@@ -262,7 +262,7 @@ public class QualQuantizer {
      */
     private TreeSet<QualInterval> quantize() {
         // create intervals for each qual individually
-        final TreeSet<QualInterval> intervals = new TreeSet<QualInterval>();
+        final TreeSet<QualInterval> intervals = new TreeSet<>();
         for ( int qStart = 0; qStart < getNQualsInHistogram(); qStart++ ) {
             final long nObs = nObservationsPerQual.get(qStart);
             final double errorRate = QualityUtils.qualToErrorProb((byte)qStart);
@@ -326,7 +326,7 @@ public class QualQuantizer {
      * @return
      */
     private List<Byte> intervalsToMap(final TreeSet<QualInterval> intervals) {
-        final List<Byte> map = new ArrayList<Byte>(getNQualsInHistogram());
+        final List<Byte> map = new ArrayList<>(getNQualsInHistogram());
         map.addAll(Collections.nCopies(getNQualsInHistogram(), Byte.MIN_VALUE));
         for ( final QualInterval interval : intervals ) {
             for ( int q = interval.qStart; q <= interval.qEnd; q++ ) {

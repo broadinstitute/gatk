@@ -92,7 +92,7 @@ public class ArtificialSAMUtils {
         record.setReadName(name);
         record.setReferenceIndex(refIndex);
         record.setAlignmentStart(alignmentStart);
-        List<CigarElement> elements = new ArrayList<CigarElement>();
+        List<CigarElement> elements = new ArrayList<>();
         elements.add(new CigarElement(length, CigarOperator.characterToEnum('M')));
         record.setCigar(new Cigar(elements));
         record.setProperPairFlag(false);

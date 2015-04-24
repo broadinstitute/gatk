@@ -83,7 +83,7 @@ public class CollectIlluminaBasecallingMetrics extends PicardCommandLineProgram 
     private static final String BARCODE_SEQUENCE_COLUMN_NAME_STUB = "barcode_sequence_";
 
     public CollectIlluminaBasecallingMetrics() {
-        this.barcodeToMetricCounts = new TreeMap<String, IlluminaMetricCounts>();
+        this.barcodeToMetricCounts = new TreeMap<>();
     }
 
     @Override
@@ -206,8 +206,8 @@ public class CollectIlluminaBasecallingMetrics extends PicardCommandLineProgram 
         final IlluminaBasecallingMetrics metrics;
 
         public IlluminaMetricCounts(final String barcode, final String barcodeName, final Integer laneNumber) {
-            this.tileToClusterHistogram = new Histogram<Integer>();
-            this.tileToPfClusterHistogram = new Histogram<Integer>();
+            this.tileToClusterHistogram = new Histogram<>();
+            this.tileToPfClusterHistogram = new Histogram<>();
             this.metrics = new IlluminaBasecallingMetrics();
             this.metrics.MOLECULAR_BARCODE_SEQUENCE_1 = barcode;
             this.metrics.MOLECULAR_BARCODE_NAME = barcodeName;

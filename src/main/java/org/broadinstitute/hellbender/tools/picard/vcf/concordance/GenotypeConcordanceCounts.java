@@ -33,7 +33,7 @@ public class GenotypeConcordanceCounts {
             CallState.HOM_VAR1, CallState.HOM_VAR2, CallState.HOM_VAR3};
 
     /** The underlying counts table */
-    private final Histogram<TruthAndCallStates> counter = new Histogram<TruthAndCallStates>();
+    private final Histogram<TruthAndCallStates> counter = new Histogram<>();
 
     /**
      * Increments a count for the truth/call state tuple.
@@ -62,7 +62,7 @@ public class GenotypeConcordanceCounts {
     }
 
     private Set<ContingencyState> getContingencyStateSet(final ContingencyState[] contingencyStateArray) {
-        final Set<ContingencyState> contingencyStateSet = new HashSet<ContingencyState>();
+        final Set<ContingencyState> contingencyStateSet = new HashSet<>();
         Collections.addAll(contingencyStateSet, contingencyStateArray);
         return contingencyStateSet;
     }
@@ -220,7 +220,7 @@ public class GenotypeConcordanceCounts {
      * Returns the sum of all pairs of tuples defined by the truth state set and call state set.
      */
     public int getSum() {
-        return getSum(new HashSet<TruthState>(Arrays.asList(TruthState.values())), new HashSet<CallState>(Arrays.asList(CallState.values())));
+        return getSum(new HashSet<>(Arrays.asList(TruthState.values())), new HashSet<>(Arrays.asList(CallState.values())));
     }
 
     /**
@@ -229,7 +229,7 @@ public class GenotypeConcordanceCounts {
     public Map<ContingencyState, Integer> getContingencyStateCounts(final GenotypeConcordanceScheme scheme) {
         scheme.validateScheme();
 
-        final Map<ContingencyState, Integer> counts = new HashMap<ContingencyState, Integer>();
+        final Map<ContingencyState, Integer> counts = new HashMap<>();
         for (final ContingencyState contingencyState : ContingencyState.values()) {
             counts.put(contingencyState, 0);
         }

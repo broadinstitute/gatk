@@ -175,8 +175,8 @@ public class RevertSam extends PicardCommandLineProgram {
         } else {
 
             long total = 0, discarded = 0;
-            final PeekableIterator<SAMRecord> iterator = new PeekableIterator<SAMRecord>(sorter.iterator());
-            final Map<SAMReadGroupRecord, FastqQualityFormat> readGroupToFormat = new HashMap<SAMReadGroupRecord, FastqQualityFormat>();
+            final PeekableIterator<SAMRecord> iterator = new PeekableIterator<>(sorter.iterator());
+            final Map<SAMReadGroupRecord, FastqQualityFormat> readGroupToFormat = new HashMap<>();
 
             // Figure out the quality score encoding scheme for each read group.
             for (final SAMReadGroupRecord rg : inHeader.getReadGroups()) {
@@ -278,7 +278,7 @@ public class RevertSam extends PicardCommandLineProgram {
      * remaining returns an empty list.
      */
     private List<SAMRecord> fetchByReadName(final PeekableIterator<SAMRecord> iterator) {
-        final List<SAMRecord> out = new LinkedList<SAMRecord>();
+        final List<SAMRecord> out = new LinkedList<>();
 
         if (iterator.hasNext()) {
             final SAMRecord first = iterator.next();

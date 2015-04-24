@@ -285,7 +285,7 @@ public class ClippingUtilTest {
      */
     private static String makeBogusReadString(final int len) {
         final StringBuilder builder = new StringBuilder(len);
-        final Map<Character, Character> nextChar = new HashMap<Character, Character>();
+        final Map<Character, Character> nextChar = new HashMap<>();
         nextChar.put('A', 'C');
         nextChar.put('C', 'G');
         nextChar.put('G', 'T');

@@ -39,12 +39,12 @@ public class RefFlatReader {
     }
 
     OverlapDetector<Gene> load() {
-        final OverlapDetector<Gene> overlapDetector = new OverlapDetector<Gene>(0, 0);
+        final OverlapDetector<Gene> overlapDetector = new OverlapDetector<>(0, 0);
 
         final int expectedColumns = RefFlatColumns.values().length;
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(refFlatFile, RefFlatColumnLabels);
         final Map<String, List<TabbedTextFileWithHeaderParser.Row>> refFlatLinesByGene =
-                new HashMap<String, List<TabbedTextFileWithHeaderParser.Row>>();
+                new HashMap<>();
 
         for (final TabbedTextFileWithHeaderParser.Row row : parser) {
             final int lineNumber = parser.getCurrentLineNumber(); // getCurrentLineNumber returns the number of the next line
@@ -60,7 +60,7 @@ public class RefFlatReader {
             } else {
                 List<TabbedTextFileWithHeaderParser.Row> transcriptLines = refFlatLinesByGene.get(geneName);
                 if (transcriptLines == null) {
-                    transcriptLines = new ArrayList<TabbedTextFileWithHeaderParser.Row>();
+                    transcriptLines = new ArrayList<>();
                     refFlatLinesByGene.put(geneName, transcriptLines);
                 }
                 transcriptLines.add(row);

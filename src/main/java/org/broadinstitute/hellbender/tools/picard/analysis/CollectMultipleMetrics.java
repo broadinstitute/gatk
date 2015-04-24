@@ -103,7 +103,7 @@ public class CollectMultipleMetrics extends PicardCommandLineProgram {
 
     @Override
     protected String[] customCommandLineValidation() {
-        programsToRun = new ArrayList<ProgramInterface>(PROGRAM);
+        programsToRun = new ArrayList<>(PROGRAM);
         return super.customCommandLineValidation();
     }
 
@@ -121,8 +121,8 @@ public class CollectMultipleMetrics extends PicardCommandLineProgram {
             OUTPUT = OUTPUT.substring(0, OUTPUT.length() - 1);
         }
 
-        final List<SinglePassSamProgram> programs = new ArrayList<SinglePassSamProgram>();
-        for (ProgramInterface program : new HashSet<ProgramInterface>(programsToRun)) {
+        final List<SinglePassSamProgram> programs = new ArrayList<>();
+        for (ProgramInterface program : new HashSet<>(programsToRun)) {
             SinglePassSamProgram instance = program.makeInstance(OUTPUT);
 
             // Generally programs should not be accessing these directly but it might make things smoother

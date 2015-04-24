@@ -156,7 +156,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
     @Argument(doc = "Whether to include non-PF reads", shortName = "NONPF", optional = true)
     public boolean INCLUDE_NON_PF_READS = true;
 
-    private final Map<String, SAMFileWriterWrapper> barcodeSamWriterMap = new HashMap<String, SAMFileWriterWrapper>();
+    private final Map<String, SAMFileWriterWrapper> barcodeSamWriterMap = new HashMap<>();
     private ReadStructure readStructure;
     IlluminaBasecallsConverter<SAMRecordsForCluster> basecallsConverter;
     private static final Log log = getInstance(IlluminaBasecallsToSam.class);
@@ -182,7 +182,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
 
         final int numOutputRecords = readStructure.templates.length();
 
-        basecallsConverter = new IlluminaBasecallsConverter<SAMRecordsForCluster>(BASECALLS_DIR, BARCODES_DIR, LANE, readStructure,
+        basecallsConverter = new IlluminaBasecallsConverter<>(BASECALLS_DIR, BARCODES_DIR, LANE, readStructure,
                 barcodeSamWriterMap, true, MAX_READS_IN_RAM_PER_TILE / numOutputRecords, TMP_DIR, NUM_PROCESSORS, FORCE_GC,
                 FIRST_TILE, TILE_LIMIT, new QueryNameComparator(), new Codec(numOutputRecords), SAMRecordsForCluster.class,
                 bclQualityEvaluationStrategy, this.APPLY_EAMSS_FILTER, INCLUDE_NON_PF_READS);
@@ -207,7 +207,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
      * @return actualCols - expectedCols
      */
     private Set<String> findAndFilterExpectedColumns(final Set<String> actualCols, final Set<String> expectedCols) {
-        final Set<String> missingColumns = new HashSet<String>(expectedCols);
+        final Set<String> missingColumns = new HashSet<>(expectedCols);
         missingColumns.removeAll(actualCols);
 
         if (missingColumns.size() > 0) {
@@ -217,7 +217,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
                     )));
         }
 
-        final Set<String> remainingColumns = new HashSet<String>(actualCols);
+        final Set<String> remainingColumns = new HashSet<>(actualCols);
         remainingColumns.removeAll(expectedCols);
         return remainingColumns;
     }
@@ -252,7 +252,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
         final TabbedTextFileWithHeaderParser libraryParamsParser = new TabbedTextFileWithHeaderParser(LIBRARY_PARAMS);
 
         final Set<String> expectedColumnLabels = makeSet("OUTPUT", "SAMPLE_ALIAS", "LIBRARY_NAME");
-        final List<String> barcodeColumnLabels = new ArrayList<String>();
+        final List<String> barcodeColumnLabels = new ArrayList<>();
         if (readStructure.barcodes.length() == 1) {
             //For the single barcode read case, the barcode label name can either by BARCODE or BARCODE_1
             if (libraryParamsParser.hasColumn("BARCODE")) {
@@ -276,7 +276,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
             List<String> barcodeValues = null;
 
             if (barcodeColumnLabels.size() > 0) {
-                barcodeValues = new ArrayList<String>();
+                barcodeValues = new ArrayList<>();
                 for (final String barcodeLabel : barcodeColumnLabels) {
                     barcodeValues.add(row.getField(barcodeLabel));
                 }
@@ -313,7 +313,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
      * @return A Map of ReadGroupHeaderTags -> Values
      */
     private Map<String, String> buildSamHeaderParameters(final List<String> barcodes) {
-        final Map<String, String> params = new HashMap<String, String>();
+        final Map<String, String> params = new HashMap<>();
 
         String platformUnit = RUN_BARCODE + "." + LANE;
         if (barcodes != null) platformUnit += ("." + barcodeSeqsToString(barcodes));
@@ -369,7 +369,7 @@ public class IlluminaBasecallsToSam extends PicardCommandLineProgram {
      */
     @Override
     protected String[] customCommandLineValidation() {
-        final ArrayList<String> messages = new ArrayList<String>();
+        final ArrayList<String> messages = new ArrayList<>();
 
         readStructure = new ReadStructure(READ_STRUCTURE);
         if (!readStructure.barcodes.isEmpty()) {

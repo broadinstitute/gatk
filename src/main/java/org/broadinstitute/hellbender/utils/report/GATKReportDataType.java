@@ -49,7 +49,7 @@ public enum GATKReportDataType {
         this.dataTypeString = dataTypeString;
     }
 
-    private static final Map<java.lang.String, GATKReportDataType> lookup = new HashMap<java.lang.String, GATKReportDataType>();
+    private static final Map<java.lang.String, GATKReportDataType> lookup = new HashMap<>();
 
     static {
         for (GATKReportDataType s : EnumSet.allOf(GATKReportDataType.class))

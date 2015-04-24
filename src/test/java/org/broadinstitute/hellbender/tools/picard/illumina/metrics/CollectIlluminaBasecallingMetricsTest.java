@@ -151,7 +151,7 @@ public class CollectIlluminaBasecallingMetricsTest extends CommandLineProgramTes
 
         File basecallsDir = new File(rootTestDir.getPath(),basecallsDirName);
 
-        List<String> argsList = new ArrayList<String>();
+        List<String> argsList = new ArrayList<>();
         argsList.add("--BASECALLS_DIR"); argsList.add(basecallsDir.getPath());
         argsList.add("--LANE"); argsList.add(Integer.toString(lane));
         argsList.add("--OUTPUT"); argsList.add(metricsFile.getPath());
@@ -165,7 +165,7 @@ public class CollectIlluminaBasecallingMetricsTest extends CommandLineProgramTes
 
         runCommandLine(argsList);
 
-        final MetricsFile<IlluminaBasecallingMetrics,Integer> retval = new MetricsFile<IlluminaBasecallingMetrics,Integer>();
+        final MetricsFile<IlluminaBasecallingMetrics,Integer> retval = new MetricsFile<>();
         retval.read(new FileReader(metricsFile));
         return retval;
     }

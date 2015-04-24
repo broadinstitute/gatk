@@ -43,8 +43,8 @@ public class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollect
 		// Counters for CpG & non-CpG seen/converted sites
 		int nCytoConverted = 0;
 		int nCytoTotal = 0;
-		final Histogram<CpgLocation> cpgTotal = new Histogram<CpgLocation>();
-		final Histogram<CpgLocation> cpgConverted = new Histogram<CpgLocation>();
+		final Histogram<CpgLocation> cpgTotal = new Histogram<>();
+		final Histogram<CpgLocation> cpgConverted = new Histogram<>();
 
 		// Counters for QC filters used in the final metrics
 		int mappedRecordCount = 0;
@@ -180,7 +180,7 @@ public class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollect
 		}
 
 		private List<RrbsCpgDetailMetrics> buildDetailMetrics() {
-			final List<RrbsCpgDetailMetrics> detailMetrics = new ArrayList<RrbsCpgDetailMetrics>();
+			final List<RrbsCpgDetailMetrics> detailMetrics = new ArrayList<>();
 			for (final CpgLocation key : cpgTotal.keySet()) {
 				final RrbsCpgDetailMetrics cpgMetric = new RrbsCpgDetailMetrics();
 				cpgMetric.SAMPLE = sample;

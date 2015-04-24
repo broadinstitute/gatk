@@ -14,9 +14,9 @@ public class PerTileFileUtil extends ParameterizedFileUtil {
         super(true, extension, base, faker, lane);
         this.fileMap = getTiledFiles(base, matchPattern);
         if (fileMap.size() > 0) {
-            this.tiles = Collections.unmodifiableList(new ArrayList<Integer>(this.fileMap.keySet()));
+            this.tiles = Collections.unmodifiableList(new ArrayList<>(this.fileMap.keySet()));
         } else {
-            this.tiles = new ArrayList<Integer>();
+            this.tiles = new ArrayList<>();
         }
     }
 
@@ -35,13 +35,13 @@ public class PerTileFileUtil extends ParameterizedFileUtil {
 
     @Override
     public List<String> verify(final List<Integer> expectedTiles, final int[] expectedCycles) {
-        final List<String> failures = new LinkedList<String>();
+        final List<String> failures = new LinkedList<>();
 
         if (!base.exists()) {
             failures.add("Base directory(" + base.getAbsolutePath() + ") does not exist!");
         } else {
                 if (!tiles.containsAll(expectedTiles)) {
-                    final List<Integer> missing = new ArrayList<Integer>(expectedTiles);
+                    final List<Integer> missing = new ArrayList<>(expectedTiles);
                     missing.removeAll(tiles);
                     failures.add("Missing tile " + missing + " for file type " + extension + ".");
                 }
@@ -52,7 +52,7 @@ public class PerTileFileUtil extends ParameterizedFileUtil {
     @Override
     public List<String> fakeFiles(final List<Integer> expectedTiles, final int[] cycles,
                                   final IlluminaFileUtil.SupportedIlluminaFormat format) {
-        final List<String> failures = new LinkedList<String>();
+        final List<String> failures = new LinkedList<>();
         if (!base.exists()) {
             failures.add("Base directory(" + base.getAbsolutePath() + ") does not exist!");
         } else {

@@ -188,7 +188,7 @@ public class BamToBfq extends PicardCommandLineProgram {
 
 
             if (!pairedReads) {
-                List<SamRecordFilter> filters = new ArrayList<SamRecordFilter>();
+                List<SamRecordFilter> filters = new ArrayList<>();
                 filters.add(tagFilter);
                 filters.add(clippedFilter);
                 if (!this.includeNonPfReads) {
@@ -436,10 +436,10 @@ public class BamToBfq extends PicardCommandLineProgram {
                 //but it doesn't check this early, nor produce an understandable error message."
                 throw new UserException("Input file (" + this.bamFile.getAbsolutePath() +") needs to be sorted by queryname.");
             }
-            final PeekableIterator<SAMRecord> it = new PeekableIterator<SAMRecord>(reader.iterator());
+            final PeekableIterator<SAMRecord> it = new PeekableIterator<>(reader.iterator());
             if (!this.pairedReads) {
                 // Filter out noise reads and reads that fail the quality filter
-                final List<SamRecordFilter> filters = new ArrayList<SamRecordFilter>();
+                final List<SamRecordFilter> filters = new ArrayList<>();
                 filters.add(new TagFilter(ReservedTagConstants.XN, 1));
                 if (!this.includeNonPfReads) {
                     filters.add(new FailsVendorReadQualityFilter());

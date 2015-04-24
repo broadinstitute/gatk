@@ -24,7 +24,7 @@ public class EarliestFragmentPrimaryAlignmentSelectionStrategy implements Primar
         if (hitsForInsert.numHits() == 0) throw new IllegalArgumentException("No alignments to pick from");
 
         // Gather the earliest alignment(s) with best MAPQ
-        final List<Integer> earliestAlignments = new ArrayList<Integer>();
+        final List<Integer> earliestAlignments = new ArrayList<>();
         int earliestMappedBase = Integer.MAX_VALUE;
         int bestMapQ = -1;
         for (int i = 0; i < hitsForInsert.numHits(); ++i) {

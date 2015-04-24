@@ -129,7 +129,7 @@ public class ContextCovariate implements Covariate {
     private static ArrayList<Integer> contextWith(final byte[] bases, final int contextSize, final int mask) {
 
         final int readLength = bases.length;
-        final ArrayList<Integer> keys = new ArrayList<Integer>(readLength);
+        final ArrayList<Integer> keys = new ArrayList<>(readLength);
 
         // the first contextSize-1 bases will not have enough previous context
         for (int i = 1; i < contextSize && i <= readLength; i++)

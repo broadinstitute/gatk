@@ -34,7 +34,7 @@ public class AlleleBalanceFilter implements VariantFilter {
     @Override
     public String filter(final VariantContext ctx) {
         if (ctx.getHetCount() == 0) return null;
-        final Map<List<Allele>, Counts> countsMap = new HashMap<List<Allele>, Counts>();
+        final Map<List<Allele>, Counts> countsMap = new HashMap<>();
 
         for (final Genotype gt : ctx.getGenotypesOrderedByName()) {
             if (gt.isNoCall() || !gt.isHet()) continue;

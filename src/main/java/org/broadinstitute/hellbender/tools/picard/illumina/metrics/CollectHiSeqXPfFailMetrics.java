@@ -79,8 +79,8 @@ public class CollectHiSeqXPfFailMetrics extends PicardCommandLineProgram {
 
     private static final Log LOG = getInstance(CollectHiSeqXPfFailMetrics.class);
 
-    private final Map<Integer, PFFailSummaryMetric> tileToSummaryMetrics = new LinkedHashMap<Integer, PFFailSummaryMetric>();
-    private final Map<Integer, List<PFFailDetailedMetric>> tileToDetailedMetrics = new LinkedHashMap<Integer, List<PFFailDetailedMetric>>();
+    private final Map<Integer, PFFailSummaryMetric> tileToSummaryMetrics = new LinkedHashMap<>();
+    private final Map<Integer, List<PFFailDetailedMetric>> tileToDetailedMetrics = new LinkedHashMap<>();
 
     //Add "T" to the number of cycles to create a "TemplateRead" of the desired length.
     private final ReadStructure READ_STRUCTURE = new ReadStructure(N_CYCLES + "T");
@@ -90,7 +90,7 @@ public class CollectHiSeqXPfFailMetrics extends PicardCommandLineProgram {
 
     @Override
     protected String[] customCommandLineValidation() {
-        final List<String> errors = new ArrayList<String>();
+        final List<String> errors = new ArrayList<>();
 
         if (N_CYCLES < 0) {
             errors.add("Number of Cycles to look at must be greater than 0");
@@ -137,10 +137,10 @@ public class CollectHiSeqXPfFailMetrics extends PicardCommandLineProgram {
         LOG.info("Processing with " + numProcessors + " PerTilePFMetricsExtractor(s).");
         final ExecutorService pool = newFixedThreadPool(numProcessors);
 
-        final List<PerTilePFMetricsExtractor> extractors = new ArrayList<PerTilePFMetricsExtractor>(factory.getAvailableTiles().size());
+        final List<PerTilePFMetricsExtractor> extractors = new ArrayList<>(factory.getAvailableTiles().size());
         for (final int tile : factory.getAvailableTiles()) {
             tileToSummaryMetrics.put(tile, new PFFailSummaryMetric(Integer.toString(tile)));
-            tileToDetailedMetrics.put(tile, new ArrayList<PFFailDetailedMetric>());
+            tileToDetailedMetrics.put(tile, new ArrayList<>());
 
             final PerTilePFMetricsExtractor extractor = new PerTilePFMetricsExtractor(
                     tile,

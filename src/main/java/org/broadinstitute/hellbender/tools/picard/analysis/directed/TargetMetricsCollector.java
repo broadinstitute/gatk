@@ -126,7 +126,7 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
             }
         }
 
-        final Set<String> outputSet = new HashSet<String>();
+        final Set<String> outputSet = new HashSet<>();
         for(final Field field : outputMetrics.getClass().getFields()) {
             outputSet.add(field.getName());
         }
@@ -162,19 +162,19 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
         this.allTargets = targetIntervals;
 
         final List<Interval> uniqueBaits = this.allProbes.uniqued().getIntervals();
-        this.probeDetector = new OverlapDetector<Interval>(-NEAR_PROBE_DISTANCE, 0);
+        this.probeDetector = new OverlapDetector<>(-NEAR_PROBE_DISTANCE, 0);
         this.probeDetector.addAll(uniqueBaits, uniqueBaits);
         this.probeTerritory = Interval.countBases(uniqueBaits);
 
         final List<Interval> uniqueTargets = this.allTargets.uniqued().getIntervals();
-        targetDetector = new OverlapDetector<Interval>(0,0);
+        targetDetector = new OverlapDetector<>(0,0);
         this.targetDetector.addAll(uniqueTargets, uniqueTargets);
         this.targetTerritory = Interval.countBases(uniqueTargets);
 
         // Populate the coverage by target map
         int i = 0;
         cov = new Coverage[uniqueTargets.size()];
-        this.coverageByTargetForRead = new LinkedHashMap<Interval, Coverage>(uniqueTargets.size() * 2, 0.5f);
+        this.coverageByTargetForRead = new LinkedHashMap<>(uniqueTargets.size() * 2, 0.5f);
         for (final Interval target : uniqueTargets) {
             final Coverage coverage = new Coverage(target, 0);
             this.coverageByTargetForRead.put(target, coverage);
@@ -189,7 +189,7 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
 
 
         if (refFile != null) {
-            intervalToGc = new HashMap<Interval,Double>();
+            intervalToGc = new HashMap<>();
             for (final Interval target : uniqueTargets) {
                 final ReferenceSequence rs = refFile.getSubsequenceAt(target.getContig(), target.getStart(), target.getEnd());
                 intervalToGc.put(target, SequenceUtil.calculateGc(rs.getBases()));
@@ -251,7 +251,7 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
             metrics.TARGET_TERRITORY = targetTerritory;
             metrics.GENOME_SIZE      = genomeSize;
 
-            this.coverageByTarget = new LinkedHashMap<Interval, Coverage>(coverageTargets.size() * 2, 0.5f);
+            this.coverageByTarget = new LinkedHashMap<>(coverageTargets.size() * 2, 0.5f);
             for (Interval target : coverageTargets) {
                 this.coverageByTarget.put(target, new Coverage(target,0));
             }

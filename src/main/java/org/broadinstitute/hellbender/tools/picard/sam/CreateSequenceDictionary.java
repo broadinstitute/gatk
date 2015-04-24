@@ -81,8 +81,8 @@ public class CreateSequenceDictionary extends PicardCommandLineProgram {
         final ReferenceSequenceFile refSeqFile =
                 ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile, true);
         ReferenceSequence refSeq;
-        final List<SAMSequenceRecord> ret = new ArrayList<SAMSequenceRecord>();
-        final Set<String> sequenceNames = new HashSet<String>();
+        final List<SAMSequenceRecord> ret = new ArrayList<>();
+        final Set<String> sequenceNames = new HashSet<>();
         for (int numSequences = 0; numSequences < NUM_SEQUENCES && (refSeq = refSeqFile.nextSequence()) != null; ++numSequences) {
             if (sequenceNames.contains(refSeq.getName())) {
                 throw new UserException.MalformedFile(referenceFile, "Sequence name appears more than once in reference: " + refSeq.getName());

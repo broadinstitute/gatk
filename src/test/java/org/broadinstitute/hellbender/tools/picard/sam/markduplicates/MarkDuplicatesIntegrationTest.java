@@ -86,7 +86,7 @@ public class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesCommand
             // the PG ID should be the same for both ends of a pair.
             final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
 
-            final Map<String, String> pgIdForReadName = new HashMap<String, String>();
+            final Map<String, String> pgIdForReadName = new HashMap<>();
             for (final SAMRecord rec : reader) {
                 final String existingPgId = pgIdForReadName.get(rec.getReadName());
                 final String thisPgId = rec.getStringAttribute(SAMTag.PG.name());
@@ -136,15 +136,15 @@ public class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesCommand
     @DataProvider(name = "pgRecordChainingTest")
     public Object[][] pgRecordChainingTestDataProvider() {
         // Two test cases: One in which PG record generation is enabled, the other in which it is turned off.
-        final Map<String, List<ExpectedPnAndVn>> withPgMap = new HashMap<String, List<ExpectedPnAndVn>>();
+        final Map<String, List<ExpectedPnAndVn>> withPgMap = new HashMap<>();
         withPgMap.put("1AAXX.1.1", Arrays.asList(new ExpectedPnAndVn(TEST_BASE_NAME, null), new ExpectedPnAndVn(TEST_BASE_NAME, "1"), new ExpectedPnAndVn("bwa", "1")));
         withPgMap.put("1AAXX.2.1", Arrays.asList(new ExpectedPnAndVn(TEST_BASE_NAME, null), new ExpectedPnAndVn("bwa", "2")));
         withPgMap.put("1AAXX.3.1", Arrays.asList(new ExpectedPnAndVn(TEST_BASE_NAME, null)));
 
-        final Map<String, List<ExpectedPnAndVn>> suppressPgMap = new HashMap<String, List<ExpectedPnAndVn>>();
+        final Map<String, List<ExpectedPnAndVn>> suppressPgMap = new HashMap<>();
         suppressPgMap .put("1AAXX.1.1", Arrays.asList(new ExpectedPnAndVn(TEST_BASE_NAME, "1"), new ExpectedPnAndVn("bwa", "1")));
         suppressPgMap .put("1AAXX.2.1", Arrays.asList(new ExpectedPnAndVn("bwa", "2")));
-        suppressPgMap .put("1AAXX.3.1", new ArrayList<ExpectedPnAndVn>(0));
+        suppressPgMap .put("1AAXX.3.1", new ArrayList<>(0));
         return new Object[][] {
                 { false, withPgMap},
                 { true, suppressPgMap}

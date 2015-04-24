@@ -223,8 +223,8 @@ public abstract class BaseTest {
     }
 
     public static <T> void assertEqualsSet(final Set<T> actual, final Set<T> expected, final String info) {
-        final Set<T> actualSet = new HashSet<T>(actual);
-        final Set<T> expectedSet = new HashSet<T>(expected);
+        final Set<T> actualSet = new HashSet<>(actual);
+        final Set<T> expectedSet = new HashSet<>(expected);
         Assert.assertTrue(actualSet.equals(expectedSet), info); // note this is necessary due to testng bug for set comps
     }
 
@@ -327,7 +327,7 @@ public abstract class BaseTest {
     }
 
     private static void assertAttributesEquals(final Map<String, Object> actual, Map<String, Object> expected) {
-        final Set<String> expectedKeys = new HashSet<String>(expected.keySet());
+        final Set<String> expectedKeys = new HashSet<>(expected.keySet());
 
         for ( final Map.Entry<String, Object> act : actual.entrySet() ) {
             final Object actualValue = act.getValue();

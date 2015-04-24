@@ -80,10 +80,10 @@ public class FilterVcfTest extends CommandLineProgramTest {
 
     @Test
     public void testCombinedFiltering() throws Exception {
-        final TreeSet<String> fails = new TreeSet<String>(CollectionUtil.makeSet("rs13302979", "rs13303033", "rs2710876", "rs2799066", "rs28548431", "rs28566954", "rs71509448", "rs71628926", "tf2"));
+        final TreeSet<String> fails = new TreeSet<>(CollectionUtil.makeSet("rs13302979", "rs13303033", "rs2710876", "rs2799066", "rs28548431", "rs28566954", "rs71509448", "rs71628926", "tf2"));
         final File out = testFiltering(INPUT, 0.4, 18, 22, 5.0d);
         final ListMap<String,String> filters = slurpFilters(out);
-        Assert.assertEquals(new TreeSet<String>(filters.keySet()), fails, "Failed sites did not match expected set of failed sites.");
+        Assert.assertEquals(new TreeSet<>(filters.keySet()), fails, "Failed sites did not match expected set of failed sites.");
     }
 
     /** Utility method that takes a a VCF and a set of parameters and filters the VCF. */
@@ -107,7 +107,7 @@ public class FilterVcfTest extends CommandLineProgramTest {
 
     /** Consumes a VCF and returns a ListMap where each they keys are the IDs of filtered out sites and the values are the set of filters. */
     ListMap<String,String> slurpFilters(final File vcf) {
-        final ListMap<String,String> map = new ListMap<String, String>();
+        final ListMap<String,String> map = new ListMap<>();
         final VCFFileReader in = new VCFFileReader(vcf, false);
         for (final VariantContext ctx : in) {
             if (ctx.isNotFiltered()) continue;

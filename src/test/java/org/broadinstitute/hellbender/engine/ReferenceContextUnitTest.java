@@ -139,7 +139,7 @@ public class ReferenceContextUnitTest extends BaseTest {
     private void checkReferenceContextBases( final ReferenceContext refContext, final String expectedBases ) {
         byte[] contextBases = refContext.getBases();
 
-        List<Byte> contextBasesFromIterator = new ArrayList<Byte>();
+        List<Byte> contextBasesFromIterator = new ArrayList<>();
         Iterator<Byte> baseIterator = refContext.iterator();
         while ( baseIterator.hasNext() ) {
             contextBasesFromIterator.add(baseIterator.next());

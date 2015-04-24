@@ -55,7 +55,7 @@ public class ProcessControllerUnitTest extends BaseTest {
         job.getStdoutSettings().setBufferSize(-1);
         job.setRedirectErrorStream(true);
 
-        Map<String, String> env = new HashMap<String, String>(System.getenv());
+        Map<String, String> env = new HashMap<>(System.getenv());
         env.put(key, value);
         job.setEnvironment(env);
 

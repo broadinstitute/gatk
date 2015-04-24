@@ -120,7 +120,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
             final File metricsFile = File.createTempFile("eib.", ".metrics");
             metricsFile.deleteOnExit();
 
-            final List<String> args = new ArrayList<String>(asList(
+            final List<String> args = new ArrayList<>(asList(
                     "--BASECALLS_DIR", basecallsDir.getPath(),
                     "--LANE", Integer.toString(lane),
                     "--READ_STRUCTURE", readStructure,
@@ -221,7 +221,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
         };
 
         assertEquals(runCommandLine(args), 0);
-        final MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer> result = new MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer>();
+        final MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer> result = new MetricsFile<>();
         result.read(new FileReader(metricsFile));
         assertEquals(result.getMetrics().get(0).PERFECT_MATCHES, 1, "Got wrong number of perfect matches");
         assertEquals(result.getMetrics().get(0).ONE_MISMATCH_MATCHES, 0, "Got wrong number of one-mismatch matches");
@@ -248,7 +248,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
         };
 
         assertEquals(runCommandLine(args), 0);
-        final MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer> result = new MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer>();
+        final MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer> result = new MetricsFile<>();
         result.read(new FileReader(metricsFile));
         assertEquals(result.getMetrics().get(0).PERFECT_MATCHES, perfectMatches, "Got wrong number of perfect matches for test: '" + testName + "'");
         assertEquals(result.getMetrics().get(0).ONE_MISMATCH_MATCHES, oneMismatch, "Got wrong number of one-mismatch matches for test: '" + testName + "'");
@@ -286,7 +286,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
         final File metricsFile = File.createTempFile("eib.", ".metrics");
         metricsFile.deleteOnExit();
 
-        final List<String> args = new ArrayList<String>(asList(
+        final List<String> args = new ArrayList<>(asList(
                 "--BASECALLS_DIR", basecallsDir.getPath(),
                 "--LANE", Integer.toString(lane),
                 "--READ_STRUCTURE", readStructure,
@@ -303,7 +303,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
         // Generate _barcode.txt files and metrics file.
         assertEquals(runCommandLine(args), 0);
 
-        final MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer> retval = new MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer>();
+        final MetricsFile<ExtractIlluminaBarcodes.BarcodeMetric, Integer> retval = new MetricsFile<>();
         retval.read(new FileReader(metricsFile));
         return retval;
     }

@@ -153,7 +153,7 @@ public class ReorderSam extends PicardCommandLineProgram {
      */
     private Map<Integer, Integer> buildSequenceDictionaryMap(final SAMSequenceDictionary refDict,
                                                              final SAMSequenceDictionary readsDict) {
-        Map<Integer, Integer> newOrder = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> newOrder = new HashMap<>();
 
         log.info("Reordering SAM/BAM file:");
         for (final SAMSequenceRecord refRec : refDict.getSequences()) {

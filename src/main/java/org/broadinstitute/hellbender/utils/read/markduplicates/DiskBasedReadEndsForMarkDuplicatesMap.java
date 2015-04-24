@@ -35,7 +35,7 @@ public class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForMarkDup
     private final CoordinateSortedPairInfoMap<String, ReadEndsForMarkDuplicates> pairInfoMap;
 
     public DiskBasedReadEndsForMarkDuplicatesMap(int maxOpenFiles) {
-        pairInfoMap = new CoordinateSortedPairInfoMap<String, ReadEndsForMarkDuplicates>(maxOpenFiles, new Codec());
+        pairInfoMap = new CoordinateSortedPairInfoMap<>(maxOpenFiles, new Codec());
     }
 
     public ReadEndsForMarkDuplicates remove(int mateSequenceIndex, String key) {
@@ -69,7 +69,7 @@ public class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForMarkDup
             try {
                 final String key = readEndsForMarkDuplicatesCodec.getInputStream().readUTF();
                 final ReadEndsForMarkDuplicates record = readEndsForMarkDuplicatesCodec.decode();
-                return new AbstractMap.SimpleEntry<java.lang.String, ReadEndsForMarkDuplicates>(key, record);
+                return new AbstractMap.SimpleEntry<>(key, record);
             } catch (IOException e) {
                 throw new GATKException("Error loading ReadEndsForMarkDuplicatesMap from disk", e);
             }

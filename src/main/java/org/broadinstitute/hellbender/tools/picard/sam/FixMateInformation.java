@@ -53,7 +53,7 @@ public class FixMateInformation extends PicardCommandLineProgram {
     protected Object doWork() {
         // Open up the input
         boolean allQueryNameSorted = true;
-        final List<SamReader> readers = new ArrayList<SamReader>();
+        final List<SamReader> readers = new ArrayList<>();
         for (final File f : INPUT) {
             IOUtil.assertFileIsReadable(f);
             final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(f);
@@ -90,7 +90,7 @@ public class FixMateInformation extends PicardCommandLineProgram {
             // Deal with merging if necessary
             final Iterator<SAMRecord> tmp;
             if (INPUT.size() > 1) {
-                final List<SAMFileHeader> headers = new ArrayList<SAMFileHeader>(readers.size());
+                final List<SAMFileHeader> headers = new ArrayList<>(readers.size());
                 for (final SamReader reader : readers) {
                     headers.add(reader.getFileHeader());
                 }
@@ -105,7 +105,7 @@ public class FixMateInformation extends PicardCommandLineProgram {
 
             // And now deal with re-sorting if necessary
             if (ASSUME_SORTED || allQueryNameSorted) {
-                iterator = new SamPairUtil.SetMateInfoIterator(new PeekableIterator<SAMRecord>(tmp), ADD_MATE_CIGAR);
+                iterator = new SamPairUtil.SetMateInfoIterator(new PeekableIterator<>(tmp), ADD_MATE_CIGAR);
             } else {
                 log.info("Sorting input into queryname order.");
                 final SortingCollection<SAMRecord> sorter = SortingCollection.newInstance(SAMRecord.class,

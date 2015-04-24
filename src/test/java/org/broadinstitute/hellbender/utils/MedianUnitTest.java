@@ -23,7 +23,7 @@ public class MedianUnitTest extends BaseTest {
     // --------------------------------------------------------------------------------
 
     private class MedianTestProvider extends TestDataProvider {
-        final List<Integer> values = new ArrayList<Integer>();
+        final List<Integer> values = new ArrayList<>();
         final int cap;
         final Integer expected;
 
@@ -64,7 +64,7 @@ public class MedianUnitTest extends BaseTest {
 
     @Test(dataProvider = "MedianTestProvider")
     public void testBasicLikelihoods(MedianTestProvider cfg) {
-        final Median<Integer> median = new Median<Integer>(cfg.cap);
+        final Median<Integer> median = new Median<>(cfg.cap);
 
         int nAdded = 0;
         for ( final int value : cfg.values )
@@ -80,7 +80,7 @@ public class MedianUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void testEmptyMedian() {
-        final Median<Integer> median = new Median<Integer>();
+        final Median<Integer> median = new Median<>();
         Assert.assertTrue(median.isEmpty());
         final Integer d = 100;
         Assert.assertEquals(median.getMedian(d), d);

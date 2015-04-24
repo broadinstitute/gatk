@@ -264,7 +264,7 @@ public class ProcessController {
      */
     public static Set<ProcessController> getRunning() {
         synchronized (running) {
-            return new HashSet<ProcessController>(running);
+            return new HashSet<>(running);
         }
     }
 

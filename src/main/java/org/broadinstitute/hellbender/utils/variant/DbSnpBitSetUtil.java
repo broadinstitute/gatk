@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class DbSnpBitSetUtil {
 
-    private final Map<String, BitSet> sequenceToBitSet = new HashMap<String,BitSet>();
+    private final Map<String, BitSet> sequenceToBitSet = new HashMap<>();
 
     /** Little tuple class to contain one bitset for SNPs and another for Indels. */
     public static class DbSnpBitSets {
@@ -49,7 +49,7 @@ public class DbSnpBitSetUtil {
                            final Collection<DbSnpVariantType> variantsToMatch) {
 
         if (dbSnpFile == null) throw new IllegalArgumentException("null dbSnpFile");
-        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> tmp = new HashMap<DbSnpBitSetUtil, Set<DbSnpVariantType>>();
+        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> tmp = new HashMap<>();
         tmp.put(this, EnumSet.copyOf(variantsToMatch));
         loadVcf(dbSnpFile, sequenceDictionary, tmp);
     }
@@ -62,7 +62,7 @@ public class DbSnpBitSetUtil {
         sets.snps   = new DbSnpBitSetUtil();
         sets.indels = new DbSnpBitSetUtil();
 
-        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> map = new HashMap<DbSnpBitSetUtil, Set<DbSnpVariantType>>();
+        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> map = new HashMap<>();
         map.put(sets.snps,   EnumSet.of(DbSnpVariantType.SNP));
         map.put(sets.indels, EnumSet.of(DbSnpVariantType.insertion, DbSnpVariantType.deletion));
         loadVcf(dbSnpFile, sequenceDictionary, map);

@@ -59,7 +59,7 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
 
     public static OverlapDetector<Interval> makeOverlapDetector(final File samFile, final SAMFileHeader header, final File ribosomalIntervalsFile) {
 
-        OverlapDetector<Interval> ribosomalSequenceOverlapDetector = new OverlapDetector<Interval>(0, 0);
+        OverlapDetector<Interval> ribosomalSequenceOverlapDetector = new OverlapDetector<>(0, 0);
         if (ribosomalIntervalsFile != null) {
 
             final IntervalList ribosomalIntervals = IntervalList.fromFile(ribosomalIntervalsFile);
@@ -76,7 +76,7 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
     }
 
     public static HashSet<Integer> makeIgnoredSequenceIndicesSet(final SAMFileHeader header, final Set<String> ignoredSequence) {
-        final HashSet<Integer> ignoredSequenceIndices = new HashSet<Integer>();
+        final HashSet<Integer> ignoredSequenceIndices = new HashSet<>();
         for (final String sequenceName: ignoredSequence) {
             final SAMSequenceRecord sequenceRecord = header.getSequence(sequenceName);
             if (sequenceRecord == null) {
@@ -91,7 +91,7 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
 
         final RnaSeqMetrics metrics = new RnaSeqMetrics();
         
-        private final Map<Gene.Transcript, int[]> coverageByTranscript = new HashMap<Gene.Transcript, int[]>();
+        private final Map<Gene.Transcript, int[]> coverageByTranscript = new HashMap<>();
 
         public PerUnitRnaSeqMetricsCollector(final String sample,
                                              final String library,
@@ -261,11 +261,11 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
          * expressed transcripts.
          */
         private Histogram<Integer> computeCoverageMetrics() {
-            final Histogram<Double> cvs = new Histogram<Double>();
-            final Histogram<Double> fivePrimeSkews = new Histogram<Double>();
-            final Histogram<Double> threePrimeSkews = new Histogram<Double>();
-            final Histogram<Double> gapBasesPerKb = new Histogram<Double>();
-            final Histogram<Double> fiveToThreeSkews = new Histogram<Double>();
+            final Histogram<Double> cvs = new Histogram<>();
+            final Histogram<Double> fivePrimeSkews = new Histogram<>();
+            final Histogram<Double> threePrimeSkews = new Histogram<>();
+            final Histogram<Double> gapBasesPerKb = new Histogram<>();
+            final Histogram<Double> fiveToThreeSkews = new Histogram<>();
             String prefix = null;
             if (this.metrics.READ_GROUP != null) {
                 prefix = this.metrics.READ_GROUP + ".";
@@ -280,7 +280,7 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
                 prefix = "All_Reads.";
             }
 
-            final Histogram<Integer> normalizedCoverageByNormalizedPosition = new Histogram<Integer>("normalized_position", prefix + "normalized_coverage");
+            final Histogram<Integer> normalizedCoverageByNormalizedPosition = new Histogram<>("normalized_position", prefix + "normalized_coverage");
 
             final Map<Gene.Transcript,int[]> transcripts = pickTranscripts(coverageByTranscript);
             final double transcriptCount = transcripts.size();
@@ -356,7 +356,7 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
 
         /** Picks the set of transcripts on which the coverage metrics are to be calculated. */
         public Map<Gene.Transcript, int[]> pickTranscripts(final Map<Gene.Transcript, int[]> transcriptCoverage) {
-            final Map<Gene.Transcript, Double> bestPerGene = new HashMap<Gene.Transcript, Double>();
+            final Map<Gene.Transcript, Double> bestPerGene = new HashMap<>();
 
             // Make a map of the best transcript per gene to it's mean coverage
             for (final Gene gene : geneOverlapDetector.getAll()) {
@@ -388,7 +388,7 @@ public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqM
             final double min = coverages.length == 0 ? 0 : coverages[Math.max(0, coverages.length - 1001)];
 
             // And finally build the output map
-            final Map<Gene.Transcript, int[]> retval = new HashMap<Gene.Transcript, int[]>();
+            final Map<Gene.Transcript, int[]> retval = new HashMap<>();
             for (final Map.Entry<Gene.Transcript,Double> entry : bestPerGene.entrySet()) {
                 final Gene.Transcript tx = entry.getKey();
                 final double coverage = entry.getValue();

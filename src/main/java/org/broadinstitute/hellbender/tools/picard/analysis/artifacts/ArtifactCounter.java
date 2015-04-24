@@ -36,7 +36,7 @@ class ArtifactCounter {
         this.library = library;
 
         // define the contexts
-        this.fullContexts = new HashSet<String>();
+        this.fullContexts = new HashSet<>();
         for (final byte[] kmer : SequenceUtil.generateAllKmers(2 * contextSize + 1)) {
             this.fullContexts.add(StringUtil.bytesToString(kmer));
         }
@@ -45,9 +45,9 @@ class ArtifactCounter {
         // NB: we use N to represent a wildcard base, rather than an ambiguous base. It's assumed that all of the input
         // contexts are unambiguous, and that any actual N's in the data have been dealt with elsewhere.
         final String padding = StringUtil.repeatCharNTimes('N', contextSize);
-        this.leadingContextMap = new HashMap<String, String>();
-        this.trailingContextMap = new HashMap<String, String>();
-        this.zeroContextMap = new HashMap<String, String>();
+        this.leadingContextMap = new HashMap<>();
+        this.trailingContextMap = new HashMap<>();
+        this.zeroContextMap = new HashMap<>();
         for (final String context : this.fullContexts) {
             final String leading = context.substring(0, contextSize);
             final String trailing = context.substring(contextSize + 1, context.length());
@@ -58,10 +58,10 @@ class ArtifactCounter {
         }
 
         // set up the accumulators
-        final Set<String> halfContexts = new HashSet<String>();
+        final Set<String> halfContexts = new HashSet<>();
         halfContexts.addAll(leadingContextMap.values());
         halfContexts.addAll(trailingContextMap.values());
-        final Set<String> zeroContexts = new HashSet<String>();
+        final Set<String> zeroContexts = new HashSet<>();
         zeroContexts.addAll(zeroContextMap.values());
 
         this.fullContextAccumulator = new ContextAccumulator(fullContexts, expectedTandemReads);
@@ -69,10 +69,10 @@ class ArtifactCounter {
         this.zeroContextAccumulator = new ContextAccumulator(zeroContexts, expectedTandemReads);
 
         // these will get populated in the final step
-        preAdapterSummaryMetricsList = new ArrayList<PreAdapterSummaryMetrics>();
-        preAdapterDetailMetricsList = new ArrayList<PreAdapterDetailMetrics>();
-        baitBiasSummaryMetricsList = new ArrayList<BaitBiasSummaryMetrics>();
-        baitBiasDetailMetricsList = new ArrayList<BaitBiasDetailMetrics>();
+        preAdapterSummaryMetricsList = new ArrayList<>();
+        preAdapterDetailMetricsList = new ArrayList<>();
+        baitBiasSummaryMetricsList = new ArrayList<>();
+        baitBiasDetailMetricsList = new ArrayList<>();
     }
 
     /**
@@ -118,7 +118,7 @@ class ArtifactCounter {
      *
      */
     private Map<Transition, SummaryPair> getSummaryMetrics() {
-        final Map<Transition, SummaryPair> summaryMetricsMap = new HashMap<Transition, SummaryPair>();
+        final Map<Transition, SummaryPair> summaryMetricsMap = new HashMap<>();
 
         // extract the detail metrics from each accumulator
         final ListMap<Transition, DetailPair> fullMetrics = this.fullContextAccumulator.calculateMetrics(sampleAlias, library);
@@ -134,8 +134,8 @@ class ArtifactCounter {
             }
 
             // we want to report on leading / trailing contexts separately
-            final List<DetailPair> leadingMetricsForTransition = new ArrayList<DetailPair>();
-            final List<DetailPair> trailingMetricsForTransition = new ArrayList<DetailPair>();
+            final List<DetailPair> leadingMetricsForTransition = new ArrayList<>();
+            final List<DetailPair> trailingMetricsForTransition = new ArrayList<>();
             for (final DetailPair metrics : halfMetrics.get(transition)) {
                 // first make sure they're the same context
                 if (!metrics.preAdapterMetrics.CONTEXT.equals(metrics.baitBiasMetrics.CONTEXT)) {

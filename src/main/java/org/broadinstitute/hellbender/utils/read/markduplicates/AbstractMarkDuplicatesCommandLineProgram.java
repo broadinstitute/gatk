@@ -56,7 +56,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
     @Argument(shortName = "CO",
             doc = "Comment(s) to include in the output file's header.",
             optional = true)
-    public List<String> COMMENT = new ArrayList<String>();
+    public List<String> COMMENT = new ArrayList<>();
 
     @Argument(doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.")
     public boolean REMOVE_DUPLICATES = false;
@@ -69,7 +69,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
     public DuplicateScoringStrategy.ScoringStrategy DUPLICATE_SCORING_STRATEGY = ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
 
     /** The program groups that have been seen during the course of examining the input records. */
-    protected final Set<String> pgIdsSeen = new HashSet<String>();
+    protected final Set<String> pgIdsSeen = new HashSet<>();
 
     /**
      * We have to re-chain the program groups based on this algorithm.  This returns the map from existing program group ID
@@ -86,7 +86,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             if (PROGRAM_GROUP_COMMAND_LINE == null) {
                 PROGRAM_GROUP_COMMAND_LINE = this.getCommandLine();
             }
-            chainedPgIds = new HashMap<String, String>();
+            chainedPgIds = new HashMap<>();
             for (final String existingId : this.pgIdsSeen) {
                 final String newPgId = pgIdGenerator.getNonCollidingId(PROGRAM_RECORD_ID);
                 chainedPgIds.put(existingId, newPgId);
@@ -146,7 +146,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
     static class PgIdGenerator {
         private int recordCounter;
 
-        private final Set<String> idsThatAreAlreadyTaken = new HashSet<String>();
+        private final Set<String> idsThatAreAlreadyTaken = new HashSet<>();
 
         PgIdGenerator(final SAMFileHeader header) {
             for (final SAMProgramRecord pgRecord : header.getProgramRecords()) {
@@ -194,8 +194,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      * and checking of the inputs.
      */
     protected SamHeaderAndIterator openInputs() {
-        final List<SAMFileHeader> headers = new ArrayList<SAMFileHeader>(INPUT.size());
-        final List<SamReader> readers = new ArrayList<SamReader>(INPUT.size());
+        final List<SAMFileHeader> headers = new ArrayList<>(INPUT.size());
+        final List<SamReader> readers = new ArrayList<>(INPUT.size());
 
         for (final File f : INPUT) {
             final SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(f); // eager decode
@@ -239,8 +239,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
         // Check if we need to partition since the orientations could have changed
         if (hasFR && hasRF) { // need to track them independently
             // Variables used for optical duplicate detection and tracking
-            final List<ReadEnds> trackOpticalDuplicatesF = new ArrayList<ReadEnds>();
-            final List<ReadEnds> trackOpticalDuplicatesR = new ArrayList<ReadEnds>();
+            final List<ReadEnds> trackOpticalDuplicatesF = new ArrayList<>();
+            final List<ReadEnds> trackOpticalDuplicatesR = new ArrayList<>();
 
             // Split into two lists: first of pairs and second of pairs, since they must have orientation and same starting end
             for (final ReadEnds end : ends) {

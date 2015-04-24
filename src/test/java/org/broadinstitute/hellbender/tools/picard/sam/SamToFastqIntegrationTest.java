@@ -193,7 +193,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
     public void testOkGroupedFiles(final String samFilename, final String fastq, final String secondEndFastq,
                                    final String [] groupFiles) throws IOException {
         final File samFile = new File(TEST_DATA_DIR,samFilename);
-        final Map<String, Set<String>> outputSets = new HashMap<String, Set<String>>(groupFiles.length);
+        final Map<String, Set<String>> outputSets = new HashMap<>(groupFiles.length);
 
         final String tmpDir = IOUtil.getDefaultTmpDir().getAbsolutePath() + "/";
         final String [] args = new String[]{
@@ -321,7 +321,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
     }
 
     private Set<String> createFastqReadHeaderSet(final File file) {
-        final Set<String> set = new HashSet<String>();
+        final Set<String> set = new HashSet<>();
         final FastqReader freader = new FastqReader(file);
         while (freader.hasNext()) {
             final FastqRecord frec = freader.next();
@@ -334,7 +334,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
         IOUtil.assertFileIsReadable(samFile);
         final SamReader reader = SamReaderFactory.makeDefault().open(samFile);
 
-        final Map<String,MatePair> map = new LinkedHashMap<String,MatePair>();
+        final Map<String,MatePair> map = new LinkedHashMap<>();
         for (final SAMRecord record : reader ) {
             MatePair mpair = map.get(record.getReadName());
             if (mpair == null) {
@@ -351,7 +351,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
     private Map<String, Map<String, MatePair>> createPUPairsMap(final File samFile) throws IOException {
         IOUtil.assertFileIsReadable(samFile);
         final SamReader reader = SamReaderFactory.makeDefault().open(samFile);
-        final Map<String, Map<String, MatePair>> map = new LinkedHashMap<String, Map<String,MatePair>>();
+        final Map<String, Map<String, MatePair>> map = new LinkedHashMap<>();
 
         Map<String,MatePair> curFileMap;
         for (final SAMRecord record : reader ) {
@@ -359,7 +359,7 @@ public class SamToFastqIntegrationTest extends CommandLineProgramTest {
             curFileMap = map.get(platformUnit);
             if(curFileMap == null)
             {
-                curFileMap = new LinkedHashMap<String, MatePair>();
+                curFileMap = new LinkedHashMap<>();
                 map.put(platformUnit, curFileMap);
             }
 

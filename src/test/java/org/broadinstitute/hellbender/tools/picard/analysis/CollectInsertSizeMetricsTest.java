@@ -33,7 +33,7 @@ public class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
         };
         runCommandLine(args);
 
-        final MetricsFile<InsertSizeMetrics, Comparable<?>> output = new MetricsFile<InsertSizeMetrics, Comparable<?>>();
+        final MetricsFile<InsertSizeMetrics, Comparable<?>> output = new MetricsFile<>();
         output.read(new FileReader(outfile));
 
         for (final InsertSizeMetrics metrics : output.getMetrics()) {

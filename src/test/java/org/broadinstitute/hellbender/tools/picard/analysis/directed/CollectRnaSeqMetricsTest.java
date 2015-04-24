@@ -71,7 +71,7 @@ public class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         };
         runCommandLine(args);
 
-        final MetricsFile<RnaSeqMetrics, Comparable<?>> output = new MetricsFile<RnaSeqMetrics, Comparable<?>>();
+        final MetricsFile<RnaSeqMetrics, Comparable<?>> output = new MetricsFile<>();
         output.read(new FileReader(metricsFile));
 
         final RnaSeqMetrics metrics = output.getMetrics().get(0);
@@ -145,7 +145,7 @@ public class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         };
         runCommandLine(args);
 
-        final MetricsFile<RnaSeqMetrics, Comparable<?>> output = new MetricsFile<RnaSeqMetrics, Comparable<?>>();
+        final MetricsFile<RnaSeqMetrics, Comparable<?>> output = new MetricsFile<>();
         output.read(new FileReader(metricsFile));
 
         for (final RnaSeqMetrics metrics : output.getMetrics()) {

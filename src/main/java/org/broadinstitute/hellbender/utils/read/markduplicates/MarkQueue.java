@@ -82,14 +82,14 @@ public class MarkQueue {
     private int numDuplicates = 0;
 
     /** The nonDuplicateReadEndsSet of all read ends sorted by 5' start unclipped position.  Some read ends in this nonDuplicateReadEndsSet may eventually be duplicates. */
-    private final TreeSet<ReadEndsForMateCigar> nonDuplicateReadEndsSet = new TreeSet<ReadEndsForMateCigar>(new MarkQueueComparator());
+    private final TreeSet<ReadEndsForMateCigar> nonDuplicateReadEndsSet = new TreeSet<>(new MarkQueueComparator());
 
     /**
      * Reads in the main nonDuplicateReadEndsSet may occasionally have mates with the same chromosome, coordinate, and orientation, causing collisions
      * We store the 'best' end of the mate pair in the main nonDuplicateReadEndsSet, and the other end in this nonDuplicateReadEndsSet.  We only remove from this.otherEndOfNonDuplicateReadEndsSet when
      * we remove something from this.nonDuplicateReadEndsSet.
      */
-    private final TreeSet<ReadEndsForMateCigar> otherEndOfNonDuplicateReadEndsSet = new TreeSet<ReadEndsForMateCigar>(new MarkQueueComparator());
+    private final TreeSet<ReadEndsForMateCigar> otherEndOfNonDuplicateReadEndsSet = new TreeSet<>(new MarkQueueComparator());
 
     /**
      * If we have two items that are the same with respect to being in the "nonDuplicateReadEndsSet", then we must choose one.  The "one" will

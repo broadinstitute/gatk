@@ -361,7 +361,7 @@ public class ReadUtils {
                         readBases += nextCigarElement.getLength();
                         if (!cigarElementIterator.hasNext()) {
                             if (allowGoalNotReached) {
-                                return new MutablePair<Integer, Boolean>(CLIPPING_GOAL_NOT_REACHED, false);
+                                return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
                             } else {
                                 throw new GATKException(String.format("Reference coordinate corresponds to a non-existent base in the read. This should never happen -- check read with alignment start: %s  and cigar: %s", alignmentStart, cigar));
                             }

@@ -35,7 +35,7 @@ public class AddCommentsToBamIntegrationTest extends CommandLineProgramTest {
 
         // The original comments are massaged when they're added to the header. Perform the same massaging here,
         // and then compare the lists
-        final List<String> massagedComments = new LinkedList<String>();
+        final List<String> massagedComments = new LinkedList<>();
         for (final String comment : commentList) {
             massagedComments.add(SAMTextHeaderCodec.COMMENT_PREFIX + comment);
         }
@@ -58,7 +58,7 @@ public class AddCommentsToBamIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runIt(final File inputFile, final File outputFile, final String[] commentList) {
-        final List<String> args = new ArrayList<String>(Arrays.asList(
+        final List<String> args = new ArrayList<>(Arrays.asList(
                 "--INPUT", inputFile.getAbsolutePath(),
                 "--OUTPUT", outputFile.getAbsolutePath()));
         for (final String comment : commentList) {

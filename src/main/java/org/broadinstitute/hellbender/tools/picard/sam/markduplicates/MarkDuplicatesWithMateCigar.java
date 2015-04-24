@@ -99,7 +99,7 @@ public class MarkDuplicatesWithMateCigar extends AbstractMarkDuplicatesCommandLi
         final ProgressLogger progress = new ProgressLogger(log, (int) 1e6, "Read");
 
         // Go through the records
-        for (final SAMRecord record : new IterableAdapter<SAMRecord>(iterator)) {
+        for (final SAMRecord record : new IterableAdapter<>(iterator)) {
             if (progress.record(record)) {
                 iterator.logMemoryStats(log);
             }
@@ -158,7 +158,7 @@ public class MarkDuplicatesWithMateCigar extends AbstractMarkDuplicatesCommandLi
      * themselves mentioned elsewhere.
      */
     private void setPGIdsSeen(final SAMFileHeader header) {
-        final Set<String> pgIdsSeenAsPrevious = new HashSet<String>();
+        final Set<String> pgIdsSeenAsPrevious = new HashSet<>();
 
         // get all program record ids that are mentioned as previously seen
         for (final SAMProgramRecord samProgramRecord : header.getProgramRecords()) {

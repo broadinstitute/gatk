@@ -120,11 +120,11 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
 
     private void assertMetricsFileEqual(final File actualMetricsFile, final File expectedMetricsFile) throws FileNotFoundException {
         // Actual metrics file
-        final MetricsFile<GenotypeConcordanceSummaryMetrics, Comparable<?>> actual = new MetricsFile<GenotypeConcordanceSummaryMetrics, Comparable<?>>();
+        final MetricsFile<GenotypeConcordanceSummaryMetrics, Comparable<?>> actual = new MetricsFile<>();
         actual.read(new FileReader(actualMetricsFile));
 
         // Expected metrics file
-        final MetricsFile<GenotypeConcordanceSummaryMetrics, Comparable<?>> expected = new MetricsFile<GenotypeConcordanceSummaryMetrics, Comparable<?>>();
+        final MetricsFile<GenotypeConcordanceSummaryMetrics, Comparable<?>> expected = new MetricsFile<>();
         expected.read(new FileReader(expectedMetricsFile));
 
         // Note - cannot use .equals as it calls .areHeadersEqual and they are not since the timestamp (at a minimum is different)
@@ -149,7 +149,7 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
 
         genotypeConcordance.instanceMain(new String[0]);
 
-        final Map<TruthAndCallStates, Integer> nonZeroCounts = new HashMap<TruthAndCallStates, Integer>();
+        final Map<TruthAndCallStates, Integer> nonZeroCounts = new HashMap<>();
         nonZeroCounts.put(new TruthAndCallStates(TruthState.HET_REF_VAR1, CallState.HET_REF_VAR1), 104);
         nonZeroCounts.put(new TruthAndCallStates(TruthState.HOM_VAR1, CallState.HOM_VAR1), 59);
         nonZeroCounts.put(new TruthAndCallStates(TruthState.VC_FILTERED, CallState.VC_FILTERED), 40);
@@ -230,7 +230,7 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
 
         genotypeConcordance.instanceMain(new String[0]);
 
-        final Map<TruthAndCallStates, Integer> nonZeroCounts = new HashMap<TruthAndCallStates, Integer>();
+        final Map<TruthAndCallStates, Integer> nonZeroCounts = new HashMap<>();
         nonZeroCounts.put(new TruthAndCallStates(TruthState.HET_REF_VAR1, CallState.HET_REF_VAR1), 1);
         nonZeroCounts.put(new TruthAndCallStates(TruthState.VC_FILTERED, CallState.VC_FILTERED), 2);
 
@@ -421,7 +421,7 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
                 {Aref, Aref, TruthState.HOM_REF, Allele.NO_CALL, Allele.NO_CALL, CallState.NO_CALL}
         };
         // Rebuild a new set of unit test data with all permutations of alleles.
-        final List<Object[]> allPermutationUnitTestDataList = new ArrayList<Object[]>();
+        final List<Object[]> allPermutationUnitTestDataList = new ArrayList<>();
         for (final Object[] unitTestData : originalUnitTestData) {
             allPermutationUnitTestDataList.add(unitTestData);
             final Allele truthAllele1 = (Allele) unitTestData[0];
@@ -474,7 +474,7 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
 
     @Test
     public void testGenotypeConcordanceDetermineStateFilter() throws Exception {
-        final Set<String> filters = new HashSet<String>(Arrays.asList("BAD!"));
+        final Set<String> filters = new HashSet<>(Arrays.asList("BAD!"));
 
         // Filtering on the variant context
         final List<Allele> alleles1 = makeUniqueListOfAlleles(Aref, C);
@@ -490,7 +490,7 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
         testGenotypeConcordanceDetermineState(vcFiltered, TruthState.VC_FILTERED, vcFiltered, CallState.VC_FILTERED, 0, 0);
 
         // Filtering on the genotype
-        final List<String> gtFilters = new ArrayList<String>(Arrays.asList("WICKED"));
+        final List<String> gtFilters = new ArrayList<>(Arrays.asList("WICKED"));
         final List<Allele> alleles3 = makeUniqueListOfAlleles(Aref, C);
         final Genotype gt3 = new GenotypeBuilder(TRUTH_SAMPLE_NAME, Arrays.asList(Aref, C)).filters(gtFilters).make();
         final VariantContext vcGtFiltered = new VariantContextBuilder("test", snpLoc, snpLocStart, snpLocStop, alleles3).genotypes(gt3).make();
@@ -566,13 +566,13 @@ public class GenotypeConcordanceTest extends CommandLineProgramTest {
      * Simple method to return a list of unique alleles.
      */
     private List<Allele> makeUniqueListOfAlleles(final Allele... alleles) {
-        final Set<Allele> uniqueAlleles = new HashSet<Allele>();
+        final Set<Allele> uniqueAlleles = new HashSet<>();
         for (final Allele allele : alleles) {
             if (!allele.equals(Allele.NO_CALL)) {
                 uniqueAlleles.add(allele);
             }
         }
         if (!uniqueAlleles.contains(Aref)) uniqueAlleles.add(Aref);
-        return new ArrayList<Allele>(uniqueAlleles);
+        return new ArrayList<>(uniqueAlleles);
     }
 }

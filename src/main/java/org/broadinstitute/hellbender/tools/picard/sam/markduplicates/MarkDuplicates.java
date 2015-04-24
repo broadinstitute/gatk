@@ -356,7 +356,7 @@ public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
         this.duplicateIndexes = new SortingLongCollection(maxInMemory, TMP_DIR.toArray(new File[TMP_DIR.size()]));
 
         ReadEndsForMarkDuplicates firstOfNextChunk = null;
-        final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<ReadEndsForMarkDuplicates>(200);
+        final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<>(200);
 
         // First just do the pairs
         log.info("Traversing read pair information and detecting duplicates.");

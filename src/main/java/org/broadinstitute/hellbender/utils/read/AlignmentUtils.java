@@ -744,7 +744,7 @@ public final class AlignmentUtils {
      * @return a newly allocated, cleaned up Cigar
      */
     public static Cigar cleanUpCigar(final Cigar c) {
-        final List<CigarElement> elements = new ArrayList<CigarElement>(c.numCigarElements() - 1);
+        final List<CigarElement> elements = new ArrayList<>(c.numCigarElements() - 1);
 
         for (final CigarElement ce : c.getCigarElements()) {
             if (ce.getLength() != 0 && (! elements.isEmpty() || ce.getOperator() != CigarOperator.D)) {
@@ -779,7 +779,7 @@ public final class AlignmentUtils {
      */
     private static Cigar moveCigarLeft(Cigar cigar, int indexOfIndel) {
         // get the first few elements
-        ArrayList<CigarElement> elements = new ArrayList<CigarElement>(cigar.numCigarElements());
+        ArrayList<CigarElement> elements = new ArrayList<>(cigar.numCigarElements());
         for (int i = 0; i < indexOfIndel - 1; i++)
             elements.add(cigar.getCigarElement(i));
 
@@ -923,7 +923,7 @@ public final class AlignmentUtils {
      */
     @SuppressWarnings("fallthrough")
     private static Cigar trimCigar(final Cigar cigar, final int start, final int end, final boolean byReference) {
-        final List<CigarElement> newElements = new LinkedList<CigarElement>();
+        final List<CigarElement> newElements = new LinkedList<>();
 
         int pos = 0;
         for ( final CigarElement elt : cigar.getCigarElements() ) {
@@ -1057,7 +1057,7 @@ public final class AlignmentUtils {
     public static Cigar applyCigarToCigar(final Cigar firstToSecond, final Cigar secondToThird) {
         final boolean DEBUG = false;
 
-        final List<CigarElement> newElements = new LinkedList<CigarElement>();
+        final List<CigarElement> newElements = new LinkedList<>();
         final int nElements12 = firstToSecond.getCigarElements().size();
         final int nElements23 = secondToThird.getCigarElements().size();
 

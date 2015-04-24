@@ -129,7 +129,7 @@ public class CollectWgsMetrics extends PicardCommandLineProgram {
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
 
         final SamLocusIterator iterator = new SamLocusIterator(in);
-        final List<SamRecordFilter> filters = new ArrayList<SamRecordFilter>();
+        final List<SamRecordFilter> filters = new ArrayList<>();
         final CountingFilter dupeFilter = new CountingDuplicateFilter();
         final CountingFilter mapqFilter = new CountingMapQFilter(MINIMUM_MAPPING_QUALITY);
         final CountingPairedFilter pairFilter = new CountingPairedFilter();
@@ -164,7 +164,7 @@ public class CollectWgsMetrics extends PicardCommandLineProgram {
             if (base == 'N') continue;
 
             // Figure out the coverage while not counting overlapping reads twice, and excluding various things
-            final HashSet<String> readNames = new HashSet<String>(info.getRecordAndPositions().size());
+            final HashSet<String> readNames = new HashSet<>(info.getRecordAndPositions().size());
             int pileupSize = 0;
             for (final SamLocusIterator.RecordAndOffset recs : info.getRecordAndPositions()) {
 
@@ -186,13 +186,13 @@ public class CollectWgsMetrics extends PicardCommandLineProgram {
         }
 
         // Construct and write the outputs
-        final Histogram<Integer> histo = new Histogram<Integer>("coverage", "count");
+        final Histogram<Integer> histo = new Histogram<>("coverage", "count");
         for (int i = 0; i < HistogramArray.length; ++i) {
             histo.increment(i, HistogramArray[i]);
         }
 
         // Construct and write the outputs
-        final Histogram<Integer> baseQHisto = new Histogram<Integer>("value", "baseq_count");
+        final Histogram<Integer> baseQHisto = new Histogram<>("value", "baseq_count");
         for (int i=0; i<baseQHistogramArray.length; ++i) {
             baseQHisto.increment(i, baseQHistogramArray[i]);
         }

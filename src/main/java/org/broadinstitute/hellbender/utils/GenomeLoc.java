@@ -196,7 +196,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
         if (equals(that)) {
             return Collections.emptyList();
         } else if (containsP(that)) {
-            List<GenomeLoc> l = new ArrayList<GenomeLoc>(2);
+            List<GenomeLoc> l = new ArrayList<>(2);
 
             /**
              * we have to create two new region, one for the before part, one for the after

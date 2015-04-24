@@ -16,10 +16,10 @@ import java.util.Map;
 public class LibraryIdGenerator {
 
     private final SAMFileHeader header;
-    private final Map<String, Short> libraryIds = new HashMap<String, Short>(); // from library string to library id
+    private final Map<String, Short> libraryIds = new HashMap<>(); // from library string to library id
     private short nextLibraryId = 1;
-    private final Map<String, DuplicationMetrics> metricsByLibrary = new HashMap<String, DuplicationMetrics>();
-    private final Histogram<Short> opticalDuplicatesByLibraryId = new Histogram<Short>();
+    private final Map<String, DuplicationMetrics> metricsByLibrary = new HashMap<>();
+    private final Histogram<Short> opticalDuplicatesByLibraryId = new Histogram<>();
 
 
     public LibraryIdGenerator(final SAMFileHeader header) {

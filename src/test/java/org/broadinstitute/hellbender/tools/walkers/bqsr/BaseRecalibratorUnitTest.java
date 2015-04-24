@@ -91,7 +91,7 @@ public class BaseRecalibratorUnitTest {
 
     @DataProvider(name = "CalculateIsIndelData")
     public Object[][] makeCalculateIsIndelData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
         for ( final EventType model : Arrays.asList(EventType.BASE_DELETION, EventType.BASE_INSERTION) ) {

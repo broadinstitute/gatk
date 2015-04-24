@@ -30,7 +30,7 @@ public class Utils {
     private static Logger logger = LogManager.getLogger(Utils.class);
 
     public static <T> List<T> cons(final T elt, final List<T> l) {
-        List<T> l2 = new ArrayList<T>();
+        List<T> l2 = new ArrayList<>();
         l2.add(elt);
         if (l != null) l2.addAll(l);
         return l2;
@@ -255,7 +255,7 @@ public class Utils {
      */
     @SafeVarargs
     public static <T> List<T> append(final List<T> left, T ... elts) {
-        final List<T> l = new LinkedList<T>(left);
+        final List<T> l = new LinkedList<>(left);
 	for (T t : elts){
 	    l.add(t);
 	}
@@ -325,7 +325,7 @@ public class Utils {
     }
 
     public static <T extends Comparable<T>> List<T> sorted(Collection<T> c, boolean reverse) {
-        List<T> l = new ArrayList<T>(c);
+        List<T> l = new ArrayList<>(c);
         Collections.sort(l);
         if ( reverse ) Collections.reverse(l);
         return l;
@@ -336,11 +336,11 @@ public class Utils {
     }
 
     public static <T extends Comparable<T>, V> List<V> sorted(Map<T,V> c, boolean reverse) {
-        List<T> t = new ArrayList<T>(c.keySet());
+        List<T> t = new ArrayList<>(c.keySet());
         Collections.sort(t);
         if ( reverse ) Collections.reverse(t);
 
-        List<V> l = new ArrayList<V>();
+        List<V> l = new ArrayList<>();
         for ( T k : t ) {
             l.add(c.get(k));
         }
@@ -364,7 +364,7 @@ public class Utils {
     }
 
     static public <T> List<T> reverse(final List<T> l) {
-        final List<T> newL = new ArrayList<T>(l);
+        final List<T> newL = new ArrayList<>(l);
         Collections.reverse(newL);
         return newL;
     }
@@ -424,7 +424,7 @@ public class Utils {
      * @return a list with all combinations with size n of objects.
      */
     public static <T> List<List<T>> makePermutations(final List<T> objects, final int n, final boolean withReplacement) {
-        final List<List<T>> combinations = new ArrayList<List<T>>();
+        final List<List<T>> combinations = new ArrayList<>();
 
         if ( n == 1 ) {
             for ( final T o : objects )

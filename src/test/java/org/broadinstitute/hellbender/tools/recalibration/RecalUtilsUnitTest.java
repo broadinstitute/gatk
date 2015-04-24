@@ -40,9 +40,9 @@ public final class RecalUtilsUnitTest extends BaseTest {
 
     @DataProvider(name = "CombineTablesProvider")
     public Object[][] createCombineTablesProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
-        final List<Row> rows = new ArrayList<Row>();
+        final List<Row> rows = new ArrayList<>();
         for ( final int rg : Arrays.asList(0, 1) ) {
             for ( final int qual : Arrays.asList(0, 1) ) {
                 rows.add(new Row(rg, qual, 1, 10));
@@ -51,7 +51,7 @@ public final class RecalUtilsUnitTest extends BaseTest {
 
         logger.warn("Number of rows " + rows.size());
 
-        List<List<Row>> permutations = new LinkedList<List<Row>>();
+        List<List<Row>> permutations = new LinkedList<>();
         permutations.addAll(Utils.makePermutations(rows, 1, false));
         permutations.addAll(Utils.makePermutations(rows, 2, false));
         permutations.addAll(Utils.makePermutations(rows, 3, false));
@@ -98,7 +98,7 @@ public final class RecalUtilsUnitTest extends BaseTest {
     }
 
     public List<Row> makeExpected(final List<Row> table1, final List<Row> table2) {
-        final List<Row> combined = new LinkedList<Row>();
+        final List<Row> combined = new LinkedList<>();
         for ( final Row t1 : table1 ) combined.add(new Row(t1));
         for ( final Row t2 : table2 ) {
             combine(combined, t2);
@@ -119,7 +119,7 @@ public final class RecalUtilsUnitTest extends BaseTest {
     }
 
     public NestedIntegerArray<RecalDatum> makeTable(final List<Row> rows) {
-        final NestedIntegerArray<RecalDatum> x = new NestedIntegerArray<RecalDatum>(3, 3);
+        final NestedIntegerArray<RecalDatum> x = new NestedIntegerArray<>(3, 3);
         for ( final Row r : rows )
             x.put(new RecalDatum((long)r.no, (double)r.ne, (byte)10), r.rg, r.qual);
         return x;

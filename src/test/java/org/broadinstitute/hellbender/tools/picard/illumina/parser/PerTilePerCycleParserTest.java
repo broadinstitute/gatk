@@ -20,7 +20,7 @@ public class PerTilePerCycleParserTest {
         private final List<String> values;
 
         public MockCycledIlluminaData() {
-            this.values = new ArrayList<String>();
+            this.values = new ArrayList<>();
         }
 
         public void addValue(final String value) {
@@ -85,7 +85,7 @@ public class PerTilePerCycleParserTest {
     }
 
     public List<String> getFileNames(final List<Integer> tiles) {
-        final List<String> fileNames = new ArrayList<String>();
+        final List<String> fileNames = new ArrayList<>();
         for (final Integer tile : tiles) {
             for (int i = 1; i <= MAX_CYCLE; i++) {
                 fileNames.add(str_del(tile, i));

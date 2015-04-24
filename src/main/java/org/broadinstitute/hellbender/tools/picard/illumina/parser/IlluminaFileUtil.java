@@ -54,7 +54,7 @@ public class IlluminaFileUtil {
     private final int lane;
 
     private final File tileMetricsOut;
-    private final Map<SupportedIlluminaFormat, ParameterizedFileUtil> utils = new HashMap<SupportedIlluminaFormat, ParameterizedFileUtil>();
+    private final Map<SupportedIlluminaFormat, ParameterizedFileUtil> utils = new HashMap<>();
 
     public IlluminaFileUtil(final File basecallDir, final int lane) {
         this(basecallDir, null, lane);
@@ -145,7 +145,7 @@ public class IlluminaFileUtil {
     public List<Integer> getExpectedTiles() {
         assertFileIsReadable(tileMetricsOut);
         //Used just to ensure predictable ordering
-        final TreeSet<Integer> expectedTiles = new TreeSet<Integer>();
+        final TreeSet<Integer> expectedTiles = new TreeSet<>();
 
         final Iterator<TileMetricsOutReader.IlluminaTileMetrics> tileMetrics = new TileMetricsOutReader(tileMetricsOut);
         while (tileMetrics.hasNext()) {
@@ -159,7 +159,7 @@ public class IlluminaFileUtil {
         }
 
         close(tileMetrics);
-        return new ArrayList<Integer>(expectedTiles);
+        return new ArrayList<>(expectedTiles);
     }
 
     /**

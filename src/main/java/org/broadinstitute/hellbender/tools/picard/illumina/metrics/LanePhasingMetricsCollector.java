@@ -21,11 +21,11 @@ public class LanePhasingMetricsCollector {
      * first and second (if available) reads
      */
     public LanePhasingMetricsCollector(final Collection<Tile> laneTiles) {
-        final Map<TileTemplateRead, Float> medianPhasingMap = new TreeMap<TileTemplateRead, Float>();
-        final Map<TileTemplateRead, Float> medianPrePhasingMap = new TreeMap<TileTemplateRead, Float>();
+        final Map<TileTemplateRead, Float> medianPhasingMap = new TreeMap<>();
+        final Map<TileTemplateRead, Float> medianPrePhasingMap = new TreeMap<>();
 
-        final CollectionUtil.MultiMap<TileTemplateRead, Float> phasingValues = new CollectionUtil.MultiMap<TileTemplateRead, Float>();
-        final CollectionUtil.MultiMap<TileTemplateRead, Float> prePhasingValues = new CollectionUtil.MultiMap<TileTemplateRead, Float>();
+        final CollectionUtil.MultiMap<TileTemplateRead, Float> phasingValues = new CollectionUtil.MultiMap<>();
+        final CollectionUtil.MultiMap<TileTemplateRead, Float> prePhasingValues = new CollectionUtil.MultiMap<>();
 
         // Collect the phasing/prephasing values from all of the tiles, sorted by template read #
         for (final Tile tile : laneTiles) {

@@ -72,7 +72,7 @@ public class TabbedTextFileWithHeaderParser implements Iterable<TabbedTextFileWi
     /**
      * Map from column label to positional index.
      */
-    private final Map<String, Integer> columnLabelIndices = new HashMap<String, Integer>();
+    private final Map<String, Integer> columnLabelIndices = new HashMap<>();
     private final TabbedInputParser parser;
     private TheIterator extantIterator;
 

@@ -12,8 +12,8 @@ public class PhysicalLocationForMateCigarSet {
     /**
      * We want to return a set of ReadEnds but want to compare based on physical location, hence we store two sets.
      */
-    private final Set<ReadEnds> readEnds = new HashSet<ReadEnds>();
-    private final Set<PhysicalLocationForMateCigar> physicalLocations = new HashSet<PhysicalLocationForMateCigar>();
+    private final Set<ReadEnds> readEnds = new HashSet<>();
+    private final Set<PhysicalLocationForMateCigar> physicalLocations = new HashSet<>();
 
     public PhysicalLocationForMateCigarSet() {}
 

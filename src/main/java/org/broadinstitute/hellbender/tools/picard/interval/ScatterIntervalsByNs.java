@@ -110,7 +110,7 @@ public class ScatterIntervalsByNs extends PicardCommandLineProgram {
      * ****************************************************************
      */
     public static IntervalList segregateReference(final ReferenceSequenceFile refFile, final int maxNmerToMerge) {
-        final List<Interval> preliminaryIntervals = new LinkedList<Interval>();
+        final List<Interval> preliminaryIntervals = new LinkedList<>();
         final SAMFileHeader header = new SAMFileHeader();
         header.setSequenceDictionary(refFile.getSequenceDictionary());
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);

@@ -186,7 +186,7 @@ public class IntervalListTools extends PicardCommandLineProgram {
 
         // Decide on a PG ID and make a program group
         final SAMFileHeader header = result.getHeader();
-        final Set<String> pgs = new HashSet<String>();
+        final Set<String> pgs = new HashSet<>();
         for (final SAMProgramRecord pg : header.getProgramRecords()) pgs.add(pg.getId());
         for (int i = 1; i < Integer.MAX_VALUE; ++i) {
             if (!pgs.contains(String.valueOf(i))) {
@@ -246,7 +246,7 @@ public class IntervalListTools extends PicardCommandLineProgram {
 
 
     private List<IntervalList> openIntervalLists(final List<File> files){
-        final List<IntervalList> lists = new ArrayList<IntervalList>();
+        final List<IntervalList> lists = new ArrayList<>();
         for (final File f : files) {
 
             final IntervalList list = TYPE.getIntervalList(f, INCLUDE_FILTERED);
@@ -270,7 +270,7 @@ public class IntervalListTools extends PicardCommandLineProgram {
 
     @Override
     protected String[] customCommandLineValidation() {
-        final List<String> errorMsgs = new ArrayList<String>();
+        final List<String> errorMsgs = new ArrayList<>();
         if (SCATTER_COUNT < 1) {
             errorMsgs.add("SCATTER_COUNT must be greater than 0.");
         }

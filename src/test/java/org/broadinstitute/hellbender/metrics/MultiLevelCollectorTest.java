@@ -64,7 +64,7 @@ public class MultiLevelCollectorTest {
             return numProcessed;
         }
 
-        private final Map<String, TotalNumberMetric> unitsToMetrics = new HashMap<String, TotalNumberMetric>();
+        private final Map<String, TotalNumberMetric> unitsToMetrics = new HashMap<>();
 
         public Map<String, TotalNumberMetric> getUnitsToMetrics() {
             return unitsToMetrics;
@@ -119,25 +119,25 @@ public class MultiLevelCollectorTest {
         }
     }
 
-    public static final Map<MetricAccumulationLevel, Map<String, Integer>> accumulationLevelToPerUnitReads = new HashMap<MetricAccumulationLevel, Map<String, Integer>>();
+    public static final Map<MetricAccumulationLevel, Map<String, Integer>> accumulationLevelToPerUnitReads = new HashMap<>();
     static {
-        HashMap<String, Integer> curMap = new HashMap<String, Integer>();
+        HashMap<String, Integer> curMap = new HashMap<>();
         curMap.put("__", 19);
         accumulationLevelToPerUnitReads.put(MetricAccumulationLevel.ALL_READS, curMap);
 
-        curMap = new HashMap<String, Integer>();
+        curMap = new HashMap<>();
         curMap.put("Ma__", 10);
         curMap.put("Pa__", 9);
         accumulationLevelToPerUnitReads.put(MetricAccumulationLevel.SAMPLE, curMap);
 
-        curMap = new HashMap<String, Integer>();
+        curMap = new HashMap<>();
         curMap.put("Ma_whatever_", 10);
         curMap.put("Pa_lib1_",     4);
         curMap.put("Pa_lib2_",     5);
         accumulationLevelToPerUnitReads.put(MetricAccumulationLevel.LIBRARY, curMap);
 
 
-        curMap = new HashMap<String, Integer>();
+        curMap = new HashMap<>();
         curMap.put("Ma_whatever_me",     10);
         curMap.put("Pa_lib1_myself", 4);
         curMap.put("Pa_lib2_i",      3);

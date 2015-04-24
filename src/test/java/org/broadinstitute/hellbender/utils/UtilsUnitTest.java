@@ -20,9 +20,9 @@ public class UtilsUnitTest extends BaseTest {
     public void testAppend() {
         for ( int leftSize : Arrays.asList(0, 1, 2, 3) ) {
             for ( final int rightSize : Arrays.asList(0, 1, 2) ) {
-                final List<Integer> left = new LinkedList<Integer>();
+                final List<Integer> left = new LinkedList<>();
                 for ( int i = 0; i < leftSize; i++ ) left.add(i);
-                final List<Integer> total = new LinkedList<Integer>();
+                final List<Integer> total = new LinkedList<>();
                 for ( int i = 0; i < leftSize + rightSize; i++ ) total.add(i);
 
                 if ( rightSize == 0 )

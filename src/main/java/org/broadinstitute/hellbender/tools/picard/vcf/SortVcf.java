@@ -49,8 +49,8 @@ public class SortVcf extends PicardCommandLineProgram {
 
     private final Log log = Log.getInstance(SortVcf.class);
 
-    private final List<VCFFileReader> inputReaders = new ArrayList<VCFFileReader>();
-    private final List<VCFHeader> inputHeaders = new ArrayList<VCFHeader>();
+    private final List<VCFFileReader> inputReaders = new ArrayList<>();
+    private final List<VCFHeader> inputHeaders = new ArrayList<>();
 
     // Overrides the option default, including in the help message. Option remains settable on commandline.
     public SortVcf() {
@@ -59,7 +59,7 @@ public class SortVcf extends PicardCommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final List<String> sampleList = new ArrayList<String>();
+        final List<String> sampleList = new ArrayList<>();
 
         for (final File input : INPUT) IOUtil.assertFileIsReadable(input);
 

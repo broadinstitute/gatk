@@ -103,7 +103,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
 
     @Argument(doc = "Barcode sequence.  These must be unique, and all the same length.  This cannot be used with reads that " +
             "have more than one barcode; use BARCODE_FILE in that case. ", mutex = {"BARCODE_FILE"})
-    public List<String> BARCODE = new ArrayList<String>();
+    public List<String> BARCODE = new ArrayList<>();
 
     @Argument(doc = "Tab-delimited file of barcode sequences, barcode name and, optionally, library name.  " +
             "Barcodes must be unique and all the same length.  Column headers must be 'barcode_sequence_1', " +
@@ -146,7 +146,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
 
     private IlluminaDataProviderFactory factory;
 
-    private final Map<String, BarcodeMetric> barcodeToMetrics = new LinkedHashMap<String, BarcodeMetric>();
+    private final Map<String, BarcodeMetric> barcodeToMetrics = new LinkedHashMap<>();
 
     private final NumberFormat tileNumberFormatter = getNumberInstance();
     private BclQualityEvaluationStrategy bclQualityEvaluationStrategy;
@@ -189,7 +189,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
         final ExecutorService pool = newFixedThreadPool(numProcessors);
 
         // TODO: This is terribly inefficient; we're opening a huge number of files via the extractor constructor and we never close them.
-        final List<PerTileBarcodeExtractor> extractors = new ArrayList<PerTileBarcodeExtractor>(factory.getAvailableTiles().size());
+        final List<PerTileBarcodeExtractor> extractors = new ArrayList<>(factory.getAvailableTiles().size());
         for (final int tile : factory.getAvailableTiles()) {
             final PerTileBarcodeExtractor extractor = new PerTileBarcodeExtractor(
                     tile,
@@ -323,7 +323,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
      */
     @Override
     protected String[] customCommandLineValidation() {
-        final ArrayList<String> messages = new ArrayList<String>();
+        final ArrayList<String> messages = new ArrayList<>();
 
         this.bclQualityEvaluationStrategy = new BclQualityEvaluationStrategy(MINIMUM_QUALITY);
 
@@ -341,7 +341,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
         if (BARCODE_FILE != null) {
             parseBarcodeFile(messages);
         } else {
-            final Set<String> barcodes = new HashSet<String>();
+            final Set<String> barcodes = new HashSet<>();
             for (final String barcode : BARCODE) {
                 if (barcodes.contains(barcode)) {
                     messages.add("Barcode " + barcode + " specified more than once.");
@@ -378,7 +378,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
         final boolean hasBarcodeName = barcodesParser.hasColumn(BARCODE_NAME_COLUMN);
         final boolean hasLibraryName = barcodesParser.hasColumn(LIBRARY_NAME_COLUMN);
         final int numBarcodes = readStructure.barcodes.length();
-        final Set<String> barcodes = new HashSet<String>();
+        final Set<String> barcodes = new HashSet<>();
         for (final TabbedTextFileWithHeaderParser.Row row : barcodesParser) {
             final String bcStrings[] = new String[numBarcodes];
             int barcodeNum = 1;
@@ -570,7 +570,7 @@ public class ExtractIlluminaBarcodes extends PicardCommandLineProgram {
             this.maxMismatches = maxMismatches;
             this.minMismatchDelta = minMismatchDelta;
             this.minimumBaseQuality = minimumBaseQuality;
-            this.metrics = new LinkedHashMap<String, BarcodeMetric>(barcodeToMetrics.size());
+            this.metrics = new LinkedHashMap<>(barcodeToMetrics.size());
             for (final String key : barcodeToMetrics.keySet()) {
                 this.metrics.put(key, copy(barcodeToMetrics.get(key)));
             }

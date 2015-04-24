@@ -52,7 +52,7 @@ public class IlluminaDataProviderFactory {
      * We try to prefer data types that will be the fastest to parse/smallest in memory
      * NOTE: In the code below, if Qseq is chosen to provide for ANY data type then it is used for ALL its data types (since we'll have to parse the entire line for each Qseq anyways)
      */
-    private static final Map<IlluminaDataType, List<SupportedIlluminaFormat>> DATA_TYPE_TO_PREFERRED_FORMATS = new HashMap<IlluminaDataType, List<SupportedIlluminaFormat>>();
+    private static final Map<IlluminaDataType, List<SupportedIlluminaFormat>> DATA_TYPE_TO_PREFERRED_FORMATS = new HashMap<>();
 
     static {
         /** For types found in Qseq, we prefer the NON-Qseq file formats first.  However, if we end up using Qseqs then we use Qseqs for EVERY type it provides,
@@ -144,7 +144,7 @@ public class IlluminaDataProviderFactory {
          * for data residing in QSeqs (since QSeqs span multiple data types).  This is no longer the case, you
          * MUST specify all data types that should be returned.
          */
-        final Set<IlluminaDataType> dataTypes = unmodifiableSet(new HashSet<IlluminaDataType>(asList(dataTypesArg)));
+        final Set<IlluminaDataType> dataTypes = unmodifiableSet(new HashSet<>(asList(dataTypesArg)));
 
         if (dataTypes.isEmpty()) {
             throw new IlluminaParserException("No data types have been specified for basecall output " + basecallDirectory + ", lane " + lane);
@@ -159,12 +159,12 @@ public class IlluminaDataProviderFactory {
         final Set<IlluminaDataType> unmatchedDataTypes = findUnmatchedTypes(dataTypes, formatToDataTypes);
         if (unmatchedDataTypes.size() > 0) {
             throw new IlluminaParserException("Could not find a format with available files for the following data types: "
-                    + join(", ", new ArrayList<IlluminaDataType>(unmatchedDataTypes)));
+                    + join(", ", new ArrayList<>(unmatchedDataTypes)));
         }
 
         log.debug("The following file formats will be used by IlluminaDataProvider: " + join("," + formatToDataTypes.keySet()));
 
-        availableTiles = fileUtil.getActualTiles(new ArrayList<SupportedIlluminaFormat>(formatToDataTypes.keySet()));
+        availableTiles = fileUtil.getActualTiles(new ArrayList<>(formatToDataTypes.keySet()));
         if (availableTiles.isEmpty()) {
             throw new IlluminaParserException("No available tiles were found, make sure that " + basecallDirectory.getAbsolutePath() + " has a lane " + lane);
         }
@@ -221,7 +221,7 @@ public class IlluminaDataProviderFactory {
             }
         }
 
-        final Map<IlluminaParser, Set<IlluminaDataType>> parsersToDataType = new HashMap<IlluminaParser, Set<IlluminaDataType>>();
+        final Map<IlluminaParser, Set<IlluminaDataType>> parsersToDataType = new HashMap<>();
         for (final Map.Entry<SupportedIlluminaFormat, Set<IlluminaDataType>> fmToDt : formatToDataTypes.entrySet()) {
             parsersToDataType.put(makeParser(fmToDt.getKey(), requestedTiles), fmToDt.getValue());
         }
@@ -239,7 +239,7 @@ public class IlluminaDataProviderFactory {
      * @return The data types that go unsupported by the formats found in formatToMatchedTypes
      */
     public static Set<IlluminaDataType> findUnmatchedTypes(final Set<IlluminaDataType> requestedDataTypes, final Map<SupportedIlluminaFormat, Set<IlluminaDataType>> formatToMatchedTypes) {
-        final Set<IlluminaDataType> copiedTypes = new HashSet<IlluminaDataType>(requestedDataTypes);
+        final Set<IlluminaDataType> copiedTypes = new HashSet<>(requestedDataTypes);
         for (final Set<IlluminaDataType> matchedTypes : formatToMatchedTypes.values()) {
             copiedTypes.removeAll(matchedTypes);
         }
@@ -257,9 +257,9 @@ public class IlluminaDataProviderFactory {
      */
     public static Map<SupportedIlluminaFormat, Set<IlluminaDataType>> determineFormats(final Set<IlluminaDataType> requestedDataTypes, final IlluminaFileUtil fileUtil) {
         //For predictable ordering and uniqueness only, put the requestedDataTypes into a treeSet
-        final SortedSet<IlluminaDataType> toSupport = new TreeSet<IlluminaDataType>(requestedDataTypes);
-        final Map<SupportedIlluminaFormat, Set<IlluminaDataType>> fileTypeToDataTypes = new HashMap<SupportedIlluminaFormat, Set<IlluminaDataType>>();
-        final Map<IlluminaDataType, SupportedIlluminaFormat> dataTypeToFormat = new HashMap<IlluminaDataType, SupportedIlluminaFormat>();
+        final SortedSet<IlluminaDataType> toSupport = new TreeSet<>(requestedDataTypes);
+        final Map<SupportedIlluminaFormat, Set<IlluminaDataType>> fileTypeToDataTypes = new HashMap<>();
+        final Map<IlluminaDataType, SupportedIlluminaFormat> dataTypeToFormat = new HashMap<>();
 
         for (final IlluminaDataType ts : toSupport) {
             final SupportedIlluminaFormat preferredFormat = findPreferredAvailableFormat(ts, fileUtil);

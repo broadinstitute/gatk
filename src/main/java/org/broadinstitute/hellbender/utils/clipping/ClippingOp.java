@@ -286,7 +286,7 @@ public class ClippingOp {
             curLength += curElem.getLength();
         }
 
-        Vector<CigarElement> finalNewElements = new Vector<CigarElement>();
+        Vector<CigarElement> finalNewElements = new Vector<>();
         CigarElement lastElement = null;
         for (CigarElement elem : newElements) {
             if (lastElement == null || lastElement.getOperator() != elem.getOperator()) {

@@ -53,7 +53,7 @@ public class CollectRnaSeqMetrics extends SinglePassSamProgram {
     public File CHART_OUTPUT;
 
     @Argument(doc="If a read maps to a sequence specified with this option, all the bases in the read are counted as ignored bases.", optional = true)
-    public Set<String> IGNORE_SEQUENCE = new HashSet<String>();
+    public Set<String> IGNORE_SEQUENCE = new HashSet<>();
 
     @Argument(doc="This percentage of the length of a fragment must overlap one of the ribosomal intervals for a read or read pair by this must in order to be considered rRNA.")
     public double RRNA_FRAGMENT_PERCENTAGE = 0.8;

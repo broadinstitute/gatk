@@ -145,12 +145,12 @@ public class MarkIlluminaAdapters extends PicardCommandLineProgram {
             out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT);
         }
 
-        final Histogram<Integer> histo = new Histogram<Integer>("clipped_bases", "read_count");
+        final Histogram<Integer> histo = new Histogram<>("clipped_bases", "read_count");
 
         // Combine any adapters and custom adapter pairs from the command line into an array for use in clipping
         final AdapterPair[] adapters;
         {
-            final List<AdapterPair> tmp = new ArrayList<AdapterPair>();
+            final List<AdapterPair> tmp = new ArrayList<>();
             tmp.addAll(ADAPTERS);
             if (FIVE_PRIME_ADAPTER != null && THREE_PRIME_ADAPTER != null) {
                 tmp.add(new CustomAdapterPair(FIVE_PRIME_ADAPTER, THREE_PRIME_ADAPTER));

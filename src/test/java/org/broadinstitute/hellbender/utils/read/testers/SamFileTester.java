@@ -14,7 +14,7 @@ import java.util.*;
 public abstract class SamFileTester extends CommandLineProgramTest {
 
     private final SAMRecordSetBuilder samRecordSetBuilder;
-    protected final Map<String, Boolean> duplicateFlags = new HashMap<String, Boolean>();
+    protected final Map<String, Boolean> duplicateFlags = new HashMap<>();
     private File outputDir;
     private File output;
     private int readNameCounter = 0;

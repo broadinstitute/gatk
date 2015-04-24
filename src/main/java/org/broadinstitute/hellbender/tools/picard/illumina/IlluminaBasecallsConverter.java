@@ -227,7 +227,7 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
         } else {
             this.numThreads = numProcessors;
         }
-        this.tiles = new ArrayList<Integer>(factory.getAvailableTiles());
+        this.tiles = new ArrayList<>(factory.getAvailableTiles());
         // Since the first non-fixed part of the read name is the tile number, without preceding zeroes,
         // and the output is sorted by read name, process the tiles in this order.
         sort(tiles, TILE_NUMBER_COMPARATOR);
@@ -274,7 +274,7 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
     public void doTileProcessing() {
         try {
             // Generate the list of tiles that will be processed
-            final List<Tile> tiles = new ArrayList<Tile>();
+            final List<Tile> tiles = new ArrayList<>();
             for (final Integer tileNumber : this.tiles) {
                 tiles.add(new Tile(tileNumber));
             }
@@ -372,8 +372,8 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
      */
     private class TileProcessingRecord {
         final private Map<String, SortingCollection<CLUSTER_OUTPUT_RECORD>> barcodeToRecordCollection =
-                new HashMap<String, SortingCollection<CLUSTER_OUTPUT_RECORD>>();
-        final private Map<String, TileBarcodeProcessingState> barcodeToProcessingState = new HashMap<String, TileBarcodeProcessingState>();
+                new HashMap<>();
+        final private Map<String, TileBarcodeProcessingState> barcodeToProcessingState = new HashMap<>();
         private TileProcessingState state = TileProcessingState.NOT_DONE_READING;
         private long recordCount = 0;
 
@@ -538,7 +538,7 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
          * <p>
          * Implemented as a TreeMap to guarantee tiles are iterated over in natural order.
          */
-        private final Map<Tile, TileProcessingRecord> tileRecords = new TreeMap<Tile, TileProcessingRecord>();
+        private final Map<Tile, TileProcessingRecord> tileRecords = new TreeMap<>();
 
         /**
          * The executor responsible for doing work.
@@ -551,7 +551,7 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
                 numThreads,
                 0L,
                 MILLISECONDS,
-                new PriorityBlockingQueue<Runnable>(5, new Comparator<Runnable>() {
+                new PriorityBlockingQueue<>(5, new Comparator<Runnable>() {
                     @Override
                     /**
                      * Compare the two Runnables, and assume they are PriorityRunnable; if not something strange is
@@ -694,7 +694,7 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
                 if (this.isWorkCompleted()) {
                     this.signalWorkComplete();
                 } else {
-                    final Queue<Runnable> tasks = new LinkedList<Runnable>();
+                    final Queue<Runnable> tasks = new LinkedList<>();
                     for (final String barcode : barcodeRecordWriterMap.keySet()) {
                         NEXT_BARCODE:
                         for (final Map.Entry<Tile, TileProcessingRecord> entry : this.tileRecords.entrySet()) {
@@ -762,7 +762,7 @@ public class IlluminaBasecallsConverter<CLUSTER_OUTPUT_RECORD> {
 
                         log.debug(format("Writing records from tile %s with barcode %s ...", tile.getNumber(), barcode));
 
-                        final PeekIterator<CLUSTER_OUTPUT_RECORD> it = new PeekIterator<CLUSTER_OUTPUT_RECORD>(records.iterator());
+                        final PeekIterator<CLUSTER_OUTPUT_RECORD> it = new PeekIterator<>(records.iterator());
                         while (it.hasNext()) {
                             final CLUSTER_OUTPUT_RECORD rec = it.next();
 

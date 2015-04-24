@@ -243,8 +243,8 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test
     public void testMergeListsBySetOperatorAllOverlap() {
         // a couple of lists we'll use for the testing
-        List<GenomeLoc> allSites = new ArrayList<GenomeLoc>();
-        List<GenomeLoc> listEveryTwoFromTwo = new ArrayList<GenomeLoc>();
+        List<GenomeLoc> allSites = new ArrayList<>();
+        List<GenomeLoc> listEveryTwoFromTwo = new ArrayList<>();
 
         // create the two lists we'll use
         for (int x = 1; x < 101; x++) {
@@ -265,8 +265,8 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test
     public void testMergeListsBySetOperator() {
         // a couple of lists we'll use for the testing
-        List<GenomeLoc> allSites = new ArrayList<GenomeLoc>();
-        List<GenomeLoc> listEveryTwoFromTwo = new ArrayList<GenomeLoc>();
+        List<GenomeLoc> allSites = new ArrayList<>();
+        List<GenomeLoc> listEveryTwoFromTwo = new ArrayList<>();
 
         // create the two lists we'll use
         for (int x = 1; x < 101; x++) {
@@ -288,8 +288,8 @@ public class IntervalUtilsUnitTest extends BaseTest {
     @Test
     public void testOverlappingIntervalsFromSameSourceWithIntersection() {
         // a couple of lists we'll use for the testing
-        List<GenomeLoc> source1 = new ArrayList<GenomeLoc>();
-        List<GenomeLoc> source2 = new ArrayList<GenomeLoc>();
+        List<GenomeLoc> source1 = new ArrayList<>();
+        List<GenomeLoc> source2 = new ArrayList<>();
 
         source1.add(hg19GenomeLocParser.createGenomeLoc("1", 10, 20));
         source1.add(hg19GenomeLocParser.createGenomeLoc("1", 15, 25));
@@ -698,7 +698,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
     }
 
     private List<File> testFiles(String prefix, int count, String suffix) {
-        ArrayList<File> files = new ArrayList<File>();
+        ArrayList<File> files = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
             files.add(createTempFile(prefix + i, suffix));
         }
@@ -781,7 +781,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
         }
 
         private static List<GenomeLoc> parse(GenomeLocParser parser, List<String> locs) {
-            List<GenomeLoc> parsed = new ArrayList<GenomeLoc>();
+            List<GenomeLoc> parsed = new ArrayList<>();
             for (String loc: locs)
                 parsed.add("unmapped".equals(loc) ? GenomeLoc.UNMAPPED : parser.parseGenomeLoc(loc));
             return parsed;
@@ -935,7 +935,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
         File originalFile = createTempFile("original.", ".intervals");
         File flankingFile = createTempFile("flanking.", ".intervals");
         try {
-            List<String> lines = new ArrayList<String>();
+            List<String> lines = new ArrayList<>();
             for (GenomeLoc loc: data.original)
                 lines.add(loc.toString());
             FileUtils.writeLines(originalFile, lines);
@@ -958,7 +958,7 @@ public class IntervalUtilsUnitTest extends BaseTest {
         File originalFile = createTempFile("original.", ".intervals");
         File flankingFile = createTempFile("flanking.", ".intervals");
         try {
-            List<String> lines = new ArrayList<String>();
+            List<String> lines = new ArrayList<>();
             for (GenomeLoc loc: data.original)
                 lines.add(loc.toString());
             FileUtils.writeLines(originalFile, lines);

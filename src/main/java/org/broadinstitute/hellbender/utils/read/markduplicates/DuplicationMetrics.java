@@ -129,7 +129,7 @@ public class DuplicationMetrics extends MetricBase {
         }
 
         long uniquePairs = READ_PAIRS_EXAMINED - READ_PAIR_DUPLICATES;
-        Histogram<Double> histo = new Histogram<Double>();
+        Histogram<Double> histo = new Histogram<>();
 
         for (double x=1; x<=100; x+=1) {
             histo.increment(x, estimateRoi(ESTIMATED_LIBRARY_SIZE, x, READ_PAIRS_EXAMINED, uniquePairs));

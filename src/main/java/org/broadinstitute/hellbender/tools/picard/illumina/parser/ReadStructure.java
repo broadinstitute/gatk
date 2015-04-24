@@ -94,14 +94,14 @@ public class ReadStructure {
             throw new IllegalArgumentException("ReadStructure does not support 0 length clusters!");
         }
 
-        final List<Range> allRanges = new ArrayList<Range>(collection.size());
+        final List<Range> allRanges = new ArrayList<>(collection.size());
         this.descriptors = unmodifiableList(collection);
         int cycles = 0;
 
-        final List<Integer> nonSkipIndicesList = new ArrayList<Integer>();
-        final List<Integer> barcodeIndicesList = new ArrayList<Integer>();
-        final List<Integer> templateIndicesList = new ArrayList<Integer>();
-        final List<Integer> skipIndicesList = new ArrayList<Integer>();
+        final List<Integer> nonSkipIndicesList = new ArrayList<>();
+        final List<Integer> barcodeIndicesList = new ArrayList<>();
+        final List<Integer> templateIndicesList = new ArrayList<>();
+        final List<Integer> skipIndicesList = new ArrayList<>();
         readLengths = new int[collection.size()];
 
         int currentCycleIndex = 0;   // Current cycle in the entire read structure
@@ -187,7 +187,7 @@ public class ReadStructure {
 
 
         final Matcher subMatcher = SubPattern.matcher(readStructure);
-        final List<ReadDescriptor> descriptors = new ArrayList<ReadDescriptor>();
+        final List<ReadDescriptor> descriptors = new ArrayList<>();
         while (subMatcher.find()) {
             final ReadDescriptor rd = new ReadDescriptor(parseInt(subMatcher.group(1)), valueOf(subMatcher.group(2)));
             descriptors.add(rd);
@@ -334,7 +334,7 @@ public class ReadStructure {
          * (36T8B36T) in ReadStructure form
          */
         public ReadStructure toReadStructure() {
-            final List<ReadDescriptor> descriptors = new ArrayList<ReadDescriptor>(numDescriptors);
+            final List<ReadDescriptor> descriptors = new ArrayList<>(numDescriptors);
             for (final ReadDescriptor rd : this) {
                 descriptors.add(rd);
             }

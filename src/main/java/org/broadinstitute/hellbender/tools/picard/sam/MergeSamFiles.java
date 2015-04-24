@@ -26,7 +26,7 @@ public class MergeSamFiles extends PicardCommandLineProgram {
     private static final Log log = Log.getInstance(MergeSamFiles.class);
 
     @Argument(shortName = "I", doc = "SAM or BAM input file", optional=false)
-    public List<File> INPUT = new ArrayList<File>();
+    public List<File> INPUT = new ArrayList<>();
 
     @Argument(shortName = "O", doc = "SAM or BAM file to write merged result to")
     public File OUTPUT;
@@ -47,7 +47,7 @@ public class MergeSamFiles extends PicardCommandLineProgram {
     public boolean USE_THREADING = false;
 
     @Argument(doc = "Comment(s) to include in the merged output file's header.", optional = true, shortName = "CO")
-    public List<String> COMMENT = new ArrayList<String>();
+    public List<String> COMMENT = new ArrayList<>();
 
     private static final int PROGRESS_INTERVAL = 1000000;
 
@@ -57,8 +57,8 @@ public class MergeSamFiles extends PicardCommandLineProgram {
         boolean matchedSortOrders = true;
 
         // Open the files for reading and writing
-        final List<SamReader> readers = new ArrayList<SamReader>();
-        final List<SAMFileHeader> headers = new ArrayList<SAMFileHeader>();
+        final List<SamReader> readers = new ArrayList<>();
+        final List<SAMFileHeader> headers = new ArrayList<>();
         {
             SAMSequenceDictionary dict = null; // Used to try and reduce redundant SDs in memory
 

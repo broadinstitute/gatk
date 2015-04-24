@@ -35,7 +35,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleEmptyFileList() {
-        ReadsDataSource readsSource = new ReadsDataSource(new ArrayList<File>());
+        ReadsDataSource readsSource = new ReadsDataSource(new ArrayList<>());
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
@@ -71,7 +71,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
     public void testSingleFileCompleteTraversal( final File samFile, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFile);
 
-        List<SAMRecord> reads = new ArrayList<SAMRecord>();
+        List<SAMRecord> reads = new ArrayList<>();
         for ( SAMRecord read : readsSource ) {
             reads.add(read);
         }
@@ -123,7 +123,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
         ReadsDataSource readsSource = new ReadsDataSource(samFile);
         readsSource.setIntervalsForTraversal(intervals);
 
-        List<SAMRecord> reads = new ArrayList<SAMRecord>();
+        List<SAMRecord> reads = new ArrayList<>();
         for ( SAMRecord read : readsSource ) {
             reads.add(read);
         }
@@ -174,7 +174,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
     public void testSingleFileQueryByInterval( final File samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFile);
 
-        List<SAMRecord> reads = new ArrayList<SAMRecord>();
+        List<SAMRecord> reads = new ArrayList<>();
         Iterator<SAMRecord> queryIterator = readsSource.query(interval);
         while ( queryIterator.hasNext() ) {
             reads.add(queryIterator.next());
@@ -205,7 +205,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "MultipleFilesCompleteTraversalData")
     public void testMultipleFilesCompleteTraversal(final List<File> samFiles, final List<String> expectedReadNames) {
         ReadsDataSource readsSource = new ReadsDataSource(samFiles);
-        List<SAMRecord> reads = new ArrayList<SAMRecord>();
+        List<SAMRecord> reads = new ArrayList<>();
 
         for ( SAMRecord read : readsSource ) {
             reads.add(read);
@@ -258,7 +258,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
         ReadsDataSource readsSource = new ReadsDataSource(samFiles);
         readsSource.setIntervalsForTraversal(intervals);
 
-        List<SAMRecord> reads = new ArrayList<SAMRecord>();
+        List<SAMRecord> reads = new ArrayList<>();
         for ( SAMRecord read : readsSource ) {
             reads.add(read);
         }
@@ -305,7 +305,7 @@ public class ReadsDataSourceUnitTest extends BaseTest {
     public void testMultipleFilesQueryByInterval( final List<File> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
         ReadsDataSource readsSource = new ReadsDataSource(samFiles);
 
-        List<SAMRecord> reads = new ArrayList<SAMRecord>();
+        List<SAMRecord> reads = new ArrayList<>();
         Iterator<SAMRecord> queryIterator = readsSource.query(interval);
         while ( queryIterator.hasNext() ) {
             reads.add(queryIterator.next());

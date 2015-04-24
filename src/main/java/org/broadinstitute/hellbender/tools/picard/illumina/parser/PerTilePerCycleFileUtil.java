@@ -13,7 +13,7 @@ import java.util.regex.Matcher;
 public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
 
     private final CycleIlluminaFileMap cycleFileMap;
-    private final Set<Integer> detectedCycles = new TreeSet<Integer>();
+    private final Set<Integer> detectedCycles = new TreeSet<>();
 
     public PerTilePerCycleFileUtil(final String extension,
                                    final File base, final FileFaker faker, final int lane) {
@@ -44,7 +44,7 @@ public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
             detectedCycles.add(getCycleFromDir(tempCycleDir));
         }
 
-        final Set<Integer> uniqueTiles = new HashSet<Integer>();
+        final Set<Integer> uniqueTiles = new HashSet<>();
 
         for (final File cycleDir : tempCycleDirs) {
             final IlluminaFileMap fileMap = getTiledFiles(cycleDir, matchPattern);
@@ -52,7 +52,7 @@ public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
             cycledMap.put(getCycleFromDir(cycleDir), fileMap);
         }
 
-        this.tiles = Collections.unmodifiableList(new ArrayList<Integer>(uniqueTiles));
+        this.tiles = Collections.unmodifiableList(new ArrayList<>(uniqueTiles));
         return cycledMap;
     }
 
@@ -92,7 +92,7 @@ public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
 
     private Set<Integer> removeNonExistentCycles(final int[] cycles) {
 
-        final TreeSet<Integer> inputCyclesSet = new TreeSet<Integer>();
+        final TreeSet<Integer> inputCyclesSet = new TreeSet<>();
         for (final Integer inputCycle : cycles) {
             inputCyclesSet.add(inputCycle);
         }
@@ -129,8 +129,8 @@ public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
 
     @Override
     public List<String> verify(final List<Integer> expectedTiles, final int[] expectedCycles) {
-        final List<String> failures = new LinkedList<String>();
-        final Map<Integer, Long> tileToFileLengthMap = new HashMap<Integer, Long>();
+        final List<String> failures = new LinkedList<>();
+        final Map<Integer, Long> tileToFileLengthMap = new HashMap<>();
 
         if (!base.exists()) {
             failures.add("Base directory(" + base.getAbsolutePath() + ") does not exist!");
@@ -174,13 +174,13 @@ public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
     @Override
     public List<String> fakeFiles(final List<Integer> expectedTiles, final int[] expectedCycles,
                                   final IlluminaFileUtil.SupportedIlluminaFormat format) {
-        final List<String> failures = new LinkedList<String>();
+        final List<String> failures = new LinkedList<>();
 
         if (!base.exists()) {
             base.mkdirs();
         }
 
-        final Set<Integer> missingCycleSet = new TreeSet<Integer>();
+        final Set<Integer> missingCycleSet = new TreeSet<>();
         for (final Integer cycle : expectedCycles) {
             missingCycleSet.add(cycle);
         }
@@ -195,7 +195,7 @@ public class PerTilePerCycleFileUtil extends ParameterizedFileUtil {
         }
 
         final CycleIlluminaFileMap cfm = getPerTilePerCycleFiles();
-        final Map<Integer, Integer> tileToSizeMap = new HashMap<Integer, Integer>();
+        final Map<Integer, Integer> tileToSizeMap = new HashMap<>();
         for (final int currentCycle : expectedCycles) {
             final IlluminaFileMap fileMap = cfm.get(currentCycle);
 

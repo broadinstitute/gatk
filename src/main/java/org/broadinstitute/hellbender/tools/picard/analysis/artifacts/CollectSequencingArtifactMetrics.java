@@ -89,7 +89,7 @@ public class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
 
     @Argument(doc = "If specified, only print results for these contexts in the detail metrics output. " +
                   "However, the summary metrics output will still take all contexts into consideration.", optional = true)
-    public Set<String> CONTEXTS_TO_PRINT = new HashSet<String>();
+    public Set<String> CONTEXTS_TO_PRINT = new HashSet<>();
 
     private static final String UNKNOWN_LIBRARY = "UnknownLibrary";
     private static final String UNKNOWN_SAMPLE = "UnknownSample";
@@ -103,13 +103,13 @@ public class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
     private DbSnpBitSetUtil dbSnpMask;
     private SamRecordFilter recordFilter;
 
-    private final Set<String> samples = new HashSet<String>();
-    private final Set<String> libraries = new HashSet<String>();
-    private final Map<String, ArtifactCounter> artifactCounters = new HashMap<String, ArtifactCounter>();
+    private final Set<String> samples = new HashSet<>();
+    private final Set<String> libraries = new HashSet<>();
+    private final Map<String, ArtifactCounter> artifactCounters = new HashMap<>();
 
     @Override
     protected String[] customCommandLineValidation() {
-        final List<String> messages = new ArrayList<String>();
+        final List<String> messages = new ArrayList<>();
 
         final int contextFullLength = 2 * CONTEXT_SIZE + 1;
         if (CONTEXT_SIZE < 0) messages.add("CONTEXT_SIZE cannot be negative");
@@ -156,7 +156,7 @@ public class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
         }
 
         // set record-level filters
-        final List<SamRecordFilter> filters = new ArrayList<SamRecordFilter>();
+        final List<SamRecordFilter> filters = new ArrayList<>();
         filters.add(new FailsVendorReadQualityFilter());
         filters.add(new NotPrimaryAlignmentFilter());
         filters.add(new DuplicateReadFilter());
@@ -169,7 +169,7 @@ public class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
         recordFilter = new AggregateFilter(filters);
 
         // set up the artifact counters
-        final String sampleAlias = StringUtil.join(",", new ArrayList<String>(samples));
+        final String sampleAlias = StringUtil.join(",", new ArrayList<>(samples));
         for (final String library : libraries) {
             artifactCounters.put(library, new ArtifactCounter(sampleAlias, library, CONTEXT_SIZE, TANDEM_READS));
         }

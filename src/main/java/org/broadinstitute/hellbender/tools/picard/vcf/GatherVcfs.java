@@ -114,8 +114,8 @@ public class GatherVcfs extends PicardCommandLineProgram {
             final List<String> theseSamples = in.getFileHeader().getGenotypeSamples();
 
             if (!samples.equals(theseSamples)) {
-                final SortedSet<String> s1 = new TreeSet<String>(samples);
-                final SortedSet<String> s2 = new TreeSet<String>(theseSamples);
+                final SortedSet<String> s1 = new TreeSet<>(samples);
+                final SortedSet<String> s2 = new TreeSet<>(theseSamples);
                 s1.removeAll(theseSamples);
                 s2.removeAll(samples);
 
@@ -160,7 +160,7 @@ public class GatherVcfs extends PicardCommandLineProgram {
         for (final File f : inputFiles) {
             log.debug("Gathering from file: ", f.getAbsolutePath());
             final VCFFileReader variantReader = new VCFFileReader(f, false);
-            final PeekableIterator<VariantContext> variantIterator = new PeekableIterator<VariantContext>(variantReader.iterator());
+            final PeekableIterator<VariantContext> variantIterator = new PeekableIterator<>(variantReader.iterator());
             final VCFHeader header = variantReader.getFileHeader();
 
             if (firstHeader == null) {

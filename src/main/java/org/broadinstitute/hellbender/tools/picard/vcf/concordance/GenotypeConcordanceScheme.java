@@ -13,7 +13,7 @@ import java.util.*;
 public class GenotypeConcordanceScheme {
 
     /** The underlying scheme */
-    protected final Map<TruthAndCallStates, ContingencyState[]> scheme = new HashMap<TruthAndCallStates, ContingencyState[]>();
+    protected final Map<TruthAndCallStates, ContingencyState[]> scheme = new HashMap<>();
 
     /** These are convenience variables for defining a scheme.  NA means that such a tuple should never be observed. */
     public static final ContingencyState[]    NA       = {ContingencyState.NA};
@@ -119,7 +119,7 @@ public class GenotypeConcordanceScheme {
      * @return
      */
     public Set<ContingencyState> getContingencyStateSet(final ContingencyState[] contingencyStateArray) {
-        final Set<ContingencyState> contingencyStateSet = new HashSet<ContingencyState>();
+        final Set<ContingencyState> contingencyStateSet = new HashSet<>();
         Collections.addAll(contingencyStateSet, contingencyStateArray);
         return contingencyStateSet;
     }
