@@ -59,7 +59,7 @@ public abstract class ReadWalker extends GATKTool {
                 .filter(filter)
                 .forEach(read -> {
                     final SimpleInterval readInterval = read.getReadUnmappedFlag() ? null :
-                                                                                     new SimpleInterval(read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd());
+                                                                                     new SimpleInterval(read);
                     apply(read,
                           new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
                           new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null

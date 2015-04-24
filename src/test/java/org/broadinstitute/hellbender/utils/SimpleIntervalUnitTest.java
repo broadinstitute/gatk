@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -20,6 +21,18 @@ public class SimpleIntervalUnitTest extends BaseTest {
     @Test(dataProvider = "badIntervals", expectedExceptions = IllegalArgumentException.class)
     public void badIntervals(String contig, int start, int end, String name){
         SimpleInterval interval = new SimpleInterval(contig, start, end);
+
+    }
+
+    @Test(dataProvider = "badIntervals", expectedExceptions = IllegalArgumentException.class)
+    public void badIntervalsFromLocatable(String contig, int start, int end, String name){
+        Locatable l = getLocatable(contig, start, end);
+        new SimpleInterval(l);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void illegalArgumentExceptionFromNullLocatable(){
+        new SimpleInterval((Locatable)null);
     }
 
     @DataProvider(name = "goodIntervals")
@@ -42,6 +55,35 @@ public class SimpleIntervalUnitTest extends BaseTest {
         Assert.assertEquals(interval.getContig(), contig, "contig");
         Assert.assertEquals(interval.getStart(), start, "start");
         Assert.assertEquals(interval.getEnd(), end, "end");
+    }
+
+    @Test(dataProvider = "goodIntervals")
+    public void testGoodIntervalsFromLocatable(String ignoreMe, String contig, int start, int end){
+        Locatable l = getLocatable(contig, start, end);
+
+        SimpleInterval interval = new SimpleInterval(l);
+        Assert.assertEquals(interval.getContig(), contig, "contig");
+        Assert.assertEquals(interval.getStart(), start, "start");
+        Assert.assertEquals(interval.getEnd(), end, "end");
+    }
+
+    private static Locatable getLocatable(final String contig, final int start, final int end) {
+        return new Locatable() {
+            @Override
+            public String getContig() {
+                return contig;
+            }
+
+            @Override
+            public int getStart() {
+                return start;
+            }
+
+            @Override
+            public int getEnd() {
+                return end;
+            }
+        };
     }
 
     @Test
@@ -150,6 +192,7 @@ public class SimpleIntervalUnitTest extends BaseTest {
                 { containingInterval, containingInterval, true }
         };
     }
+
 
     @Test(dataProvider = "IntervalContainsData")
     public void testContains( final SimpleInterval firstInterval, final SimpleInterval secondInterval, final boolean expectedContainsResult ) {

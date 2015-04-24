@@ -128,7 +128,7 @@ public class IntervalArgumentCollection implements ArgumentCollectionDefinition 
                 throw new UserException("Unmapped intervals are not currently supported");
             }
 
-            convertedIntervals.add(new SimpleInterval(genomeLoc.getContig(), genomeLoc.getStart(), genomeLoc.getStop()));
+            convertedIntervals.add(new SimpleInterval(genomeLoc));
         }
         return convertedIntervals;
     }

@@ -74,7 +74,7 @@ public abstract class VariantWalker extends GATKTool {
         StreamSupport.stream(drivingVariants.spliterator(), false)
                 .filter(filter)
                 .forEach(variant -> {
-                    final SimpleInterval variantInterval = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd());
+                    final SimpleInterval variantInterval = new SimpleInterval(variant);
                     apply(variant,
                           new ReadsContext(reads, variantInterval),
                           new ReferenceContext(reference, variantInterval),
