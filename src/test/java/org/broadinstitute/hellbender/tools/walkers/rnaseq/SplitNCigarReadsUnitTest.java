@@ -5,7 +5,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.utils.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;

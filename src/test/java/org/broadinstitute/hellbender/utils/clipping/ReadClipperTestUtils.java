@@ -1,9 +1,7 @@
-package org.broadinstitute.hellbender.utils;
+package org.broadinstitute.hellbender.utils.clipping;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
@@ -28,6 +26,14 @@ public class ReadClipperTestUtils {
         return ArtificialSAMUtils.createArtificialRead(Utils.arrayFromArrayWithLength(BASES, cigar.getReadLength()), Utils.arrayFromArrayWithLength(QUALS, cigar.getReadLength()), cigar.toString());
     }
 
+    public static SAMRecord makeReadFromCigar(String cigarString) {
+        return makeReadFromCigar(TextCigarCodec.decode(cigarString));
+    }
+
+    public static List<Cigar> generateCigarList(int maximumLength) {
+        return generateCigarList(maximumLength, cigarElements);
+    }
+
     /**
      * This function generates every valid permutation of cigar strings (with a given set of cigarElement) with a given length.
      * <p>
@@ -42,7 +48,7 @@ public class ReadClipperTestUtils {
      */
     public static List<Cigar> generateCigarList(int maximumLength, CigarElement[] cigarElements) {
         int numCigarElements = cigarElements.length;
-        LinkedList<Cigar> cigarList = new LinkedList<Cigar>();
+        LinkedList<Cigar> cigarList = new LinkedList<>();
         byte[] cigarCombination = new byte[maximumLength];
 
         Utils.fillArrayWithByte(cigarCombination, (byte) 0);               // we start off with all 0's in the combination array.

@@ -7,7 +7,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -61,7 +61,7 @@ public class SplitNCigarReadsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void splitReadAtN() {
         final int cigarStringLength = 10;
-        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(cigarStringLength,cigarElements);
+        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(cigarStringLength, cigarElements);
 
         // For Debugging use those lines (instead of above cigarList) to create specific read:
         //------------------------------------------------------------------------------------
