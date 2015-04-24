@@ -22,11 +22,11 @@ public class MathUtilsUnitTests {
 
     @Test
     public void testLog10Gamma() {
-        logger.warn("Executing testLog10Gamma");
+        //The expected values were checked against Wolphram Alpha
 
         Assert.assertEquals(MathUtils.log10Gamma(4.0), 0.7781513, 1e-6);
         Assert.assertEquals(MathUtils.log10Gamma(10), 5.559763, 1e-6);
-        Assert.assertEquals(MathUtils.log10Gamma(10654), 38280.53, 1e-2);
+        Assert.assertEquals(MathUtils.log10Gamma(10654), 38280.532152137, 1e-6);
     }
 
     @Test
