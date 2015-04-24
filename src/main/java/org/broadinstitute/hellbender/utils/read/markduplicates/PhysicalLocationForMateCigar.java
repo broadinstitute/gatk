@@ -5,7 +5,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
  */
 
 /** Stores the minimal information needed for optical duplicate detection. */
-public class PhysicalLocationForMateCigar implements OpticalDuplicateFinder.PhysicalLocation {
+public final class PhysicalLocationForMateCigar implements OpticalDuplicateFinder.PhysicalLocation {
 
     // Information used to detect optical dupes
     short readGroup = -1;

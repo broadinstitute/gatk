@@ -16,7 +16,7 @@ import static htsjdk.samtools.util.CloserUtil.close;
  *
  * @author jburke@broadinstitute.org
  */
-class IlluminaTextIterator implements Iterator<String[]> {
+final class IlluminaTextIterator implements Iterator<String[]> {
 
     // Location of illumina output files to be parsed
     private final int lane;

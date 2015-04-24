@@ -9,7 +9,7 @@ import java.util.*;
 /**
  * NextSeq-style bcl's have all tiles for a cycle in a single file.
  */
-public class MultiTileBclFileUtil extends ParameterizedFileUtil {
+public final class MultiTileBclFileUtil extends ParameterizedFileUtil {
     final File basecallLaneDir;
     final File bci;
     final TileIndex tileIndex;

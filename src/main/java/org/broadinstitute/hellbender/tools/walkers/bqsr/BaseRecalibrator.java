@@ -86,7 +86,7 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
         usageShort = "Generates recalibration table",
         programGroup = ReadProgramGroup.class
 )
-public class BaseRecalibrator extends ReadWalker {
+public final class BaseRecalibrator extends ReadWalker {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibrator.class);
 
     /**

@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class BQSRGathererTest extends BaseTest {
+public final class BQSRGathererTest extends BaseTest {
 
     private static File recal1 = new File(CommandLineProgramTest.getTestDataDir(), "HiSeq.1mb.1RG.sg1.table.gz");
     private static File recal2 = new File(CommandLineProgramTest.getTestDataDir(), "HiSeq.1mb.1RG.sg2.table.gz");

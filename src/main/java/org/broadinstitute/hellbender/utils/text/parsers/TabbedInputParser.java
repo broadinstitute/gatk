@@ -8,7 +8,7 @@ import java.io.InputStream;
  *
  * @author Kathleen Tibbetts
  */
-public class TabbedInputParser extends BasicInputParser {
+public final class TabbedInputParser extends BasicInputParser {
 
     /**
      * Constructor

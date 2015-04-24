@@ -20,7 +20,7 @@ import static org.testng.Assert.assertEquals;
 /**
  * Run IlluminaBasecallsToSam on a sample tests, then sanity-check the generated SAM file
  */
-public class IlluminaBasecallsToSamAdapterClippingTest extends CommandLineProgramTest {
+public final class IlluminaBasecallsToSamAdapterClippingTest extends CommandLineProgramTest {
 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/illumina/125T125T");
     private static final File BASECALLS_DIR = new File(TEST_DATA_DIR, "Data/Intensities/BaseCalls");

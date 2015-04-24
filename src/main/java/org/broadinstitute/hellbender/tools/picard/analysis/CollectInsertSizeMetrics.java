@@ -30,7 +30,7 @@ import java.util.*;
         usageShort = "Writes insert size distribution metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
-public class CollectInsertSizeMetrics extends SinglePassSamProgram {
+public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
     private static final Log log = Log.getInstance(CollectInsertSizeMetrics.class);
     private static final String R_SCRIPT = "insertSizeHistogram.R";
 

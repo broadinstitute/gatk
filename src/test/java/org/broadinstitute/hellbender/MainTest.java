@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 
-public class MainTest extends CommandLineProgramTest{
+public final class MainTest extends CommandLineProgramTest{
 
     @Test(expectedExceptions = UserException.class)
     public void testCommandNotFoundThrows(){

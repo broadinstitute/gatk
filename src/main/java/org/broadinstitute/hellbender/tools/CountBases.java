@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 	usageShort = "Count bases",
     programGroup = ReadProgramGroup.class
 )
-public class CountBases extends ReadWalker {
+public final class CountBases extends ReadWalker {
 
     private long count = 0;
 

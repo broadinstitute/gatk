@@ -20,7 +20,7 @@ import java.util.*;
         usageShort = ConvertSequencingArtifactToOxoG.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class ConvertSequencingArtifactToOxoG extends PicardCommandLineProgram {
+public final class ConvertSequencingArtifactToOxoG extends PicardCommandLineProgram {
     static final String USAGE = "Extract OxoG metrics format from generalized artifact metrics.";
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,

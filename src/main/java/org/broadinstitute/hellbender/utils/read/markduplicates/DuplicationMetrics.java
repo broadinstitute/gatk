@@ -7,7 +7,7 @@ import htsjdk.samtools.util.Histogram;
  * Metrics that are calculated during the process of marking duplicates
  * within a stream of SAMRecords.
  */
-public class DuplicationMetrics extends MetricBase {
+public final class DuplicationMetrics extends MetricBase {
     /** The library on which the duplicate marking was performed. */
     public String LIBRARY;
 

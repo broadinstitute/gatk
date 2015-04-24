@@ -20,7 +20,7 @@ import java.util.*;
  *
  * @author ktibbett@broadinstitute.org
  */
-public class MergeBamAlignmentIntegrationTest extends CommandLineProgramTest {
+public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MergeBamAlignment");
 

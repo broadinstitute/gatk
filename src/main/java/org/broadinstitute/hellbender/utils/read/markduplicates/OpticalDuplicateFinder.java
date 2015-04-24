@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * @author Tim Fennell
  * @author Nils Homer
  */
-public class OpticalDuplicateFinder {
+public final class OpticalDuplicateFinder {
 
     public static final String DEFAULT_READ_NAME_REGEX = "[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).*".intern();
 

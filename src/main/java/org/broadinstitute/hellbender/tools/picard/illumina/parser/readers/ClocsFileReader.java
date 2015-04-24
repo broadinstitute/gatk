@@ -39,7 +39,7 @@ import static org.broadinstitute.hellbender.utils.UnsignedTypeUtil.uIntToLong;
  * xOffset = 0; yOffset += blockSize
  * } else xOffset += blockSize
  */
-public class ClocsFileReader extends AbstractIlluminaPositionFileReader {
+public final class ClocsFileReader extends AbstractIlluminaPositionFileReader {
 
     private static final int HEADER_SIZE = 5;
 

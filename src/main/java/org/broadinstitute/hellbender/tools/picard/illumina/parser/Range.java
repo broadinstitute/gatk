@@ -7,7 +7,7 @@ import static java.lang.Math.pow;
  *
  * @author jburke@broadinstitute.org
  */
-public class Range {
+public final class Range {
     public final int start;
     public final int end;
     public final int length;

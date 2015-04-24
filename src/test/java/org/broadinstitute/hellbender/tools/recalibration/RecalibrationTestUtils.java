@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
 
-public class RecalibrationTestUtils {
+public final class RecalibrationTestUtils {
     public static Covariate[] makeInitializedStandardCovariates() {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
         final Covariate[] covariates = new Covariate[4];

@@ -70,7 +70,7 @@ import static org.broadinstitute.hellbender.utils.illumina.IlluminaUtil.Illumina
         usageShort = "Reads a SAM or BAM file and rewrites it with new adapter-trimming tags",
         programGroup = IlluminaProgramGroup.class
 )
-public class MarkIlluminaAdapters extends PicardCommandLineProgram {
+public final class MarkIlluminaAdapters extends PicardCommandLineProgram {
 
     // The following attributes define the command-line arguments
 

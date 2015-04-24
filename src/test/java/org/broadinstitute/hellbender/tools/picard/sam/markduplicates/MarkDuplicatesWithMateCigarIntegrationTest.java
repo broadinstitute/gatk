@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
  * by MarkDuplicatesWithMateCigarTester (see getTester).
  * @author nhomer@broadinstitute.org
  */
-public class MarkDuplicatesWithMateCigarIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
+public final class MarkDuplicatesWithMateCigarIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
     protected AbstractMarkDuplicatesTester getTester() {
         return new MarkDuplicatesWithMateCigarTester();
     }

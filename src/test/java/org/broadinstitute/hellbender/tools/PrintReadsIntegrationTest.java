@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class PrintReadsIntegrationTest extends CommandLineProgramTest{
+public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
     private static final File TEST_DATA_DIR = getTestDataDir();
 

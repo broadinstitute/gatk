@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class AlignmentUtilsUnitTest {
+public final class AlignmentUtilsUnitTest {
     private final static boolean DEBUG = false;
     private SAMFileHeader header;
 

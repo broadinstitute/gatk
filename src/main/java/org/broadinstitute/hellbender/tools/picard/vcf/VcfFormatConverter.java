@@ -32,7 +32,7 @@ import java.io.File;
         usageShort = "Converts a VCF file to a BCF file, or BCF to VCF",
         programGroup = VariantProgramGroup.class
 )
-public class VcfFormatConverter extends PicardCommandLineProgram {
+public final class VcfFormatConverter extends PicardCommandLineProgram {
     // The following attributes define the command-line arguments
     public static final Log LOG = Log.getInstance(VcfFormatConverter.class);
 

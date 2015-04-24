@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class LocsFileReaderTest {
+public final class LocsFileReaderTest {
     private static final File TestDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/readerTests");
     public  static final File LocsFile = new File(TestDir, "s_1_6.locs");
     public  static final int ExpectedTile = 6;

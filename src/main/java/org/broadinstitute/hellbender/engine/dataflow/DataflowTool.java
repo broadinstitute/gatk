@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.Serializable;
 
-
+@SuppressWarnings("serial")
 public abstract class DataflowTool extends CommandLineProgram implements Serializable {
     private enum PipelineRunnerType {
         LOCAL(DirectPipelineRunner.class),

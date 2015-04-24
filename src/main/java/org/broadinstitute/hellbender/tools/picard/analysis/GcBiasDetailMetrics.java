@@ -8,7 +8,7 @@ import htsjdk.samtools.metrics.MetricBase;
  *
  * @author Tim Fennell
  */
-public class GcBiasDetailMetrics extends MetricBase {
+public final class GcBiasDetailMetrics extends MetricBase {
     /** The G+C content of the reference sequence represented by this bin. Values are from 0% to 100% */
     public int GC;
 

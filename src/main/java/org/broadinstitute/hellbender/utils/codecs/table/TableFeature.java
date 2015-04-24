@@ -28,6 +28,7 @@ public final class TableFeature implements Feature {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String getChr() {
         return getContig();
     }

@@ -22,7 +22,7 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
  * Also holds the critical apply function that actually execute the clipping operation on a provided read,
  * according to the wishes of the supplied ClippingAlgorithm enum.
  */
-public class ClippingOp {
+public final class ClippingOp {
     public final int start, stop; // inclusive
 
     public ClippingOp(int start, int stop) {

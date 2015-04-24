@@ -28,7 +28,7 @@ import static org.broadinstitute.hellbender.utils.illumina.IlluminaUtil.barcodeS
  *
  * @author jburke@broadinstitute.org
  */
-public class ClusterDataToSamConverter implements
+public final class ClusterDataToSamConverter implements
         IlluminaBasecallsConverter.ClusterDataConverter<IlluminaBasecallsToSam.SAMRecordsForCluster> {
 
     private final String runBarcode;

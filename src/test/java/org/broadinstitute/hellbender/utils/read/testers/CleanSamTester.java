@@ -12,7 +12,7 @@ import java.util.*;
 /**
  * This class is the extension of the SamFileTester to test CleanSam with SAM files generated on the fly.
  */
-public class CleanSamTester extends SamFileTester {
+public final class CleanSamTester extends SamFileTester {
     private final String expectedCigar;
 
     @Override

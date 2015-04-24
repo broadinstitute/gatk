@@ -15,7 +15,7 @@ import java.io.File;
  * Matched(y/n)           - Y or N indicating if there was a barcode match
  * BarcodeSequenceMatched - matched barcode sequence (empty if read did not match one of the barcodes).
  */
-public class BarcodeFileReader implements CloseableIterator<String> {
+public final class BarcodeFileReader implements CloseableIterator<String> {
     private static final int Y_OR_N_COLUMN = 1;
     private static final int BARCODE_COLUMN = 2;
     private final BasicInputParser textIterator;

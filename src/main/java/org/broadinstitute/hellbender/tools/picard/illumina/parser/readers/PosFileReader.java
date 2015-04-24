@@ -20,7 +20,7 @@ import static java.lang.Float.parseFloat;
  * <p>
  * Where n = the total number of clusters (and therefore lines) in the file.
  */
-public class PosFileReader extends AbstractIlluminaPositionFileReader {
+public final class PosFileReader extends AbstractIlluminaPositionFileReader {
 
     private final BasicInputParser parser;
 

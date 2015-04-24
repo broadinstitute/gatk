@@ -12,7 +12,7 @@ import java.util.*;
  *
  * @author tfennell
  */
-public class FisherStrandFilter implements VariantFilter {
+public final class FisherStrandFilter implements VariantFilter {
     private final double maxPhredScalePValue;
 
     public FisherStrandFilter(final double maxPhredScalePValue) {

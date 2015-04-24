@@ -24,7 +24,7 @@ import java.util.*;
         usageShort = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM",
         programGroup = QCProgramGroup.class
 )
-public class CollectMultipleMetrics extends PicardCommandLineProgram {
+public final class CollectMultipleMetrics extends PicardCommandLineProgram {
 
     /**
      * This interface allows developers to create Programs to run in addition to the ones defined in the Program enum.

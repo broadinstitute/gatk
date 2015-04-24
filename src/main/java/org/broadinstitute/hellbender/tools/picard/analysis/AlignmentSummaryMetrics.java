@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * the CollectAlignmentSummaryMetrics program and usually stored in a file with
  * the extension ".alignment_summary_metrics".
  */
-public class AlignmentSummaryMetrics extends MultiLevelMetrics {
+public final class AlignmentSummaryMetrics extends MultiLevelMetrics {
     public enum Category { UNPAIRED, FIRST_OF_PAIR, SECOND_OF_PAIR, PAIR }
 
     /**

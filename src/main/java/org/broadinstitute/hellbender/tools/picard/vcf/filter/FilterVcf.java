@@ -29,7 +29,7 @@ import java.util.*;
         usageShort = "Hard filters a VCF.",
         programGroup = VariantProgramGroup.class
 )
-public class FilterVcf extends PicardCommandLineProgram {
+public final class FilterVcf extends PicardCommandLineProgram {
     @Argument(shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The INPUT VCF or BCF file.")
     public File INPUT;
 

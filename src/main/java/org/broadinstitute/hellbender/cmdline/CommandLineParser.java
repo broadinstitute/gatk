@@ -43,7 +43,7 @@ import java.util.stream.Stream;
  * construct the usage message.  Details about the possible arguments are automatically appended to this string.
  * If @Usage does not appear, a boilerplate usage message is used.
  */
-public class CommandLineParser {
+public final class CommandLineParser {
     // For formatting argument section of usage message.
     private static final int ARGUMENT_COLUMN_WIDTH = 30;
     private static final int DESCRIPTION_COLUMN_WIDTH = 90;
@@ -562,9 +562,11 @@ public class CommandLineParser {
         if (clazz == Boolean.class) {
             return getBooleanOptions();
         } else if (clazz.isEnum()) {
-            @SuppressWarnings("unchecked")
+            @SuppressWarnings({"unchecked", "rawtypes"})
             final Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
-            return getEnumOptions(enumClass);
+            @SuppressWarnings("unchecked")
+            String Temp = getEnumOptions(enumClass);//Created Temp variable because SuppressWarnings is not allowed just before return statement.
+            return Temp;
         } else {
             return "";
         }

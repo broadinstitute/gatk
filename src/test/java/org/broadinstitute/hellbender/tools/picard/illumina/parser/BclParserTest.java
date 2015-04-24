@@ -11,7 +11,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.BinTdUt
 import java.io.File;
 import java.util.*;
 
-public class BclParserTest {
+public final class BclParserTest {
     public static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/25T8B25T/Data/Intensities/BaseCalls/L001");
     public static final File MULTI_TILE_DATA_DIR = new File("/seq/tng/jcarey/testdata/NextSeq/Data/Intensities/BaseCalls/L001");
     public static final String READ_STRUCTURE = "25T8B25T";

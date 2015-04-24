@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class FlagStatIntegrationTest extends CommandLineProgramTest{
+public final class FlagStatIntegrationTest extends CommandLineProgramTest{
 
     @Test(dataProvider = "filenames")
     public void testSamCount(String fileIn) throws Exception {

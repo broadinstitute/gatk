@@ -8,7 +8,7 @@ import htsjdk.samtools.util.StringUtil;
  * @see <a href="http://biowulf.nih.gov/apps/CASAVA1_8_Changes.pdf">Casava 1.8 update</a>
  * @author mccowan
  */
-public class Casava18ReadNameEncoder implements ReadNameEncoder {
+public final class Casava18ReadNameEncoder implements ReadNameEncoder {
     final static int CONTROL_FIELD_VALUE = 0;
     final String runId, instrumentName, flowcellId;
     

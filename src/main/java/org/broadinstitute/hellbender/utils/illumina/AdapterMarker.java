@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Note that the AdapterPair object returned by all the adapterTrim* methods will not be one of the original AdapterPairs
  * passed to the ctor, but rather will be one of the truncated copies.
  */
-public class AdapterMarker {
+public final class AdapterMarker {
     public static final int DEFAULT_ADAPTER_LENGTH = 30;
     public static final int DEFAULT_PRUNE_ADAPTER_LIST_AFTER_THIS_MANY_ADAPTERS_SEEN = 100;
     public static final int DEFAULT_NUM_ADAPTERS_TO_KEEP = 1;

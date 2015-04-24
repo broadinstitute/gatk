@@ -23,7 +23,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.TileTem
  *
  * @author mccowan
  */
-public class TileMetricsUtil {
+public final class TileMetricsUtil {
     /**
      * The path to the directory containing the tile metrics file relative to the basecalling directory.
      */

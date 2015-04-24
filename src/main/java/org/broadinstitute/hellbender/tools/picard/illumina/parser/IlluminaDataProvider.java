@@ -10,7 +10,7 @@ import java.util.*;
  *
  * @author jburke@broadinstitute.org
  */
-public class IlluminaDataProvider implements Iterator<ClusterData>, Iterable<ClusterData> {
+public final class IlluminaDataProvider implements Iterator<ClusterData>, Iterable<ClusterData> {
 
     /**
      * contains QSeqs, bcls, or other Illumina file types that will be parsed by this class

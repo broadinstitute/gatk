@@ -10,7 +10,7 @@ import java.util.Map;
  *
  * @author alecw@broadinstitute.org
  */
-class MemoryBasedReadEndsForMarkDuplicatesMap implements ReadEndsForMarkDuplicatesMap {
+final class MemoryBasedReadEndsForMarkDuplicatesMap implements ReadEndsForMarkDuplicatesMap {
 
     /**
      * Index of this list is sequence index.  Value is map from String {read group id:read name} to ReadEnds.

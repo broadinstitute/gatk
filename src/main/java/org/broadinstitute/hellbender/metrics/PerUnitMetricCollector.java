@@ -17,6 +17,7 @@ import htsjdk.samtools.metrics.MetricsFile;
  *                any information needed by multiple collectors we allow different types of arguments that
  *                extend DefaultPerRecordCollectorArgs to accommodate any computed values
  */
+@SuppressWarnings("rawtypes")
 public interface PerUnitMetricCollector<BEAN extends MetricBase, HKEY extends Comparable, ARGTYPE> {
     /**
      * Add a SAMRecord (with ReferenceSequence and Read Group info) to the metric(s) being calculated)

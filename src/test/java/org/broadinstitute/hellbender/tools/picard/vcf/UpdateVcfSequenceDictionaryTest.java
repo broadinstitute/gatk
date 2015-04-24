@@ -12,7 +12,7 @@ import java.io.File;
 /**
  * @author George Grant
  */
-public class UpdateVcfSequenceDictionaryTest extends CommandLineProgramTest {
+public final class UpdateVcfSequenceDictionaryTest extends CommandLineProgramTest {
     private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/vcf/vcfFormatTest");
     private static final File OUTPUT_DATA_PATH = IOUtil.createTempDir("UpdateVcfSequenceDictionaryTest", null);
 

@@ -23,7 +23,7 @@ import java.io.File;
         usageShort = "Converts a VCF or BCF file to a Picard Interval List.",
         programGroup = VariantProgramGroup.class
 )
-public class VcfToIntervalList extends PicardCommandLineProgram {
+public final class VcfToIntervalList extends PicardCommandLineProgram {
     // The following attributes define the command-line arguments
     public static final Log LOG = Log.getInstance(VcfToIntervalList.class);
 

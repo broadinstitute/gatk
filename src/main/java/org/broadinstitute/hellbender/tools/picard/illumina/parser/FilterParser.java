@@ -15,7 +15,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
  * be the ONLY client class for this class except for test classes.  For more information on the filterFile format
  * and reading it, see FilterFileReader.
  */
-class FilterParser extends PerTileParser<PfData> {
+final class FilterParser extends PerTileParser<PfData> {
     private static Set<IlluminaDataType> supportedTypes = unmodifiableSet(makeSet(PF));
 
     public FilterParser(final IlluminaFileMap tilesToFiles) {

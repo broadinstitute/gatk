@@ -16,7 +16,7 @@ import java.util.*;
  *
  * @author Jonathan Burke
  */
-public class HsMetricCollector extends TargetMetricsCollector<HsMetrics> {
+public final class HsMetricCollector extends TargetMetricsCollector<HsMetrics> {
 
     public HsMetricCollector(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords, final ReferenceSequenceFile refFile, final File perTargetCoverage, final IntervalList targetIntervals, final IntervalList probeIntervals, final String probeSetName) {
         super(accumulationLevels, samRgRecords, refFile, perTargetCoverage, targetIntervals, probeIntervals, probeSetName);

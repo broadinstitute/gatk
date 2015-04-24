@@ -18,7 +18,7 @@ import static htsjdk.samtools.util.TestUtil.recursiveDelete;
 import static java.util.Arrays.copyOfRange;
 import static org.broadinstitute.hellbender.tools.picard.illumina.IlluminaBasecallsToFastq.ReadNameFormat.ILLUMINA;
 
-public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
+public final class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
 
     private static final File BASECALLS_DIR = new File(getTestDataDir(), "picard/illumina/25T8B25T/Data/Intensities/BaseCalls");
     private static final File DUAL_BASECALLS_DIR = new File(getTestDataDir(), "/picard/illumina/25T8B8B25T/Data/Intensities/BaseCalls");

@@ -13,7 +13,7 @@ import java.util.Map;
  *
  * @author nhomer
  */
-public class LibraryIdGenerator {
+public final class LibraryIdGenerator {
 
     private final SAMFileHeader header;
     private final Map<String, Short> libraryIds = new HashMap<String, Short>(); // from library string to library id

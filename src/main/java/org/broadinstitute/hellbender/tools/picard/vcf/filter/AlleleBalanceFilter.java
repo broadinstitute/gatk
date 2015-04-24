@@ -14,7 +14,7 @@ import java.util.*;
  * set that whichever allele has lower representation across all heterozygous individuals must account for at least 30% of the
  * total observations.
  */
-public class AlleleBalanceFilter implements VariantFilter {
+public final class AlleleBalanceFilter implements VariantFilter {
     /** The filter string used for sites that fail the allele balance filter. */
     public static final String AB_FILTER = "AlleleBalance";
 

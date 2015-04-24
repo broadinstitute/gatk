@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class IntervalArgumentCollectionTest extends BaseTest{
+public final class IntervalArgumentCollectionTest extends BaseTest{
 
     @Test(expectedExceptions = GATKException.class)
     public void emptyIntervalsTest(){

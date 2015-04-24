@@ -17,7 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-public class RecalibrationReportUnitTest {
+public final class RecalibrationReportUnitTest {
     @BeforeMethod
     public void init() {
         ReadCovariates.clearKeysCache();

@@ -38,7 +38,7 @@ import static org.testng.Assert.assertTrue;
 /**
  *
  */
-public class ClippingUtilTest {
+public final class ClippingUtilTest {
 
     @Test(dataProvider = "clipTestData")
     public void testBasicClip(final String testName, final String read, final String clip, final int minMatch, final double errRate, final int expected) {

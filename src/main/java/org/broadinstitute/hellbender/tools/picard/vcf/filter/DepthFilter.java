@@ -6,7 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 /**
  * Filters out a record if all variant samples have depth lower than the given value.
  */
-public class DepthFilter implements GenotypeFilter {
+public final class DepthFilter implements GenotypeFilter {
     private final int minDepth;
 
     public DepthFilter(final int minDepth) {

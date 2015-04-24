@@ -33,7 +33,7 @@ import java.util.*;
         usageShort = "Asserts the validity of the data in the specified Illumina basecalling data",
         programGroup = IlluminaProgramGroup.class
 )
-public class CheckIlluminaDirectory extends PicardCommandLineProgram {
+public final class CheckIlluminaDirectory extends PicardCommandLineProgram {
     private static final Log log = Log.getInstance(CheckIlluminaDirectory.class);
 
     @Argument(doc = "The basecalls output directory. ", shortName = "B")

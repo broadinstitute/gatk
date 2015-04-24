@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 /**
  * Basic unit test for misencoded quals
  */
-public class MisencodedBaseQualityReadTransformerUnitTest extends BaseTest {
+public final class MisencodedBaseQualityReadTransformerUnitTest extends BaseTest {
 
     private SAMFileHeader header;
 

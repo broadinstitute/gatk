@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Basic unit test for QualityUtils class
  */
-public class QualityUtilsUnitTest extends BaseTest {
+public final class QualityUtilsUnitTest extends BaseTest {
     final private static double TOLERANCE = 1e-9;
 
     @BeforeClass

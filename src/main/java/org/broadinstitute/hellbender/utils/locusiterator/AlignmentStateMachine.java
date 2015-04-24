@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
  * (in the latter case, we still return on every individual reference base the deletion spans).
  *
  */
-public class AlignmentStateMachine {
+public final class AlignmentStateMachine {
     /**
      * Our read
      */

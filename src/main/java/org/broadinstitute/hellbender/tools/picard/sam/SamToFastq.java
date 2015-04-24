@@ -30,7 +30,7 @@ import java.util.*;
         usageShort = "Converts a SAM/BAM into a FASTQ",
         programGroup = ReadProgramGroup.class
 )
-public class SamToFastq extends PicardCommandLineProgram {
+public final class SamToFastq extends PicardCommandLineProgram {
 
     @Argument(doc = "Input SAM/BAM file to extract reads from", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;

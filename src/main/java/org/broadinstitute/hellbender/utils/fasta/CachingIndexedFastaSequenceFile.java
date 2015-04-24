@@ -23,7 +23,7 @@ import java.util.Arrays;
  * Automatically upper-cases the bases coming in, unless the flag preserveCase is explicitly set.
  * Automatically converts IUPAC bases to Ns, unless the flag preserveIUPAC is explicitly set.
  */
-public class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
+public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
     protected static final Logger logger = LogManager.getLogger(CachingIndexedFastaSequenceFile.class);
 
     /** do we want to print debugging information about cache efficiency? */

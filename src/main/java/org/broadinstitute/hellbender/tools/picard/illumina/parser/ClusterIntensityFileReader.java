@@ -34,7 +34,7 @@ import static org.broadinstitute.hellbender.utils.UnsignedTypeUtil.uShortToInt;
  *
  * @author jburke@broadinstitute.org
  */
-class ClusterIntensityFileReader {
+final class ClusterIntensityFileReader {
 
     private static final byte[] IDENTIFIER = stringToBytes("CIF");
     private static final byte FILE_VERSION = 1;

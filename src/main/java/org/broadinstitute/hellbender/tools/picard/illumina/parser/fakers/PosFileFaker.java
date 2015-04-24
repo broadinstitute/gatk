@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 /**
  * Created by jcarey on 3/13/14.
  */
-public class PosFileFaker extends FileFaker {
+public final class PosFileFaker extends FileFaker {
     private final String posFileString = "102.0\t303.3\n";
 
     @Override

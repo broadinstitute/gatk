@@ -11,7 +11,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.readers
  * the file that contains virtual file pointers into a .bcl.bgzf file.  After the header, there is a 64-bit record
  * per tile.
  */
-public class BclIndexReader {
+public final class BclIndexReader {
     private static final int BCI_HEADER_SIZE = 8;
     private static final int BCI_VERSION = 0;
 

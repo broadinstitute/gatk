@@ -16,7 +16,7 @@ import java.io.File;
     usageShort = "Print reads",
     programGroup = ReadProgramGroup.class
 )
-public class PrintReads extends ReadWalker {
+public final class PrintReads extends ReadWalker {
 
     @Argument(fullName = "output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;

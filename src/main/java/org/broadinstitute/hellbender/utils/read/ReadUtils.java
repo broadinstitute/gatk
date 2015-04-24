@@ -16,7 +16,7 @@ import java.util.*;
  * A miscellaneous collection of utilities for working with SAM files, headers, etc.
  * Static methods only, please.
  */
-public class ReadUtils {
+public final class ReadUtils {
     private final static Logger logger = LogManager.getLogger(ReadUtils.class);
 
     private ReadUtils() {

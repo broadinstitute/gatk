@@ -48,7 +48,7 @@ import java.util.zip.GZIPInputStream;
  * <p/>
  * So the output base/quality will be a (T/34)
  */
-public class BclReader implements CloseableIterator<BclData> {
+public final class BclReader implements CloseableIterator<BclData> {
     private static final byte BASE_MASK = 0x0003;
     private static final int HEADER_SIZE = 4;
     private static final byte[] BASE_LOOKUP = new byte[]{'A', 'C', 'G', 'T'};

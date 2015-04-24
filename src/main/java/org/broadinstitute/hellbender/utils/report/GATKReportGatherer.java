@@ -8,7 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.List;
 
-public class GATKReportGatherer extends Gatherer {
+public final class GATKReportGatherer extends Gatherer {
     @Override
     public void gather(List<File> inputs, File output) {
         //Combines inputs GATKReport to one output

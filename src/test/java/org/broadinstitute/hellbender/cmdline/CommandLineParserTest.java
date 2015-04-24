@@ -14,7 +14,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.util.*;
 
-public class CommandLineParserTest {
+public final class CommandLineParserTest {
     enum FrobnicationFlavor {
         FOO, BAR, BAZ
     }

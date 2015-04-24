@@ -16,7 +16,7 @@ import java.util.*;
 /**
  * This class has all the static functionality for reading a recalibration report file into memory. 
  */
-public class RecalibrationReport {
+public final class RecalibrationReport {
     private QuantizationInfo quantizationInfo; // histogram containing the counts for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables; // quick access reference to the tables
     private final Covariate[] requestedCovariates; // list of all covariates to be used in this calculation

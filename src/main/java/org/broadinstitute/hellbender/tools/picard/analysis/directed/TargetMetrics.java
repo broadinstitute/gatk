@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * For a sequencing run targeting specific regions of the genome this metric class holds metrics describing
  * how well those regions were targeted.
  */
-public class TargetMetrics extends MultiLevelMetrics {
+public final class TargetMetrics extends MultiLevelMetrics {
     /**  The name of the PROBE_SET (BAIT SET, AMPLICON SET, ...) used in this metrics collection run */
     public String PROBE_SET;
 

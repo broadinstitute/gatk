@@ -20,7 +20,7 @@ import java.util.List;
  * Utility methods to facilitate on-the-fly base quality score recalibration.
  */
 
-public class BaseRecalibration {
+public final class BaseRecalibration {
     private static Logger logger = LogManager.getLogger(BaseRecalibration.class);
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)

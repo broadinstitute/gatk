@@ -36,7 +36,7 @@ import java.util.*;
         usageShort = "Writes whole genome sequencing-related metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
-public class CollectWgsMetrics extends PicardCommandLineProgram {
+public final class CollectWgsMetrics extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM or BAM file.")
     public File INPUT;
@@ -282,13 +282,13 @@ abstract class CountingFilter implements SamRecordFilter {
 }
 
 /** Counting filter that discards reads that have been marked as duplicates. */
-class CountingDuplicateFilter extends CountingFilter {
+final class CountingDuplicateFilter extends CountingFilter {
     @Override
     public boolean reallyFilterOut(final SAMRecord record) { return record.getDuplicateReadFlag(); }
 }
 
 /** Counting filter that discards reads below a configurable mapping quality threshold. */
-class CountingMapQFilter extends CountingFilter {
+final class CountingMapQFilter extends CountingFilter {
     private final int minMapq;
 
     CountingMapQFilter(final int minMapq) { this.minMapq = minMapq; }
@@ -298,7 +298,7 @@ class CountingMapQFilter extends CountingFilter {
 }
 
 /** Counting filter that discards reads that are unpaired in sequencing and paired reads who's mates are not mapped. */
-class CountingPairedFilter extends CountingFilter {
+final class CountingPairedFilter extends CountingFilter {
     @Override
     public boolean reallyFilterOut(final SAMRecord record) { return !record.getReadPairedFlag() || record.getMateUnmappedFlag(); }
 }

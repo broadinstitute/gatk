@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 /**
  * Created by jcarey on 3/13/14.
  */
-public class MultiTileBclFileFaker extends FileFaker {
+public final class MultiTileBclFileFaker extends FileFaker {
 
     @Override
     protected void fakeFile(final ByteBuffer buffer) {

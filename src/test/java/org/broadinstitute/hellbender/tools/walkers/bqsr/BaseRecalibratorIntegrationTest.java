@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class BaseRecalibratorIntegrationTest extends CommandLineProgramTest{
+public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTest{
 
     private static class BQSRTest {
         final String reference;

@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Created by jcarey on 3/14/14.
  */
-public class BciFileFaker extends FileFaker {
+public final class BciFileFaker extends FileFaker {
 
     @Override
     protected void fakeFile(final ByteBuffer buffer) {

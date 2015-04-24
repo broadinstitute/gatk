@@ -12,7 +12,7 @@ import java.io.IOException;
 /**
  * Tests multi-level CollectInsertSizeMetrics
  */
-public class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
+public final class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
     public String getCommandLineProgramName() {

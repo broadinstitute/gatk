@@ -12,7 +12,7 @@ import static java.util.Collections.unmodifiableMap;
 /**
  * Helper class used to transform tile data for a lane into a collection of IlluminaPhasingMetrics
  */
-public class LanePhasingMetricsCollector {
+public final class LanePhasingMetricsCollector {
     private final Map<TileTemplateRead, Float> medianPhasingMap;
     private final Map<TileTemplateRead, Float> medianPrePhasingMap;
 

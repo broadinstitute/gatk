@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class FeatureDataSourceUnitTest extends BaseTest {
+public final class FeatureDataSourceUnitTest extends BaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
     private static final File QUERY_TEST_GVCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test_gvcf.vcf");
@@ -401,6 +401,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public String getChr() {
             return getContig();
         }

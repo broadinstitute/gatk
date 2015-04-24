@@ -5,7 +5,7 @@ package org.broadinstitute.hellbender.tools.picard.illumina.parser;
  *
  *  @author jgentry
  */
-public class TilePhasingValue {
+public final class TilePhasingValue {
     private final TileTemplateRead tileTemplateRead;
     private final float phasingValue;
     private final float prePhasingValue;

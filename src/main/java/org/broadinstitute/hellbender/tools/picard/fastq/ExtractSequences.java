@@ -32,7 +32,7 @@ import java.io.IOException;
         usageShort = "Extracts intervals from a reference sequence, writing them to a FASTA file",
         programGroup = MiscProgramGroup.class
 )
-public class ExtractSequences extends CommandLineProgram {
+public final class ExtractSequences extends CommandLineProgram {
 
     @Argument(doc="Interval list describing intervals to be extracted from the reference sequence.")
     public File INTERVAL_LIST;

@@ -13,7 +13,7 @@ import java.util.*;
  *
  * @author jgentry@broadinstitute.org
  */
-class RrbsMetrics extends MetricBase {
+final class RrbsMetrics extends MetricBase {
 	private final RrbsSummaryMetrics summaryMetrics;
 	private final List<RrbsCpgDetailMetrics> detailMetrics;
 

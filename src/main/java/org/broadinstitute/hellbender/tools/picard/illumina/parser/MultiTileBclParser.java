@@ -13,7 +13,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.readers
  * Parse .bcl.bgzf files that contain multiple tiles in a single file.  This requires an index file that tells
  * the bgzf virtual file offset of the start of each tile in the block-compressed bcl file.
  */
-public class MultiTileBclParser extends BclParser {
+public final class MultiTileBclParser extends BclParser {
     private final TileIndex tileIndex;
     private MultiTileBclDataCycleFileParser cycleFileParser = null;
 

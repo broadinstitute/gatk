@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * testing of the new (non-legacy) version of LocusIteratorByState
  */
-public class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
+public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
     @DataProvider(name = "PileupElementTest")
     public Object[][] makePileupElementTest() {
         return createLIBSTests(

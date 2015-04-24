@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class EventMapUnitTest extends BaseTest {
+public final class EventMapUnitTest extends BaseTest {
     private final static String CHR = "20";
     private final static String NAME = "foo";
 

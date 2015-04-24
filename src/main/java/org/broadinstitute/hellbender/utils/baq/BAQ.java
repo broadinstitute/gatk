@@ -39,7 +39,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
    insertion). q[i] gives the phred scaled posterior probability of
    state[i] being wrong.
  */
-public class BAQ {
+public final class BAQ {
     private final static Logger logger = LogManager.getLogger(BAQ.class);
     private final static boolean DEBUG = false;
 

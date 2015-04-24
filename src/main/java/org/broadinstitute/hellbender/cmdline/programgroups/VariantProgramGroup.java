@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 /**
  * Program group for tools that manipulate variants and associated metadata
  */
-public class VariantProgramGroup implements CommandLineProgramGroup {
+public final class VariantProgramGroup implements CommandLineProgramGroup {
     @Override
     public String getName() {
         return "VCF/BCF";

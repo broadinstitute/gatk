@@ -12,7 +12,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.*;
 
-public class CollectIlluminaBasecallingMetricsTest extends CommandLineProgramTest {
+public final class CollectIlluminaBasecallingMetricsTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/illumina/metrics/CollectIlluminaBasecallingMetrics");
 
     private File rootTestDir;

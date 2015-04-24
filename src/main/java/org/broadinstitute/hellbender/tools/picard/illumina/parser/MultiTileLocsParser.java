@@ -13,7 +13,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
  * Read locs file that contains multiple tiles in a single file.  A tile index is needed to parse this
  * file so that {tile number, cluster number} can be converted into absolute record number in file.
  */
-public class MultiTileLocsParser extends MultiTileParser<PositionalData> {
+public final class MultiTileLocsParser extends MultiTileParser<PositionalData> {
     private final LocsFileReader reader;
     private final int lane;
 

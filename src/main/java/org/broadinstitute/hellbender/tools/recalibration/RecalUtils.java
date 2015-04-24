@@ -28,7 +28,7 @@ import java.util.*;
  * This class holds the parsing methods that are shared between BaseRecalibrator and PrintReads.
  */
 
-public class RecalUtils {
+public final class RecalUtils {
     public final static String ARGUMENT_REPORT_TABLE_TITLE = "Arguments";
     public final static String QUANTIZED_REPORT_TABLE_TITLE = "Quantized";
     public final static String READGROUP_REPORT_TABLE_TITLE = "RecalTable0";

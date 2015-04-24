@@ -8,7 +8,7 @@ import java.util.Collection;
 /**
  * column information within a GATK report table
  */
-public class GATKReportColumn {
+public final class GATKReportColumn {
     final private String columnName;
     final private String format;
     final private GATKReportDataType dataType;

@@ -26,7 +26,7 @@ import java.util.Map;
         usageShort = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules.",
         programGroup = ReadProgramGroup.class
 )
-public class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
+public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
     private final Log log = Log.getInstance(MarkDuplicates.class);
 
     /**

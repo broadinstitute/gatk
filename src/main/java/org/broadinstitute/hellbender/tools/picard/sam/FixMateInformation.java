@@ -26,7 +26,7 @@ import java.util.List;
         usageShort = "Ensure that all mate-pair information is in sync between each read and its mate pair",
         programGroup = ReadProgramGroup.class
 )
-public class FixMateInformation extends PicardCommandLineProgram {
+public final class FixMateInformation extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input file to fix.")
     public List<File> INPUT;

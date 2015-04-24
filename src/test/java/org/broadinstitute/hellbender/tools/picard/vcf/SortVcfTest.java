@@ -16,7 +16,7 @@ import java.util.*;
  *
  * Created by bradt on 9/3/14.
  */
-public class SortVcfTest extends AbstractVcfMergingClpTester {
+public final class SortVcfTest extends AbstractVcfMergingClpTester {
 
     @Test
     public void testPresortedFile() throws IOException {

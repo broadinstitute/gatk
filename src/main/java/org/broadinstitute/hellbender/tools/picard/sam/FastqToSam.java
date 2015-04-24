@@ -25,7 +25,7 @@ import java.util.List;
         usageShort = "Converts a fastq file to an unaligned BAM or SAM file",
         programGroup = ReadProgramGroup.class
 )
-public class FastqToSam extends PicardCommandLineProgram {
+public final class FastqToSam extends PicardCommandLineProgram {
     private static final Log LOG = Log.getInstance(FastqToSam.class);
 
     @Argument(shortName="F1", doc="Input fastq file (optionally gzipped) for single end data, or first read in paired end data.")

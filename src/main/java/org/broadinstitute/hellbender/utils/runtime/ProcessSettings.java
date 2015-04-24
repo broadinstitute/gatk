@@ -4,7 +4,7 @@ package org.broadinstitute.hellbender.utils.runtime;
 import java.io.File;
 import java.util.Map;
 
-public class ProcessSettings {
+public final class ProcessSettings {
     private String[] command;
     private Map<String, String> environment;
     private File directory;

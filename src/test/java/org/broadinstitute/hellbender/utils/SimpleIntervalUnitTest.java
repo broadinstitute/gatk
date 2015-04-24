@@ -5,7 +5,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class SimpleIntervalUnitTest extends BaseTest {
+public final class SimpleIntervalUnitTest extends BaseTest {
 
     @DataProvider(name = "badIntervals")
     public Object[][] badIntervals(){

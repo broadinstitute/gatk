@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class PosFileReaderTest {
+public final class PosFileReaderTest {
     //need to test for negatives
     public static final File TestDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/readerTests");
     public static final File InvalidNamePosFile = new File(TestDir, "pos_failing1_pos.txt");

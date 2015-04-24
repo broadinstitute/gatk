@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 /**
  * Basic unit test for MathUtils
  */
-public class MathUtilsUnitTests {
+public final class MathUtilsUnitTests {
 
     private final static Logger logger = LogManager.getLogger(MathUtilsUnitTests.class);
 

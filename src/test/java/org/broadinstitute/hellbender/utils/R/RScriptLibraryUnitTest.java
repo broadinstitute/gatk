@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class RScriptLibraryUnitTest {
+public final class RScriptLibraryUnitTest {
     @Test(groups = {"R"})
     public void testProperties() {
         Assert.assertEquals(RScriptLibrary.GSALIB.getLibraryName(), "gsalib");

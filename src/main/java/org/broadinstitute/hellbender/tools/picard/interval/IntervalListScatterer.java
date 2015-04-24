@@ -8,7 +8,7 @@ import java.util.*;
 /**
  * @author mccowan
  */
-public class IntervalListScatterer {
+public final class IntervalListScatterer {
 
     public enum Mode {
         /**

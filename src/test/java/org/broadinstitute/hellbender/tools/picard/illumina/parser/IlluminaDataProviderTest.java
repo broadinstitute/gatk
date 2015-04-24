@@ -14,7 +14,7 @@ import static htsjdk.samtools.util.CollectionUtil.makeList;
  * @author jburke@broadinstitute.org
  */
 
-public class IlluminaDataProviderTest {
+public final class IlluminaDataProviderTest {
 
     public static final BclQualityEvaluationStrategy bclQualityEvaluationStrategy = new BclQualityEvaluationStrategy(BclQualityEvaluationStrategy.ILLUMINA_ALLEGED_MINIMUM_QUALITY);
     public static final File BINARY_TD_LOCATION = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/25T8B25T/Data/Intensities/BaseCalls");

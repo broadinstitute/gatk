@@ -32,7 +32,7 @@ import java.util.*;
         usageShort = "Writes an interval list based on splitting the reference by Ns",
         programGroup = IntervalProgramGroup.class
 )
-public class ScatterIntervalsByNs extends PicardCommandLineProgram {
+public final class ScatterIntervalsByNs extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence to use.")
     public File REFERENCE;

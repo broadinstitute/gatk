@@ -17,7 +17,7 @@ import java.io.IOException;
         usageShort = CheckTerminatorBlock.USAGE,
         programGroup = ReadProgramGroup.class
 )
-public class CheckTerminatorBlock extends PicardCommandLineProgram {
+public final class CheckTerminatorBlock extends PicardCommandLineProgram {
     static final String USAGE = "Returns true if the gzip file's (e.g., BAM) last block is well-formed; false otherwise";
 
     @Argument(shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The block compressed file to check.")

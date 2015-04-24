@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class FilterFileReaderTest {
+public final class FilterFileReaderTest {
     public static File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/readerTests");
     public static final File PASSING_FILTER_FILE = new File(TEST_DATA_DIR, "pf_passing.filter");
 

@@ -22,7 +22,7 @@ import java.util.*;
         usageShort = "Rename a sample within a VCF or BCF.",
         programGroup = VariantProgramGroup.class
 )
-public class RenameSampleInVcf extends PicardCommandLineProgram {
+public final class RenameSampleInVcf extends PicardCommandLineProgram {
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input single sample VCF.")
     public File INPUT;
 

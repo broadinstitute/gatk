@@ -58,7 +58,7 @@ import static java.util.Arrays.asList;
         usageShort = "Generate fastq file(s) from data in an Illumina basecalls output directory",
         programGroup = IlluminaProgramGroup.class
 )
-public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
+public final class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
     @Argument(doc = "The basecalls directory. ", shortName = "B")
     public File BASECALLS_DIR;
 

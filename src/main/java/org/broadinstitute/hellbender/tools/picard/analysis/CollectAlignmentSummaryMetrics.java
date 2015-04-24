@@ -42,7 +42,7 @@ import java.util.*;
         usageShort = CollectAlignmentSummaryMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
+public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
     static final String USAGE = "Produces from a SAM or BAM a file containing summary alignment metrics";
     
     private static final Log log = Log.getInstance(CollectAlignmentSummaryMetrics.class);

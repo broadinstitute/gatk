@@ -9,7 +9,7 @@ import java.util.*;
  * Holds annotation of a gene for storage in an OverlapDetector.  May hold multiple transcripts for the same gene.
  * The transcripts must all be relative to the same strand.
  */
-public class Gene extends Interval implements Iterable<Gene.Transcript> {
+public final class Gene extends Interval implements Iterable<Gene.Transcript> {
     private final Map<String, Transcript> transcripts = new HashMap<String, Transcript>();
 
 
@@ -35,7 +35,7 @@ public class Gene extends Interval implements Iterable<Gene.Transcript> {
     /**
      * A single transcript of a gene.  Sequence name is stored in the enclosing object (class Gene).
      */
-    public class Transcript {
+    public final class Transcript {
         public final String name;
         public final int transcriptionStart;
         public final int transcriptionEnd;
@@ -47,7 +47,7 @@ public class Gene extends Interval implements Iterable<Gene.Transcript> {
         /**
          * 1-based, inclusive representation of an exon.  The sequence name is stored in an enclosing object (class Gene).
          */
-        public class Exon {
+        public final class Exon {
             public final int start;
             public final int end;
 

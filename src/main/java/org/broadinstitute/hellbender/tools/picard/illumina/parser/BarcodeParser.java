@@ -14,7 +14,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.Illumin
 /**
  * @author jburke@broadinstitute.org
  */
-class BarcodeParser extends PerTileParser<BarcodeData> {
+final class BarcodeParser extends PerTileParser<BarcodeData> {
 
     private static final Set<IlluminaDataType> SUPPORTED_TYPES = unmodifiableSet(makeSet(Barcodes));
 
@@ -35,7 +35,7 @@ class BarcodeParser extends PerTileParser<BarcodeData> {
         return SUPPORTED_TYPES;
     }
 
-    private static class BarcodeDataIterator implements CloseableIterator<BarcodeData> {
+    private static final class BarcodeDataIterator implements CloseableIterator<BarcodeData> {
         private BarcodeFileReader bfr;
 
         public BarcodeDataIterator(final File file) {

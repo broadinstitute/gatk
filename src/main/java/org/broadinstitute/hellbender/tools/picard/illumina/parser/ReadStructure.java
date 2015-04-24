@@ -29,7 +29,7 @@ import static org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadTyp
  *
  * @author jburke@broadinstitute.org
  */
-public class ReadStructure {
+public final class ReadStructure {
     public static final String PARAMETER_DOC =
             "A description of the logical structure of clusters in an Illumina Run, i.e. a description of the structure IlluminaBasecallsToSam " +
                     "assumes the  data to be in. It should consist of integer/character pairs describing the number of cycles and the type of those " +

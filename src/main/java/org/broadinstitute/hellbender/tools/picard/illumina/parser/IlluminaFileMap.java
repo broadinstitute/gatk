@@ -8,7 +8,7 @@ import java.util.*;
  *
  * @author jburke@broadinstitute.org
  */
-class IlluminaFileMap extends TreeMap<Integer, File> {
+final class IlluminaFileMap extends TreeMap<Integer, File> {
 
     /**
      * Return a file map that includes only the tiles listed

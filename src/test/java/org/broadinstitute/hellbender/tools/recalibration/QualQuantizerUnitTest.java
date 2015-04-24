@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class QualQuantizerUnitTest extends BaseTest {
+public final class QualQuantizerUnitTest extends BaseTest {
     @BeforeSuite
     public void before() {
 

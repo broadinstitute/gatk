@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 /**
  * Created by jcarey on 3/13/14.
  */
-public class BarcodeFileFaker extends FileFaker {
+public final class BarcodeFileFaker extends FileFaker {
     private final String barcodeString = "1\tn\t \n";
 
     @Override

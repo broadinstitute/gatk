@@ -5,7 +5,7 @@ package org.broadinstitute.hellbender.tools.picard.illumina.parser;
  *
  * @author jburke@broadinstitute.org
  */
-public class ClusterData {
+public final class ClusterData {
 
     private int lane = -1;
     private int tile = -1;

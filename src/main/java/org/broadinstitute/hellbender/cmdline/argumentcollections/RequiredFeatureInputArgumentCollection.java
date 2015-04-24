@@ -14,7 +14,7 @@ import java.util.List;
  *
  * For variant inputs, tools should typically use one of the VariantInputArgumentCollections instead.
  */
-public class RequiredFeatureInputArgumentCollection implements ArgumentCollectionDefinition {
+public final class RequiredFeatureInputArgumentCollection implements ArgumentCollectionDefinition {
 
     @Argument(fullName = StandardArgumentDefinitions.FEATURE_LONG_NAME, shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME, doc = "One or more files containing features", optional = false)
     public List<FeatureInput<Feature>> featureFiles;

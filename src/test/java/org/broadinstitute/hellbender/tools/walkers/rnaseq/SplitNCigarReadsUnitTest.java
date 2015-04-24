@@ -20,7 +20,7 @@ import java.util.List;
  * For valid cigar sting in length 8 there are few thousands options, with N in every possible option and with more than one N (for example 1M1N1M1N1M1N2M).
  * The cigarElements array is used to provide all the possible cigar element that might be included.
  */
-public class SplitNCigarReadsUnitTest extends BaseTest {
+public final class SplitNCigarReadsUnitTest extends BaseTest {
     final static CigarElement[] cigarElements = {
             new CigarElement(1, CigarOperator.HARD_CLIP),
             new CigarElement(1, CigarOperator.SOFT_CLIP),

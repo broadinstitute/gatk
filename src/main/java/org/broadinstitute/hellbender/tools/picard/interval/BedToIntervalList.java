@@ -34,7 +34,7 @@ import java.io.IOException;
         usageShort = "Converts a BED file to an Picard Interval List.",
         programGroup = IntervalProgramGroup.class
 )
-public class BedToIntervalList extends PicardCommandLineProgram {
+public final class BedToIntervalList extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input BED file")
     public File INPUT;

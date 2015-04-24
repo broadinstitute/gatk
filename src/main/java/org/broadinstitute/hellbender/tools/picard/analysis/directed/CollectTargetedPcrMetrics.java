@@ -23,7 +23,7 @@ import java.util.*;
         usageShort = "Produces Targeted PCR-related metrics given the provided SAM/BAM",
         programGroup = QCProgramGroup.class
 )
-public class CollectTargetedPcrMetrics extends CollectTargetedMetrics<TargetedPcrMetrics, TargetedPcrMetricsCollector> {
+public final class CollectTargetedPcrMetrics extends CollectTargetedMetrics<TargetedPcrMetrics, TargetedPcrMetricsCollector> {
 
     @Argument(shortName = "AI", doc = "An interval list file that contains the locations of the baits used.")
     public File AMPLICON_INTERVALS;

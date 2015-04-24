@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.Arrays;
 
-public class RecalibrationEngine {
+public final class RecalibrationEngine {
     final protected Covariate[] covariates;
 
     /**

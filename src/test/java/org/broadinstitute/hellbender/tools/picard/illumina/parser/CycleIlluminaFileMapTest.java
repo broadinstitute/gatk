@@ -10,7 +10,7 @@ import static htsjdk.samtools.util.CollectionUtil.makeList;
 /**
 * @author jburke@broadinstitute.org
 */
-public class CycleIlluminaFileMapTest {
+public final class CycleIlluminaFileMapTest {
     //TODO: REVAMP THIS
     private static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/25T8B25T/Data/Intensities/BaseCalls/L001");
     private static final File ZERO_LENGTH_TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/25T8B25T/Data/Intensities/BaseCalls/L002");

@@ -15,7 +15,8 @@ import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
         usage="Count the usages of every word in a text",
         usageShort="Count Words",
         programGroup = DataFlowProgramGroup.class)
-public class WordCount extends DataflowTool{
+@SuppressWarnings("serial")//Placed here to cover all instances
+public final class WordCount extends DataflowTool{
     @Argument
     public String input;
 

@@ -8,7 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
  *
  * @author George Grant
  */
-public class GenotypeConcordanceDetailMetrics extends MetricBase {
+public final class GenotypeConcordanceDetailMetrics extends MetricBase {
     /** The type of the event (i.e. either SNP or INDEL) */
     public VariantContext.Type VARIANT_TYPE;
 

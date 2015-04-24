@@ -10,7 +10,7 @@ import java.util.*;
  * This defines for each valid TruthState and CallState tuple, the set of contingency table entries that to which the tuple should contribute.
  * @author nhomer
  */
-public class GenotypeConcordanceScheme {
+public final class GenotypeConcordanceScheme {
 
     /** The underlying scheme */
     protected final Map<TruthAndCallStates, ContingencyState[]> scheme = new HashMap<TruthAndCallStates, ContingencyState[]>();

@@ -6,7 +6,7 @@ import java.io.InputStream;
 /**
  * Stores a resource by path and a relative class.
  */
-public class Resource {
+public final class Resource {
     private final String path;
     private final Class<?> relativeClass;
     private final ClassLoader relativeClassLoader;

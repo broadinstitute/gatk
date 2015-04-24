@@ -6,7 +6,7 @@ import java.util.*;
 import static htsjdk.samtools.util.CollectionUtil.makeList;
 
 //Illumina Dir Test Data
-public class BinTdUtil {
+public final class BinTdUtil {
     public static final String ltStr(final int lane, final int tile) {
         return "s_" + lane + "_" + tile;
     }

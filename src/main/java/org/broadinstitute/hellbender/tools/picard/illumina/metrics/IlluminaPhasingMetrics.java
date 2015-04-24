@@ -13,7 +13,7 @@ import java.util.*;
  *
  * @author jgentry
  */
-public class IlluminaPhasingMetrics extends MetricBase {
+public final class IlluminaPhasingMetrics extends MetricBase {
     public long LANE;
     public String TYPE_NAME;
     public double PHASING_APPLIED;

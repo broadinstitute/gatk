@@ -11,7 +11,7 @@ import java.io.*;
  * ValidateSamFile is a thin wrapper around {@link htsjdk.samtools.SamFileValidator} which is thoroughly tested in HTSJDK.
  * Thus we don't have much to test here.
  */
-public class ValidateSamFileIntegrationTest extends CommandLineProgramTest {
+public final class ValidateSamFileIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/ValidateSamFile");
 
