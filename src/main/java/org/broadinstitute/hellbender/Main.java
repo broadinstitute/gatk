@@ -39,12 +39,12 @@ public class Main {
     /**
      * exit value when an unrecoverable {@link UserException} occurs
      */
-    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
+    public static final int USER_EXCEPTION_EXIT_VALUE = 2;
     
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
      */
-    private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 1;
+    public static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 1;
 
     /**
      * The packages we wish to include in our command line *

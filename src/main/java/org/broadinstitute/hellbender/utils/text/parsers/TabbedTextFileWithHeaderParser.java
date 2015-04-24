@@ -11,7 +11,7 @@ import java.util.*;
  *
  * @author alecw@broadinstitute.org
  */
-public class TabbedTextFileWithHeaderParser implements Iterable<TabbedTextFileWithHeaderParser.Row> {
+public class TabbedTextFileWithHeaderParser implements Iterable<TabbedTextFileWithHeaderParser.Row>, AutoCloseable{
     public class Row {
         private final String[] fields;
         private final String currentLine;
@@ -141,9 +141,5 @@ public class TabbedTextFileWithHeaderParser implements Iterable<TabbedTextFileWi
 
     public int getCurrentLineNumber() {
         return parser.getCurrentLineNumber();
-    }
-
-    public Set<String> getColumnNames() {
-        return Collections.unmodifiableSet(this.columnLabelIndices.keySet());
     }
 }
