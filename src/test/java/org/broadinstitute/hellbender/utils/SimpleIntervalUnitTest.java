@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -15,21 +14,6 @@ public class SimpleIntervalUnitTest extends BaseTest {
                 {"1", 0, 10, "start==0"},
                 {"1", -10, 10, "negative start"},
                 {"1", 10, 9, "end < start"}
-        };
-    }
-
-    @DataProvider(name = "badIntervalStrings")
-    public Object[][] badIntervalStrings(){
-        return new Object[][]{
-                {"1:0-10"},
-                {"1:-10-10"},
-                {"1:10-9"},
-                {"1:+"},
-                {"1:0+"},
-                {"1:abc+"},
-                {"1:a-b"},
-                {"1:10-"},
-                {"1:1.0213+"}
         };
     }
 
@@ -58,19 +42,6 @@ public class SimpleIntervalUnitTest extends BaseTest {
         Assert.assertEquals(interval.getContig(), contig, "contig");
         Assert.assertEquals(interval.getStart(), start, "start");
         Assert.assertEquals(interval.getEnd(), end, "end");
-    }
-
-    @Test(dataProvider = "goodIntervals")
-    public void testGoodIntervalsByString(final String str, final String contig, final int start, final int end) {
-        final SimpleInterval interval = new SimpleInterval(str);
-        Assert.assertEquals(interval.getContig(),contig,"contig");
-        Assert.assertEquals(interval.getStart(), start, "start");
-        Assert.assertEquals(interval.getEnd(), end, "end");
-    }
-
-    @Test(dataProvider = "badIntervalStrings", expectedExceptions = UserException.class)
-    public void testBadIntervalStrings(final String str) {
-        new SimpleInterval(str);
     }
 
     @Test
