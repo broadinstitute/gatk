@@ -37,29 +37,15 @@ public final class CycleCovariate implements Covariate {
     // Used to pick out the covariate's value from attributes of the read
     @Override
     public void recordValues(final SAMRecord read, final ReadCovariates values) {
-        final int readLength = read.getReadLength();
         final NGSPlatform ngsPlatform = default_platform == null ? NGSPlatform.fromRead(read) : NGSPlatform.fromReadGroupPL(default_platform);
 
         // Discrete cycle platforms
         if (ngsPlatform.getSequencerType() == SequencerFlowClass.DISCRETE) {
-            final int readOrderFactor = read.getReadPairedFlag() && read.getSecondOfPairFlag() ? -1 : 1;
-            final int increment;
-            int cycle;
-            if (read.getReadNegativeStrandFlag()) {
-                cycle = readLength * readOrderFactor;
-                increment = -1 * readOrderFactor;
-            }
-            else {
-                cycle = readOrderFactor;
-                increment = readOrderFactor;
-            }
-
-            final int MAX_CYCLE_FOR_INDELS = readLength - CUSHION_FOR_INDELS - 1;
+            final int readLength = read.getReadLength();
             for (int i = 0; i < readLength; i++) {
-                final int substitutionKey = keyFromCycle(cycle);
-                final int indelKey = (i < CUSHION_FOR_INDELS || i > MAX_CYCLE_FOR_INDELS) ? -1 : substitutionKey;
+                final int substitutionKey = cycleKey(i, read, false, MAXIMUM_CYCLE_VALUE);
+                final int indelKey        = cycleKey(i, read, true, MAXIMUM_CYCLE_VALUE);
                 values.addCovariate(substitutionKey, indelKey, indelKey, i);
-                cycle += increment;
             }
         }
 
@@ -77,6 +63,7 @@ public final class CycleCovariate implements Covariate {
         }
     }
 
+
     // Used to get the covariate's value from input csv file during on-the-fly recalibration
     @Override
     public final Object getValue(final String str) {
@@ -84,16 +71,13 @@ public final class CycleCovariate implements Covariate {
     }
 
     @Override
-    public String formatKey(final int key) {
-        int cycle = key >> 1; // shift so we can remove the "sign" bit
-        if ( (key & 1) != 0 ) // is the last bit set?
-            cycle *= -1; // then the cycle is negative
-        return String.format("%d", cycle);
+    public String formatKey(final int key){
+            return String.format("%d", cycleFromKey(key));
     }
 
     @Override
     public int keyFromValue(final Object value) {
-        return (value instanceof String) ? keyFromCycle(Integer.parseInt((String) value)) : keyFromCycle((Integer) value);
+        return (value instanceof String) ? keyFromCycle(Integer.parseInt((String) value), MAXIMUM_CYCLE_VALUE) : keyFromCycle((Integer) value, MAXIMUM_CYCLE_VALUE);
     }
 
     @Override
@@ -101,15 +85,69 @@ public final class CycleCovariate implements Covariate {
         return (MAXIMUM_CYCLE_VALUE << 1) + 1;
     }
 
-    private int keyFromCycle(final int cycle) {
+    /**
+     * Computes the encoded value of CycleCovariate's key for the given position at the read.
+     * Uses keyFromCycle to do the encoding.
+     * @param baseNumber index of the base to compute the key for
+     * @param read the read
+     * @param indel is this an indel key or a substitution key?
+     * @param maxCycle max value of the base to compute the key for
+     *                 (this method throws UserException if the computed absolute value of the cycle number is higher than this value).
+     */
+    public static int cycleKey(final int baseNumber, final SAMRecord read, final boolean indel, final int maxCycle) {
+        final boolean isNegStrand = read.getReadNegativeStrandFlag();
+        final boolean isSecondInPair = read.getReadPairedFlag() && read.getSecondOfPairFlag();
+        final int readLength = read.getReadLength();
+
+        final int readOrderFactor = isSecondInPair ? -1 : 1;
+        final int increment;
+        int cycle;
+        if (isNegStrand) {
+            cycle = readLength * readOrderFactor;
+            increment = -1 * readOrderFactor;
+        } else {
+            cycle = readOrderFactor;
+            increment = readOrderFactor;
+        }
+
+        cycle += baseNumber * increment;
+
+        if (!indel) {
+            return CycleCovariate.keyFromCycle(cycle, maxCycle);
+        }
+        final int maxCycleForIndels = readLength - CycleCovariate.CUSHION_FOR_INDELS - 1;
+        if (baseNumber < CycleCovariate.CUSHION_FOR_INDELS || baseNumber > maxCycleForIndels) {
+            return -1;
+        } else {
+            return CycleCovariate.keyFromCycle(cycle, maxCycle);
+        }
+    }
+
+    /**
+     * Decodes the cycle number from the key.
+     */
+    public static int cycleFromKey(final int key) {
+        int cycle = key >> 1; // shift so we can remove the "sign" bit
+        if ( (key & 1) != 0 ) { // is the last bit set?
+            cycle *= -1; // then the cycle is negative
+        }
+        return cycle;
+    }
+
+    /**
+     * Encodes the cycle number as a key.
+     */
+    public static int keyFromCycle(final int cycle, final int maxCycle) {
         // no negative values because values must fit into the first few bits of the long
         int result = Math.abs(cycle);
-        if ( result > MAXIMUM_CYCLE_VALUE )
-            throw new UserException("The maximum allowed value for the cycle is " + MAXIMUM_CYCLE_VALUE + ", but a larger cycle (" + result + ") was detected.  Please use the --maximum_cycle_value argument to increase this value (at the expense of requiring more memory to run)");
+        if ( result > maxCycle ) {
+            throw new UserException("The maximum allowed value for the cycle is " + maxCycle + ", but a larger cycle (" + result + ") was detected.  Please use the --maximum_cycle_value argument to increase this value (at the expense of requiring more memory to run)");
+        }
 
-        result = result << 1; // shift so we can add the "sign" bit
-        if ( cycle < 0 )
+        result <<= 1; // shift so we can add the "sign" bit
+        if ( cycle < 0 ) {
             result++; // negative cycles get the lower-most bit set
+        }
         return result;
     }
 }

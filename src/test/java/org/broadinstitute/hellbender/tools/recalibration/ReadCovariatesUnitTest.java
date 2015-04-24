@@ -19,7 +19,7 @@ public final class ReadCovariatesUnitTest {
         ReadCovariates.clearKeysCache();
     }
 
-    @Test(enabled = false)
+    @Test
     public void testCovariateGeneration() {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
@@ -68,19 +68,21 @@ public final class ReadCovariatesUnitTest {
                     Assert.assertEquals(rgCov.formatKey(rc.getDeletionsKeySet(i)[0]), rgs);
 
                     // check quality score
-                    Assert.assertEquals(qsCov.formatKey(rc.getMismatchesKeySet(i)[1]), "" + mQuals[i]);
-                    Assert.assertEquals(qsCov.formatKey(rc.getInsertionsKeySet(i)[1]), "" + iQuals[i]);
-                    Assert.assertEquals(qsCov.formatKey(rc.getDeletionsKeySet(i)[1]), "" + dQuals[i]);
+                    Assert.assertEquals(qsCov.formatKey(rc.getMismatchesKeySet(i)[1]), String.valueOf(mQuals[i]));
+                    Assert.assertEquals(qsCov.formatKey(rc.getInsertionsKeySet(i)[1]), String.valueOf(iQuals[i]));
+                    Assert.assertEquals(qsCov.formatKey(rc.getDeletionsKeySet(i)[1]),  String.valueOf(dQuals[i]));
 
                     // check context
-                    Assert.assertEquals(coCov.formatKey(rc.getMismatchesKeySet(i)[2]), ContextCovariateUnitTest.expectedContext(read, i, RAC.MISMATCHES_CONTEXT_SIZE));
-                    Assert.assertEquals(coCov.formatKey(rc.getInsertionsKeySet(i)[2]), ContextCovariateUnitTest.expectedContext(read, i, RAC.INDELS_CONTEXT_SIZE));
-                    Assert.assertEquals(coCov.formatKey(rc.getDeletionsKeySet(i)[2]), ContextCovariateUnitTest.expectedContext(read, i, RAC.INDELS_CONTEXT_SIZE));
+                    Assert.assertEquals(coCov.formatKey(rc.getMismatchesKeySet(i)[2]), ContextCovariateUnitTest.expectedContext(read, i, RAC.MISMATCHES_CONTEXT_SIZE, RAC.LOW_QUAL_TAIL), "read: " +idx  + " readGroup:" + rgs + " context mismatch key at position:" + i);
+                    Assert.assertEquals(coCov.formatKey(rc.getInsertionsKeySet(i)[2]), ContextCovariateUnitTest.expectedContext(read, i, RAC.INDELS_CONTEXT_SIZE, RAC.LOW_QUAL_TAIL), "read: " +idx  + " readGroup:" + rgs + " context insertion key at position:" + i);
+                    Assert.assertEquals(coCov.formatKey(rc.getDeletionsKeySet(i)[2]),  ContextCovariateUnitTest.expectedContext(read, i, RAC.INDELS_CONTEXT_SIZE, RAC.LOW_QUAL_TAIL), "read: " +idx  + " readGroup:" + rgs + " context deletion key at position:" + i);
 
                     // check cycle
-                    Assert.assertEquals(cyCov.formatKey(rc.getMismatchesKeySet(i)[3]), "" + (i + 1));
-                    Assert.assertEquals(cyCov.formatKey(rc.getInsertionsKeySet(i)[3]), "" + (i + 1));
-                    Assert.assertEquals(cyCov.formatKey(rc.getDeletionsKeySet(i)[3]), "" + (i + 1));
+                    final int expectedCycleMismatch = CycleCovariateUnitTest.expectedCycle(read, i, false, RAC.MAXIMUM_CYCLE_VALUE);
+                    final int expectedCycleIndel = CycleCovariateUnitTest.expectedCycle(read, i, true, RAC.MAXIMUM_CYCLE_VALUE);
+                    Assert.assertEquals(cyCov.formatKey(rc.getMismatchesKeySet(i)[3]), String.valueOf(expectedCycleMismatch), "read: " + idx + " cycle mismatch key at position:" + i);
+                    Assert.assertEquals(cyCov.formatKey(rc.getInsertionsKeySet(i)[3]), String.valueOf(expectedCycleIndel),  "read: " +idx + " cycle insertion key at position:" + i);
+                    Assert.assertEquals(cyCov.formatKey(rc.getDeletionsKeySet(i)[3]), String.valueOf(expectedCycleIndel),  "read: " +idx + " cycle deletion key at position:" + i);
                 }
 
             }
