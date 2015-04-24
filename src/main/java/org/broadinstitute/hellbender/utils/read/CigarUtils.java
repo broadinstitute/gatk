@@ -40,6 +40,33 @@ public class CigarUtils {
     }
 
     /**
+     * Checks whether or not the read has any cigar element that is not H or S
+     *
+     * @param read the read
+     * @return true if it has any M, I or D, false otherwise
+     */
+    public static boolean readHasNonClippedBases(SAMRecord read) {
+        for (CigarElement cigarElement : read.getCigar().getCigarElements())
+            if (cigarElement.getOperator() != CigarOperator.SOFT_CLIP && cigarElement.getOperator() != CigarOperator.HARD_CLIP)
+                return true;
+        return false;
+    }
+
+    public static Cigar invertCigar (Cigar cigar) {
+        Stack<CigarElement> cigarStack = new Stack<>();
+        for (CigarElement cigarElement : cigar.getCigarElements()) {
+            cigarStack.push(cigarElement);
+        }
+
+        Cigar invertedCigar = new Cigar();
+        while (!cigarStack.isEmpty()) {
+            invertedCigar.add(cigarStack.pop());
+        }
+
+        return invertedCigar;
+    }
+
+    /**
     * A valid cigar object obeys the following rules:
     *  - No Hard/Soft clips in the middle of the read
     *  - No deletions in the beginning / end of the read

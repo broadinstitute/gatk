@@ -252,8 +252,16 @@ public class ReadClipper {
         return this.clipRead(algorithm);
     }
 
+    private SAMRecord hardClipLowQualEnds(byte lowQual) {
+        return this.clipLowQualEnds(ClippingRepresentation.HARDCLIP_BASES, lowQual);
+    }
+
     public static SAMRecord clipLowQualEnds(SAMRecord read, byte lowQual, ClippingRepresentation algorithm) {
         return (new ReadClipper(read)).clipLowQualEnds(algorithm, lowQual);
+    }
+
+    public static SAMRecord hardClipLowQualEnds(SAMRecord read, byte lowQual) {
+        return (new ReadClipper(read)).hardClipLowQualEnds(lowQual);
     }
 
     /**
@@ -309,7 +317,7 @@ public class ReadClipper {
     public static SAMRecord hardClipToRegionIncludingClippedBases( final SAMRecord read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
         final int stop = start + CigarUtils.countRefBasesBasedOnCigar(read, 0, read.getCigarLength()) - 1;
-        return hardClipToRegion(read, refStart, refStop,start,stop);
+        return hardClipToRegion(read, refStart, refStop, start, stop);
     }
 
     private static SAMRecord hardClipToRegion( final SAMRecord read, final int refStart, final int refStop, final int alignmentStart, final int alignmentStop){
@@ -344,6 +352,32 @@ public class ReadClipper {
     }
     public static SAMRecord hardClipAdaptorSequence (SAMRecord read) {
         return (new ReadClipper(read)).hardClipAdaptorSequence();
+    }
+
+    /**
+     * Hard clips any leading insertions in the read. Only looks at the beginning of the read, not the end.
+     *
+     * @return a new read without leading insertions
+     */
+    private SAMRecord hardClipLeadingInsertions() {
+        if (ReadUtils.isEmpty(read)) {
+            return read;
+        }
+
+        for(CigarElement cigarElement : read.getCigar().getCigarElements()) {
+            if (cigarElement.getOperator() != CigarOperator.HARD_CLIP && cigarElement.getOperator() != CigarOperator.SOFT_CLIP &&
+                    cigarElement.getOperator() != CigarOperator.INSERTION)
+                break;
+
+            else if (cigarElement.getOperator() == CigarOperator.INSERTION)
+                this.addOp(new ClippingOp(0, cigarElement.getLength() - 1));
+
+        }
+        return clipRead(ClippingRepresentation.HARDCLIP_BASES);
+    }
+
+    public static SAMRecord hardClipLeadingInsertions(SAMRecord read) {
+        return (new ReadClipper(read)).hardClipLeadingInsertions();
     }
 
     /**
