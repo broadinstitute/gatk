@@ -6,10 +6,13 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.BinTdUtil.*;
-
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import static org.broadinstitute.hellbender.tools.picard.illumina.parser.BinTdUtil.*;
 
 public class BclParserTest {
     public static final File TEST_DATA_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/illumina/25T8B25T/Data/Intensities/BaseCalls/L001");
@@ -185,7 +188,7 @@ public class BclParserTest {
         fullBclParserTestImpl(TEST_DATA_DIR, READ_STRUCTURE, tiles, size, seekAfter, newTileIndex, orderedTileIndex, false);
     }
 
-    //@Test(dataProvider = "multiTileMaps")
+    @Test(enabled = false, dataProvider = "multiTileMaps")//fails when enabled
     public void fullMTBclParserTest(final int[] tiles, final int size, final int seekAfter, final int newTileIndex, final int orderedTileIndex) {
         fullBclParserTestImpl(MULTI_TILE_DATA_DIR, READ_STRUCTURE, tiles, size, seekAfter, newTileIndex, orderedTileIndex, true);
     }

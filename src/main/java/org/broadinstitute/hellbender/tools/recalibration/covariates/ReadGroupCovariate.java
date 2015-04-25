@@ -6,8 +6,6 @@ import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * The Read Group covariate.
@@ -49,14 +47,6 @@ public class ReadGroupCovariate implements Covariate {
     @Override
     public int keyFromValue(final Object value) {
         return keyForReadGroup((String) value);
-    }
-
-    /**
-     * Get the mapping from read group names to integer key values for all read groups in this covariate
-     * @return a set of mappings from read group names -> integer key values
-     */
-    public Set<Map.Entry<String, Integer>> getKeyMap() {
-        return readGroupLookupTable.entrySet();
     }
 
     private int keyForReadGroup(final String readGroupId) {

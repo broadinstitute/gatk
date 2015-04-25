@@ -1,12 +1,9 @@
 package org.broadinstitute.hellbender.utils.illumina;
 
-import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.samtools.util.SolexaQualityConverter;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.*;
+import java.util.List;
 
 /**
  * Misc utilities for working with Illumina specific files and data
@@ -38,68 +35,6 @@ public class IlluminaUtil {
         }
 
         return null;
-    }
-
-    /**
-     * Convert from Solexa-scaled ASCII qualities to Phred-scaled binary.  The only difference is Solexa qualities have
-     * 64 added to the phred binary to make them printable.
-     *
-     * @param solexaQualities Printable ASCII qualities.
-     * @return binary Phred-scaled qualities.
-     */
-    public static byte[] makePhredBinaryFromSolexaQualityAscii_1_3(final String solexaQualities) {
-        return makePhredBinaryFromSolexaQualityAscii_1_3(solexaQualities, 0, solexaQualities.length());
-    }
-
-    /**
-     * Convert from Solexa-scaled ASCII qualities to Phred-scaled binary.  The only difference is Solexa qualities have
-     * 64 added to the phred binary to make them printable.
-     *
-     * @param solexaQualities Printable ASCII qualities.
-     * @param offset Character at which to start conversion.
-     * @param length Number of characters to convert.
-     * @return binary Phred-scaled qualities.
-     */
-    public static byte[] makePhredBinaryFromSolexaQualityAscii_1_3(final String solexaQualities, final int offset, final int length) {
-        final byte[] quals = StringUtil.stringToBytes(solexaQualities, offset, length);
-        SolexaQualityConverter.getSingleton().convertSolexa_1_3_QualityCharsToPhredBinary(quals);
-        return quals;
-    }
-
-    /**
-     * Converts from Solexa ASCII to Phred binary in place.  These are the older-style qualities
-     * rather than Phred qualities with a different addend to make them printable.
-     */
-    public static void convertSolexaQualityAscii_1_1_ToPhredBinary(final byte[] solexaQualities) {
-        SolexaQualityConverter.getSingleton().convertSolexaQualityCharsToPhredBinary(solexaQualities);
-    }
-
-    /**
-     * Get a Solexa ASCII quality value from an array of strings that are integer qualities in this order:
-     * [cycle-1-A, cycle-1-C, cycle-1-G, cycle-1-T, cycle-2-A, ...].  The best quality from the 4 qualities for
-     * the cycle is found, and then it is ASCII-ized by adding 64.
-     * @param qualities Array of integer quality strings.
-     * @param cycleNumber Which cycle to get quality for.
-     * @param formatter For converting decimal strings to ints.
-     * @return best quality for the given cycle.
-     * @throws picard.PicardException if the best quality ASCII value is > 255.
-     */
-    public static byte getSolexaQualityCharFromFourQualities(final String[] qualities, final int cycleNumber, final FormatUtil formatter) {
-        // It apparently is the case that all 4 qualities might be negative, but this appears to correspond to
-        // an no-called base.
-        int bestQuality = Integer.MIN_VALUE;
-        final int startOffset = (cycleNumber - 1) * 4;
-        for (int i = startOffset; i < startOffset + 4; ++i) {
-            final int quality = formatter.parseInt(qualities[i]);
-            if (quality > bestQuality) {
-                bestQuality = quality;
-            }
-        }
-        final int qualityAsCharacter = bestQuality + SolexaQualityConverter.SOLEXA_ADDEND;
-        if (qualityAsCharacter > 255) {
-            throw new GATKException("Quality too large: " + bestQuality);
-        }
-        return (byte)(qualityAsCharacter & 0xff);
     }
 
     // Strings indented below to make these easier to compare visually.

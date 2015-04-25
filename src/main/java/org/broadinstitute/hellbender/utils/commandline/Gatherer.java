@@ -14,9 +14,4 @@ public abstract class Gatherer {
      */
     public abstract void gather(List<File> inputs, File output);
 
-    /**
-     * Returns true if the caller should wait for the input files to propagate over NFS before running gather().
-     * @return true if the caller should wait for the input files to propagate over NFS before running gather().
-     */
-    public boolean waitForInputs() { return true; }
 }

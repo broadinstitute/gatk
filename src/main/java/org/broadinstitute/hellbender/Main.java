@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender;
 
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -21,18 +20,13 @@ import java.util.*;
  *
  */
 public class Main {
-    private static final Log log = Log.getInstance(Main.class);
 
     /**
      * Provides ANSI colors for the terminal output *
      */
     private final static String KNRM = "\u001B[0m"; // reset
-    private final static String KBLD = "\u001B[1m"; // Bold
     private final static String KRED = "\u001B[31m";
     private final static String KGRN = "\u001B[32m";
-    private final static String KYEL = "\u001B[33m";
-    private final static String KBLU = "\u001B[34m";
-    private final static String KMAG = "\u001B[35m";
     private final static String KCYN = "\u001B[36m";
     private final static String KWHT = "\u001B[37m";
     private final static String KBLDRED = "\u001B[1m\u001B[31m";

@@ -91,7 +91,6 @@ public class GenotypeConcordance extends PicardCommandLineProgram {
     public GenotypeConcordanceCounts getSnpCounter() { return snpCounter; }
 
     protected GenotypeConcordanceCounts indelCounter;
-    public GenotypeConcordanceCounts getIndelCounter() { return indelCounter; }
 
     // TODO: add optimization if the samples are in the same file
     // TODO: add option for auto-detect pairs based on same sample name
@@ -474,11 +473,6 @@ public class GenotypeConcordance extends PicardCommandLineProgram {
  also, same item cannot be added more than once (like a set)
  */
 class OrderedSet<T> extends ArrayList<T> {
-
-    public int smartIndexOf(final T o) {
-        smartAdd(o);
-        return super.indexOf(o);
-    }
 
     public boolean smartAdd(final T o) {
         if (!this.contains(o)) {

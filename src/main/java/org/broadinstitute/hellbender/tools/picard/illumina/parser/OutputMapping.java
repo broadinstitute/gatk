@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.picard.illumina.parser;
 
-import htsjdk.samtools.util.StringUtil;
-
 import static htsjdk.samtools.util.StringUtil.intValuesToString;
 
 /**
@@ -76,14 +74,6 @@ public class OutputMapping {
     }
 
     /**
-     * @return An ordered array of Ranges over cycle indices(cycle#-1), where each range represents a contiguous block of cycles
-     * to output, and each cycle in getOutputCycles() is in ONE AND ONLY ONE Range, all ranges are inclusive of both ends
-     */
-    public Range[] getCycleIndexRanges() {
-        return outputSubstructure.getCycleIndexRanges();
-    }
-
-    /**
      * @return An iterator over the read descriptors that describe the reads to be output
      */
     public Iterable<ReadDescriptor> getOutputDescriptors() {
@@ -92,21 +82,6 @@ public class OutputMapping {
 
     public ReadStructure getOutputReadStructure() {
         return outputReadStructure;
-    }
-
-    /**
-     * Return an index that where:
-     * index.arrayIndex - represents either the read number the cycle will be output too, or (in some cases)
-     * an array index into a two dimensional array of byte[][] where the top level array corresponds to read number
-     * <p>
-     * index.elementIndex - represents the element a cycle will appear in inside it's give read, or the element
-     * in an array as described above
-     *
-     * @param cycle The cycle for which we want an index
-     * @return A TwoDArrayIndex indicating where this cycle can be found
-     */
-    public TwoDIndex getOutputIndexForCycle(final int cycle) {
-        return cycleToOutputIndex[cycle];
     }
 
     /**

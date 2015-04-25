@@ -89,14 +89,6 @@ public class PosParser extends PerTileParser<PositionalData> {
                     public int getYCoordinate() {
                         return nextValue.yQseqCoord;
                     }
-
-                    public int getLane() {
-                        return nextValue.lane;
-                    }
-
-                    public int getTile() {
-                        return nextValue.tile;
-                    }
                 };
             }
 
@@ -105,10 +97,4 @@ public class PosParser extends PerTileParser<PositionalData> {
             }
         };
     }
-
-    @Override
-    public Set<IlluminaDataType> supportedTypes() {
-        return supportedTypes;
-    }
-
 }

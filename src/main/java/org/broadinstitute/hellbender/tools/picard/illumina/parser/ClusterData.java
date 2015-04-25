@@ -45,29 +45,12 @@ public class ClusterData {
         this.tile = tile;
     }
 
-    public boolean tileIsSet() {
-        return tile != -1;
-    }
-
     public ReadData getRead(final int index) {
         return reads[index];
     }
 
     public int getNumReads() {
         return reads.length;
-    }
-
-    /**
-     * Either set this value if not already set, or if already set, throw an exception if new value != current value.
-     */
-    public void setOrCheckTile(final int tile) {
-        if (tileIsSet()) {
-            if (this.tile != tile) {
-                throw new IlluminaParserException("Tile number mismatch for " + this + " : " + this.tile + " != " + tile);
-            }
-        } else {
-            this.tile = tile;
-        }
     }
 
     public int getLane() {
@@ -78,46 +61,12 @@ public class ClusterData {
         this.lane = lane;
     }
 
-    public boolean laneIsSet() {
-        return lane != -1;
-    }
-
-    /**
-     * Either set this value if not already set, or if already set, throw an exception if new value != current value.
-     */
-    public void setOrCheckLane(final int lane) {
-        if (laneIsSet()) {
-            if (this.lane != lane) {
-                throw new IlluminaParserException("Lane number mismatch for " + this + " : " + this.lane + " != " + lane);
-            }
-        } else {
-            this.lane = lane;
-        }
-    }
-
     public int getX() {
         return x;
     }
 
     public void setX(final int x) {
         this.x = x;
-    }
-
-    public boolean xIsSet() {
-        return x != -1;
-    }
-
-    /**
-     * Either set this value if not already set, or if already set, throw an exception if new value != current value.
-     */
-    public void setOrCheckX(final int x) {
-        if (xIsSet()) {
-            if (this.x != x) {
-                throw new IlluminaParserException("X value mismatch for " + this + " : " + this.x + " != " + x);
-            }
-        } else {
-            this.x = x;
-        }
     }
 
     public int getY() {
@@ -128,40 +77,12 @@ public class ClusterData {
         this.y = y;
     }
 
-    public boolean yIsSet() {
-        return y != -1;
-    }
-
-    /**
-     * Either set this value if not already set, or if already set, throw an exception if new value != current value.
-     */
-    public void setOrCheckY(final int y) {
-        if (yIsSet()) {
-            if (this.y != y) {
-                throw new IlluminaParserException("Y value mismatch for " + this + " : " + this.y + " != " + y);
-            }
-        } else {
-            this.y = y;
-        }
-    }
-
     public Boolean isPf() {
         return pf;
     }
 
     public void setPf(final boolean pf) {
         this.pf = pf;
-    }
-
-    /**
-     * Either set this value if not already set, or if already set, throw an exception if new value != current value.
-     */
-    public void setOrCheckPf(final boolean pf) {
-        if (this.pf == null) {
-            this.pf = pf;
-        } else if (this.pf != pf) {
-            throw new IlluminaParserException("PF value mismatch for " + this + " : ");
-        }
     }
 
     /**

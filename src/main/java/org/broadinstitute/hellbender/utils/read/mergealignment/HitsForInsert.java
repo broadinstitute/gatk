@@ -221,19 +221,6 @@ public class HitsForInsert {
         else return tallyPrimaryAlignments(secondOfPair);
     }
 
-    int findPrimaryAlignment(final List<SAMRecord> records) {
-        int indexOfPrimaryAlignment = -1;
-        for (int i = 0; i < records.size(); ++i) {
-            if (records.get(i) != null && !records.get(i).isSecondaryOrSupplementary()) {
-                if (indexOfPrimaryAlignment != -1) {
-                    throw new IllegalStateException("Multiple primary alignments found for read " + getReadName());
-                }
-                indexOfPrimaryAlignment = i;
-            }
-        }
-        return indexOfPrimaryAlignment;
-    }
-
     // null HI tag sorts after any non-null.
     private static class HitIndexComparator implements Comparator<SAMRecord> {
         public int compare(final SAMRecord rec1, final SAMRecord rec2) {

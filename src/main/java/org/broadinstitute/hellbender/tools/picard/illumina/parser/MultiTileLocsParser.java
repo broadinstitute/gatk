@@ -38,14 +38,6 @@ public class MultiTileLocsParser extends MultiTileParser<PositionalData> {
             public int getYCoordinate() {
                 return nextVal.yQseqCoord;
             }
-
-            public int getLane() {
-                return lane;
-            }
-
-            public int getTile() {
-                return tile;
-            }
         };
     }
 

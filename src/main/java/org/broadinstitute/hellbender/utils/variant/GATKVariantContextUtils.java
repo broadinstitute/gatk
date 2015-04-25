@@ -19,8 +19,6 @@ public class GATKVariantContextUtils {
 
     private static Logger logger = LogManager.getLogger(GATKVariantContextUtils.class);
 
-    public static final int DEFAULT_PLOIDY = HomoSapiensConstants.DEFAULT_PLOIDY;
-
     public final static String MERGE_FILTER_PREFIX = "filterIn";
     public final static String MERGE_REF_IN_ALL = "ReferenceInAll";
     public final static String MERGE_FILTER_IN_ALL = "FilteredInAll";
@@ -1004,25 +1002,6 @@ public class GATKVariantContextUtils {
                 attributes.put(key, igc.getAttribute(key));
         }
         return attributes;
-    }
-
-    public static VariantContextBuilder pruneVariantContext(final VariantContextBuilder builder, Collection<String> keysToPreserve ) {
-        final VariantContext vc = builder.make();
-        if ( keysToPreserve == null ) keysToPreserve = Collections.emptyList();
-
-        // VC info
-        final Map<String, Object> attributes = subsetAttributes(vc.getCommonInfo(), keysToPreserve);
-
-        // Genotypes
-        final GenotypesContext genotypes = GenotypesContext.create(vc.getNSamples());
-        for ( final Genotype g : vc.getGenotypes() ) {
-            final GenotypeBuilder gb = new GenotypeBuilder(g);
-            // remove AD, DP, PL, and all extended attributes, keeping just GT and GQ
-            gb.noAD().noDP().noPL().noAttributes();
-            genotypes.add(gb.make());
-        }
-
-        return builder.genotypes(genotypes).attributes(attributes);
     }
 
     protected static class AlleleMapper {

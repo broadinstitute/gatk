@@ -5,10 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.report.GATKReport;
-import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
-import java.io.PrintStream;
 import java.util.*;
 
 /**
@@ -340,72 +337,8 @@ public class QualQuantizer {
         return map;
     }
 
-    private final int getNQualsInHistogram() {
+    private int getNQualsInHistogram() {
         return nObservationsPerQual.size();
-    }
-
-    /**
-     * Write out a GATKReport to visualize the QualQuantization process of this data
-     * @param out
-     */
-    public void writeReport(PrintStream out) {
-        final GATKReport report = new GATKReport();
-
-        addQualHistogramToReport(report);
-        addIntervalsToReport(report);
-
-        report.print(out);
-    }
-
-    private final void addQualHistogramToReport(final GATKReport report) {
-        report.addTable("QualHistogram", "Quality score histogram provided to report", 2);
-        GATKReportTable table = report.getTable("QualHistogram");
-
-        table.addColumn("qual");
-        table.addColumn("count");
-
-        for ( int q = 0; q < nObservationsPerQual.size(); q++ ) {
-            table.set(q, "qual", q);
-            table.set(q, "count", nObservationsPerQual.get(q));
-        }
-    }
-
-
-    private final void addIntervalsToReport(final GATKReport report) {
-        report.addTable("QualQuantizerIntervals", "Table of QualQuantizer quantization intervals", 10);
-        GATKReportTable table = report.getTable("QualQuantizerIntervals");
-
-        table.addColumn("name");
-        table.addColumn("qStart");
-        table.addColumn("qEnd");
-        table.addColumn("level");
-        table.addColumn("merge.order");
-        table.addColumn("nErrors");
-        table.addColumn("nObservations");
-        table.addColumn("qual");
-        table.addColumn("penalty");
-        table.addColumn("root.node");
-        //table.addColumn("subintervals", "NA");
-
-        for ( QualInterval interval : quantizedIntervals )
-            addIntervalToReport(table, interval, true);
-    }
-
-    private final void addIntervalToReport(final GATKReportTable table, final QualInterval interval, final boolean atRootP) {
-        final String name = interval.getName();
-        table.set(name, "name", name);
-        table.set(name, "qStart", interval.qStart);
-        table.set(name, "qEnd", interval.qEnd);
-        table.set(name, "level", interval.level);
-        table.set(name, "merge.order", interval.mergeOrder);
-        table.set(name, "nErrors", interval.nErrors);
-        table.set(name, "nObservations", interval.nObservations);
-        table.set(name, "qual", interval.getQual());
-        table.set(name, "penalty", String.format("%.1f", interval.getPenalty()));
-        table.set(name, "root.node", atRootP);
-
-        for ( final QualInterval sub : interval.subIntervals )
-            addIntervalToReport(table, sub, false);
     }
 
     public List<Byte> getOriginalToQuantizedMap() {

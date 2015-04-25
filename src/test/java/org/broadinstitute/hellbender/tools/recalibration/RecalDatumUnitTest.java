@@ -35,10 +35,6 @@ public class RecalDatumUnitTest extends BaseTest {
             return (exError + 1) / (1.0 * (exTotal + 2));
         }
 
-        public double getErrorRatePhredScaled() {
-            return QualityUtils.phredScaleErrorRate(getErrorRate());
-        }
-
         public int getReportedQual() {
             return reportedQual;
         }

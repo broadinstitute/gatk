@@ -14,7 +14,6 @@ public class ReadClipperTestUtils {
 
     final static byte[] BASES = {'A', 'C', 'T', 'G'};
     final static byte[] QUALS = {2, 15, 25, 30};
-    final static String CIGAR = "4M";
     final static CigarElement[] cigarElements = {new CigarElement(1, CigarOperator.HARD_CLIP),
             new CigarElement(1, CigarOperator.SOFT_CLIP),
             new CigarElement(1, CigarOperator.INSERTION),

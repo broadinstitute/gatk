@@ -19,7 +19,6 @@ public class ReadsDataSourceUnitTest extends BaseTest {
     private static final File FIRST_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private static final File SECOND_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
     private static final File THIRD_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {

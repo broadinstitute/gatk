@@ -36,7 +36,6 @@ public class GATKReportTable {
     private static final String OLD_GATK_TABLE_VERSION = "We no longer support older versions of the GATK Tables";
 
     private static final int INITITAL_ARRAY_SIZE = 10000;
-    private static final String NUMBER_CONVERSION_EXCEPTION = "String is a number but is not a long or a double: ";
 
     protected enum TableDataHeaderFields {
         COLS(2),
@@ -190,23 +189,11 @@ public class GATKReportTable {
     }
 
     /**
-     * Create a new GATKReportTable with the same structure
-     * @param tableToCopy
-     */
-    public GATKReportTable(final GATKReportTable tableToCopy, final boolean copyData) {
-        this(tableToCopy.getTableName(), tableToCopy.getTableDescription(), tableToCopy.getNumColumns(), tableToCopy.sortingWay);
-        for ( final GATKReportColumn column : tableToCopy.getColumnInfo() )
-            addColumn(column.getColumnName(), column.getFormat());
-        if ( copyData )
-            throw new IllegalArgumentException("sorry, copying data in GATKReportTable isn't supported");
-    }
-
-        /**
-        * Verifies that a table or column name has only alphanumeric characters - no spaces or special characters allowed
-        *
-        * @param name the name of the table or column
-        * @return true if the name is valid, false if otherwise
-        */
+    * Verifies that a table or column name has only alphanumeric characters - no spaces or special characters allowed
+    *
+    * @param name the name of the table or column
+    * @return true if the name is valid, false if otherwise
+    */
     private boolean isValidName(String name) {
         Pattern p = Pattern.compile(INVALID_TABLE_NAME_REGEX);
         Matcher m = p.matcher(name);
@@ -225,15 +212,6 @@ public class GATKReportTable {
         Matcher m = p.matcher(description);
 
         return !m.find();
-    }
-
-    /**
-     * Add a mapping from ID to the index of a new row added to the table.
-     *
-     * @param ID                    the unique ID
-     */
-    public void addRowID(final String ID) {
-        addRowID(ID, false);
     }
 
     /**
@@ -269,15 +247,6 @@ public class GATKReportTable {
 
         if ( populateFirstColumn )
             set(index, 0, ID);
-    }
-
-    /**
-     * Remove a mapping from ID to row index.
-     *
-     * @param ID   the row ID
-     */
-    public void removeRowIDMapping(final Object ID) {
-        rowIdToIndex.remove(ID);
     }
 
     /**
@@ -374,23 +343,6 @@ public class GATKReportTable {
     }
 
     /**
-     * Returns true if the table contains a row mapping with the given ID
-     *
-     * @param rowID        the row ID
-     */
-    public boolean containsRowID(final Object rowID) {
-        return rowIdToIndex.containsKey(rowID);
-    }
-
-    /**
-     * Returns the row mapping IDs
-     *
-     */
-    public Collection<Object> getRowIDs() {
-        return rowIdToIndex.keySet();
-    }
-
-    /**
     * Increment the value for a given position in the table.
     * Throws an exception if the value in the cell is not an integer.
     *
@@ -411,36 +363,6 @@ public class GATKReportTable {
         }
 
         set(rowIdToIndex.get(rowID), columnNameToIndex.get(columnName), prevValue + 1);
-    }
-
-    /**
-     * Returns the index of the first row matching the column values.
-     * Ex: "CountVariants", "dbsnp", "eval", "called", "all", "novel", "all"
-     *
-     * @param columnValues column values.
-     * @return The index of the first row matching the column values or -1 if no such row exists.
-     */
-    public int findRowByData(final Object... columnValues) {
-        if ( columnValues == null || columnValues.length == 0 || columnValues.length > getNumColumns() )
-            return -1;
-
-        for ( int rowIndex = 0; rowIndex < underlyingData.size(); rowIndex++ ) {
-
-            final Object[] row = underlyingData.get(rowIndex);
-
-            boolean matches = true;
-            for ( int colIndex = 0; colIndex < columnValues.length; colIndex++ ) {
-                if ( !columnValues[colIndex].equals(row[colIndex]) ) {
-                    matches = false;
-                    break;
-                }
-            }
-
-            if ( matches )
-                return rowIndex;
-        }
-
-        return -1;
     }
 
     private Object fixType(final Object value, final GATKReportColumn column) {
@@ -628,16 +550,8 @@ public class GATKReportTable {
         return columnInfo.size();
     }
 
-    public List<GATKReportColumn> getColumnInfo() {
-        return columnInfo;
-    }
-
     public String getTableName() {
         return tableName;
-    }
-
-    public String getTableDescription() {
-        return tableDescription;
     }
 
     /**

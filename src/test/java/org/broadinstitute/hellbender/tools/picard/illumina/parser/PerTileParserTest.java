@@ -66,11 +66,6 @@ public class PerTileParserTest {
                 }
             };
         }
-
-        @Override
-        public Set<IlluminaDataType> supportedTypes() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
     }
 
     @Test

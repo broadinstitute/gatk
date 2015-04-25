@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.picard.vcf.concordance;
 
-import java.util.*;
-
 import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.*;
+import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.CallState;
+import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.ContingencyState;
+import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.TruthAndCallStates;
+import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.TruthState;
+
+import java.util.*;
 
 /**
  * A class to store the counts for various truth and call state classifications relative to a reference.  With these counts and a provided
@@ -98,16 +101,6 @@ public class GenotypeConcordanceCounts {
     }
 
     /**
-     * Returns the sensitivity defined by the scheme across all truth states.
-     */
-    public double getSensitivity(final GenotypeConcordanceScheme scheme) {
-        final List<TruthState> listOfTruthStates = Arrays.asList(TruthState.values());
-        TruthState[] allTruthStates = new TruthState[listOfTruthStates.size()];
-        allTruthStates = listOfTruthStates.toArray(allTruthStates);
-        return getSensitivity(scheme, allTruthStates);
-    }
-
-    /**
      * Returns the PPV defined by the scheme across the subset of call states.
      */
     public double Ppv(final GenotypeConcordanceScheme scheme, final CallState[] callStateList) {
@@ -135,16 +128,6 @@ public class GenotypeConcordanceCounts {
         }
 
         return (numerator / denominator);
-    }
-
-    /**
-     * Returns the PPV defined by the scheme across all call states.
-     */
-    public double getPpv(final GenotypeConcordanceScheme scheme) {
-        final List<CallState> listOfCallStates = Arrays.asList(CallState.values());
-        CallState[] allCallStates = new CallState[listOfCallStates.size()];
-        allCallStates = listOfCallStates.toArray(allCallStates);
-        return Ppv(scheme, allCallStates);
     }
 
     /**
@@ -177,16 +160,6 @@ public class GenotypeConcordanceCounts {
     }
 
     /**
-     * Returns the specificity defined by the scheme across all truth states.
-     */
-    public double getSpecificity(final GenotypeConcordanceScheme scheme) {
-        final List<TruthState> listOfTruthStates = Arrays.asList(TruthState.values());
-        TruthState[] allTruthStates = new TruthState[listOfTruthStates.size()];
-        allTruthStates = listOfTruthStates.toArray(allTruthStates);
-        return getSpecificity(scheme, allTruthStates);
-    }
-
-    /**
      * Returns the count defined by the truth state set and call state set.
      */
     public int getCount(final TruthState truthState, final CallState callState) {
@@ -214,13 +187,6 @@ public class GenotypeConcordanceCounts {
             }
         }
         return count;
-    }
-
-    /**
-     * Returns the sum of all pairs of tuples defined by the truth state set and call state set.
-     */
-    public int getSum() {
-        return getSum(new HashSet<>(Arrays.asList(TruthState.values())), new HashSet<>(Arrays.asList(CallState.values())));
     }
 
     /**

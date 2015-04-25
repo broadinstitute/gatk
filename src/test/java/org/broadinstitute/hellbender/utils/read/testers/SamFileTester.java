@@ -20,7 +20,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private int readNameCounter = 0;
     private boolean noMateCigars = false;
     private boolean deleteOnExit = true;
-    private final List args = new ArrayList<>();
+    private final List<String> args = new ArrayList<>();
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy) {
         this.deleteOnExit = deleteOnExit;
@@ -31,10 +31,6 @@ public abstract class SamFileTester extends CommandLineProgramTest {
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength) {
         this(readLength, deleteOnExit, defaultChromosomeLength, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
-    }
-
-    public SamFileTester(final int readLength, final boolean deleteOnExit) {
-        this(readLength, deleteOnExit, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH);
     }
 
     public void setHeader(final SAMFileHeader header) {
@@ -60,11 +56,6 @@ public abstract class SamFileTester extends CommandLineProgramTest {
 
     public void setOutput(final File output) {
         this.output = output;
-    }
-
-
-    public void addArg(final String arg) {
-        args.add(arg);
     }
 
     public void addArg(final String key, final String value) {
@@ -115,11 +106,6 @@ public abstract class SamFileTester extends CommandLineProgramTest {
         addFragment(referenceSequenceIndex, -1, true, false, null, null, defaultQualityScore, false);
     }
 
-    public void addUnmappedFragment(final int referenceSequenceIndex,
-                                    final String qualityString) {
-        addFragment(referenceSequenceIndex, -1, true, false, null, qualityString, -1, false);
-    }
-
     public void addUnmappedPair(final int referenceSequenceIndex,
                                 final int defaultQualityScore) {
         addMatePair(referenceSequenceIndex, -1, -1, true, true, false, false, null, null, false, false, false, false, false, defaultQualityScore);
@@ -138,12 +124,6 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     public void addMappedFragment(final int referenceSequenceIndex, final int alignmentStart, final boolean isDuplicate, final String cigar,
                                   final int defaultQualityScore) {
         addFragment(referenceSequenceIndex, alignmentStart, false, isDuplicate, cigar, null, defaultQualityScore, false);
-    }
-
-    public void addMappedFragment(final int referenceSequenceIndex, final int alignmentStart, final boolean isDuplicate, final String cigar,
-                                  final String qualityString,
-                                  final int defaultQualityScore) {
-        addFragment(referenceSequenceIndex, alignmentStart, false, isDuplicate, cigar, qualityString, defaultQualityScore, false);
     }
 
     public void addMappedPair(final int referenceSequenceIndex,

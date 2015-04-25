@@ -1,14 +1,6 @@
 package org.broadinstitute.hellbender.tools.picard.illumina.parser;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.BarcodeFileFaker;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.BclFileFaker;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.ClocsFileFaker;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.FilterFileFaker;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.LocsFileFaker;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.PosFileFaker;
+import org.broadinstitute.hellbender.tools.picard.illumina.parser.fakers.*;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.readers.TileMetricsOutReader;
 
 import java.io.File;
@@ -184,10 +176,6 @@ public class IlluminaFileUtil {
         }
 
         return tiles;
-    }
-
-    public File tileMetricsOut() {
-        return tileMetricsOut;
     }
 
     /*

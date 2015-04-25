@@ -90,11 +90,6 @@ public abstract class MultiTileParser<OUTPUT_RECORD extends IlluminaData> implem
     }
 
     @Override
-    public Set<IlluminaDataType> supportedTypes() {
-        return supportedTypes;
-    }
-
-    @Override
     public void remove() {
         throw new UnsupportedOperationException();
     }

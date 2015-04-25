@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.exceptions;
 
-import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -112,6 +110,7 @@ public class UserException extends RuntimeException {
     public static class CouldNotCreateOutputFile extends UserException {
         private static final long serialVersionUID = 0L;
 
+
         public CouldNotCreateOutputFile(File file, String message, Exception e) {
             super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)));
         }
@@ -140,10 +139,6 @@ public class UserException extends RuntimeException {
             this(read.getFileSource() != null ? read.getFileSource().getReader().toString() : "(none)", message);
         }
 
-        public MalformedBAM(File file, String message) {
-            this(file.toString(), message);
-        }
-
         public MalformedBAM(String source, String message) {
             super(String.format("SAM/BAM file %s is malformed: %s", source, message));
         }
@@ -169,10 +164,6 @@ public class UserException extends RuntimeException {
     public static class MalformedGenomeLoc extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public MalformedGenomeLoc(String message, GenomeLoc loc) {
-            super(String.format("Badly formed genome loc: %s: %s", message, loc));
-        }
-
         public MalformedGenomeLoc(String message) {
             super(String.format("Badly formed genome loc: %s", message));
         }
@@ -180,7 +171,6 @@ public class UserException extends RuntimeException {
         public MalformedGenomeLoc(String message, Exception e) {
             super(String.format("Badly formed genome loc: %s", message), e);
         }
-
     }
 
     /**
@@ -196,24 +186,12 @@ public class UserException extends RuntimeException {
             super(String.format("Unknown file is malformed: %s", message));
         }
 
-        public MalformedFile(String message, Exception e) {
-            super(String.format("Unknown file is malformed: %s caused by %s", message, getMessage(e)));
-        }
-
         public MalformedFile(File f, String message) {
             super(String.format("File %s is malformed: %s", f.getAbsolutePath(), message));
         }
 
         public MalformedFile(File f, String message, Exception e) {
             super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)));
-        }
-
-        public MalformedFile(String name, String message) {
-            super(String.format("File associated with name %s is malformed: %s", name, message));
-        }
-
-        public MalformedFile(String name, String message, Exception e) {
-            super(String.format("File associated with name %s is malformed: %s caused by %s", name, message, getMessage(e)));
         }
     }
 
@@ -281,9 +259,6 @@ public class UserException extends RuntimeException {
         public CannotExecuteRScript(String message) {
             super(String.format("Unable to execute RScript command: " + message));
         }
-        public CannotExecuteRScript(String message, Exception e) {
-            super(String.format("Unable to execute RScript command: " + message), e);
-        }
     }
 
     // todo -- fix up exception cause passing
@@ -304,36 +279,6 @@ public class UserException extends RuntimeException {
 
         public MisencodedBAM(SAMRecord read, String source, String message) {
             super(read, String.format("SAM/BAM file %s appears to be using the wrong encoding for quality scores: %s; please see the GATK --help documentation for options related to this error", source, message));
-        }
-    }
-
-    public static class ReadMissingReadGroup extends MalformedBAM {
-        private static final long serialVersionUID = 0L;
-
-        public ReadMissingReadGroup(final SAMRecord read) {
-            super(read, String.format("Read %s is missing the read group (RG) tag, which is required by the GATK.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getReadName()));
-        }
-    }
-
-    public static class ReadHasUndefinedReadGroup extends MalformedBAM {
-        private static final long serialVersionUID = 0L;
-
-        public ReadHasUndefinedReadGroup(final SAMRecord read, final String rgID) {
-            super(read, String.format("Read %s uses a read group (%s) that is not defined in the BAM header, which is not valid.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getReadName(), rgID));
-        }
-    }
-
-    public static class UnsupportedCigarOperatorException extends MalformedBAM {
-        private static final long serialVersionUID = 0L;
-
-        public UnsupportedCigarOperatorException(final CigarOperator co, final SAMRecord read, final String message) {
-            super(read, String.format(
-                    "Unsupported CIGAR operator %s in read %s at %s:%d. %s",
-                    co,
-                    read.getReadName(),
-                    read.getReferenceName(),
-                    read.getAlignmentStart(),
-                    message));
         }
     }
 

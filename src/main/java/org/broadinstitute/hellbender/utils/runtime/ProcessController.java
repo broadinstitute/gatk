@@ -241,25 +241,6 @@ public class ProcessController {
     }
 
     /**
-     * Executes a command line program with the settings and waits for it to return,
-     * processing the output on a background thread.
-     *
-     * Throws an IOException if the ProcessOutput exit code is nonzero
-     *
-     * @param settings Settings to be run.
-     */
-    public ProcessOutput execAndCheck(ProcessSettings settings) throws IOException {
-        ProcessOutput po = exec(settings);
-        if (po.getExitValue() != 0) {
-            String message = String.format("Process exited with %d\nCommand Line: %s",
-                    po.getExitValue(),
-                    String.join(" ", settings.getCommand()));
-            throw new IOException(message);
-        }
-        return po;
-    }
-
-    /**
      * @return The set of still running processes.
      */
     public static Set<ProcessController> getRunning() {

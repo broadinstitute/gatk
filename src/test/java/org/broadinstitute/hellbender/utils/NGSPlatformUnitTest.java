@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 public class NGSPlatformUnitTest extends BaseTest {
-    // example genome loc parser for this test, can be deleted if you don't use the reference
-    private GenomeLocParser genomeLocParser;
 
     // example fasta index file, can be deleted if you don't use the reference
     private IndexedFastaSequenceFile seq;
@@ -34,7 +32,6 @@ public class NGSPlatformUnitTest extends BaseTest {
     public void setup() throws FileNotFoundException {
         // sequence
         seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
-        genomeLocParser = new GenomeLocParser(seq);
     }
 
     @DataProvider(name = "TestPrimary")

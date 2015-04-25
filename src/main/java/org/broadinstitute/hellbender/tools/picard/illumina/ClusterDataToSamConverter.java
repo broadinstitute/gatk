@@ -1,20 +1,14 @@
 package org.broadinstitute.hellbender.tools.picard.illumina;
 
-import htsjdk.samtools.ReservedTagConstants;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.filter.SolexaNoiseFilter;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.ClusterData;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaReadNameEncoder;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadData;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadNameEncoder;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadStructure;
+import org.broadinstitute.hellbender.tools.picard.illumina.parser.*;
 import org.broadinstitute.hellbender.utils.illumina.AdapterMarker;
 import org.broadinstitute.hellbender.utils.illumina.AdapterPair;
 import org.broadinstitute.hellbender.utils.illumina.IlluminaUtil;
 
-import java.util.*;
+import java.util.List;
 
 import static htsjdk.samtools.ReservedTagConstants.XN;
 import static htsjdk.samtools.SAMTag.BC;
@@ -31,7 +25,6 @@ import static org.broadinstitute.hellbender.utils.illumina.IlluminaUtil.barcodeS
 public class ClusterDataToSamConverter implements
         IlluminaBasecallsConverter.ClusterDataConverter<IlluminaBasecallsToSam.SAMRecordsForCluster> {
 
-    private final String runBarcode;
     private final String readGroupId;
     private final SamRecordFilter filters = new SolexaNoiseFilter();
     private final boolean isPairedEnd;
@@ -55,7 +48,6 @@ public class ClusterDataToSamConverter implements
                                      final String readGroupId,
                                      final ReadStructure readStructure,
                                      final List<IlluminaUtil.IlluminaAdapterPair> adapters) {
-        this.runBarcode = runBarcode;
         this.readGroupId = readGroupId;
 
         this.readNameEncoder = new IlluminaReadNameEncoder(runBarcode);

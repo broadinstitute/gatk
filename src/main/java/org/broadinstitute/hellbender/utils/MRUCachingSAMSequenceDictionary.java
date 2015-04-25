@@ -55,15 +55,6 @@ final class MRUCachingSAMSequenceDictionary {
     }
 
     /**
-     * Is contig index present in the dictionary?  Efficiently caching.
-     * @param contigIndex an integer offset that might map to a contig in this dictionary
-     * @return true if contigIndex is in dictionary, false otherwise
-     */
-    public final boolean hasContigIndex(final int contigIndex) {
-        return lastIndex == contigIndex || dict.getSequence(contigIndex) != null;
-    }
-
-    /**
      * Same as SAMSequenceDictionary.getSequence but uses a MRU cache for efficiency
      *
      * @param contig the contig name we want to get the sequence record of

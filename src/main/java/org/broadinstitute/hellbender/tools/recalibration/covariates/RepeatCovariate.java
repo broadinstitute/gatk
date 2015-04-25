@@ -10,8 +10,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 public abstract class RepeatCovariate implements Covariate {
     protected int MAX_REPEAT_LENGTH;
@@ -142,14 +140,6 @@ public abstract class RepeatCovariate implements Covariate {
         return keyForRepeat((String) value);
     }
 
-    /**
-     * Get the mapping from read group names to integer key values for all read groups in this covariate
-     * @return a set of mappings from read group names -> integer key values
-     */
-    public Set<Map.Entry<String, Integer>> getKeyMap() {
-        return repeatLookupTable.entrySet();
-    }
-
     private int keyForRepeat(final String repeatID) {
         if ( ! repeatLookupTable.containsKey(repeatID) ) {
             repeatLookupTable.put(repeatID, nextId);
@@ -178,28 +168,6 @@ public abstract class RepeatCovariate implements Covariate {
             throw new IllegalStateException("Covariate is not of form (Repeat Unit) + Integer");
 
         return new MutablePair<>(value.substring(0,k), nr);
-    }
-
-    /**
-     * Gets bases from tandem repeat representation (Repeat Unit),(Number of Repeats).
-     * For example, (AGC),3 returns AGCAGCAGC
-     * @param repeatUnit    Tandem repeat unit
-     * @param numRepeats    Number of repeats
-     * @return              Expanded String
-     */
-    public static String getBasesFromRUandNR(final String repeatUnit, final int numRepeats) {
-        final StringBuilder sb = new StringBuilder();
-
-        for (int i=0; i < numRepeats; i++)
-            sb.append(repeatUnit);
-
-        return sb.toString();
-    }
-
-    // version given covariate key
-    public static String getBasesFromRUandNR(final String covariateValue) {
-        Pair<String,Integer> pair = getRUandNRfromCovariate(covariateValue);
-        return getBasesFromRUandNR(pair.getLeft(), pair.getRight());
     }
 
     @Override

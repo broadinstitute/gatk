@@ -56,13 +56,6 @@ public class Tile {
     }
 
     /**
-     * Returns the number/name of this tile.
-     */
-    public int getTileNumber() {
-        return tile;
-    }
-
-    /**
      * Returns the cluster density of this tile, in units of [cluster/mm^2].
      */
     public float getClusterDensity() {

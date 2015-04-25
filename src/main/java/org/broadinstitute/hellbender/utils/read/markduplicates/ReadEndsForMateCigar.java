@@ -93,22 +93,6 @@ public class ReadEndsForMateCigar extends ReadEnds {
         }
     }
 
-    /** Creates a shallow copy from the "other" */
-    public ReadEndsForMateCigar(final ReadEndsForMateCigar other, final SamRecordWithOrdinal samRecordWithOrdinal) {
-        this.readGroup = other.readGroup;
-        this.tile = other.tile;
-        this.x = other.x;
-        this.y = other.y;
-        this.read1ReferenceIndex = other.read1ReferenceIndex;
-        this.read1Coordinate = other.read1Coordinate;
-        this.read2ReferenceIndex = other.read2ReferenceIndex;
-        this.read2Coordinate = other.read2Coordinate;
-        this.hasUnmapped = other.hasUnmapped;
-        this.samRecordWithOrdinal = samRecordWithOrdinal;
-        this.orientation = other.orientation;
-        this.libraryId = other.libraryId;
-    }
-
     /** A number of convenience functions */
     public SamRecordWithOrdinal getSamRecordIndex() { return this.samRecordWithOrdinal; }
 

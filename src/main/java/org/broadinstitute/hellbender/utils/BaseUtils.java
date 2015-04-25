@@ -27,7 +27,6 @@ public class BaseUtils {
 
     // todo -- add this to the generalized base abstraction using the Base enum.
     public final static byte[] BASES = {'A', 'C', 'G', 'T'};
-    public final static byte[] EXTENDED_BASES = {'A', 'C', 'G', 'T', 'N', 'D'};
 
     static private final int[] baseIndexMap = new int[256];
     static {

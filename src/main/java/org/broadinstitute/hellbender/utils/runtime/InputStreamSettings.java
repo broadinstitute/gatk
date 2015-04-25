@@ -16,29 +16,6 @@ public class InputStreamSettings {
     public InputStreamSettings() {
     }
 
-    /**
-     * @param inputBuffer String to write to stdin.
-     */
-    public InputStreamSettings(String inputBuffer) {
-        setInputBuffer(inputBuffer);
-    }
-
-    /**
-     * @param inputFile File to write to stdin.
-     */
-    public InputStreamSettings(File inputFile) {
-        setInputFile(inputFile);
-    }
-
-    /**
-     * @param inputBuffer String to write to stdin.
-     * @param inputFile   File to write to stdin.
-     */
-    public InputStreamSettings(byte[] inputBuffer, File inputFile) {
-        setInputBuffer(inputBuffer);
-        setInputFile(inputFile);
-    }
-
     public Set<StreamLocation> getStreamLocations() {
         return Collections.unmodifiableSet(streamLocations);
     }
@@ -54,18 +31,6 @@ public class InputStreamSettings {
         this.inputBuffer = inputBuffer.getBytes();
     }
 
-    public void setInputBuffer(byte[] inputBuffer) {
-        if (inputBuffer == null)
-            throw new IllegalArgumentException("inputBuffer cannot be null");
-        this.streamLocations.add(StreamLocation.Buffer);
-        this.inputBuffer = inputBuffer;
-    }
-
-    public void clearInputBuffer() {
-        this.streamLocations.remove(StreamLocation.Buffer);
-        this.inputBuffer = null;
-    }
-
     public File getInputFile() {
         return inputFile;
     }
@@ -75,17 +40,5 @@ public class InputStreamSettings {
             throw new IllegalArgumentException("inputFile cannot be null");
         this.streamLocations.add(StreamLocation.File);
         this.inputFile = inputFile;
-    }
-
-    public void clearInputFile() {
-        this.streamLocations.remove(StreamLocation.File);
-        this.inputFile = null;
-    }
-
-    public void setInputStandard(boolean inputStandard) {
-        if (inputStandard)
-            this.streamLocations.add(StreamLocation.Standard);
-        else
-            this.streamLocations.remove(StreamLocation.Standard);
     }
 }

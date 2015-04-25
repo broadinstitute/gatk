@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -11,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.List;
 
@@ -218,7 +218,6 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns the header for the specified source of Features
-     *
      * @param featureDescriptor FeatureInput whose header to retrieve
      * @param <T> type of Feature in our FeatureInput
      * @return header for the provided FeatureInput (null if we have no sources of Features)

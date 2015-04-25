@@ -22,7 +22,6 @@ public class ReadCovariatesUnitTest {
     @Test(enabled = false)
     public void testCovariateGeneration() {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
-        final String RGID = "id";
 
         ReadGroupCovariate rgCov = new ReadGroupCovariate();
         QualityScoreCovariate qsCov = new QualityScoreCovariate();

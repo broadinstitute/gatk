@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.picard.illumina.parser;
 
-import htsjdk.samtools.util.CoordMath;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -151,10 +151,6 @@ public class ReadStructure {
      */
     public ReadStructure(final String readStructureString) {
         this(readStructureStringToDescriptors(readStructureString));
-    }
-
-    public int getNumDescriptors() {
-        return descriptors.size();
     }
 
     /**

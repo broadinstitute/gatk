@@ -14,36 +14,6 @@ public class OutputStreamSettings {
     private File outputFile;
     private boolean appendFile;
 
-    public OutputStreamSettings() {
-    }
-
-    /**
-     * @param bufferSize The number of bytes to capture, or -1 for unlimited.
-     */
-    public OutputStreamSettings(int bufferSize) {
-        setBufferSize(bufferSize);
-    }
-
-    /**
-     * @param outputFile The file to write output to.
-     */
-    public OutputStreamSettings(File outputFile) {
-        setOutputFile(outputFile);
-    }
-
-    /**
-     * @param outputFile The file to write output to.
-     * @param append     true if the output file should be appended to.
-     */
-    public OutputStreamSettings(File outputFile, boolean append) {
-        setOutputFile(outputFile, append);
-    }
-
-    public OutputStreamSettings(int bufferSize, File outputFile, boolean appendFile) {
-        setBufferSize(bufferSize);
-        setOutputFile(outputFile, appendFile);
-    }
-
     public Set<StreamLocation> getStreamLocations() {
         return Collections.unmodifiableSet(streamLocations);
     }
@@ -55,11 +25,6 @@ public class OutputStreamSettings {
     public void setBufferSize(int bufferSize) {
         this.streamLocations.add(StreamLocation.Buffer);
         this.bufferSize = bufferSize;
-    }
-
-    public void clearBufferSize() {
-        this.streamLocations.remove(StreamLocation.Buffer);
-        this.bufferSize = 0;
     }
 
     public File getOutputFile() {
@@ -85,12 +50,6 @@ public class OutputStreamSettings {
         streamLocations.add(StreamLocation.File);
         this.outputFile = outputFile;
         this.appendFile = append;
-    }
-
-    public void clearOutputFile() {
-        streamLocations.remove(StreamLocation.File);
-        this.outputFile = null;
-        this.appendFile = false;
     }
 
     public void printStandard(boolean print) {

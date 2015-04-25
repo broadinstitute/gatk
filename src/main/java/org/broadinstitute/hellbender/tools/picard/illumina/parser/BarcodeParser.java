@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.picard.illumina.parser;
 
 import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CollectionUtil;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.readers.BarcodeFileReader;
 
 import java.io.File;
-import java.util.*;
+import java.util.Set;
 
 import static htsjdk.samtools.util.CollectionUtil.makeSet;
 import static java.util.Collections.unmodifiableSet;
@@ -20,10 +19,6 @@ class BarcodeParser extends PerTileParser<BarcodeData> {
 
     public BarcodeParser(final IlluminaFileMap tilesToFiles) {
         super(tilesToFiles);
-    }
-
-    public BarcodeParser(final IlluminaFileMap tilesToFiles, final int nextTile) {
-        super(tilesToFiles, nextTile);
     }
 
     @Override

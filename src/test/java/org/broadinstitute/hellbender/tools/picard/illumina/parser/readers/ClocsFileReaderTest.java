@@ -16,7 +16,6 @@ public class ClocsFileReaderTest {
     public static final File MBCF_W_EMPTY_BINS_AT_START   = new File(TEST_DIR, "s_3_2103.clocs");
     public static final File MBCF_W_EMPTY_BINS_AT_END     = new File(TEST_DIR, "s_3_2104.clocs");
     public static final File MBCF_W_EMPTY_BINS_THROUGHOUT = new File(TEST_DIR, "s_3_2105.clocs");
-    public static final int MULTI_BIN_PASSING_CLOCS_TILE = 2102;
     public static final int MULTI_BIN_PASSING_CLOCS_LANE = 3;
     public static final int MULTI_BIN_EXPECTED_NUM_VALUES = 271;
 

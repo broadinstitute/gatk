@@ -24,7 +24,7 @@ public class AlleleBalanceFilter implements VariantFilter {
         this.hetAlleleBalance = hetAlleleBalance;
     }
 
-    private static class Counts { int samples; int allele1; int allele2; }
+    private static class Counts { int allele1; int allele2; }
 
     @Override
     public List<VCFFilterHeaderLine> headerLines() {

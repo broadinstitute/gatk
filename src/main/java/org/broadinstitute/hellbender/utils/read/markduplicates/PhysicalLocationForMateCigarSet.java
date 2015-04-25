@@ -26,9 +26,6 @@ public class PhysicalLocationForMateCigarSet {
         }
     }
 
-    /** The number of records in this set */
-    public int size() { return physicalLocations.size(); }
-
     /** Removes the end from this set, if present */
     public void remove(final ReadEndsForMateCigar end) {
         final PhysicalLocationForMateCigar location = new PhysicalLocationForMateCigar(end);
