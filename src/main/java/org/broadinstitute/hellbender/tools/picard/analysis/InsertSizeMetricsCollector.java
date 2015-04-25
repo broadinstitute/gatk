@@ -70,7 +70,7 @@ public class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMe
 
     /** A Collector for individual InsertSizeMetrics for a given SAMPLE or SAMPLE/LIBRARY or SAMPLE/LIBRARY/READ_GROUP (depending on aggregation levels) */
     public class PerUnitInsertSizeMetricsCollector implements PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
-        final EnumMap<SamPairUtil.PairOrientation, Histogram<Integer>> Histograms = new EnumMap<SamPairUtil.PairOrientation, Histogram<Integer>>(SamPairUtil.PairOrientation.class);
+        final EnumMap<SamPairUtil.PairOrientation, Histogram<Integer>> Histograms = new EnumMap<>(SamPairUtil.PairOrientation.class);
         final String sample;
         final String library;
         final String readGroup;
@@ -93,9 +93,9 @@ public class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMe
             else {
                 prefix = "All_Reads.";
             }
-            Histograms.put(SamPairUtil.PairOrientation.FR,     new Histogram<Integer>("insert_size", prefix + "fr_count"));
-            Histograms.put(SamPairUtil.PairOrientation.TANDEM, new Histogram<Integer>("insert_size", prefix + "tandem_count"));
-            Histograms.put(SamPairUtil.PairOrientation.RF,     new Histogram<Integer>("insert_size", prefix + "rf_count"));
+            Histograms.put(SamPairUtil.PairOrientation.FR,     new Histogram<>("insert_size", prefix + "fr_count"));
+            Histograms.put(SamPairUtil.PairOrientation.TANDEM, new Histogram<>("insert_size", prefix + "tandem_count"));
+            Histograms.put(SamPairUtil.PairOrientation.RF,     new Histogram<>("insert_size", prefix + "rf_count"));
         }
 
         public void acceptRecord(final InsertSizeCollectorArgs args) {

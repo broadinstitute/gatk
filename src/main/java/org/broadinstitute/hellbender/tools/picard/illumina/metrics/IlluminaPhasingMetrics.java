@@ -24,7 +24,7 @@ public class IlluminaPhasingMetrics extends MetricBase {
      */
     public static Collection<IlluminaPhasingMetrics> getPhasingMetricsForTiles(final long lane, final Collection<Tile> tilesForLane) {
         final LanePhasingMetricsCollector lanePhasingMetricsCollector = new LanePhasingMetricsCollector(tilesForLane);
-        final Collection<IlluminaPhasingMetrics> phasingMetrics = new ArrayList<IlluminaPhasingMetrics>();
+        final Collection<IlluminaPhasingMetrics> phasingMetrics = new ArrayList<>();
         for (final TileTemplateRead tileTemplateRead : lanePhasingMetricsCollector.getMedianPhasingMap().keySet()) {
             final IlluminaPhasingMetrics phasingMetric = new IlluminaPhasingMetrics();
             phasingMetric.LANE = lane;

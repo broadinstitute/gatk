@@ -50,7 +50,7 @@ public class IntervalListScattererTest extends CommandLineProgramTest {
         }
     }
 
-    private static final List<Testcase> testcases = new ArrayList<Testcase>();
+    private static final List<Testcase> testcases = new ArrayList<>();
 
     static {
         testcases.add(new Testcase(

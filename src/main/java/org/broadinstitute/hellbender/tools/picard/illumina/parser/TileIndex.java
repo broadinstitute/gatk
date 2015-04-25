@@ -26,7 +26,7 @@ import static java.nio.ByteOrder.LITTLE_ENDIAN;
  */
 public class TileIndex implements Iterable<TileIndex.TileIndexRecord> {
     private final File tileIndexFile;
-    private final List<TileIndexRecord> tiles = new ArrayList<TileIndexRecord>();
+    private final List<TileIndexRecord> tiles = new ArrayList<>();
 
     TileIndex(final File tileIndexFile) {
         try {
@@ -78,15 +78,15 @@ public class TileIndex implements Iterable<TileIndex.TileIndexRecord> {
     }
 
     public List<Integer> getTiles() {
-        final List<Integer> ret = new ArrayList<Integer>(tiles.size());
+        final List<Integer> ret = new ArrayList<>(tiles.size());
         for (final TileIndexRecord rec : tiles) ret.add(rec.tile);
         return ret;
     }
 
     public List<String> verify(final List<Integer> expectedTiles) {
-        final Set<Integer> tileSet = new HashSet<Integer>(tiles.size());
+        final Set<Integer> tileSet = new HashSet<>(tiles.size());
         for (final TileIndexRecord rec : tiles) tileSet.add(rec.tile);
-        final List<String> failures = new LinkedList<String>();
+        final List<String> failures = new LinkedList<>();
         for (final int expectedTile : expectedTiles) {
             if (!tileSet.contains(expectedTile)) {
                 failures.add("Tile " + expectedTile + " not found in " + tileIndexFile.getAbsolutePath());

@@ -154,6 +154,6 @@ public class FeatureManagerUnitTest extends BaseTest {
 
         // Requests for FeatureInputs not declared in the tool's class hierarchy (or associated ArgumentCollections)
         // should throw an exception
-        manager.getFeatures(new FeatureInput<Feature>("featureInputNotDeclaredInTool"), new SimpleInterval("1", 1, 1));
+        manager.getFeatures(new FeatureInput<>("featureInputNotDeclaredInTool"), new SimpleInterval("1", 1, 1));
     }
 }

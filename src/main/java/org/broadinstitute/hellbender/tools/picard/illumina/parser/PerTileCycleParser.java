@@ -60,7 +60,7 @@ abstract class PerTileCycleParser<ILLUMINA_DATA extends IlluminaData> implements
     }
 
     private TreeSet<Integer> getTileOrder(final CycleIlluminaFileMap cyclesToTileFiles) {
-        final TreeSet<Integer> uniqueTiles = new TreeSet<Integer>();
+        final TreeSet<Integer> uniqueTiles = new TreeSet<>();
 
         for (final IlluminaFileMap fileMap : cyclesToTileFiles.values()) {
             uniqueTiles.addAll(fileMap.keySet());
@@ -106,7 +106,7 @@ abstract class PerTileCycleParser<ILLUMINA_DATA extends IlluminaData> implements
         }
 
         int totalCycles = 0;
-        final List<File> tileFiles = new ArrayList<File>();
+        final List<File> tileFiles = new ArrayList<>();
         for (final Map.Entry<Integer, IlluminaFileMap> entry : cyclesToTileFiles.entrySet()) {
             tileFiles.add(entry.getValue().get(currentTile));
             ++totalCycles;
@@ -167,7 +167,7 @@ abstract class PerTileCycleParser<ILLUMINA_DATA extends IlluminaData> implements
     @Override
     public void verifyData(List<Integer> tiles, final int[] cycles) {
         if (tiles == null) {
-            tiles = new ArrayList<Integer>(this.cyclesToTileFiles.keySet());
+            tiles = new ArrayList<>(this.cyclesToTileFiles.keySet());
         }
         this.cyclesToTileFiles.assertValid(tiles, cycles);
     }

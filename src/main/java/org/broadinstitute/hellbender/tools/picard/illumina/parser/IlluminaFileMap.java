@@ -32,6 +32,6 @@ class IlluminaFileMap extends TreeMap<Integer, File> {
      * @return A List of files for all tiles >= startingTile that are contained in this FileMap
      */
     public List<File> getFilesStartingAt(final int startingTile) {
-        return new ArrayList<File>(this.tailMap(startingTile).values());
+        return new ArrayList<>(this.tailMap(startingTile).values());
     }
 }

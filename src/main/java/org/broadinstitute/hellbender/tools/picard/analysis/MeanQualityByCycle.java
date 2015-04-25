@@ -100,7 +100,7 @@ public class MeanQualityByCycle extends SinglePassSamProgram {
 
         Histogram<Integer> getMeanQualityHistogram() {
             final String label = useOriginalQualities ? "MEAN_ORIGINAL_QUALITY" : "MEAN_QUALITY";
-            final Histogram<Integer> meanQualities = new Histogram<Integer>("CYCLE", label);
+            final Histogram<Integer> meanQualities = new Histogram<>("CYCLE", label);
 
             int firstReadLength = 0;
 

@@ -45,7 +45,7 @@ public class MakeSitesOnlyVcf extends PicardCommandLineProgram {
     public File OUTPUT;
 
     @Argument(shortName = "S", doc = "Optionally one or more samples to retain when building the 'sites-only' VCF.", optional=true)
-    public Set<String> SAMPLE = new TreeSet<String>();
+    public Set<String> SAMPLE = new TreeSet<>();
 
 	public MakeSitesOnlyVcf() {
 		CREATE_INDEX = true;

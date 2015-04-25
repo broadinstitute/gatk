@@ -228,7 +228,7 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
 
         log.info("Will store " + MAX_RECORDS_IN_RAM + " read pairs in memory before sorting.");
 
-        final List<SAMReadGroupRecord> readGroups = new ArrayList<SAMReadGroupRecord>();
+        final List<SAMReadGroupRecord> readGroups = new ArrayList<>();
         final int recordsRead = 0;
         final SortingCollection<PairedReadSequence> sorter = SortingCollection.newInstance(PairedReadSequence.class,
                 new PairedReadCodec(),
@@ -239,7 +239,7 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
         // Loop through the input files and pick out the read sequences etc.
         final ProgressLogger progress = new ProgressLogger(log, (int) 1e6, "Read");
         for (final File f : INPUT) {
-            final Map<String, PairedReadSequence> pendingByName = new HashMap<String, PairedReadSequence>();
+            final Map<String, PairedReadSequence> pendingByName = new HashMap<>();
             final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(f);
             readGroups.addAll(in.getFileHeader().getReadGroups());
 
@@ -290,10 +290,10 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
         log.info("Finished reading - moving on to scanning for duplicates.");
 
         // Now go through the sorted reads and attempt to find duplicates
-        final PeekableIterator<PairedReadSequence> iterator = new PeekableIterator<PairedReadSequence>(sorter.iterator());
+        final PeekableIterator<PairedReadSequence> iterator = new PeekableIterator<>(sorter.iterator());
 
-        final Map<String, Histogram<Integer>> duplicationHistosByLibrary = new HashMap<String, Histogram<Integer>>();
-        final Map<String, Histogram<Integer>> opticalHistosByLibrary = new HashMap<String, Histogram<Integer>>();
+        final Map<String, Histogram<Integer>> duplicationHistosByLibrary = new HashMap<>();
+        final Map<String, Histogram<Integer>> opticalHistosByLibrary = new HashMap<>();
 
         int groupsProcessed = 0;
         long lastLogTime = System.currentTimeMillis();
@@ -321,8 +321,8 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
                     Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
                     Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
                     if (duplicationHisto == null) {
-                        duplicationHisto = new Histogram<Integer>("duplication_group_count", library);
-                        opticalHisto = new Histogram<Integer>("duplication_group_count", "optical_duplicates");
+                        duplicationHisto = new Histogram<>("duplication_group_count", library);
+                        opticalHisto = new Histogram<>("duplication_group_count", "optical_duplicates");
                         duplicationHistosByLibrary.put(library, duplicationHisto);
                         opticalHistosByLibrary.put(library, opticalHisto);
                     }
@@ -331,7 +331,7 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
                     for (int i = 0; i < seqs.size(); ++i) {
                         final PairedReadSequence lhs = seqs.get(i);
                         if (lhs == null) continue;
-                        final List<PairedReadSequence> dupes = new ArrayList<PairedReadSequence>();
+                        final List<PairedReadSequence> dupes = new ArrayList<>();
 
                         for (int j = i + 1; j < seqs.size(); ++j) {
                             final PairedReadSequence rhs = seqs.get(j);
@@ -431,7 +431,7 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
      * identify duplicates.
      */
     List<PairedReadSequence> getNextGroup(final PeekableIterator<PairedReadSequence> iterator) {
-        final List<PairedReadSequence> group = new ArrayList<PairedReadSequence>();
+        final List<PairedReadSequence> group = new ArrayList<>();
         final PairedReadSequence first = iterator.next();
         group.add(first);
 
@@ -455,7 +455,7 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
     Map<String, List<PairedReadSequence>> splitByLibrary(final List<PairedReadSequence> input,
                                                          final List<SAMReadGroupRecord> rgs) {
 
-        final Map<String, List<PairedReadSequence>> out = new HashMap<String, List<PairedReadSequence>>();
+        final Map<String, List<PairedReadSequence>> out = new HashMap<>();
         for (final PairedReadSequence seq : input) {
             String library = null;
             if (seq.getReadGroup() != -1) {
@@ -467,7 +467,7 @@ public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCom
 
             List<PairedReadSequence> librarySeqs = out.get(library);
             if (librarySeqs == null) {
-                librarySeqs = new ArrayList<PairedReadSequence>();
+                librarySeqs = new ArrayList<>();
                 out.put(library, librarySeqs);
             }
             librarySeqs.add(seq);

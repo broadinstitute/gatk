@@ -87,7 +87,7 @@ public class GATKReportUnitTest extends BaseTest {
             System.err.println ("Error: " + e.getMessage());
         }
 
-        ArrayList<int[]> rows = new ArrayList<int[]>();
+        ArrayList<int[]> rows = new ArrayList<>();
         try {
             // Open the file
             FileInputStream fStream = new FileInputStream(testingSortingTableFile);

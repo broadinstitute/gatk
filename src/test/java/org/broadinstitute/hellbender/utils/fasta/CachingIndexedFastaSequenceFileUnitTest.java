@@ -122,7 +122,7 @@ public class CachingIndexedFastaSequenceFileUnitTest extends BaseTest {
 
     @DataProvider(name = "ParallelFastaTest")
     public Object[][] createParallelFastaTest() {
-        List<Object[]> params = new ArrayList<Object[]>();
+        List<Object[]> params = new ArrayList<>();
 
         for ( File fasta : Arrays.asList(simpleFasta) ) {
             for ( int cacheSize : CACHE_SIZES ) {

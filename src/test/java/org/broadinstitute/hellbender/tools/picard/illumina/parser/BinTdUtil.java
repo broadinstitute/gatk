@@ -16,9 +16,9 @@ public class BinTdUtil {
     public static final byte G = (byte) 71;
     public static final byte T = (byte) 84;
     public static final byte P = (byte) 46; //dot
-    public static final Map<String, List<ClusterData>> goldData = new HashMap<String, List<ClusterData>>();
-    public static final Map<String, List<Integer>> goldIndices = new HashMap<String, List<Integer>>();
-    public static final Map<String, Integer> goldSizes = new HashMap<String, Integer>();
+    public static final Map<String, List<ClusterData>> goldData = new HashMap<>();
+    public static final Map<String, List<Integer>> goldIndices = new HashMap<>();
+    public static final Map<String, Integer> goldSizes = new HashMap<>();
 
     static {
         int lane = 1;
@@ -176,10 +176,10 @@ public class BinTdUtil {
     }
 
     public static Map<Integer, ClusterData> clusterData(final int lane, final List<Integer> tiles, final String readStructure, final IlluminaDataType... dataTypes) {
-        final List<Integer> sortedTiles = new ArrayList<Integer>(tiles);
+        final List<Integer> sortedTiles = new ArrayList<>(tiles);
         Collections.sort(sortedTiles);
 
-        final Map<Integer, ClusterData> data = new HashMap<Integer, ClusterData>();
+        final Map<Integer, ClusterData> data = new HashMap<>();
         int offset = 0;
         for (final int tile : sortedTiles) {
             final String key = ltStr(lane, tile);

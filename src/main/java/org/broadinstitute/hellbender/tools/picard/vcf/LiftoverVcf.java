@@ -91,7 +91,7 @@ public class LiftoverVcf extends PicardCommandLineProgram {
 
         log.info("Loading up the target reference genome.");
         final ReferenceSequenceFileWalker walker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
-        final Map<String,byte[]> refSeqs = new HashMap<String,byte[]>();
+        final Map<String,byte[]> refSeqs = new HashMap<>();
         for (final SAMSequenceRecord rec: walker.getSequenceDictionary().getSequences()) {
             refSeqs.put(rec.getSequenceName(), walker.get(rec.getSequenceIndex()).getBases());
         }
@@ -140,7 +140,7 @@ public class LiftoverVcf extends PicardCommandLineProgram {
             }
             else {
                 // Fix the alleles if we went from positive to negative strand
-                final List<Allele> alleles = new ArrayList<Allele>();
+                final List<Allele> alleles = new ArrayList<>();
                 for (final Allele oldAllele : ctx.getAlleles()) {
                     if (target.isPositiveStrand() || oldAllele.isSymbolic()) {
                         alleles.add(oldAllele);

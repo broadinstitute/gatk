@@ -147,7 +147,7 @@ public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
         CASAVA_1_8, ILLUMINA
     }
 
-    private final Map<String, FastqRecordsWriter> barcodeFastqWriterMap = new HashMap<String, FastqRecordsWriter>();
+    private final Map<String, FastqRecordsWriter> barcodeFastqWriterMap = new HashMap<>();
     private ReadStructure readStructure;
     IlluminaBasecallsConverter<FastqRecordsForCluster> basecallsConverter;
     private static final Log log = getInstance(IlluminaBasecallsToFastq.class);
@@ -172,7 +172,7 @@ public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
 
     @Override
     protected String[] customCommandLineValidation() {
-        final LinkedList<String> errors = new LinkedList<String>();
+        final LinkedList<String> errors = new LinkedList<>();
         if (READ_NAME_FORMAT == ReadNameFormat.CASAVA_1_8 && MACHINE_NAME == null) {
             errors.add("MACHINE_NAME is required when using Casava1.8-style read name headers.");
         }
@@ -216,7 +216,7 @@ public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
             demultiplex = true;
         }
         final int readsPerCluster = readStructure.templates.length() + readStructure.barcodes.length();
-        basecallsConverter = new IlluminaBasecallsConverter<FastqRecordsForCluster>(BASECALLS_DIR, BARCODES_DIR, LANE, readStructure,
+        basecallsConverter = new IlluminaBasecallsConverter<>(BASECALLS_DIR, BARCODES_DIR, LANE, readStructure,
                 barcodeFastqWriterMap, demultiplex, MAX_READS_IN_RAM_PER_TILE / readsPerCluster, TMP_DIR, NUM_PROCESSORS,
                 FORCE_GC, FIRST_TILE, TILE_LIMIT, queryNameComparator,
                 new FastqRecordsForClusterCodec(readStructure.templates.length(),
@@ -238,7 +238,7 @@ public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
      * @param expectedCols The columns that are REQUIRED
      */
     private void assertExpectedColumns(final Set<String> actualCols, final Set<String> expectedCols) {
-        final Set<String> missingColumns = new HashSet<String>(expectedCols);
+        final Set<String> missingColumns = new HashSet<>(expectedCols);
         missingColumns.removeAll(actualCols);
 
         if (missingColumns.size() > 0) {
@@ -257,7 +257,7 @@ public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
         final TabbedTextFileWithHeaderParser libraryParamsParser = new TabbedTextFileWithHeaderParser(MULTIPLEX_PARAMS);
 
         final Set<String> expectedColumnLabels = makeSet("OUTPUT_PREFIX");
-        final List<String> barcodeColumnLabels = new ArrayList<String>();
+        final List<String> barcodeColumnLabels = new ArrayList<>();
         for (int i = 1; i <= readStructure.barcodes.length(); i++) {
             barcodeColumnLabels.add("BARCODE_" + i);
         }
@@ -269,7 +269,7 @@ public class IlluminaBasecallsToFastq extends PicardCommandLineProgram {
             List<String> barcodeValues = null;
 
             if (barcodeColumnLabels.size() > 0) {
-                barcodeValues = new ArrayList<String>();
+                barcodeValues = new ArrayList<>();
                 for (final String barcodeLabel : barcodeColumnLabels) {
                     barcodeValues.add(row.getField(barcodeLabel));
                 }

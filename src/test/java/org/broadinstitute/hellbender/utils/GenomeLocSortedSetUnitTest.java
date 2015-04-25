@@ -317,7 +317,7 @@ public class GenomeLocSortedSetUnitTest extends BaseTest {
                 final GenomeLoc middle = genomeLocParser.createGenomeLocOnContig("2", regionStart + 1, regionStart + 2);
                 final GenomeLoc middle_past = genomeLocParser.createGenomeLocOnContig("2", region.getStop()-1, region.getStop()+10);
 
-                final List<GenomeLoc> potentials = new LinkedList<GenomeLoc>();
+                final List<GenomeLoc> potentials = new LinkedList<>();
                 potentials.add(region);
                 if ( spanning != null ) potentials.add(spanning);
                 if ( before_into != null ) potentials.add(before_into);

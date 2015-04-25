@@ -45,7 +45,7 @@ public class CalculateHsMetrics extends CollectTargetedMetrics<HsMetrics, HsMetr
         if (BAIT_SET_NAME != null) {
             return BAIT_SET_NAME;
         } else {
-            final SortedSet<String> baitSetNames = new TreeSet<String>();
+            final SortedSet<String> baitSetNames = new TreeSet<>();
             for (final File file : BAIT_INTERVALS) {
                 baitSetNames.add(CollectTargetedMetrics.renderProbeNameFromFile(file));
             }

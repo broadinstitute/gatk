@@ -50,7 +50,7 @@ public class DownsampleSam extends PicardCommandLineProgram {
         final Random r = RANDOM_SEED == null ? new Random() : new Random(RANDOM_SEED);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
         final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT);
-        final Map<String, Boolean> decisions = new HashMap<String, Boolean>();
+        final Map<String, Boolean> decisions = new HashMap<>();
 
         long total = 0;
         long kept = 0;

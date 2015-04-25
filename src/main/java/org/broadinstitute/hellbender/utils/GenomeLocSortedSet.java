@@ -26,7 +26,7 @@ public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
     private GenomeLocParser genomeLocParser;
 
     // our private storage for the GenomeLoc's
-    private final List<GenomeLoc> mArray = new ArrayList<GenomeLoc>();
+    private final List<GenomeLoc> mArray = new ArrayList<>();
 
     // cache this to make overlap checking much more efficient
     private int previousOverlapSearchIndex = -1;
@@ -64,7 +64,7 @@ public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
     public GenomeLocSortedSet(final GenomeLocParser parser, final Collection<GenomeLoc> l) {
         this(parser);
 
-        final ArrayList<GenomeLoc> sorted = new ArrayList<GenomeLoc>(l);
+        final ArrayList<GenomeLoc> sorted = new ArrayList<>(l);
         Collections.sort(sorted);
         mArray.addAll(IntervalUtils.mergeIntervalLocations(sorted, IntervalMergingRule.OVERLAPPING_ONLY));
     }
@@ -201,7 +201,7 @@ public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
         final int start = Math.max(-(index + 1) - 1, 0);
         final int size = mArray.size();
 
-        final List<GenomeLoc> overlapping = new LinkedList<GenomeLoc>();
+        final List<GenomeLoc> overlapping = new LinkedList<>();
         for ( int i = start; i < size; i++ ) {
             final GenomeLoc myLoc = mArray.get(i);
             if ( loc.overlapsP(myLoc) )
@@ -227,7 +227,7 @@ public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
      * @return a non-null list of locations that overlap loc
      */
     protected List<GenomeLoc> getOverlappingFullSearch(final GenomeLoc loc) {
-        final List<GenomeLoc> overlapping = new LinkedList<GenomeLoc>();
+        final List<GenomeLoc> overlapping = new LinkedList<>();
 
         // super slow, but definitely works
         for ( final GenomeLoc myLoc : mArray ) {
@@ -330,9 +330,9 @@ public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
     }
 
     public GenomeLocSortedSet subtractRegions(GenomeLocSortedSet toRemoveSet) {
-        LinkedList<GenomeLoc> good = new LinkedList<GenomeLoc>();
-        Stack<GenomeLoc> toProcess = new Stack<GenomeLoc>();
-        Stack<GenomeLoc> toExclude = new Stack<GenomeLoc>();
+        LinkedList<GenomeLoc> good = new LinkedList<>();
+        Stack<GenomeLoc> toProcess = new Stack<>();
+        Stack<GenomeLoc> toExclude = new Stack<>();
 
         // initialize the stacks
         toProcess.addAll(mArray);

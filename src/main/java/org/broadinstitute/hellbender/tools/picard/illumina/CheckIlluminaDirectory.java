@@ -45,7 +45,7 @@ public class CheckIlluminaDirectory extends PicardCommandLineProgram {
             "is left unspecified then both ExtractIlluminaBarcodes and IlluminaBaseCallsToSam should complete successfully UNLESS the " +
             "individual records of the files themselves are spurious.",
             shortName = "DT", optional = true)
-    public final Set<IlluminaDataType> DATA_TYPES = new TreeSet<IlluminaDataType>();
+    public final Set<IlluminaDataType> DATA_TYPES = new TreeSet<>();
 
     @Argument(doc = ReadStructure.PARAMETER_DOC + " Note:  If you want to check whether or not a future IlluminaBasecallsToSam or ExtractIlluminaBarcodes " +
             "run will fail then be sure to use the exact same READ_STRUCTURE that you would pass to these programs for this run.",
@@ -76,7 +76,7 @@ public class CheckIlluminaDirectory extends PicardCommandLineProgram {
             DATA_TYPES.addAll(Arrays.asList(IlluminaBasecallsConverter.DATA_TYPES_NO_BARCODE));
         }
 
-        final List<Integer> failingLanes = new ArrayList<Integer>();
+        final List<Integer> failingLanes = new ArrayList<>();
         int totalFailures = 0;
 
         final int[] expectedCycles = new OutputMapping(readStructure).getOutputCycles();
@@ -193,7 +193,7 @@ public class CheckIlluminaDirectory extends PicardCommandLineProgram {
                 }
             }
             log.info("Could not find a format with available files for the following data types: " + StringUtil
-                    .join(", ", new ArrayList<IlluminaDataType>(unmatchedDataTypes)));
+                    .join(", ", new ArrayList<>(unmatchedDataTypes)));
             numFailures += unmatchedDataTypes.size();
         }
 
@@ -218,7 +218,7 @@ public class CheckIlluminaDirectory extends PicardCommandLineProgram {
     @Override
     protected String[] customCommandLineValidation() {
         IOUtil.assertDirectoryIsReadable(BASECALLS_DIR);
-        final List<String> errors = new ArrayList<String>();
+        final List<String> errors = new ArrayList<>();
 
         for (final Integer lane : LANES) {
             if (lane < 1) {

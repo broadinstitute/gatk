@@ -53,8 +53,8 @@ public class ConvertSequencingArtifactToOxoG extends PicardCommandLineProgram {
          * Determine output fields. Just copy these from the input for now.
          */
         final String oxogSampleAlias = preAdapterDetailMetricsList.get(0).SAMPLE_ALIAS;
-        final Set<String> oxogLibraries = new HashSet<String>();
-        final Set<String> oxogContexts = new HashSet<String>();
+        final Set<String> oxogLibraries = new HashSet<>();
+        final Set<String> oxogContexts = new HashSet<>();
         for (final PreAdapterDetailMetrics preAdapter : preAdapterDetailMetricsList) {
             oxogLibraries.add(preAdapter.LIBRARY);
             // Remember that OxoG only reports on the 'C' contexts
@@ -68,11 +68,11 @@ public class ConvertSequencingArtifactToOxoG extends PicardCommandLineProgram {
          * Remember, we only care about two transitions - C>A and G>T! Thus, for each context we
          * will only store one metric.
          */
-        final Map<String, Map<String, PreAdapterDetailMetrics>> preAdapterDetailMetricsMap = new HashMap<String, Map<String, PreAdapterDetailMetrics>>();
-        final Map<String, Map<String, BaitBiasDetailMetrics>> baitBiasDetailMetricsMap = new HashMap<String, Map<String, BaitBiasDetailMetrics>>();
+        final Map<String, Map<String, PreAdapterDetailMetrics>> preAdapterDetailMetricsMap = new HashMap<>();
+        final Map<String, Map<String, BaitBiasDetailMetrics>> baitBiasDetailMetricsMap = new HashMap<>();
         for (final String library : oxogLibraries) {
-            final Map<String, PreAdapterDetailMetrics> contextsToPreAdapter = new HashMap<String, PreAdapterDetailMetrics>();
-            final Map<String, BaitBiasDetailMetrics> contextsToBaitBias = new HashMap<String, BaitBiasDetailMetrics>();
+            final Map<String, PreAdapterDetailMetrics> contextsToPreAdapter = new HashMap<>();
+            final Map<String, BaitBiasDetailMetrics> contextsToBaitBias = new HashMap<>();
             preAdapterDetailMetricsMap.put(library, contextsToPreAdapter);
             baitBiasDetailMetricsMap.put(library, contextsToBaitBias);
         }
@@ -92,7 +92,7 @@ public class ConvertSequencingArtifactToOxoG extends PicardCommandLineProgram {
         /**
          * Create the OxoG metrics
          */
-        final List<CpcgMetrics> oxogMetrics = new ArrayList<CpcgMetrics>();
+        final List<CpcgMetrics> oxogMetrics = new ArrayList<>();
         for (final String library : oxogLibraries) {
             for (final String context : oxogContexts) {
                 final CpcgMetrics m = new CpcgMetrics();

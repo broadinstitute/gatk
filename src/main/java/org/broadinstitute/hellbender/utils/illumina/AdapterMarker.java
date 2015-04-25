@@ -33,12 +33,12 @@ public class AdapterMarker {
 
     // This is AtomicReference because one thread could be matching adapters while the threshold has been crossed in another
     // thread and the array is being replaced.
-    private final AtomicReference<AdapterPair[]> adapters = new AtomicReference<AdapterPair[]>();
+    private final AtomicReference<AdapterPair[]> adapters = new AtomicReference<>();
 
     // All the members below are only accessed within a synchronized block.
     private boolean thresholdReached = false;
     private int numAdaptersSeen = 0;
-    private final CollectionUtil.DefaultingMap<AdapterPair, Integer> seenCounts = new CollectionUtil.DefaultingMap<AdapterPair, Integer>(0);
+    private final CollectionUtil.DefaultingMap<AdapterPair, Integer> seenCounts = new CollectionUtil.DefaultingMap<>(0);
 
     /**
      * Truncates adapters to DEFAULT_ADAPTER_LENGTH
@@ -54,7 +54,7 @@ public class AdapterMarker {
      */
     public AdapterMarker(final int adapterLength, final AdapterPair... originalAdapters) {
         // Truncate each AdapterPair to the given length, and then combine any that end up the same after truncation.
-        final ArrayList<TruncatedAdapterPair> truncatedAdapters = new ArrayList<TruncatedAdapterPair>();
+        final ArrayList<TruncatedAdapterPair> truncatedAdapters = new ArrayList<>();
         for (final AdapterPair adapter : originalAdapters) {
             final TruncatedAdapterPair truncatedAdapter = makeTruncatedAdapterPair(adapter, adapterLength);
             final int matchingIndex = truncatedAdapters.indexOf(truncatedAdapter);
@@ -218,7 +218,7 @@ public class AdapterMarker {
             if (numAdaptersSeen >= thresholdForSelectingAdaptersToKeep) {
 
                 // Sort adapters by number of times each has been seen.
-                final TreeMap<Integer, AdapterPair> sortedAdapters = new TreeMap<Integer, AdapterPair>(new Comparator<Integer>() {
+                final TreeMap<Integer, AdapterPair> sortedAdapters = new TreeMap<>(new Comparator<Integer>() {
                     @Override
                     public int compare(final Integer integer, final Integer integer2) {
                         // Reverse of natural ordering
@@ -230,7 +230,7 @@ public class AdapterMarker {
                 }
 
                 // Keep the #numAdaptersToKeep adapters that have been seen the most, plus any ties.
-                final ArrayList<AdapterPair> bestAdapters = new ArrayList<AdapterPair>(numAdaptersToKeep);
+                final ArrayList<AdapterPair> bestAdapters = new ArrayList<>(numAdaptersToKeep);
                 int countOfLastAdapter = Integer.MAX_VALUE;
                 for (final Map.Entry<Integer, AdapterPair> entry : sortedAdapters.entrySet()) {
                     if (bestAdapters.size() >= numAdaptersToKeep) {

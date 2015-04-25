@@ -22,7 +22,7 @@ public final class EventTypeUnitTest extends BaseTest {
 
     @Test
     public void testEventTypesEnumItself() {
-        final Set<String> shortReps = new HashSet<String>();
+        final Set<String> shortReps = new HashSet<>();
         for ( final EventType et : EventType.values() ) {
             Assert.assertFalse(shortReps.contains(et.toString()), "Short representative for EventType has duplicates for " + et);
             shortReps.add(et.toString());

@@ -37,7 +37,7 @@ public class BestMapqPrimaryAlignmentSelectionStrategy implements PrimaryAlignme
             // Need to use selected strategy for picking primary.
 
             // Find all the hits with the best MAPQ.
-            final List<Integer> primaryAlignmentIndices = new ArrayList<Integer>(hits.numHits());
+            final List<Integer> primaryAlignmentIndices = new ArrayList<>(hits.numHits());
             int bestMapQ = -1;
             for (int i = 0; i < hits.numHits(); ++i) {
                 final int firstEndMapq;

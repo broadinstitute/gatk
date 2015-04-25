@@ -76,7 +76,7 @@ public class CigarUtils {
     public static boolean isCigarValid(Cigar cigar) {
         if (cigar.isValid(null, -1) == null) {                                                                          // This should take care of most invalid Cigar Strings (picard's "exhaustive" implementation)
 
-            Stack<CigarElement> cigarElementStack = new Stack<CigarElement>();                                          // Stack to invert cigar string to find ending operator
+            Stack<CigarElement> cigarElementStack = new Stack<>();                                          // Stack to invert cigar string to find ending operator
             CigarOperator startingOp = null;
             CigarOperator endingOp = null;
 

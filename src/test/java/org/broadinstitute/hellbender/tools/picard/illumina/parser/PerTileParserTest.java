@@ -12,7 +12,7 @@ import static htsjdk.samtools.util.CollectionUtil.makeList;
 
 public class PerTileParserTest {
 
-    private static final Map<String, List<Integer>> FILE_TO_VALUE = new HashMap<String, List<Integer>>();
+    private static final Map<String, List<Integer>> FILE_TO_VALUE = new HashMap<>();
     private static final IlluminaFileMap FILE_MAP = new IlluminaFileMap();
     static {
         FILE_MAP.put(1, new File("s_1_1"));

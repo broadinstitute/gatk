@@ -33,11 +33,11 @@ public class HitsForInsert {
 
 
     // These are package-visible to make life easier for the PrimaryAlignmentSelectionStrategies.
-    final List<SAMRecord> firstOfPairOrFragment = new ArrayList<SAMRecord>();
-    final List<SAMRecord> secondOfPair = new ArrayList<SAMRecord>();
+    final List<SAMRecord> firstOfPairOrFragment = new ArrayList<>();
+    final List<SAMRecord> secondOfPair = new ArrayList<>();
 
-    private final List<SAMRecord> supplementalFirstOfPairOrFragment = new ArrayList<SAMRecord>();
-    private final List<SAMRecord> supplementalSecondOfPair = new ArrayList<SAMRecord>();
+    private final List<SAMRecord> supplementalFirstOfPairOrFragment = new ArrayList<>();
+    private final List<SAMRecord> supplementalSecondOfPair = new ArrayList<>();
 
     /**
      * @throws if numHits() == 0

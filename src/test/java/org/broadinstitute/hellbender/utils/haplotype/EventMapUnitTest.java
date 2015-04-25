@@ -21,7 +21,7 @@ public class EventMapUnitTest extends BaseTest {
 
     @DataProvider(name = "MyDataProvider")
     public Object[][] makeMyDataProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final List<String> SNP_ALLELES = Arrays.asList("A", "C");
         final List<String> INS_ALLELES = Arrays.asList("A", "ACGTGA");
@@ -32,21 +32,21 @@ public class EventMapUnitTest extends BaseTest {
                 for ( final int rightNotClump : Arrays.asList(-1, 1000) ) {
                     for ( final int nClumped : Arrays.asList(3, 4) ) {
                         for ( final List<List<String>> alleles : Utils.makePermutations(allAlleles, nClumped, true)) {
-                            final List<VariantContext> allVCS = new LinkedList<VariantContext>();
+                            final List<VariantContext> allVCS = new LinkedList<>();
 
                             if ( leftNotClump != -1 ) allVCS.add(GATKVariantContextUtils.makeFromAlleles(NAME, CHR, leftNotClump, SNP_ALLELES));
                             if ( middleNotClump != -1 ) allVCS.add(GATKVariantContextUtils.makeFromAlleles(NAME, CHR, middleNotClump, SNP_ALLELES));
                             if ( rightNotClump != -1 ) allVCS.add(GATKVariantContextUtils.makeFromAlleles(NAME, CHR, rightNotClump, SNP_ALLELES));
 
                             int clumpStart = 50;
-                            final List<VariantContext> vcs = new LinkedList<VariantContext>();
+                            final List<VariantContext> vcs = new LinkedList<>();
                             for ( final List<String> myAlleles : alleles ) {
                                 final VariantContext vc = GATKVariantContextUtils.makeFromAlleles(NAME, CHR, clumpStart, myAlleles);
                                 clumpStart = vc.getEnd() + 3;
                                 vcs.add(vc);
                             }
 
-                            tests.add(new Object[]{new EventMap(new LinkedList<VariantContext>(allVCS)), Collections.emptyList()});
+                            tests.add(new Object[]{new EventMap(new LinkedList<>(allVCS)), Collections.emptyList()});
                             allVCS.addAll(vcs);
                             tests.add(new Object[]{new EventMap(allVCS), vcs});
                         }
@@ -76,7 +76,7 @@ public class EventMapUnitTest extends BaseTest {
 
     @DataProvider(name = "BlockSubstitutionsData")
     public Object[][] makeBlockSubstitutionsData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( int size = EventMap.MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION; size < 10; size++ ) {
             final String ref = StringUtils.repeat("A", size);
@@ -115,7 +115,7 @@ public class EventMapUnitTest extends BaseTest {
 
     @DataProvider(name = "AdjacentSNPIndelTest")
     public Object[][] makeAdjacentSNPIndelTest() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[]{"TT", "GCT", "1M1I1M", Arrays.asList(Arrays.asList("T", "GC"))});
         tests.add(new Object[]{"GCT", "TT", "1M1D1M", Arrays.asList(Arrays.asList("GC", "T"))});
@@ -138,7 +138,7 @@ public class EventMapUnitTest extends BaseTest {
         final EventMap ee = new EventMap(hap, refBases.getBytes(), loc, NAME);
         ee.replaceClumpedEventsWithBlockSubstitutions();
         Assert.assertEquals(ee.getNumberOfEvents(), expectedAlleles.size());
-        final List<VariantContext> actuals = new ArrayList<VariantContext>(ee.getVariantContexts());
+        final List<VariantContext> actuals = new ArrayList<>(ee.getVariantContexts());
         for ( int i = 0; i < ee.getNumberOfEvents(); i++ ) {
             final VariantContext actual = actuals.get(i);
             Assert.assertEquals(actual.getReference().getDisplayString(), expectedAlleles.get(i).get(0));
@@ -148,7 +148,7 @@ public class EventMapUnitTest extends BaseTest {
 
     @DataProvider(name = "MakeBlockData")
     public Object[][] makeMakeBlockData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[]{Arrays.asList("A", "G"), Arrays.asList("AGT", "A"), Arrays.asList("AGT", "G")});
         tests.add(new Object[]{Arrays.asList("A", "G"), Arrays.asList("A", "AGT"), Arrays.asList("A", "GGT")});

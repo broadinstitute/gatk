@@ -109,8 +109,8 @@ public class RepeatCovariatesUnitTest {
         for (int r = 0; r < NUM_TEST_CASES; r++) {
             final StringBuilder sb = new StringBuilder();
             // for each unit, generate a repeat unit at random with given random length
-            final ArrayList<String> repeatUnits = new ArrayList<String>();
-            final ArrayList<Integer> numsRepetitions = new ArrayList<Integer>();
+            final ArrayList<String> repeatUnits = new ArrayList<>();
+            final ArrayList<Integer> numsRepetitions = new ArrayList<>();
             for (int n=0; n < NUM_UNITS; n++) {
                 final int repLength = 1+random.nextInt(MAX_REPEAT_UNIT_LENGTH);
                 final String repeatUnit = getRandomBases(repLength);

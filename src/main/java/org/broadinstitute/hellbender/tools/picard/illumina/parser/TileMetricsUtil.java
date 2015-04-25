@@ -57,7 +57,7 @@ public class TileMetricsUtil {
 
         // Collect the tiles by lane & tile, and then collect the metrics by lane
         final Map<String, Collection<IlluminaTileMetrics>> locationToMetricsMap = partitionTileMetricsByLocation(tileMetrics);
-        final Collection<Tile> tiles = new LinkedList<Tile>();
+        final Collection<Tile> tiles = new LinkedList<>();
         for (final Map.Entry<String, Collection<IlluminaTileMetrics>> entry : locationToMetricsMap.entrySet()) {
             final Collection<IlluminaTileMetrics> tileRecords = entry.getValue();
 
@@ -87,7 +87,7 @@ public class TileMetricsUtil {
      */
     private static Collection<TilePhasingValue> getTilePhasingValues(final Map<Integer, Collection<IlluminaTileMetrics>> codeMetricsMap, final ReadStructure readStructure) {
         boolean isFirstRead = true;
-        final Collection<TilePhasingValue> tilePhasingValues = new ArrayList<TilePhasingValue>();
+        final Collection<TilePhasingValue> tilePhasingValues = new ArrayList<>();
         for (int descriptorIndex = 0; descriptorIndex < readStructure.descriptors.size(); descriptorIndex++) {
             if (readStructure.descriptors.get(descriptorIndex).type == Template) {
                 final TileTemplateRead tileTemplateRead = isFirstRead ? FIRST : SECOND;
@@ -114,8 +114,8 @@ public class TileMetricsUtil {
      */
     private static Collection<IlluminaTileMetrics> determineLastValueForLaneTileMetricsCode(final Iterator<IlluminaTileMetrics>
                                                                                                     tileMetricsIterator) {
-        final Map<IlluminaLaneTileCode, IlluminaTileMetrics> filteredTileMetrics = new HashMap<IlluminaLaneTileCode, IlluminaTileMetrics>();
-        for (final IlluminaTileMetrics illuminaTileMetrics : new IterableAdapter<IlluminaTileMetrics>(tileMetricsIterator)) {
+        final Map<IlluminaLaneTileCode, IlluminaTileMetrics> filteredTileMetrics = new HashMap<>();
+        for (final IlluminaTileMetrics illuminaTileMetrics : new IterableAdapter<>(tileMetricsIterator)) {
             filteredTileMetrics.put(illuminaTileMetrics.getLaneTileCode(), illuminaTileMetrics);
         }
 

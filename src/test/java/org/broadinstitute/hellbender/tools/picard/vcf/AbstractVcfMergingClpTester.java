@@ -112,7 +112,7 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
 		final File five = new File(TEST_DATA_PATH, "CEUTrio-random-scatter-5.vcf");
         final List<File> inputs = Arrays.asList(zero, one, two, three, four, five);
 
-		final List<Queue<String>> positionQueues = new ArrayList<Queue<String>>(6);
+		final List<Queue<String>> positionQueues = new ArrayList<>(6);
 		positionQueues.add(0, loadContigPositions(zero));
 		positionQueues.add(1, loadContigPositions(one));
 		positionQueues.add(2, loadContigPositions(two));
@@ -154,7 +154,7 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
 
     static Queue<String> loadContigPositions(final File inputFile) {
 		final VCFFileReader reader = new VCFFileReader(inputFile, false);
-		final Queue<String> contigPositions = new LinkedList<String>();
+		final Queue<String> contigPositions = new LinkedList<>();
 		final CloseableIterator<VariantContext> iterator = reader.iterator();
 		while (iterator.hasNext()) contigPositions.add(getContigPosition(iterator.next()));
 		iterator.close();

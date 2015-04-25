@@ -44,7 +44,7 @@ public class MultiTileBclFileUtil extends ParameterizedFileUtil {
 
     public CycleIlluminaFileMap getFiles(final List<Integer> tiles, final int[] cycles) {
         // Filter input list of cycles according to which actually exist
-        final ArrayList<Integer> goodCycleList = new ArrayList<Integer>(cycles.length);
+        final ArrayList<Integer> goodCycleList = new ArrayList<>(cycles.length);
         for (final int cycle : cycles) {
             if (cycleFileMap.containsKey(cycle)) {
                 goodCycleList.add(cycle);

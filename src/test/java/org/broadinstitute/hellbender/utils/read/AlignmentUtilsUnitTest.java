@@ -104,14 +104,14 @@ public class AlignmentUtilsUnitTest {
 
     private final List<List<CigarElement>> makeCigarElementCombinations() {
         // this functionality can be adapted to provide input data for whatever you might want in your data
-        final List<CigarElement> cigarElements = new LinkedList<CigarElement>();
+        final List<CigarElement> cigarElements = new LinkedList<>();
         for ( final int size : Arrays.asList(0, 10) ) {
             for ( final CigarOperator op : CigarOperator.values() ) {
                 cigarElements.add(new CigarElement(size, op));
             }
         }
 
-        final List<List<CigarElement>> combinations = new LinkedList<List<CigarElement>>();
+        final List<List<CigarElement>> combinations = new LinkedList<>();
         for ( final int nElements : Arrays.asList(1, 2, 3) ) {
             combinations.addAll(Utils.makePermutations(cigarElements, nElements, true));
         }
@@ -122,7 +122,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "CalcNumDifferentBasesData")
     public Object[][] makeCalcNumDifferentBasesData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[]{"5M", "ACGTA", "ACGTA", 0});
         tests.add(new Object[]{"5M", "ACGTA", "ACGTT", 1});
@@ -149,7 +149,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "NumAlignedBasesCountingSoftClips")
     public Object[][] makeNumAlignedBasesCountingSoftClips() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final EnumSet<CigarOperator> alignedToGenome = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.S);
         for ( final List<CigarElement> elements : makeCigarElementCombinations() ) {
@@ -172,7 +172,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "CigarHasZeroElement")
     public Object[][] makeCigarHasZeroElement() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( final List<CigarElement> elements : makeCigarElementCombinations() ) {
             boolean hasZero = false;
@@ -190,7 +190,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "NumHardClipped")
     public Object[][] makeNumHardClipped() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( final List<CigarElement> elements : makeCigarElementCombinations() ) {
             int n = 0;
@@ -212,7 +212,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "NumAlignedBlocks")
     public Object[][] makeNumAlignedBlocks() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( final List<CigarElement> elements : makeCigarElementCombinations() ) {
             int n = 0;
@@ -239,7 +239,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "ConsolidateCigarData")
     public Object[][] makeConsolidateCigarData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
         tests.add(new Object[]{"1M1M", "2M"});
@@ -251,14 +251,14 @@ public class AlignmentUtilsUnitTest {
         tests.add(new Object[]{"1M1M1M1D2M1M", "3M1D3M"});
         tests.add(new Object[]{"6M6M6M", "18M"});
 
-        final List<CigarElement> elements = new LinkedList<CigarElement>();
+        final List<CigarElement> elements = new LinkedList<>();
         int i = 1;
         for ( final CigarOperator op : CigarOperator.values() ) {
             elements.add(new CigarElement(i++, op));
         }
         for ( final List<CigarElement> ops : Utils.makePermutations(elements,  3, false) ) {
             final String expected = new Cigar(ops).toString();
-            final List<CigarElement> cutElements = new LinkedList<CigarElement>();
+            final List<CigarElement> cutElements = new LinkedList<>();
             for ( final CigarElement elt : ops ) {
                 for ( int j = 0; j < elt.getLength(); j++ ) {
                     cutElements.add(new CigarElement(1, elt.getOperator()));
@@ -282,7 +282,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "SoftClipsDataProvider")
     public Object[][] makeSoftClipsDataProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
         for ( final int lengthOfLeftClip : Arrays.asList(0, 1, 10) ) {
@@ -341,7 +341,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "MismatchCountDataProvider")
     public Object[][] makeMismatchCountDataProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final int readLength = 20;
         final int lengthOfIndel = 2;
@@ -442,7 +442,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "AlignmentByteArrayOffsetDataProvider")
     public Object[][] makeAlignmentByteArrayOffsetDataProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final int readLength = 20;
         final int lengthOfIndel = 2;
@@ -496,7 +496,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "ReadToAlignmentByteArrayDataProvider")
     public Object[][] makeReadToAlignmentByteArrayDataProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final int readLength = 20;
         final int lengthOfIndel = 2;
@@ -549,7 +549,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "LeftAlignIndelDataProvider")
     public Object[][] makeLeftAlignIndelDataProvider() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final byte[] repeat1Reference = "ABCDEFGHIJKLMNOPXXXXXXXXXXABCDEFGHIJKLMNOP".getBytes();
         final byte[] repeat2Reference = "ABCDEFGHIJKLMNOPXYXYXYXYXYABCDEFGHIJKLMNOP".getBytes();
@@ -667,7 +667,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "TrimCigarData")
     public Object[][] makeTrimCigarData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( final CigarOperator op : Arrays.asList(CigarOperator.D, CigarOperator.EQ, CigarOperator.X, CigarOperator.M) ) {
             for ( int myLength = 1; myLength < 6; myLength++ ) {
@@ -749,7 +749,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "TrimCigarByBasesData")
     public Object[][] makeTrimCigarByBasesData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[]{"2M3I4M", 0, 8, "2M3I4M"});
         tests.add(new Object[]{"2M3I4M", 1, 8, "1M3I4M"});
@@ -788,7 +788,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "ApplyCigarToCigarData")
     public Object[][] makeApplyCigarToCigarData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( int i = 1; i < 5; i++ )
             tests.add(new Object[]{i + "M", i + "M", i + "M"});
@@ -841,7 +841,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "ReadOffsetFromCigarData")
     public Object[][] makeReadOffsetFromCigarData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final int SIZE = 10;
         for ( int i = 0; i < SIZE; i++ ) {
@@ -895,7 +895,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "AddCigarElementsData")
     public Object[][] makeAddCigarElementsData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final int SIZE = 10;
         for ( final CigarOperator op : Arrays.asList(CigarOperator.I, CigarOperator.M, CigarOperator.S, CigarOperator.EQ, CigarOperator.X)) {
@@ -919,7 +919,7 @@ public class AlignmentUtilsUnitTest {
         final CigarElement elt = cigar.getCigarElement(0);
         final Cigar expectedCigar = TextCigarCodec.decode(expectedCigarString);
 
-        final List<CigarElement> elts = new LinkedList<CigarElement>();
+        final List<CigarElement> elts = new LinkedList<>();
         final int actualEndPos = AlignmentUtils.addCigarElements(elts, pos, start, end, elt);
 
         Assert.assertEquals(actualEndPos, pos + elt.getLength());
@@ -928,7 +928,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "GetBasesCoveringRefIntervalData")
     public Object[][] makeGetBasesCoveringRefIntervalData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         // matches
         // 0123
@@ -984,7 +984,7 @@ public class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "StartsOrEndsWithInsertionOrDeletionData")
     public Object[][] makeStartsOrEndsWithInsertionOrDeletionData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[]{"2M", false});
         tests.add(new Object[]{"1D2M", true});

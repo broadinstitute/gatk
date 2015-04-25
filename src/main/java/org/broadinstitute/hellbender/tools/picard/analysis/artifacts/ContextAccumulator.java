@@ -20,9 +20,9 @@ class ContextAccumulator {
 
     public ContextAccumulator(final Set<String> contexts, final boolean expectedTandemReads) {
         this.expectedTandemReads = expectedTandemReads;
-        this.artifactMap = new HashMap<Transition, Map<String, AlignmentAccumulator>>();
+        this.artifactMap = new HashMap<>();
         for (final Transition transition : Transition.values()) {
-            this.artifactMap.put(transition, new HashMap<String, AlignmentAccumulator>());
+            this.artifactMap.put(transition, new HashMap<>());
         }
         for (final String context : contexts) {
             final char refBase = getCentralBase(context);
@@ -43,7 +43,7 @@ class ContextAccumulator {
      * Core method to compute detailed (i.e. context-by-context) metrics from this accumulator.
      */
     public ListMap<Transition, DetailPair> calculateMetrics(final String sampleAlias, final String library) {
-        final ListMap<Transition, DetailPair> detailMetricsMap = new ListMap<Transition, DetailPair>();
+        final ListMap<Transition, DetailPair> detailMetricsMap = new ListMap<>();
         for (final Transition altTransition : Transition.altValues()) {
             final Transition refTransition = altTransition.matchingRef();
             for (final String context : this.artifactMap.get(altTransition).keySet()) {

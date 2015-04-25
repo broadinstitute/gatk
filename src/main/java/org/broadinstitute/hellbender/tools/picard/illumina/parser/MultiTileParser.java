@@ -31,7 +31,7 @@ public abstract class MultiTileParser<OUTPUT_RECORD extends IlluminaData> implem
                            final Set<IlluminaDataType> supportedTypes) {
         this.tileIndex = tileIndex;
         this.tileIndexIterator = tileIndex.iterator();
-        this.requestedTilesIterator = new PeekIterator<Integer>(requestedTiles.iterator());
+        this.requestedTilesIterator = new PeekIterator<>(requestedTiles.iterator());
         this.supportedTypes = supportedTypes;
     }
 

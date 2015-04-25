@@ -117,7 +117,7 @@ public class IlluminaBasecallsToFastqTest extends CommandLineProgramTest {
             // Create barcode.params with output files in the temp directory
             final File libraryParams = new File(outputDir, libraryParamsFile);
             libraryParams.deleteOnExit();
-            final List<File> outputPrefixes = new ArrayList<File>();
+            final List<File> outputPrefixes = new ArrayList<>();
             final LineReader reader = new BufferedLineReader(new FileInputStream(new File(testDataDir, libraryParamsFile)));
             final PrintWriter writer = new PrintWriter(libraryParams);
             final String header = reader.readLine();

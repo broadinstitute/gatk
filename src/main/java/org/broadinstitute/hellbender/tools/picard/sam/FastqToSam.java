@@ -71,7 +71,7 @@ public class FastqToSam extends PicardCommandLineProgram {
     public String PLATFORM_MODEL;
 
     @Argument(doc="Comment(s) to include in the merged output file's header.", optional=true, shortName="CO")
-    public List<String> COMMENT = new ArrayList<String>();
+    public List<String> COMMENT = new ArrayList<>();
 
     @Argument(shortName = "DS", doc = "Inserted into the read group header", optional = true)
     public String DESCRIPTION;

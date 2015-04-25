@@ -20,7 +20,7 @@ public class Median<T extends Comparable<T>> {
 
     public Median(final int maxValuesToKeep) {
         this.maxValuesToKeep = maxValuesToKeep;
-        this.values = new ArrayList<T>();
+        this.values = new ArrayList<>();
     }
 
     public boolean isFull() {

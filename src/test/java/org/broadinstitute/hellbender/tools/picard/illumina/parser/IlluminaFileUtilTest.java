@@ -144,13 +144,13 @@ public class IlluminaFileUtilTest {
             makeFiles(format, intensityDir, DEFAULT_LANE + 2, DEFAULT_TILES, DEFAULT_CYCLES, ".bz2");
         }
 
-        final Set<SupportedIlluminaFormat> formatsToTest = new HashSet<SupportedIlluminaFormat>();
+        final Set<SupportedIlluminaFormat> formatsToTest = new HashSet<>();
         // TODO: I can't be bothered to build files for these.  AW
         Collections.addAll(formatsToTest, SupportedIlluminaFormat.values());
         formatsToTest.remove(SupportedIlluminaFormat.MultiTileBcl);
         formatsToTest.remove(SupportedIlluminaFormat.MultiTileFilter);
         formatsToTest.remove(SupportedIlluminaFormat.MultiTileLocs);
-        final ArrayList<SupportedIlluminaFormat> formatsList = new ArrayList<SupportedIlluminaFormat>(formatsToTest);
+        final ArrayList<SupportedIlluminaFormat> formatsList = new ArrayList<>(formatsToTest);
 
         for (int i = 0; i < 3; i++) {
             final IlluminaFileUtil fileUtil = new IlluminaFileUtil(new File(intensityDir, "BaseCalls"), DEFAULT_LANE + i);
@@ -321,7 +321,7 @@ public class IlluminaFileUtilTest {
             Assert.assertTrue(tFile.length() > 0);
         }
 
-        final List<Integer> tiles = new ArrayList<Integer>(DEFAULT_TILE_TEST_SUBSET);
+        final List<Integer> tiles = new ArrayList<>(DEFAULT_TILE_TEST_SUBSET);
         final IlluminaFileMap subsetMap = ptfu.getFiles(DEFAULT_TILE_TEST_SUBSET);
         for (final Integer tile : subsetMap.keySet()) {
             tiles.remove(tile);
@@ -397,7 +397,7 @@ public class IlluminaFileUtilTest {
 
 
     public void testSubsetDefaultPerTilePerCycleUtil(final PerTilePerCycleFileUtil pcfu, final File parentDir, final int[] cycles) {
-        final List<Integer> tiles = new ArrayList<Integer>(DEFAULT_TILE_TEST_SUBSET);
+        final List<Integer> tiles = new ArrayList<>(DEFAULT_TILE_TEST_SUBSET);
         final CycleIlluminaFileMap subsetMap = pcfu.getFiles(DEFAULT_TILE_TEST_SUBSET, cycles);
         final CycleIlluminaFileMap cfmNoCycles;
         if (Arrays.equals(cycles, DEFAULT_CYCLES)) {
@@ -597,7 +597,7 @@ public class IlluminaFileUtilTest {
     }
 
     private static List<String> makeCycleFileList(final File dir, final String ext, final int lane, final int[] cycles, final boolean longFmt, final int... tiles) {
-        final List<String> files = new ArrayList<String>();
+        final List<String> files = new ArrayList<>();
         final File laneDir = new File(dir, laneDir(lane));
 
         for (final int cycle : cycles) {

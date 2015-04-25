@@ -168,7 +168,7 @@ public class GenotypeConcordance extends PicardCommandLineProgram {
         indelCounter = new GenotypeConcordanceCounts();
 
         // A map to keep track of the count of Truth/Call States which we could not successfully classify
-        final Map<String, Integer> unClassifiedStatesMap = new HashMap<String, Integer>();
+        final Map<String, Integer> unClassifiedStatesMap = new HashMap<>();
 
         log.info("Starting iteration over variants.");
         while (pairedIterator.hasNext()) {
@@ -390,7 +390,7 @@ public class GenotypeConcordance extends PicardCommandLineProgram {
             }
         }
 
-        final OrderedSet<String> allAlleles = new OrderedSet<String>();
+        final OrderedSet<String> allAlleles = new OrderedSet<>();
 
         if (truthContext != null || callContext != null) {
             // Store the refAllele as the first (0th index) allele in allAlleles (only can do if at least one context is non-null)
@@ -510,9 +510,9 @@ class PairedVariantSubContextIterator implements Iterator<VcTuple> {
     PairedVariantSubContextIterator(final Iterator<VariantContext> truthIterator, final String truthSample,
                                     final Iterator<VariantContext> callIterator, final String callSample,
                                     final SAMSequenceDictionary dict) {
-        this.truthIterator = new PeekableIterator<VariantContext>(truthIterator);
+        this.truthIterator = new PeekableIterator<>(truthIterator);
         this.truthSample = truthSample;
-        this.callIterator = new PeekableIterator<VariantContext>(callIterator);
+        this.callIterator = new PeekableIterator<>(callIterator);
         this.callSample = callSample;
         this.comparator = new VariantContextComparator(dict);
     }

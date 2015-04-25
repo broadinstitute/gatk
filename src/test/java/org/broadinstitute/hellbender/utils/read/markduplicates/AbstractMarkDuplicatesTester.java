@@ -118,7 +118,7 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
             Assert.assertEquals(outputRecords, this.getNumberOfRecords(), ("saw " + outputRecords + " output records, vs. " + this.getNumberOfRecords() + " input records"));
 
             // Check the values written to metrics.txt against our input expectations
-            final MetricsFile<DuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<DuplicationMetrics, Comparable<?>>();
+            final MetricsFile<DuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
             try{
                 metricsOutput.read(new FileReader(metricsFile));
             }

@@ -120,7 +120,7 @@ public class BclParserTest {
         final MultiTileBclFileUtil multiTileBclFileUtil = (MultiTileBclFileUtil) util.getUtil(IlluminaFileUtil.SupportedIlluminaFormat.MultiTileBcl);
 
 
-        final List<Integer> tileIntegers = new ArrayList<Integer>();
+        final List<Integer> tileIntegers = new ArrayList<>();
         for (final int tile : tiles) {
             tileIntegers.add(tile);
         }

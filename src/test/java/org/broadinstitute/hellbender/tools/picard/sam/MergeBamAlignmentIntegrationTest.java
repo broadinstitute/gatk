@@ -408,7 +408,7 @@ public class MergeBamAlignmentIntegrationTest extends CommandLineProgramTest {
         );
 
         // Iterate over the merged output and gather some statistics
-        final Map<String, AlignmentAccumulator> accumulatorMap = new HashMap<String, AlignmentAccumulator>();
+        final Map<String, AlignmentAccumulator> accumulatorMap = new HashMap<>();
 
         final SamReader reader = SamReaderFactory.makeDefault().open(merged);
         for (final SAMRecord rec : reader) {

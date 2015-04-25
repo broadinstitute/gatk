@@ -101,8 +101,8 @@ public class MarkDuplicatesWithMateCigarIterator implements SAMRecordIterator {
         }
 
         this.header = header;
-        backingIterator = new PeekableIterator<SAMRecord>(iterator);
-        outputBuffer = new SamRecordTrackingBuffer<SamRecordWithOrdinalAndSetDuplicateReadFlag>(maxRecordsInRam, blockSize, tmpDirs, header, SamRecordWithOrdinalAndSetDuplicateReadFlag.class);
+        backingIterator = new PeekableIterator<>(iterator);
+        outputBuffer = new SamRecordTrackingBuffer<>(maxRecordsInRam, blockSize, tmpDirs, header, SamRecordWithOrdinalAndSetDuplicateReadFlag.class);
 
         this.removeDuplicates = removeDuplicates;
         this.skipPairsWithNoMateCigar = skipPairsWithNoMateCigar;
@@ -563,7 +563,7 @@ public class MarkDuplicatesWithMateCigarIterator implements SAMRecordIterator {
                 final Set<ReadEnds> locations = toMarkQueue.getLocations(next);
 
                 if (!locations.isEmpty()) {
-                    AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(new ArrayList<ReadEnds>(locations),
+                    AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(new ArrayList<>(locations),
                             opticalDuplicateFinder, libraryIdGenerator);
                 }
             }

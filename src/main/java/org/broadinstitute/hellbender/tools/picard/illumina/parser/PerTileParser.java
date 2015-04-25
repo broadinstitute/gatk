@@ -35,7 +35,7 @@ public abstract class PerTileParser<ILLUMINA_DATA extends IlluminaData> implemen
         this.nextTile = nextTile;
 
         if (!tilesToFiles.containsKey(nextTile)) {
-            throw new IllegalArgumentException("NextTile (" + nextTile + ") is not contained by tilesToFiles (" + join(",", new ArrayList<Integer>(tilesToFiles.keySet())));
+            throw new IllegalArgumentException("NextTile (" + nextTile + ") is not contained by tilesToFiles (" + join(",", new ArrayList<>(tilesToFiles.keySet())));
         }
     }
 
@@ -69,7 +69,7 @@ public abstract class PerTileParser<ILLUMINA_DATA extends IlluminaData> implemen
 
         if (!tileToFiles.containsKey(oneBasedTileNumber)) {
             throw new IlluminaParserException("PerTileParser does not contain key(" + oneBasedTileNumber + ") keys available ("
-                    + join(",", new ArrayList<Integer>(tileToFiles.keySet())) + ")");
+                    + join(",", new ArrayList<>(tileToFiles.keySet())) + ")");
         }
 
         if (currentIterator != null) {
@@ -113,7 +113,7 @@ public abstract class PerTileParser<ILLUMINA_DATA extends IlluminaData> implemen
     }
 
     public void verifyData(List<Integer> tiles, final int[] cycles) {
-        final List<Integer> mapTiles = new ArrayList<Integer>(this.tileToFiles.keySet());
+        final List<Integer> mapTiles = new ArrayList<>(this.tileToFiles.keySet());
         if (!mapTiles.containsAll(tiles)) {
             throw new IlluminaParserException("Missing tiles in PerTileParser expected(" + join(",", tiles)
                     + ") but found (" + join(",", mapTiles) + ")");

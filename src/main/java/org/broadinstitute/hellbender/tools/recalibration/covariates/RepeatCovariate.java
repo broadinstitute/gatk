@@ -16,8 +16,8 @@ import java.util.Set;
 public abstract class RepeatCovariate implements Covariate {
     protected int MAX_REPEAT_LENGTH;
     protected int MAX_STR_UNIT_LENGTH;
-    private final HashMap<String, Integer> repeatLookupTable = new HashMap<String, Integer>();
-    private final HashMap<Integer, String> repeatReverseLookupTable = new HashMap<Integer, String>();
+    private final HashMap<String, Integer> repeatLookupTable = new HashMap<>();
+    private final HashMap<Integer, String> repeatReverseLookupTable = new HashMap<>();
     private int nextId = 0;
 
     // Initialize any member variables using the command-line arguments passed to the walkers
@@ -121,7 +121,7 @@ public abstract class RepeatCovariate implements Covariate {
 
 
         if(maxRL > MAX_REPEAT_LENGTH) { maxRL = MAX_REPEAT_LENGTH; }
-        return new MutablePair<byte[], Integer>(bestRepeatUnit, maxRL);
+        return new MutablePair<>(bestRepeatUnit, maxRL);
 
     }
     @Override
@@ -177,7 +177,7 @@ public abstract class RepeatCovariate implements Covariate {
         if (k == value.length() || nr <= 0)
             throw new IllegalStateException("Covariate is not of form (Repeat Unit) + Integer");
 
-        return new MutablePair<String,Integer>(value.substring(0,k), nr);
+        return new MutablePair<>(value.substring(0,k), nr);
     }
 
     /**

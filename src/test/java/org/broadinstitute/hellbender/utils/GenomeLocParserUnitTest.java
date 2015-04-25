@@ -331,7 +331,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
 
     @DataProvider(name = "parseGenomeLoc")
     public Object[][] makeParsingTest() {
-        final List<Object[]> tests = new LinkedList<Object[]>();
+        final List<Object[]> tests = new LinkedList<>();
 
         tests.add(new Object[]{ "1:10", "1", 10 });
         tests.add(new Object[]{ "1:100", "1", 100 });
@@ -438,7 +438,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
 
     @DataProvider(name = "GenomeLocOnContig")
     public Object[][] makeGenomeLocOnContig() {
-        final List<Object[]> tests = new LinkedList<Object[]>();
+        final List<Object[]> tests = new LinkedList<>();
 
         final int contigLength = header.getSequence(0).getSequenceLength();
         for ( int start = -10; start < contigLength + 10; start++ ) {
@@ -467,7 +467,7 @@ public class GenomeLocParserUnitTest extends BaseTest {
 
     @DataProvider(name = "GenomeLocPadding")
     public Object[][] makeGenomeLocPadding() {
-        final List<Object[]> tests = new LinkedList<Object[]>();
+        final List<Object[]> tests = new LinkedList<>();
 
         final int contigLength = header.getSequence(0).getSequenceLength();
         for ( int pad = 0; pad < contigLength + 1; pad++) {

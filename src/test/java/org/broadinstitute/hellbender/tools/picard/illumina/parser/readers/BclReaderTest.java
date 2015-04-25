@@ -103,7 +103,7 @@ public class BclReaderTest {
         final BclQualityEvaluationStrategy bclQualityEvaluationStrategy = new BclQualityEvaluationStrategy(1);
 
         // Build a list of callables, then submit them and check for errors.
-        final Collection<Callable<Void>> callables = new LinkedList<Callable<Void>>();
+        final Collection<Callable<Void>> callables = new LinkedList<>();
         for (int i = 0; i < 10; i++) {
             final boolean even_i = i % 2 == 0;
             callables.add(new Callable<Void>() {
@@ -121,7 +121,7 @@ public class BclReaderTest {
             });
         }
         final ExecutorService executorService = Executors.newFixedThreadPool(callables.size());
-        final Collection<Future<Void>> futures = new LinkedList<Future<Void>>();
+        final Collection<Future<Void>> futures = new LinkedList<>();
         for (final Callable<Void> callable : callables) {
             futures.add(executorService.submit(callable));
         }
@@ -138,7 +138,7 @@ public class BclReaderTest {
         final BclQualityEvaluationStrategy bclQualityEvaluationStrategy = new BclQualityEvaluationStrategy(BclQualityEvaluationStrategy.ILLUMINA_ALLEGED_MINIMUM_QUALITY);
 
         // Build a list of callables, then submit them and check for errors.
-        final Collection<Callable<Void>> callables = new LinkedList<Callable<Void>>();
+        final Collection<Callable<Void>> callables = new LinkedList<>();
         for (int i = 0; i < 10; i++) {
             final boolean even_i = i % 2 == 0;
             callables.add(new Callable<Void>() {
@@ -156,7 +156,7 @@ public class BclReaderTest {
             });
         }
         final ExecutorService executorService = Executors.newFixedThreadPool(callables.size());
-        final Collection<Future<Void>> futures = new LinkedList<Future<Void>>();
+        final Collection<Future<Void>> futures = new LinkedList<>();
         for (final Callable<Void> callable : callables) {
             futures.add(executorService.submit(callable));
         }

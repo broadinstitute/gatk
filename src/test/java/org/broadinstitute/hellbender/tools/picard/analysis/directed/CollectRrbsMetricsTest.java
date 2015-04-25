@@ -37,7 +37,7 @@ public class CollectRrbsMetricsTest extends CommandLineProgramTest {
 	@Test
 	public void chrMReads() throws Exception {
 		final MetricsFile<RrbsSummaryMetrics, ?> metricsFile = getSummaryFile(
-                CHR_M_SAM.getAbsolutePath(), CHR_M_REFERENCE.getAbsolutePath(), rootTestDir + "/READ_TEST", new ArrayList<String>());
+                CHR_M_SAM.getAbsolutePath(), CHR_M_REFERENCE.getAbsolutePath(), rootTestDir + "/READ_TEST", new ArrayList<>());
 		final RrbsSummaryMetrics metrics = metricsFile.getMetrics().get(0);
 		Assert.assertEquals(metrics.READS_ALIGNED.intValue(), 5);
 		Assert.assertEquals(metrics.NON_CPG_BASES.intValue(), 15);
@@ -55,7 +55,7 @@ public class CollectRrbsMetricsTest extends CommandLineProgramTest {
 
 	private MetricsFile<RrbsSummaryMetrics, ?> getSummaryFile(final String input, final String reference, final String prefix,
 															  final List<String> sequences) throws Exception {
-		final List<String> argList = new ArrayList<String>();
+		final List<String> argList = new ArrayList<>();
 		argList.add("--INPUT");
         argList.add(input);
 		argList.add("--METRICS_FILE_PREFIX");

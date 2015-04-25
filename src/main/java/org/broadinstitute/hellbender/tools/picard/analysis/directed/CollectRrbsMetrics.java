@@ -59,7 +59,7 @@ public class CollectRrbsMetrics extends PicardCommandLineProgram {
     public double MAX_MISMATCH_RATE = 0.1;
 
     @Argument(doc = "Set of sequence names to consider, if not specified all sequences will be used", optional = true)
-    public Set<String> SEQUENCE_NAMES = new HashSet<String>();
+    public Set<String> SEQUENCE_NAMES = new HashSet<>();
 
     @Argument(shortName = StandardArgumentDefinitions.ASSUME_SORTED_SHORT_NAME,
             doc = "If true, assume that the input file is coordinate sorted even if the header says otherwise.")
@@ -141,7 +141,7 @@ public class CollectRrbsMetrics extends PicardCommandLineProgram {
 
     @Override
     protected String[] customCommandLineValidation() {
-        final List<String> errorMsgs = new ArrayList<String>();
+        final List<String> errorMsgs = new ArrayList<>();
         if (MAX_MISMATCH_RATE < 0 || MAX_MISMATCH_RATE > 1) {
             errorMsgs.add("MAX_MISMATCH_RATE must be in the range of 0-1");
         }

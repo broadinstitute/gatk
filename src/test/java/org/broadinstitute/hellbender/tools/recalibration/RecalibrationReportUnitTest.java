@@ -35,8 +35,8 @@ public class RecalibrationReportUnitTest {
     public void testOutput() {
         final int length = 100;
 
-        List<Byte> quals = new ArrayList<Byte>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
-        List<Long> counts = new ArrayList<Long>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
+        List<Byte> quals = new ArrayList<>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
+        List<Long> counts = new ArrayList<>(QualityUtils.MAX_SAM_QUAL_SCORE + 1);
 
         for (int i = 0;  i<= QualityUtils.MAX_SAM_QUAL_SCORE; i++) {
             quals.add((byte) i);
@@ -47,8 +47,8 @@ public class RecalibrationReportUnitTest {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
         quantizationInfo.noQuantization();
-        final List<Covariate> requiredCovariates = new LinkedList<Covariate>();
-        final List<Covariate> optionalCovariates = new LinkedList<Covariate>();
+        final List<Covariate> requiredCovariates = new LinkedList<>();
+        final List<Covariate> optionalCovariates = new LinkedList<>();
 
         final ReadGroupCovariate rgCovariate = new ReadGroupCovariate();
         rgCovariate.initialize(RAC);

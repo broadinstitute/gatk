@@ -39,7 +39,7 @@ public class NGSPlatformUnitTest extends BaseTest {
 
     @DataProvider(name = "TestPrimary")
     public Object[][] makeTestPrimary() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         for ( final NGSPlatform pl : NGSPlatform.values() ) {
             tests.add(new Object[]{pl, pl.BAM_PL_NAMES[0]});
@@ -56,9 +56,9 @@ public class NGSPlatformUnitTest extends BaseTest {
     // make sure common names in BAMs are found
     @DataProvider(name = "TestMappings")
     public Object[][] makeTestMappings() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
-        final Map<String, NGSPlatform> expected = new HashMap<String, NGSPlatform>();
+        final Map<String, NGSPlatform> expected = new HashMap<>();
         // VALID VALUES ACCORDING TO SAM SPEC: https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0CC8QFjAA&url=http%3A%2F%2Fsamtools.sourceforge.net%2FSAM1.pdf&ei=Dm8WUbXAEsi10QHYqoDwDQ&usg=AFQjCNFkMtvEi6LeiKgpxQGtHTlqWKw2yw&bvm=bv.42080656,d.dmQ
         expected.put("CAPILLARY", NGSPlatform.CAPILLARY);
         expected.put("LS454", NGSPlatform.LS454);

@@ -33,7 +33,7 @@ public class TextFileParsersTest {
     public void testTextFileParser(Object fileOrStream) throws IOException {
         FormatUtil format = new FormatUtil();
 
-        List<String> expected = new ArrayList<String>();
+        List<String> expected = new ArrayList<>();
         if (fileOrStream instanceof File) {
             BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream));
             String line = null;
@@ -86,7 +86,7 @@ public class TextFileParsersTest {
     public void testMultiFileParsing(Object fileOrStream1, Object fileOrStream2) throws IOException {
         FormatUtil format = new FormatUtil();
 
-        List<String> expected = new ArrayList<String>();
+        List<String> expected = new ArrayList<>();
         if (fileOrStream1 instanceof File) {
             BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream1));
             String line = null;

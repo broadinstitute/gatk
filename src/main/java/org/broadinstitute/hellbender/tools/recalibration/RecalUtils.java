@@ -287,7 +287,7 @@ public class RecalUtils {
             Utils.addAll(covariates,firstCovariates);
             while (rit.hasNext() && covariates.size() > 0) {
                 final Covariate[] nextCovariates = rit.next().getRequestedCovariates();
-                final Set<String> nextCovariateNames = new LinkedHashSet<String>(nextCovariates.length);
+                final Set<String> nextCovariateNames = new LinkedHashSet<>(nextCovariates.length);
                 for (final Covariate nc : nextCovariates) {
                     nextCovariateNames.add(nc.getClass().getSimpleName());
                 }
@@ -381,19 +381,19 @@ public class RecalUtils {
     }
 
     private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final Covariate[] requestedCovariates, boolean sortByCols) {
-        List<GATKReportTable> result = new LinkedList<GATKReportTable>();
+        List<GATKReportTable> result = new LinkedList<>();
         int reportTableIndex = 0;
         int rowIndex = 0;
-        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
+        final Map<Covariate, String> covariateNameMap = new HashMap<>(requestedCovariates.length);
         for (final Covariate covariate : requestedCovariates)
             covariateNameMap.put(covariate, parseCovariateName(covariate));
 
         for (int tableIndex = 0; tableIndex < recalibrationTables.numTables(); tableIndex++) {
 
-            final ArrayList<Pair<String, String>> columnNames = new ArrayList<Pair<String, String>>(); // initialize the array to hold the column names
-            columnNames.add(new MutablePair<String, String>(covariateNameMap.get(requestedCovariates[0]), "%s")); // save the required covariate name so we can reference it in the future
+            final ArrayList<Pair<String, String>> columnNames = new ArrayList<>(); // initialize the array to hold the column names
+            columnNames.add(new MutablePair<>(covariateNameMap.get(requestedCovariates[0]), "%s")); // save the required covariate name so we can reference it in the future
             if (tableIndex != RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()) {
-                columnNames.add(new MutablePair<String, String>(covariateNameMap.get(requestedCovariates[1]), "%s")); // save the required covariate name so we can reference it in the future
+                columnNames.add(new MutablePair<>(covariateNameMap.get(requestedCovariates[1]), "%s")); // save the required covariate name so we can reference it in the future
                 if (tableIndex >= RecalibrationTables.TableType.OPTIONAL_COVARIATE_TABLES_START.ordinal()) {
                     columnNames.add(covariateValue);
                     columnNames.add(covariateName);
@@ -467,7 +467,7 @@ public class RecalUtils {
      * @return a non-null comma-separated string
      */
     public static String covariateNames(final Covariate[] requestedCovariates) {
-        final List<String> names = new ArrayList<String>(requestedCovariates.length);
+        final List<String> names = new ArrayList<>(requestedCovariates.length);
         for ( final Covariate cov : requestedCovariates )
             names.add(cov.getClass().getSimpleName());
         return Utils.join(",", names);
@@ -568,7 +568,7 @@ public class RecalUtils {
             printHeader(deltaTableFile);
         }
 
-        final Map<Covariate, String> covariateNameMap = new HashMap<Covariate, String>(requestedCovariates.length);
+        final Map<Covariate, String> covariateNameMap = new HashMap<>(requestedCovariates.length);
         for (final Covariate covariate : requestedCovariates)
             covariateNameMap.put(covariate, parseCovariateName(covariate));
 
@@ -583,7 +583,7 @@ public class RecalUtils {
     }
 
     private static void printHeader(PrintStream out) {
-        final List<String> header = new LinkedList<String>();
+        final List<String> header = new LinkedList<>();
         header.add("ReadGroup");
         header.add("CovariateValue");
         header.add("CovariateName");
@@ -624,11 +624,11 @@ public class RecalUtils {
             dimensionsForDeltaTable[3] = Math.max(dimensionsForDeltaTable[3], dimensionsOfCovTable[3]);
         }
 
-        return new NestedIntegerArray<RecalDatum>(dimensionsForDeltaTable);
+        return new NestedIntegerArray<>(dimensionsForDeltaTable);
     }
 
     protected static List<Object> generateValuesFromKeys(final int[] keys, final Covariate[] covariates, final Map<Covariate, String> covariateNameMap) {
-        final List<Object> values = new ArrayList<Object>(4);
+        final List<Object> values = new ArrayList<>(4);
         values.add(covariates[RecalibrationTables.TableType.READ_GROUP_TABLE.ordinal()].formatKey(keys[0]));
 
         final int covariateIndex = keys[1];

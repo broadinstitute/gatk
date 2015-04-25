@@ -66,10 +66,10 @@ public class IntervalListScatterer {
         final IntervalList uniquedList = isUniqued ? sourceIntervalList : sourceIntervalList.uniqued();
         final long idealSplitLength = deduceIdealSplitLength(uniquedList, scatterCount);
 
-        final List<IntervalList> accumulatedIntervalLists = new ArrayList<IntervalList>();
+        final List<IntervalList> accumulatedIntervalLists = new ArrayList<>();
 
         IntervalList runningIntervalList = new IntervalList(uniquedList.getHeader());
-        final ArrayDeque<Interval> intervalQueue = new ArrayDeque<Interval>(uniquedList.getIntervals());
+        final ArrayDeque<Interval> intervalQueue = new ArrayDeque<>(uniquedList.getIntervals());
 
         while (!intervalQueue.isEmpty() && accumulatedIntervalLists.size() < scatterCount - 1) {
             final Interval interval = intervalQueue.pollFirst();

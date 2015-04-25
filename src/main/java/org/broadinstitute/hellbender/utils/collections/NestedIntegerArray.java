@@ -154,7 +154,7 @@ public class NestedIntegerArray<T> {
             if ( value instanceof Object[] ) {
                 fillAllLeaves((Object[]) value, newPath, result);
             } else {
-                result.add(new Leaf<T>(newPath, (T)value));
+                result.add(new Leaf<>(newPath, (T)value));
             }
         }
     }

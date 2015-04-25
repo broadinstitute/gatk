@@ -15,8 +15,8 @@ import java.util.*;
  */
 public class BasicInputParser extends AbstractInputParser {
     private BufferedLineReader reader;
-    private final ArrayList<InputStream> inputs = new ArrayList<InputStream>();
-    private final ArrayList<String> fileNames = new ArrayList<String>();
+    private final ArrayList<InputStream> inputs = new ArrayList<>();
+    private final ArrayList<String> fileNames = new ArrayList<>();
     String currentFileName = null;
     private String currentLine = null;
     private String nextLine = null;

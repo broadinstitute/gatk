@@ -183,7 +183,7 @@ public class ReadUtilsUnitTest extends BaseTest {
     public void testGetMaxReadLength() {
         for( final int minLength : Arrays.asList( 5, 30, 50 ) ) {
             for( final int maxLength : Arrays.asList( 50, 75, 100 ) ) {
-                final List<SAMRecord> reads = new ArrayList<SAMRecord>();
+                final List<SAMRecord> reads = new ArrayList<>();
                 for( int readLength = minLength; readLength <= maxLength; readLength++ ) {
                     reads.add( ArtificialSAMUtils.createRandomRead( readLength ) );
                 }
@@ -191,7 +191,7 @@ public class ReadUtilsUnitTest extends BaseTest {
             }
         }
 
-        final List<SAMRecord> reads = new LinkedList<SAMRecord>();
+        final List<SAMRecord> reads = new LinkedList<>();
         Assert.assertEquals(ReadUtils.getMaxReadLength(reads), 0, "Empty list should have max length of zero");
     }
 
@@ -229,7 +229,7 @@ public class ReadUtilsUnitTest extends BaseTest {
 
     @DataProvider(name = "HasWellDefinedFragmentSizeData")
     public Object[][] makeHasWellDefinedFragmentSizeData() throws Exception {
-        final List<Object[]> tests = new LinkedList<Object[]>();
+        final List<Object[]> tests = new LinkedList<>();
 
         // setup a basic read that will work
         final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader();

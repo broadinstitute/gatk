@@ -52,8 +52,8 @@ public abstract class AbstractAlignmentMerger {
     private SAMProgramRecord programRecord;
     private final boolean alignedReadsOnly;
     private final SAMFileHeader header;
-    private final List<String> attributesToRetain = new ArrayList<String>();
-    private final List<String> attributesToRemove = new ArrayList<String>();
+    private final List<String> attributesToRetain = new ArrayList<>();
+    private final List<String> attributesToRemove = new ArrayList<>();
     protected final File referenceFasta;
     private final Integer read1BasesTrimmed;
     private final Integer read2BasesTrimmed;

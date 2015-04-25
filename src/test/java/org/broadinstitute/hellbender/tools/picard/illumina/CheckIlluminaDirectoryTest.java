@@ -157,7 +157,7 @@ public class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
     }
 
     public static Map<Integer, List<Integer>> makeMap(final List<Integer> lanes, final List<List<Integer>> tiles) {
-        final Map<Integer, List<Integer>> map = new HashMap<Integer, List<Integer>>();
+        final Map<Integer, List<Integer>> map = new HashMap<>();
 
         if (lanes.size() != tiles.size()) {
             throw new IllegalArgumentException("Number of lanes (" + lanes + ") does not equal number of tiles!");
@@ -328,14 +328,14 @@ public class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
         final File cycleDir = new File(basecallDir, "L005/C9.1");
         writeFileOfSize(new File(cycleDir, "s_5_3.bcl"), 222);
 
-        final List<String> args = makeCheckerArgs(basecallDir, lane, "50T", dataTypes, new ArrayList<Integer>(), false, false);
+        final List<String> args = makeCheckerArgs(basecallDir, lane, "50T", dataTypes, new ArrayList<>(), false, false);
         Assert.assertEquals(runCommandLine(args), 1);
     }
 
     @Test(expectedExceptions = SAMException.class)
     public void basedirDoesntExistTest() {
         final List<String> args = makeCheckerArgs(new File("a_made_up_file/in_some_weird_location"), 1, "76T76T",
-                new IlluminaDataType[]{IlluminaDataType.Position}, new ArrayList<Integer>(), false, false);
+                new IlluminaDataType[]{IlluminaDataType.Position}, new ArrayList<>(), false, false);
         runCommandLine(args);
     }
 
@@ -344,7 +344,7 @@ public class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
         final List<Integer> tileList = makeList(1101, 1102, 1103, 2101, 2102, 2103);
         final int lane = 5;
         makeFiles(new SupportedIlluminaFormat[]{Bcl}, lane, tileList, IlluminaFileUtilTest.cycleRange(1, 50));
-        List<String> args = makeCheckerArgs(basecallDir, lane, "50T", new IlluminaDataType[]{Position}, new ArrayList<Integer>(), false, true);
+        List<String> args = makeCheckerArgs(basecallDir, lane, "50T", new IlluminaDataType[]{Position}, new ArrayList<>(), false, true);
         writeTileMetricsOutFile(makeMap(makeList(lane), makeList(tileList)));
 
         createSingleLocsFile();
@@ -353,7 +353,7 @@ public class CheckIlluminaDirectoryTest extends CommandLineProgramTest {
         Assert.assertEquals(runCommandLine(args), 0);
 
         //now that we have created the loc files lets test to make sure they are there
-        args = makeCheckerArgs(basecallDir, lane, "50T", new IlluminaDataType[]{IlluminaDataType.Position}, new ArrayList<Integer>(), false, true);
+        args = makeCheckerArgs(basecallDir, lane, "50T", new IlluminaDataType[]{IlluminaDataType.Position}, new ArrayList<>(), false, true);
         Assert.assertEquals(runCommandLine(args), 0);
     }
 

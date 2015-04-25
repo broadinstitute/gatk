@@ -71,7 +71,7 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * @return all of the lines in the file.
      */
     public List<String> readLines() {
-        List<String> lines = new LinkedList<String>();
+        List<String> lines = new LinkedList<>();
         for ( String line : this ) {
             lines.add(line);
         }

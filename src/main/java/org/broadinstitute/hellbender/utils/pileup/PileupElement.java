@@ -328,7 +328,7 @@ public class PileupElement implements Comparable<PileupElement> {
             else {
                 // optimization: don't allocate list if not necessary
                 if ( elements == null )
-                    elements = new LinkedList<CigarElement>();
+                    elements = new LinkedList<>();
 
                 if ( increment > 0 )
                     // to keep the list in the right order, if we are incrementing positively add to the end

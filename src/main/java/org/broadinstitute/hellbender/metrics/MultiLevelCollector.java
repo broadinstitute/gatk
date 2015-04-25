@@ -98,7 +98,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
         protected abstract PerUnitMetricCollector<METRIC_TYPE, HISTOGRAM_KEY, ARGTYPE> makeUnknownCollector();
 
         public Distributor(final List<SAMReadGroupRecord> rgRecs) {
-            collectors = new LinkedHashMap<String, PerUnitMetricCollector<METRIC_TYPE, HISTOGRAM_KEY, ARGTYPE>>();
+            collectors = new LinkedHashMap<>();
             for(final SAMReadGroupRecord rg : rgRecs) {
                 final String key = getKey(rg);
                 if(!collectors.containsKey(key)) {
@@ -150,7 +150,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
     private class AllReadsDistributor extends Distributor {
 
         public AllReadsDistributor(final List<SAMReadGroupRecord> rgRecs) {
-            super(new ArrayList<SAMReadGroupRecord>());
+            super(new ArrayList<>());
             makeCollector(null);
         }
 
@@ -258,7 +258,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
      *                     readGroups found in the records depending on the accumulationLevels provided
      */
     protected void setup(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords) {
-        outputOrderedDistributors = new ArrayList<Distributor>(4);
+        outputOrderedDistributors = new ArrayList<>(4);
         if(accumulationLevels.contains(MetricAccumulationLevel.ALL_READS)) {
             outputOrderedDistributors.add(new AllReadsDistributor(samRgRecords));
         }

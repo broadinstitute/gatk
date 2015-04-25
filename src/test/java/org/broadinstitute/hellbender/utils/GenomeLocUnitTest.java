@@ -194,7 +194,7 @@ public class GenomeLocUnitTest extends BaseTest {
 
     @DataProvider(name = "GenomeLocComparisons")
     public Object[][] createGenomeLocComparisons() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         final int start = 10;
         for ( int stop = start; stop < start + 3; stop++ ) {
@@ -261,7 +261,7 @@ public class GenomeLocUnitTest extends BaseTest {
 
     @DataProvider(name = "SGLtest")
     public Object[][] createFindVariantRegionsData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         tests.add(new Object[]{new MergeTest(Arrays.<GenomeLoc>asList(loc1))});
         tests.add(new Object[]{new MergeTest(Arrays.<GenomeLoc>asList(loc1, loc2))});
@@ -277,7 +277,7 @@ public class GenomeLocUnitTest extends BaseTest {
 
     @Test(expectedExceptions = GATKException.class)
     public void testNotContiguousLocs() {
-        final List<GenomeLoc> locs = new ArrayList<GenomeLoc>(1);
+        final List<GenomeLoc> locs = new ArrayList<>(1);
         locs.add(loc1);
         locs.add(loc3);
         testMerge(locs);
@@ -288,7 +288,7 @@ public class GenomeLocUnitTest extends BaseTest {
         for ( int i = 1; i < locs.size(); i++ )
             result1 = GenomeLoc.merge(result1, locs.get(i));
 
-        GenomeLoc result2 = GenomeLoc.merge(new TreeSet<GenomeLoc>(locs));
+        GenomeLoc result2 = GenomeLoc.merge(new TreeSet<>(locs));
         Assert.assertEquals(result1, result2);
         Assert.assertEquals(result1.getStart(), locs.get(0).getStart());
         Assert.assertEquals(result1.getStop(), locs.get(locs.size() - 1).getStop());

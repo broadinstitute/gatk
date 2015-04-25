@@ -103,7 +103,7 @@ public class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
 
     @DataProvider(name = "PrevAndNextTest")
     public Object[][] makePrevAndNextTest() {
-        final List<Object[]> tests = new LinkedList<Object[]>();
+        final List<Object[]> tests = new LinkedList<>();
 
         final List<CigarOperator> operators = Arrays.asList(CigarOperator.I, CigarOperator.P, CigarOperator.S);
 

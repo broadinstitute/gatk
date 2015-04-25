@@ -63,9 +63,9 @@ public class MergeVcfs extends PicardCommandLineProgram {
     @Override
     protected Object doWork() {
         final ProgressLogger progress = new ProgressLogger(log, 10000);
-        final List<String> sampleList = new ArrayList<String>();
-        final Collection<CloseableIterator<VariantContext>> iteratorCollection = new ArrayList<CloseableIterator<VariantContext>>(INPUT.size());
-        final Collection<VCFHeader> headers = new HashSet<VCFHeader>(INPUT.size());
+        final List<String> sampleList = new ArrayList<>();
+        final Collection<CloseableIterator<VariantContext>> iteratorCollection = new ArrayList<>(INPUT.size());
+        final Collection<VCFHeader> headers = new HashSet<>(INPUT.size());
 
         VariantContextComparator variantContextComparator = null;
         SAMSequenceDictionary sequenceDictionary = null;
@@ -117,7 +117,7 @@ public class MergeVcfs extends PicardCommandLineProgram {
 
         writer.writeHeader(new VCFHeader(VCFUtils.smartMergeHeaders(headers, false), sampleList));
 
-        final MergingIterator<VariantContext> mergingIterator = new MergingIterator<VariantContext>(variantContextComparator, iteratorCollection);
+        final MergingIterator<VariantContext> mergingIterator = new MergingIterator<>(variantContextComparator, iteratorCollection);
         while (mergingIterator.hasNext()) {
             final VariantContext context = mergingIterator.next();
             writer.add(context);

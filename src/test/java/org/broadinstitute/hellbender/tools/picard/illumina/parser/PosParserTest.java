@@ -37,14 +37,14 @@ public class PosParserTest {
     }
 
     public static List<TestResult> makeTestResults(final int lane, final int tile, final float [] xyPos, final int [] xyQseq) {
-        final ArrayList<TestResult> results = new ArrayList<TestResult>();
+        final ArrayList<TestResult> results = new ArrayList<>();
         for(int i = 0; i < xyPos.length; i+=2) {
             results.add(new TestResult(lane, tile, xyPos[i], xyPos[i+1], xyQseq[i], xyQseq[i+1]));
         }
         return results;
     }
 
-    public static Map<String, List<TestResult>> TEST_DATA = new HashMap<String, List<TestResult>>();
+    public static Map<String, List<TestResult>> TEST_DATA = new HashMap<>();
     static {
        float[] pos = {
                101.35f,      207.8f,
@@ -181,7 +181,7 @@ public class PosParserTest {
 
         final PosParser parser = (startingTileIndex == null) ? new PosParser(fm, IlluminaFileUtil.SupportedIlluminaFormat.Pos) :
                                                                new PosParser(fm, tiles.get(startingTileIndex), IlluminaFileUtil.SupportedIlluminaFormat.Pos);
-        final List<TestResult> expectedResultsList = new ArrayList<TestResult>();
+        final List<TestResult> expectedResultsList = new ArrayList<>();
         final int t1 = (startingTileIndex != null) ? startingTileIndex : 0;
         for(int i = t1; i < tiles.size(); i++) {
             expectedResultsList.addAll(TEST_DATA.get(files.get(i).getName()));

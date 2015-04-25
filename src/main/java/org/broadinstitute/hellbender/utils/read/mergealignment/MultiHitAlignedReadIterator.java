@@ -38,7 +38,7 @@ public class MultiHitAlignedReadIterator implements CloseableIterator<HitsForIns
     MultiHitAlignedReadIterator(final CloseableIterator<SAMRecord> querynameOrderIterator,
                                 final PrimaryAlignmentSelectionStrategy primaryAlignmentSelectionStrategy) {
         this.primaryAlignmentSelectionStrategy = primaryAlignmentSelectionStrategy;
-        peekIterator = new PeekableIterator<SAMRecord>(new FilteringIterator(querynameOrderIterator,
+        peekIterator = new PeekableIterator<>(new FilteringIterator(querynameOrderIterator,
                 new SamRecordFilter() {
                     // Filter unmapped reads.
                     public boolean filterOut(final SAMRecord record) {
@@ -165,7 +165,7 @@ public class MultiHitAlignedReadIterator implements CloseableIterator<HitsForIns
             System.arraycopy(rec.getBaseQualities(), 0, quals, startHardClip, rec.getBaseQualities().length);
 
             // Fix the cigar!
-            elements = new ArrayList<CigarElement>(elements); // make it modifiable
+            elements = new ArrayList<>(elements); // make it modifiable
             if (startHardClip > 0) elements.set(0, new CigarElement(first.getLength(), CigarOperator.S));
             if (endHardClip   > 0) elements.set(elements.size()-1, new CigarElement(last.getLength(), CigarOperator.S));
 

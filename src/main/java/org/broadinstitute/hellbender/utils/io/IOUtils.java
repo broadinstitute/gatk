@@ -126,7 +126,7 @@ public class IOUtils {
 
     private static String absolutePath(File file) {
         File fileAbs = file.getAbsoluteFile();
-        LinkedList<String> names = new LinkedList<String>();
+        LinkedList<String> names = new LinkedList<>();
         while (fileAbs != null) {
             String name = fileAbs.getName();
             fileAbs = fileAbs.getParentFile();

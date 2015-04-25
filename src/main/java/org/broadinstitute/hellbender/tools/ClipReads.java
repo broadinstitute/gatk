@@ -198,7 +198,7 @@ public final class ClipReads extends ReadWalker {
     /**
      * List of sequence that should be clipped from the reads
      */
-    private List<SeqToClip> sequencesToClip = new ArrayList<SeqToClip>();
+    private List<SeqToClip> sequencesToClip = new ArrayList<>();
 
     /**
      * List of cycle start / stop pairs (0-based, stop is included in the cycle to remove) to clip from the reads
@@ -259,7 +259,7 @@ public final class ClipReads extends ReadWalker {
         // Initialize the cycle ranges to clip
         //
         if (cyclesToClipArg != null) {
-            cyclesToClip = new ArrayList<Pair<Integer, Integer>>();
+            cyclesToClip = new ArrayList<>();
             for (String range : cyclesToClipArg.split(",")) {
                 try {
                     String[] elts = range.split("-");

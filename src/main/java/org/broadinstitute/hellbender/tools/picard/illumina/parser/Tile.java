@@ -33,8 +33,8 @@ public class Tile {
 
         final Collection<TilePhasingValue> phasingValues = ensureSoleTilePhasingValuesPerRead(asList(tilePhasingValues));
 
-        final Map<TileTemplateRead, Float> phasingMap = new HashMap<TileTemplateRead, Float>();
-        final Map<TileTemplateRead, Float> prePhasingMap = new HashMap<TileTemplateRead, Float>();
+        final Map<TileTemplateRead, Float> phasingMap = new HashMap<>();
+        final Map<TileTemplateRead, Float> prePhasingMap = new HashMap<>();
 
         /** For each of the TileReads, assign their phasing & prephasing values to the respective maps, which we will
          * use later to calculate the medians
@@ -96,7 +96,7 @@ public class Tile {
                     }
                 });
 
-        final Collection<TilePhasingValue> newTilePhasingValues = new LinkedList<TilePhasingValue>();
+        final Collection<TilePhasingValue> newTilePhasingValues = new LinkedList<>();
         for (final TileTemplateRead read : partitionedMap.keySet()) {
             newTilePhasingValues.add(getSoleElement(partitionedMap.get(read)));
         }

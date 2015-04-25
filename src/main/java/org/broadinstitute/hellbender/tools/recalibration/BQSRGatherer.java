@@ -34,8 +34,8 @@ public class BQSRGatherer extends Gatherer {
      * @return gathered recalibration GATK report
      */
     public static GATKReport gatherReport(final List<File> inputs) {
-        final SortedSet<String> allReadGroups = new TreeSet<String>();
-        final LinkedHashMap<File, Set<String>> inputReadGroups = new LinkedHashMap<File, Set<String>>();
+        final SortedSet<String> allReadGroups = new TreeSet<>();
+        final LinkedHashMap<File, Set<String>> inputReadGroups = new LinkedHashMap<>();
 
         // Get the read groups from each input report
         for (final File input : inputs) {

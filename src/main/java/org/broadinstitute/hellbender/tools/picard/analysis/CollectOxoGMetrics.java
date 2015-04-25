@@ -83,7 +83,7 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
     public int CONTEXT_SIZE = 1;
 
     @Argument(doc = "The optional set of sequence contexts to restrict analysis to. If not supplied all contexts are analyzed.")
-    public Set<String> CONTEXTS = new HashSet<String>();
+    public Set<String> CONTEXTS = new HashSet<>();
 
     @Argument(doc = "For debugging purposes: stop after visiting this many sites with at least 1X coverage.")
     public int STOP_AFTER = Integer.MAX_VALUE;
@@ -159,7 +159,7 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
     @Override
     protected String[] customCommandLineValidation() {
         final int size = 1 + 2 * CONTEXT_SIZE;
-        final List<String> messages = new ArrayList<String>();
+        final List<String> messages = new ArrayList<>();
 
         for (final String ctx : CONTEXTS) {
             if (ctx.length() != size) {
@@ -188,8 +188,8 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
         final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
         final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
 
-        final Set<String> samples = new HashSet<String>();
-        final Set<String> libraries = new HashSet<String>();
+        final Set<String> samples = new HashSet<>();
+        final Set<String> libraries = new HashSet<>();
         for (final SAMReadGroupRecord rec : in.getFileHeader().getReadGroups()) {
             samples.add(getOrElse(rec.getSample(), UNKNOWN_SAMPLE));
             libraries.add(getOrElse(rec.getLibrary(), UNKNOWN_LIBRARY));
@@ -197,7 +197,7 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
 
         // Setup the calculators
         final Set<String> contexts = CONTEXTS.isEmpty() ? makeContextStrings(CONTEXT_SIZE) : CONTEXTS;
-        final ListMap<String, Calculator> calculators = new ListMap<String, Calculator>();
+        final ListMap<String, Calculator> calculators = new ListMap<>();
         for (final String context : contexts) {
             for (final String library : libraries) {
                 calculators.add(context, new Calculator(library, context));
@@ -221,7 +221,7 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
         iterator.setEmitUncoveredLoci(false);
         iterator.setMappingQualityScoreCutoff(MINIMUM_MAPPING_QUALITY);
 
-        final List<SamRecordFilter> filters = new ArrayList<SamRecordFilter>();
+        final List<SamRecordFilter> filters = new ArrayList<>();
         filters.add(new NotPrimaryAlignmentFilter());
         filters.add(new DuplicateReadFilter());
         if (MINIMUM_INSERT_SIZE > 0 || MAXIMUM_INSERT_SIZE > 0) {
@@ -275,7 +275,7 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
         for (final List<Calculator> calcs : calculators.values()) {
             for (final Calculator calc : calcs) {
                 final CpcgMetrics m = calc.finish();
-                m.SAMPLE_ALIAS = StringUtil.join(",", new ArrayList<String>(samples));
+                m.SAMPLE_ALIAS = StringUtil.join(",", new ArrayList<>(samples));
                 file.addMetric(m);
             }
         }
@@ -286,7 +286,7 @@ public class CollectOxoGMetrics extends PicardCommandLineProgram {
     }
 
     private Set<String> makeContextStrings(final int contextSize) {
-        final Set<String> contexts = new HashSet<String>();
+        final Set<String> contexts = new HashSet<>();
 
         for (final byte[] kmer : generateAllKmers(2 * contextSize + 1)) {
             if (kmer[contextSize] == 'C') {

@@ -26,7 +26,7 @@ public class HaplotypeUnitTest extends BaseTest {
     public void testSimpleInsertionAllele() {
         final String bases = "ACTGGTCAACTGGTCAACTGGTCAACTGGTCA";
 
-        final ArrayList<CigarElement> h1CigarList = new ArrayList<CigarElement>();
+        final ArrayList<CigarElement> h1CigarList = new ArrayList<>();
         h1CigarList.add(new CigarElement(bases.length(), CigarOperator.M));
         final Cigar h1Cigar = new Cigar(h1CigarList);
         String h1bases = "AACTTCTGGTCAACTGGTCAACTGGTCAACTGGTCA";
@@ -41,7 +41,7 @@ public class HaplotypeUnitTest extends BaseTest {
     public void testSimpleDeletionAllele() {
         final String bases = "ACTGGTCAACTGGTCAACTGGTCAACTGGTCA";
 
-        final ArrayList<CigarElement> h1CigarList = new ArrayList<CigarElement>();
+        final ArrayList<CigarElement> h1CigarList = new ArrayList<>();
         h1CigarList.add(new CigarElement(bases.length(), CigarOperator.M));
         final Cigar h1Cigar = new Cigar(h1CigarList);
         String h1bases = "ATCAACTGGTCAACTGGTCAACTGGTCA";
@@ -56,7 +56,7 @@ public class HaplotypeUnitTest extends BaseTest {
     public void testSimpleSNPAllele() {
         final String bases = "ACTGGTCAACTGGTCAACTGGTCAACTGGTCA";
 
-        final ArrayList<CigarElement> h1CigarList = new ArrayList<CigarElement>();
+        final ArrayList<CigarElement> h1CigarList = new ArrayList<>();
         h1CigarList.add(new CigarElement(bases.length(), CigarOperator.M));
         final Cigar h1Cigar = new Cigar(h1CigarList);
         String h1bases = "AGTGGTCAACTGGTCAACTGGTCAACTGGTCA";
@@ -71,7 +71,7 @@ public class HaplotypeUnitTest extends BaseTest {
     public void testComplexInsertionAllele() {
         final String bases = "ATCG" + "CCGGCCGGCC" + "ATCGATCG" + "AGGGGGA" + "AGGC";
 
-        final ArrayList<CigarElement> h1CigarList = new ArrayList<CigarElement>();
+        final ArrayList<CigarElement> h1CigarList = new ArrayList<>();
         h1CigarList.add(new CigarElement(4, CigarOperator.M));
         h1CigarList.add(new CigarElement(10, CigarOperator.I));
         h1CigarList.add(new CigarElement(8, CigarOperator.M));
@@ -90,7 +90,7 @@ public class HaplotypeUnitTest extends BaseTest {
     public void testComplexDeletionAllele() {
         final String bases = "ATCG" + "CCGGCCGGCC" + "ATCGATCG" + "AGGGGGA" + "AGGC";
 
-        final ArrayList<CigarElement> h1CigarList = new ArrayList<CigarElement>();
+        final ArrayList<CigarElement> h1CigarList = new ArrayList<>();
         h1CigarList.add(new CigarElement(4, CigarOperator.M));
         h1CigarList.add(new CigarElement(10, CigarOperator.I));
         h1CigarList.add(new CigarElement(8, CigarOperator.M));
@@ -109,7 +109,7 @@ public class HaplotypeUnitTest extends BaseTest {
     public void testComplexSNPAllele() {
         final String bases = "ATCG" + "CCGGCCGGCC" + "ATCGATCG" + "AGGGGGA" + "AGGC";
 
-        final ArrayList<CigarElement> h1CigarList = new ArrayList<CigarElement>();
+        final ArrayList<CigarElement> h1CigarList = new ArrayList<>();
         h1CigarList.add(new CigarElement(4, CigarOperator.M));
         h1CigarList.add(new CigarElement(10, CigarOperator.I));
         h1CigarList.add(new CigarElement(8, CigarOperator.M));
@@ -128,7 +128,7 @@ public class HaplotypeUnitTest extends BaseTest {
         final Haplotype h = new Haplotype(hap.getBytes());
         final Allele h1refAllele = Allele.create(ref, true);
         final Allele h1altAllele = Allele.create(alt, false);
-        final ArrayList<Allele> alleles = new ArrayList<Allele>();
+        final ArrayList<Allele> alleles = new ArrayList<>();
         alleles.add(h1refAllele);
         alleles.add(h1altAllele);
         final VariantContext vc = new VariantContextBuilder().alleles(alleles).loc("1", loc, loc + h1refAllele.getBases().length - 1).make();
@@ -159,7 +159,7 @@ public class HaplotypeUnitTest extends BaseTest {
 
     @DataProvider(name = "TrimmingData")
     public Object[][] makeTrimmingData() {
-        List<Object[]> tests = new ArrayList<Object[]>();
+        List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
         final GenomeLoc loc = new UnvalidatingGenomeLoc("20", 0, 10, 20);

@@ -45,7 +45,7 @@ public class FilterApplyingVariantIterator implements CloseableIterator<VariantC
     @Override
     public VariantContext next() {
         final VariantContext ctx = this.iterator.next();
-        final Set<String> filterStrings = new HashSet<String>();
+        final Set<String> filterStrings = new HashSet<>();
 
         // Collect variant level filters
         for (final VariantFilter filter : this.filters) {
@@ -54,8 +54,8 @@ public class FilterApplyingVariantIterator implements CloseableIterator<VariantC
         }
 
         // Collect genotype level filters in a Map of Sample -> List<filter string>
-        final ListMap<String,String> gtFilterStrings = new ListMap<String,String>();
-        final Set<String> variantSamples = new HashSet<String>();
+        final ListMap<String,String> gtFilterStrings = new ListMap<>();
+        final Set<String> variantSamples = new HashSet<>();
         for (final Genotype gt : ctx.getGenotypes()) {
             if (gt.isCalled() && !gt.isHomRef()) variantSamples.add(gt.getSampleName());
 
@@ -81,7 +81,7 @@ public class FilterApplyingVariantIterator implements CloseableIterator<VariantC
 
         // Apply filters to the necessary genotypes
         builder.noGenotypes();
-        final List<Genotype> newGenotypes = new ArrayList<Genotype>(ctx.getNSamples());
+        final List<Genotype> newGenotypes = new ArrayList<>(ctx.getNSamples());
         for (final Genotype gt : ctx.getGenotypes()) {
             final GenotypeBuilder gtBuilder = new GenotypeBuilder(gt);
             final List<String> filters = gtFilterStrings.get(gt.getSampleName());

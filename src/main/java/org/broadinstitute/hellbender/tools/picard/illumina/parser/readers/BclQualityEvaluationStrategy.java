@@ -26,7 +26,7 @@ public class BclQualityEvaluationStrategy {
     public static final int ILLUMINA_ALLEGED_MINIMUM_QUALITY = 2;
     private final int minimumRevisedQuality;
     /** A thread-safe defaulting map that injects an AtomicInteger starting at 0 when a uninitialized key is get-ted. */
-    private Map<Byte, AtomicInteger> qualityCountMap = Collections.synchronizedMap(new CollectionUtil.DefaultingMap<Byte, AtomicInteger>(
+    private Map<Byte, AtomicInteger> qualityCountMap = Collections.synchronizedMap(new CollectionUtil.DefaultingMap<>(
             new CollectionUtil.DefaultingMap.Factory<AtomicInteger, Byte>() {
                 @Override
                 public AtomicInteger make(final Byte _) {
@@ -64,7 +64,7 @@ public class BclQualityEvaluationStrategy {
      * Reviews the qualities observed thus far and throws an exception if any are below the minimum quality threshold.
      */
     public void assertMinimumQualities() {
-        final Collection<String> errorTokens = new LinkedList<String>();
+        final Collection<String> errorTokens = new LinkedList<>();
         for (final Map.Entry<Byte, AtomicInteger> entry : this.qualityCountMap.entrySet()) {
             /**
              * We're comparing revised qualities here, not observed, but the qualities that are logged in qualityCountMap are observed
@@ -87,7 +87,7 @@ public class BclQualityEvaluationStrategy {
      * Returns a view of number of qualities that failed, where the key is the quality score and the value is the number of observations.
      */
     public Map<Byte, Integer> getPoorQualityFrequencies() {
-        final Map<Byte, Integer> qualityCountMapCopy = new HashMap<Byte, Integer>();
+        final Map<Byte, Integer> qualityCountMapCopy = new HashMap<>();
         for (final Map.Entry<Byte, AtomicInteger> entry : qualityCountMap.entrySet()) {
             qualityCountMapCopy.put(entry.getKey(), entry.getValue().intValue());
         }

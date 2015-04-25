@@ -46,7 +46,7 @@ public class FilterParserTest {
     }
 
     public static final List<Integer> arrayToList(final Integer[] array) {
-        final List<Integer> list = new ArrayList<Integer>();
+        final List<Integer> list = new ArrayList<>();
         for (int item : array) {
             list.add(item);
         }

@@ -106,7 +106,7 @@ public class SamToFastq extends PicardCommandLineProgram {
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
-        final Map<String, SAMRecord> firstSeenMates = new HashMap<String, SAMRecord>();
+        final Map<String, SAMRecord> firstSeenMates = new HashMap<>();
         final FastqWriterFactory factory = new FastqWriterFactory();
         factory.setCreateMd5(CREATE_MD5_FILE);
         final Map<SAMReadGroupRecord, FastqWriters> writers = generateWriters(reader.getFileHeader().getReadGroups(), factory);
@@ -150,7 +150,7 @@ public class SamToFastq extends PicardCommandLineProgram {
         CloserUtil.close(reader);
 
         // Close all the fastq writers being careful to close each one only once!
-        for (final FastqWriters writerMapping : new HashSet<FastqWriters>(writers.values())) {
+        for (final FastqWriters writerMapping : new HashSet<>(writers.values())) {
             writerMapping.closeAll();
         }
 
@@ -168,7 +168,7 @@ public class SamToFastq extends PicardCommandLineProgram {
     private Map<SAMReadGroupRecord, FastqWriters> generateWriters(final List<SAMReadGroupRecord> samReadGroupRecords,
                                                                   final FastqWriterFactory factory) {
 
-        final Map<SAMReadGroupRecord, FastqWriters> writerMap = new HashMap<SAMReadGroupRecord, FastqWriters>();
+        final Map<SAMReadGroupRecord, FastqWriters> writerMap = new HashMap<>();
 
         final FastqWriters fastqWriters;
         if (!OUTPUT_PER_RG) {
@@ -202,7 +202,7 @@ public class SamToFastq extends PicardCommandLineProgram {
                 final FastqWriter firstOfPairWriter = factory.newWriter(makeReadGroupFile(rg, "_1"));
                 // Create this writer on-the-fly; if we find no second-of-pair reads, don't bother making a writer (or delegating,
                 // if we're interleaving).
-                final Lazy<FastqWriter> lazySecondOfPairWriter = new Lazy<FastqWriter>(new Lazy.LazyInitializer<FastqWriter>() {
+                final Lazy<FastqWriter> lazySecondOfPairWriter = new Lazy<>(new Lazy.LazyInitializer<FastqWriter>() {
                     @Override
                     public FastqWriter make() {
                         return INTERLEAVE ? firstOfPairWriter : factory.newWriter(makeReadGroupFile(rg, "_2"));
@@ -389,7 +389,7 @@ public class SamToFastq extends PicardCommandLineProgram {
 
         /** Simple constructor; all writers are pre-initialized.. */
         private FastqWriters(final FastqWriter firstOfPair, final FastqWriter secondOfPair, final FastqWriter unpaired) {
-            this(firstOfPair, new Lazy<FastqWriter>(new Lazy.LazyInitializer<FastqWriter>() {
+            this(firstOfPair, new Lazy<>(new Lazy.LazyInitializer<FastqWriter>() {
                 @Override
                 public FastqWriter make() {
                     return secondOfPair;
@@ -410,7 +410,7 @@ public class SamToFastq extends PicardCommandLineProgram {
         }
 
         public void closeAll() {
-            final Set<FastqWriter> fastqWriters = new HashSet<FastqWriter>();
+            final Set<FastqWriter> fastqWriters = new HashSet<>();
             fastqWriters.add(firstOfPair);
             fastqWriters.add(unpaired);
             // Make sure this is a no-op if the second writer was never fetched.

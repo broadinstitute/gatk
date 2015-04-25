@@ -93,12 +93,12 @@ public class GATKReportTable {
                 // initialize the data
                 final int nColumns = Integer.parseInt(tableData[TableDataHeaderFields.COLS.index()]);
                 final int nRows = Integer.parseInt(tableData[TableDataHeaderFields.ROWS.index()]);
-                underlyingData = new ArrayList<Object[]>(nRows);
-                columnInfo = new ArrayList<GATKReportColumn>(nColumns);
-                columnNameToIndex = new HashMap<Object, Integer>(nColumns);
+                underlyingData = new ArrayList<>(nRows);
+                columnInfo = new ArrayList<>(nColumns);
+                columnNameToIndex = new HashMap<>(nColumns);
 
                 // when reading from a file, the row ID mapping is just the index
-                rowIdToIndex = new HashMap<Object, Integer>();
+                rowIdToIndex = new HashMap<>();
                 for ( int i = 0; i < nRows; i++ )
                     rowIdToIndex.put(i, i);
 
@@ -183,10 +183,10 @@ public class GATKReportTable {
         this.tableDescription = tableDescription;
         this.sortingWay = sortingWay;
 
-        underlyingData = new ArrayList<Object[]>(INITITAL_ARRAY_SIZE);
-        columnInfo = new ArrayList<GATKReportColumn>(numColumns);
-        columnNameToIndex = new HashMap<Object, Integer>(numColumns);
-        rowIdToIndex = new HashMap<Object, Integer>();
+        underlyingData = new ArrayList<>(INITITAL_ARRAY_SIZE);
+        columnInfo = new ArrayList<>(numColumns);
+        columnNameToIndex = new HashMap<>(numColumns);
+        rowIdToIndex = new HashMap<>();
     }
 
     /**
@@ -737,12 +737,12 @@ public class GATKReportTable {
             case SORT_BY_ROW:
                 final TreeMap<Object, Integer> sortedMap;
                 try {
-                    sortedMap = new TreeMap<Object, Integer>(rowIdToIndex);
+                    sortedMap = new TreeMap<>(rowIdToIndex);
                 } catch (ClassCastException e) {
                     return underlyingData;
                 }
 
-                final List<Object[]> orderedData = new ArrayList<Object[]>(underlyingData.size());
+                final List<Object[]> orderedData = new ArrayList<>(underlyingData.size());
                 for ( final int rowKey : sortedMap.values() )
                     orderedData.add(underlyingData.get(rowKey));
 
