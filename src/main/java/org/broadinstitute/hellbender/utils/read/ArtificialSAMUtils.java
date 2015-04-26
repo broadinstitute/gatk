@@ -59,8 +59,8 @@ public class ArtificialSAMUtils {
 
         for (int i = 0; i < groupCount; i++) {
             final SAMReadGroupRecord groupRecord = header.getReadGroup(readGroups.get(i).getId());
-            groupRecord.setAttribute("PL", DEFAULT_PLATFORM_PREFIX + ((i % 2)+1));
-            groupRecord.setAttribute("PU", DEFAULT_PLATFORM_UNIT_PREFIX + ((i % 3)+1));
+            groupRecord.setPlatform(DEFAULT_PLATFORM_PREFIX + ((i % 2)+1));
+            groupRecord.setPlatformUnit(DEFAULT_PLATFORM_UNIT_PREFIX + ((i % 3)+1));
         }
         return header;
     }
