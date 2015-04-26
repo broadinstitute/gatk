@@ -78,7 +78,7 @@ public class LeftAlignIndels extends ReadWalker {
         int numBlocks = AlignmentUtils.getNumAlignmentBlocks(read);
         if ( numBlocks == 2 ) {
             // We checked in onTraversalStart() that a reference is present, so ref.get() is safe
-            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.unclipCigar(read.getCigar()), ref.getBases(), read.getReadBases(), 0, 0, true);
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(CigarUtils.trimReadToUnclippedBases(read.getCigar()), ref.getBases(), read.getReadBases(), 0, 0, true);
             newCigar = CigarUtils.reclipCigar(newCigar, read);
             read.setCigar(newCigar);
         }
