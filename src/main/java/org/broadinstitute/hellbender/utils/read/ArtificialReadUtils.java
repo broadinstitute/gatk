@@ -162,6 +162,10 @@ public final class ArtificialReadUtils {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(cigar));
     }
 
+    public static GATKRead createArtificialRead(final String cigarString) {
+        return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(TextCigarCodec.decode(cigarString)));
+    }
+
     /**
      * Creates an artificial GATKRead backed by a SAMRecord, with the specified UUID.
      *
