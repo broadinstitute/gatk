@@ -1,9 +1,15 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Stack;
 
 public class CigarUtils {
@@ -107,7 +113,7 @@ public class CigarUtils {
         return false;
     }
 
-    public static final int countRefBasesBasedOnCigar(final SAMRecord read, final int cigarStartIndex, final int cigarEndIndex){
+    public static int countRefBasesBasedOnCigar(final SAMRecord read, final int cigarStartIndex, final int cigarEndIndex){
         int result = 0;
         for(int i = cigarStartIndex; i<cigarEndIndex;i++){
             final CigarElement cigarElement = read.getCigar().getCigarElement(i);
@@ -168,5 +174,65 @@ public class CigarUtils {
             }
         }
         return false;
+    }
+
+    /**
+     * A good Cigar object obeys the following rules:
+     *  - is valid as per SAM spec {@link Cigar#isValid(String, long)}.
+     *  - has no consecutive I/D elements
+     *  - does not start or end with deletions (with or without preceding clips).
+     */
+    public static boolean isGood(final Cigar c) {
+        if (c == null){
+            throw new IllegalArgumentException("null cigar");
+        }
+        //Note: the string comes from the SAMRecord so it must be a wellformed CIGAR (that is, in "\*|([0-9]+[MIDNSHPX=])+" as per SAM spec).
+        //We don't have to check that
+        if (c.isValid(null, -1) != null){  //if it's invalid, then it's not good
+            return false;
+        }
+        final List<CigarElement> elems = c.getCigarElements();
+        if (hasConsecutiveIndels(elems)){
+            return false;
+        }
+        if (startsWithDeletionIgnoringClips(elems)){
+            return false;
+        }
+        //revert the list and check deletions at the end
+        final List<CigarElement> elemsRev = new ArrayList<>(elems);
+        Collections.reverse(elemsRev);
+        return !startsWithDeletionIgnoringClips(elemsRev);
+    }
+
+    /**
+     * Checks if cigar has consecutive I/D elements.
+     */
+    private static boolean hasConsecutiveIndels(final List<CigarElement> elems) {
+        boolean prevIndel = false;
+        for (final CigarElement elem : elems) {
+            final CigarOperator op = elem.getOperator();
+            final boolean isIndel = (op == CigarOperator.INSERTION || op == CigarOperator.DELETION);
+            if (prevIndel && isIndel) {
+                return true;
+            }
+            prevIndel = isIndel;
+        }
+        return false;
+    }
+
+    /**
+     * Checks if cigar starts with a deletion (ignoring any clips at the beginning).
+     */
+    private static boolean startsWithDeletionIgnoringClips(final List<CigarElement> elems) {
+        final Iterator<CigarElement> iter = elems.iterator();
+        boolean isClip = true;
+        CigarOperator op = null;
+        while(iter.hasNext() && isClip) { //consume clips at the beginning
+            final CigarElement elem = iter.next();
+            op = elem.getOperator();
+            isClip = (op == CigarOperator.HARD_CLIP || op == CigarOperator.SOFT_CLIP);
+        }
+        //once all clips are consumed, is it a deletion or not?
+        return op == CigarOperator.DELETION;
     }
 }

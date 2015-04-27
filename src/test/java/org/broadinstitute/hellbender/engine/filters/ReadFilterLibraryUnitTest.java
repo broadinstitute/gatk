@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -196,7 +197,7 @@ public final class ReadFilterLibraryUnitTest {
     public void failsALIGNMENT_AGREES_WITH_HEADER_case2() {
         SAMRecord read = simpleGoodRead();
         final int length = read.getHeader().getSequence(0).getSequenceLength();
-        read.setAlignmentStart(length+10);
+        read.setAlignmentStart(length + 10);
         Assert.assertFalse(ALIGNMENT_AGREES_WITH_HEADER.test(read), read.toString());
     }
 
@@ -210,7 +211,7 @@ public final class ReadFilterLibraryUnitTest {
     @Test
     public void failsHAS_MATCHING_BASES_AND_QUALS() {
         SAMRecord read = simpleGoodRead();
-        read.setBaseQualities(new byte[]{1,2,3});
+        read.setBaseQualities(new byte[]{1, 2, 3});
         Assert.assertFalse(HAS_MATCHING_BASES_AND_QUALS.test(read), read.toString());
     }
 
@@ -228,4 +229,89 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertFalse(CIGAR_IS_SUPPORTED.test(read), read.toString());
     }
 
+    @DataProvider(name = "badCigars")
+    public Object[][] badCigars() {
+        return new Object[][]{
+                {"2D4M"},               // starting with multiple deletions
+                {"4M2D"},               // ending with multiple deletions
+                {"3M1I1D"},             // adjacent indels AND ends in deletion
+                {"1M1I1D2M"},           // adjacent indels I->D
+                {"1M1D2I1M"},           // adjacent indels D->I
+                {"1M1I2M1D"},           // ends in single deletion with insertion in the middle
+                {"4M1D"},               // ends in single deletion
+                {"1D4M"},               // starts with single deletion
+                {"2M1D1D2M"},           // adjacent D's
+                {"1M1I1I1M"},           // adjacent I's
+                {"1H1D4M"},             // starting with deletion after H
+                {"1S1D3M"},             // starting with deletion after S
+                {"1H1S1D3M"},           // starting with deletion after HS
+                {"4M1D1H"},             // ending with deletion before H
+                {"3M1D1S"},             // ending with deletion before S
+                {"3M1D1S1H"},           // ending with deletion before HS
+                {"1H1S1H1M"},           // H in the middle, after S
+                {"1M1H1S1M"},           // S in the middle, after H
+                {"10M2H10M"},           // H in the middle
+                {"10M2S10M"},           // S in the middle
+                {"1S1H"},               // only clipping
+                {"1S1S"},               // only clipping
+                {"1H1S"},               // only clipping
+                {"1H1H"},               // only clipping
+                {"1S1H10M"},            // H in the middle
+                {"1H1M1S1M"},           // H in the middle
+                {"1M1H1S"},             // H in the middle
+                {"1H1S10M2S10M1S1H"},    // deceiving S in the middle: HSMSMSH
+                {"1H1S10M2H10M1S1H"},    // deceiving H in the middle
+                {"1H1H2M"},                   //  (invalid according to htsjdk)
+                {"1S20S10M"},                 //  (invalid according to htsjdk)
+                {"1S1S1S1M"},                 //  (invalid according to htsjdk)
+                {"1H1S10M10S1S30H"},          //  (invalid according to htsjdk)
+                {"1H1S10M10S1S30H"},          //  (invalid according to htsjdk)
+                {"1H20H10M"},                 //  (invalid according to htsjdk)
+                {"1H1H10M10H30H"},            //  (invalid according to htsjdk)
+                {"1H1H10M10H1H30H"},          //  (invalid according to htsjdk)
+                {"1M1H2H"},                   //  (invalid according to htsjdk)
+        };
+    }
+    @Test(dataProvider = "badCigars")
+    public void testWonkyCigars (String cigarString) {
+        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
+        Assert.assertFalse(GOOD_CIGAR.test(read), read.getCigarString());
+    }
+
+    @Test
+    public void testReadCigarLengthMismatch() {
+        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar("4M", 1);
+        Assert.assertFalse(READLENGTH_EQUALS_CIGARLENGTH.test(read), read.getCigarString());
+    }
+
+    @Test
+    public void testEmptyCigar(){
+        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar("");
+        Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigarString());
+    }
+
+    @DataProvider(name = "goodCigars")
+    public Object[][] goodCigars() {
+        return new Object[][]{
+                {"1H1S10M10S30H"},
+                {"1I9H"},
+                {"1I1S8H"},
+                {"1S1I1S7H"}
+        };
+    }
+
+    @Test(dataProvider = "goodCigars")
+    public void testGoodCigars (String cigarString) {
+        SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigarString);
+        Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigarString());
+    }
+    @Test
+    public void testGoodCigarsUpToSize() {
+        //Note: not using data providers here because it's super slow to print (many minutes vs few seconds).
+        List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(10);
+        for (Cigar cigar : cigarList) {
+            SAMRecord read = ReadClipperTestUtils.makeReadFromCigar(cigar);
+            Assert.assertTrue(GOOD_CIGAR.test(read), read.getCigarString());
+        }
+    }
 }
