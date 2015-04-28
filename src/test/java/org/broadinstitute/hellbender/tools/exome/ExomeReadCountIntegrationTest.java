@@ -41,14 +41,11 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
     //  Test output files //
     ////////////////////////
 
-    private final static File NA12878_COHORT_COUNT_EXPECTED_OUTPUT =
-            testFile("exome-read-counts-NA12878.output");
-
-    private final static File NA12878_SAMPLE_COUNT_EXPECTED_OUTPUT =
-            testFile("exome-read-counts-sample-NA12878.output");
-
     private final static File COHORT_COUNT_EXPECTED_OUTPUT =
             testFile("exome-read-counts-cohort.output");
+
+    private final static File COHORT_COUNT_EXPECTED_PCOV_OUTPUT =
+            testFile("exome-read-counts-cohort.pcov-output");
 
     private final static File COHORT_COUNT_EXPECTED_ROW_OUTPUT =
             testFile("exome-read-counts-cohort.row-output");
@@ -59,6 +56,9 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
     private final static File SAMPLE_COUNT_EXPECTED_OUTPUT =
             testFile("exome-read-counts-sample.output");
 
+    private final static File SAMPLE_COUNT_EXPECTED_PCOV_OUTPUT =
+            testFile("exome-read-counts-sample.pcov-output");
+
     private final static File SAMPLE_COUNT_EXPECTED_ROW_OUTPUT =
             testFile("exome-read-counts-sample.row-output");
 
@@ -67,6 +67,9 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
     private final static File READ_GROUP_COUNT_EXPECTED_OUTPUT =
             testFile("exome-read-counts-read-group.output");
+
+    private final static File READ_GROUP_COUNT_EXPECTED_PCOV_OUTPUT =
+            testFile("exome-read-counts-read-group.pcov-output");
 
     private final static File READ_GROUP_COUNT_EXPECTED_ROW_OUTPUT =
             testFile("exome-read-counts-read-group.row-output");
@@ -102,18 +105,42 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                         COHORT_COUNT_EXPECTED_OUTPUT,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
+                        ExomeReadCounts.Transform.RAW,
                         new String[0]
                 },
                 {       ALL_BAMS,
                         SAMPLE_COUNT_EXPECTED_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_ROW_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_COLUMN_OUTPUT,
+                        ExomeReadCounts.Transform.RAW,
                         new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.SAMPLE.name()}
                 },
                 {       ALL_BAMS,
                         READ_GROUP_COUNT_EXPECTED_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_ROW_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_COLUMN_OUTPUT,
+                        ExomeReadCounts.Transform.RAW,
+                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.READ_GROUP.name()}
+                },
+                {       ALL_BAMS,
+                        COHORT_COUNT_EXPECTED_PCOV_OUTPUT,
+                        COHORT_COUNT_EXPECTED_ROW_OUTPUT,
+                        COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
+                        ExomeReadCounts.Transform.PCOV,
+                        new String[0]
+                },
+                {       ALL_BAMS,
+                        SAMPLE_COUNT_EXPECTED_PCOV_OUTPUT,
+                        SAMPLE_COUNT_EXPECTED_ROW_OUTPUT,
+                        SAMPLE_COUNT_EXPECTED_COLUMN_OUTPUT,
+                        ExomeReadCounts.Transform.PCOV,
+                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.SAMPLE.name()}
+                },
+                {       ALL_BAMS,
+                        READ_GROUP_COUNT_EXPECTED_PCOV_OUTPUT,
+                        READ_GROUP_COUNT_EXPECTED_ROW_OUTPUT,
+                        READ_GROUP_COUNT_EXPECTED_COLUMN_OUTPUT,
+                        ExomeReadCounts.Transform.PCOV,
                         new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.READ_GROUP.name()}
                 }
         };
@@ -121,8 +148,8 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
     @Test(dataProvider = "correctRunData")
     public void testCorrectRun(final File[] bamFiles, final File expectedOutputFile, final File expectedRowOutputFile,
-                               final File expectedColumnOutputFile,
-                                final String[] additionalArguments) {
+                               final File expectedColumnOutputFile, final ExomeReadCounts.Transform transform,
+                               final String[] additionalArguments) {
         final File outputFile = createTempFile("cohort-output");
         final File rowOutputFile = createTempFile("cohort-row-output");
         final File columnOutputFile = createTempFile("cohort-column-output");
@@ -131,7 +158,8 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
                 "-L", INTERVALS_LIST.getAbsolutePath(),
                 "-" + ExomeReadCounts.ROW_SUMMARY_OUTPUT_SHORT_NAME, rowOutputFile.getAbsolutePath(),
-                "-" + ExomeReadCounts.COLUMN_SUMMARY_OUTPUT_SHORT_NAME, columnOutputFile.getAbsolutePath()
+                "-" + ExomeReadCounts.COLUMN_SUMMARY_OUTPUT_SHORT_NAME, columnOutputFile.getAbsolutePath(),
+                "-" + ExomeReadCounts.TRANSFORM_SHORT_NAME, transform.name()
         ));
         Arrays.asList(bamFiles).forEach(bam -> {
             arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
@@ -147,10 +175,19 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
         if (expectedRowOutputFile != null) compareTableFiles(rowOutputFile, expectedRowOutputFile, " row output ");
         if (expectedColumnOutputFile != null) compareTableFiles(columnOutputFile, expectedColumnOutputFile, " column output ");
 
-        checkTableConsistency(outputFile, rowOutputFile, columnOutputFile);
+        switch (transform) {
+            case RAW:
+                checkTableRawConsistency(outputFile, rowOutputFile, columnOutputFile);
+                break;
+            case PCOV:
+                checkTablePcovConsistency(outputFile, rowOutputFile, columnOutputFile);
+                break;
+            default:
+                Assert.fail("bug in testing code: unexpected transform " + transform.name());
+        }
     }
 
-    private void checkTableConsistency(final File outputFile, final File rowOutputFile, final File columnOutputFile) {
+    private void checkTableRawConsistency(final File outputFile, final File rowOutputFile, final File columnOutputFile) {
         final Table matrix;
         final Table row;
         final Table column;
@@ -170,7 +207,7 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                     "main output row count must match row output rows");
 
             for (int r = 0; r < matrix.rowCount; r++) {
-                // Check coords agree:
+                // Check coordinates agree:
                 Assert.assertEquals(matrix.getString(r, 0), row.getString(r, 0));
                 Assert.assertEquals(matrix.getLong(r, 1), row.getLong(r, 1));
                 Assert.assertEquals(matrix.getLong(r, 2), row.getLong(r, 2));
@@ -204,6 +241,76 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             }
         }
 
+    }
+
+    private void checkTablePcovConsistency(final File outputFile, final File rowOutputFile, final File columnOutputFile) {
+        final Table matrix;
+        final Table row;
+        final Table column;
+
+        try {
+            matrix = Table.fromFile(outputFile);
+            row = rowOutputFile == null ? null : Table.fromFile(rowOutputFile);
+            column = columnOutputFile == null ? null : Table.fromFile(columnOutputFile);
+
+        } catch (final IOException ex) {
+            Assert.fail("problem opening output files",ex);
+            throw new IllegalStateException("unreachable test code");
+        }
+
+        // without the column table we cannot do much in terms of comparisons
+        // as the main matrix output is a proportion of those column totals.
+        if (column == null) {
+            return;
+        }
+
+        for (int i = 3; i < matrix.columnCount; i++) {
+            if (column.getLong(i-3,1) > 0) {
+                double sumPcov = 0;
+                for (int j = 0; j < matrix.rowCount; j++) {
+                    sumPcov += matrix.getDouble(j,i);
+                }
+                Assert.assertEquals(sumPcov,1.0,0.0005);
+            } else {
+                for (int j = 0; j < matrix.rowCount; j++) {
+                    Assert.assertTrue(Double.isNaN(matrix.getDouble(j, i)));
+                }
+            }
+        }
+
+        Assert.assertEquals(matrix.columnCount - 3, column.rowCount,
+                "main output count column count must match column output rows");
+
+        for (int c = 3; c < matrix.columnCount; c++) {
+            Assert.assertEquals(matrix.columnNames[c], column.getString(c - 3, 0));
+            long totalBp = 0;
+            for (int r = 0; r < matrix.rowCount; r++) {
+                totalBp += matrix.getLong(r, 2) - matrix.getLong(r, 1) + 1;
+            }
+            Assert.assertEquals(column.getDouble(c - 3, 2), column.getLong(c - 3, 1) / (double) totalBp, 0.005);
+        }
+
+        if (row != null) {
+            Assert.assertEquals(matrix.rowCount, row.rowCount,
+                    "main output row count must match row output rows");
+
+            for (int r = 0; r < matrix.rowCount; r++) {
+                // Check coordinates agree:
+                Assert.assertEquals(matrix.getString(r, 0), row.getString(r, 0));
+                Assert.assertEquals(matrix.getLong(r, 1), row.getLong(r, 1));
+                Assert.assertEquals(matrix.getLong(r, 2), row.getLong(r, 2));
+                // Check row sum agree:
+                long rowCount = 0;
+                for (int c = 3; c < matrix.columnCount; c++) {
+                    rowCount += Math.round(matrix.getDouble(r, c) * column.getLong(c - 3, 1));
+                }
+                Assert.assertEquals(rowCount, row.getLong(r, 3));
+                long size = matrix.getLong(r, 2) - matrix.getLong(r, 1) + 1;
+                // Check consistent average per bp and column epsilon of 0.005 assume two decimal precision (~ %.2f).
+                Assert.assertEquals(rowCount / ((double) size * (matrix.columnCount - 3)), row.getDouble(r, 4), 0.01);
+
+            }
+        }
     }
 
     private void compareTableFiles(File outputFile, File expectedOutputFile, final String role) {
@@ -293,11 +400,11 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
         }
 
         public long getLong(int r, int c) {
-            return Long.valueOf(values[r * columnCount + c]);
+            return Long.parseLong(values[r * columnCount + c]);
         }
 
         public double getDouble(int r, int c) {
-            return Double.valueOf(values[r * columnCount + c]);
+            return Double.parseDouble(values[r * columnCount + c]);
         }
     }
 }
