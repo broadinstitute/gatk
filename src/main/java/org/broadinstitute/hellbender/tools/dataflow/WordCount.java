@@ -9,13 +9,13 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowTool;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 
 @CommandLineProgramProperties(
         usage="Count the usages of every word in a text",
         usageShort="Count Words",
         programGroup = DataFlowProgramGroup.class)
-public class WordCount extends DataflowTool{
+public class WordCount extends DataflowCommandLineProgram {
     @Argument
     public String input;
 

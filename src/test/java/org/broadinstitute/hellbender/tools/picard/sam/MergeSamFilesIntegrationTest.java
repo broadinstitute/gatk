@@ -15,7 +15,7 @@ import java.io.File;
 public class MergeSamFilesIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MergeSamFiles");
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return MergeSamFiles.class.getSimpleName();
     }
     /**

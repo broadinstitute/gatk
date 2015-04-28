@@ -29,7 +29,7 @@ public class ArgumentsBuilder {
 
     /**
      * Add a string to the arguments list
-     * Strings are processed specially, they are reformated to match the new unix style arguments
+     * Strings are processed specially, they are reformatted to match the new unix style arguments
      * @param arg A string representing one or more arguments
      * @return
      */

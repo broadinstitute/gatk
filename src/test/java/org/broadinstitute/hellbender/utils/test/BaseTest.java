@@ -75,6 +75,27 @@ public abstract class BaseTest {
     }
 
     /**
+     * Returns the location of the resource directory for the command line program.
+     */
+    public String getToolTestDataDir(){
+        return "src/test/resources/" +this.getClass().getPackage().getName().replace(".","/") +"/" + getTestedClassName() + "/";
+    }
+
+    /**
+     * Returns the name of the class being tested.
+     * The default implementation takes the simple name of the test class and removes the trailing "Test".
+     * Override if needed.
+     */
+    public String getTestedClassName(){
+        if (getClass().getSimpleName().contains("IntegrationTest"))
+            return getClass().getSimpleName().replaceAll("IntegrationTest$", "");
+        else if (getClass().getSimpleName().contains("UnitTest"))
+            return getClass().getSimpleName().replaceAll("UnitTest$", "");
+        else
+            return getClass().getSimpleName().replaceAll("Test$", "");
+    }
+
+    /**
      * Simple generic utility class to creating TestNG data providers:
      *
      * 1: inherit this class, as in

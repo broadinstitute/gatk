@@ -16,7 +16,7 @@ public class CleanSamTester extends SamFileTester {
     private final String expectedCigar;
 
     @Override
-    public String getCommandLineProgramName() { return CleanSam.class.getSimpleName(); }
+    public String getTestedClassName() { return CleanSam.class.getSimpleName(); }
 
     public CleanSamTester(final String expectedCigar, final int readLength, final int defaultChromosomeLength) {
         super(readLength, true, defaultChromosomeLength);

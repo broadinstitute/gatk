@@ -54,7 +54,7 @@ public class MergeBamAlignmentIntegrationTest extends CommandLineProgramTest {
     // For EarliestFragment tests, tag placed on the alignments which are expected to be marked as primary.
     private static final String ONE_OF_THE_BEST_TAG = "YB";
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return MergeBamAlignment.class.getSimpleName();
     }
 

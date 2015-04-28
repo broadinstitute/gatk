@@ -149,11 +149,11 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
 
     private void raiseExceptionForMissingIndex(String reason) {
         String commandsToIndex = backingFiles.entrySet().stream()
-                .filter(f -> f.getKey().hasIndex())
+                .filter(f -> !f.getKey().hasIndex())
                 .map(Map.Entry::getValue)
                 .map(File::getAbsolutePath)
                 .map(f -> "samtools index " + f)
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.joining("\n","\n","\n"));
 
         throw new UserException(reason + "\nPlease index all input files:\n" + commandsToIndex);
     }

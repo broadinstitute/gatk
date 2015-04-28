@@ -22,7 +22,7 @@ public class RevertSamIntegrationTest extends CommandLineProgramTest {
 
     private static final String unmappedRead = "both_reads_present_only_first_aligns/2";
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return RevertSam.class.getSimpleName();
     }
 

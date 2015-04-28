@@ -21,7 +21,7 @@ public class VcfFormatConverterTest extends CommandLineProgramTest {
     private static final File TEST_VCF = new File(TEST_DATA_PATH, TEST_FILE_BASE + VCF);
     private static final File TEST_BCF = new File(TEST_DATA_PATH, TEST_FILE_BASE + BCF);
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return VcfFormatConverter.class.getSimpleName();
     }
 

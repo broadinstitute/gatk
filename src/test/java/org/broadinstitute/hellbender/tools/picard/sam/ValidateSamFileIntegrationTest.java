@@ -16,7 +16,7 @@ public class ValidateSamFileIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/ValidateSamFile");
 
     @Override
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return ValidateSamFile.class.getSimpleName();
     }
 

@@ -15,7 +15,7 @@ public class SamFormatConverterIntegrationTest extends CommandLineProgramTest {
     private static final File unmappedBam = new File(TEST_DATA_DIR, "unmapped.bam");
     private static final File unmappedCram = new File(TEST_DATA_DIR, "unmapped.cram");
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return SamFormatConverter.class.getSimpleName();
     }
 

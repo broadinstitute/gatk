@@ -44,7 +44,7 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
     }
 
     @Override
-    public String getCommandLineProgramName() { return getProgram().getClass().getSimpleName(); }
+    public String getTestedClassName() { return getProgram().getClass().getSimpleName(); }
 
     /**
      * Fill in expected duplication metrics directly from the input records given to this tester

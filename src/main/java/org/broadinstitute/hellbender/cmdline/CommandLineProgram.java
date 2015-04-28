@@ -34,7 +34,7 @@ import java.util.List;
  *
  */
 public abstract class CommandLineProgram {
-    protected static final Logger logger = LogManager.getLogger(CommandLineProgram.class);
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();

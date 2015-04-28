@@ -13,7 +13,6 @@ import static org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateV
 
 public class ValidateVariantsIntegrationTest extends CommandLineProgramTest {
 
-
     public String baseTestString(final boolean sharedFile, final String file, boolean exclude, ValidateVariants.ValidationType type) {
         final String defaultRegion = "1:1-1000000";
 

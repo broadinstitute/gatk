@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -17,24 +20,6 @@ public abstract class CommandLineProgramTest extends BaseTest {
         return new File("src/test/resources/org/broadinstitute/hellbender/tools/");
     }
 
-    /**
-     * Returns the location of the resource directory for the command line program.
-     */
-    public String getToolTestDataDir(){
-        return getTestDataDir() +"/" + getCommandLineProgramName() + "/";
-    }
-
-    /**
-     * Returns the name of the command line program name (ie the tool to use).
-     * The default implementation takes the simple name of the test class and removes the trailing "Test".
-     * Override if needed.
-     */
-    public String getCommandLineProgramName(){
-        if (getClass().getSimpleName().contains("IntegrationTest"))
-            return getClass().getSimpleName().replaceAll("IntegrationTest$", "");
-        else
-            return getClass().getSimpleName().replaceAll("Test$", "");
-    }
 
     /**
      * For testing support.  Given a name of a Main CommandLineProgram and it's arguments, builds the arguments appropriate for calling the
@@ -46,7 +31,7 @@ public abstract class CommandLineProgramTest extends BaseTest {
     public String[] makeCommandLineArgs(final List<String> args) {
         List<String> curatedArgs = injectDefaultVerbosity(args);
         final String[] commandLineArgs = new String[curatedArgs.size() + 1];
-        commandLineArgs[0] = getCommandLineProgramName();
+        commandLineArgs[0] = getTestedClassName();
         int i = 1;
         for (final String arg : curatedArgs) {
             commandLineArgs[i++] = arg;
@@ -77,5 +62,22 @@ public abstract class CommandLineProgramTest extends BaseTest {
 
     public Object runCommandLine(final String[] args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
+    }
+
+    /**
+     * This finds the first file that is in the same directory as the given prefix file, which is not the given file,
+     * and which starts with the same filename as the given file.
+     * @throws IOException
+     */
+    public static File findDataflowOutput(File pathPrefix) throws IOException{
+         Optional<File> outputFile = Files.list(pathPrefix.toPath().getParent())
+                .filter(f -> f.getFileName().toString().startsWith(pathPrefix.getName()))
+                .filter(f -> !f.equals(pathPrefix.toPath()))
+                .map(Path::toFile)
+                .findFirst();
+
+        File file =  outputFile.orElseThrow(() -> new IOException("No dataflow output file find for prefix: "+ pathPrefix.getAbsolutePath()));
+        file.deleteOnExit();
+        return file;
     }
 }

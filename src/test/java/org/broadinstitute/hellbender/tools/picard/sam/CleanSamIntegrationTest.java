@@ -15,7 +15,7 @@ import java.util.Arrays;
 public class CleanSamIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/CleanSam");
 
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return CleanSam.class.getSimpleName();
     }
 

@@ -25,7 +25,7 @@ public class CollectSequencingArtifactMetricsTest extends CommandLineProgramTest
     private File globalTempOutputDir;
 
     @Override
-    public String getCommandLineProgramName() {
+    public String getTestedClassName() {
         return CollectSequencingArtifactMetrics.class.getSimpleName();
     }
 

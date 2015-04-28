@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
@@ -7,6 +8,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 
@@ -31,7 +33,7 @@ public class FlagStat extends ReadWalker {
     }
 
     // what comes out of the flagstat
-    public final static class FlagStatus {
+    public final static class FlagStatus implements Serializable{
         long readCount = 0L;
         long QC_failure = 0L;
         long duplicates = 0L;
@@ -64,6 +66,68 @@ public class FlagStat extends ReadWalker {
                        + percentFormatter.format(((float) singletons / (float) readCount) * 100.0) + "%)\n"
                        + with_mate_mapped_to_a_different_chr + " with mate mapped to a different chr\n"
                        + with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 + " with mate mapped to a different chr (mapQ>=5)";
+        }
+
+        public void merge(final FlagStatus that){
+            this.readCount += that.readCount;
+            this.QC_failure += that.QC_failure;
+            this.duplicates += that.duplicates;
+            this.mapped += that.mapped;
+            this.paired_in_sequencing += that.paired_in_sequencing;
+            this.read1 += that.read1;
+            this.read2 += that.read2;
+            this.properly_paired += that.properly_paired;
+            this.with_itself_and_mate_mapped += that.with_itself_and_mate_mapped;
+            this.singletons += that.singletons;
+            this.with_mate_mapped_to_a_different_chr += that.with_mate_mapped_to_a_different_chr;
+            this.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 += that.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5;
+
+        }
+
+
+        public FlagStatus add(final Read read){
+            if(read == null){
+                return this;
+            }
+
+            this.readCount++;
+
+            if (read.getFailedVendorQualityChecks() != null && read.getFailedVendorQualityChecks()) {
+                this.QC_failure++;
+            }
+            if (read.getDuplicateFragment() != null && read.getDuplicateFragment()) {
+                this.duplicates++;
+            }
+            if (read.getAlignment() != null) {
+                this.mapped++;
+            }
+            if (read.getNumberReads() != null && read.getNumberReads() == 2) {
+                this.paired_in_sequencing++;
+
+                if (read.getReadNumber() != null && read.getReadNumber() == 1) {
+                    this.read2++;
+                } else if (read.getReadNumber() != null && read.getReadNumber() == 0) {
+                    this.read1++;
+                }
+                if (read.getProperPlacement() != null && read.getProperPlacement()) {
+                    this.properly_paired++;
+                }
+                if (read.getAlignment() != null && read.getNextMatePosition() != null){
+                    this.with_itself_and_mate_mapped++;
+
+                    if (!read.getAlignment().getPosition().getReferenceName().equals(read.getNextMatePosition().getReferenceName())) {
+                        this.with_mate_mapped_to_a_different_chr++;
+
+                        if (read.getAlignment().getMappingQuality() >= 5) {
+                            this.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5++;
+                        }
+                    }
+                }
+                if (read.getAlignment() != null && read.getNextMatePosition() == null) {
+                    this.singletons++;
+                }
+            }
+            return this;
         }
 
         public FlagStatus add(final SAMRecord read) {
