@@ -54,21 +54,6 @@ public class DbSnpBitSetUtil {
         loadVcf(dbSnpFile, sequenceDictionary, tmp);
     }
 
-    /** Factory method to create both a SNP bitmask and an indel bitmask in a single pass of the VCF. */
-    public static DbSnpBitSets createSnpAndIndelBitSets(final File dbSnpFile,
-                                                        final SAMSequenceDictionary sequenceDictionary) {
-
-        final DbSnpBitSets sets = new DbSnpBitSets();
-        sets.snps   = new DbSnpBitSetUtil();
-        sets.indels = new DbSnpBitSetUtil();
-
-        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> map = new HashMap<>();
-        map.put(sets.snps,   EnumSet.of(DbSnpVariantType.SNP));
-        map.put(sets.indels, EnumSet.of(DbSnpVariantType.insertion, DbSnpVariantType.deletion));
-        loadVcf(dbSnpFile, sequenceDictionary, map);
-        return sets;
-    }
-
     /** Private helper method to read through the VCF and create one or more bit sets. */
     private static void loadVcf(final File dbSnpFile,
                                 final SAMSequenceDictionary sequenceDictionary,

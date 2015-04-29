@@ -172,20 +172,6 @@ public class IlluminaDataProvider implements Iterator<ClusterData>, Iterable<Clu
         }
     }
 
-    private void addReadData(final ClusterData clusterData, final int numReads, final RawIntensityData rawIntensityData) {
-        final FourChannelIntensityData[] fcids = rawIntensityData.getRawIntensities();
-        for (int i = 0; i < numReads; i++) {
-            clusterData.getRead(i).setRawIntensities(fcids[i]);
-        }
-    }
-
-    private void addReadData(final ClusterData clusterData, final int numReads, final NoiseData noiseData) {
-        final FourChannelIntensityData[] fcids = noiseData.getNoise();
-        for (int i = 0; i < numReads; i++) {
-            clusterData.getRead(i).setNoise(fcids[i]);
-        }
-    }
-
     public void remove() {
         throw new UnsupportedOperationException();
     }

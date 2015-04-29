@@ -229,18 +229,6 @@ public class BclReader implements CloseableIterator<BclData> {
         return queue != null;
     }
 
-    private long getNumClusters() {
-        return numClustersPerCycle[0];
-    }
-
-    protected void assertProperFileStructure(final File file) {
-        final long elementsInFile = file.length() - HEADER_SIZE;
-        if (numClustersPerCycle[0] != elementsInFile) {
-            throw new IlluminaReaderException("Expected " + numClustersPerCycle[0]  + " in file " + file.getAbsolutePath() + " but found " + elementsInFile);
-
-        }
-    }
-
     public BclData next() {
         if (queue == null) {
             advance();

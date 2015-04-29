@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.illumina;
 
 import htsjdk.samtools.ReservedTagConstants;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.SequenceUtil;
 
 /**
@@ -34,8 +33,6 @@ public class ClippingUtil {
      * The value returned by methods returning int when no match is found.
      */
     public static final int NO_MATCH = -1;
-
-    private static final Log log = Log.getInstance(ClippingUtil.class);
 
     /**
      * Invokes adapterTrimIlluminRead with default parameters for a single read.

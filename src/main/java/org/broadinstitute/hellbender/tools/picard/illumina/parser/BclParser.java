@@ -59,11 +59,6 @@ class BclParser extends PerTileCycleParser<BclData> {
     }
 
     @Override
-    public Set<IlluminaDataType> supportedTypes() {
-        return SUPPORTED_TYPES;
-    }
-
-    @Override
     public BclData next() {
         final BclData bclData = super.next();
 

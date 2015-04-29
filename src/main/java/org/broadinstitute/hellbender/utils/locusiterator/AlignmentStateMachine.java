@@ -73,15 +73,6 @@ public class AlignmentStateMachine {
     }
 
     /**
-     * Get the reference index of the underlying read
-     *
-     * @return the reference index of the read
-     */
-    public int getReferenceIndex() {
-        return getRead().getReferenceIndex();
-    }
-
-    /**
      * Is this the left edge state?  I.e., one that is before or after the current read?
      * @return true if this state is an edge state, false otherwise
      */

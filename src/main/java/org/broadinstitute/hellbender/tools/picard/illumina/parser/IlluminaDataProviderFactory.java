@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.picard.illumina.parser;
 
 import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.StringUtil;
-
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.readers.BclQualityEvaluationStrategy;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat;
+import org.broadinstitute.hellbender.tools.picard.illumina.parser.readers.BclQualityEvaluationStrategy;
 
 import java.io.File;
 import java.util.*;
@@ -15,20 +13,8 @@ import static htsjdk.samtools.util.Log.getInstance;
 import static htsjdk.samtools.util.StringUtil.join;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableSet;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.Barcodes;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.BaseCalls;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.PF;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.Position;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.QualityScores;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.Barcode;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.Bcl;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.Clocs;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.Filter;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.Locs;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.MultiTileBcl;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.MultiTileFilter;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.MultiTileLocs;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.Pos;
+import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.*;
+import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaFileUtil.SupportedIlluminaFormat.*;
 
 /**
  * IlluminaDataProviderFactory accepts options for parsing Illumina data files for a lane and creates an
@@ -76,7 +62,6 @@ public class IlluminaDataProviderFactory {
      * basecallDirectory holds QSeqs or bcls *
      */
     private final File basecallDirectory;
-    private final File barcodesDirectory;
     private final int lane;
 
     /**
@@ -134,7 +119,6 @@ public class IlluminaDataProviderFactory {
                                        final ReadStructure readStructure,
                                        final BclQualityEvaluationStrategy bclQualityEvaluationStrategy, final IlluminaDataType... dataTypesArg) {
         this.basecallDirectory = basecallDirectory;
-        this.barcodesDirectory = barcodesDirectory;
         this.bclQualityEvaluationStrategy = bclQualityEvaluationStrategy;
 
         this.lane = lane;

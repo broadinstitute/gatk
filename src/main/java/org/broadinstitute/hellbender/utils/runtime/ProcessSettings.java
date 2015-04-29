@@ -76,24 +76,12 @@ public class ProcessSettings {
         return stdinSettings;
     }
 
-    public void setStdinSettings(InputStreamSettings stdinSettings) {
-        this.stdinSettings = checkSettings(stdinSettings);
-    }
-
     public OutputStreamSettings getStdoutSettings() {
         return stdoutSettings;
     }
 
-    public void setStdoutSettings(OutputStreamSettings stdoutSettings) {
-        this.stdoutSettings = checkSettings(stdoutSettings);
-    }
-
     public OutputStreamSettings getStderrSettings() {
         return stderrSettings;
-    }
-
-    public void setStderrSettings(OutputStreamSettings stderrSettings) {
-        this.stderrSettings = checkSettings(stderrSettings);
     }
 
     protected String[] checkCommand(String[] command) {

@@ -61,7 +61,6 @@ public abstract class AbstractAlignmentMerger {
     private final SAMFileHeader.SortOrder sortOrder;
     private MultiHitAlignedReadIterator alignedIterator = null;
     private boolean clipOverlappingReads = true;
-    private int maxRecordsInRam = MAX_RECORDS_IN_RAM;
     private final PrimaryAlignmentSelectionStrategy primaryAlignmentSelectionStrategy;
     private boolean keepAlignerProperPairFlags = false;
     private boolean addMateCigar = false;
@@ -169,11 +168,6 @@ public abstract class AbstractAlignmentMerger {
         this.primaryAlignmentSelectionStrategy = primaryAlignmentSelectionStrategy;
 
         this.addMateCigar = addMateCigar;
-    }
-
-    /** Allows the caller to override the maximum records in RAM. */
-    public void setMaxRecordsInRam(final int maxRecordsInRam) {
-        this.maxRecordsInRam = maxRecordsInRam;
     }
 
     /**
@@ -595,8 +589,6 @@ public abstract class AbstractAlignmentMerger {
     }
 
 
-    protected SAMSequenceDictionary getSequenceDictionary() { return this.sequenceDictionary; }
-
     protected SAMProgramRecord getProgramRecord() { return this.programRecord; }
 
     protected void setProgramRecord(final SAMProgramRecord pg) {
@@ -621,8 +613,6 @@ public abstract class AbstractAlignmentMerger {
         return false;
     }
 
-    protected SAMFileHeader getHeader() { return this.header; }
-
     protected void resetRefSeqFileWalker() {
         this.refSeq = new ReferenceSequenceFileWalker(referenceFasta);
     }
@@ -633,10 +623,6 @@ public abstract class AbstractAlignmentMerger {
 
     public void setClipOverlappingReads(final boolean clipOverlappingReads) {
         this.clipOverlappingReads = clipOverlappingReads;
-    }
-
-    public boolean isKeepAlignerProperPairFlags() {
-        return keepAlignerProperPairFlags;
     }
 
     /**

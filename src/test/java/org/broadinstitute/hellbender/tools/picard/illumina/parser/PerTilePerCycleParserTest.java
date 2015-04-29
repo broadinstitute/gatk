@@ -11,7 +11,6 @@ import static htsjdk.samtools.util.CollectionUtil.makeList;
 
 public class PerTilePerCycleParserTest {
     public static final List<Integer> DEFAULT_TILES = makeList(1, 2, 3, 4);
-    public static final int[] DEFAULT_OUTPUT_LENGTHS = new int[]{10, 5, 5};
     public static final int[] CYCLES = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
     public static final int MAX_CYCLE = 20;
     public static final OutputMapping OUTPUT_MAPPING = new OutputMapping(new ReadStructure("20T"));
@@ -33,11 +32,9 @@ public class PerTilePerCycleParserTest {
     }
 
     class MockPerTileCycleParser extends PerTileCycleParser<MockCycledIlluminaData> {
-        private final int[] expectedOutputLengths;
 
         public MockPerTileCycleParser(final File directory, final int lane, final CycleIlluminaFileMap tilesToCycleFiles, final OutputMapping outputMapping) {
             super(directory, lane, tilesToCycleFiles, outputMapping);
-            expectedOutputLengths = outputMapping.getOutputReadLengths();
             this.initialize();
         }
 

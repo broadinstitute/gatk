@@ -114,18 +114,6 @@ public class GenotypeConcordanceScheme {
     }
 
     /**
-     * Get the contingency state array as a set
-     * @param contingencyStateArray
-     * @return
-     */
-    public Set<ContingencyState> getContingencyStateSet(final ContingencyState[] contingencyStateArray) {
-        final Set<ContingencyState> contingencyStateSet = new HashSet<>();
-        Collections.addAll(contingencyStateSet, contingencyStateArray);
-        return contingencyStateSet;
-    }
-
-
-    /**
      * Check that all cells in the scheme exist.
      * @throws org.broadinstitute.hellbender.exceptions.GATKException if a missing tuple was found.
      */

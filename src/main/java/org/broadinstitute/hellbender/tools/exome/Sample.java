@@ -78,15 +78,6 @@ public final class Sample {
     }
 
     /**
-     * Returns the number of read groups in this sample.
-     *
-     * @return 0 or greater.
-     */
-    public int readGroupCount() {
-        return readGroups.size();
-    }
-
-    /**
      * Returns the list of read-groups of the sample.
      * @return never {@code null} but an empty list if there is no read-groups.
      *  This list is immutable.

@@ -3,14 +3,12 @@ package org.broadinstitute.hellbender.tools.recalibration;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -21,8 +19,6 @@ import java.util.List;
  */
 
 public class BaseRecalibration {
-    private static Logger logger = LogManager.getLogger(BaseRecalibration.class);
-
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
     private final Covariate[] requestedCovariates; // list of all covariates to be used in this calculation

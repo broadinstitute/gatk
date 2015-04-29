@@ -68,10 +68,6 @@ public class AdapterMarker {
         adapters.set(truncatedAdapters.toArray(new AdapterPair[truncatedAdapters.size()]));
     }
 
-    public int getNumAdaptersToKeep() {
-        return numAdaptersToKeep;
-    }
-
     /**
      * After seeing the thresholdForSelectingAdapters number of adapters, keep up to this many of the original adapters.
      */
@@ -83,10 +79,6 @@ public class AdapterMarker {
         return this;
     }
 
-    public int getThresholdForSelectingAdaptersToKeep() {
-        return thresholdForSelectingAdaptersToKeep;
-    }
-
     /**
      * When this number of adapters have been matched, discard the least-frequently matching ones.
      * @param thresholdForSelectingAdaptersToKeep set to -1 to never discard any adapters.
@@ -94,10 +86,6 @@ public class AdapterMarker {
     public synchronized AdapterMarker setThresholdForSelectingAdaptersToKeep(final int thresholdForSelectingAdaptersToKeep) {
         this.thresholdForSelectingAdaptersToKeep = thresholdForSelectingAdaptersToKeep;
         return this;
-    }
-
-    public int getMinSingleEndMatchBases() {
-        return minSingleEndMatchBases;
     }
 
     /**
@@ -109,10 +97,6 @@ public class AdapterMarker {
         return this;
     }
 
-    public int getMinPairMatchBases() {
-        return minPairMatchBases;
-    }
-
     /**
      *
      * @param minPairMatchBases When marking a paired-end read, adapter must match at least this many bases.
@@ -122,10 +106,6 @@ public class AdapterMarker {
         return this;
     }
 
-    public double getMaxSingleEndErrorRate() {
-        return maxSingleEndErrorRate;
-    }
-
     /**
      * @param maxSingleEndErrorRate For single-end read, no more than this fraction of the bases that align with the adapter can
      *                              mismatch the adapter and still be considered an adapter match.
@@ -133,10 +113,6 @@ public class AdapterMarker {
     public synchronized AdapterMarker setMaxSingleEndErrorRate(final double maxSingleEndErrorRate) {
         this.maxSingleEndErrorRate = maxSingleEndErrorRate;
         return this;
-    }
-
-    public double getMaxPairErrorRate() {
-        return maxPairErrorRate;
     }
 
     /**

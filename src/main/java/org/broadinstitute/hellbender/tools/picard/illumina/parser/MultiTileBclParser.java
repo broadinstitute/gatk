@@ -128,10 +128,6 @@ public class MultiTileBclParser extends BclParser {
             }
         }
 
-        public int getCurrentTile() {
-            return currentTile;
-        }
-
         public BclReader getReader() {
             return reader.getUnderlyingIterator();
         }

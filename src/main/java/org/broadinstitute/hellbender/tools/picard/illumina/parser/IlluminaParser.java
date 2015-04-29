@@ -43,11 +43,6 @@ interface IlluminaParser<DATA_TYPE extends IlluminaData> extends Iterator<DATA_T
      */
     void verifyData(final List<Integer> tiles, final int[] cycles);
 
-    /**
-     * The DataTypes that this parser can provide
-     */
-    Set<IlluminaDataType> supportedTypes();
-
     void close();
 
 }

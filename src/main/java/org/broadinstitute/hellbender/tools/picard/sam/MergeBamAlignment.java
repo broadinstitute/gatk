@@ -196,7 +196,6 @@ public class MergeBamAlignment extends PicardCommandLineProgram {
                 READ1_ALIGNED_BAM, READ2_ALIGNED_BAM, EXPECTED_ORIENTATIONS, SORT_ORDER,
                 PRIMARY_ALIGNMENT_STRATEGY.newInstance(), ADD_MATE_CIGAR);
         merger.setClipOverlappingReads(CLIP_OVERLAPPING_READS);
-        merger.setMaxRecordsInRam(MAX_RECORDS_IN_RAM);
         merger.setKeepAlignerProperPairFlags(ALIGNER_PROPER_PAIR_FLAGS);
         merger.setIncludeSecondaryAlignments(INCLUDE_SECONDARY_ALIGNMENTS);
         merger.mergeAlignment(REFERENCE_SEQUENCE);

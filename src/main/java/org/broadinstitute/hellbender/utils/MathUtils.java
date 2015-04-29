@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.commons.math3.special.Gamma;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.LUDecomposition;
-import java.util.*;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.special.Gamma;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+
+import java.util.Arrays;
 
 /**
  * MathUtils is a static class (no instantiation allowed!) with some useful math methods.
@@ -315,14 +315,6 @@ public final class MathUtils {
         return array[maxElementIndex(array)];
     }
 
-    public static int sum(final List<Integer> list ) {
-        int sum = 0;
-        for ( Integer i : list ) {
-            sum += i;
-        }
-        return sum;
-    }
-
     /**
      * Checks that the result is a well-formed log10 probability
      *
@@ -358,10 +350,6 @@ public final class MathUtils {
     //
     // useful common utility routines
     //
-
-    static public double max(double x0, double x1, double x2) {
-        return NumberUtils.max(x0, x1, x2);
-    }
 
     /**
      * Converts LN to LOG10

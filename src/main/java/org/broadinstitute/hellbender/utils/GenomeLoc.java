@@ -138,22 +138,6 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     }
 
     /**
-     * Returns a new GenomeLoc that represents the region between the endpoints of this and that. Requires that
-     * this and that GenomeLoc are both mapped.
-     */
-    public GenomeLoc endpointSpan(GenomeLoc that) throws GATKException {
-        if(GenomeLoc.isUnmapped(this) || GenomeLoc.isUnmapped(that)) {
-            throw new GATKException("Cannot get endpoint span for unmerged genome locs");
-        }
-
-        if ( ! this.getContig().equals(that.getContig()) ) {
-            throw new GATKException("Cannot get endpoint span for genome locs on different contigs");
-        }
-
-        return new GenomeLoc(getContig(),this.contigIndex,Math.min(getStart(),that.getStart()),Math.max(getStop(),that.getStop()));
-    }
-
-    /**
      * Splits the contig into to regions: [start,split point) and [split point, end].
      * @param splitPoint The point at which to split the contig.  Must be contained in the given interval.
      * @return A two element array consisting of the genome loc before the split and the one after.
@@ -284,29 +268,6 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     }
 
     /**
-     * Tests whether this genome loc starts at the same position as that.
-     *
-     * i.e., do this and that have the same contig and the same start position
-     *
-     * @param that genome loc to compare to
-     * @return true if this and that have the same contig and the same start position
-     */
-    public final boolean startsAt( GenomeLoc that ) {
-        int comparison = this.compareContigs(that);
-        return comparison == 0 && this.getStart() == that.getStart();
-    }
-
-    /**
-     * Tests whether any portion of this contig is before that contig.
-     * @param that Other contig to test.
-     * @return True if the start of this contig is before the start of the that contig.
-     */
-    public final boolean startsBefore(final GenomeLoc that) {
-        int comparison = this.compareContigs(that);
-        return ( comparison == -1 || ( comparison == 0 && this.getStart() < that.getStart() ));
-    }
-
-    /**
      * Tests whether this contig is completely after contig 'that'.
      * @param that Contig to test against.
      * @return true if this contig starts after 'that' ends; false if this is completely before or overlaps 'that'.
@@ -337,8 +298,6 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     private static int distanceFirstStopToSecondStart(GenomeLoc locFirst, GenomeLoc locSecond) {
         return locSecond.getStart() - locFirst.getStop();
     }
-
-
 
     /**
      * Check to see whether two genomeLocs are equal.
@@ -404,10 +363,6 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
         return result;
     }
 
-    public boolean endsAt(GenomeLoc that) {
-        return (this.compareContigs(that) == 0) && ( this.getStop() == that.getStop() );
-    }
-
     /**
      * How many BPs are covered by this locus?
      * @return Number of BPs covered by this locus.  According to the semantics of GenomeLoc, this should
@@ -439,12 +394,8 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
             return 0.0;
     }
 
-    private final static double overlapPercent(final GenomeLoc gl1, final GenomeLoc gl2) {
+    private static double overlapPercent(final GenomeLoc gl1, final GenomeLoc gl2) {
         return (1.0 * gl1.intersect(gl2).size()) / gl1.size();
-    }
-
-    public long sizeOfOverlap( final GenomeLoc that ) {
-        return ( this.overlapsP(that) ? Math.min( getStop(), that.getStop() ) - Math.max( getStart(), that.getStart() ) + 1L : 0L );
     }
 
     /**
@@ -455,54 +406,6 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     public GenomeLoc max(final GenomeLoc other) {
         final int cmp = this.compareTo(other);
         return cmp == -1 ? other : this;
-    }
-
-    /**
-     * create a new genome loc from an existing loc, with a new start position
-     * Note that this function will NOT explicitly check the ending offset, in case someone wants to
-     * set the start of a new GenomeLoc pertaining to a read that goes off the end of the contig.
-     *
-     * @param loc   the old location
-     * @param start a new start position
-     *
-     * @return a newly allocated GenomeLoc as loc but with start == start
-     */
-    public GenomeLoc setStart(GenomeLoc loc, int start) {
-        return new GenomeLoc(loc.getContig(), loc.getContigIndex(), start, loc.getStop());
-    }
-
-    /**
-     * create a new genome loc from an existing loc, with a new stop position
-     * Note that this function will NOT explicitly check the ending offset, in case someone wants to
-     * set the stop of a new GenomeLoc pertaining to a read that goes off the end of the contig.
-     *
-     * @param loc  the old location
-     * @param stop a new stop position
-     *
-     * @return a newly allocated GenomeLoc as loc but with stop == stop
-     */
-    public GenomeLoc setStop(GenomeLoc loc, int stop) {
-        return new GenomeLoc(loc.getContig(), loc.getContigIndex(), loc.start, stop);
-    }
-
-    /**
-     * return a new genome loc, with an incremented position
-     *
-     * @return a newly allocated GenomeLoc as loc but with start == loc.getStart() + 1
-     */
-    public GenomeLoc incPos() {
-        return incPos(1);
-    }
-
-    /**
-     * return a new genome loc, with an incremented position
-     *
-     * @param by  how much to move the start and stop by
-     *
-     * @return a newly allocated GenomeLoc as loc but with start == loc.getStart() + by
-     */
-    public GenomeLoc incPos(int by) {
-        return new GenomeLoc(getContig(), getContigIndex(), start + by, stop + by);
     }
 
     /**

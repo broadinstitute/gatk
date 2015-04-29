@@ -90,10 +90,6 @@ public class Gene extends Interval implements Iterable<Gene.Transcript> {
             return this.length;
         }
 
-        public boolean isSoloTranscript() {
-            return Gene.this.transcripts.size() == 1;
-        }
-
         public Gene getGene() {
             return Gene.this;
         }

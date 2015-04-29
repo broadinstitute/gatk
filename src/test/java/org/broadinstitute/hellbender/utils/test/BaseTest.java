@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,9 +30,6 @@ public abstract class BaseTest {
 
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
-    public static final String baseDirectory = System.getProperty("basedir", CURRENT_DIRECTORY) + "/";
-    public static final String testType = System.getProperty("testType"); // May be null
-    public static final String testTypeSubDirectory = testType == null ? "" : ("/" + testType); // May be empty
 
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
@@ -163,17 +159,6 @@ public abstract class BaseTest {
     }
 
     /**
-     * test if the file exists
-     *
-     * @param file name as a string
-     * @return true if it exists
-     */
-    public static boolean fileExist(String file) {
-        File temp = new File(file);
-        return temp.exists();
-    }
-
-    /**
      * Creates a temp file that will be deleted on exit after tests are complete.
      * @param name Prefix of the file.
      * @param extension Extension to concat to the end of the file.
@@ -197,28 +182,6 @@ public abstract class BaseTest {
     }
 
     /**
-     * Creates a temp list file that will be deleted on exit after tests are complete.
-     * @param tempFilePrefix Prefix of the file.
-     * @param lines lines to write to the file.
-     * @return A list file in the temporary directory starting with tempFilePrefix, which will be deleted after the program exits.
-     */
-    public static File createTempListFile(final String tempFilePrefix, final String... lines) {
-        try {
-            final File tempListFile = createTempFile(tempFilePrefix, ".list");
-
-            final PrintWriter out = new PrintWriter(tempListFile);
-            for (final String line : lines) {
-                out.println(line);
-            }
-            out.close();
-
-            return tempListFile;
-        } catch (IOException ex) {
-            throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
-        }
-    }
-
-    /**
      * Log this message so that it shows up inline during output as well as in html reports
      *
      * @param message
@@ -228,11 +191,6 @@ public abstract class BaseTest {
     }
 
     private static final double DEFAULT_FLOAT_TOLERANCE = 1e-1;
-
-    public static void assertEqualsDoubleSmart(final Object actual, final Double expected) {
-        Assert.assertTrue(actual instanceof Double, "Not a double");
-        assertEqualsDoubleSmart((double)(Double)actual, (double)expected);
-    }
 
     public static void assertEqualsDoubleSmart(final Object actual, final Double expected, final double tolerance) {
         Assert.assertTrue(actual instanceof Double, "Not a double");
@@ -273,48 +231,6 @@ public abstract class BaseTest {
             assertEqualsDoubleSmart(actual, (Double) expected, 1e-2);
         } else
             Assert.assertEquals(actual, expected, "Attribute " + key);
-    }
-
-    /**
-     * Checks whether two double array contain the same values or not.
-     * @param actual actual produced array.
-     * @param expected expected array.
-     * @param tolerance maximum difference between double value to be consider equivalent.
-     */
-    protected static void assertEqualsDoubleArray(final double[] actual, final double[] expected, final double tolerance) {
-        if (expected == null)
-            Assert.assertNull(actual);
-        else {
-            Assert.assertNotNull(actual);
-            Assert.assertEquals(actual.length,expected.length,"array length");
-        }
-        for (int i = 0; i < actual.length; i++)
-            Assert.assertEquals(actual[i],expected[i],tolerance,"array position " + i);
-    }
-
-    public static void assertVariantContextsAreEqual( final VariantContext actual, final VariantContext expected ) {
-        Assert.assertNotNull(actual, "VariantContext expected not null");
-        Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
-        Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
-        Assert.assertEquals(actual.getEnd(), expected.getEnd(), "end");
-        Assert.assertEquals(actual.getID(), expected.getID(), "id");
-        Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "alleles for " + expected + " vs " + actual);
-
-        assertAttributesEquals(actual.getAttributes(), expected.getAttributes());
-        Assert.assertEquals(actual.filtersWereApplied(), expected.filtersWereApplied(), "filtersWereApplied");
-        Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "isFiltered");
-        assertEqualsSet(actual.getFilters(), expected.getFilters(), "filters");
-        assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
-
-        Assert.assertEquals(actual.hasGenotypes(), expected.hasGenotypes(), "hasGenotypes");
-        if ( expected.hasGenotypes() ) {
-            assertEqualsSet(actual.getSampleNames(), expected.getSampleNames(), "sample names set");
-            Assert.assertEquals(actual.getSampleNamesOrderedByName(), expected.getSampleNamesOrderedByName(), "sample names");
-            final Set<String> samples = expected.getSampleNames();
-            for ( final String sample : samples ) {
-                assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample));
-            }
-        }
     }
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {

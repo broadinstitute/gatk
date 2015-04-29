@@ -24,10 +24,6 @@ public class CycleIlluminaFileMapTest {
         return "L" + outStr;
     }
 
-    private static String constructPathString(int lane, int cycle) {
-        return TEST_DATA_DIR + "/" + laneToDir(lane) + "/C" + cycle + ".1";
-    }
-
     @DataProvider(name = "iteratorTestData")
     public Object[][] iteratorTestData() {
         return new Object[][] {

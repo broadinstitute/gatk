@@ -39,10 +39,6 @@ public class MannWhitneyU {
         this(ExactMode.POINT,dither);
     }
 
-    public MannWhitneyU(ExactMode mode) {
-        this(mode,true);
-    }
-
     /**
      * Add an observation into the observation tree
      * @param n: the observation (a number)
@@ -55,17 +51,6 @@ public class MannWhitneyU {
         } else {
             ++sizeSet2;
         }
-    }
-
-    public Pair<Long,Long> getR1R2() {
-        long u1 = calculateOneSidedU(observations,MannWhitneyU.USet.SET1);
-        long n1 = sizeSet1*(sizeSet1+1)/2;
-        long r1 = u1 + n1;
-        long n2 = sizeSet2*(sizeSet2+1)/2;
-        long u2 = n1*n2-u1;
-        long r2 = u2 + n2;
-
-        return new MutablePair<>(r1,r2);
     }
 
     /**
@@ -318,20 +303,6 @@ public class MannWhitneyU {
     }
 
     /**
-     * For testing
-     *
-     * @param n: number of set-one entries (hypothesis: set one is stochastically less than set two)
-     * @param m: number of set-two entries
-     * @param u: number of set-two entries that precede set-one entries (e.g. 0,1,0,1,0 -> 3 )
-     */
-    protected static long countSequences(int n, int m, long u) {
-        if ( u < 0 ) { return 0; }
-        if ( m == 0 || n == 0 ) { return u == 0 ? 1 : 0; }
-
-        return countSequences(n-1,m,u-m) + countSequences(n,m-1,u);
-    }
-
-    /**
      * : just a shorter name for calculatePRecursively. See Mann, Whitney, [1947]
      * @param n: number of set-1 entries
      * @param m: number of set-2 entries
@@ -384,40 +355,11 @@ public class MannWhitneyU {
     }
 
     /**
-     * Validates that observations are in the correct format for a MWU test -- this is only called by the contracts API during testing
-     * @param tree - the collection of labeled observations
-     * @return true iff the tree set is valid (no INFs or NaNs, at least one data point in each set)
-     */
-    protected static boolean validateObservations(TreeSet<Pair<Number,USet>> tree) {
-        boolean seen1 = false;
-        boolean seen2 = false;
-        boolean seenInvalid = false;
-        for ( Pair<Number,USet> p : tree) {
-            if ( ! seen1 && p.getRight() == USet.SET1 ) {
-                seen1 = true;
-            }
-
-            if ( ! seen2 && p.getRight() == USet.SET2 ) {
-                seen2 = true;
-            }
-
-            if ( Double.isNaN(p.getLeft().doubleValue()) || Double.isInfinite(p.getLeft().doubleValue())) {
-                seenInvalid = true;
-            }
-
-        }
-
-            return ! seenInvalid && seen1 && seen2;
-    }
-
-    /**
      * A comparator class which uses dithering on tie-breaking to ensure that the internal treeset drops no values
      * and to ensure that rank ties are broken at random.
      */
     private static class DitheringComparator implements Comparator<Pair<Number,USet>>, Serializable {
         private static final long serialVersionUID = 0L;
-
-        public DitheringComparator() {}
 
         @Override
         public int compare(Pair<Number,USet> left, Pair<Number,USet> right) {
@@ -433,8 +375,6 @@ public class MannWhitneyU {
      */
     private static class NumberedPairComparator implements Comparator<Pair<Number,USet>>, Serializable {
         private static final long serialVersionUID = 0L;
-
-        public NumberedPairComparator() {}
 
         @Override
         public int compare(Pair<Number,USet> left, Pair<Number,USet> right ) {

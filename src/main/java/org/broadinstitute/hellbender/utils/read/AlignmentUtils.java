@@ -14,7 +14,6 @@ import java.util.*;
 public final class AlignmentUtils {
     private final static EnumSet<CigarOperator> ALIGNED_TO_GENOME_OPERATORS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X);
     private final static EnumSet<CigarOperator> ALIGNED_TO_GENOME_PLUS_SOFTCLIPS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.S);
-    public final static String HAPLOTYPE_TAG = "HC";
 
     // cannot be instantiated
     private AlignmentUtils() { }
@@ -150,13 +149,6 @@ public final class AlignmentUtils {
     public static class MismatchCount {
         public int numMismatches = 0;
         public long mismatchQualities = 0;
-    }
-
-    /**
-     * @see #getMismatchCount(SAMRecord, byte[], int, int, int) with startOnRead == 0 and nReadBases == read.getReadLength()
-     */
-    public static MismatchCount getMismatchCount(SAMRecord r, byte[] refSeq, int refIndex) {
-        return getMismatchCount(r, refSeq, refIndex, 0, r.getReadLength());
     }
 
     // todo -- this code and mismatchesInRefWindow should be combined and optimized into a single
@@ -351,10 +343,6 @@ public final class AlignmentUtils {
         }
 
         return numHQSoftClips;
-    }
-
-    public static int calcAlignmentByteArrayOffset(final Cigar cigar, final PileupElement pileupElement, final int alignmentStart, final int refLocus) {
-        return calcAlignmentByteArrayOffset( cigar, pileupElement.getOffset(), pileupElement.isDeletion(), alignmentStart, refLocus );
     }
 
     /**

@@ -19,7 +19,6 @@ public class Utils {
     private static Random randomGenerator = new Random(GATK_RANDOM_SEED);
     public static Random getRandomGenerator() { return randomGenerator; }
     public static void resetRandomGenerator() { randomGenerator.setSeed(GATK_RANDOM_SEED); }
-    public static void resetRandomGenerator(long seed) { randomGenerator.setSeed(seed); }
 
     private static final int TEXT_WARNING_WIDTH = 68;
     private static final String TEXT_WARNING_PREFIX = "* ";
@@ -393,10 +392,6 @@ public class Utils {
      */
     static public String reverse(String bases) {
         return new String( reverse( bases.getBytes() )) ;
-    }
-
-    public static boolean isFlagSet(int value, int flag) {
-        return ((value & flag) == flag);
     }
 
     public static byte [] arrayFromArrayWithLength(byte[] array, int length) {

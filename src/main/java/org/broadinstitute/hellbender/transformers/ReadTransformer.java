@@ -29,5 +29,4 @@ public interface ReadTransformer extends UnaryOperator<SAMRecord>, SerializableF
     static ReadTransformer identity(){
         return read -> read;
     }
-
 }

@@ -39,21 +39,12 @@ public class IlluminaUtilTest {
         };
     }
 
-    public static final byte [] iToB(int [] intVals) {
+    public static byte [] iToB(int [] intVals) {
         byte [] byteVals = new byte[intVals.length];
         for(int i = 0; i < byteVals.length; i++) {
             byteVals[i] = (byte) intVals[i];
         }
         return byteVals;
-    }
-
-    public byte[][] byteBuffersSizeCopy(byte [][] bytes) {
-        byte [][] outBytes = new byte[bytes.length][];
-        for(int i = 0; i < bytes.length; i++) {
-            outBytes[i] = new byte[bytes[i].length];
-        }
-
-        return outBytes;
     }
 
     @DataProvider(name = "solexaQualStrToPhreds")

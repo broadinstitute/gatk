@@ -755,10 +755,6 @@ public class CommandLineParser {
         }
     }
 
-    public String[] getArgv() {
-        return argv;
-    }
-
     public interface ClpEnum {
         String getHelpDoc();
     }

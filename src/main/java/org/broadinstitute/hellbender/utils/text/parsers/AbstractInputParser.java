@@ -169,8 +169,4 @@ implements Iterable<String[]>, CloseableIterator<String[]> {
     protected void setTreatGroupedDelimitersAsOne(final boolean treatGroupedDelimitersAsOne) {
         this.treatGroupedDelimitersAsOne = treatGroupedDelimitersAsOne;
     }
-    protected boolean isSkipBlankLines() { return this.skipBlankLines; }
-    protected void setSkipBlankLines(final boolean skipBlankLines) {
-        this.skipBlankLines = skipBlankLines;
-    }
 }

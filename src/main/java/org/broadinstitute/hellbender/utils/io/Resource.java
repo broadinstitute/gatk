@@ -9,7 +9,6 @@ import java.io.InputStream;
 public class Resource {
     private final String path;
     private final Class<?> relativeClass;
-    private final ClassLoader relativeClassLoader;
 
     /**
      * Create a resource with a path and a relative class.
@@ -21,10 +20,6 @@ public class Resource {
     public Resource(String path, Class<?> relativeClass) {
         this.path = path;
         this.relativeClass = relativeClass;
-        ClassLoader classLoader = null;
-        if (relativeClass != null)
-            classLoader = relativeClass.getClassLoader();
-        this.relativeClassLoader = classLoader != null ? classLoader : ClassLoader.getSystemClassLoader();
     }
 
     public Class<?> getRelativeClass() {

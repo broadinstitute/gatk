@@ -2,9 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 public final class ReadRecalibrationInfo {
     private final SAMRecord read;
@@ -107,16 +106,4 @@ public final class ReadRecalibrationInfo {
         return covariates;
     }
 
-    /**
-     * Ensures an offset is valid.  Used in contracts
-     * @param offset a proposed offset
-     * @return true if offset is valid w.r.t. the data in this object, false otherwise
-     */
-    private boolean validOffset(final int offset) {
-        return offset >= 0 && offset < baseQuals.length;
-    }
-
-    private boolean validQual(final byte result) {
-        return result >= 0 && result <= QualityUtils.MAX_SAM_QUAL_SCORE;
-    }
 }

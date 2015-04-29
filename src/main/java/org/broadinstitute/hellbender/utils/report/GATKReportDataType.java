@@ -115,50 +115,6 @@ public enum GATKReportDataType {
     }
 
     /**
-     * Returns the default value of the data type. It returns an object that matches the class of the data type.
-     *
-     * @return an object that matches the data type
-     */
-    public Object getDefaultValue() {
-        switch (this) {
-            case Decimal:
-                return 0.0D;
-            case Boolean:
-                return false;
-            case Character:
-                return '0';
-            case Integer:
-                return 0L;
-            case String:
-                return "";
-            default:
-                return null;
-        }
-    }
-
-    /**
-     * Checks if the two objects are equal using the appropriate test form the data types.
-     *
-     * @param a an object
-     * @param b another object to check if equal
-     * @return true - the objects are equal, false - the objects are nto equal
-     */
-    public boolean isEqual(Object a, Object b) {
-        switch (this) {
-            case Null:
-                return true;
-            case Decimal:
-            case Boolean:
-            case Integer:
-                return a.toString().equals(b.toString());
-            case Character:
-            case String:
-            default:
-                return a.equals(b);
-        }
-    }
-
-    /**
      * Converts an input String to the appropriate type using the data type. Used for parsing loading a GATK report from
      * file.
      *
@@ -184,28 +140,5 @@ public enum GATKReportDataType {
             }
         } else
             return null;
-    }
-
-    /**
-     * Returns a format string version of the value according to the data type.
-     *
-     * @return The printf string representation of the object according to data type.
-     */
-    public java.lang.String getDefaultFormatString() {
-        switch (this) {
-            case Decimal:
-                return "%.8f";
-            case Boolean:
-                return "%b";
-            case Integer:
-                return "%d";
-            case String:
-                return "%s";
-            case Character:
-                return "%c";
-            case Null:
-            default:
-                return "%s";
-        }
     }
 }

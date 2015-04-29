@@ -122,16 +122,6 @@ public class GATKReport {
     }
 
     /**
-     * Return true if table with a given name exists
-     *
-     * @param tableName the name of the table
-     * @return true if the table exists, false otherwise
-     */
-    public boolean hasTable(String tableName) {
-        return tables.containsKey(tableName);
-    }
-
-    /**
      * Return a table with a given name
      *
      * @param tableName the name of the table
@@ -269,41 +259,6 @@ public class GATKReport {
     }
 
     /**
-     * The constructor for a simplified GATK Report. Simplified GATK report are designed for reports that do not need
-     * the advanced functionality of a full GATK Report.
-     * <p/>
-     * A simple GATK Report consists of:
-     * <p/>
-     * - A single table
-     * - No primary key ( it is hidden )
-     * <p/>
-     * Optional:
-     * - Only untyped columns. As long as the data is an Object, it will be accepted.
-     * - Default column values being empty strings.
-     * <p/>
-     * Limitations:
-     * <p/>
-     * - A simple GATK report cannot contain multiple tables.
-     * - It cannot contain typed columns, which prevents arithmetic gathering.
-     *
-     * @param tableName The name of your simple GATK report table
-     * @param columns   The names of the columns in your table
-     * @return a simplified GATK report
-     */
-    public static GATKReport newSimpleReport(final String tableName, final List<String> columns) {
-        GATKReportTable table = new GATKReportTable(tableName, "A simplified GATK table report", columns.size());
-
-        for (String column : columns) {
-            table.addColumn(column, "");
-        }
-
-        GATKReport output = new GATKReport();
-        output.addTable(table);
-
-        return output;
-    }
-
-    /**
      * This method provides an efficient way to populate a simplified GATK report. This method will only work on reports
      * that qualify as simplified GATK reports. See the newSimpleReport() constructor for more information.
      *
@@ -324,26 +279,4 @@ public class GATKReport {
             table.set(rowIndex, i, values[i]);
     }
 
-    /**
-     * This method provides an efficient way to populate a simplified GATK report. This method will only work on reports
-     * that qualify as simplified GATK reports. See the newSimpleReport() constructor for more information.
-     *
-     * @param values     the row of data to be added to the table.
-     *               Note: the number of arguments must match the columns in the table.
-     */
-    public void addRowList(final List<Object> values) {
-        if ( tables.size() != 1 )
-            throw new GATKException("Cannot write a row to a complex GATK Report");
-
-        GATKReportTable table = tables.firstEntry().getValue();
-        if ( table.getNumColumns() != values.size() )
-            throw new GATKException("The number of arguments in writeRow() must match the number of columns in the table");
-
-        final int rowIndex = table.getNumRows();
-        int idx = 0;
-        for ( Object value : values ) {
-            table.set(rowIndex,idx,value);
-            idx++;
-        }
-    }
 }

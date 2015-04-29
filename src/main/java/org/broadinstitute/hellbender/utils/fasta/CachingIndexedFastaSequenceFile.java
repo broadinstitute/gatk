@@ -241,24 +241,6 @@ public class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
     }
 
     /**
-     * Is uppercasing bases?
-     *
-     * @return true if bases coming from this CachingIndexedFastaSequenceFile are all upper cased, false if this reader are in the original case in the fasta
-     */
-    public boolean isUppercasingBases() {
-        return ! isPreservingCase();
-    }
-
-    /**
-     * Is this CachingIndexedFastaReader keeping the IUPAC bases in the fasta, or is it turning them into Ns?
-     *
-     * @return true if the IUPAC bases coming from this reader are not modified
-     */
-    public boolean isPreservingIUPAC() {
-        return preserveIUPAC;
-    }
-
-    /**
      * Gets the subsequence of the contig in the range [start,stop]
      *
      * Uses the sequence cache if possible, or updates the cache to handle the request.  If the range
