@@ -10,6 +10,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,7 +27,7 @@ public class BQSRGathererTest extends BaseTest {
     private static File recal_original = new File(CommandLineProgramTest.getTestDataDir(), "HiSeq.1mb.1RG.noSG.table.gz");
 
     @Test
-    public void testManyObservations() {
+    public void testManyObservations() throws IOException {
         File recal = new File(new File(CommandLineProgramTest.getTestDataDir(), "BQSR"), "bqsr.manyObservations.piece.table.gz");
 
         final File output = BaseTest.createTempFile("BQSRgathererTest", ".table.gz");
@@ -45,7 +46,7 @@ public class BQSRGathererTest extends BaseTest {
     }
 
     @Test
-    public void testGatherBQSR() {
+    public void testGatherBQSR() throws IOException {
         BQSRGatherer gatherer = new BQSRGatherer();
         List<File> recalFiles = new LinkedList<>();
         final File output = BaseTest.createTempFile("BQSRgathererTest", ".table.gz");
@@ -64,7 +65,7 @@ public class BQSRGathererTest extends BaseTest {
     }
 
     @Test
-    public void testGatherBQSRWithEmptyFile() {
+    public void testGatherBQSRWithEmptyFile() throws IOException {
         BQSRGatherer gatherer = new BQSRGatherer();
         List<File> recalFiles = new LinkedList<>();
         final File output = BaseTest.createTempFile("BQSRgathererTest", ".table.gz");

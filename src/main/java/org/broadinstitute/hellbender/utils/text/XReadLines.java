@@ -35,7 +35,7 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
      * By default, it will trim whitespaces.
      */
-    public XReadLines(final File filename) {
+    public XReadLines(final File filename) throws IOException {
         this(filename, true);
     }
 
@@ -43,7 +43,7 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * Opens the given file for reading lines and optionally trim whitespaces.
      * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
      */
-    public XReadLines(final File filename, final boolean trimWhitespace) {
+    public XReadLines(final File filename, final boolean trimWhitespace) throws IOException {
         this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
     }
 

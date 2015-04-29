@@ -1,0 +1,5 @@
+# see: ReadGroupBlackListFilterTest.java
+RG:ReadGroup3
+RG:ReadGroup4
+ 
+# testing line with just a space above

@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
@@ -19,7 +20,7 @@ public class BQSRGatherer extends Gatherer {
     private static final String MISSING_READ_GROUPS = "Missing read group(s)";
 
     @Override
-    public void gather(final List<File> inputs, final File output) {
+    public void gather(final List<File> inputs, final File output) throws IOException {
         try (final PrintStream outputFile = IOUtils.makePrintStreamMaybeGzipped(output)) {
             final GATKReport report = gatherReport(inputs);
             report.print(outputFile);

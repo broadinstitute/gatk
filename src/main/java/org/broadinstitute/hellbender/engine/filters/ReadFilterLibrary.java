@@ -22,6 +22,16 @@ public final class ReadFilterLibrary {
     public static final ReadFilter READLENGTH_EQUALS_CIGARLENGTH = read -> read.getReadLength() == read.getCigar().getReadLength();
     public static final ReadFilter GOOD_CIGAR =  read -> CigarUtils.isGood(read.getCigar());
 
+    /**
+     * Reads whose mate maps to the same contig.
+     */
+    public static final ReadFilter MATE_ON_SAME_CONTIG = read -> read.getReadPairedFlag() && !read.getMateUnmappedFlag() && read.getReferenceIndex().equals(read.getMateReferenceIndex());
+
+    /**
+     * Reads that have a mapped mate and both mate and read are on different same strands (ie the usual situation).
+     */
+    public static final ReadFilter MATE_DIFFERENT_STRAND = read -> read.getReadPairedFlag() && !read.getMateUnmappedFlag() && read.getMateNegativeStrandFlag() != read.getReadNegativeStrandFlag();
+
     public static final ReadFilter VALID_ALIGNMENT_START = read -> {
         if (read.getReadUnmappedFlag()) {
             return true;

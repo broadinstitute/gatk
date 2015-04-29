@@ -46,4 +46,7 @@ public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<S
     default Boolean apply(SAMRecord read){
         return test(read);
     }
+
+    @Override
+    boolean test(SAMRecord read);
 }
