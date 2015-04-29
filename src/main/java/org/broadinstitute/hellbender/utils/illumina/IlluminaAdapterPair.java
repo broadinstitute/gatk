@@ -1,0 +1,53 @@
+package org.broadinstitute.hellbender.utils.illumina;
+
+import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.StringUtil;
+
+/** Describes adapters used on each pair of strands */
+public enum IlluminaAdapterPair implements AdapterPair {
+
+    PAIRED_END("AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT",  //58 bases
+               "AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG"), // 61 bases
+
+    INDEXED ("AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT",
+             "AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG"), // note  8 N's  // 67 bases
+
+    SINGLE_END ("AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT",
+                "AGATCGGAAGAGCTCGTATGCCGTCTTCTGCTTG"),
+
+    NEXTERA_V1("AATGATACGGCGACCACCGAGATCTACACGCCTCCCTCGCGCCATCAGAGATGTGTATAAGAGACAG",
+               "CTGTCTCTTATACACATCTCTGAGCGGGCTGGCAAGGCAGACCGNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG"),
+
+    NEXTERA_V2("AATGATACGGCGACCACCGAGATCTACACNNNNNNNNTCGTCGGCAGCGTCAGATGTGTATAAGAGACAG",
+               "CTGTCTCTTATACACATCTCCGAGCCCACGAGACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG"),
+
+    DUAL_INDEXED("AATGATACGGCGACCACCGAGATCTNNNNNNNNACACTCTTTCCCTACACGACGCTCTTCCGATCT",
+                "AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG"),
+
+    FLUIDIGM("AATGATACGGCGACCACCGAGATCTACACTGACGACATGGTTCTACA",
+             "AGACCAAGTCTCTGCTACCGTANNNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG"),
+
+    TRUSEQ_SMALLRNA("AATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC",
+                    "TGGAATTCTCGGGTGCCAAGGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG"),
+
+    // This one is at the end of the list because its 3' is a subset of several of the 3's above.
+    // There are unit tests that try all AdapterPairs, and this one should go at the end os
+    // it is checked last.
+    ALTERNATIVE_SINGLE_END("AATGATACGGCGACCACCGACAGGTTCAGAGTTCTACAGTCCGACGATC",
+                           "TCGTATGCCGTCTTCTGCTTG");
+
+
+    final String fivePrime, threePrime;
+
+
+    IlluminaAdapterPair(final String fivePrime, final String threePrime) {
+        this.threePrime = threePrime;
+        this.fivePrime = fivePrime;
+    }
+    @Override
+    public String get3PrimeAdapter(){ return threePrime; }
+    @Override
+    public String get5PrimeAdapter(){ return fivePrime; }
+    @Override
+    public String getName() { return this.name(); }
+}

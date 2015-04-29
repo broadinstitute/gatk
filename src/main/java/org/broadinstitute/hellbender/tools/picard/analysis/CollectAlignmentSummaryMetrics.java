@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.utils.illumina.IlluminaUtil;
+import org.broadinstitute.hellbender.utils.illumina.IlluminaAdapterPair;
 
 import java.io.File;
 import java.util.*;
@@ -54,12 +54,12 @@ public class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
 
     @Argument(doc="List of adapter sequences to use when processing the alignment metrics")
 	public List<String> ADAPTER_SEQUENCE = CollectionUtil.makeList(
-            IlluminaUtil.IlluminaAdapterPair.SINGLE_END.get5PrimeAdapter(),
-            IlluminaUtil.IlluminaAdapterPair.SINGLE_END.get3PrimeAdapter(),
-            IlluminaUtil.IlluminaAdapterPair.PAIRED_END.get5PrimeAdapter(),
-            IlluminaUtil.IlluminaAdapterPair.PAIRED_END.get3PrimeAdapter(),
-            IlluminaUtil.IlluminaAdapterPair.INDEXED.get5PrimeAdapter(),
-            IlluminaUtil.IlluminaAdapterPair.INDEXED.get3PrimeAdapter()
+            IlluminaAdapterPair.SINGLE_END.get5PrimeAdapter(),
+            IlluminaAdapterPair.SINGLE_END.get3PrimeAdapter(),
+            IlluminaAdapterPair.PAIRED_END.get5PrimeAdapter(),
+            IlluminaAdapterPair.PAIRED_END.get3PrimeAdapter(),
+            IlluminaAdapterPair.INDEXED.get5PrimeAdapter(),
+            IlluminaAdapterPair.INDEXED.get3PrimeAdapter()
     );
 
     @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics.  ")
