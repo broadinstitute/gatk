@@ -1,0 +1,180 @@
+buildscript {
+    repositories {
+        mavenCentral()
+     }
+
+    dependencies {
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.0.1'
+    }
+}
+
+plugins {
+    id "de.undercouch.download" version "1.2"
+}
+
+import de.undercouch.gradle.tasks.download.Download
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'application'
+apply plugin: "jacoco"
+apply plugin: 'com.github.kt3k.coveralls'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+mainClassName = "org.broadinstitute.hellbender.Main"
+
+
+repositories {
+    mavenCentral()
+    maven {
+      url "https://oss.sonatype.org/content/groups/public"
+    }
+}
+
+jacocoTestReport {
+    dependsOn test
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
+    reports {
+        xml.enabled = true // coveralls plugin depends on xml format report
+        html.enabled = true
+    }
+}
+
+jacoco {
+    toolVersion = "0.7.1.201405082137"
+}
+
+//NOTE: we ignore contracts for now
+compileJava {
+  options.compilerArgs = ['-proc:none', '-Xlint:all']
+}
+compileTestJava { 
+  options.compilerArgs = ['-proc:none', '-Xlint:all']
+}
+
+
+build.dependsOn installApp
+check.dependsOn installApp
+
+dependencies {
+    compile files("${System.properties['java.home']}/../lib/tools.jar")
+
+    compile 'org.broadinstitute:hellbender:Hellbender.0.1.1-SNAPSHOT'
+
+    testCompile 'org.testng:testng:6.8.8'
+
+
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+def String deriveVersion(){
+    def stdout = new ByteArrayOutputStream()
+    try {
+        logger.info("path is $System.env.PATH")
+        exec {
+            commandLine "git", "describe", "--always", "--long"
+            standardOutput = stdout;
+
+            ignoreExitValue = true
+        }
+    } catch (GradleException e) {
+        logger.error("Couldn't determine version.  " + e.getMessage())
+    }
+    return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
+}
+
+version = deriveVersion()
+group = 'org.broadinstitute'
+
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
+                'Implementation-Version': version,
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+}
+
+test {
+    // enable TestNG support (default is JUnit)
+    useTestNG{
+        excludeGroups 'cloud', 'bucket'
+    }
+
+    // set heap size for the test JVM(s)
+    minHeapSize = "1G"
+    maxHeapSize = "2G"
+  
+    String CI = "$System.env.CI"
+    if (CI == "true") {
+        int count = 0
+        // listen to events in the test execution lifecycle
+        testLogging {
+            events "skipped", "failed"
+            exceptionFormat = "full"
+        }
+
+        beforeTest { descriptor ->
+            count++
+            if( count % 10000 == 0) {
+                logger.lifecycle("Finished "+ Integer.toString(count++) + " tests")
+            }
+        }
+    } else {
+        // show standard out and standard error of the test JVM(s) on the console
+        testLogging.showStandardStreams = true
+        beforeTest { descriptor ->
+            logger.lifecycle("Running Test: " + descriptor)
+        }
+
+        // listen to standard out and standard error of the test JVM(s)
+        onOutput { descriptor, event ->
+            logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+        }
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.2.1'
+}
+
+
+task fatJar(type: Jar) {
+  manifest {
+        attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
+          'Implementation-Version': version,
+          'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+artifacts {
+    archives jar
+
+    archives javadocJar
+    archives sourcesJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+
