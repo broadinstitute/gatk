@@ -26,7 +26,7 @@ public class IntervalArgumentCollectionTest extends BaseTest{
         iac.excludeIntervalStrings.addAll(Arrays.asList("1", "2", "3"));
         Assert.assertTrue(iac.intervalsSpecified());
         GenomeLoc chr4GenomeLoc = hg19GenomeLocParser.createOverEntireContig("4");
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval(chr4GenomeLoc.getContig(), chr4GenomeLoc.getStart(), chr4GenomeLoc.getStop())));
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser), Arrays.asList(new SimpleInterval(chr4GenomeLoc)));
     }
 
     @Test

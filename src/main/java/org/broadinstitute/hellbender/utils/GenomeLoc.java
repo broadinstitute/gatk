@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.Serializable;
@@ -11,7 +12,7 @@ import java.util.*;
  * can be any positive or negative number, by design.  Bound validation is a feature of the GenomeLocParser,
  * and not a fundamental constraint of the GenomeLoc
  */
-public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenomeLocation {
+public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenomeLocation, Locatable {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -76,6 +77,12 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
 
     public final int getContigIndex() { return this.contigIndex; }
     public final int getStart()    { return this.start; }
+
+    @Override
+    public int getEnd() {
+        return getStop();
+    }
+
     public final int getStop()     { return this.stop; }
 
     public final String toString()  {

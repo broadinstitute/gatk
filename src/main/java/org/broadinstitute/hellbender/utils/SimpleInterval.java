@@ -1,12 +1,13 @@
-package org.broadinstitute.hellbender.utils;
+ package org.broadinstitute.hellbender.utils;
 
 
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.Serializable;
+import java.util.Objects;
 
-/**
+ /**
  * Minimal immutable class representing a 1-based closed ended genomic interval
  * SimpleInterval does not allow null contig names.  It cannot represent an unmapped Locatable.
  *
@@ -29,6 +30,27 @@ public final class SimpleInterval implements Locatable, Serializable {
      * @param end  1-based inclusive end position
      */
     public SimpleInterval(final String contig, final int start, final int end){
+        validatePositions(contig, start, end);
+        this.contig = contig;
+        this.start = start;
+        this.end = end;
+    }
+
+    /**
+     * Create a new SimpleInterval from a {@link Locatable}
+     * @param locatable any Locatable
+     * @throws IllegalArgumentException if locatable violates any of the SimpleInterval constraints or is null
+     */
+    public SimpleInterval(final Locatable locatable){
+        this(Objects.requireNonNull(locatable, () -> {throw new IllegalArgumentException();}).getContig(),
+                locatable.getStart(), locatable.getEnd());
+    }
+
+    /**
+     * Test that these are valid values for constructing a SimpleInterval
+     * @throws IllegalArgumentException if it is invalid
+     */
+    private static void validatePositions(final String contig, final int start, final int end) {
         if ( contig == null ) {
             throw new IllegalArgumentException("contig cannot be null");
         }
@@ -38,15 +60,12 @@ public final class SimpleInterval implements Locatable, Serializable {
         if ( end < start ) {
             throw new IllegalArgumentException(String.format("end must be >= start. start:%d end:%d", start, end));
         }
-        this.contig = contig;
-        this.start = start;
-        this.end = end;
     }
 
     /**
      * Makes an interval by parsing the string.
      *
-     * @Warning this method does not fill in the true contig end values
+     * @warning this method does not fill in the true contig end values
      * for intervals that reach to the end of their contig,
      * uses {@link Integer#MAX_VALUE} instead.
      *
@@ -97,6 +116,7 @@ public final class SimpleInterval implements Locatable, Serializable {
             }
         }
 
+        validatePositions(contig, start, end);
         this.contig = contig;
         this.start = start;
         this.end = end;
