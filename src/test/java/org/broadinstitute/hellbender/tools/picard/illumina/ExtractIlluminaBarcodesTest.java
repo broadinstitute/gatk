@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.tools.picard.illumina;
 
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.ClusterData;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataProvider;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataProviderFactory;
-import org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.ReadStructure;
 import org.broadinstitute.hellbender.tools.picard.illumina.parser.readers.BclQualityEvaluationStrategy;
 import org.broadinstitute.hellbender.utils.text.parsers.BasicInputParser;
-import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
@@ -18,16 +17,13 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import static htsjdk.samtools.util.IOUtil.copyDirectoryTree;
-import static htsjdk.samtools.util.IOUtil.deleteDirectoryTree;
-import static htsjdk.samtools.util.IOUtil.getFilesMatchingRegexp;
+import static htsjdk.samtools.util.IOUtil.*;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.sort;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.Barcodes;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.BaseCalls;
-import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.QualityScores;
+import static org.broadinstitute.hellbender.tools.picard.illumina.parser.IlluminaDataType.*;
 import static org.broadinstitute.hellbender.tools.picard.illumina.parser.readers.BclQualityEvaluationStrategy.ILLUMINA_ALLEGED_MINIMUM_QUALITY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -109,7 +105,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
         assertEquals(metricsFile.getMetrics().get(12).PERFECT_MATCHES, 1);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.class)
     public void testNonWritableOutputFile() throws Exception {
         final File existingFile = new File(basecallsDir, "s_1_1101_barcode.txt.gz");
         try {
@@ -131,7 +127,7 @@ public class ExtractIlluminaBarcodesTest extends CommandLineProgramTest {
                 args.add("--BARCODE");
                 args.add(barcode);
             }
-            assertEquals(runCommandLine(args), 4);
+            assertEquals(runCommandLine(args), Main.ANY_OTHER_EXCEPTION_EXIT_VALUE);
         } finally {
             existingFile.setWritable(true);
         }
