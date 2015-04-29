@@ -1,30 +1,32 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Exon data-base based on a list of intervals.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class IntervalBackedExonCollection implements ExonCollection<GenomeLoc> {
+public final class IntervalBackedExonCollection implements ExonCollection<SimpleInterval> {
 
     /**
      * Map from interval name to interval object.
      */
-    private final Map<String,GenomeLoc> intervalsByName;
+    private final Map<String,SimpleInterval> intervalsByName;
 
     /**
      * Sorted list of intervals.
      */
-    private final List<GenomeLoc> sortedIntervals;
+    private final List<SimpleInterval> sortedIntervals;
 
     /**
      * Cached index of the last overlapping interval found by
-     * {@link #cachedBinarySearch(GenomeLoc)}.
+     * {@link #cachedBinarySearch(SimpleInterval)}.
      *
      * <p>
      *     This results in a noticeable performance gain when processing data in
@@ -33,43 +35,42 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      */
     private int lastBinarySearchResult = -1;
 
-    /**
+/**
      * Creates a exon data-base give a sorted list of intervals.
+     *
+     * <p>
+     *     Intervals will be sorted by their contig id lexicographical order.
+     * </p>
      *
      * @param intervals the input interval list. Is assumed to be sorted
      * @throws IllegalArgumentException if {@code intervals} is {@code null}.
      */
-    public IntervalBackedExonCollection(final List<GenomeLoc> intervals) {
+    public IntervalBackedExonCollection(final List<SimpleInterval> intervals) {
         if (intervals == null) {
             throw new IllegalArgumentException("the input intervals cannot be null");
         }
-        checkInputIntervalCoherence(intervals);
-        this.sortedIntervals = Collections.unmodifiableList(new ArrayList<>(intervals));
-        this.intervalsByName = composeIntervalsByName(intervals);
+        if (intervals.contains(null)) {
+            throw new IllegalArgumentException("the input cannot contain null");
+        }
+        sortedIntervals = intervals.stream().sorted(SimpleInterval.LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList());
+        checkForOverlaps(sortedIntervals);
+        this.intervalsByName = composeIntervalsByName(sortedIntervals);
     }
 
     /**
-     * Throws a exception if there some interval location incoherence.
-     *
-     * <p>
-     *     These include:
-     *     <ul>
-     *         <li>{@code} null intervals,</li>
-     *         <li>intervals are out of order,</li>
-     *         <li>intervals don't overlap each other,</li>
-     *         <li>some interval is unmapped or</li>
-     *         <li>is the special value {@link GenomeLoc#WHOLE_GENOME}</li>
-     *     </ul>
-     * </p>
-     *
-     * @param intervals the input intervals.
-     * @throws IllegalArgumentException if there is any inconsistency in {@code intervals}.
+     * Fails with an exception if the intervals collection has overlapping intervals.
+     * @param sortedIntervals the intervals sorted.
      */
-    private void checkInputIntervalCoherence(final List<GenomeLoc> intervals) {
-        GenomeLoc lastLocation = null;
-        for (final GenomeLoc location : intervals) {
-            checkInputIntervalCoherence(lastLocation, location);
-            lastLocation = location;
+    private static void checkForOverlaps(final List<SimpleInterval> sortedIntervals) {
+        final OptionalInt failureIndex = IntStream.range(1, sortedIntervals.size())
+                .filter(i -> sortedIntervals.get(i-1).overlaps(sortedIntervals.get(i)))
+                .findFirst();
+
+        if (failureIndex.isPresent()) {
+            final int index = failureIndex.getAsInt();
+            throw new IllegalArgumentException(
+                    String.format("input intervals contain at least two overlapping intervals: %s and %s",
+                            sortedIntervals.get(index-1),sortedIntervals.get(index)));
         }
     }
 
@@ -85,12 +86,12 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      * @throws IllegalArgumentException if {@code intervals} is {@code null} or it contains {@code nulls},
      *                  or is not a coherent interval list as per the criteria above.
      */
-    private Map<String,GenomeLoc> composeIntervalsByName(final List<GenomeLoc> intervals) {
-        final Map<String,GenomeLoc> result = new HashMap<>(intervals.size());
-        for (final GenomeLoc location : intervals) {
-            final String name = intervalName(location);
+    private Map<String,SimpleInterval> composeIntervalsByName(final List<SimpleInterval> intervals) {
+        final Map<String,SimpleInterval> result = new HashMap<>(intervals.size());
+        for (final SimpleInterval location : intervals) {
+            final String name = name(location);
             if (name != null) {
-                final GenomeLoc previous = result.put(name,location);
+                final SimpleInterval previous = result.put(name,location);
                 if (previous != null) {
                     throw new IllegalStateException(
                             String.format("more than one interval in the input list results in the same name (%s); " +
@@ -103,37 +104,9 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     /**
-     * Throws a exception if there some interval location incoherence.
-     *
-     * See {@link #checkInputIntervalCoherence(List)} documenation for details.
-     *
-     * @param lastLocation previous location.
-     * @param nextLocation next location to add.
-     *
-     * @throws IllegalArgumentException if there is some problem with a location given the previous one.
-     */
-    private static void checkInputIntervalCoherence(final GenomeLoc lastLocation, final GenomeLoc nextLocation) {
-        if (nextLocation == null) {
-            throw new IllegalArgumentException("the input intervals contain a null location");
-        } else if (nextLocation.isUnmapped()) {
-            throw new IllegalArgumentException("the input intervals contain unmapped locations");
-        } else if (nextLocation == GenomeLoc.WHOLE_GENOME) {
-            throw new IllegalArgumentException("the input intervals contain a whole-genome location");
-        } else if (lastLocation != null && !lastLocation.isBefore(nextLocation)) {
-            throw new IllegalArgumentException(
-                    String.format("the input intervals list is not in order or " +
-                            "contains overlapped intervals: '%s' is not strictly before '%s'",lastLocation,nextLocation));
-        }
-    }
-
-    /**
      * Produces the unique name for a genomic interval.
      *
      * <p>This name can depend in either the index of the interval, its location or both</p>
-     *
-     * <p>The implementation can assume that input interval is a proper one with start and stop positions and a contig,
-     * thus the result is unpredictable with special intervals values such as {@link GenomeLoc#UNMAPPED}
-     *   or {@link GenomeLoc#WHOLE_GENOME}.
      *
      * <p>
      *     The implementation of this method is such that the name will be unique, i.e. that two different locations
@@ -144,12 +117,13 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      *
      * @return can return {@code null} indicating that this interval should remain anonymous.
      */
-    protected String intervalName(final GenomeLoc location) {
+    @Override
+    public String name(final SimpleInterval location) {
         return location.toString();
     }
 
     @Override
-    public List<GenomeLoc> exons() {
+    public List<SimpleInterval> exons() {
         return sortedIntervals;
     }
 
@@ -159,7 +133,7 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     @Override
-    public GenomeLoc exon(final int index) {
+    public SimpleInterval exon(final int index) {
         if (index < 0) {
             throw new IllegalArgumentException("index cannot be negative");
         } else if (index >= sortedIntervals.size()) {
@@ -170,7 +144,7 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     @Override
-    public GenomeLoc exon(final String name) {
+    public SimpleInterval exon(final String name) {
         if (name == null) {
             throw new IllegalArgumentException("the input name cannot be null");
         }
@@ -179,11 +153,11 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
 
     @Override
     public int index(final String name) {
-        final GenomeLoc exon = intervalsByName.get(name);
+        final SimpleInterval exon = intervalsByName.get(name);
         if (exon == null) {
             return -1;
         } else {
-            final int searchIndex = Collections.binarySearch(sortedIntervals, exon);
+            final int searchIndex = uncachedBinarySearch(exon);
             if (searchIndex < 0) { // checking just in case.
                 throw new IllegalStateException("could not found named interval amongst sorted intervals, impossible");
             }
@@ -192,13 +166,9 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     @Override
-    public IndexRange indexRange(final GenomeLoc location) {
+    public IndexRange indexRange(final SimpleInterval location) {
         if (location == null) {
             throw new IllegalArgumentException("the input location cannot be null");
-        } else if (location == GenomeLoc.WHOLE_GENOME) {
-            return new IndexRange(0, sortedIntervals.size());
-        } else if (location.isUnmapped()) {
-            return new IndexRange(sortedIntervals.size(),sortedIntervals.size());
         } else {
             final int searchIndex = cachedBinarySearch(location);
             if (searchIndex < 0) {
@@ -212,7 +182,7 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     @Override
-    public GenomeLoc location(final GenomeLoc exon) {
+    public SimpleInterval location(final SimpleInterval exon) {
         if (exon == null) {
             throw new IllegalArgumentException("the exon cannot be null");
         }
@@ -220,7 +190,7 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     @Override
-    public GenomeLoc location(final int index) {
+    public SimpleInterval location(final int index) {
         if (index < 0 || index >= sortedIntervals.size()) {
             throw new IllegalArgumentException(
                     String.format("the index provided, %d, is not within the valid range [%d,%d).",index,0,sortedIntervals.size()));
@@ -228,36 +198,14 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
         return sortedIntervals.get(index);
     }
 
-    /**
-     * Comparator used to search overlapping genomic locations.
-     *
-     * <p>
-     *     In contrast to the default sorting of {@link GenomeLoc} instances, this comparator
-     *     will return 0 of there is any base overlap.
-     * </p>
-     */
-    private static final Comparator<GenomeLoc> OVERLAP_SEARCH_COMPARATOR = (left, right) -> {
-        if (left.isUnmapped()) {
-            return right.isUnmapped() ? 0 : 1;
-        } else if (right.isUnmapped()) {
-            return -1;
-        } else if (left.isBefore(right)) {
-            return -1;
-        } else if (left.isPast(right)) {
-            return 1;
-        } else {
-            return 0;
-        }
-    };
-
     @Override
-    public GenomeLoc exon(final GenomeLoc overlapRegion) {
+    public SimpleInterval exon(final SimpleInterval overlapRegion) {
         final int searchIndex = index(overlapRegion);
         return searchIndex < 0 ? null : sortedIntervals.get(searchIndex);
     }
 
     @Override
-    public int index(final GenomeLoc location) {
+    public int index(final SimpleInterval location) {
         final IndexRange range = indexRange(location);
         switch (range.size()) {
             case 1:
@@ -272,13 +220,13 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
     }
 
     @Override
-    public List<GenomeLoc> exons(final GenomeLoc overlapRegion) {
+    public List<SimpleInterval> exons(final SimpleInterval overlapRegion) {
         final IndexRange range = indexRange(overlapRegion);
         return sortedIntervals.subList(range.from, range.to);
     }
 
     /**
-     * Implement a cached binary search of the overlapping intervals.
+     * Implements a cached binary search of the overlapping intervals.
      *
      * <p>
      *     This was found to improve performance significantly when analyzing empirical
@@ -300,8 +248,8 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      *     is guaranteed to overlap the query {@code location}. There might be more intervals that
      *     overlap this location and they must all be contiguous to the returned index.
      * <p>
-     *     One can use {@link #extendSearchIndexBackwards(GenomeLoc, int)}
-     *     and {@link #extendSearchIndexForward(GenomeLoc, int)}
+     *     One can use {@link #extendSearchIndexBackwards(SimpleInterval, int)}
+     *     and {@link #extendSearchIndexForward(SimpleInterval, int)}
      *     to find the actual overlapping index range.
      * </p>
      *
@@ -313,37 +261,78 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      * <p>
      *     <code>insertion index == -(result + 1)</code>
      * </p>
+     *
+     * @param location the query location.
+     * @return any integer between <code>-{@link #exonCount()}-1</code> and <code>{@link #exonCount()} - 1</code>.
+     */
+    private int cachedBinarySearch(final SimpleInterval location) {
+
+        if (lastBinarySearchResult < 0) {
+            final int candidate = -(lastBinarySearchResult + 1);
+            if (candidate >= sortedIntervals.size()) {
+                return lastBinarySearchResult = uncachedBinarySearch(location);
+            } else if (sortedIntervals.get(candidate).overlaps(location)) {
+                return lastBinarySearchResult = candidate;
+            } else {
+                return lastBinarySearchResult = uncachedBinarySearch(location);
+            }
+        } else {
+            if (sortedIntervals.get(lastBinarySearchResult).overlaps(location)) {
+                return lastBinarySearchResult;
+            } else {
+                final int candidate = lastBinarySearchResult + 1;
+                if (candidate == sortedIntervals.size()) {
+                    return lastBinarySearchResult = uncachedBinarySearch(location);
+                } else if (sortedIntervals.get(candidate).overlaps(location)) {
+                    return lastBinarySearchResult = candidate;
+                } else {
+                    return lastBinarySearchResult = uncachedBinarySearch(location);
+                }
+            }
+        }
+    }
+
+    /**
+     * Implements a binary search of the overlapping intervals.
+     *
      * <p>
-     *     The input location is assumed to be proper location thus fully mapped and never the special
-     *     value {@link GenomeLoc#WHOLE_GENOME}. Otherwise the outcome is unspecified.
+     *     A positive (0 or greater) returned value indicates a hit where the corresponding interval
+     *     is guaranteed to overlap the query {@code location}. There might be more intervals that
+     *     overlap this location and they must all be contiguous to the returned index.
+     * <p>
+     *     One can use {@link #extendSearchIndexBackwards(SimpleInterval, int)}
+     *     and {@link #extendSearchIndexForward(SimpleInterval, int)}
+     *     to find the actual overlapping index range.
+     * </p>
+     *
+     * <p>
+     *     In contrast, a negative result indicates that there is no overlapping interval.
+     *     This value encodes the insertion position for the query location; that is, where would
+     *     the query location be inserted were it to be added to the sorted list of intervals:
+     * </p>
+     * <p>
+     *     <code>insertion index == -(result + 1)</code>
      * </p>
      *
      * @param location the query location.
      * @return any integer between <code>-{@link #exonCount()}-1</code> and <code>{@link #exonCount()} - 1</code>.
      */
-    private int cachedBinarySearch(final GenomeLoc location) {
+    private int uncachedBinarySearch(final SimpleInterval location) {
+        if (sortedIntervals.size() == 0) {
+            return -1;
+        }
 
-        if (lastBinarySearchResult < 0) {
-            final int candidate = -(lastBinarySearchResult + 1);
-            if (candidate >= sortedIntervals.size()) {
-                return lastBinarySearchResult = Collections.binarySearch(sortedIntervals, location, OVERLAP_SEARCH_COMPARATOR);
-            } else if (sortedIntervals.get(candidate).overlapsP(location)) {
-                return lastBinarySearchResult = candidate;
-            } else {
-                return lastBinarySearchResult = Collections.binarySearch(sortedIntervals, location, OVERLAP_SEARCH_COMPARATOR);
-            }
+        final int searchResult = Collections.binarySearch(sortedIntervals, location, SimpleInterval.LEXICOGRAPHICAL_ORDER_COMPARATOR);
+        if (searchResult >= 0) {
+            return searchResult;
         } else {
-            if (sortedIntervals.get(lastBinarySearchResult).overlapsP(location)) {
-                return lastBinarySearchResult;
+            final int insertIndex = - (searchResult + 1);
+            if (insertIndex < sortedIntervals.size() && sortedIntervals.get(insertIndex).overlaps(location)) {
+                return insertIndex;
+            } if (insertIndex > 0 && sortedIntervals.get(insertIndex - 1).overlaps(location)) {
+                return insertIndex - 1;
             } else {
-                final int candidate = lastBinarySearchResult + 1;
-                if (candidate == sortedIntervals.size()) {
-                    return lastBinarySearchResult = Collections.binarySearch(sortedIntervals, location, OVERLAP_SEARCH_COMPARATOR);
-                } else if (sortedIntervals.get(candidate).overlapsP(location)) {
-                    return lastBinarySearchResult = candidate;
-                } else {
-                    return lastBinarySearchResult = Collections.binarySearch(sortedIntervals, location, OVERLAP_SEARCH_COMPARATOR);
-                }
+                return searchResult;
             }
         }
     }
@@ -353,11 +342,11 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      * starting at {@code startIndex} and assuming that the element at that index has an
      * overlap with {@code location}.
      */
-    private int extendSearchIndexForward(final GenomeLoc location, final int startIndex) {
-        final ListIterator<GenomeLoc> it = sortedIntervals.listIterator(startIndex + 1);
+    private int extendSearchIndexForward(final SimpleInterval location, final int startIndex) {
+        final ListIterator<SimpleInterval> it = sortedIntervals.listIterator(startIndex + 1);
         while (it.hasNext()) {
-            final GenomeLoc next = it.next();
-            if (next.isPast(location)) {
+            final SimpleInterval next = it.next();
+            if (!location.overlaps(next)) {
                 return it.previousIndex() - 1;
             }
         }
@@ -368,11 +357,11 @@ public final class IntervalBackedExonCollection implements ExonCollection<Genome
      * Looks for the first index in {@link #sortedIntervals} that has an overlap with the input {@code location}
      * starting at {@code startIndex} and assuming that the element at that index has an overlap with {@code location}.
      */
-    private int extendSearchIndexBackwards(final GenomeLoc location, final int startIndex) {
-        final ListIterator<GenomeLoc> it = sortedIntervals.listIterator(startIndex);
+    private int extendSearchIndexBackwards(final SimpleInterval location, final int startIndex) {
+        final ListIterator<SimpleInterval> it = sortedIntervals.listIterator(startIndex);
         while (it.hasPrevious()) {
-            final GenomeLoc previous = it.previous();
-            if (previous.isBefore(location)) {
+            final SimpleInterval previous = it.previous();
+            if (!location.overlaps(previous)) {
                 return it.nextIndex() + 1;
             }
         }
