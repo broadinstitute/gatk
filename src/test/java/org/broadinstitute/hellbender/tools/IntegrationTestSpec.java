@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.diffengine.DiffEngine;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -13,10 +14,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public final class IntegrationTestSpec {
@@ -28,14 +30,14 @@ public final class IntegrationTestSpec {
     private final int nOutputFiles;
     private final List<String> expectedFileNames;
 
-    public IntegrationTestSpec(String args, List<String> expectedFileNames) {
+    public IntegrationTestSpec(final String args, final List<String> expectedFileNames) {
         this.args = args;
         this.nOutputFiles = expectedFileNames.size();
         this.expectedException = null;
         this.expectedFileNames = expectedFileNames;
     }
 
-    public IntegrationTestSpec(String args, int nOutputFiles, Class<?> expectedException) {
+    public IntegrationTestSpec(final String args, final int nOutputFiles, final Class<?> expectedException) {
         if (expectedException == null){
             throw new IllegalArgumentException("expected exception is null");
         }
@@ -50,8 +52,9 @@ public final class IntegrationTestSpec {
     }
 
     public final Class<?> getExpectedException() {
-        if (!expectsException())
+        if (!expectsException()) {
             throw new GATKException("Tried to get exception for walker test that doesn't expect one");
+        }
         return expectedException;
     }
 
@@ -63,11 +66,11 @@ public final class IntegrationTestSpec {
         return expectedFileNames;
     }
 
-    public void executeTest(final String name, CommandLineProgramTest test) throws IOException {
-        List<File> tmpFiles = new ArrayList<>();
+    public void executeTest(final String name, final CommandLineProgramTest test) throws IOException {
+        final List<File> tmpFiles = new ArrayList<>();
         for (int i = 0; i < nOutputFiles; i++) {
-            String ext = DEFAULT_TEMP_EXTENSION;
-            File fl = BaseTest.createTempFile(String.format(DEFAULT_TEMP_PREFIX + ".%d", i), ext);
+            final String ext = DEFAULT_TEMP_EXTENSION;
+            final File fl = BaseTest.createTempFile(String.format(DEFAULT_TEMP_PREFIX + ".%d", i), ext);
             tmpFiles.add(fl);
         }
 
@@ -78,7 +81,7 @@ public final class IntegrationTestSpec {
             // this branch handles the case were we are testing that a walker will fail as expected
             executeTest(name, test, null, null, tmpFiles, args, getExpectedException());
         } else {
-            List<String> expectedFileNames = new ArrayList<>();
+            final List<String> expectedFileNames = new ArrayList<>();
             expectedFileNames.addAll(expectedFileNames());
 
             executeTest(name, test, null, expectedFileNames, tmpFiles, args, null);
@@ -96,7 +99,7 @@ public final class IntegrationTestSpec {
      * @param expectedException     the expected exception or null
      * @return a pair of file and string lists
      */
-    private void executeTest(String testName, CommandLineProgramTest testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
+    private void executeTest(final String testName, final CommandLineProgramTest testClass, final File outputFileLocation, final List<String> expectedFileNames, final List<File> tmpFiles, String args, final Class<?> expectedException) throws IOException {
         if (outputFileLocation != null) {
             args += " -O " + outputFileLocation.getAbsolutePath();
         }
@@ -115,8 +118,8 @@ public final class IntegrationTestSpec {
      * @param args              the argument list
      * @param expectedException the expected exception or null
      */
-    private void executeTest(String testName, CommandLineProgramTest testClass, String args, Class<?> expectedException) {
-        String[] command = Utils.escapeExpressions(args);
+    private void executeTest(final String testName, final CommandLineProgramTest testClass, final String args, final Class<?> expectedException) {
+        final String[] command = Utils.escapeExpressions(args);
         // run the executable
         boolean gotAnException = false;
         try {
@@ -126,8 +129,8 @@ public final class IntegrationTestSpec {
             // also write the command line to the HTML log for convenient follow-up
             // do the replaceAll so paths become relative to the current
             BaseTest.log(cmdline.replaceAll(BaseTest.publicTestDirRoot, ""));
-            Object result = testClass.runCommandLine(command);
-        } catch (Exception e) {
+            final Object result = testClass.runCommandLine(command);
+        } catch (final Exception e) {
             gotAnException = true;
             if (expectedException == null) {
                 // we didn't expect an exception but we got one :-(
@@ -154,27 +157,40 @@ public final class IntegrationTestSpec {
         }
     }
 
-    public static void assertMatchingFiles(List<File> resultFiles, List<String> expectedFiles) throws IOException {
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
-            File resultFile = resultFiles.get(i);
-            String expectedFileName = expectedFiles.get(i);
-            File expectedFile = new File(expectedFileName);
+            final File resultFile = resultFiles.get(i);
+            final String expectedFileName = expectedFiles.get(i);
+            final File expectedFile = new File(expectedFileName);
             if (expectedFileName.endsWith(".bam")){
                 compareBamFiles(resultFile, expectedFile);
+            } else if (expectedFileName.endsWith(".vcf")){
+                compareVcfFiles(resultFile, expectedFile);
             } else {
                 compareTextFiles(resultFile, expectedFile);
             }
         }
     }
 
-    public static void compareTextFiles(File resultFile, File expectedFile) throws IOException {
-        List<String> actualLines = new XReadLines(resultFile).readLines();
-        List<String> expectedLines = new XReadLines(expectedFile).readLines();
+    private static void compareVcfFiles(final File resultFile, final File expectedFile) throws IOException {
+        final List<String> actualLines = new XReadLines(resultFile).readLines();
+        final List<String> expectedLines = new XReadLines(expectedFile).readLines();
+        if (!actualLines.equals(expectedLines)){
+             new DiffEngine().diffFiles(resultFile, expectedFile);
+        }
+    }
+
+    public static void compareTextFiles(final File resultFile, final File expectedFile) throws IOException {
+        final List<String> actualLines = new XReadLines(resultFile).readLines();
+        final List<String> expectedLines = new XReadLines(expectedFile).readLines();
         Assert.assertEquals(actualLines.toString(), expectedLines.toString());
     }
 
-    public static void compareBamFiles(File resultFile, File expectedFile) throws IOException {
-        SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
+    public static void compareBamFiles(final File resultFile, final File expectedFile) throws IOException {
+        final boolean equal = SamAssertionUtils.areSamsEqual(resultFile, expectedFile);
+        if (!equal){
+            new DiffEngine().diffFiles(resultFile, expectedFile);
+        }
     }
 }

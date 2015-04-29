@@ -18,11 +18,14 @@ import java.util.*;
 public final class SamAssertionUtils {
 
     public static void assertSamsEqual(final File sam1, final File sam2) throws IOException {
+        Assert.assertTrue(areSamsEqual(sam1, sam2), "SAM file output differs from expected output");
+    }
+
+    public static boolean areSamsEqual(final File sam1, final File sam2) throws IOException {
         try (final SamReader reader1 = SamReaderFactory.makeDefault().open(sam1);
              final SamReader reader2 = SamReaderFactory.makeDefault().open(sam2)) {
             final SamComparison comparison = new SamComparison(reader1, reader2);
-            final boolean equal = comparison.areEqual();
-            Assert.assertTrue(equal, "SAM file output differs from expected output");
+            return comparison.areEqual();
         }
     }
 

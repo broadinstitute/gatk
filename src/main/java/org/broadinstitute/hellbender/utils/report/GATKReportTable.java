@@ -37,6 +37,14 @@ public final class GATKReportTable {
 
     private static final int INITITAL_ARRAY_SIZE = 10000;
 
+    public String getTableDescription() {
+        return tableDescription;
+    }
+
+    public List<GATKReportColumn> getColumnInfo() {
+        return columnInfo;
+    }
+
     protected enum TableDataHeaderFields {
         COLS(2),
         ROWS(3),
