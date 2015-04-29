@@ -1,106 +1,36 @@
-/*
-* Copyright (c) 2012 The Broad Institute
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 package org.broadinstitute.hellbender.utils.diffengine;
 
-import org.apache.log4j.Logger;
-import org.broadinstitute.gatk.utils.Utils;
-import org.broadinstitute.gatk.utils.classloader.PluginManager;
-import org.broadinstitute.gatk.utils.exceptions.ReviewedGATKException;
-import org.broadinstitute.gatk.utils.exceptions.UserException;
-import org.broadinstitute.gatk.utils.report.GATKReport;
-import org.broadinstitute.gatk.utils.report.GATKReportTable;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.report.GATKReport;
+import org.broadinstitute.hellbender.utils.report.GATKReportTable;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
 /**
- * Created by IntelliJ IDEA.
- * User: depristo
- * Date: 7/4/11
- * Time: 12:51 PM
- * A generic engine for comparing tree-structured objects
- *
+ * A generic engine for comparing tree-structured objects.
  */
-public class DiffEngine {
-    final protected static Logger logger = Logger.getLogger(DiffEngine.class);
+public final class DiffEngine {
 
-    private final Map<String, DiffableReader> readers = new HashMap<String, DiffableReader>();
+    private static final int MAX_RECORDS_TO_READ = 1000000;
+    private static final int MAX_RAW_DIFFS_TO_SUMMARIZE = -1;
+
+    //Note: diff engines are all equal but static collections are problematic
+    //so we create a new diff engine when we need one.
+
+    private final Map<String, DiffableReader> readers = new HashMap<>();
 
     public DiffEngine() {
-        loadDiffableReaders();
-    }
+        //Make readers for all known diffable formats
+        final DiffableReader bamdr = new BAMDiffableReader();
+        readers.put(bamdr.getName(), bamdr);
 
-    // --------------------------------------------------------------------------------
-    //
-    // difference calculation
-    //
-    // --------------------------------------------------------------------------------
-
-    public List<Difference> diff(DiffElement master, DiffElement test) {
-        DiffValue masterValue = master.getValue();
-        DiffValue testValue = test.getValue();
-
-        if ( masterValue.isCompound() && masterValue.isCompound() ) {
-            return diff(master.getValueAsNode(), test.getValueAsNode());
-        } else if ( masterValue.isAtomic() && testValue.isAtomic() ) {
-            return diff(masterValue, testValue);
-        } else {
-            // structural difference in types.  one is node, other is leaf
-            return Arrays.asList(new Difference(master, test));
-        }
-    }
-
-    public List<Difference> diff(DiffNode master, DiffNode test) {
-        Set<String> allNames = new HashSet<String>(master.getElementNames());
-        allNames.addAll(test.getElementNames());
-        List<Difference> diffs = new ArrayList<Difference>();
-
-        for ( String name : allNames ) {
-            DiffElement masterElt = master.getElement(name);
-            DiffElement testElt = test.getElement(name);
-            if ( masterElt == null && testElt == null ) {
-                throw new ReviewedGATKException("BUG: unexpectedly got two null elements for field: " + name);
-            } else if ( masterElt == null || testElt == null ) { // if either is null, we are missing a value
-                // todo -- should one of these be a special MISSING item?
-                diffs.add(new Difference(masterElt, testElt));
-            } else {
-                diffs.addAll(diff(masterElt, testElt));
-            }
-        }
-
-        return diffs;
-    }
-
-    public List<Difference> diff(DiffValue master, DiffValue test) {
-        if ( master.getValue().equals(test.getValue()) ) {
-            return Collections.emptyList();
-        } else {
-            return Arrays.asList(new Difference(master.getBinding(), test.getBinding()));
-        }
+        final DiffableReader vcfdr = new VCFDiffableReader();
+        readers.put(vcfdr.getName(), vcfdr);
     }
 
     // --------------------------------------------------------------------------------
@@ -147,18 +77,18 @@ public class DiffEngine {
      * @param params determines how we display the items
      * @param diffs the list of differences to summarize
      */
-    public void reportSummarizedDifferences(List<Difference> diffs, SummaryReportParams params ) {
+    static void reportSummarizedDifferences(final List<Difference> diffs, final SummaryReportParams params ) {
         printSummaryReport(summarizedDifferencesOfPaths(diffs, params.doPairwise, params.maxRawDiffsToSummarize), params );
     }
 
-    final protected static String[] diffNameToPath(String diffName) {
+    static String[] diffNameToPath(final String diffName) {
         return diffName.split("\\.");
     }
 
-    protected List<Difference> summarizedDifferencesOfPathsFromString(List<String> singletonDiffs) {
-        List<Difference> diffs = new ArrayList<Difference>();
+    static List<Difference> summarizedDifferencesOfPathsFromString(final List<String> singletonDiffs) {
+        final List<Difference> diffs = new ArrayList<>();
 
-        for ( String diff : singletonDiffs ) {
+        for ( final String diff : singletonDiffs ) {
             diffs.add(new Difference(diff));
         }
 
@@ -173,26 +103,28 @@ public class DiffEngine {
      * @param maxRawDiffsToSummarize
      * @return
      */
-    private Map<String, Difference> initialPairwiseSummaries(final List<? extends Difference> singletonDiffs,
+    private static Map<String, Difference> initialPairwiseSummaries(final List<? extends Difference> singletonDiffs,
                                                              final int maxRawDiffsToSummarize) {
-        Map<String, Difference> summaries = new HashMap<String, Difference>();
+        final Map<String, Difference> summaries = new HashMap<>();
 
         // create the initial set of differences
         for ( int i = 0; i < singletonDiffs.size(); i++ ) {
             for ( int j = 0; j <= i; j++ ) {
-                Difference diffPath1 = singletonDiffs.get(i);
-                Difference diffPath2 = singletonDiffs.get(j);
+                final Difference diffPath1 = singletonDiffs.get(i);
+                final Difference diffPath2 = singletonDiffs.get(j);
                 if ( diffPath1.length() == diffPath2.length() ) {
-                    int lcp = longestCommonPostfix(diffPath1.getParts(), diffPath2.getParts());
+                    final int lcp = longestCommonPostfix(diffPath1.getParts(), diffPath2.getParts());
                     String path = diffPath2.getPath();
-                    if ( lcp != 0 && lcp != diffPath1.length() )
+                    if ( lcp != 0 && lcp != diffPath1.length() ) {
                         path = summarizedPath(diffPath2.getParts(), lcp);
-                    Difference sumDiff = new Difference(path, diffPath2.getMaster(), diffPath2.getTest());
-                    sumDiff.setCount(0);
+                    }
+                    final Difference sumDiff = new Difference(path, diffPath2.getMaster(), diffPath2.getTest());
+                    sumDiff.resetCount();;
                     addSummaryIfMissing(summaries, sumDiff);
 
-                    if ( maxRawDiffsToSummarize != -1 && summaries.size() > maxRawDiffsToSummarize)
+                    if ( maxRawDiffsToSummarize != -1 && summaries.size() > maxRawDiffsToSummarize) {
                         return summaries;
+                    }
                 }
             }
         }
@@ -211,25 +143,26 @@ public class DiffEngine {
      * @param maxRawDiffsToSummarize
      * @return
      */
-    private Map<String, Difference> initialLeafSummaries(final List<? extends Difference> singletonDiffs,
+    private static Map<String, Difference> initialLeafSummaries(final List<? extends Difference> singletonDiffs,
                                                          final int maxRawDiffsToSummarize) {
-        Map<String, Difference> summaries = new HashMap<String, Difference>();
+        final Map<String, Difference> summaries = new HashMap<>();
 
         // create the initial set of differences
         for ( final Difference d : singletonDiffs ) {
             final String path = summarizedPath(d.getParts(), 1);
-            Difference sumDiff = new Difference(path, d.getMaster(), d.getTest());
-            sumDiff.setCount(0);
+            final Difference sumDiff = new Difference(path, d.getMaster(), d.getTest());
+            sumDiff.resetCount();
             addSummaryIfMissing(summaries, sumDiff);
 
-            if ( maxRawDiffsToSummarize != -1 && summaries.size() > maxRawDiffsToSummarize)
+            if ( maxRawDiffsToSummarize != -1 && summaries.size() > maxRawDiffsToSummarize) {
                 return summaries;
+            }
         }
 
         return summaries;
     }
 
-    protected List<Difference> summarizedDifferencesOfPaths(final List<? extends Difference> singletonDiffs,
+    private static List<Difference> summarizedDifferencesOfPaths(final List<? extends Difference> singletonDiffs,
                                                             final boolean doPairwise,
                                                             final int maxRawDiffsToSummarize) {
         final Map<String, Difference> summaries = doPairwise
@@ -237,39 +170,43 @@ public class DiffEngine {
                 : initialLeafSummaries(singletonDiffs, maxRawDiffsToSummarize);
 
         // count differences
-        for ( Difference diffPath : singletonDiffs ) {
-            for ( Difference sumDiff : summaries.values() ) {
-                if ( sumDiff.matches(diffPath.getParts()) )
+        for ( final Difference diffPath : singletonDiffs ) {
+            for ( final Difference sumDiff : summaries.values() ) {
+                if ( sumDiff.matches(diffPath.getParts()) ) {
                     sumDiff.incCount();
+                }
             }
         }
 
-        List<Difference> sortedSummaries = new ArrayList<Difference>(summaries.values());
+        final List<Difference> sortedSummaries = new ArrayList<>(summaries.values());
         Collections.sort(sortedSummaries);
         return sortedSummaries;
     }
 
-    protected void addSummaryIfMissing(Map<String, Difference> summaries, Difference diff) {
+    private static void addSummaryIfMissing(final Map<String, Difference> summaries, final Difference diff) {
         if ( ! summaries.containsKey(diff.getPath()) ) {
             summaries.put(diff.getPath(), diff);
         }
     }
 
-    protected void printSummaryReport(List<Difference> sortedSummaries, SummaryReportParams params ) {
-        List<Difference> toShow = new ArrayList<Difference>();
+    private static void printSummaryReport(final List<Difference> sortedSummaries, final SummaryReportParams params ) {
+        final List<Difference> toShow = new ArrayList<>();
         int count = 0, count1 = 0;
-        for ( Difference diff : sortedSummaries ) {
-            if ( diff.getCount() < params.minSumDiffToShow )
+        for ( final Difference diff : sortedSummaries ) {
+            if ( diff.getCount() < params.minSumDiffToShow ) {
                 // in order, so break as soon as the count is too low
                 break;
+            }
 
-            if ( params.maxItemsToDisplay != 0 && count++ > params.maxItemsToDisplay )
+            if ( params.maxItemsToDisplay != 0 && count++ > params.maxItemsToDisplay ) {
                 break;
+            }
 
             if ( diff.getCount() == 1 ) {
                 count1++;
-                if ( params.maxCountOneItems != 0 && count1 > params.maxCountOneItems )
+                if ( params.maxCountOneItems != 0 && count1 > params.maxCountOneItems ) {
                     break;
+                }
             }
 
             toShow.add(diff);
@@ -281,7 +218,7 @@ public class DiffEngine {
         }
 
         // now that we have a specific list of values we want to show, display them
-        GATKReport report = new GATKReport();
+        final GATKReport report = new GATKReport();
         final String tableName = "differences";
         report.addTable(tableName, "Summarized differences between the master and test files. See http://www.broadinstitute.org/gatk/guide/article?id=1299 for more information", 3);
         final GATKReportTable table = report.getTable(tableName);
@@ -294,16 +231,17 @@ public class DiffEngine {
             table.set(key, "NumberOfOccurrences", diff.getCount());
             table.set(key, "ExampleDifference", diff.valueDiffString());
         }
-        GATKReport output = new GATKReport(table);
+        final GATKReport output = new GATKReport(table);
         output.print(params.out);
     }
 
-    protected static int longestCommonPostfix(String[] diffPath1, String[] diffPath2) {
+    static int longestCommonPostfix(final String[] diffPath1, final String[] diffPath2) {
         int i = 0;
         for ( ; i < diffPath1.length; i++ ) {
-            int j = diffPath1.length - i - 1;
-            if ( ! diffPath1[j].equals(diffPath2[j]) )
+            final int j = diffPath1.length - i - 1;
+            if ( ! diffPath1[j].equals(diffPath2[j]) ) {
                 break;
+            }
         }
         return i;
     }
@@ -317,44 +255,28 @@ public class DiffEngine {
      * @param commonPostfixLength
      * @return
      */
-    protected static String summarizedPath(String[] parts, int commonPostfixLength) {
-        int stop = parts.length - commonPostfixLength;
-        if ( stop > 0 ) parts = parts.clone();
-        for ( int i = 0; i < stop; i++ ) {
-            parts[i] = "*";
-        }
-        return Utils.join(".", parts);
-    }
-
-    // --------------------------------------------------------------------------------
-    //
-    // plugin manager
-    //
-    // --------------------------------------------------------------------------------
-
-    public void loadDiffableReaders() {
-        List<Class<? extends DiffableReader>> drClasses = new PluginManager<DiffableReader>( DiffableReader.class ).getPlugins();
-
-        logger.info("Loading diffable modules:");
-        for (Class<? extends DiffableReader> drClass : drClasses ) {
-            logger.info("\t" + drClass.getSimpleName());
-
-            try {
-                DiffableReader dr = drClass.newInstance();
-                readers.put(dr.getName(), dr);
-            } catch (InstantiationException e) {
-                throw new ReviewedGATKException("Unable to instantiate module '" + drClass.getSimpleName() + "'");
-            } catch (IllegalAccessException e) {
-                throw new ReviewedGATKException("Illegal access error when trying to instantiate '" + drClass.getSimpleName() + "'");
+    static String summarizedPath(final String[] partsArg, final int commonPostfixLength) {
+        final int stop = partsArg.length - commonPostfixLength;
+        if (stop <= 0) {
+            return String.join(".", partsArg);
+        } else {
+            final String[] parts = Arrays.copyOf(partsArg, partsArg.length);
+            for ( int i = 0; i < stop; i++ ) {
+                parts[i] = "*";
             }
+            return String.join(".", parts);
         }
     }
 
-    protected Map<String, DiffableReader> getReaders() {
-        return readers;
+
+    /**
+     * Returns an unmodifiable map of reader names to readers.
+     */
+    Map<String, DiffableReader> getReaders() {
+        return Collections.unmodifiableMap(readers);
     }
 
-    protected DiffableReader getReader(String name) {
+    DiffableReader getReader(final String name) {
         return readers.get(name);
     }
 
@@ -363,10 +285,12 @@ public class DiffEngine {
      * @param file
      * @return
      */
-    public DiffableReader findReaderForFile(File file) {
-        for ( DiffableReader reader : readers.values() )
-            if (reader.canRead(file) )
+    DiffableReader findReaderForFile(final File file) {
+        for ( final DiffableReader reader : readers.values() ) {
+            if (reader.canRead(file)) {
                 return reader;
+            }
+        }
 
         return null;
     }
@@ -376,51 +300,63 @@ public class DiffEngine {
      * @param file
      * @return
      */
-    public boolean canRead(File file) {
+    public boolean canRead(final File file) {
         return findReaderForFile(file) != null;
     }
 
-
-    public DiffElement createDiffableFromFile(File file) {
-        return createDiffableFromFile(file, -1);
-    }
-
-    public DiffElement createDiffableFromFile(File file, int maxElementsToRead) {
-        DiffableReader reader = findReaderForFile(file);
+    DiffElement createDiffableFromFile(final File file, final int maxElementsToRead) throws IOException {
+        final DiffableReader reader = findReaderForFile(file);
         if ( reader == null )
             throw new UserException("Unsupported file type: " + file);
         else
             return reader.readFromFile(file, maxElementsToRead);
     }
 
-    public static boolean simpleDiffFiles(File masterFile, File testFile, int maxElementsToRead, DiffEngine.SummaryReportParams params) {
-        DiffEngine diffEngine = new DiffEngine();
+    private static boolean simpleDiffFiles(final File masterFile, final File testFile, final int maxElementsToRead, final DiffEngine.SummaryReportParams params) throws IOException {
+        final DiffEngine diffEngine = new DiffEngine();
 
         if ( diffEngine.canRead(masterFile) && diffEngine.canRead(testFile) ) {
-            DiffElement master = diffEngine.createDiffableFromFile(masterFile, maxElementsToRead);
-            DiffElement test = diffEngine.createDiffableFromFile(testFile, maxElementsToRead);
-            List<Difference> diffs = diffEngine.diff(master, test);
-            diffEngine.reportSummarizedDifferences(diffs, params);
+            final DiffElement master = diffEngine.createDiffableFromFile(masterFile, maxElementsToRead);
+            final DiffElement test = diffEngine.createDiffableFromFile(testFile, maxElementsToRead);
+            final List<Difference> diffs = master.diffElements(test);
+            DiffEngine.reportSummarizedDifferences(diffs, params);
             return true;
         } else {
             return false;
         }
     }
 
-    public static class SummaryReportParams {
+    public String diffFiles(final File masterFile, final File testFile) throws IOException {
+        String diffEngineOutput = "";
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try(final PrintStream ps = new PrintStream(baos)) {
+            final DiffEngine.SummaryReportParams params = new DiffEngine.SummaryReportParams(ps, 20, 10, 0, MAX_RAW_DIFFS_TO_SUMMARIZE, false);
+            final boolean success = DiffEngine.simpleDiffFiles(masterFile, testFile, MAX_RECORDS_TO_READ, params);
+            if (success) {
+                diffEngineOutput = baos.toString();
+                BaseTest.log(diffEngineOutput);
+                System.out.printf("Note that the above list is not comprehensive.  At most 20 lines of output, and 10 specific differences will be listed.");
+            } else {
+                return null;
+            }
+        }
+        return diffEngineOutput;
+    }
+
+    static final class SummaryReportParams {
         final PrintStream out;
         final int maxItemsToDisplay;
         final int maxCountOneItems;
         final int minSumDiffToShow;
         final int maxRawDiffsToSummarize;
         final boolean doPairwise;
-        boolean descending = true;
+        final boolean descending = true;
 
-        public SummaryReportParams(PrintStream out,
-                                   int maxItemsToDisplay,
-                                   int maxCountOneItems,
-                                   int minSumDiffToShow,
-                                   int maxRawDiffsToSummarize,
+        public SummaryReportParams(final PrintStream out,
+                                   final int maxItemsToDisplay,
+                                   final int maxCountOneItems,
+                                   final int minSumDiffToShow,
+                                   final int maxRawDiffsToSummarize,
                                    final boolean doPairwise) {
             this.out = out;
             this.maxItemsToDisplay = maxItemsToDisplay;
@@ -428,10 +364,6 @@ public class DiffEngine {
             this.minSumDiffToShow = minSumDiffToShow;
             this.maxRawDiffsToSummarize = maxRawDiffsToSummarize;
             this.doPairwise = doPairwise;
-        }
-
-        public void setDescending(boolean descending) {
-            this.descending = descending;
         }
     }
 }

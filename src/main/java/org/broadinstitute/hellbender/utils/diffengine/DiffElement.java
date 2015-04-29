@@ -1,125 +1,173 @@
-/*
-* Copyright (c) 2012 The Broad Institute
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 package org.broadinstitute.hellbender.utils.diffengine;
 
-import com.google.java.contract.Ensures;
-import com.google.java.contract.Invariant;
-import com.google.java.contract.Requires;
-import org.broadinstitute.gatk.utils.Utils;
-import org.broadinstitute.gatk.utils.exceptions.ReviewedGATKException;
+import com.google.common.base.Strings;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * Created by IntelliJ IDEA.
- * User: depristo
- * Date: 7/4/11
- * Time: 12:55 PM
- *
- * An interface that must be implemented to allow us to calculate differences
- * between structured objects
+ * Represents an element in the tree of differences.
  */
-@Invariant({
-        "name != null",
-        "value != null",
-        "parent != null || name.equals(\"ROOT\")",
-        "value == null || value.getBinding() == this"})
-public class DiffElement {
-    public final static DiffElement ROOT = new DiffElement();
+final class DiffElement {
 
-    final private String name;
-    final private DiffElement parent;
-    final private DiffValue value;
+    /**
+     * Special element that is on top of the hierarchy and has no parent.
+     */
+    public static final DiffElement ROOT = new DiffElement();
+    public static final String ROOT_NAME= "ROOT";
+
+    private final String name;
+    private final DiffElement parent;
+    private final DiffValue value;
 
     /**
      * For ROOT only
      */
     private DiffElement() {
-        this.name = "ROOT";
+        this.name = ROOT_NAME;
         this.parent = null;
-        this.value = new DiffValue(this, "ROOT");
+        this.value = new DiffValue(this, ROOT_NAME);
     }
 
-    @Requires({"name != null", "parent != null", "value != null"})
-    public DiffElement(String name, DiffElement parent, DiffValue value) {
-        if ( name.equals("ROOT") ) throw new IllegalArgumentException("Cannot use reserved name ROOT");
+    public DiffElement(final String name, final DiffElement parent, final DiffValue value) {
+        if ( name.equals(ROOT_NAME) ) {
+            throw new IllegalArgumentException("Cannot use reserved name ROOT");
+        }
         this.name = name;
         this.parent = parent;
         this.value = value;
         this.value.setBinding(this);
     }
 
-    @Ensures({"result != null"})
+    /**
+     * Makes a new element from the given parent and unparsed tree.
+     */
+    private static DiffElement fromString(final String tree, final DiffElement parent) {
+        // X=(A=A B=B C=(D=D))
+        final String[] parts = tree.split("=", 2);
+        if ( parts.length != 2 ) {
+            throw new GATKException("Unexpected tree structure: " + tree);
+        }
+        final String name = parts[0];
+        final String value = parts[1];
+
+        if ( value.length() == 0 ) {
+            throw new GATKException("Illegal tree structure: " + value + " at " + tree);
+        }
+
+        if ( value.charAt(0) == '(' ) {
+            if ( ! value.endsWith(")") ) {
+                throw new GATKException("Illegal tree structure.  Missing ): " + value + " at " + tree);
+            }
+            final String subtree = value.substring(1, value.length()-1);
+            final DiffNode rec = DiffNode.empty(name, parent);
+            final String[] subParts = subtree.split(" ");
+            for ( final String subPart : subParts ) {
+                rec.add(fromString(subPart, rec.getBinding()));
+            }
+            return rec.getBinding();
+        } else {
+            return new DiffValue(name, parent, value).getBinding();
+        }
+    }
+
+    /**
+     * Makes a new element from parsing the tree. Puts the new element right under the ROOT.
+     */
+    public static DiffElement fromString(final String tree) {
+        return fromString(tree, DiffElement.ROOT);
+    }
+    /**
+     * Returns the name of this element.
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Returns the parent element of this element.
+     */
     public DiffElement getParent() {
         return parent;
     }
 
-    @Ensures({"result != null"})
+    /**
+     * Returns the value of this element.
+     */
     public DiffValue getValue() {
         return value;
     }
 
+    /**
+     * Returns whether this element is the ROOT.
+     */
     public boolean isRoot() { return this == ROOT; }
 
-    @Ensures({"result != null"})
     @Override
     public String toString() {
         return getName() + "=" + getValue().toString();
     }
 
-    public String toString(int offset) {
-        return (offset > 0 ? Utils.dupString(' ', offset) : 0) + getName() + "=" + getValue().toString(offset);
+    public String toString(final int offset) {
+        return (offset > 0 ? Strings.repeat(" ", offset) : 0) + getName() + "=" + getValue().toString(offset);
     }
 
-    @Ensures({"result != null"})
-    public final String fullyQualifiedName() {
-        if ( isRoot() )
+    /**
+     * Returns the name of this element prefixed by the name of all of its parents.
+     */
+    public String fullyQualifiedName() {
+        if ( isRoot() ) {
             return "";
-        else if ( parent.isRoot() )
+        } else if ( parent.isRoot() ) {
             return name;
-        else
+        } else {
             return parent.fullyQualifiedName() + "." + name;
+        }
     }
 
-    @Ensures({"result != null"})
+    /**
+     * Returns a one-line representation of this element.
+     */
     public String toOneLineString() {
         return getName() + "=" + getValue().toOneLineString();
     }
 
-    @Ensures({"result != null"})
+    /**
+     * If this element's value is a DiffNode, this method returns that DiffNode.
+     * Otherwise, it throws a GATKException.
+     */
     public DiffNode getValueAsNode() {
-        if ( getValue().isCompound() )
-            return (DiffNode)getValue();
-        else
-            throw new ReviewedGATKException("Illegal request conversion of a DiffValue into a DiffNode: " + this);
+        if ( getValue().isCompound() ) {
+            return (DiffNode) getValue();
+        } else {
+            throw new GATKException("Illegal request conversion of a DiffValue into a DiffNode: " + this);
+        }
     }
 
+    /**
+     * Returns the size of this element, which is 1 + the size of the element's value.
+     */
     public int size() {
         return 1 + getValue().size();
     }
+
+    /**
+     * Collect differences between this element and the test element.
+     */
+    public List<Difference> diffElements(final DiffElement test) {
+        final DiffValue masterValue = this.getValue();
+        final DiffValue testValue = test.getValue();
+
+        if ( masterValue.isCompound() && masterValue.isCompound() ) {
+            return this.getValueAsNode().diffNodes(test.getValueAsNode());
+        } else if ( masterValue.isAtomic() && testValue.isAtomic() ) {
+            return masterValue.diffValues(testValue);
+        } else {
+            // structural difference in types.  one is node, other is leaf
+            return Arrays.asList(new Difference(this, test));
+        }
+    }
+
+
 }

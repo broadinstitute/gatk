@@ -1,75 +1,62 @@
-/*
-* Copyright (c) 2012 The Broad Institute
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 package org.broadinstitute.hellbender.utils.diffengine;
 
-public class Difference implements Comparable<Difference> {
-    final String path; // X.Y.Z
-    final String[] parts;
-    int count = 1;
-    DiffElement master = null , test = null;
+final class Difference implements Comparable<Difference> {
+    private final String path; // X.Y.Z
+    private final String[] parts;
+    private int count = 1;
+    private DiffElement master = null;
+    private DiffElement test = null;
 
-    public Difference(String path) {
+    public Difference(final String path) {
         this.path = path;
         this.parts = DiffEngine.diffNameToPath(path);
     }
 
-    public Difference(DiffElement master, DiffElement test) {
+    public Difference(final DiffElement master, final DiffElement test) {
         this(createPath(master, test), master, test);
     }
 
-    public Difference(String path, DiffElement master, DiffElement test) {
+    public Difference(final String path, final DiffElement master, final DiffElement test) {
         this(path);
         this.master = master;
         this.test = test;
     }
 
+    /**
+     * Returns this difference's parts.
+     */
     public String[] getParts() {
         return parts;
     }
 
+    /**
+     * Increases this difference's count.
+     */
     public void incCount() { count++; }
 
+    /**
+     * Returns this difference's count.
+     */
     public int getCount() {
         return count;
     }
 
-    public void setCount(int count) {
-        this.count = count;
+    /**
+     * Reset the count to 0.
+     */
+    public void resetCount() {
+        this.count = 0;
     }
 
     /**
      * The fully qualified path object A.B.C etc
-     * @return
      */
     public String getPath() {
         return path;
     }
 
     /**
-     * @return the length of the parts of this summary
+     * Returns the length of the parts of this summary.
      */
     public int length() {
         return this.parts.length;
@@ -78,18 +65,18 @@ public class Difference implements Comparable<Difference> {
     /**
      * Returns true if the string parts matches this summary.  Matches are
      * must be equal() everywhere where this summary isn't *.
-     * @param otherParts
-     * @return
      */
-    public boolean matches(String[] otherParts) {
-        if ( otherParts.length != length() )
+    public boolean matches(final String[] otherParts) {
+        if ( otherParts.length != length() ) {
             return false;
+        }
 
         // TODO optimization: can start at right most non-star element
         for ( int i = 0; i < length(); i++ ) {
-            String part = parts[i];
-            if ( ! part.equals("*") && ! part.equals(otherParts[i]) )
+            final String part = parts[i];
+            if ( ! part.equals("*") && ! part.equals(otherParts[i]) ) {
                 return false;
+            }
         }
 
         return true;
@@ -101,30 +88,26 @@ public class Difference implements Comparable<Difference> {
     }
 
     @Override
-    public int compareTo(Difference other) {
+    public int compareTo(final Difference other) {
         // sort first highest to lowest count, then by lowest to highest path
-        int countCmp = Integer.valueOf(count).compareTo(other.count);
+        final int countCmp = Integer.valueOf(count).compareTo(other.count);
         return countCmp != 0 ? -1 * countCmp : path.compareTo(other.path);
     }
 
     public String valueDiffString() {
-        if ( hasSpecificDifference() ) {
+        if (master != null || test != null) {
             return String.format("%s!=%s", getOneLineString(master), getOneLineString(test));
         } else {
             return "N/A";
         }
     }
 
-    private static String createPath(DiffElement master, DiffElement test) {
+    private static String createPath(final DiffElement master, final DiffElement test) {
         return (master == null ? test : master).fullyQualifiedName();
     }
 
-    private static String getOneLineString(DiffElement elt) {
+    private static String getOneLineString(final DiffElement elt) {
         return elt == null ? "MISSING" : elt.getValue().toOneLineString();
-    }
-
-    public boolean hasSpecificDifference() {
-        return master != null || test != null;
     }
 
     public DiffElement getMaster() {
