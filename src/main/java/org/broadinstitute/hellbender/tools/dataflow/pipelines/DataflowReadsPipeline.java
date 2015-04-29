@@ -20,12 +20,15 @@ import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.DataFlowSAMFn;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
@@ -34,6 +37,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
@@ -65,7 +69,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     protected String bam;
 
     @ArgumentCollection
-    protected IntervalArgumentCollection intervalArgumentCollection = new IntervalArgumentCollection();
+    protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
     /**
      * Returns a transform which performs the work of the given tool.
@@ -96,7 +100,9 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     final protected void setupPipeline(Pipeline pipeline) {
         ReadsSource readsSource = new ReadsSource(bam, clientSecret);
         String headerString = readsSource.getHeaderString();
-        List<SimpleInterval> intervals = intervalArgumentCollection.getIntervals(ReadUtils.samHeaderFromString(headerString).getSequenceDictionary());
+        SAMSequenceDictionary sequenceDictionary = ReadUtils.samHeaderFromString(headerString).getSequenceDictionary();
+        List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
+                getAllIntervalsForReference(sequenceDictionary);
 
         PCollection<Read> preads = readsSource.getReadPCollection(pipeline, intervals);
 
@@ -104,6 +110,13 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
         PCollection<String> pstrings = presult.apply(DataflowUtils.convertToString());
         pstrings.apply(TextIO.Write.to(outputFile));
+    }
+
+    private List<SimpleInterval> getAllIntervalsForReference(SAMSequenceDictionary sequenceDictionary) {
+        return GenomeLocSortedSet.createSetFromSequenceDictionary(sequenceDictionary)
+                .stream()
+                .map(SimpleInterval::new)
+                .collect(Collectors.toList());
     }
 
     @VisibleForTesting

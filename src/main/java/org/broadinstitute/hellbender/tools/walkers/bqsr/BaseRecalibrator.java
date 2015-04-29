@@ -193,7 +193,7 @@ public class BaseRecalibrator extends ReadWalker {
         initializeRecalibrationEngine();
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
 
-        referenceDataSource = new ReferenceDataSource(referenceArguments.referenceFile);
+        referenceDataSource = new ReferenceDataSource(referenceArguments.getReferenceFile());
     }
 
     private Covariate[] getCovariatesArray() {

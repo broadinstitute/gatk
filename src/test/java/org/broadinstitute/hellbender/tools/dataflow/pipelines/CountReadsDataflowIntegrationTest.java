@@ -15,6 +15,7 @@ public class CountReadsDataflowIntegrationTest extends CommandLineProgramTest{
     @DataProvider(name="intervals")
     public Object[][] intervals(){
         return new Object[][]{
+                new Object[]{"",7L}, // no intervals specified, see all reads that are aligned
                 new Object[]{"-L chr7:1", 3l},
                 new Object[]{"-L chr7:1-20", 4l},
                 new Object[]{"-L chr1", 0l},
