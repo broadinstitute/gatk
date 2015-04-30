@@ -288,4 +288,35 @@ public class ArtificialSAMUtils {
         header.setSequenceDictionary(dict);
         return header;
     }
+
+    public final static List<SAMRecord> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
+        SAMRecord left = ArtificialSAMUtils.createArtificialRead(header, name, 0, leftStart, readLen);
+        SAMRecord right = ArtificialSAMUtils.createArtificialRead(header, name, 0, rightStart, readLen);
+
+        left.setReadPairedFlag(true);
+        right.setReadPairedFlag(true);
+
+        left.setProperPairFlag(true);
+        right.setProperPairFlag(true);
+
+        left.setFirstOfPairFlag(leftIsFirst);
+        right.setFirstOfPairFlag(!leftIsFirst);
+
+        left.setReadNegativeStrandFlag(leftIsNegative);
+        left.setMateNegativeStrandFlag(!leftIsNegative);
+        right.setReadNegativeStrandFlag(!leftIsNegative);
+        right.setMateNegativeStrandFlag(leftIsNegative);
+
+        left.setMateAlignmentStart(right.getAlignmentStart());
+        right.setMateAlignmentStart(left.getAlignmentStart());
+
+        left.setMateReferenceIndex(0);
+        right.setMateReferenceIndex(0);
+
+        int isize = rightStart + readLen - leftStart;
+        left.setInferredInsertSize(isize);
+        right.setInferredInsertSize(-isize);
+
+        return Arrays.asList(left, right);
+    }
 }

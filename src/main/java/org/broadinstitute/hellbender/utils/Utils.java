@@ -509,4 +509,23 @@ public class Utils {
         return new String(big).endsWith(new String(suffix));
     }
 
+    /**
+     * Concatenates byte arrays
+     * @return a concat of all bytes in allBytes in order
+     */
+    public static byte[] concat(final byte[] ... allBytes) {
+        int size = 0;
+        for ( final byte[] bytes : allBytes ) {
+            size += bytes.length;
+        }
+
+        final byte[] c = new byte[size];
+        int offset = 0;
+        for ( final byte[] bytes : allBytes ) {
+            System.arraycopy(bytes, 0, c, offset, bytes.length);
+            offset += bytes.length;
+        }
+
+        return c;
+    }
 }

@@ -4,11 +4,16 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 
-public class PileupElement implements Comparable<PileupElement> {
+/**
+ * Represents a position in the read pileup.
+ */
+public final class PileupElement {
+    //FIXME: this static linked list is modifiable
     private final static LinkedList<CigarElement> EMPTY_LINKED_LIST = new LinkedList<>();
 
     private final static EnumSet<CigarOperator> ON_GENOME_OPERATORS =
@@ -21,12 +26,25 @@ public class PileupElement implements Comparable<PileupElement> {
     public static final byte T_FOLLOWED_BY_INSERTION_BASE = (byte) 89;
     public static final byte G_FOLLOWED_BY_INSERTION_BASE = (byte) 90;
 
-    protected final SAMRecord read;         // the read this base belongs to
-    protected final int offset;                 // the offset in the bases array for this base
-
+    private final SAMRecord read;         // the read this base belongs to
+    private final int offset;             // the offset in the bases array for this base
     private final CigarElement currentCigarElement;
     private final int currentCigarOffset;
     private final int offsetInCurrentCigar;
+
+    public static final Comparator<PileupElement> COMPARATOR = (p1, p2) -> {
+        if (p1.offset < p2.offset) {
+            return -1;
+        } else if (p1.offset > p2.offset) {
+            return 1;
+        } else if (p1.read.getAlignmentStart() < p2.read.getAlignmentStart()) {
+            return -1;
+        } else if (p1.read.getAlignmentStart() > p2.read.getAlignmentStart()) {
+            return 1;
+        } else {
+            return 0;
+        }
+    };
 
     /**
      * Create a new pileup element
@@ -41,21 +59,59 @@ public class PileupElement implements Comparable<PileupElement> {
     public PileupElement(final SAMRecord read, final int baseOffset,
                          final CigarElement currentElement, final int currentCigarOffset,
                          final int offsetInCurrentCigar) {
-        assert currentElement != null;
-
+        if (currentElement == null ||
+                read == null ||
+                baseOffset < 0 ||
+                baseOffset >= read.getReadLength() ||
+                currentCigarOffset < 0 ||
+                currentCigarOffset >= read.getCigarLength() ||
+                offsetInCurrentCigar < 0 ||
+                offsetInCurrentCigar >= currentElement.getLength()
+                ){
+            throw new IllegalArgumentException();
+        }
         this.read = read;
         this.offset = baseOffset;
         this.currentCigarElement = currentElement;
         this.currentCigarOffset = currentCigarOffset;
         this.offsetInCurrentCigar = offsetInCurrentCigar;
+    }
 
-        // for performance regions these are assertions
-        assert this.read != null;
-        assert this.offset >= 0 && this.offset < this.read.getReadLength();
-        assert this.currentCigarOffset >= 0;
-        assert this.currentCigarOffset < read.getCigarLength();
-        assert this.offsetInCurrentCigar >= 0;
-        assert this.offsetInCurrentCigar < currentElement.getLength();
+    /**
+     * Create a new PileupElement that's a copy of toCopy
+     * @param toCopy the element we want to copy
+     */
+    public PileupElement(final PileupElement toCopy) {
+        this(toCopy.read, toCopy.offset, toCopy.currentCigarElement, toCopy.currentCigarOffset, toCopy.offsetInCurrentCigar);
+    }
+
+    /**
+     * Create a pileup element for read at offset.
+     *
+     * offset must correspond to a valid read offset given the read's cigar, or an IllegalStateException will be throw
+     *
+     * @param read a read
+     * @param offset the offset into the bases we'd like to use in the pileup
+     * @return a valid PileupElement with read and at offset
+     */
+    public static PileupElement createPileupForReadAndOffset(final SAMRecord read, final int offset) {
+        if ( read == null ) {
+            throw new IllegalArgumentException("read cannot be null");
+        }
+        if ( offset < 0 || offset >= read.getReadLength() ) {
+            throw new IllegalArgumentException("Invalid offset " + offset + " outside of bounds 0 and " + read.getReadLength());
+        }
+
+        final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
+
+        while ( stateMachine.stepForwardOnGenome() != null ) {
+            if ( stateMachine.getReadOffset() == offset ) {
+                return stateMachine.makePileupElement();
+            }
+        }
+
+        throw new IllegalStateException("Tried to create a pileup for read " + read + " with offset " + offset +
+                " but we never saw such an offset in the alignment state machine");
     }
 
     /**
@@ -94,7 +150,7 @@ public class PileupElement implements Comparable<PileupElement> {
 
     /**
      * Get the read for this pileup element
-     * @return a non-null GATKSAMRecord
+     * @return a non-null SAMRecord
      */
     public SAMRecord getRead() {
         return read;
@@ -113,9 +169,7 @@ public class PileupElement implements Comparable<PileupElement> {
 
     /**
      * Get the base aligned to the genome at this location
-     *
-     * If the current element is a deletion returns DELETION_BASE
-     *
+     * If the current element is a deletion returns {@link DELETION_BASE}.
      * @return a base encoded as a byte
      */
     public byte getBase() {
@@ -153,18 +207,20 @@ public class PileupElement implements Comparable<PileupElement> {
      * this and the next position) returns the CigarElement corresponding to this event.  Otherwise returns
      * null.
      *
-     * @return a CigarElement, or null if the next alignment state ins't an insertion or deletion.
+     * @return a CigarElement, or null if the next alignment state isn't an insertion or deletion.
      */
     private CigarElement getNextIndelCigarElement() {
         if ( isBeforeDeletionStart() ) {
             final CigarElement element = getNextOnGenomeCigarElement();
-            if ( element == null || element.getOperator() != CigarOperator.D )
+            if ( element == null || element.getOperator() != CigarOperator.D ) {
                 throw new IllegalStateException("Immediately before deletion but the next cigar element isn't a deletion " + element);
+            }
             return element;
         } else if ( isBeforeInsertion() ) {
             final CigarElement element = getBetweenNextPosition().get(0);
-            if ( element.getOperator() != CigarOperator.I )
+            if ( element.getOperator() != CigarOperator.I ) {
                 throw new IllegalStateException("Immediately before insertion but the next cigar element isn't an insertion " + element);
+            }
             return element;
         } else {
             return null;
@@ -179,29 +235,10 @@ public class PileupElement implements Comparable<PileupElement> {
         return read.getMappingQuality();
     }
 
+    @Override
     public String toString() {
         return String.format("%s @ %d = %c Q%d", getRead().getReadName(), getOffset(), (char) getBase(), getQual());
     }
-
-    @Override
-    public int compareTo(final PileupElement pileupElement) {
-        if (offset < pileupElement.offset)
-            return -1;
-        else if (offset > pileupElement.offset)
-            return 1;
-        else if (read.getAlignmentStart() < pileupElement.read.getAlignmentStart())
-            return -1;
-        else if (read.getAlignmentStart() > pileupElement.read.getAlignmentStart())
-            return 1;
-        else
-            return 0;
-    }
-
-    // --------------------------------------------------------------------------
-    //
-    // Reduced read accessors
-    //
-    // --------------------------------------------------------------------------
 
     /**
      * Get the cigar element aligning this element to the genome
@@ -270,15 +307,17 @@ public class PileupElement implements Comparable<PileupElement> {
                 break;
             else {
                 // optimization: don't allocate list if not necessary
-                if ( elements == null )
+                if ( elements == null ) {
                     elements = new LinkedList<>();
+                }
 
-                if ( increment > 0 )
+                if ( increment > 0 ) {
                     // to keep the list in the right order, if we are incrementing positively add to the end
                     elements.add(elt);
-                else
+                } else {
                     // counting down => add to front
                     elements.addFirst(elt);
+                }
             }
         }
 
@@ -323,8 +362,9 @@ public class PileupElement implements Comparable<PileupElement> {
 
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
             final CigarElement elt = read.getCigar().getCigarElement(i);
-            if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) )
+            if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) ) {
                 return elt;
+            }
         }
 
         // getting here means that you didn't find anything

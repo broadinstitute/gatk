@@ -258,6 +258,26 @@ public class ReadUtils {
     }
 
     /**
+     * Returns the read coordinate corresponding to the requested reference coordinate.
+     *
+     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
+     * will return the last read base before the deletion (or skipped region). This function returns a
+     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
+     * a deletion (or skipped region).
+     *
+     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(GATKSAMRecord, int, ClippingTail) instead to get a
+     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
+     * behavior to your needs.
+     *
+     * @param read
+     * @param refCoord the requested reference coordinate
+     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
+     */
+    public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(SAMRecord read, int refCoord) {
+        return getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), refCoord, false);
+    }
+
+    /**
      * Pre-processes the results of getReadCoordinateForReferenceCoordinate(SAMRecord, int) to take care of
      * two corner cases:
      *
@@ -590,7 +610,14 @@ public class ReadUtils {
 
     public static void setReadGroup(SAMRecord read, SAMReadGroupRecord readGroup) {
         final SAMFileHeader header= read.getHeader();
-        header.addReadGroup(readGroup);
+        //Note: There's no way to check if the header contains a read group with this key
+        //ie the mReadGroupMap.containsKey cannot be called directly
+        //so we use the getReadGroup call and compare results with null
+        // (which is not the same thing as containsKey but close - we're no accounting for the case of a key that is
+        // present but whose value is null.).
+        if (header.getReadGroup(readGroup.getReadGroupId()) == null) {
+            header.addReadGroup(readGroup);
+        }
         read.setHeader(header);
         read.setAttribute(SAMTag.RG.name(), readGroup.getId());
     }
