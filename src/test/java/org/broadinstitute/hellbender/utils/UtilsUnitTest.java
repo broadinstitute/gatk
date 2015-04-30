@@ -65,7 +65,7 @@ public class UtilsUnitTest extends BaseTest {
         Assert.assertEquals(Utils.join(",", new Object[] { true , -12, "Blah", this.getClass() }),
                 "true,-12,Blah," + this.getClass().toString());
         Assert.assertEquals(Utils.join(",", true, -13, "Blah", this.getClass()),"true,-13,Blah," + this.getClass().toString());
-        Assert.assertEquals(Utils.join(",",Boolean.TRUE),"true");
+        Assert.assertEquals(Utils.join(",", Boolean.TRUE),"true");
     }
 
     @Test
@@ -203,5 +203,17 @@ public class UtilsUnitTest extends BaseTest {
 
         final String sourceString = FileUtils.readFileToString(source);
         Assert.assertEquals(Utils.calcMD5(sourceString), sourceMD5);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNonNullThrows(){
+        Object o = null;
+        Utils.nonNull(o);
+    }
+
+    @Test
+    public void testNonNullDoesNotThrow(){
+        Object o = new Object();
+        Assert.assertSame(Utils.nonNull(o), o);
     }
 }

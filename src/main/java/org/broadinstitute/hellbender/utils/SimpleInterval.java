@@ -61,7 +61,7 @@ public final class SimpleInterval implements Locatable, Serializable {
      * @throws IllegalArgumentException if locatable violates any of the SimpleInterval constraints or is null
      */
     public SimpleInterval(final Locatable locatable){
-        this(Objects.requireNonNull(locatable, () -> {throw new IllegalArgumentException();}).getContig(),
+        this(Utils.nonNull(locatable).getContig(),
                 locatable.getStart(), locatable.getEnd());
     }
 
