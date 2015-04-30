@@ -76,6 +76,21 @@ public final class QualityUtils {
     }
 
     /**
+     * Convert a phred-scaled quality score to its probability of being true (Q30 => 0.999)
+     *
+     * This is the Phred-style conversion, *not* the Illumina-style conversion.
+     *
+     * Because the input is a double value, this function must call Math.pow so can be quite expensive
+     *
+     * @param qual a phred-scaled quality score encoded as a double.  Can be non-integer values (30.5)
+     * @return a probability (0.0-1.0)
+     */
+    public static double qualToProb(final double qual) {
+        if ( qual < 0.0 ) throw new IllegalArgumentException("qual must be >= 0.0 but got " + qual);
+        return 1.0 - qualToErrorProb(qual);
+    }
+
+    /**
      * Convert a phred-scaled quality score to its log10 probability of being true (Q30 => log10(0.999))
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.

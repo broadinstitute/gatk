@@ -4,7 +4,6 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
@@ -160,7 +159,7 @@ public final class ReadClipperUnitTest extends BaseTest {
             for (int nLowQualBases = 0; nLowQualBases < readLength; nLowQualBases++) {
 
                 /**  create a read with nLowQualBases in the left tail */
-                Utils.fillArrayWithByte(quals, HIGH_QUAL);
+                Arrays.fill(quals, HIGH_QUAL);
                 for (int addLeft = 0; addLeft < nLowQualBases; addLeft++)
                     quals[addLeft] = LOW_QUAL;
                 read.setBaseQualities(quals);
@@ -168,7 +167,7 @@ public final class ReadClipperUnitTest extends BaseTest {
                 checkClippedReadsForLowQualEnds(read, clipLeft, LOW_QUAL, nLowQualBases);
 
                 /** create a read with nLowQualBases in the right tail */
-                Utils.fillArrayWithByte(quals, HIGH_QUAL);
+                Arrays.fill(quals, HIGH_QUAL);
                 for (int addRight = 0; addRight < nLowQualBases; addRight++)
                     quals[readLength - addRight - 1] = LOW_QUAL;
                 read.setBaseQualities(quals);
@@ -177,7 +176,7 @@ public final class ReadClipperUnitTest extends BaseTest {
 
                 /** create a read with nLowQualBases on both tails */
                 if (nLowQualBases <= readLength / 2) {
-                    Utils.fillArrayWithByte(quals, HIGH_QUAL);
+                    Arrays.fill(quals, HIGH_QUAL);
                     for (int addBoth = 0; addBoth < nLowQualBases; addBoth++) {
                         quals[addBoth] = LOW_QUAL;
                         quals[readLength - addBoth - 1] = LOW_QUAL;

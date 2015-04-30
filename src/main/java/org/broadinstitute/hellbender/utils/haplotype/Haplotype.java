@@ -14,6 +14,8 @@ import java.util.Arrays;
 
 public final class Haplotype extends Allele implements HasGenomeLocation {
 
+    private static final long serialVersionUID = 1l;
+
     private GenomeLoc genomeLocation = null;
     private EventMap eventMap = null;
     private Cigar cigar;

@@ -72,11 +72,93 @@ public final class MathUtils {
         private static double[] cache = new double[] { Double.NEGATIVE_INFINITY };
     }
 
+    /**
+     * Encapsulates the second term of Jacobian log identity for differences up to MAX_TOLERANCE
+     */
+    private static final class JacobianLogTable {
+
+        public static final double MAX_TOLERANCE = 8.0;
+
+        public static double get(final double difference) {
+            if (cache == null) {
+                initialize();
+            }
+            final int index = fastRound(difference * INV_STEP);
+            return cache[index];
+        }
+
+        private static void initialize() {
+            if (cache == null) {
+                final int tableSize = (int) (MAX_TOLERANCE / TABLE_STEP) + 1;
+                cache = new double[tableSize];
+                for (int k = 0; k < cache.length; k++) {
+                    cache[k] = Math.log10(1.0 + Math.pow(10.0, -((double) k) * TABLE_STEP));
+                }
+            }
+        }
+
+        private static final double TABLE_STEP = 0.0001;
+        private static final double INV_STEP = 1.0 / TABLE_STEP;
+        private static double[] cache = null;
+    }
+
     // A fast implementation of the Math.round() method.  This method does not perform
     // under/overflow checking, so this shouldn't be used in the general case (but is fine
     // if one is already make those checks before calling in to the rounding).
     public static int fastRound(final double d) {
         return (d > 0.0) ? (int) (d + 0.5d) : (int) (d - 0.5d);
+    }
+
+    public static double approximateLog10SumLog10(final double[] vals) {
+        return approximateLog10SumLog10(vals, vals.length);
+    }
+
+    public static double approximateLog10SumLog10(final double[] vals, final int endIndex) {
+
+        final int maxElementIndex = MathUtils.maxElementIndex(vals, endIndex);
+        double approxSum = vals[maxElementIndex];
+
+        for (int i = 0; i < endIndex; i++) {
+            if (i == maxElementIndex || vals[i] == Double.NEGATIVE_INFINITY) {
+                continue;
+            }
+
+            final double diff = approxSum - vals[i];
+            if (diff < JacobianLogTable.MAX_TOLERANCE) {
+                // See notes from the 2-inout implementation below
+                approxSum += JacobianLogTable.get(diff);
+            }
+        }
+
+        return approxSum;
+    }
+
+    public static double approximateLog10SumLog10(final double a, final double b, final double c) {
+        return approximateLog10SumLog10(a, approximateLog10SumLog10(b, c));
+    }
+
+    public static double approximateLog10SumLog10(final double a, final double b) {
+        // this code works only when a <= b so we flip them if the order is opposite
+        if (a > b) {
+            return approximateLog10SumLog10(b, a);
+        }
+
+        if (a == Double.NEGATIVE_INFINITY) {
+            return b;
+        }
+
+        final double diff = b - a;
+        if (diff >= JacobianLogTable.MAX_TOLERANCE) {
+            return b;
+        }
+
+        // OK, so |y-x| < tol: we use the following identity then:
+        // we need to compute log10(10^x + 10^y)
+        // By Jacobian logarithm identity, this is equal to
+        // max(x,y) + log10(1+10^-abs(x-y))
+        // we compute the second term as a table lookup with integer quantization
+        // we have pre-stored correction for 0,0.1,0.2,... 10.0
+        return b + JacobianLogTable.get(diff);
     }
 
     public static double sum(final double[] values) {
@@ -155,6 +237,22 @@ public final class MathUtils {
     }
 
     /**
+     * Computes a binomial probability.  This is computed using the formula
+     * <p/>
+     * B(k; n; p) = [ n! / ( k! (n - k)! ) ] (p^k)( (1-p)^k )
+     * <p/>
+     * where n is the number of trials, k is the number of successes, and p is the probability of success
+     *
+     * @param n number of Bernoulli trials
+     * @param k number of successes
+     * @param p probability of success
+     * @return the binomial probability of the specified configuration.  Computes values down to about 1e-237.
+     */
+    public static double binomialProbability(final int n, final int k, final double p) {
+        return Math.pow(10, log10BinomialProbability(n, k, Math.log10(p)));
+    }
+
+    /**
      * binomial Probability(int, int, double) with log10 applied to result
      */
     public static double log10BinomialProbability(final int n, final int k, final double log10p) {
@@ -174,21 +272,21 @@ public final class MathUtils {
 
 
     public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
-
-        if (start >= finish)
+        if (start >= finish) {
             return Double.NEGATIVE_INFINITY;
-        final int maxElementIndex = MathUtils.maxElementIndex(log10p, start, finish);
+        }
+        final int maxElementIndex = maxElementIndex(log10p, start, finish);
         final double maxValue = log10p[maxElementIndex];
-        if(maxValue == Double.NEGATIVE_INFINITY)
+        if(maxValue == Double.NEGATIVE_INFINITY) {
             return maxValue;
+        }
         double sum = 1.0;
         for (int i = start; i < finish; i++) {
             double curVal = log10p[i];
             double scaled_val = curVal - maxValue;
             if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
                 continue;
-            }
-            else {
+            } else {
                 sum += Math.pow(10.0, scaled_val);
             }
         }
@@ -196,6 +294,16 @@ public final class MathUtils {
             throw new IllegalArgumentException("log10p: Values must be non-infinite and non-NAN");
         }
         return maxValue + (sum != 1.0 ? Math.log10(sum) : 0.0);
+    }
+
+    /**
+     * normalizes the log10-based array.  ASSUMES THAT ALL ARRAY ENTRIES ARE <= 0 (<= 1 IN REAL-SPACE).
+     *
+     * @param array the array to be normalized
+     * @return a newly allocated array corresponding the normalized values in array
+     */
+    public static double[] normalizeFromLog10(final double[] array) {
+        return normalizeFromLog10(array, false);
     }
 
     /**
@@ -253,16 +361,6 @@ public final class MathUtils {
         }
 
         return normalized;
-    }
-
-    /**
-     * normalizes the log10-based array.  ASSUMES THAT ALL ARRAY ENTRIES ARE <= 0 (<= 1 IN REAL-SPACE).
-     *
-     * @param array the array to be normalized
-     * @return a newly allocated array corresponding the normalized values in array
-     */
-    public static double[] normalizeFromLog10(final double[] array) {
-        return normalizeFromLog10(array, false);
     }
 
     /**

@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.base.Strings;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -263,8 +265,27 @@ public final class Utils {
         return l;
     }
 
-    public static byte[] dupBytes(byte b, int nCopies) {
-        byte[] bytes = new byte[nCopies];
+    /**
+     * Create a new string thats a n duplicate copies of s
+     * @param s the string to duplicate
+     * @param nCopies how many copies?
+     * @return a string
+     *
+     * @Deprecated use {@link Strings#repeat} directly. Left here temporarily for the ease of porting GATK3 code.
+     */
+    @Deprecated
+    public static String dupString(final String s, final int nCopies) {
+        return Strings.repeat(s, nCopies);
+    }
+
+    public static String dupString(final char c, final int nCopies) {
+        final char[] chars = new char[nCopies];
+        Arrays.fill(chars, c);
+        return new String(chars);
+    }
+
+    public static byte[] dupBytes(final byte b, final int nCopies) {
+        final byte[] bytes = new byte[nCopies];
         Arrays.fill(bytes, b);
         return bytes;
     }
@@ -275,7 +296,9 @@ public final class Utils {
      * @param args Arguments to parse.
      * @return Parsed expressions.
      */
-    public static String[] escapeExpressions(String args) {
+    public static String[] escapeExpressions(final String args) {
+        Utils.nonNull(args);
+
         // special case for ' and " so we can allow expressions
         if (args.indexOf('\'') != -1)
             return escapeExpressions(args, "'");
@@ -291,121 +314,27 @@ public final class Utils {
      * @param delimiter Delimiter for grouping expressions.
      * @return Parsed expressions.
      */
-    private static String[] escapeExpressions(String args, String delimiter) {
+    private static String[] escapeExpressions(final String args, final String delimiter) {
         String[] command = {};
-        String[] split = args.split(delimiter);
-        String arg;
+        final String[] split = args.split(delimiter);
         for (int i = 0; i < split.length - 1; i += 2) {
-            arg = split[i].trim();
-            if (arg.length() > 0) // if the unescaped arg has a size
-                command = Utils.concatArrays(command, arg.split(" +"));
-            command = Utils.concatArrays(command, new String[]{split[i + 1]});
+            final String arg = split[i].trim();
+            if (arg.length() > 0) { // if the unescaped arg has a size
+                command = ArrayUtils.addAll(command, arg.split(" +"));
+            }
+            command = ArrayUtils.addAll(command, split[i + 1]);
         }
-        arg = split[split.length - 1].trim();
-        if (split.length % 2 == 1) // if the command ends with a delimiter
-            if (arg.length() > 0) // if the last unescaped arg has a size
-                command = Utils.concatArrays(command, arg.split(" +"));
+        final String arg = split[split.length - 1].trim();
+        if (split.length % 2 == 1 && arg.length() > 0) { // if the last unescaped arg has a size
+            command = ArrayUtils.addAll(command, arg.split(" +"));
+        }
         return command;
-    }
-
-    /**
-     * Concatenates two String arrays.
-     * @param A First array.
-     * @param B Second array.
-     * @return Concatenation of A then B.
-     */
-    public static String[] concatArrays(String[] A, String[] B) {
-        String[] C = new String[A.length + B.length];
-        System.arraycopy(A, 0, C, 0, A.length);
-        System.arraycopy(B, 0, C, A.length, B.length);
-        return C;
-    }
-
-    public static <T extends Comparable<T>> List<T> sorted(Collection<T> c) {
-        return sorted(c, false);
-    }
-
-    public static <T extends Comparable<T>> List<T> sorted(Collection<T> c, boolean reverse) {
-        List<T> l = new ArrayList<>(c);
-        Collections.sort(l);
-        if ( reverse ) Collections.reverse(l);
-        return l;
-    }
-
-    public static <T extends Comparable<T>, V> List<V> sorted(Map<T,V> c) {
-        return sorted(c, false);
-    }
-
-    public static <T extends Comparable<T>, V> List<V> sorted(Map<T,V> c, boolean reverse) {
-        List<T> t = new ArrayList<>(c.keySet());
-        Collections.sort(t);
-        if ( reverse ) Collections.reverse(t);
-
-        List<V> l = new ArrayList<>();
-        for ( T k : t ) {
-            l.add(c.get(k));
-        }
-        return l;
-    }
-
-    /**
-     * Reverse a byte array of bases
-     *
-     * @param bases  the byte array of bases
-     * @return the reverse of the base byte array
-     */
-    static public byte[] reverse(byte[] bases) {
-        byte[] rcbases = new byte[bases.length];
-
-        for (int i = 0; i < bases.length; i++) {
-            rcbases[i] = bases[bases.length - i - 1];
-        }
-
-        return rcbases;
     }
 
     static public <T> List<T> reverse(final List<T> l) {
         final List<T> newL = new ArrayList<>(l);
         Collections.reverse(newL);
         return newL;
-    }
-
-    /**
-     * Reverse an int array of bases
-     *
-     * @param bases  the int array of bases
-     * @return the reverse of the base int array
-     */
-    static public int[] reverse(int[] bases) {
-        int[] rcbases = new int[bases.length];
-
-        for (int i = 0; i < bases.length; i++) {
-            rcbases[i] = bases[bases.length - i - 1];
-        }
-
-        return rcbases;
-    }
-
-    /**
-     * Reverse (NOT reverse-complement!!) a string
-     *
-     * @param bases  input string
-     * @return the reversed string
-     */
-    static public String reverse(String bases) {
-        return new String( reverse( bases.getBytes() )) ;
-    }
-
-    public static byte [] arrayFromArrayWithLength(byte[] array, int length) {
-        byte [] output = new byte[length];
-        for (int j = 0; j < length; j++)
-            output[j] = array[(j % array.length)];
-        return output;
-    }
-
-    public static void fillArrayWithByte(byte[] array, byte value) {
-        for (int i=0; i<array.length; i++)
-            array[i] = value;
     }
 
     /**
@@ -424,8 +353,9 @@ public final class Utils {
         final List<List<T>> combinations = new ArrayList<>();
 
         if ( n == 1 ) {
-            for ( final T o : objects )
+            for ( final T o : objects ) {
                 combinations.add(Collections.singletonList(o));
+            }
         } else if (n > 1) {
             final List<List<T>> sub = makePermutations(objects, n - 1, withReplacement);
             for ( List<T> subI : sub ) {
@@ -437,37 +367,6 @@ public final class Utils {
         }
 
         return combinations;
-    }
-
-    /**
-     * Adds element from an array into a collection.
-     *
-     * In the event of exception being throw due to some element, <code>dest</code> might have been modified by
-     * the successful addition of element before that one.
-     *
-     * @param dest the destination collection which cannot be <code>null</code> and should be able to accept
-     *             the input elements.
-     * @param elements the element to add to <code>dest</code>
-     * @param <T>  collection type element.
-     * @throws UnsupportedOperationException if the <tt>add</tt> operation
-     *         is not supported by <code>dest</code>.
-     * @throws ClassCastException if the class of any of the elements
-     *         prevents it from being added to <code>dest</code>.
-     * @throws NullPointerException if any of the elements is <code>null</code> and <code>dest</code>
-     *         does not permit <code>null</code> elements
-     * @throws IllegalArgumentException if some property of any of the elements
-     *         prevents it from being added to this collection
-     * @throws IllegalStateException if any of the elements cannot be added at this
-     *         time due to insertion restrictions.
-     * @return <code>true</code> if the collection was modified as a result.
-     */
-    @SafeVarargs
-    public static <T> boolean addAll(Collection<T> dest, T ... elements) {
-        boolean result = false;
-        for (final T e : elements) {
-            result = dest.add(e) | result;
-        }
-        return result;
     }
 
     /**
@@ -496,19 +395,6 @@ public final class Utils {
         catch ( NoSuchAlgorithmException e ) {
             throw new IllegalStateException("MD5 digest algorithm not present");
         }
-    }
-
-    /**
-     * Does big end with the exact sequence of bytes in suffix?
-     *
-     * @param big a non-null byte[] to test if it a prefix + suffix
-     * @param suffix a non-null byte[] to test if it's a suffix of big
-     * @return true if big is proper byte[] composed of some prefix + suffix
-     */
-    public static boolean endsWith(final byte[] big, final byte[] suffix) {
-        if ( big == null ) throw new IllegalArgumentException("big cannot be null");
-        if ( suffix == null ) throw new IllegalArgumentException("suffix cannot be null");
-        return new String(big).endsWith(new String(suffix));
     }
 
     /**
