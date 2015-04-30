@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
