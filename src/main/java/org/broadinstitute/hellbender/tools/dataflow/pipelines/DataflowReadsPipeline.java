@@ -2,44 +2,27 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.api.services.genomics.model.Read;
-import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
-import com.google.cloud.genomics.utils.Contig;
-import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
-import org.broadinstitute.hellbender.engine.dataflow.DataFlowSAMFn;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
-import org.broadinstitute.hellbender.engine.dataflow.SAMSerializableFunction;
+import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -145,63 +128,4 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
                 }
         );
     }
-
-    private static class ReadsSource{
-        private final String bam;
-        private final boolean cloudStorageUrl;
-        private GCSOptions options;
-        private GenomicsFactory.OfflineAuth auth;
-
-        public ReadsSource(String bam, File clientSecret){
-            this.bam = bam;
-
-            cloudStorageUrl = BucketUtils.isCloudStorageUrl(bam);
-            if(cloudStorageUrl) {
-                if (!clientSecret.exists()) {
-                    throw new UserException("You must specify a valid client secret file if using bams from a google bucket");
-                }
-                //HACK this is gross but it seemed like the easiest way to deal with the auth stuff
-                options = PipelineOptionsFactory.fromArgs(new String[]{"--genomicsSecretsFile=" + clientSecret.getAbsolutePath()}).as(GCSOptions.class);
-                GenomicsOptions.Methods.validateOptions(options);
-                auth = getAuth(options);
-            }
-        }
-
-        private static GenomicsFactory.OfflineAuth getAuth(GCSOptions options){
-            try {
-                return GCSOptions.Methods.createGCSAuth(options);
-            } catch (IOException e) {
-                throw new GATKException("Couldn't create a dataflow auth object.", e);
-            }
-        }
-
-        public String getHeaderString() {
-            if(cloudStorageUrl) {
-                try {
-                    Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
-                    final SamReader reader = BAMIO.openBAM(storageClient, bam);
-                    return reader.getFileHeader().getTextHeader();
-                } catch (IOException e) {
-                    throw new GATKException("Failed to read bams header from " + bam + ".", e);
-                }
-            } else {
-                return SamReaderFactory.makeDefault().getFileHeader(new File(bam)).getTextHeader();
-            }
-        }
-
-        public PCollection<Read> getReadPCollection(Pipeline pipeline, List<SimpleInterval> intervals) {
-            PCollection<Read> preads;
-            if(cloudStorageUrl){
-                Iterable<Contig> contigs = intervals.stream()
-                        .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
-                        .collect(Collectors.toList());
-
-                preads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, ImmutableList.of(bam));
-            } else {
-                preads = DataflowUtils.getReadsFromLocalBams(pipeline, intervals, ImmutableList.of(new File(bam)));
-            }
-            return preads;
-        }
-    }
-
 }
