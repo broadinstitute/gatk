@@ -509,4 +509,17 @@ public class Utils {
         return new String(big).endsWith(new String(suffix));
     }
 
+    /**
+     * Checks that an Object {@code object} is not null and returns the same object or throws an {@link IllegalArgumentException}
+     * @param object any Object
+     * @return the same object
+     * @throws IllegalArgumentException if a {@code o == null}
+     */
+    public static <T> T nonNull(T object) throws IllegalArgumentException {
+        if (object == null) {
+            throw new IllegalArgumentException("Null object is not allowed here.");
+        }
+        return object;
+    }
+
 }
