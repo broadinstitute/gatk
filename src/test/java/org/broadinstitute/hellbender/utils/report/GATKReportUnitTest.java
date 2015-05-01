@@ -70,12 +70,12 @@ public class GATKReportUnitTest extends BaseTest {
 
     @Test
     public void testSortingByColumn() {
-        Assert.assertEquals(isSorted(getTableWithRandomValues()), true);
+        Assert.assertTrue(isSorted(getTableWithRandomValues()));
     }
 
     private boolean isSorted(GATKReportTable table) {
         boolean result = true;
-        File testingSortingTableFile = new File("testSortingFile.txt");
+        File testingSortingTableFile = createTempFile("testSortingFile",".txt");
 
         try {
             // Connect print stream to the output stream
@@ -126,11 +126,7 @@ public class GATKReportUnitTest extends BaseTest {
         for(int x = 0; x < l && ( result <= EQUAL); x++) {
             result = ((Integer)row1[x]).compareTo(row2[x]);
         }
-        if (result <= EQUAL) {
-            return true;
-        } else {
-            return false;
-        }
+        return result <= EQUAL;
     }
 
     private GATKReportTable makeBasicTable() {
@@ -166,9 +162,9 @@ public class GATKReportUnitTest extends BaseTest {
             //System.out.format("The temporary file" + " has been created: %s%n", file);
             PrintStream ps = new PrintStream(file);
             report.print(ps);
-            //System.out.println("File succesfully outputed!");
+            //System.out.println("File successfully outputted!");
             GATKReport inputRead = new GATKReport(file);
-            //System.out.println("File succesfully read!");
+            //System.out.println("File successfully read!");
             //inputRead.print(System.out);
             Assert.assertTrue(report.isSameFormat(inputRead));
 
@@ -240,9 +236,9 @@ public class GATKReportUnitTest extends BaseTest {
             //System.out.format("The temporary file" + " has been created: %s%n", file);
             PrintStream ps = new PrintStream(file);
             report1.print(ps);
-            //System.out.println("File succesfully outputed!");
+            //System.out.println("File successfully outputted!");
             GATKReport inputRead = new GATKReport(file);
-            //System.out.println("File succesfully read!");
+            //System.out.println("File successfully read!");
             //inputRead.print(System.out);
             Assert.assertTrue(report1.isSameFormat(inputRead));
             Assert.assertTrue(report1.equals(inputRead));
