@@ -11,8 +11,6 @@ cache:
   - ~/.gradle
   - ~/site-library
 before_install:
-- openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv
-  -in client_secret.json.enc -out client_secret.json -d
 - sudo mkdir -p /usr/local/lib/R/
 - mkdir -p site-library
 - sudo ln -sFv ~/site-library /usr/local/lib/R/site-library
