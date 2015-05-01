@@ -65,7 +65,7 @@ General guidelines for Hellbender developers
 
 * Git: Rebase and squash commits when merging.
 
-* If you push to master or mess the commit history, you owe us 1 growler at happy hour. If you break the master build, you owe 3 growlers. 
+* If you push to master or mess the commit history, you owe us 1 growler or tasty snacks at happy hour. If you break the master build, you owe 3 growlers (or lots of tasty snacks). Beer may be replaced by wine (in the color and vintage of buyer's choosing) in proportions of 1 growler = 1 bottle. 
 
 R Dependency
 ----------------
