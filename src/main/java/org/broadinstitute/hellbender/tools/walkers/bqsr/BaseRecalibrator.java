@@ -86,7 +86,7 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
         usageShort = "Generates recalibration table",
         programGroup = ReadProgramGroup.class
 )
-public class BaseRecalibrator extends ReadWalker {
+public final class BaseRecalibrator extends ReadWalker {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibrator.class);
 
     /**
@@ -344,10 +344,9 @@ public class BaseRecalibrator extends ReadWalker {
 
     protected boolean[] calculateKnownSites( final SAMRecord read, final List<? extends Feature> features) {
         final int readLength = read.getReadBases().length;
-        final boolean[] knownSites = new boolean[readLength];
-        Arrays.fill(knownSites, false);
+        final boolean[] knownSites = new boolean[readLength];//initializes to all false
         for( final Feature feat : features ) {
-            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true); // BUGBUG: should I use LEFT_TAIL here?
+            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;
             }

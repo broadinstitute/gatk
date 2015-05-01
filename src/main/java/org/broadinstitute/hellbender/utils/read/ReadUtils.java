@@ -84,27 +84,6 @@ public class ReadUtils {
     }
 
     /**
-     * A HashMap of the SAM spec read flag names
-     *
-     * Note: This is not being used right now, but can be useful in the future
-     */
-    private static final Map<Integer, String> readFlagNames = new HashMap<>();
-
-    static {
-        readFlagNames.put(0x1, "Paired");
-        readFlagNames.put(0x2, "Proper");
-        readFlagNames.put(0x4, "Unmapped");
-        readFlagNames.put(0x8, "MateUnmapped");
-        readFlagNames.put(0x10, "Forward");
-        //readFlagNames.put(0x20, "MateForward");
-        readFlagNames.put(0x40, "FirstOfPair");
-        readFlagNames.put(0x80, "SecondOfPair");
-        readFlagNames.put(0x100, "NotPrimary");
-        readFlagNames.put(0x200, "NON-PF");
-        readFlagNames.put(0x400, "Duplicate");
-    }
-
-    /**
      * Finds the adaptor boundary around the read and returns the first base inside the adaptor that is closest to
      * the read boundary. If the read is in the positive strand, this is the first base after the end of the
      * fragment (Picard calls it 'insert'), if the read is in the negative strand, this is the first base before the
@@ -221,10 +200,11 @@ public class ReadUtils {
         for (final CigarElement cig : read.getCigar().getCigarElements()) {
             final CigarOperator op = cig.getOperator();
 
-            if (op == CigarOperator.SOFT_CLIP)
+            if (op == CigarOperator.SOFT_CLIP) {
                 softStart -= cig.getLength();
-            else if (op != CigarOperator.HARD_CLIP)
+            } else if (op != CigarOperator.HARD_CLIP) {
                 break;
+            }
         }
         return softStart;
     }
@@ -269,9 +249,9 @@ public class ReadUtils {
      * read starts with an insertion, and you're requesting the first read based coordinate, it will skip
      * the leading insertion (because it has the same reference coordinate as the following base).
      *
-     * @param read
-     * @param refCoord
-     * @param tail
+     * @param read the read to clip
+     * @param refCoord reference coorinate
+     * @param tail which tail to clip
      * @return the read coordinate corresponding to the requested reference coordinate for clipping.
      */
     public static int getReadCoordinateForReferenceCoordinate(SAMRecord read, int refCoord, ClippingTail tail) {
@@ -290,20 +270,22 @@ public class ReadUtils {
         // Corner case one: clipping the right tail and falls on deletion, move to the next
         // read coordinate. It is not a problem for the left tail because the default answer
         // from getReadCoordinateForReferenceCoordinate is to give the previous read coordinate.
-        if (result.getRight() && tail == ClippingTail.RIGHT_TAIL)
+        if (result.getRight() && tail == ClippingTail.RIGHT_TAIL) {
             readCoord++;
+        }
 
         // clipping the left tail and first base is insertion, go to the next read coordinate
         // with the same reference coordinate. Advance to the next cigar element, or to the
         // end of the read if there is no next element.
         final CigarElement firstElementIsInsertion = readStartsWithInsertion(cigar);
-        if (readCoord == 0 && tail == ClippingTail.LEFT_TAIL && firstElementIsInsertion != null)
+        if (readCoord == 0 && tail == ClippingTail.LEFT_TAIL && firstElementIsInsertion != null) {
             readCoord = Math.min(firstElementIsInsertion.getLength(), cigar.getReadLength() - 1);
+        }
 
         return readCoord;
     }
 
-    public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final boolean allowGoalNotReached) {
+    private static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final boolean allowGoalNotReached) {
         int readBases = 0;
         int refBases = 0;
         boolean fallsInsideDeletionOrSkippedRegion = false;
@@ -409,7 +391,7 @@ public class ReadUtils {
             }
         }
 
-        return new MutablePair<>(readBases, fallsInsideOrJustBeforeDeletionOrSkippedRegion);
+        return Pair.of(readBases, fallsInsideOrJustBeforeDeletionOrSkippedRegion);
     }
 
     /**
