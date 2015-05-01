@@ -17,6 +17,7 @@ import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 
@@ -28,18 +29,23 @@ import java.util.stream.Collectors;
 /**
  * Class to load reads into a PCollection from either a cloud storage bucket or a local bam file.
  */
-public class ReadsSource {
+public final class ReadsSource {
     private final String bam;
     private final boolean cloudStorageUrl;
     private GCSOptions options;
     private GenomicsFactory.OfflineAuth auth;
 
+    /**
+     * @param bam A file path or a google bucket identifier to a bam file to read
+     * @param clientSecret a path to a local client secret file to use to authenticate with gcloud, ignored if bam is a
+     *                     a local file
+     */
     public ReadsSource(String bam, File clientSecret){
-        this.bam = bam;
+        this.bam = Utils.nonNull(bam);
 
         cloudStorageUrl = BucketUtils.isCloudStorageUrl(bam);
         if(cloudStorageUrl) {
-            if (!clientSecret.exists()) {
+            if (clientSecret == null || !clientSecret.exists()) {
                 throw new UserException("You must specify a valid client secret file if using bams from a google bucket");
             }
             //HACK this is gross but it seemed like the easiest way to deal with the auth stuff
@@ -57,6 +63,14 @@ public class ReadsSource {
         }
     }
 
+    /**
+     * Gets a header string representing a valid sam header for the data associated with this ReadsSource
+     *
+     * This method is a hack to get around the non-serializibility of {@link htsjdk.samtools.SAMFileHeader} and
+     * will be replaced with getSamHeader() when that is solved.
+     *
+     * @return a String representation of a {@link htsjdk.samtools.SAMFileHeader}
+     */
     public String getHeaderString() {
         if(cloudStorageUrl) {
             try {
@@ -71,6 +85,12 @@ public class ReadsSource {
         }
     }
 
+    /**
+     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * @param pipeline a {@link Pipeline} to base the PCollection creation on
+     * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
+     * @return a PCollection containing all the reads that overlap the given intervals.
+     */
     public PCollection<Read> getReadPCollection(Pipeline pipeline, List<SimpleInterval> intervals) {
         PCollection<Read> preads;
         if(cloudStorageUrl){

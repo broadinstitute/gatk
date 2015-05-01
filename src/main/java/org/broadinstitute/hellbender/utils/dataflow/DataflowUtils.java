@@ -10,9 +10,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import sun.java2d.pipe.SpanShapeRenderer;
 
 import java.io.File;
 import java.util.List;
