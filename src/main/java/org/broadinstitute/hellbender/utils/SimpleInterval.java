@@ -5,8 +5,6 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.Serializable;
-import java.util.Objects;
-import java.util.Comparator;
 
  /**
  * Minimal immutable class representing a 1-based closed ended genomic interval
@@ -19,24 +17,6 @@ public final class SimpleInterval implements Locatable, Serializable {
     public static final char CONTIG_SEPARATOR = ':';
     public static final char START_END_SEPARATOR = '-';
     public static final String END_OF_CONTIG = "+"; //note: needs to be a String because it's used in an endsWith call.
-
-    /**
-     * Lexicographical (contig) order comparator.
-     *
-     * <p>
-     *     Intervals from different contigs order is according their enclosing
-     *     contigs name ascending lexicographical order.
-     * </p>
-     *
-     * <p>
-     *     Intervals from the same contigs order is according to their start
-     *     position ascending numerical order, and, in case of a tie, the stop position's.
-     * </p>
-     */
-    public final static Comparator<SimpleInterval> LEXICOGRAPHICAL_ORDER_COMPARATOR =
-            Comparator.comparing(SimpleInterval::getContig)
-                    .thenComparingInt(SimpleInterval::getStart)
-                    .thenComparingInt(SimpleInterval::getEnd);
 
     private final int start;
     private final int end;

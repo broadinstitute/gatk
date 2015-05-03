@@ -5,7 +5,7 @@
 ##    exonCount = 5,
 ##    exomeSize = 476 (bp)
 ##}
-GROUP	SUM	AVG.BP
+SAMPLE	SUM	AVG.BP
 NA12778	60	0.1261
 NA12872	114	0.2395
 NA12878	63	0.1324
