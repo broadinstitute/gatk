@@ -193,7 +193,9 @@ public final class ExomeReadCounts extends ReadWalker {
     @Override
     public ReadFilter makeReadFilter() {
         return super.makeReadFilter()
-                .and(ReadFilterLibrary.MAPPED);
+                .and(ReadFilterLibrary.MAPPED)
+                .and(ReadFilterLibrary.NOT_DUPLICATE)
+                .and(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
     }
 
     @Override
@@ -257,7 +259,7 @@ public final class ExomeReadCounts extends ReadWalker {
     @Override
     public void apply(final SAMRecord read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
-        final SimpleInterval readLocation = new SimpleInterval(read);
+        final SimpleInterval readLocation = referenceContext.getInterval();
 
         final int columnIndex = countColumns.columnIndex(read);
         if (columnIndex >= 0) { // < 0 would means that the read is to be ignored.

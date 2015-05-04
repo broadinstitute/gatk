@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * Standard ReadFilters
  */
 public final class ReadFilterLibrary {
+
     private ReadFilterLibrary(){ /*no instance*/ }
 
     public static final ReadFilter ALLOW_ALL_READS = read -> true;
@@ -21,6 +22,7 @@ public final class ReadFilterLibrary {
     public static final ReadFilter MAPPING_QUALITY_NOT_ZERO = read -> read.getMappingQuality() != 0;
     public static final ReadFilter READLENGTH_EQUALS_CIGARLENGTH = read -> read.getReadLength() == read.getCigar().getReadLength();
     public static final ReadFilter GOOD_CIGAR =  read -> CigarUtils.isGood(read.getCigar());
+    public static final ReadFilter NON_ZERO_REFERENCE_LENGTH_ALIGNMENT = read -> read.getCigar().getCigarElements().stream().anyMatch(c -> c.getOperator().consumesReferenceBases() && c.getLength() > 0);
 
     /**
      * Reads whose mate maps to the same contig.

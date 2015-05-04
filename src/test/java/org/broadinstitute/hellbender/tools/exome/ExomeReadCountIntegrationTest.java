@@ -171,7 +171,7 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
         Assert.assertTrue(outputFile.exists(), "output file does not exist: " + outputFile);
         Assert.assertTrue(outputFile.isFile(), "output file is not a regular file: " + outputFile);
         Assert.assertTrue(outputFile.canRead(), "output file cannot be read: " + outputFile);
-        compareTableFiles(outputFile, expectedOutputFile, " matrix output ");
+        compareTableFiles(outputFile, expectedOutputFile, "matrix output: " + outputFile + " " + expectedOutputFile);
         if (expectedRowOutputFile != null) compareTableFiles(rowOutputFile, expectedRowOutputFile, " row output ");
         if (expectedColumnOutputFile != null) compareTableFiles(columnOutputFile, expectedColumnOutputFile, " column output ");
 
@@ -317,7 +317,7 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
         try {
             final Table actualTable = Table.fromFile(outputFile);
             final Table expectedTable = Table.fromFile(expectedOutputFile);
-            Table.assertEquals(actualTable, expectedTable);
+            Table.assertEquals(actualTable, expectedTable, outputFile, expectedOutputFile);
         } catch (final IOException ex) {
             Assert.fail("Failed to read actual or expected " +  role + " table files ", ex);
         }
@@ -370,14 +370,14 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             columnNames = header;
         }
 
-        public static void assertEquals(final Table tb1, final Table tb2) {
+        public static void assertEquals(final Table tb1, final Table tb2, final File f1, final File f2) {
 
             // For now we ignore the header as is not a vital.
             // Assert.assertEquals(tb1.headerLines,tb2.headerLines),"Different header lines");
             Assert.assertEquals(tb1.columnCount,tb2.columnCount,"Different number of columns");
             Assert.assertEquals(tb1.rowCount,tb2.rowCount,"Different number of rows");
             Assert.assertEquals(tb1.columnNames,tb2.columnNames,"Differences in header");
-            assertValuesAreEqual(tb1.values, tb2.values, 0.01, "Difference in values");
+            assertValuesAreEqual(tb1.values, tb2.values, 0.01, "Difference in values between " + f1 + " and " + f2);
 
         }
 
@@ -386,7 +386,7 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             for (int i = 0; i < v1.length; i++) {
                 final boolean v1IsDouble = v1[i].matches("^\\d*(\\.\\d*)?$");
                 final boolean v2IsDouble = v2[i].matches("^\\d*(\\.\\d*)?$");
-                Assert.assertEquals(v1IsDouble,v2IsDouble,message);
+                Assert.assertEquals(v1IsDouble,v2IsDouble,"" + v1[i] + " != " + v2[i] + "; " + message);
                 if (v1IsDouble) {
                     Assert.assertEquals(Double.valueOf(v1[i]), Double.valueOf(v2[i]), epsilon, message);
                 } else {

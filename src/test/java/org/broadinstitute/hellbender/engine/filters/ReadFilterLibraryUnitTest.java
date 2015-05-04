@@ -227,6 +227,32 @@ public final class ReadFilterLibraryUnitTest {
         Assert.assertFalse(CIGAR_IS_SUPPORTED.test(read), read.toString());
     }
 
+    @Test(dataProvider = "nonZeroReferenceLengthAlignmentFilterData")
+    public void testNonZeroReferenceLengthAlignmentFilter(final String cigarString, final boolean expected) {
+
+        final ReadFilter filter = ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT;
+        final SAMRecord read = buildSAMRecord(cigarString);
+        Assert.assertEquals(filter.test(read), expected, cigarString);
+    }
+
+    @DataProvider (name = "nonZeroReferenceLengthAlignmentFilterData")
+    public Object[][] nonZeroReferenceLengthAlignmentFilterData() {
+        return new Object[][] {
+                {"101M", true},
+                {"1M", true},
+                {"0M", false},
+                {"1D", true},
+                {"0D", false},
+                {"0D0M", false},
+                {"50I20S", false},
+                {"50I1M20S", true},
+                {"10I0M20S2H", false},
+                {"10H10S50I50P10S10H",false},
+                {"10D",true},
+                {"1M2D1M10I10S", true}
+        };
+    }
+
     @DataProvider(name = "badCigars")
     public Object[][] badCigars() {
         return new Object[][]{
