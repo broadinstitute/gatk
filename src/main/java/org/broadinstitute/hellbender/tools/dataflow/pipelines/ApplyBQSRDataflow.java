@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,16 +16,15 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutputSource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
-import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -80,10 +77,8 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
         final String filename = readArguments.getReadFilesNames().get(0);
         final ReadsDataflowSource readsSource = new ReadsDataflowSource(filename, pipeline);
         final SAMFileHeader header = readsSource.getHeader();
-        final PCollectionView<SAMFileHeader> headerView = pipeline.apply(Create.of(header)).apply(View.asSingleton());
-        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
-                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        final PCollectionView<SAMFileHeader> headerView = readsSource.getHeaderView();
+        final List<SimpleInterval> intervals = intervalArgumentCollection.getSpecifiedOrAllIntervals(header.getSequenceDictionary());
         final PCollectionView<BaseRecalOutput> recalInfoSingletonView = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME).apply(View.asSingleton());
         final PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false)
                 .apply(new ApplyBQSRTransform(headerView, recalInfoSingletonView, bqsrOpts));

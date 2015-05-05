@@ -11,7 +11,7 @@ import java.util.function.Predicate;
  * Filters which operate on {@link GATKRead} should implement this interface by overriding {@link #test(GATKRead)}
  *
  * ReadFilter extends Predicate and SerializableFunction.  It provides a default implementation of apply based on the
- * implmenting class's implementation of test().
+ * implementing class's implementation of test().
  */
 @FunctionalInterface
 public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GATKRead, Boolean> {

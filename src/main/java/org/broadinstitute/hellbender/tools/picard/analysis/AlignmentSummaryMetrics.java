@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * the extension ".alignment_summary_metrics".
  */
 public final class AlignmentSummaryMetrics extends MultiLevelMetrics {
+    private final static long serialVersionUID = 1l;
+
     public enum Category { UNPAIRED, FIRST_OF_PAIR, SECOND_OF_PAIR, PAIR }
 
     /**

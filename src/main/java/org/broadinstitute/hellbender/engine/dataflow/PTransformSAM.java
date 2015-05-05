@@ -23,6 +23,10 @@ public abstract class PTransformSAM<Output> extends PTransform<PCollection<GATKR
      * @throws GATKException if {@link #setHeader(SAMFileHeader)} wasn't called before this.
      */
     public SAMFileHeader getHeader(){
+
+        if (header == null){
+            throw new GATKException("You must call setHeader before calling getHeader");
+        }
         return header;
     }
 

@@ -134,4 +134,12 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
     public boolean intervalsSpecified() {
         return !( getIntervalStrings().isEmpty() && excludeIntervalStrings.isEmpty());
     }
+
+    /**
+     * @return the intervals specified or intervals spanning the entire sequenceDictionary if none were specified
+     */
+    public List<SimpleInterval> getSpecifiedOrAllIntervals(SAMSequenceDictionary sequenceDictionary) {
+        return intervalsSpecified() ? getIntervals(sequenceDictionary)
+                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+    }
 }

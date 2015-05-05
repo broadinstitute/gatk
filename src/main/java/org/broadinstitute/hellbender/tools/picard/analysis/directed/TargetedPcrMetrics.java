@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 
 /** Metrics class for targeted pcr runs such as TSCA runs */
 public final class TargetedPcrMetrics extends MultiLevelMetrics {
+    private final static long serialVersionUID = 1l;
 
     /**  The name of the amplicon set used in this metrics collection run */
     public String CUSTOM_AMPLICON_SET;

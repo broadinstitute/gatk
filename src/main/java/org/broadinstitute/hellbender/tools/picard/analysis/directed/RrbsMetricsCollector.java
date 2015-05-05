@@ -15,6 +15,8 @@ import org.broadinstitute.hellbender.metrics.SAMRecordAndReferenceMultiLevelColl
 import java.util.*;
 
 public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<RrbsMetrics, Long> {
+
+	public final static long serialVersionUID = 1l;
 	private final int minReadLength;
 	private final double maxMismatchRate;
 	private final int cQualityThreshold;

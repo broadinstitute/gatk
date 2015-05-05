@@ -173,4 +173,21 @@ public final class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
             }
         }
     }
+
+
+    @Test
+    public void testForDebug() throws IOException {
+        final File input = new File(TEST_DATA_DIR, "insert_size_metrics_test.bam");
+        final File outfile = BaseTest.createTempFile("test", ".insert_size_metrics");
+        final File pdf = BaseTest.createTempFile("test", ".pdf");
+        final String[] args = new String[]{
+                "--INPUT", input.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--HISTOGRAM_FILE", pdf.getAbsolutePath(),
+                "--METRIC_ACCUMULATION_LEVEL", "null",
+                "--METRIC_ACCUMULATION_LEVEL", "READ_GROUP"
+        };
+        runCommandLine(args);
+    }
+
 }

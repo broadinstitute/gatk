@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * program and usually stored in a file with the extension ".rna_metrics".
  */
 public final class RnaSeqMetrics extends MultiLevelMetrics {
+    private final static long serialVersionUID = 1l;
+
     /** The total number of PF bases including non-aligned reads. */
     public long PF_BASES;
 

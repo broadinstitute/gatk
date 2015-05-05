@@ -21,6 +21,8 @@ import org.broadinstitute.hellbender.metrics.SAMRecordAndReferenceMultiLevelColl
 import java.util.*;
 
 public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<AlignmentSummaryMetrics,  Long> {
+    public final static long serialVersionUID = 1l;
+
     // If we have a reference sequence, collect metrics on how well we aligned to it
     private final boolean doRefMetrics;
 

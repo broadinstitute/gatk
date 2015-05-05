@@ -6,6 +6,7 @@ import htsjdk.samtools.reference.ReferenceSequence;
 
 public abstract class SAMRecordAndReferenceMultiLevelCollector<BEAN extends MetricBase,
         HKEY extends Comparable<HKEY>> extends MultiLevelCollector<BEAN, HKEY, SAMRecordAndReference> {
+        private static final long serialVersionUID = 1l;
 
         @Override
         protected SAMRecordAndReference makeArg(SAMRecord samRec, final ReferenceSequence refSeq) {

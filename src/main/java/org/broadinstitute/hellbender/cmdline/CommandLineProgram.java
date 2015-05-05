@@ -199,9 +199,7 @@ public abstract class CommandLineProgram {
     /** Gets a MetricsFile with default headers already written into it. */
     protected <A extends MetricBase,B extends Comparable<?>> MetricsFile<A,B> getMetricsFile() {
         final MetricsFile<A,B> file = new MetricsFile<>();
-        for (final Header h : this.defaultHeaders) {
-            file.addHeader(h);
-        }
+        this.defaultHeaders.forEach(file::addHeader);
 
         return file;
     }
