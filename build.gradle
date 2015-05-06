@@ -20,6 +20,8 @@ apply plugin: 'idea'
 apply plugin: 'application'
 apply plugin: "jacoco"
 apply plugin: 'com.github.kt3k.coveralls'
+apply plugin: 'maven'
+apply plugin: 'signing'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -103,7 +105,7 @@ def String deriveVersion(){
     try {
         logger.info("path is $System.env.PATH")
         exec {
-            commandLine "git", "describe", "--always", "--long"
+            commandLine "git", "describe", "--always"
             standardOutput = stdout;
 
             ignoreExitValue = true
@@ -113,8 +115,11 @@ def String deriveVersion(){
     }
     return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
 }
-
-version = deriveVersion()
+final SNAPSHOT = "-SNAPSHOT"
+version = deriveVersion() + SNAPSHOT  //all builds are snapshot builds until we decide that there is something we want to keep
+boolean isRelease = ! version.endsWith(SNAPSHOT)
+logger.info("build for version:" + version)
+group = 'org.broadinstitute'
 
 
 jar {
@@ -187,4 +192,90 @@ task fatJar(type: Jar) {
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
- 
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+// This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
+if (JavaVersion.current().isJava8Compatible()) {
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+}
+
+/**
+ *This specifies what artifacts will be built and uploaded when performing a maven upload.
+ */
+artifacts {
+    archives jar
+    archives javadocJar
+    archives sourcesJar
+}
+
+/**
+ * Sign non-snapshot releases with our secret key.  This should never need to be invoked directly.
+ */
+signing {
+    required { isRelease && gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
+}
+
+/**
+ * Upload a release to sonatype.  You must be an authorized uploader and have your sonatype
+ * username and password information in your gradle properties file.  See the readme for more info.
+ *
+ * For releasing to your local maven repo, use gradle install
+ */
+uploadArchives {
+    if(project.hasProperty('sonatypeUsername') && project.hasProperty('sonatypePassword')){
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+
+                pom.project {
+                    name 'Hellbender'
+                    packaging 'jar'
+                    description 'Development on GATK4'
+                    url 'http://github.com/broadinstitute/hellbender'
+
+                    scm {
+                        url 'scm:git@github.com:broadinstitute/hellbender.git'
+                        connection 'scm:git@github.com:broadinstitute/hellbender.git'
+                        developerConnection 'scm:git@github.com:broadinstitute/hellbender.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'BSD 3-Clause'
+                            url 'https://github.com/broadinstitute/hellbender/blob/master/LICENSE.TXT'
+                            distribution 'repo'
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        doFirst({
+            logger.error( 'Users are not generally supposed to upload archives.  ' +
+                'To upload archives you must specify certain information in your gradle.properties. See the README' +
+                ' for more information.' )
+            throw new Exception("Missing sonatype username or password, please see the README for properties that must be specified for uploading an archive.")}
+        )
+
+    }
+}
