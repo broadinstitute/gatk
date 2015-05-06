@@ -18,11 +18,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * A wrapper around Read that pretends to be a SAMRecord.
- * The advantage of doing it this way is that we can report an error if we attempt to access a field that
- * we don't actually have.
- *
- * Same rules as SAMRecord: don't modify the return values, even if the typesystem would let you.
+ * Read -> SAMRecord.
  */
 public class ReadRecord extends SAMRecord {
 
@@ -175,7 +171,7 @@ public class ReadRecord extends SAMRecord {
       this.setReadPairedFlag(true);
       Integer readNumber = read.getReadNumber();
         if (null != readNumber) {
-            switch (readNumber.intValue()) {
+            switch (readNumber) {
               case 0:
                 this.setFirstOfPairFlag(true);
                   break;
@@ -275,13 +271,4 @@ public class ReadRecord extends SAMRecord {
     }
     // we leave "validationstringency" at the default value since there is no equivalent in Read.
   }
-
-  public htsjdk.samtools.SAMReadGroupRecord getReadGroup() {
-    final String rgId = (String)getAttribute(SAMTagUtil.getSingleton().RG);
-    if (rgId == null) {
-      return null;
-    }
-    return getHeader().getReadGroup(rgId);
-  }
-
 }
