@@ -12,11 +12,15 @@ import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
  * Print a string representation of reads in the PCollection<String>
  */
 public final class PrintReadsDataflowTransform extends PTransformSAM<String> {
+        private static final long serialVersionUID = 1l;
+
         @Override
-        public PCollection<String> apply(PCollection<Read> reads) {
+        public PCollection<String> apply(final PCollection<Read> reads) {
                 return reads.apply(ParDo.of(new DataFlowSAMFn<String>(getHeaderString()) {
+                        private static final long serialVersionUID = 1l;
+
                         @Override
-                        protected void apply(SAMRecord read) {
+                        protected void apply(final SAMRecord read) {
                                 output(read.getSAMString());
                         }
                 }));

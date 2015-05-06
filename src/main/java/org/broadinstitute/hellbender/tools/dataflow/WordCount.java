@@ -12,10 +12,13 @@ import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 
 @CommandLineProgramProperties(
-        usage="Count the usages of every word in a text",
-        usageShort="Count Words",
+        usage = "Count the usages of every word in a text",
+        usageShort = "Count Words",
         programGroup = DataFlowProgramGroup.class)
+
 public final class WordCount extends DataflowCommandLineProgram {
+    private static final long serialVersionUID = 1l;
+
     @Argument
     public String input;
 
@@ -23,36 +26,40 @@ public final class WordCount extends DataflowCommandLineProgram {
     public String output;
 
     @Override
-    public void setupPipeline(Pipeline p) {
+    public void setupPipeline(final Pipeline p) {
         // Apply a root transform, a text file read, to the pipeline.
         p.apply(TextIO.Read.from(input))
 
-                // Apply a ParDo transform to the PCollection resulting from the text file read
-                .apply(ParDo.of(new DoFn<String, String>() {
-                    @Override
-                    public void processElement( ProcessContext c ) {
-                        String[] words = c.element().split("[^a-zA-Z']+");
-                        for ( String word : words ) {
-                            if ( !word.isEmpty() ) {
-                                c.output(word);
-                            }
-                        }
+        // Apply a ParDo transform to the PCollection resulting from the text file read
+        .apply(ParDo.of(new DoFn<String, String>() {
+            private static final long serialVersionUID = 1l;
+
+            @Override
+            public void processElement(final ProcessContext c) {
+                final String[] words = c.element().split("[^a-zA-Z']+");
+                for (final String word : words) {
+                    if (!word.isEmpty()) {
+                        c.output(word);
                     }
-                }))
+                }
+            }
+        }))
 
-                        // Apply the Count.PerElement transform to the PCollection of text strings resulting from the ParDo
-                .apply(Count.<String>perElement())
+        // Apply the Count.PerElement transform to the PCollection of text strings resulting from the ParDo
+        .apply(Count.<String>perElement())
 
-                        // Apply a ParDo transform to format the PCollection of word counts from Count() for output
-                .apply(ParDo.of(new DoFn<KV<String, Long>, String>() {
-                    @Override
-                    public void processElement(ProcessContext c) {
-                        c.output(c.element().getKey() + ": " + c.element().getValue());
-                    }
-                }))
+        // Apply a ParDo transform to format the PCollection of word counts from Count() for output
+        .apply(ParDo.of(new DoFn<KV<String, Long>, String>() {
+            private static final long serialVersionUID = 1l;
 
-                        // Apply a text file write transform to the PCollection of formatted word counts
-                .apply(TextIO.Write.to(output));
+            @Override
+            public void processElement(ProcessContext c) {
+                c.output(c.element().getKey() + ": " + c.element().getValue());
+            }
+        }))
+
+        // Apply a text file write transform to the PCollection of formatted word counts
+        .apply(TextIO.Write.to(output));
     }
 
 }

@@ -15,8 +15,7 @@ import org.testng.annotations.Test;
 import java.util.Collections;
 import java.util.List;
 
-public final class CountReadsDataflowUnitTest extends BaseTest
-{
+public final class CountReadsTransformUnitTest extends BaseTest{
 
     @DataProvider(name="numberOfReads")
     public Object[][] numberOfReads(){

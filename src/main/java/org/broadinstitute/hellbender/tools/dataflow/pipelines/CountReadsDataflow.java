@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.tools.dataflow.transforms.CountReadsDataflo
 @CommandLineProgramProperties(usage= "count reads using dataflow", usageShort = "count reads", programGroup = DataFlowProgramGroup.class)
 public final class CountReadsDataflow extends DataflowReadsPipeline{
 
+    private static final long serialVersionUID = 1l;
+
     @Override
     protected PTransformSAM<Long> getTool() {
         return new CountReadsDataflowTransform();

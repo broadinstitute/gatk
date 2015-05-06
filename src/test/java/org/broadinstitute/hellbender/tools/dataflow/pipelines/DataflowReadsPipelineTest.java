@@ -23,12 +23,14 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 
 public final class DataflowReadsPipelineTest {
 
     @CommandLineProgramProperties(usage ="runtime configurable pipeline for testing", usageShort = "for testing pipeline functionality")
     private static class RuntimeConfigurablePipeline extends DataflowReadsPipeline {
+        private static final long serialVersionUID = 1l;
         private final PTransformSAM<?> tool;
         private final List<ReadFilter> filters;
         private final List<ReadTransformer> transformers;

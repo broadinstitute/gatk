@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.dataflow;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 /**
@@ -14,6 +15,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
  * @param <Output> the output type of the resulting PCollection
  */
 public abstract class PTransformSAM<Output> extends PTransform<PCollection<Read>,PCollection<Output>> {
+    private static final long serialVersionUID = 1l;
+
     private String headerString;
 
     /**
@@ -31,7 +34,10 @@ public abstract class PTransformSAM<Output> extends PTransform<PCollection<Read>
      * @param headerString set the headerString to provide to the {@link DataFlowSAMFn} making up this transform.
      *                     Must be non-null and must be a valid header for the the PCollection<Read> that this transform is processing.
      */
-    public void setHeaderString(String headerString) {
+    public void setHeaderString(final String headerString) {
+        if (headerString == null){
+            throw new IllegalArgumentException("null header string");
+        }
         this.headerString = headerString;
     }
 }

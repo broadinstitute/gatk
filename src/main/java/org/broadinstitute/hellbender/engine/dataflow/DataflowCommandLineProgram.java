@@ -20,6 +20,8 @@ import java.io.Serializable;
 
 
 public abstract class DataflowCommandLineProgram extends CommandLineProgram implements Serializable {
+    private static final long serialVersionUID = 1l;
+
     private enum PipelineRunnerType implements CommandLineParser.ClpEnum {
         LOCAL(DirectPipelineRunner.class, "run the pipeline locally"),
         BLOCKING(BlockingDataflowPipelineRunner.class, "run the pipeline in the cloud, wait and report status"),
@@ -38,8 +40,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         }
 
     }
-    @Argument(fullName="runner", doc="What pipeline runner to use for dataflow.  Any runner other than LOCAL requires that project and staging be set.")
-    private PipelineRunnerType runner = PipelineRunnerType.LOCAL;
+    @Argument(fullName="runner", doc="What type of pipeline runner to use for dataflow.  Any type other than LOCAL requires that project and staging be set.")
+    private PipelineRunnerType runnerType = PipelineRunnerType.LOCAL;
 
     @Argument(fullName="project", doc="dataflow project id", optional=true)
     private String projectID;
@@ -53,7 +55,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     @Override
     protected String[] customCommandLineValidation(){
-        if(runner != PipelineRunnerType.LOCAL && (projectID == null || stagingLocation==null)){
+        if(runnerType != PipelineRunnerType.LOCAL && (projectID == null || stagingLocation==null)){
             throw new UserException.CommandLineException(String.format("Non local dataflow execution requires project " +
                     "and staging to be set. project:%s id:%s.",projectID, stagingLocation));
         }
@@ -65,12 +67,12 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     protected Object doWork() {
         // We create GCSOptions instead of DataflowPipelineOptions to keep track of the secrets so we can read
         // data from buckets.
-        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+        final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setProject(projectID);
         options.setStagingLocation(stagingLocation);
-        options.setRunner(this.runner.runner);
+        options.setRunner(this.runnerType.runner);
         options.setGenomicsSecretsFile(clientSecret.getAbsolutePath()); // TODO: Migrate to secrets file (issue 516).
-        Pipeline p = Pipeline.create(options);
+        final Pipeline p = Pipeline.create(options);
         DataflowWorkarounds.registerGenomicsCoders(p);
         setupPipeline(p);
         runPipeline(p);
@@ -81,10 +83,10 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
      * Runs a {@link Pipeline} and unwraps RuntimeExceptions caused by UserExceptions back into UserExceptions
      */
     @VisibleForTesting
-    protected static void runPipeline(Pipeline p) {
+    protected static void runPipeline(final Pipeline p) {
         try{
             p.run();
-        } catch( RuntimeException e  ){
+        } catch( final RuntimeException e  ){
             //Data flow catches our UserExceptions and wraps them in RuntimeException
             //Unwrap them again here so that they're handled properly by our help system
             if (e.getCause() instanceof UserException){

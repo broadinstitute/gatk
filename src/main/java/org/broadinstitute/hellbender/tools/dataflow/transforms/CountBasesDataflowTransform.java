@@ -12,17 +12,21 @@ import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
  * Count the number of bases in a PCollection<Read>
  */
 public final class CountBasesDataflowTransform extends PTransformSAM<Long> {
+    private static final long serialVersionUID = 1l;
+
     @Override
-    public PCollection<Long> apply(PCollection<Read> reads) {
+    public PCollection<Long> apply(final PCollection<Read> reads) {
 
         return reads.apply(ParDo.of(new DataFlowSAMFn<Long>(getHeaderString()) {
+            private static final long serialVersionUID = 1l;
+
             @Override
-            protected void apply(SAMRecord read) {
-                Long bases = (long) read.getReadBases().length;
+            protected void apply(final SAMRecord read) {
+                final long bases = read.getReadBases().length;
                 output(bases);
             }
         }))
-                .apply(Sum.longsGlobally());
+        .apply(Sum.longsGlobally());
     }
 
 }
