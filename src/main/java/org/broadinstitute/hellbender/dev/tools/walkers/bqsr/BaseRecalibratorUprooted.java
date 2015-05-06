@@ -1,6 +1,14 @@
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
+
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPED;
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE;
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO;
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.NOT_DUPLICATE;
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK;
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.PRIMARY_ALIGNMENT;
 
 import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.tribble.Feature;
 import org.apache.commons.lang3.tuple.Pair;
@@ -8,14 +16,24 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.*;
+import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
+import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadRecalibrationInfo;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -25,75 +43,33 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.*;
-
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * First pass of the base quality score recalibration -- Generates recalibration table based on various covariates
  * (such as read group, reported quality score, machine cycle, and nucleotide context).
  *
- * <p>
- * This walker is designed to work as the first pass in a two-pass processing step. It does a by-locus traversal operating
- * only at sites that are not in dbSNP. We assume that all reference mismatches we see are therefore errors and indicative
- * of poor base quality. This walker generates tables based on various user-specified covariates (such as read group,
- * reported quality score, cycle, and context). Since there is a large amount of data one can then calculate an empirical
- * probability of error given the particular covariates seen at this site, where p(error) = num mismatches / num observations.
- * The output file is a table (of the several covariate values, num observations, num mismatches, empirical quality score).
- * <p>
- * Note: ReadGroupCovariate and QualityScoreCovariate are required covariates and will be added for the user regardless of whether or not they were specified.
- *
- * <p>
- *
- * <h3>Input</h3>
- * <p>
- * The input read data whose base quality scores need to be assessed.
- * <p>
- * A database of known polymorphic sites to skip over.
- * </p>
- *
- * <h3>Output</h3>
- * <p>
- * A GATK Report file with many tables:
- * <ol>
- *     <li>The list of arguments</li>
- *     <li>The quantized qualities table</li>
- *     <li>The recalibration table by read group</li>
- *     <li>The recalibration table by quality score</li>
- *     <li>The recalibration table for all the optional covariates</li>
- * </ol>
- *
- * The GATK Report is intended to be easy to read by humans or computers. Check out the documentation of the GATKReport to learn how to manipulate this table.
- * </p>
- *
- * <h3>Examples</h3>
- * <pre>
- * java -Xmx4g -jar GenomeAnalysisTK.jar \
- *   -T BaseRecalibrator \
- *   -I my_reads.bam \
- *   -R resources/Homo_sapiens_assembly18.fasta \
- *   -knownSites bundle/hg18/dbsnp_132.hg18.vcf \
- *   -knownSites another/optional/setOfSitesToMask.vcf \
- *   -o recal_data.table
- * </pre>
+ * Based off of BaseRecalibrator, but changed to be able to work in Dataflow.
  */
 
 @CommandLineProgramProperties(
         usage = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        usageShort = "Generates recalibration table",
+        usageShort = "Generates recalibration table (do not run this one from the cmd line)",
         programGroup = ReadProgramGroup.class
 )
-public final class BaseRecalibrator extends ReadWalker {
-    final protected static Logger logger = LogManager.getLogger(BaseRecalibrator.class);
+public class BaseRecalibratorUprooted {
+    final protected static Logger logger = LogManager.getLogger(BaseRecalibratorUprooted.class);
+
+    final protected SAMFileHeader samHeader;
 
     /**
-     * All the command line arguments for BQSR and its covariates.
+     * all the command line arguments for BQSR and its covariates
      */
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
-    private final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
+    private final RecalibrationArgumentCollection RAC;
 
     @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName="bqsrBAQGOP", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
     public double BAQGOP = BAQ.DEFAULT_GOP;
@@ -155,26 +131,19 @@ public final class BaseRecalibrator extends ReadWalker {
 
     private long accumulator;
 
-    @Override
-    public boolean requiresReference() {
-        return true;
+    public BaseRecalibratorUprooted(SAMFileHeader samHeader, RecalibrationArgumentCollection toolArgs) {
+        this.RAC = toolArgs;
+        this.samHeader = samHeader;
     }
 
-    /**
-     * Parse the -cov arguments and create a list of covariates to be used here
-     * Based on the covariates' estimates for initial capacity allocate the data hashmap
-     */
-    @Override
-    public void onTraversalStart() {
+
+    public void onTraversalStart(File refFile) {
         accumulator= 0L;
 
         baq = new BAQ(BAQGOP); // setup the BAQ object with the provided gap open penalty
 
         if (RAC.FORCE_PLATFORM != null)
             RAC.DEFAULT_PLATFORM = RAC.FORCE_PLATFORM;
-
-        if (RAC.knownSites.isEmpty() && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
-            throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
 
         requestedCovariates = getCovariatesArray();
 
@@ -184,16 +153,12 @@ public final class BaseRecalibrator extends ReadWalker {
             cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
         }
 
-        try {
-            RAC.RECAL_TABLE = new PrintStream(RAC.RECAL_TABLE_FILE);
-        } catch (IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(RAC.RECAL_TABLE_FILE, e);
-        }
+        // no output file. We want to be able to output to a PCollection.
 
         initializeRecalibrationEngine();
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
 
-        referenceDataSource = new ReferenceDataSource(referenceArguments.getReferenceFile());
+        referenceDataSource = new ReferenceDataSource(refFile);
     }
 
     private Covariate[] getCovariatesArray() {
@@ -202,6 +167,10 @@ public final class BaseRecalibrator extends ReadWalker {
         covariatesList.addAll(covariates.getLeft());
         covariatesList.addAll(covariates.getRight());
         return covariatesList.toArray(new Covariate[covariatesList.size()]);
+    }
+
+    public SAMFileHeader getHeaderForReads() {
+        return samHeader;
     }
 
     /**
@@ -217,15 +186,14 @@ public final class BaseRecalibrator extends ReadWalker {
         return read.getBaseQualities()[offset] < minimumQToUse;
     }
 
-    @Override
-    public ReadFilter makeReadFilter() {
-        return super.makeReadFilter()
-                .and(MAPPING_QUALITY_NOT_ZERO)
-                .and(MAPPING_QUALITY_AVAILABLE)
-                .and(MAPPED)
-                .and(PRIMARY_ALIGNMENT)
-                .and(NOT_DUPLICATE)
-                .and(PASSES_VENDOR_QUALITY_CHECK);
+    public static ReadFilter readFilter() {
+        return ReadFilterLibrary.WELLFORMED
+            .and(MAPPING_QUALITY_NOT_ZERO)
+            .and(MAPPING_QUALITY_AVAILABLE)
+            .and(MAPPED)
+            .and(PRIMARY_ALIGNMENT)
+            .and(NOT_DUPLICATE)
+            .and(PASSES_VENDOR_QUALITY_CHECK);
     }
 
     private static SAMRecord consolidateCigar(SAMRecord read) {
@@ -259,9 +227,13 @@ public final class BaseRecalibrator extends ReadWalker {
         return read;
     }
 
+    public RecalibrationTables getTables() {
+        return recalibrationEngine.getRecalibrationTables();
+    }
+
 
     private ReadTransformer makeReadTransform(){
-        ReadTransformer f0 = BaseRecalibrator::consolidateCigar;
+        ReadTransformer f0 = BaseRecalibratorUprooted::consolidateCigar;
 
         ReadTransformer f =
                 f0.andThen(this::setDefaultBaseQualities)
@@ -271,12 +243,14 @@ public final class BaseRecalibrator extends ReadWalker {
 
         return f;
     }
+
+
     /**
      * For each read at this locus get the various covariate values and increment that location in the map based on
-     * whether or not the base matches the reference at this particular location
+     * whether or not the base matches the reference at this particular location.
+     * The "features" list doesn't need to be complete but it must cover the read
      */
-    @Override
-    public void apply( SAMRecord originalRead, ReferenceContext ref, FeatureContext featureContext ) {
+    public void apply( SAMRecord originalRead, final ReferenceContext ref, List<? extends Feature> features ) {
         ReadTransformer transform = makeReadTransform();
         final SAMRecord read = transform.apply(originalRead);
 
@@ -299,7 +273,7 @@ public final class BaseRecalibrator extends ReadWalker {
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
             final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
-            final boolean[] skip = calculateSkipArray(read, featureContext); // skip known sites of variation as well as low quality and non-regular bases
+            final boolean[] skip = calculateSkipArray(read, features); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
             final double[] deletionErrors = calculateFractionalErrorArray(isDeletion, baqArray);
@@ -328,10 +302,10 @@ public final class BaseRecalibrator extends ReadWalker {
         return n;
     }
 
-    private boolean[] calculateSkipArray( final SAMRecord read, final FeatureContext featureContext ) {
+    private boolean[] calculateSkipArray( final SAMRecord read, final List<? extends Feature> features ) {
         final byte[] bases = read.getReadBases();
         final boolean[] skip = new boolean[bases.length];
-        final boolean[] knownSites = calculateKnownSites(read, featureContext.getValues(RAC.knownSites));
+        final boolean[] knownSites = calculateKnownSites(read, features);
         for( int iii = 0; iii < bases.length; iii++ ) {
             skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSites[iii] || badSolidOffset(read, iii);
         }
@@ -344,9 +318,10 @@ public final class BaseRecalibrator extends ReadWalker {
 
     protected boolean[] calculateKnownSites( final SAMRecord read, final List<? extends Feature> features) {
         final int readLength = read.getReadBases().length;
-        final boolean[] knownSites = new boolean[readLength];//initializes to all false
+        final boolean[] knownSites = new boolean[readLength];
+        Arrays.fill(knownSites, false);
         for( final Feature feat : features ) {
-            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
+            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true); // BUGBUG: should I use LEFT_TAIL here?
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;
             }
@@ -366,12 +341,14 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     // TODO: can be merged with calculateIsIndel
-    protected static int[] calculateIsSNP( final SAMRecord read, final ReferenceContext ref, final SAMRecord originalRead ) {
+    protected static int[] calculateIsSNP( final SAMRecord read, /*final BasesCache ref*/ final ReferenceContext ref, final SAMRecord originalRead ) {
         final byte[] readBases = read.getReadBases();
         final byte[] refBases = Arrays.copyOfRange(ref.getBases(), read.getAlignmentStart() - originalRead.getAlignmentStart(), ref.getBases().length + read.getAlignmentEnd() - originalRead.getAlignmentEnd());
+        int refPos = 0;
+
+
         final int[] snp = new int[readBases.length];
         int readPos = 0;
-        int refPos = 0;
         for ( final CigarElement ce : read.getCigar().getCigarElements() ) {
             final int elementLength = ce.getLength();
             switch (ce.getOperator()) {
@@ -511,28 +488,28 @@ public final class BaseRecalibrator extends ReadWalker {
         return baq;
     }
 
-    /**
-     * Compute an actual BAQ array for read, based on its quals and the reference sequence
-     * @param read the read to BAQ
-     * @return a non-null BAQ tag array for read
-     */
-    private byte[] calculateBAQArray( final SAMRecord read ) {
-        baq.baqRead(read,referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
-        return BAQ.getBAQTag(read);
-    }
+  /**
+   * Compute an actual BAQ array for read, based on its quals and the reference sequence
+   * @param read the read to BAQ
+   * @return a non-null BAQ tag array for read
+   */
+  private byte[] calculateBAQArray( final SAMRecord read ) {
+      baq.baqRead(read, referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
+      return BAQ.getBAQTag(read);
+  }
 
-    @Override
     public Object onTraversalDone() {
         recalibrationEngine.finalizeData();
 
         logger.info("Calculating quantized quality scores...");
         quantizeQualityScores();
 
-        logger.info("Writing recalibration report...");
-        generateReport();
-        logger.info("...done!");
+        if (null!=RAC.RECAL_TABLE) {
+            logger.info("Writing recalibration report...");
+            generateReport();
+            logger.info("...done!");
+        }
 
-        //logger.info("BaseRecalibrator was able to recalibrate " + result + " reads");
         return accumulator;
     }
 

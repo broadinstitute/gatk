@@ -108,6 +108,13 @@ public class RecalibrationEngine {
         finalized = true;
     }
 
+    /**
+     * Get a possibly not-final recalibration table, to deal with distributed execution.
+     */
+    public RecalibrationTables getRecalibrationTables() {
+        return tables;
+    }
+
    /**
      * Get the final recalibration tables, after finalizeData() has been called
      *
