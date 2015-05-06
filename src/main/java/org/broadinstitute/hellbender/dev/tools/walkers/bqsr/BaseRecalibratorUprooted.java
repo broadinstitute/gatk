@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPED;
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE;
@@ -32,6 +32,8 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadRecalibrationInfo;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -58,7 +60,7 @@ import java.util.List;
         usageShort = "Generates recalibration table (do not run this one from the cmd line)",
         programGroup = ReadProgramGroup.class
 )
-public class BaseRecalibratorUprooted extends ReadWalker {
+public class BaseRecalibratorUprooted {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibratorUprooted.class);
 
     final protected SAMFileHeader samHeader;
@@ -134,20 +136,6 @@ public class BaseRecalibratorUprooted extends ReadWalker {
         this.samHeader = samHeader;
     }
 
-    @Override
-    public boolean requiresReference() {
-        return true;
-    }
-
-
-    /**
-     * Parse the -cov arguments and create a list of covariates to be used here
-     * Based on the covariates' estimates for initial capacity allocate the data hashmap
-     */
-    @Override
-    public void onTraversalStart() {
-        throw new UnsupportedOperationException("not implemented");
-    }
 
     public void onTraversalStart(File refFile) {
         accumulator= 0L;
@@ -181,7 +169,6 @@ public class BaseRecalibratorUprooted extends ReadWalker {
         return covariatesList.toArray(new Covariate[covariatesList.size()]);
     }
 
-    @Override
     public SAMFileHeader getHeaderForReads() {
         return samHeader;
     }
@@ -207,17 +194,6 @@ public class BaseRecalibratorUprooted extends ReadWalker {
             .and(PRIMARY_ALIGNMENT)
             .and(NOT_DUPLICATE)
             .and(PASSES_VENDOR_QUALITY_CHECK);
-    }
-
-    @Override
-    public ReadFilter makeReadFilter() {
-        return super.makeReadFilter()
-                .and(MAPPING_QUALITY_NOT_ZERO)
-                .and(MAPPING_QUALITY_AVAILABLE)
-                .and(MAPPED)
-                .and(PRIMARY_ALIGNMENT)
-                .and(NOT_DUPLICATE)
-                .and(PASSES_VENDOR_QUALITY_CHECK);
     }
 
     private static SAMRecord consolidateCigar(SAMRecord read) {
@@ -268,10 +244,6 @@ public class BaseRecalibratorUprooted extends ReadWalker {
         return f;
     }
 
-    @Override
-    public void apply( SAMRecord originalRead, ReferenceContext ref, FeatureContext featureContext ) {
-        throw new RuntimeException("apply Not implemented");
-    }
 
     /**
      * For each read at this locus get the various covariate values and increment that location in the map based on
@@ -371,9 +343,6 @@ public class BaseRecalibratorUprooted extends ReadWalker {
     // TODO: can be merged with calculateIsIndel
     protected static int[] calculateIsSNP( final SAMRecord read, /*final BasesCache ref*/ final ReferenceContext ref, final SAMRecord originalRead ) {
         final byte[] readBases = read.getReadBases();
-//        ArraySlice as = ref.getBases(read.getAlignmentStart(), readBases.length);
-//        final byte[] refBases = as.bases;
-//        int refPos = read.getAlignmentStart() - as.indexOfFirst;
         final byte[] refBases = Arrays.copyOfRange(ref.getBases(), read.getAlignmentStart() - originalRead.getAlignmentStart(), ref.getBases().length + read.getAlignmentEnd() - originalRead.getAlignmentEnd());
         int refPos = 0;
 
@@ -525,11 +494,10 @@ public class BaseRecalibratorUprooted extends ReadWalker {
    * @return a non-null BAQ tag array for read
    */
   private byte[] calculateBAQArray( final SAMRecord read ) {
-    baq.baqRead(read, referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
-    return BAQ.getBAQTag(read);
+      baq.baqRead(read, referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
+      return BAQ.getBAQTag(read);
   }
 
-    @Override
     public Object onTraversalDone() {
         recalibrationEngine.finalizeData();
 

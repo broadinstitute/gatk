@@ -90,7 +90,7 @@ public final class BaseRecalibrator extends ReadWalker {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibrator.class);
 
     /**
-     * all the command line arguments for BQSR and its covariates
+     * All the command line arguments for BQSR and its covariates.
      */
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
     private final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
