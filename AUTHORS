@@ -1,0 +1,14 @@
+# This is the official list of GATK authors for copyright purposes.
+#
+# The AUTHORS file lists the copyright holders.
+# For example, Broad Institute employees are not listed here, 
+# because Broad Institute holds the copyright.
+
+# Names should be added to this file as
+# Name or Organization <email address>
+# The email address is not required for organizations.
+
+# Please keep the list sorted.
+Broad Institute, Inc.
+Intel Corp.
+Nicholas Newell <nenewell@comcast.net>
