@@ -5,7 +5,6 @@ import com.google.api.services.genomics.model.Read;
 import com.google.api.services.genomics.model.Position;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -14,7 +13,7 @@ import org.testng.annotations.Test;
 /**
  * A few tests for the ReadRecord class. We need more, eventually.
  */
-public class ReadRecordTest {
+public class ReadConverterTest {
 
   @Test
   public void simpleRead() {
@@ -26,7 +25,7 @@ public class ReadRecordTest {
         .setAlignment(new LinearAlignment().setPosition(new Position().setPosition(10L)));
     SAMFileHeader header = new SAMFileHeader();
     // convert from 0-based Read to 1-based SAMRecord
-    SAMRecord record = new ReadRecord(r, header);
+    SAMRecord record = ReadConverter.toSAMRecord(r, header);
 
     Assert.assertEquals(record.getAlignmentStart(), 11);
     Assert.assertEquals(record.getReadLength(), 4);
@@ -41,7 +40,7 @@ public class ReadRecordTest {
         .setNumberReads(2);
     SAMFileHeader header = new SAMFileHeader();
 
-    SAMRecord record = new ReadRecord(r, header);
+    SAMRecord record = ReadConverter.toSAMRecord(r, header);
 
     Assert.assertEquals(record.getReadPairedFlag(), true);
     Assert.assertEquals(record.getFirstOfPairFlag(), true);
@@ -54,7 +53,7 @@ public class ReadRecordTest {
         .setNumberReads(2);
     SAMFileHeader header = new SAMFileHeader();
 
-    SAMRecord record = new ReadRecord(r, header);
+    SAMRecord record = ReadConverter.toSAMRecord(r, header);
 
     Assert.assertEquals(record.getReadPairedFlag(), true);
     Assert.assertEquals(record.getFirstOfPairFlag(), false);
@@ -67,7 +66,7 @@ public class ReadRecordTest {
         .setNumberReads(1);
     SAMFileHeader header = new SAMFileHeader();
 
-    SAMRecord record = new ReadRecord(r, header);
+    SAMRecord record = ReadConverter.toSAMRecord(r, header);
 
     Assert.assertEquals(record.getReadPairedFlag(), false);
   }
@@ -83,7 +82,7 @@ public class ReadRecordTest {
         .setSupplementaryAlignment(true);
     SAMFileHeader header = new SAMFileHeader();
 
-    SAMRecord record = new ReadRecord(r, header);
+    SAMRecord record = ReadConverter.toSAMRecord(r, header);
 
     Assert.assertEquals(record.getSupplementaryAlignmentFlag(), true);
   }
