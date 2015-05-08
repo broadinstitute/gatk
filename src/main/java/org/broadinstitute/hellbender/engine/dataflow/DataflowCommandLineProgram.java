@@ -3,18 +3,19 @@ package org.broadinstitute.hellbender.engine.dataflow;
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
-import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
+import java.io.File;
 import java.io.Serializable;
 
 
@@ -46,6 +47,9 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     @Argument(fullName = "staging", doc="dataflow staging location, this should be a google bucket of the form gs://", optional = true)
     private String stagingLocation;
 
+    @Argument(doc = "path to the client secret file for google cloud authentication, necessary if accessing data from buckets",
+            shortName = "secret", fullName = "client_secret", optional=true)
+    protected File clientSecret = new File("client_secret.json");
 
     @Override
     protected String[] customCommandLineValidation(){
@@ -59,10 +63,13 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     @Override
     protected Object doWork() {
-        DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
+        // We create GCSOptions instead of DataflowPipelineOptions to keep track of the secrets so we can read
+        // data from buckets.
+        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setProject(projectID);
         options.setStagingLocation(stagingLocation);
         options.setRunner(this.runner.runner);
+        options.setGenomicsSecretsFile(clientSecret.getAbsolutePath()); // TODO: Migrate to secrets file (issue 516).
         Pipeline p = Pipeline.create(options);
         DataflowWorkarounds.registerGenomicsCoders(p);
         setupPipeline(p);

@@ -39,10 +39,10 @@ public class ReadsSourceTest extends BaseTest {
 
     @Test
     public void testGetReadPCollectionLocal(){
-        ReadsSource source = new ReadsSource(bam.getAbsolutePath(), null);
         Pipeline p = TestPipeline.create();
+        ReadsSource source = new ReadsSource(bam.getAbsolutePath(), p);
         DataflowWorkarounds.registerGenomicsCoders(p);
-        PCollection<Read> reads = source.getReadPCollection(p, ImmutableList.of(new SimpleInterval("chr7", 1, 404)));
+        PCollection<Read> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)));
         PCollection<Long> count = reads.apply(Count.globally());
         DataflowAssert.thatSingleton(count).isEqualTo(7L);
         p.run();

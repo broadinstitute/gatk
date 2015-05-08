@@ -42,10 +42,6 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     @Argument(doc="a prefix for the dataflow output files", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String outputFile;
 
-    @Argument(doc = "path to the client secret file for google cloud authentication, necessary if accessing data from buckets",
-            shortName = "secret", fullName = "client_secret", optional=true)
-    protected File clientSecret = new File("client_secret.json");
-
     @Argument(doc = "uri for the input bam, either a local file path or a gs:// bucket path",
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             optional = false)
@@ -81,13 +77,13 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
     @Override
     final protected void setupPipeline(Pipeline pipeline) {
-        ReadsSource readsSource = new ReadsSource(bam, clientSecret);
+        ReadsSource readsSource = new ReadsSource(bam, pipeline);
         String headerString = readsSource.getHeaderString();
         SAMSequenceDictionary sequenceDictionary = ReadUtils.samHeaderFromString(headerString).getSequenceDictionary();
         List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
-        PCollection<Read> preads = readsSource.getReadPCollection(pipeline, intervals);
+        PCollection<Read> preads = readsSource.getReadPCollection(intervals);
 
         PCollection<?> presult = applyTransformsToPipeline(headerString, preads);
 
