@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.broadinstitute.hellbender.dev.utils.ArtificialTestFeature;
 
 import java.io.File;
 import java.util.*;
@@ -384,57 +385,7 @@ public class FeatureDataSourceUnitTest extends BaseTest {
         }
     }
 
-    /**************************************************
-     * Direct testing on the FeatureCache inner class
-     **************************************************/
 
-    @SuppressWarnings("overrides")  // because I don't want to implement hashCode() but do need an equals() here
-    private static class ArtificialTestFeature implements Feature {
-        private String chr;
-        private int start;
-        private int end;
-
-        public ArtificialTestFeature( final String chr, final int start, final int end ) {
-            this.chr = chr;
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        public String getChr() {
-            return getContig();
-        }
-
-        @Override
-        public String getContig() {
-            return chr;
-        }
-
-        @Override
-        public int getStart() {
-            return start;
-        }
-
-        @Override
-        public int getEnd() {
-            return end;
-        }
-
-        @Override
-        public boolean equals( Object other ) {
-            if ( other == null || ! (other instanceof ArtificialTestFeature) ) {
-                return false;
-            }
-
-            ArtificialTestFeature otherFeature = (ArtificialTestFeature)other;
-            return chr.equals(otherFeature.getContig()) && start == otherFeature.getStart() && end == otherFeature.getEnd();
-        }
-
-        @Override
-        public String toString() {
-            return chr + ":" + start + "-" + end;   // (to improve output on test failures involving this class)
-        }
-    }
 
     private FeatureDataSource.FeatureCache<ArtificialTestFeature> initializeFeatureCache( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheEnd ) {
         FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = new FeatureDataSource.FeatureCache<>();
