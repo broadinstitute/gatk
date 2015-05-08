@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -9,6 +10,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -176,9 +178,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         return null;
     }
 
-    /**
-     * package-visible for testing
-     */
+    @VisibleForTesting
     long numOpticalDuplicates() { return ((long) this.libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap().getSumOfValues()); } // cast as long due to returning a double
 
     /** Print out some quick JVM memory stats. */
@@ -194,7 +194,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
     /**
      * Goes through all the records in a file and generates a set of ReadEndsForMarkDuplicates objects that
      * hold the necessary information (reference sequence, 5' read coordinate) to do
-     * duplication, caching to disk as necssary to sort them.
+     * duplication, caching to disk as necessary to sort them.
      */
     private void buildSortedReadEndLists() {
         final int maxInMemory = (int) ((Runtime.getRuntime().maxMemory() * SORTING_COLLECTION_SIZE_RATIO) / ReadEndsForMarkDuplicates.SIZE_OF);
@@ -490,7 +490,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
     }
 
     /** Comparator for ReadEndsForMarkDuplicates that orders by read1 position then pair orientation then read2 position. */
-    static class ReadEndsMDComparator implements Comparator<ReadEndsForMarkDuplicates> {
+    static class ReadEndsMDComparator implements Comparator<ReadEndsForMarkDuplicates>, Serializable {
         public int compare(final ReadEndsForMarkDuplicates lhs, final ReadEndsForMarkDuplicates rhs) {
             int retval = lhs.libraryId - rhs.libraryId;
             if (retval == 0) retval = lhs.read1ReferenceIndex - rhs.read1ReferenceIndex;

@@ -180,4 +180,37 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
                 {new File(TEST_DATA_DIR, "optical_dupes_casava.sam"), 1L},
         };
     }
+
+
+    @Test(dataProvider = "testDuplicateDetectionDataProvider")
+    public void testDuplicateDetection(final File sam, final long expectedNumOpticalDuplicates) {
+        final File outputDir = IOUtil.createTempDir(TEST_BASE_NAME + ".", ".tmp");
+        outputDir.deleteOnExit();
+        final File outputSam = new File(outputDir, TEST_BASE_NAME + ".sam");
+        outputSam.deleteOnExit();
+        final File metricsFile = new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics");
+        metricsFile.deleteOnExit();
+        // Run MarkDuplicates, merging the 3 input files, and either enabling or suppressing PG header
+        // record creation according to suppressPg.
+        final MarkDuplicates markDuplicates = new MarkDuplicates();
+        markDuplicates.setupOpticalDuplicateFinder();
+        markDuplicates.INPUT = CollectionUtil.makeList(sam);
+        markDuplicates.OUTPUT = outputSam;
+        markDuplicates.METRICS_FILE = metricsFile;
+        markDuplicates.TMP_DIR = CollectionUtil.makeList(outputDir);
+        // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
+        markDuplicates.PROGRAM_RECORD_ID = null;
+        Assert.assertEquals(markDuplicates.doWork(), null);
+        Assert.assertEquals(markDuplicates.numOpticalDuplicates(), expectedNumOpticalDuplicates);
+    }
+
+    @DataProvider(name="testDuplicateDetectionDataProvider")
+    public Object[][] testDuplicateDetectionDataProvider() {
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "markDups.test2reads.bam"), 0L},
+                {new File(TEST_DATA_DIR, "example.chr1.1-1K.unmarkedDups.noDups.bam"), 0L},
+                {new File(TEST_DATA_DIR, "example.chr1.1-1K.markedDups.bam"), 0L},
+                {new File(TEST_DATA_DIR, "example.chr1.1-1K.unmarkedDups.bam"), 0L},
+        };
+    }
 }
