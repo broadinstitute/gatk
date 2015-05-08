@@ -7,7 +7,6 @@ import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.tribble.Feature;
-import org.broadinstitute.hellbender.dev.utils.Func;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
