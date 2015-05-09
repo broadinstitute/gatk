@@ -5,5 +5,5 @@
 ##    exonCount = 5,
 ##    exomeSize = 476 (bp)
 ##}
-GROUP	SUM	AVG.BP
+COHORT	SUM	AVG.BP
 <ALL>	237	0.4979

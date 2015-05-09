@@ -129,7 +129,7 @@ public class SimpleIntervalUnitTest extends BaseTest {
     }
 
     @DataProvider(name = "IntervalOverlapData")
-    public Object[][] getIntervalOverlapData() {
+    public static Object[][] getIntervalOverlapData() {
         final SimpleInterval standardInterval = new SimpleInterval("1", 10, 20);
         final SimpleInterval oneBaseInterval = new SimpleInterval("1", 10, 10);
 

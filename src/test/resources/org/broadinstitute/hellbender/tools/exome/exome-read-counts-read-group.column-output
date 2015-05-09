@@ -5,7 +5,7 @@
 ##    exonCount = 5,
 ##    exomeSize = 476 (bp)
 ##}
-GROUP	SUM	AVG.BP
+READ_GROUP	SUM	AVG.BP
 ERR015474	9	0.0189
 ERR243103	1	0.0021
 ERR243132	1	0.0021

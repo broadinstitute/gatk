@@ -151,6 +151,4 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
     public boolean intervalsSpecified() {
         return !( getIntervalStrings().isEmpty() && excludeIntervalStrings.isEmpty());
     }
-
-
 }

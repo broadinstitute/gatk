@@ -23,6 +23,26 @@ import java.util.stream.Collectors;
  * can appear in GATK-based applications.
  */
 public class IntervalUtils {
+
+    /**
+     * Lexicographical (contig) order comparator.
+     * <p>
+     * Intervals from different contigs order is according their enclosing
+     * contigs name ascending lexicographical order.
+     * </p>
+     * <p>
+     * Intervals from the same contigs order is according to their start
+     * position ascending numerical order, and, in case of a tie, the stop position's.
+     * </p>
+     * <p>
+     * The {@code null} contig is supported and comes last.
+     * </p>
+     */
+    public final static Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
+            Comparator.comparing(Locatable::getContig,Comparator.nullsLast(String::compareTo))
+                    .thenComparingInt(Locatable::getStart)
+                    .thenComparingInt(Locatable::getEnd);
+
     private static Logger logger = LogManager.getLogger(IntervalUtils.class);
 
     public static GenomeLocSortedSet loadIntervals(
@@ -247,7 +267,7 @@ public class IntervalUtils {
         // now merge raw interval list
         intervals = mergeIntervalLocations(intervals, mergingRule);
 
-        return GenomeLocSortedSet.createSetFromList(parser,intervals);
+        return GenomeLocSortedSet.createSetFromList(parser, intervals);
     }
 
     /**
@@ -563,6 +583,35 @@ public class IntervalUtils {
         }
 
         return new SplitLocusRecursive(split, remaining);
+    }
+
+    /**
+     * Check whether two locatables overlap.
+     * <p>
+     *    Two locatables overlap if the share the same contig and they have at least one
+     *    base in common based on their start and end positions.
+     * </p>
+     * <p>
+     *    This method returns {@code false} if either input {@link Locatable} has a {@code null}
+     *    contig.
+     * </p>
+     *
+     * @param left first locatable.
+     * @param right second locatable.
+     * @throws IllegalArgumentException if either {@code left} or {@code right} locatable
+     *  is {@code null}.
+     * @return {@code true} iff there is an overlap between both locatables.
+     */
+    public static boolean overlaps(final Locatable left,final Locatable right) {
+        Utils.nonNull(left,"the left locatable is null");
+        Utils.nonNull(right,"the right locatable is null");
+        if (left.getContig() == null || right.getContig() == null) {
+            return false;
+        } else if (!left.getContig().equals(right.getContig())) {
+            return false;
+        } else {
+            return left.getStart() <= right.getEnd() && right.getStart() <= left.getEnd();
+        }
     }
 
     private final static class SplitLocusRecursive {

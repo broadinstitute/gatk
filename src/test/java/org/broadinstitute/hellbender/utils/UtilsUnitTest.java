@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -207,13 +208,77 @@ public class UtilsUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNonNullThrows(){
-        Object o = null;
+        final Object o = null;
         Utils.nonNull(o);
     }
 
     @Test
     public void testNonNullDoesNotThrow(){
-        Object o = new Object();
+        final Object o = new Object();
         Assert.assertSame(Utils.nonNull(o), o);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "^The exception message$")
+    public void testNonNullWithMessageThrows() {
+        Utils.nonNull(null, "The exception message");
+    }
+
+    @Test
+    public void testNonNullWithMessageReturn() {
+        final Object testObject = new Object();
+        Assert.assertSame(Utils.nonNull(testObject, "some message"), testObject);
+    }
+
+    @Test
+    public void testSuccessfulRegularReadableFileCheck() {
+        final File expectedFile = createTempFile("Utils-RRFC-test",".txt");
+        final File actualFile = Utils.regularReadableUserFile(expectedFile);
+        Assert.assertSame(actualFile, expectedFile);
+    }
+
+    @Test(dataProvider = "unsuccessfulRegularReadableFileCheckData",
+            expectedExceptions = UserException.CouldNotReadInputFile.class)
+    public void testUnsuccessfulRegularReadableFileCheck(final File file) {
+        Utils.regularReadableUserFile(file);
+    }
+
+    @Test(dataProvider = "successfulValidIndexData")
+    public void testSuccessfulValidIndex(final int index, final int length) {
+        final int actualIndex = Utils.validIndex(index, length);
+        Assert.assertSame(actualIndex, index);
+    }
+
+    @Test(dataProvider = "unsuccessfulValidIndexData", expectedExceptions = IllegalArgumentException.class)
+    public void testUnsuccessfulValidIndex(final int index, final int length) {
+        Utils.validIndex(index, length);
+    }
+
+    @DataProvider(name = "unsuccessfulRegularReadableFileCheckData")
+    @SuppressWarnings("all")
+    public Object[][] unsuccessfulRegularReadableFileCheckData() {
+        final File directory = createTempFile("Utils-RRFCD-Dir", ".dir");
+        directory.delete();
+        directory.mkdir();
+        final File nonExistingFile = createTempFile("Utils-RRFCD-NoFile", ".file");
+        nonExistingFile.delete();
+        final File nonReadable = createTempFile("Utils-RRFCD-NoReadable", ".file");
+        nonReadable.setReadable(false);
+        return new Object[][]{
+                {directory}, {nonExistingFile}, {nonReadable}
+        };
+    }
+
+    @DataProvider(name = "successfulValidIndexData")
+    public Object[][] successfulValidIndexData() {
+        return new Object[][]{
+                {0, 10}, {1, 2}
+        };
+    }
+
+    @DataProvider(name = "unsuccessfulValidIndexData")
+    public Object[][] unsuccessfulValidIndexData() {
+        return new Object[][]{
+                {0, 0}, {10, 10}, {11, 5}, {-1, 10}, {0, -10}
+        };
     }
 }

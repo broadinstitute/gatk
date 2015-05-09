@@ -1,28 +1,35 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Exon data-base based on a list of intervals.
+ * Exon collection supported by a list of intervals sorted by location and with quick
+ * look-up by name using a hash.
+ * <p>
+ *     Intervals are sorted using {@link IntervalUtils#LEXICOGRAPHICAL_ORDER_COMPARATOR}.
+ * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class IntervalBackedExonCollection implements ExonCollection<SimpleInterval> {
+public class HashedListExonCollection<T extends Locatable> implements ExonCollection<T> {
 
     /**
      * Map from interval name to interval object.
      */
-    private final Map<String,SimpleInterval> intervalsByName;
+    private final Map<String,T> intervalsByName;
 
     /**
      * Sorted list of intervals.
      */
-    private final List<SimpleInterval> sortedIntervals;
+    private final List<T> sortedIntervals;
 
     /**
      * Cached index of the last overlapping interval found by
@@ -35,7 +42,7 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
      */
     private int lastBinarySearchResult = -1;
 
-/**
+    /**
      * Creates a exon data-base give a sorted list of intervals.
      *
      * <p>
@@ -45,14 +52,14 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
      * @param intervals the input interval list. Is assumed to be sorted
      * @throws IllegalArgumentException if {@code intervals} is {@code null}.
      */
-    public IntervalBackedExonCollection(final List<SimpleInterval> intervals) {
+    public HashedListExonCollection(final List<T> intervals) {
         if (intervals == null) {
             throw new IllegalArgumentException("the input intervals cannot be null");
         }
         if (intervals.contains(null)) {
             throw new IllegalArgumentException("the input cannot contain null");
         }
-        sortedIntervals = intervals.stream().sorted(SimpleInterval.LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList());
+        sortedIntervals = intervals.stream().sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList());
         checkForOverlaps(sortedIntervals);
         this.intervalsByName = composeIntervalsByName(sortedIntervals);
     }
@@ -61,9 +68,9 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
      * Fails with an exception if the intervals collection has overlapping intervals.
      * @param sortedIntervals the intervals sorted.
      */
-    private static void checkForOverlaps(final List<SimpleInterval> sortedIntervals) {
+    private static <T extends Locatable> void checkForOverlaps(final List<T> sortedIntervals) {
         final OptionalInt failureIndex = IntStream.range(1, sortedIntervals.size())
-                .filter(i -> sortedIntervals.get(i-1).overlaps(sortedIntervals.get(i)))
+                .filter(i -> IntervalUtils.overlaps(sortedIntervals.get(i-1),sortedIntervals.get(i)))
                 .findFirst();
 
         if (failureIndex.isPresent()) {
@@ -86,12 +93,12 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
      * @throws IllegalArgumentException if {@code intervals} is {@code null} or it contains {@code nulls},
      *                  or is not a coherent interval list as per the criteria above.
      */
-    private Map<String,SimpleInterval> composeIntervalsByName(final List<SimpleInterval> intervals) {
-        final Map<String,SimpleInterval> result = new HashMap<>(intervals.size());
-        for (final SimpleInterval location : intervals) {
+    private Map<String,T> composeIntervalsByName(final List<T> intervals) {
+        final Map<String,T> result = new HashMap<>(intervals.size());
+        for (final T location : intervals) {
             final String name = name(location);
             if (name != null) {
-                final SimpleInterval previous = result.put(name,location);
+                final T previous = result.put(name,location);
                 if (previous != null) {
                     throw new IllegalStateException(
                             String.format("more than one interval in the input list results in the same name (%s); " +
@@ -103,27 +110,19 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
         return result;
     }
 
-    /**
-     * Produces the unique name for a genomic interval.
-     *
-     * <p>This name can depend in either the index of the interval, its location or both</p>
-     *
-     * <p>
-     *     The implementation of this method is such that the name will be unique, i.e. that two different locations
-     *     won't ever result in the same name.
-     * </p>
-     *
-     * @param location the genome location of the interval. Is assumed not to be null.
-     *
-     * @return can return {@code null} indicating that this interval should remain anonymous.
-     */
     @Override
-    public String name(final SimpleInterval location) {
-        return location.toString();
+    public String name(final T exon) {
+        Utils.nonNull(exon,"null exon not allowed");
+        final String contig = exon.getContig();
+        if (contig == null) {
+            return null;
+        } else {
+            return String.format("%s:%d-%d", contig, exon.getStart(), exon.getEnd());
+        }
     }
 
     @Override
-    public List<SimpleInterval> exons() {
+    public List<T> exons() {
         return sortedIntervals;
     }
 
@@ -133,31 +132,24 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
     }
 
     @Override
-    public SimpleInterval exon(final int index) {
-        if (index < 0) {
-            throw new IllegalArgumentException("index cannot be negative");
-        } else if (index >= sortedIntervals.size()) {
-            throw new IllegalArgumentException(
-                    String.format("index (%d) cannot be equal or greater than the exon-count (%d)",index,exonCount()));
-        }
+    public T exon(final int index) {
+        Utils.validIndex(index, sortedIntervals.size());
         return sortedIntervals.get(index);
     }
 
     @Override
-    public SimpleInterval exon(final String name) {
-        if (name == null) {
-            throw new IllegalArgumentException("the input name cannot be null");
-        }
+    public T exon(final String name) {
+        Utils.nonNull(name,"the input name cannot be null");
         return intervalsByName.get(name);
     }
 
     @Override
     public int index(final String name) {
-        final SimpleInterval exon = intervalsByName.get(name);
+        final T exon = intervalsByName.get(name);
         if (exon == null) {
             return -1;
         } else {
-            final int searchIndex = uncachedBinarySearch(exon);
+            final int searchIndex = uncachedBinarySearch(location(exon));
             if (searchIndex < 0) { // checking just in case.
                 throw new IllegalStateException("could not found named interval amongst sorted intervals, impossible");
             }
@@ -167,39 +159,30 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
 
     @Override
     public IndexRange indexRange(final SimpleInterval location) {
-        if (location == null) {
-            throw new IllegalArgumentException("the input location cannot be null");
+        Utils.nonNull(location, "the input location cannot be null");
+        final int searchIndex = cachedBinarySearch(location);
+        if (searchIndex < 0) {
+            return new IndexRange(-searchIndex - 1, -searchIndex - 1);
         } else {
-            final int searchIndex = cachedBinarySearch(location);
-            if (searchIndex < 0) {
-                return new IndexRange(-searchIndex - 1, -searchIndex - 1);
-            } else {
-                final int firstOverlappingIndex = extendSearchIndexBackwards(location, searchIndex);
-                final int lastOverlappingIndex = extendSearchIndexForward(location, searchIndex);
-                return new IndexRange(firstOverlappingIndex, lastOverlappingIndex + 1);
-            }
+            final int firstOverlappingIndex = extendSearchIndexBackwards(location, searchIndex);
+            final int lastOverlappingIndex = extendSearchIndexForward(location, searchIndex);
+            return new IndexRange(firstOverlappingIndex, lastOverlappingIndex + 1);
         }
     }
 
     @Override
-    public SimpleInterval location(final SimpleInterval exon) {
-        if (exon == null) {
-            throw new IllegalArgumentException("the exon cannot be null");
-        }
-        return exon;
+    public SimpleInterval location(final T exon) {
+        return new SimpleInterval(Utils.nonNull(exon,"the exon cannot be null"));
     }
 
     @Override
     public SimpleInterval location(final int index) {
-        if (index < 0 || index >= sortedIntervals.size()) {
-            throw new IllegalArgumentException(
-                    String.format("the index provided, %d, is not within the valid range [%d,%d).",index,0,sortedIntervals.size()));
-        }
-        return sortedIntervals.get(index);
+        Utils.validIndex(index,sortedIntervals.size());
+        return new SimpleInterval(sortedIntervals.get(index));
     }
 
     @Override
-    public SimpleInterval exon(final SimpleInterval overlapRegion) {
+    public T exon(final SimpleInterval overlapRegion) {
         final int searchIndex = index(overlapRegion);
         return searchIndex < 0 ? null : sortedIntervals.get(searchIndex);
     }
@@ -220,7 +203,7 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
     }
 
     @Override
-    public List<SimpleInterval> exons(final SimpleInterval overlapRegion) {
+    public List<T> exons(final SimpleInterval overlapRegion) {
         final IndexRange range = indexRange(overlapRegion);
         return sortedIntervals.subList(range.from, range.to);
     }
@@ -271,19 +254,19 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
             final int candidate = -(lastBinarySearchResult + 1);
             if (candidate >= sortedIntervals.size()) {
                 return lastBinarySearchResult = uncachedBinarySearch(location);
-            } else if (sortedIntervals.get(candidate).overlaps(location)) {
+            } else if (IntervalUtils.overlaps(sortedIntervals.get(candidate),location)) {
                 return lastBinarySearchResult = candidate;
             } else {
                 return lastBinarySearchResult = uncachedBinarySearch(location);
             }
         } else {
-            if (sortedIntervals.get(lastBinarySearchResult).overlaps(location)) {
+            if (IntervalUtils.overlaps(sortedIntervals.get(lastBinarySearchResult),location)) {
                 return lastBinarySearchResult;
             } else {
                 final int candidate = lastBinarySearchResult + 1;
                 if (candidate == sortedIntervals.size()) {
                     return lastBinarySearchResult = uncachedBinarySearch(location);
-                } else if (sortedIntervals.get(candidate).overlaps(location)) {
+                } else if (IntervalUtils.overlaps(sortedIntervals.get(candidate),location)) {
                     return lastBinarySearchResult = candidate;
                 } else {
                     return lastBinarySearchResult = uncachedBinarySearch(location);
@@ -322,14 +305,14 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
             return -1;
         }
 
-        final int searchResult = Collections.binarySearch(sortedIntervals, location, SimpleInterval.LEXICOGRAPHICAL_ORDER_COMPARATOR);
+        final int searchResult = Collections.binarySearch(sortedIntervals, location, IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
         if (searchResult >= 0) {
             return searchResult;
         } else {
             final int insertIndex = - (searchResult + 1);
-            if (insertIndex < sortedIntervals.size() && sortedIntervals.get(insertIndex).overlaps(location)) {
+            if (insertIndex < sortedIntervals.size() && IntervalUtils.overlaps(sortedIntervals.get(insertIndex),location)) {
                 return insertIndex;
-            } if (insertIndex > 0 && sortedIntervals.get(insertIndex - 1).overlaps(location)) {
+            } if (insertIndex > 0 && IntervalUtils.overlaps(sortedIntervals.get(insertIndex - 1),location)) {
                 return insertIndex - 1;
             } else {
                 return searchResult;
@@ -343,10 +326,10 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
      * overlap with {@code location}.
      */
     private int extendSearchIndexForward(final SimpleInterval location, final int startIndex) {
-        final ListIterator<SimpleInterval> it = sortedIntervals.listIterator(startIndex + 1);
+        final ListIterator<T> it = sortedIntervals.listIterator(startIndex + 1);
         while (it.hasNext()) {
-            final SimpleInterval next = it.next();
-            if (!location.overlaps(next)) {
+            final T next = it.next();
+            if (!IntervalUtils.overlaps(location,next)) {
                 return it.previousIndex() - 1;
             }
         }
@@ -358,10 +341,10 @@ public final class IntervalBackedExonCollection implements ExonCollection<Simple
      * starting at {@code startIndex} and assuming that the element at that index has an overlap with {@code location}.
      */
     private int extendSearchIndexBackwards(final SimpleInterval location, final int startIndex) {
-        final ListIterator<SimpleInterval> it = sortedIntervals.listIterator(startIndex);
+        final ListIterator<T> it = sortedIntervals.listIterator(startIndex);
         while (it.hasPrevious()) {
-            final SimpleInterval previous = it.previous();
-            if (!location.overlaps(previous)) {
+            final T previous = it.previous();
+            if (!IntervalUtils.overlaps(location,previous)) {
                 return it.nextIndex() + 1;
             }
         }

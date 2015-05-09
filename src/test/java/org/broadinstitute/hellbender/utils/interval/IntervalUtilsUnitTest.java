@@ -5,6 +5,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.SimpleFeature;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
@@ -17,6 +18,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -1066,7 +1069,6 @@ public class IntervalUtilsUnitTest extends BaseTest {
         }
     }
 
-
     @Test(dataProvider = "genomeLocsFromLocatablesData")
     public void testGenomeLocsFromLocatables(final GenomeLocParser parser, final List<? extends Locatable> locatables) {
         final List<GenomeLoc> result = IntervalUtils.genomeLocsFromLocatables(parser, locatables);
@@ -1109,4 +1111,81 @@ public class IntervalUtilsUnitTest extends BaseTest {
         };
     }
 
+    @Test(dataProvider = "overlapData")
+    public void testOverlap(final SimpleInterval l, final SimpleInterval r, final boolean expected) {
+        Assert.assertEquals(IntervalUtils.overlaps(l, r), expected);
+        Assert.assertEquals(IntervalUtils.overlaps(
+                new SimpleFeature(l.getContig(),l.getStart(),l.getEnd()),
+                new SimpleFeature(r.getContig(),r.getStart(),r.getEnd())),expected);
+        Assert.assertEquals(IntervalUtils.overlaps(
+                new SimpleFeature(l.getContig(),l.getStart(),l.getEnd()),
+                r),expected);
+        Assert.assertEquals(IntervalUtils.overlaps(
+                l,
+                new SimpleFeature(r.getContig(),r.getStart(),r.getEnd())),expected);
+        Assert.assertFalse(IntervalUtils.overlaps(
+                new SimpleFeature(null,r.getStart(),r.getEnd()),
+                new SimpleFeature(null,l.getStart(),l.getEnd())));
+    }
+
+    @DataProvider(name = "overlapData")
+    public Object[][] overlapData() {
+        // removing cases where the second interval is null.
+        return Stream.of(SimpleIntervalUnitTest.getIntervalOverlapData()).filter(a -> a[1] != null)
+                .collect(Collectors.toList()).toArray(new Object[0][]);
+    }
+
+    @Test(dataProvider = "lexicographicalOrderComparatorData")
+    public void testLexicographicalOrderComparator(final List<Locatable> unsorted) {
+        final List<Locatable> sorted = unsorted.stream().sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                .collect(Collectors.toList());
+        for (int i = 0; i < sorted.size() - 1; i++) {
+           final Locatable thisLoc = sorted.get(i);
+           final Locatable nextLoc = sorted.get(i + 1);
+           if (thisLoc.getContig() == nextLoc.getContig()) {
+               Assert.assertTrue(thisLoc.getStart() <= nextLoc.getStart());
+               if (thisLoc.getStart() == nextLoc.getStart()) {
+                   Assert.assertTrue(thisLoc.getEnd() <= nextLoc.getEnd());
+               }
+           } else if (thisLoc.getContig() == null) {
+               Assert.fail("Null contig must go last");
+           } else if (nextLoc.getContig() != null) {
+               Assert.assertTrue(thisLoc.getContig().compareTo(nextLoc.getContig()) <= 0);
+               if (thisLoc.getContig().equals(nextLoc.getContig())) {
+                   Assert.assertTrue(thisLoc.getStart() <= nextLoc.getStart());
+                   if (thisLoc.getStart() == nextLoc.getStart()) {
+                       Assert.assertTrue(thisLoc.getEnd() <= nextLoc.getEnd());
+                   }
+               }
+           }
+        }
+    }
+
+    @DataProvider(name = "lexicographicalOrderComparatorData")
+    public Object[][] lexicographicalOrderComparatorData() {
+        final String[] CONTIG_NAMES = new String[] {"A","AA","B","C", null};
+        final int[] CONTIG_SIZES = new int[] {200,300,400,500,600};
+        final int MIN_INTERVAL_SIZE = 1;
+        final int MAX_INTERVAL_SIZE = 100;
+        final Random rdn = new Random(1131312131);
+        final int CASE_NUMBER = 100;
+        final List<Object[]> result = new ArrayList<>(100);
+        for (int i = 0; i < CASE_NUMBER; i++) {
+            final int locatableCount = rdn.nextInt(100) + 1;
+            final List<Locatable> locatables = new ArrayList<>(locatableCount);
+            for (int j = 0; j < locatableCount; j++) {
+                final int contigIdx = rdn.nextInt(CONTIG_NAMES.length);
+                final String contig = CONTIG_NAMES[contigIdx];
+
+                final boolean useSimpleInterval = contig == null ? false : rdn.nextBoolean();
+                final int intervalSize = rdn.nextInt(MAX_INTERVAL_SIZE - MIN_INTERVAL_SIZE + 1) + MIN_INTERVAL_SIZE;
+                final int start = rdn.nextInt(CONTIG_SIZES[contigIdx] - intervalSize) + 1;
+                final int end = start + intervalSize - 1;
+                final Locatable loc = useSimpleInterval ? new SimpleInterval(contig,start,end) : new SimpleFeature(contig,start,end);
+                locatables.add(loc);
+            }
+            result.add(new Object[] { locatables });
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
 }

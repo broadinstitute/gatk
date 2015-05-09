@@ -2,12 +2,12 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.testng.internal.Utils;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -327,7 +327,7 @@ public final class ExonCollectionUnitTest extends BaseTest {
 
         @Override
         public SimpleInterval location(final SimpleInterval exon) {
-            return exon;
+            return Utils.nonNull(exon, "the input exon cannot be null");
         }
 
         @Override
@@ -369,7 +369,7 @@ public final class ExonCollectionUnitTest extends BaseTest {
         Assert.assertTrue(overriddenDefaults.isEmpty(), "Bug in testing code!!! " + ExonCollectionStub.class.getName() +
                 " must not override any default method in " + ExonCollection.class + " as we present to test those. " +
                 "Currently it overrides the following default methods: "
-                + Utils.join(Arrays.asList(overriddenDefaults.stream().map(Method::getName).toArray()), ", "));
+                + Utils.join(", ",Arrays.asList(overriddenDefaults.stream().map(Method::getName).toArray())));
     }
 
     @DataProvider(name="exonDBData")

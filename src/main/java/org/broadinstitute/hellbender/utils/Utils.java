@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.utils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
+import java.io.File;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -515,11 +517,56 @@ public class Utils {
      * @return the same object
      * @throws IllegalArgumentException if a {@code o == null}
      */
-    public static <T> T nonNull(T object) throws IllegalArgumentException {
+    public static <T> T nonNull(final T object) throws IllegalArgumentException {
+        return Utils.nonNull(object,"Null object is not allowed here.");
+    }
+
+    /**
+     * Checks that an {@link Object} is not {@code null} and returns the same object or throws an {@link IllegalArgumentException}
+     * @param object any Object
+     * @param message the text message that would be pass to the exception thrown when {@code o == null}.
+     * @return the same object
+     * @throws IllegalArgumentException if a {@code o == null}
+     */
+    public static <T> T nonNull(final T object, final String message) throws IllegalArgumentException {
         if (object == null) {
-            throw new IllegalArgumentException("Null object is not allowed here.");
+            throw new IllegalArgumentException(message);
         }
         return object;
     }
 
+    /**
+     * Checks whether an index is within bounds considering a collection or array of a particular size
+     * whose first position index is 0
+     * @param index the query index.
+     * @param length the collection or array size.
+     * @return same value as the input {@code index}.
+     */
+    public static int validIndex(final int index, final int length) {
+        if (index < 0) {
+            throw new IllegalArgumentException("the index cannot be negative: " + index);
+        } else if (index >= length) {
+            throw new IllegalArgumentException("the index points past the last element of the collection or array: " + index + " > " + (length -1));
+        }
+        return index;
+    }
+
+    /**
+     * Checks that a user provided file is in fact a regular (i.e. not a directory or a special device) readable file.
+     *
+     * @param file the input file to test.
+     * @throws IllegalArgumentException if {@code file} is {@code null} or {@code argName} is {@code null}.
+     * @throws UserException if {@code file} is not a regular file or it cannot be read.
+     * @return the same as the input {@code file}.
+     */
+    public static File regularReadableUserFile(final File file) {
+        nonNull(file,"unexpected null file reference");
+        if (!file.canRead()) {
+            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
+        } else if (!file.isFile()) {
+            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file is not a regular file");
+        } else {
+            return file;
+        }
+    }
 }
