@@ -24,7 +24,7 @@ import java.util.List;
         usageShort = "Adds comments to the header of a BAM file",
         programGroup = ReadProgramGroup.class
 )
-public class AddCommentsToBam extends PicardCommandLineProgram {
+public final class AddCommentsToBam extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input BAM file to add a comment to the header")
     public File INPUT;

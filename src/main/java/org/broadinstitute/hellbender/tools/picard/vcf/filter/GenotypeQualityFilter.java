@@ -8,7 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
  *
  * @author tfennell
  */
-public class GenotypeQualityFilter implements GenotypeFilter {
+public final class GenotypeQualityFilter implements GenotypeFilter {
     private final int minGq;
 
     public GenotypeQualityFilter(final int minGq) {

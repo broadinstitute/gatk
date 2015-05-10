@@ -24,7 +24,7 @@ import static org.testng.Assert.assertTrue;
  * is executed their content won't be tested. It only will verify that file has a healthy size.
  *
  */
-public class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
+public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTest{
 
     /**
      * Directory where the testdata is located.

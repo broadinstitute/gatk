@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.iterators.GATKSAMIterator;
 
 import java.util.*;
 
-public class ArtificialSAMUtils {
+public final class ArtificialSAMUtils {
     public static final int DEFAULT_READ_LENGTH = 50;
 
     private static final String DEFAULT_READ_GROUP_PREFIX = "ReadGroup";

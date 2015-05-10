@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.metrics.SAMRecordAndReferenceMultiLevelColl
 
 import java.util.*;
 
-public class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<RrbsMetrics, Comparable<?>> {
+public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<RrbsMetrics, Comparable<?>> {
 	private final int minReadLength;
 	private final double maxMismatchRate;
 	private final int cQualityThreshold;
@@ -237,7 +237,7 @@ public class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollect
 /**
  * Used to keep track of the location of CpG sites
  */
-class CpgLocation implements Comparable<CpgLocation> {
+final class CpgLocation implements Comparable<CpgLocation> {
 	private final String sequence;
 	private final Integer position;
 

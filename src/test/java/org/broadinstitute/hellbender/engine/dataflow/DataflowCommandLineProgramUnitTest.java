@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.testng.annotations.Test;
 
 
-public class DataflowCommandLineProgramUnitTest {
+public final class DataflowCommandLineProgramUnitTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testUserExceptionUnwrapping(){

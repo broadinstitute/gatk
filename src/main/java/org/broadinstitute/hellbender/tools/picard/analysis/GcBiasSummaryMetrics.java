@@ -7,7 +7,7 @@ import htsjdk.samtools.metrics.MetricBase;
  *
  * @author Tim Fennell
  */
-public class GcBiasSummaryMetrics extends MetricBase {
+public final class GcBiasSummaryMetrics extends MetricBase {
     /** The window size on the genome used to calculate the GC of the sequence. */
     public int WINDOW_SIZE;
 

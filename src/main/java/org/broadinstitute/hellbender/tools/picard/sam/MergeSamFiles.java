@@ -22,7 +22,7 @@ import java.util.List;
         usageShort = "Merges multiple SAM or BAM files into one file",
         programGroup = ReadProgramGroup.class
 )
-public class MergeSamFiles extends PicardCommandLineProgram {
+public final class MergeSamFiles extends PicardCommandLineProgram {
     private static final Log log = Log.getInstance(MergeSamFiles.class);
 
     @Argument(shortName = "I", doc = "SAM or BAM input file", optional=false)

@@ -13,7 +13,7 @@ import java.util.List;
  * An argument collection for use with tools that accept zero or more input files containing VariantContext records
  * (eg., VCF/BCF files).
  */
-public class OptionalVariantInputArgumentCollection implements ArgumentCollectionDefinition {
+public final class OptionalVariantInputArgumentCollection implements ArgumentCollectionDefinition {
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "Variants file", optional = true)
     public List<FeatureInput<VariantContext>> variantFiles;

@@ -27,7 +27,7 @@ import java.io.IOException;
         usageShort = "Normalizes lines of sequence in a fasta file to be of the same length",
         programGroup = MiscProgramGroup.class
 )
-public class NormalizeFasta extends CommandLineProgram {
+public final class NormalizeFasta extends CommandLineProgram {
 
     @Argument(shortName=StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The input fasta file to normalize.")
     public File INPUT;

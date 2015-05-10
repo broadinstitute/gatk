@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ProcessControllerUnitTest extends BaseTest {
+public final class ProcessControllerUnitTest extends BaseTest {
     private static final String NL = String.format("%n");
 
     @Test

@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
  * An individual piece of recalibration data. Each bin counts up the number of observations and the number
  * of reference mismatches seen for that combination of covariates.
  */
-public class RecalDatum {
+public final class RecalDatum {
     public final static byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
     private static final double UNINITIALIZED = -1.0;
 

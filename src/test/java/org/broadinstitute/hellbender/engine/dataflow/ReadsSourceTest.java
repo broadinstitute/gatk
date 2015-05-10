@@ -16,7 +16,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class ReadsSourceTest extends BaseTest {
+public final class ReadsSourceTest extends BaseTest {
     public static final String EXPECTED_HEADER = "@HD\tVN:1.0\tSO:coordinate\n" +
             "@SQ\tSN:chr1\tLN:101\n" +
             "@SQ\tSN:chr2\tLN:101\n" +

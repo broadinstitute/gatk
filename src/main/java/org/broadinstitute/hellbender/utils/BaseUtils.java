@@ -8,7 +8,7 @@ import java.util.Random;
 /**
  * BaseUtils contains some basic utilities for manipulating nucleotides.
  */
-public class BaseUtils {
+public final class BaseUtils {
 
     public enum Base {
         A ('A'),

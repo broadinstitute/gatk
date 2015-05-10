@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SamFormatConverterIntegrationTest extends CommandLineProgramTest {
+public final class SamFormatConverterIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/SamFormatConverterTest");
     private static final File unmappedSam = new File(TEST_DATA_DIR, "unmapped.sam");
     private static final File unmappedBam = new File(TEST_DATA_DIR, "unmapped.bam");

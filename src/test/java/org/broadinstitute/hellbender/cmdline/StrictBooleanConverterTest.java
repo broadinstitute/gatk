@@ -5,7 +5,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 
-public class StrictBooleanConverterTest {
+public final class StrictBooleanConverterTest {
     @Test
     public void recognizedValues(){
         StrictBooleanConverter converter = new StrictBooleanConverter();

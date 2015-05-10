@@ -45,7 +45,7 @@ import java.util.*;
         usageShort = "Gathers multiple VCF files from a scatter operation into a single VCF file",
         programGroup = VariantProgramGroup.class
 )
-public class GatherVcfs extends PicardCommandLineProgram {
+public final class GatherVcfs extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,  doc = "Input VCF file(s).")
 	public List<File> INPUT;

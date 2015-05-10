@@ -14,7 +14,7 @@ import java.util.Random;
  * If there are multiple alignments that all start mapping at the same offest in the read, pick the one with the best
  * MAPQ.  If there are multiple alignments that have the earliest mapping and that have the same MAPQ, pick one randomly.
  */
-public class EarliestFragmentPrimaryAlignmentSelectionStrategy implements PrimaryAlignmentSelectionStrategy {
+public final class EarliestFragmentPrimaryAlignmentSelectionStrategy implements PrimaryAlignmentSelectionStrategy {
     // Give random number generator a seed so results are repeatable.  Used to pick a primary alignment from
     // multiple alignments with equal mapping quality.
     private final Random random = new Random(1);

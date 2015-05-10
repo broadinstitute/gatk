@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public class DataflowUtilsUnitTest extends BaseTest {
+public final class DataflowUtilsUnitTest extends BaseTest {
 
     @Test
     public void testConvertToString(){

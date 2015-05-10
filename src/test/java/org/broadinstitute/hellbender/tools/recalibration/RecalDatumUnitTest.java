@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 
-public class RecalDatumUnitTest extends BaseTest {
+public final class RecalDatumUnitTest extends BaseTest {
 
     // --------------------------------------------------------------------------------
     //

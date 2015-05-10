@@ -43,7 +43,7 @@ import java.util.*;
         usageShort = "Merges multiple VCF or BCF files into one VCF file or BCF",
         programGroup = VariantProgramGroup.class
 )
-public class MergeVcfs extends PicardCommandLineProgram {
+public final class MergeVcfs extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="VCF or BCF input files File format is determined by file extension.", optional = false)
     public List<File> INPUT;

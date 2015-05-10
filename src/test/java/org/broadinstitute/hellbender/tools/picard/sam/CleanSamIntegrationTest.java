@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
 
-public class CleanSamIntegrationTest extends CommandLineProgramTest {
+public final class CleanSamIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/CleanSam");
 
     public String getTestedClassName() {

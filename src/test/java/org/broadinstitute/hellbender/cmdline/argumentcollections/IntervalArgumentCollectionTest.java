@@ -14,7 +14,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class IntervalArgumentCollectionTest extends BaseTest{
+public final class IntervalArgumentCollectionTest extends BaseTest{
 
     @DataProvider(name = "optionalOrNot")
     public Object[][] optionalOrNot(){

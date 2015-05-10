@@ -19,7 +19,7 @@ import java.io.File;
         usageShort = "Sorts a SAM or BAM file",
         programGroup = ReadProgramGroup.class
 )
-public class SortSam extends PicardCommandLineProgram {
+public final class SortSam extends PicardCommandLineProgram {
 
     @Argument(doc = "The BAM or SAM file to sort.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;

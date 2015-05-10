@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
  * or alignment pair will be marked as primary.
  *
  */
-public class MultiHitAlignedReadIterator implements CloseableIterator<HitsForInsert> {
+public final class MultiHitAlignedReadIterator implements CloseableIterator<HitsForInsert> {
     private final PeekableIterator<SAMRecord> peekIterator;
     private final SAMRecordQueryNameComparator queryNameComparator = new SAMRecordQueryNameComparator();
     private final PrimaryAlignmentSelectionStrategy primaryAlignmentSelectionStrategy;

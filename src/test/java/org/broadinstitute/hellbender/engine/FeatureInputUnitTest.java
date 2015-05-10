@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class FeatureInputUnitTest extends BaseTest {
+public final class FeatureInputUnitTest extends BaseTest {
 
     @DataProvider(name = "InvalidFeatureArgumentValuesDataProvider")
     public Object[][] getInvalidFeatureArgumentValues() {

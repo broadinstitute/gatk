@@ -13,7 +13,7 @@ import java.util.List;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class IndexRangeUnitTest extends BaseTest {
+public final class IndexRangeUnitTest extends BaseTest {
 
     @Test(dataProvider = "correctFromToData")
     public void testCorrectConstruction(final int from, final int to) {

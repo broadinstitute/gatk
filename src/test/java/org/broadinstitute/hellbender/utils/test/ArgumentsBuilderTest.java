@@ -5,7 +5,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class ArgumentsBuilderTest{
+public final class ArgumentsBuilderTest{
     @Test
     public void testArgumentsBuilder() {
         ArgumentsBuilder args = new ArgumentsBuilder();

@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class MergeSamFilesIntegrationTest extends CommandLineProgramTest {
+public final class MergeSamFilesIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MergeSamFiles");
 
     public String getTestedClassName() {

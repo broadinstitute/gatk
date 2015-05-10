@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class ContextCovariate implements Covariate {
+public final class ContextCovariate implements Covariate {
     private final static Logger logger = LogManager.getLogger(ContextCovariate.class);
 
     private int mismatchesContextSize;

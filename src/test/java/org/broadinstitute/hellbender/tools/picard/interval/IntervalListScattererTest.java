@@ -20,7 +20,7 @@ import static org.testng.Assert.assertEquals;
 /**
  * Very basic test for scatter functionality in IntervalListTools
  */
-public class IntervalListScattererTest extends CommandLineProgramTest {
+public final class IntervalListScattererTest extends CommandLineProgramTest {
     private static final IntervalList LIST_TO_SCATTER;
 
     static {

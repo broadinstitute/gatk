@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
         usage="Count the usages of every word in a text",
         usageShort="Count Words",
         programGroup = DataFlowProgramGroup.class)
-public class WordCount extends DataflowCommandLineProgram {
+public final class WordCount extends DataflowCommandLineProgram {
     @Argument
     public String input;
 

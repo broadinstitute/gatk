@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class NGSPlatformUnitTest extends BaseTest {
+public final class NGSPlatformUnitTest extends BaseTest {
 
     // example fasta index file, can be deleted if you don't use the reference
     private IndexedFastaSequenceFile seq;

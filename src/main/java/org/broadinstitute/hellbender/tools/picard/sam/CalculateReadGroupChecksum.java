@@ -17,7 +17,7 @@ import java.io.IOException;
         usageShort = "Creates a hash code based on the read groups (RG) in the SAM or BAM header.",
         programGroup = ReadProgramGroup.class
 )
-public class CalculateReadGroupChecksum extends PicardCommandLineProgram {
+public final class CalculateReadGroupChecksum extends PicardCommandLineProgram {
 
     private static final String OUTPUT_FILE_EXTENSION = ".read_group_md5";
 

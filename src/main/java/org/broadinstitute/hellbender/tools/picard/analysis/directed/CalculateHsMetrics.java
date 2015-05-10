@@ -26,7 +26,7 @@ import java.util.*;
         usageShort = "Calculates Hybrid Selection-specific metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
-public class CalculateHsMetrics extends CollectTargetedMetrics<HsMetrics, HsMetricCollector> {
+public final class CalculateHsMetrics extends CollectTargetedMetrics<HsMetrics, HsMetricCollector> {
 
     @Argument(shortName = "BI", doc = "An interval list file that contains the locations of the baits used.")
     public List<File> BAIT_INTERVALS;

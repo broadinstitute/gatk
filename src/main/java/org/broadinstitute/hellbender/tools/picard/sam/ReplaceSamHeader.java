@@ -21,7 +21,7 @@ import java.io.File;
         usageShort = "Replace the SAMFileHeader in a SAM file with the given header",
         programGroup = ReadProgramGroup.class
 )
-public class ReplaceSamHeader extends PicardCommandLineProgram {
+public final class ReplaceSamHeader extends PicardCommandLineProgram {
 
     @Argument(doc = "SAM file from which SAMRecords will be read.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;

@@ -9,7 +9,7 @@ import java.util.List;
  * fixed amount
  *
  */
-public class Median<T extends Comparable<T>> {
+public final class Median<T extends Comparable<T>> {
     final List<T> values;
     final int maxValuesToKeep;
     boolean sorted = false;

@@ -29,7 +29,7 @@ import java.util.*;
         usageShort = "Charts quality score distributions for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
-public class QualityScoreDistribution extends SinglePassSamProgram {
+public final class QualityScoreDistribution extends SinglePassSamProgram {
     private static final String R_SCRIPT = "qualityScoreDistribution.R";
 
     @Argument(shortName="CHART", doc="A file (with .pdf extension) to write the chart to.")

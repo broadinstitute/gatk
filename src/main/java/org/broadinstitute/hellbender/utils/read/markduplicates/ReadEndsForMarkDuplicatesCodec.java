@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import java.io.*;
 
 /** Coded for ReadEnds that just outputs the primitive fields and reads them back. */
-public class ReadEndsForMarkDuplicatesCodec implements SortingCollection.Codec<ReadEndsForMarkDuplicates> {
+public final class ReadEndsForMarkDuplicatesCodec implements SortingCollection.Codec<ReadEndsForMarkDuplicates> {
     private DataInputStream in;
     private DataOutputStream out;
 

@@ -27,7 +27,7 @@ import java.io.File;
         usageShort = "Collects a set of metrics that quantify the quality and yield of sequence data from the provided SAM/BAM",
         programGroup = QCProgramGroup.class
 )
-public class CollectQualityYieldMetrics extends PicardCommandLineProgram {
+public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "A SAM or BAM file to process.")

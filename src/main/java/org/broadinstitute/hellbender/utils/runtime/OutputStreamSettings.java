@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * Settings that define text to capture from a process stream.
  */
-public class OutputStreamSettings {
+public final class OutputStreamSettings {
     private final EnumSet<StreamLocation> streamLocations = EnumSet.noneOf(StreamLocation.class);
     private int bufferSize;
     private File outputFile;

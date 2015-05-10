@@ -26,7 +26,7 @@ import java.util.*;
  * Supposedly NIO has better ways of interrupting a blocked stream but will
  * require a little bit of refactoring.
  */
-public class ProcessController {
+public final class ProcessController {
     private static Logger logger = LogManager.getLogger(ProcessController.class);
 
     private static enum ProcessStream {Stdout, Stderr}

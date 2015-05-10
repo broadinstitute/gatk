@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class AddCommentsToBamIntegrationTest extends CommandLineProgramTest {
+public final class AddCommentsToBamIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = getTestDataDir();
     private static final File BAM_FILE = new File(TEST_DATA_DIR, "add_comments_to_bam.bam");
     private static final File SAM_FILE = new File(TEST_DATA_DIR, "add_comments_to_bam.sam");

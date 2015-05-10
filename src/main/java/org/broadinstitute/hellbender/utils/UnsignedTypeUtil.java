@@ -4,7 +4,7 @@ package org.broadinstitute.hellbender.utils;
  * A utility class for dealing with unsigned types.  This class is primarily used for promoting a value in an unsigned type to
  * the same value in the net larger type of the same form (e.g. Integer to Long)
  */
-public class UnsignedTypeUtil {
+public final class UnsignedTypeUtil {
 
     /** Convert an unsigned byte to a signed int */
     public static int uByteToInt(final byte unsignedByte) {

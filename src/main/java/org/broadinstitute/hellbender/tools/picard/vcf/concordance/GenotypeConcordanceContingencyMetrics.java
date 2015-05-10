@@ -9,7 +9,7 @@ import java.util.*;
 /**
  * Class that holds metrics about the Genotype Concordance contingency tables.
  */
-public class GenotypeConcordanceContingencyMetrics extends MetricBase {
+public final class GenotypeConcordanceContingencyMetrics extends MetricBase {
     /**
      * Empty constructor - needed for unit tests
      */

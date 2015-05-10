@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Basic unit test for GenomeLoc
  */
-public class GenomeLocUnitTest extends BaseTest {
+public final class GenomeLocUnitTest extends BaseTest {
 
     /**
      * Tests that we got a string parameter in correctly

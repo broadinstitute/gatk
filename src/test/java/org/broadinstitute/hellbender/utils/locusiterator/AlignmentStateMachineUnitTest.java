@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class AlignmentStateMachineUnitTest extends LocusIteratorByStateBaseTest {
+public final class AlignmentStateMachineUnitTest extends LocusIteratorByStateBaseTest {
     @DataProvider(name = "AlignmentStateMachineTest")
     public Object[][] makeAlignmentStateMachineTest() {
         return createLIBSTests(

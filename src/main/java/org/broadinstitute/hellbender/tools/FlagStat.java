@@ -18,7 +18,7 @@ import java.text.NumberFormat;
 	usageShort = "A reimplementation of the 'samtools flagstat' subcommand.",
     programGroup = ReadProgramGroup.class
 )
-public class FlagStat extends ReadWalker {
+public final class FlagStat extends ReadWalker {
 
     private FlagStatus sum = new FlagStatus();
 

@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
+public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     private static class ABQSRTest {
         final String bam;
         final String args;

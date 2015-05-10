@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.Test;
 
-public class ReferenceInputArgumentCollectionTest {
+public final class ReferenceInputArgumentCollectionTest {
     private static class WithOptionalReferenceCollection {
         @ArgumentCollection
         ReferenceInputArgumentCollection ric = new OptionalReferenceInputArgumentCollection();

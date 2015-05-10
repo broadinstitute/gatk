@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Keeps track of artifact counts, and extracts metrics once accumulation is finished.
  */
-class ArtifactCounter {
+final class ArtifactCounter {
     private final String sampleAlias;
     private final String library;
 

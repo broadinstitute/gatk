@@ -15,7 +15,7 @@ import java.util.*;
  * Testing framework for general purpose utilities class.
  *
  */
-public class UtilsUnitTest extends BaseTest {
+public final class UtilsUnitTest extends BaseTest {
 
     @Test
     public void testAppend() {

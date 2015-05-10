@@ -48,7 +48,7 @@ import java.io.File;
         usageShort = "Left-aligns indels from reads in a bam file.",
         programGroup = ReadProgramGroup.class
 )
-public class LeftAlignIndels extends ReadWalker {
+public final class LeftAlignIndels extends ReadWalker {
 
     @Argument(doc="Output BAM")
     private File OUTPUT;

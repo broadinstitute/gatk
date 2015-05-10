@@ -45,7 +45,7 @@ import static htsjdk.variant.variantcontext.VariantContext.Type.SNP;
         usageShort = "Calculates the concordance between genotype data for two samples in two different VCFs",
         programGroup = VariantProgramGroup.class
 )
-public class GenotypeConcordance extends PicardCommandLineProgram {
+public final class GenotypeConcordance extends PicardCommandLineProgram {
     @Argument(shortName = "TV", doc="The VCF containing the truth sample")
     public File TRUTH_VCF;
 
@@ -472,7 +472,7 @@ public class GenotypeConcordance extends PicardCommandLineProgram {
 /** like a list, but if you ask for an index of an item, it will first add that item.
  also, same item cannot be added more than once (like a set)
  */
-class OrderedSet<T> extends ArrayList<T> {
+final class OrderedSet<T> extends ArrayList<T> {
 
     public boolean smartAdd(final T o) {
         if (!this.contains(o)) {
@@ -483,7 +483,7 @@ class OrderedSet<T> extends ArrayList<T> {
 }
 
 /** Little class to hold a pair of VariantContexts that are in sync with one another. */
-class VcTuple {
+final class VcTuple {
     public final VariantContext truthVariantContext;
     public final VariantContext callVariantContext;
 
@@ -494,7 +494,7 @@ class VcTuple {
 }
 
 /** Iterator that takes a pair of iterators over VariantContexts and iterates over them in tandem. */
-class PairedVariantSubContextIterator implements Iterator<VcTuple> {
+final class PairedVariantSubContextIterator implements Iterator<VcTuple> {
     private final PeekableIterator<VariantContext> truthIterator;
     private final String truthSample;
     private final PeekableIterator<VariantContext> callIterator;

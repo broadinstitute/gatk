@@ -14,7 +14,7 @@ import java.io.IOException;
 /**
  * @author nhomer
  */
-public class BedToIntervalListTest extends CommandLineProgramTest {
+public final class BedToIntervalListTest extends CommandLineProgramTest {
 
     private final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/interval/BedToIntervalListTest");
 

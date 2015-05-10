@@ -36,7 +36,7 @@ import java.util.*;
         usageShort = "Sorts one or more VCF files",
         programGroup = VariantProgramGroup.class
 )
-public class SortVcf extends PicardCommandLineProgram {
+public final class SortVcf extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF(s) to be sorted. Multiple inputs must have the same sample names (in order)")
     public List<File> INPUT;

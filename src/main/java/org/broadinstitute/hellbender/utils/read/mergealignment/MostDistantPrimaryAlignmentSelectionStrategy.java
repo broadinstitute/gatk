@@ -15,7 +15,7 @@ import java.util.*;
  * The primary alignments are then correlated so that their mate info points to each
  * other, but all non-primary alignments are uncorrelated.
  */
-public class MostDistantPrimaryAlignmentSelectionStrategy implements PrimaryAlignmentSelectionStrategy {
+public final class MostDistantPrimaryAlignmentSelectionStrategy implements PrimaryAlignmentSelectionStrategy {
     // Give random number generator a seed so results are repeatable.  Used to pick a primary alignment from
     // multiple alignments with equal mapping quality.
     private final Random random = new Random(1);

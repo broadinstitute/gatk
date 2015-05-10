@@ -23,7 +23,7 @@ import java.util.Arrays;
         usageShort = "Replaces read groups in a BAM or SAM file with a single new read group",
         programGroup = ReadProgramGroup.class
 )
-public class AddOrReplaceReadGroups extends PicardCommandLineProgram {
+public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam).")
     public File INPUT = null;

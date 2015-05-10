@@ -8,7 +8,7 @@ import htsjdk.samtools.metrics.MetricBase;
  * the CollectJumpingLibraryMetrics program and usually stored in a file with
  * the extension ".jump_metrics".
  */
-public class JumpingLibraryMetrics extends MetricBase {
+public final class JumpingLibraryMetrics extends MetricBase {
 
     /**
      * The number of outward-facing pairs in the SAM file

@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
+public final class ReadGroupBlackListReadFilterUnitTest extends BaseTest {
 
     private static final int CHR_COUNT = 1;
     private static final int CHR_START = 1;

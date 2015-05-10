@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class MedianUnitTest extends BaseTest {
+public final class MedianUnitTest extends BaseTest {
 
     // --------------------------------------------------------------------------------
     //

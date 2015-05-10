@@ -22,7 +22,7 @@ import java.io.File;
         usageShort = "Convert a BAM file to a SAM file, or a SAM to a BAM",
         programGroup = ReadProgramGroup.class
 )
-public class SamFormatConverter extends PicardCommandLineProgram {
+public final class SamFormatConverter extends PicardCommandLineProgram {
     @Argument(doc = "The BAM or SAM file to parse.", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
     @Argument(doc = "The BAM or SAM output file. ", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)

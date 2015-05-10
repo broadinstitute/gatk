@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class ExampleIntervalWalkerIntegrationTest extends CommandLineProgramTest {
+public final class ExampleIntervalWalkerIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/";
 

@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * Generic service for executing RScripts
  */
-public class RScriptExecutor {
+public final class RScriptExecutor {
     private static final String RSCRIPT_BINARY = "Rscript";
     private static final File RSCRIPT_PATH = RuntimeUtils.which(RSCRIPT_BINARY);
     public static final boolean RSCRIPT_EXISTS = (RSCRIPT_PATH != null);

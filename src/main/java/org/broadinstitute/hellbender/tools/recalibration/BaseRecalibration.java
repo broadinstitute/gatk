@@ -18,7 +18,7 @@ import java.util.List;
  * Utility methods to facilitate on-the-fly base quality score recalibration.
  */
 
-public class BaseRecalibration {
+public final class BaseRecalibration {
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
     private final Covariate[] requestedCovariates; // list of all covariates to be used in this calculation

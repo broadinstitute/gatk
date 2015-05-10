@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class CountReadsDataflowIntegrationTest extends CommandLineProgramTest{
+public final class CountReadsDataflowIntegrationTest extends CommandLineProgramTest{
 
     @DataProvider(name="intervals")
     public Object[][] intervals(){

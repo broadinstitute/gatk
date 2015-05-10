@@ -11,8 +11,8 @@ import java.util.*;
  *
  * @author alecw@broadinstitute.org
  */
-public class TabbedTextFileWithHeaderParser implements Iterable<TabbedTextFileWithHeaderParser.Row> {
-    public class Row {
+public final class TabbedTextFileWithHeaderParser implements Iterable<TabbedTextFileWithHeaderParser.Row> {
+    public final class Row {
         private final String[] fields;
         private final String currentLine;
 

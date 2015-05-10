@@ -23,7 +23,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FeatureManagerUnitTest extends BaseTest {
+public final class FeatureManagerUnitTest extends BaseTest {
     private static final String FEATURE_MANAGER_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @DataProvider(name = "DetectCorrectFileFormatTestData")

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis.artifacts;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.util.QualityUtil;
 
-public class SequencingArtifactMetrics {
+public final class SequencingArtifactMetrics {
     public static final String PRE_ADAPTER_SUMMARY_EXT = ".pre_adapter_summary_metrics";
     public static final String PRE_ADAPTER_DETAILS_EXT = ".pre_adapter_detail_metrics";
     public static final String BAIT_BIAS_SUMMARY_EXT = ".bait_bias_summary_metrics";

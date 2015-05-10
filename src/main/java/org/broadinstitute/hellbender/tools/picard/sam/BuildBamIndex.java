@@ -20,7 +20,7 @@ import java.net.URL;
         usageShort = "Generates a BAM index (.bai) file",
         programGroup = ReadProgramGroup.class
 )
-public class BuildBamIndex extends PicardCommandLineProgram {
+public final class BuildBamIndex extends PicardCommandLineProgram {
 
     private static final Log log = Log.getInstance(BuildBamIndex.class);
 

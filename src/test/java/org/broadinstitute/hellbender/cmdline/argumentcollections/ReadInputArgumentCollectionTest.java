@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
-public class ReadInputArgumentCollectionTest {
+public final class ReadInputArgumentCollectionTest {
 
     @Test(expectedExceptions = UserException.CommandLineException.class)
     public void testRequiredIsRequired(){

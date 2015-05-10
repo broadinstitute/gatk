@@ -12,7 +12,7 @@ import java.util.*;
 /**
  * Keeps track of the AlignmentAccumulators for each artifact / context of interest.
  */
-class ContextAccumulator {
+final class ContextAccumulator {
 
     // are the PE reads expected to face the same direction?
     private final boolean expectedTandemReads;

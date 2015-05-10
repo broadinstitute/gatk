@@ -11,7 +11,7 @@ import java.util.HashMap;
  * The Read Group covariate.
  */
 
-public class ReadGroupCovariate implements Covariate {
+public final class ReadGroupCovariate implements Covariate {
 
     private final HashMap<String, Integer> readGroupLookupTable = new HashMap<>();
     private final HashMap<Integer, String> readGroupReverseLookupTable = new HashMap<>();

@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  *
  * @author Doug Voet (dvoet at broadinstitute dot org)
  */
-public class InsertSizeMetrics extends MultiLevelMetrics {
+public final class InsertSizeMetrics extends MultiLevelMetrics {
 
     /** The MEDIAN insert size of all paired end reads where both ends mapped to the same chromosome. */
     public double MEDIAN_INSERT_SIZE;

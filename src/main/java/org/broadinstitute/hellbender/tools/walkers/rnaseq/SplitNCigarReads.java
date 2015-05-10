@@ -38,7 +38,7 @@ import static org.broadinstitute.hellbender.transformers.ReadTransformer.*;
         usageShort = "Split Reads with N in Cigar",
         programGroup = ReadProgramGroup.class
 )
-public class SplitNCigarReads extends CommandLineProgram {
+public final class SplitNCigarReads extends CommandLineProgram {
 
     @Argument(fullName = INPUT_LONG_NAME, shortName= INPUT_SHORT_NAME, doc="The SAM/BAM/CRAM file to read from.")
     public File INPUT;

@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class FeatureSupportIntegrationTest extends CommandLineProgramTest {
+public final class FeatureSupportIntegrationTest extends CommandLineProgramTest {
     private static final String FEATURE_INTEGRATION_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @Override

@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
-public class FeatureContextUnitTest extends BaseTest {
+public final class FeatureContextUnitTest extends BaseTest {
 
     @CommandLineProgramProperties(usage = "", usageShort = "")
     private static class ArtificialFeatureContainingCommandLineProgram extends CommandLineProgram {

@@ -60,7 +60,7 @@ import java.util.List;
         usageShort = "Generates recalibration table (do not run this one from the cmd line)",
         programGroup = ReadProgramGroup.class
 )
-public class BaseRecalibratorUprooted {
+public final class BaseRecalibratorUprooted {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibratorUprooted.class);
 
     final protected SAMFileHeader samHeader;

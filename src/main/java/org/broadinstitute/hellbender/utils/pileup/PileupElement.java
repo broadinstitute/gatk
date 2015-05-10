@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 
-public class PileupElement implements Comparable<PileupElement> {
+public final class PileupElement implements Comparable<PileupElement> {
     private final static LinkedList<CigarElement> EMPTY_LINKED_LIST = new LinkedList<>();
 
     private final static EnumSet<CigarOperator> ON_GENOME_OPERATORS =

@@ -6,7 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class NDNCigarReadTransformerUnitTest {
+public final class NDNCigarReadTransformerUnitTest {
 
     @DataProvider(name = "filteringIteratorTestData")
     public String[][] getFilteringIteratorTestData() {

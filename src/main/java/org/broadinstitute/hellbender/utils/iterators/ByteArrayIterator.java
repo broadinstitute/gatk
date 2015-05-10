@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 /**
  * Trivial adapter class allowing a primitive byte[] array to be accessed using the java.util.Iterator interface
  */
-public class ByteArrayIterator implements Iterator<Byte> {
+public final class ByteArrayIterator implements Iterator<Byte> {
     private byte[] byteArray;
     private int currentPosition;
 

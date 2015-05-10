@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.report;
 /**
  * Column width and left/right alignment.
  */
-public class GATKReportColumnFormat {
+public final class GATKReportColumnFormat {
     public enum Alignment { LEFT, RIGHT }
     private final int width;
     private final Alignment alignment;
