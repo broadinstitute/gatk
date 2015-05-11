@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 
-public class QCProgramGroup implements CommandLineProgramGroup {
+public final class QCProgramGroup implements CommandLineProgramGroup {
     @Override
     public String getName() { return "QC"; }
     @Override

@@ -57,7 +57,7 @@ import static java.lang.Math.pow;
         usageShort = "Estimates library complexity from the sequence of read pairs",
         programGroup = ReadProgramGroup.class
 )
-public class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCommandLineProgram {
+public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "One or more files to combine and " +
             "estimate library complexity from. Reads can be mapped or unmapped.")

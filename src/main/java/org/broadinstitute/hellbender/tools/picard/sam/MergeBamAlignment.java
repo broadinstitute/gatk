@@ -34,7 +34,7 @@ import java.util.List;
         usageShort = "Merges alignment data from a SAM or BAM with data in an unmapped BAM file",
         programGroup = ReadProgramGroup.class
 )
-public class MergeBamAlignment extends PicardCommandLineProgram {
+public final class MergeBamAlignment extends PicardCommandLineProgram {
 
     @Argument(shortName = "UNMAPPED",
             doc = "Original SAM or BAM file of unmapped reads, which must be in queryname order.")

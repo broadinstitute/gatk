@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class TextFormattingUtilsUnitTest extends BaseTest{
+public final class TextFormattingUtilsUnitTest extends BaseTest{
     @Test(expectedExceptions = GATKException.class)
     public void testSplitWhiteSpaceNullLine() {
         TextFormattingUtils.splitWhiteSpace(null);

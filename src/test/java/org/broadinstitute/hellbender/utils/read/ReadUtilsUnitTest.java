@@ -17,7 +17,7 @@ import java.io.FileNotFoundException;
 import java.util.*;
 
 
-public class ReadUtilsUnitTest extends BaseTest {
+public final class ReadUtilsUnitTest extends BaseTest {
     private interface GetAdaptorFunc {
         public int getAdaptor(final SAMRecord record);
     }

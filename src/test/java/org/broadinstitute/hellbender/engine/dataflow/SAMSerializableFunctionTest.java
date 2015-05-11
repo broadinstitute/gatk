@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SAMSerializableFunctionTest extends CommandLineProgramTest{
+public final class SAMSerializableFunctionTest extends CommandLineProgramTest{
 
     @Test
     public void testApply(){

@@ -21,7 +21,7 @@ import java.util.*;
 
 import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.*;
 
-public class GenotypeConcordanceTest extends CommandLineProgramTest {
+public final class GenotypeConcordanceTest extends CommandLineProgramTest {
 
     private static final File OUTPUT_DATA_PATH = IOUtil.createTempDir("GenotypeConcordanceTest", null);
     private static final File TEST_VCF_PATH = new File(getTestDataDir(), "picard/vcf/trio");

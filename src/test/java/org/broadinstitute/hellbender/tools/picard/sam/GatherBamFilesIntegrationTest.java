@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class GatherBamFilesIntegrationTest extends CommandLineProgramTest {
+public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/GatherBamFiles");
     private static final File ORIG_BAM = new File(TEST_DATA_DIR, "orig.bam");
     private static final List<File> SPLIT_BAMS = Arrays.asList(

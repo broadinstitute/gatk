@@ -32,7 +32,7 @@ import java.util.*;
         usageShort = "Writes mean quality by cycle for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
-public class MeanQualityByCycle extends SinglePassSamProgram {
+public final class MeanQualityByCycle extends SinglePassSamProgram {
     private static final String R_SCRIPT = "meanQualityByCycle.R";
 
     @Argument(shortName="CHART", doc="A file (with .pdf extension) to write the chart to.")

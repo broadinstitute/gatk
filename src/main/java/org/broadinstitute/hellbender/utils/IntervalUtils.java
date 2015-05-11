@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * Parse text representations of interval strings that
  * can appear in GATK-based applications.
  */
-public class IntervalUtils {
+public final class IntervalUtils {
 
     /**
      * Lexicographical (contig) order comparator.

@@ -38,7 +38,7 @@ import java.util.*;
         usageShort = "Create BFQ files from a BAM file for use by the Maq aligner.",
         programGroup = ReadProgramGroup.class
 )
-public class BamToBfq extends PicardCommandLineProgram {
+public final class BamToBfq extends PicardCommandLineProgram {
     @Argument(doc="The BAM file to parse.", shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 

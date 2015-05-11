@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
-public class ProcessOutput {
+public final class ProcessOutput {
     private final int exitValue;
     private final StreamOutput stdout;
     private final StreamOutput stderr;

@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.List;
 
-public class FlagStatDataflowUnitTest {
+public final class FlagStatDataflowUnitTest {
 
     @Test(groups = "dataflow")
     public void testFlagStatDataflowTransform(){

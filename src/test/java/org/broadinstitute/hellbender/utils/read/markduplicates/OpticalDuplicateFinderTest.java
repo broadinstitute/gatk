@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
  *
  * @author Nils Homer
  */
-public class OpticalDuplicateFinderTest {
+public final class OpticalDuplicateFinderTest {
 
     /** Tests rapidParseInt for positive and negative numbers, as well as non-digit suffixes */
     @Test

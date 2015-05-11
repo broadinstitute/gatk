@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class SamComparisonTest {
+public final class SamComparisonTest {
     private static final File TEST_FILES_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/picard/sam/CompareSAMs");
 
     private void testHelper(final String f1, final String f2,

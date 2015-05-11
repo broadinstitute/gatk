@@ -14,7 +14,7 @@ import java.util.*;
 /**
  * Tests for VCF filtration
  */
-public class FilterVcfTest extends CommandLineProgramTest {
+public final class FilterVcfTest extends CommandLineProgramTest {
     private final File INPUT = new File(getTestDataDir(), "picard/vcf/testFiltering.vcf");
 
     /** Tests that all records get PASS set as their filter when extreme values are used for filtering. */

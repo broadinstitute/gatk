@@ -20,7 +20,7 @@ import java.util.*;
  *         that element.
  *
  */
-public class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
+public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
     private static Logger logger = LogManager.getLogger(GenomeLocSortedSet.class);
 
     private GenomeLocParser genomeLocParser;

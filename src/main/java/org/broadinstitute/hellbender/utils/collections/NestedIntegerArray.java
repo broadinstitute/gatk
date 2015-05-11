@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class NestedIntegerArray<T> {
+public final class NestedIntegerArray<T> {
 
     private static Logger logger = LogManager.getLogger(NestedIntegerArray.class);
 

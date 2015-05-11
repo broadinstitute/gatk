@@ -8,7 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
  *
  * @author George Grant
  */
-public class GenotypeConcordanceSummaryMetrics extends MetricBase {
+public final class GenotypeConcordanceSummaryMetrics extends MetricBase {
     /**
      * Empty constructor - needed for unit tests
      */

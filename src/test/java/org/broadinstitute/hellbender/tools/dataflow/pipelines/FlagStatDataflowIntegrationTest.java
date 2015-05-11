@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 
-public class FlagStatDataflowIntegrationTest extends CommandLineProgramTest {
+public final class FlagStatDataflowIntegrationTest extends CommandLineProgramTest {
 
 
     @Test( groups = {"bucket", "dataflow"})

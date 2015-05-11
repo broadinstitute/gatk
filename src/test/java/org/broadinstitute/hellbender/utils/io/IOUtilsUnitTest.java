@@ -13,7 +13,7 @@ import java.io.FileOutputStream;
 import java.util.Arrays;
 import java.util.Random;
 
-public class IOUtilsUnitTest extends BaseTest {
+public final class IOUtilsUnitTest extends BaseTest {
 
 
     @Test

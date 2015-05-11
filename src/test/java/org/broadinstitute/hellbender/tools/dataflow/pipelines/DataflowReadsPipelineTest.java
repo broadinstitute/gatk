@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 
-public class DataflowReadsPipelineTest {
+public final class DataflowReadsPipelineTest {
 
     @CommandLineProgramProperties(usage ="runtime configurable pipeline for testing", usageShort = "for testing pipeline functionality")
     private static class RuntimeConfigurablePipeline extends DataflowReadsPipeline {

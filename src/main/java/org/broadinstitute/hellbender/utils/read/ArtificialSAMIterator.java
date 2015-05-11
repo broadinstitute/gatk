@@ -8,7 +8,7 @@ import java.util.Iterator;
 
 
 /** this fake iterator allows us to look at how specific piles of reads are handled */
-public class ArtificialSAMIterator implements GATKSAMIterator {
+public abstract class ArtificialSAMIterator implements GATKSAMIterator {
 
 
     protected int currentChromo = 0;

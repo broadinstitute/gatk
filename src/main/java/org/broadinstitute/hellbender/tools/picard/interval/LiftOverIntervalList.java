@@ -36,7 +36,7 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
         usageShort = "Lifts over an interval list from one reference build to another",
         programGroup = IntervalProgramGroup.class
 )
-public class LiftOverIntervalList extends PicardCommandLineProgram {
+public final class LiftOverIntervalList extends PicardCommandLineProgram {
 
     private static final Log LOG = getInstance(LiftOverIntervalList.class);
 

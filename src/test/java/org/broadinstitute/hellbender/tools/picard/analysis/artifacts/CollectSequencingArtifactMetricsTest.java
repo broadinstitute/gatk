@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class CollectSequencingArtifactMetricsTest extends CommandLineProgramTest {
+public final class CollectSequencingArtifactMetricsTest extends CommandLineProgramTest {
 
     private static final File TEST_DIR = new File(getTestDataDir(), "picard/analysis/artifacts/CollectSequencingArtifactMetrics");
     private static final File REFERENCE = new File(TEST_DIR, "test.fasta");

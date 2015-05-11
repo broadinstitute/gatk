@@ -23,7 +23,7 @@ import org.broadinstitute.hellbender.utils.gene.LocusFunction;
 import java.io.File;
 import java.util.*;
 
-public class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqMetrics, Integer> {
+public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<RnaSeqMetrics, Integer> {
     public enum StrandSpecificity {NONE, FIRST_READ_TRANSCRIPTION_STRAND, SECOND_READ_TRANSCRIPTION_STRAND}
 
     private final int minimumLength;

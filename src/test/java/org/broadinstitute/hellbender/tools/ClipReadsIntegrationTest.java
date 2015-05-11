@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class ClipReadsIntegrationTest extends CommandLineProgramTest {
+public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "clipOptions")
     public void testClipper(String inBam, String option, String optAbrv) throws IOException {

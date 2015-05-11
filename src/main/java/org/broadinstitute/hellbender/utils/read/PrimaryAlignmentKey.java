@@ -6,7 +6,7 @@ import htsjdk.samtools.SAMRecord;
  * It is useful to define a key such that the key will occur at most once among the primary alignments in a given file
  * (assuming the file is valid). The read name + pairing status should be sufficient for this.
  */
-public class PrimaryAlignmentKey implements Comparable<PrimaryAlignmentKey> {
+public final class PrimaryAlignmentKey implements Comparable<PrimaryAlignmentKey> {
 
     private enum PairStatus {UNPAIRED, FIRST, SECOND} // note the order here; it should correspond to that of SAMRecordQueryNameComparator!
 

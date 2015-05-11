@@ -7,7 +7,7 @@ import joptsimple.ValueConverter;
  * converts values case insensitively matching T, True, F, or False to true or false
  * throws {@link joptsimple.ValueConversionException} otherwise
  */
-public class StrictBooleanConverter implements ValueConverter<String> {
+public final class StrictBooleanConverter implements ValueConverter<String> {
     public String convert( String value ) {
         if ( value.equalsIgnoreCase("true") || value.equalsIgnoreCase("t")) {
             return "true";
@@ -17,7 +17,7 @@ public class StrictBooleanConverter implements ValueConverter<String> {
             throw new ValueConversionException(value + " does not match one of T|True|F|False");
         }
     }
-    public Class<? extends String> valueType() {
+    public final Class<? extends String> valueType() {
         return String.class;
     }
 

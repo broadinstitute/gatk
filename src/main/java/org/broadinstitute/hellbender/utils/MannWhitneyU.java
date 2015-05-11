@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 import java.util.TreeSet;
 
-public class MannWhitneyU {
+public final class MannWhitneyU {
 
     private static NormalDistribution STANDARD_NORMAL = new NormalDistribution(0.0,1.0);
     private static NormalDistribution APACHE_NORMAL = new NormalDistribution(0.0,1.0,1e-2);

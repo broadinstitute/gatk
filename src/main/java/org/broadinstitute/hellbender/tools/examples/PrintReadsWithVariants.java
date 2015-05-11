@@ -26,7 +26,7 @@ import java.util.List;
         usageShort = "Print reads with overlapping variants",
         programGroup = VariantProgramGroup.class
 )
-public class PrintReadsWithVariants extends ReadWalker {
+public final class PrintReadsWithVariants extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more VCF/BCF files", optional = true)
     List<FeatureInput<VariantContext>> variants;

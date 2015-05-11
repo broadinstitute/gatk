@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * Container class for GATK report tables
  */
-public class GATKReport {
+public final class GATKReport {
     public static final String GATKREPORT_HEADER_PREFIX = "#:GATKReport.";
     public static final GATKReportVersion LATEST_REPORT_VERSION = GATKReportVersion.V1_1;
     private static final String SEPARATOR = ":";

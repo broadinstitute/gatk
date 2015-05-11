@@ -217,7 +217,7 @@ public final class FeatureInput<T extends Feature> {
      *
      * @return the type of Feature contained in our file
      */
-    public Class<? extends Feature> getFeatureType() {
+    public final Class<? extends Feature> getFeatureType() {
         return featureType;
     }
 

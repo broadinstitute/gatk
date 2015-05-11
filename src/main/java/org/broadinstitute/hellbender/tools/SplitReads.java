@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
         usageShort = "Outputs reads by read group, etc.",
         programGroup = ReadProgramGroup.class
 )
-public class SplitReads extends ReadWalker {
+public final class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";
     public static final String READ_GROUP_SHORT_NAME = "RG";

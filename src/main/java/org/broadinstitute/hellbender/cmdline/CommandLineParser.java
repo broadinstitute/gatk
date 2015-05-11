@@ -43,7 +43,7 @@ import java.util.stream.Stream;
  * construct the usage message.  Details about the possible arguments are automatically appended to this string.
  * If @Usage does not appear, a boilerplate usage message is used.
  */
-public class CommandLineParser {
+public final class CommandLineParser {
     // For formatting argument section of usage message.
     private static final int ARGUMENT_COLUMN_WIDTH = 30;
     private static final int DESCRIPTION_COLUMN_WIDTH = 90;

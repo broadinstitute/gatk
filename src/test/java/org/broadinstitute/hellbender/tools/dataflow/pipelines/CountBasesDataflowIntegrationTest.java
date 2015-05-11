@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class CountBasesDataflowIntegrationTest extends CommandLineProgramTest{
+public final class CountBasesDataflowIntegrationTest extends CommandLineProgramTest{
 
     @Test(groups = "dataflow")
     public void testCountBasesFilteredIntegrationTestLocal() throws IOException {

@@ -30,7 +30,7 @@ import java.util.*;
         usageShort = "Produces RNA alignment metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
-public class CollectRnaSeqMetrics extends SinglePassSamProgram {
+public final class CollectRnaSeqMetrics extends SinglePassSamProgram {
     private static final String R_SCRIPT = "rnaSeqCoverage.R";
     private static final Log LOG = Log.getInstance(CollectRnaSeqMetrics.class);
 

@@ -24,7 +24,7 @@ import java.util.*;
         usageShort = "Reverts SAM or BAM files to a previous state",
         programGroup = ReadProgramGroup.class
 )
-public class RevertSam extends PicardCommandLineProgram {
+public final class RevertSam extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
     public File INPUT;

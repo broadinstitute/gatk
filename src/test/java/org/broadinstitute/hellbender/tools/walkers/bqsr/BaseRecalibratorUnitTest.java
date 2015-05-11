@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class BaseRecalibratorUnitTest {
+public final class BaseRecalibratorUnitTest {
 
     @Test
     public void basicDBQSRFractionalErrorTestEnd() {

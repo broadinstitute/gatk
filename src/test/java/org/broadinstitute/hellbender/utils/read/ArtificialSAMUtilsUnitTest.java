@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
-public class ArtificialSAMUtilsUnitTest extends BaseTest {
+public final class ArtificialSAMUtilsUnitTest extends BaseTest {
 
 
     @Test

@@ -18,7 +18,7 @@ import java.util.*;
 /**
  * Extract simple VariantContext events from a single haplotype
  */
-public class EventMap extends TreeMap<Integer, VariantContext> {
+public final class EventMap extends TreeMap<Integer, VariantContext> {
     private static final long serialVersionUID = 1L;
 
     private final static Logger logger = LogManager.getLogger(EventMap.class);

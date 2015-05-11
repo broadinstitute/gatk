@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * An LRU cache implemented as an extension to LinkedHashMap
  */
-public class LRUCache<K,V> extends LinkedHashMap<K,V> {
+public final class LRUCache<K,V> extends LinkedHashMap<K,V> {
 
     private static final long serialVersionUID = 1L;
     private int capacity; // Maximum number of items in the cache.

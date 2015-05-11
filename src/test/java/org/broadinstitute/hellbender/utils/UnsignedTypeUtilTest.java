@@ -4,7 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class UnsignedTypeUtilTest {
+public final class UnsignedTypeUtilTest {
 
     @DataProvider(name="uByteData")
     public Object[][] uByteData() {

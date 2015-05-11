@@ -15,7 +15,7 @@ import java.text.NumberFormat;
  *
  * @author Doug Voet (dvoet at broadinstitute dot org)
  */
-public class CollectAlignmentSummaryMetricsTest extends CommandLineProgramTest {
+public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectAlignmentSummaryMetrics");
 
     public String getTestedClassName() {

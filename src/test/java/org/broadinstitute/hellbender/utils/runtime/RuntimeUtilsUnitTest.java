@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class RuntimeUtilsUnitTest extends BaseTest {
+public final class RuntimeUtilsUnitTest extends BaseTest {
     @Test
     public void testWhichExists() {
         Assert.assertNotNull(RuntimeUtils.which("ls"), "Unable to locate ls");

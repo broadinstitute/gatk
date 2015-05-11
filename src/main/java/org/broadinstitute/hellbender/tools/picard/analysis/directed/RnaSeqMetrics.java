@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * Metrics about the alignment of RNA-seq reads within a SAM file to genes, produced by the CollectRnaSeqMetrics
  * program and usually stored in a file with the extension ".rna_metrics".
  */
-public class RnaSeqMetrics extends MultiLevelMetrics {
+public final class RnaSeqMetrics extends MultiLevelMetrics {
     /** The total number of PF bases including non-aligned reads. */
     public long PF_BASES;
 

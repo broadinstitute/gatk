@@ -9,7 +9,7 @@ import java.util.List;
  * This collection is for arguments that require special treatment by the arguments parser itself.
  * It should not grow beyond a very short list.
  */
-public class SpecialArgumentsCollection implements ArgumentCollectionDefinition {
+public final class SpecialArgumentsCollection implements ArgumentCollectionDefinition {
     public static final String HELP_FULLNAME = "help";
     public static final String VERSION_FULLNAME = "version";
     public static final String ARGUMENTS_FILE_FULLNAME = "arguments_file";

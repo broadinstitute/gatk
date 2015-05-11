@@ -20,7 +20,7 @@ import java.util.TreeSet;
  * possible duplicate location, preferring to perform duplicate marking as read ends come in, rather than wait for all "comparable"
  * read ends to arrive.  This reduces the memory footprint of this data structure.
  */
-public class MarkQueue {
+public final class MarkQueue {
 
     /**
      * Comparator to order the mark queue nonDuplicateReadEndsSet.  The nonDuplicateReadEndsSet of all the read ends that are compared to be the same should

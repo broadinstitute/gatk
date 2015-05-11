@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * This stores records that are comparable for detecting optical duplicates.
  */
-public class PhysicalLocationForMateCigarSet {
+public final class PhysicalLocationForMateCigarSet {
     /**
      * We want to return a set of ReadEnds but want to compare based on physical location, hence we store two sets.
      */

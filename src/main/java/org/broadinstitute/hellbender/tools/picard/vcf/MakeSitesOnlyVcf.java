@@ -36,7 +36,7 @@ import java.util.*;
         usageShort = "Creates a VCF bereft of genotype information from an input VCF or BCF",
         programGroup = VariantProgramGroup.class
 )
-public class MakeSitesOnlyVcf extends PicardCommandLineProgram {
+public final class MakeSitesOnlyVcf extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF or BCF")
     public File INPUT;

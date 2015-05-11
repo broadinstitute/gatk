@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 
 import java.util.List;
 
-public class LIBSTest {
+public final class LIBSTest {
     public static final int locus = 44367788;
     final String cigarString;
     final int readLength;

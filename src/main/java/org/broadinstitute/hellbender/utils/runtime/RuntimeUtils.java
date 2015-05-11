@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 
-public class RuntimeUtils {
+public final class RuntimeUtils {
     public static final String[] PATHS;
 
     static {

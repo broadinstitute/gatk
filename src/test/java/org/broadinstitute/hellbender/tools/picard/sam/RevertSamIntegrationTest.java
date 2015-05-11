@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class RevertSamIntegrationTest extends CommandLineProgramTest {
+public final class RevertSamIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = getTestDataDir();
     public static final File basicSamToRevert = new File(TEST_DATA_DIR, "revert_sam_basic.sam");
     public static final File negativeTestSamToRevert = new File(TEST_DATA_DIR, "revert_sam_negative.sam");

@@ -15,7 +15,7 @@ import java.util.*;
 
 import static org.testng.Assert.*;
 
-public class GenomeLocSortedSetUnitTest extends BaseTest {
+public final class GenomeLocSortedSetUnitTest extends BaseTest {
 
     private GenomeLocSortedSet mSortedSet = null;
     private SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(NUMBER_OF_CHROMOSOMES, STARTING_CHROMOSOME, CHROMOSOME_SIZE);

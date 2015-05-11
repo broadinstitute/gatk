@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * testing of the new (non-legacy) version of LocusIteratorByState
  */
-public class LocusIteratorByStateBaseTest extends BaseTest {
+public abstract class LocusIteratorByStateBaseTest extends BaseTest {
     protected static SAMFileHeader header;
     protected GenomeLocParser genomeLocParser;
 

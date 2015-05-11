@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
-public class TextFileParsersTest {
+public final class TextFileParsersTest {
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/utils/text/parsers");
     private static final File testFile1 = new File(TEST_DIR, "whitespace_text_file.txt");
     private static final File testFile2 = new File(TEST_DIR, "all_ones_text_file.txt");

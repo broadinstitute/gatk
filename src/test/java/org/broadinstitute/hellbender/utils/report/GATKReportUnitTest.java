@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 
-public class GATKReportUnitTest extends BaseTest {
+public final class GATKReportUnitTest extends BaseTest {
     @Test
     public void testParse() throws Exception {
         String reportPath = publicTestDir + "exampleGATKReportv2.tbl";

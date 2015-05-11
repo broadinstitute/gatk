@@ -5,7 +5,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
  *
  * @author Nils Homer
  */
-public class ReadEndsForMarkDuplicates extends ReadEnds {
+public final class ReadEndsForMarkDuplicates extends ReadEnds {
     /*
     What do we need to store you ask?  Well, we need to store:
        - byte: orientation

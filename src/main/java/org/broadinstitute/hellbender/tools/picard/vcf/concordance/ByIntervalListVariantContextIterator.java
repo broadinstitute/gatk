@@ -16,7 +16,7 @@ import java.util.*;
  * @author Tim Fennell
  * @author George Grant
  */
-public class ByIntervalListVariantContextIterator implements Iterator<VariantContext> {
+public final class ByIntervalListVariantContextIterator implements Iterator<VariantContext> {
     private final VCFFileReader reader;
     private final Iterator<Interval> intervals;
     private CloseableIterator<VariantContext> currentIterator;

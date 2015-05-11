@@ -15,7 +15,7 @@ import java.util.*;
 /**
  * Collects InserSizeMetrics on the specified accumulationLevels using
  */
-public class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
+public final class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
     // When generating the Histogram, discard any data categories (out of FR, TANDEM, RF) that have fewer than this
     // percentage of overall reads. (Range: 0 to 1)
     private final double minimumPct;
@@ -69,7 +69,7 @@ public class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMe
     }
 
     /** A Collector for individual InsertSizeMetrics for a given SAMPLE or SAMPLE/LIBRARY or SAMPLE/LIBRARY/READ_GROUP (depending on aggregation levels) */
-    public class PerUnitInsertSizeMetricsCollector implements PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
+    public final class PerUnitInsertSizeMetricsCollector implements PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
         final EnumMap<SamPairUtil.PairOrientation, Histogram<Integer>> Histograms = new EnumMap<>(SamPairUtil.PairOrientation.class);
         final String sample;
         final String library;
@@ -181,7 +181,7 @@ public class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMe
 
 // Arguments that need to be calculated once per SAMRecord that are then passed to each PerUnitMetricCollector
 // for the given record
-class InsertSizeCollectorArgs {
+final class InsertSizeCollectorArgs {
     private final int insertSize;
     private final SamPairUtil.PairOrientation po;
 

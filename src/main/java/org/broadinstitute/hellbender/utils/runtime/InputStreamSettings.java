@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * Settings that define text to write to the process stdin.
  */
-public class InputStreamSettings {
+public final class InputStreamSettings {
     private final EnumSet<StreamLocation> streamLocations = EnumSet.noneOf(StreamLocation.class);
     private byte[] inputBuffer;
     private File inputFile;

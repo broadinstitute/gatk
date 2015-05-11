@@ -12,7 +12,7 @@ import java.util.EnumMap;
 /**
  * Stream output captured from a stream.
  */
-public class CapturedStreamOutput extends StreamOutput {
+public final class CapturedStreamOutput extends StreamOutput {
     private final InputStream processStream;
     private final EnumMap<StreamLocation, OutputStream> outputStreams = new EnumMap<>(StreamLocation.class);
 

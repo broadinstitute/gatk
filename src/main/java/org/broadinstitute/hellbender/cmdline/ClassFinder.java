@@ -19,7 +19,7 @@ import java.util.zip.ZipFile;
  *
  * @author Tim Fennell
  */
-public class ClassFinder {
+public final class ClassFinder {
     private final Set<Class<?>> classes = new HashSet<>();
     private final ClassLoader loader;
     private Class<?> parentType;

@@ -14,7 +14,7 @@ import java.util.List;
  * to test out classes that use specific itervals.  The reads returned will
  * all lie in order in the specified interval.
  */
-public class ArtificialSAMQueryIterator extends ArtificialSAMIterator {
+public final class ArtificialSAMQueryIterator extends ArtificialSAMIterator {
 
     // get the next position
     protected int finalPos = 0;

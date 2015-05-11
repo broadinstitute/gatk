@@ -12,7 +12,7 @@ import java.util.*;
  * Loads gene annotations from a refFlat file into an OverlapDetector<Gene>. Discards annotations that are not
  * internally consistent, e.g. transcripts on different chromosomes or different strands.
  */
-public class RefFlatReader {
+public final class RefFlatReader {
     private static final Log LOG = Log.getInstance(RefFlatReader.class);
     // These are in the order that columns appear in refFlat format.
     public enum RefFlatColumns{GENE_NAME, TRANSCRIPT_NAME, CHROMOSOME, STRAND, TX_START, TX_END, CDS_START, CDS_END,

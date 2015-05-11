@@ -46,7 +46,7 @@ public final class IntegrationTestSpec {
         return expectedException != null;
     }
 
-    public Class<?> getExpectedException() {
+    public final Class<?> getExpectedException() {
         if (!expectsException())
             throw new GATKException("Tried to get exception for walker test that doesn't expect one");
         return expectedException;

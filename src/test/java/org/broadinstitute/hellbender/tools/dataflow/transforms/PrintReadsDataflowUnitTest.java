@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PrintReadsDataflowUnitTest {
+public final class PrintReadsDataflowUnitTest {
 
     @DataProvider(name = "sams")
     public Object[][] sams(){

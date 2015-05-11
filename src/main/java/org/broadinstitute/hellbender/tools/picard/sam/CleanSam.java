@@ -16,7 +16,7 @@ import java.io.File;
         usageShort = CleanSam.USAGE,
         programGroup = ReadProgramGroup.class
 )
-public class CleanSam extends PicardCommandLineProgram {
+public final class CleanSam extends PicardCommandLineProgram {
 
     static final String USAGE = "Cleans the provided SAM/BAM, soft-clipping beyond-end-of-reference alignments and setting MAPQ to 0 for unmapped reads";
 

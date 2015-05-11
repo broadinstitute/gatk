@@ -21,7 +21,7 @@ import java.util.*;
         usageShort = CompareMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CompareMetrics extends PicardCommandLineProgram {
+public final class CompareMetrics extends PicardCommandLineProgram {
 
     static final String USAGE = "Compare two metrics files";
 

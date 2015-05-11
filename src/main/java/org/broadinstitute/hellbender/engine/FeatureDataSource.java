@@ -499,7 +499,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @return the class of the codec being used to decode records from our file
      */
     @SuppressWarnings("rawtypes")
-    public Class<? extends FeatureCodec> getCodecClass() {
+    public final Class<? extends FeatureCodec> getCodecClass() {
         return codec.getClass();
     }
 
@@ -508,7 +508,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *
      * @return the type of Feature record stored in this data source
      */
-    public Class<T> getFeatureType() {
+    public final Class<T> getFeatureType() {
         return codec.getFeatureType();
     }
 

@@ -31,7 +31,7 @@ import java.util.Map;
  *
  * @author alecw@broadinstitute.org
  */
-public class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForMarkDuplicatesMap {
+public final class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForMarkDuplicatesMap {
     private final CoordinateSortedPairInfoMap<String, ReadEndsForMarkDuplicates> pairInfoMap;
 
     public DiskBasedReadEndsForMarkDuplicatesMap(int maxOpenFiles) {

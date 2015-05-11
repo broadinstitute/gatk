@@ -41,7 +41,7 @@ import static java.lang.Math.log10;
         usageShort = CollectOxoGMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
-public class CollectOxoGMetrics extends PicardCommandLineProgram {
+public final class CollectOxoGMetrics extends PicardCommandLineProgram {
     static final String USAGE = "Collects metrics quantifying the CpCG -> CpCA error rate from the provided SAM/BAM";
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
