@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCo
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorUprooted;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.dev.utils.ArtificialTestFeature;
 
 import java.io.File;
 import java.util.List;
@@ -75,9 +74,8 @@ public class CalibrationTablesBuilder {
       final SimpleInterval readInterval = sr.getReadUnmappedFlag() ? null :
           new SimpleInterval(sr.getReferenceName(), sr.getAlignmentStart(), sr.getAlignmentEnd());
       // TODO: this could probably be sped up by taking advantage of a sorted order.
-      List<Feature> knownSitesOverlappingReadInterval =
+      List<SimpleInterval> knownSitesOverlappingReadInterval =
               skipIntervals.stream().filter(x -> x.overlaps(readInterval))
-                      .map(x -> new ArtificialTestFeature(x.getContig(), x.getStart(), x.getEnd()))
                       .collect(Collectors.toList());
       br.apply(sr, new ReferenceContext(reference, readInterval), knownSitesOverlappingReadInterval);
     }

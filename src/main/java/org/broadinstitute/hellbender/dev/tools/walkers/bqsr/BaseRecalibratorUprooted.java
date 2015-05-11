@@ -10,6 +10,7 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.PRI
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -250,7 +251,7 @@ public class BaseRecalibratorUprooted {
      * whether or not the base matches the reference at this particular location.
      * The "features" list doesn't need to be complete but it must cover the read
      */
-    public void apply( SAMRecord originalRead, final ReferenceContext ref, List<? extends Feature> features ) {
+    public void apply( SAMRecord originalRead, final ReferenceContext ref, List<? extends Locatable> knownLocations ) {
         ReadTransformer transform = makeReadTransform();
         final SAMRecord read = transform.apply(originalRead);
 
@@ -273,7 +274,7 @@ public class BaseRecalibratorUprooted {
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
             final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
-            final boolean[] skip = calculateSkipArray(read, features); // skip known sites of variation as well as low quality and non-regular bases
+            final boolean[] skip = calculateSkipArray(read, knownLocations); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
             final double[] deletionErrors = calculateFractionalErrorArray(isDeletion, baqArray);
@@ -302,10 +303,10 @@ public class BaseRecalibratorUprooted {
         return n;
     }
 
-    private boolean[] calculateSkipArray( final SAMRecord read, final List<? extends Feature> features ) {
+    private boolean[] calculateSkipArray( final SAMRecord read, final List<? extends Locatable> skipLocations ) {
         final byte[] bases = read.getReadBases();
         final boolean[] skip = new boolean[bases.length];
-        final boolean[] knownSites = calculateKnownSites(read, features);
+        final boolean[] knownSites = calculateKnownSites(read, skipLocations);
         for( int iii = 0; iii < bases.length; iii++ ) {
             skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSites[iii] || badSolidOffset(read, iii);
         }
@@ -316,11 +317,11 @@ public class BaseRecalibratorUprooted {
         return ReadUtils.isSOLiDRead(read) && RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
-    protected boolean[] calculateKnownSites( final SAMRecord read, final List<? extends Feature> features) {
+    protected boolean[] calculateKnownSites( final SAMRecord read, final List<? extends Locatable> knownLocations) {
         final int readLength = read.getReadBases().length;
         final boolean[] knownSites = new boolean[readLength];
         Arrays.fill(knownSites, false);
-        for( final Feature feat : features ) {
+        for( final Locatable feat : knownLocations ) {
             int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true); // BUGBUG: should I use LEFT_TAIL here?
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;
