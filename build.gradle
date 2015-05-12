@@ -135,7 +135,7 @@ test {
     minHeapSize = "1G"
     maxHeapSize = "2G"
     
-    maxParallelForks=4
+    maxParallelForks=2
   
     String CI = "$System.env.CI"
     if (CI == "true") {
