@@ -68,6 +68,9 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
     @Argument(shortName = "LEVEL", doc = "The level(s) at which to accumulate metrics.  ")
     public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = CollectionUtil.makeSet(MetricAccumulationLevel.ALL_READS);
 
+    @Argument(doc = "Should an output plot be created")
+    public boolean PRODUCE_PLOT = false;
+
     public static final String DETAIL_FILE_EXTENSION = "rrbs_detail_metrics";
     public static final String SUMMARY_FILE_EXTENSION = "rrbs_summary_metrics";
     public static final String PDF_FILE_EXTENSION = "rrbs_qc.pdf";
@@ -118,10 +121,12 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
         }
         summaryFile.write(SUMMARY_OUT);
         detailsFile.write(DETAILS_OUT);
-        final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new Resource(R_SCRIPT, CollectRrbsMetrics.class));
-        executor.addArgs(DETAILS_OUT.getAbsolutePath(), SUMMARY_OUT.getAbsolutePath(), PLOTS_OUT.getAbsolutePath());
-        executor.exec();
+        if(PRODUCE_PLOT) {
+            final RScriptExecutor executor = new RScriptExecutor();
+            executor.addScript(new Resource(R_SCRIPT, CollectRrbsMetrics.class));
+            executor.addArgs(DETAILS_OUT.getAbsolutePath(), SUMMARY_OUT.getAbsolutePath(), PLOTS_OUT.getAbsolutePath());
+            executor.exec();
+        }
 
         CloserUtil.close(samReader);
         return null;

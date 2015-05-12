@@ -44,6 +44,9 @@ public final class MeanQualityByCycle extends SinglePassSamProgram {
     @Argument(doc="If set to true calculate mean quality over PF reads only.")
     public boolean PF_READS_ONLY = false;
 
+    @Argument(doc = "Should an output plot be created")
+    public boolean PRODUCE_PLOT = false;
+
     private final HistogramGenerator q  = new HistogramGenerator(false);
     private final HistogramGenerator oq = new HistogramGenerator(true);
 
@@ -159,7 +162,7 @@ public final class MeanQualityByCycle extends SinglePassSamProgram {
         if (q.isEmpty() && oq.isEmpty()) {
             log.warn("No valid bases found in input file. No plot will be produced.");
         }
-        else {
+        else if (PRODUCE_PLOT){
             // Now run R to generate a chart
             final RScriptExecutor executor = new RScriptExecutor();
             executor.addScript(new Resource(R_SCRIPT, MeanQualityByCycle.class));
