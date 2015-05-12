@@ -10,7 +10,7 @@ cache:
   directories:
   - ~/.gradle
 before_install:
-- mkdir -p site-library
+- apt-get install r-base
 - wget -N https://downloads.gradle.org/distributions/gradle-2.2.1-bin.zip
 - unzip gradle-2.2.1-bin.zip
 - export PATH=`pwd`/gradle-2.2.1/bin:$PATH
