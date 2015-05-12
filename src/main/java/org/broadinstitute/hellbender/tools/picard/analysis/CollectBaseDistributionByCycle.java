@@ -34,6 +34,9 @@ public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {
     @Argument(doc = "If set to true calculate the base distribution over PF reads only.")
     public boolean PF_READS_ONLY = false;
 
+    @Argument(doc = "Should an output plot be created")
+    public boolean PRODUCE_PLOT = false;
+
     private HistogramGenerator hist;
     private String plotSubtitle = "";
     private final Log log = Log.getInstance(CollectBaseDistributionByCycle.class);
@@ -67,9 +70,10 @@ public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {
         final MetricsFile<BaseDistributionByCycleMetrics, ?> metrics = getMetricsFile();
         hist.addToMetricsFile(metrics);
         metrics.write(OUTPUT);
+
         if (hist.isEmpty()) {
             log.warn("No valid bases found in input file. No plot will be produced.");
-        } else {
+        } else if(PRODUCE_PLOT){
             final RScriptExecutor executor = new RScriptExecutor();
             executor.addScript(new Resource(R_SCRIPT, CollectBaseDistributionByCycle.class));
             executor.addArgs(OUTPUT.getAbsolutePath(), CHART_OUTPUT.getAbsolutePath(), INPUT.getName(), plotSubtitle);
