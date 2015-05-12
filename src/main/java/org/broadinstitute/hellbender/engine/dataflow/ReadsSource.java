@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine.dataflow;
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
@@ -15,7 +14,6 @@ import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
@@ -33,23 +31,26 @@ public final class ReadsSource {
     private final String bam;
     private final boolean cloudStorageUrl;
     private GCSOptions options;
+    private Pipeline pipeline;
     private GenomicsFactory.OfflineAuth auth;
 
     /**
      * @param bam A file path or a google bucket identifier to a bam file to read
-     * @param clientSecret a path to a local client secret file to use to authenticate with gcloud, ignored if bam is a
-     *                     a local file
+     * @param p the pipeline object for the job. This is needed to read a bam from a bucket.
+     *          The options inside of the pipeline MUST BE GCSOptions (to get the secret file).
      */
-    public ReadsSource(String bam, File clientSecret){
+    public ReadsSource(String bam, Pipeline p){
         this.bam = Utils.nonNull(bam);
+        this.pipeline = p;
 
         cloudStorageUrl = BucketUtils.isCloudStorageUrl(bam);
         if(cloudStorageUrl) {
-            if (clientSecret == null || !clientSecret.exists()) {
-                throw new UserException("You must specify a valid client secret file if using bams from a google bucket");
+            // The options used to create the pipeline must be GCSOptions to get the secret file.
+            try {
+                options = p.getOptions().as(GCSOptions.class);
+            } catch (ClassCastException e) {
+                throw new GATKException("The pipeline options was not GCSOptions.", e);
             }
-            //HACK this is gross but it seemed like the easiest way to deal with the auth stuff
-            options = PipelineOptionsFactory.fromArgs(new String[]{"--genomicsSecretsFile=" + clientSecret.getAbsolutePath()}).as(GCSOptions.class);
             GenomicsOptions.Methods.validateOptions(options);
             auth = getAuth(options);
         }
@@ -87,11 +88,10 @@ public final class ReadsSource {
 
     /**
      * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
-     * @param pipeline a {@link Pipeline} to base the PCollection creation on
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
-    public PCollection<Read> getReadPCollection(Pipeline pipeline, List<SimpleInterval> intervals) {
+    public PCollection<Read> getReadPCollection(List<SimpleInterval> intervals) {
         PCollection<Read> preads;
         if(cloudStorageUrl){
             Iterable<Contig> contigs = intervals.stream()
