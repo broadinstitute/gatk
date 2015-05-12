@@ -1,15 +1,24 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.Arrays;
+import java.util.Random;
+
+import static org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate.getStrandedBytes;
+import static org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate.getStrandedOffset;
 
 public final class ContextCovariateUnitTest {
     ContextCovariate covariate;
@@ -29,38 +38,81 @@ public final class ContextCovariateUnitTest {
 
     @Test
     public void testSimpleContexts() {
-        SAMRecord read = ArtificialSAMUtils.createRandomRead(1000);
-        SAMRecord clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
-        ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), 1);
-        covariate.recordValues(read, readCovariates);
+        final Random rnd = Utils.getRandomGenerator();
 
-        verifyCovariateArray(readCovariates.getMismatchesKeySet(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate);
-        verifyCovariateArray(readCovariates.getInsertionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate);
-        verifyCovariateArray(readCovariates.getDeletionsKeySet(),  RAC.INDELS_CONTEXT_SIZE,  clippedRead, covariate);
-    }
+        for(int i = 0; i < 10; i++) {
+            final SAMRecord read = ArtificialSAMUtils.createRandomRead(1000);
+            read.setReadNegativeStrandFlag(rnd.nextBoolean());
+            final SAMRecord clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
+            final ReadCovariates readCovariates = new ReadCovariates(read.getReadLength(), 1);
+            covariate.recordValues(read, readCovariates);
 
-    public static void verifyCovariateArray(int[][] values, int contextSize, SAMRecord read, Covariate contextCovariate) {
-        for (int i = 0; i < values.length; i++)
-            Assert.assertEquals(contextCovariate.formatKey(values[i][0]), expectedContext(read, i, contextSize));
-
-    }
-
-    public static String expectedContext (SAMRecord read, int offset, int contextSize) {
-        final String bases = stringFrom(read.getReadBases());
-        String expectedContext = null;
-        if (offset - contextSize + 1 >= 0) {
-            String context = bases.substring(offset - contextSize + 1, offset + 1);
-            if (!context.contains("N"))
-                expectedContext = context;
+            verifyCovariateArray(readCovariates.getMismatchesKeySet(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+            verifyCovariateArray(readCovariates.getInsertionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
+            verifyCovariateArray(readCovariates.getDeletionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
         }
-        return expectedContext;
     }
 
-    private static String stringFrom(byte[] array) {
-        String s = "";
-        for (byte value : array)
-            s += (char) value;
-        return s;
+    public static void verifyCovariateArray(int[][] values, int contextSize, SAMRecord read, Covariate contextCovariate, final byte lowQualTail) {
+        for (int i = 0; i < values.length; i++) {
+            Assert.assertEquals(contextCovariate.formatKey(values[i][0]), expectedContext(read, i, contextSize, lowQualTail), "offset " + i);
+        }
+    }
+
+    @DataProvider(name="strandedBytes")
+    public Object[][] strandedBytes() {
+        return new Object[][]{
+                {"AAAAA", new byte[]{10, 11, 12, 11, 10}, "5M", false, 10, "NAAAN"},
+                {"AAAAA", new byte[]{10, 11, 12, 11, 10}, "5M", false, 11, "NNANN"},
+                {"AAAAA", new byte[]{10, 11, 12, 11, 10}, "5M", false, 12, ""},
+                {"TCGAT", new byte[]{10, 11, 12, 11, 10}, "5M", false, 10, "NCGAN"},
+                {"TCGAT", new byte[]{10, 11, 12, 11, 10}, "5M", true,  10, "NTCGN"},
+        };
+    }
+    @Test(dataProvider = "strandedBytes")
+    public void testStrandedBytes(final String baseStr, final byte[] quals, final String cigar, final boolean neg, final int lowQTail, final String expecteBaseStr){
+        final byte[] bases = baseStr.getBytes();
+
+        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(bases, quals, cigar);
+        read.setReadNegativeStrandFlag(neg);
+        final byte[] strandedBaseArray = getStrandedBytes(read, (byte)lowQTail);   //note the cast is due to TestNG limitation - can't use byte as type for lowQTail
+        final byte[] expected = expecteBaseStr.getBytes();
+        Assert.assertEquals(new String(strandedBaseArray), new String(expected));
+    }
+
+    @DataProvider(name="strandedOffset")
+    public Object[][] strandedOffset() {
+        return new Object[][]{
+                {false, 10, 20, 10},   //for positive strand offset is the same
+                {false, 10, 100, 10},
+                {true, 10, 20, 20-10-1},
+                {true, 10, 100, 100-10-1},
+        };
+    }
+    @Test(dataProvider = "strandedOffset")
+    public void strandedOffset(final boolean isNegativeStrand, final int offset, final int clippedReadLength, final int expectedStrandedOffset){
+        final int strandedOffset = getStrandedOffset(isNegativeStrand, offset, clippedReadLength);
+        Assert.assertEquals(strandedOffset, expectedStrandedOffset);
+    }
+
+
+    public static String expectedContext (final SAMRecord originalRead, final int offset, final int contextSize, final byte lowQualTail) {
+        final byte[] strandedBaseArray = getStrandedBytes(originalRead, lowQualTail);
+        final int strandedOffset = getStrandedOffset(originalRead.getReadNegativeStrandFlag(), offset, strandedBaseArray.length);
+
+        final int offsetOfContextStart = strandedOffset - contextSize + 1;
+        if (offsetOfContextStart < 0) {
+            return null;
+        } else {
+            final int offsetOneAfterContextEnd = offsetOfContextStart + contextSize;
+            final String strandedBases = new String(strandedBaseArray);
+            final String context = strandedBases.substring(offsetOfContextStart, offsetOneAfterContextEnd);
+            if (context.contains("N")) {
+                return null;
+            } else {
+                return context;
+            }
+        }
     }
 
 }
