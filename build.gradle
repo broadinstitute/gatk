@@ -1,7 +1,6 @@
 buildscript {
     repositories {
         mavenCentral()
-
      }
 
     dependencies {
@@ -135,6 +134,8 @@ test {
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
     maxHeapSize = "2G"
+    
+    maxParallelForks=4
   
     String CI = "$System.env.CI"
     if (CI == "true") {
