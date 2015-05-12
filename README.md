@@ -69,15 +69,17 @@ General guidelines for Hellbender developers
 
 R Dependency
 ----------------
-Certain Hellbender tools rely on R for generating plots. **R v3.1.3** must be installed for all unit tests to work (other versions of R may work, but there is no guarantee).  
+Certain Hellbender tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convinience rather than a primary output.  
 
 R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
-* for [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README))
+* for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
 * for OSX we recommend installation through [homebrew](http://brew.sh/)
+```
+brew tap homebrew/science
+brew install R
+```
 
-* For more information on R see http://www.ihater.org/
-
-Gradle installApp will attempt to install R packages, this may potentially fail if your R library is not writable.  If this happens, the package installation script is the package installation script is `scripts/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
+The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
 ```
 sudo Rscript scripts/install_R_packages.R
 ```

@@ -1,7 +1,6 @@
 buildscript {
     repositories {
         mavenCentral()
-
      }
 
     dependencies {
@@ -31,11 +30,6 @@ task downloadGsaLibFile(type: Download) {
     overwrite false
 }
 
-task installRPackages(type: Exec){
-  executable 'Rscript'
-  args 'scripts/install_R_packages.R'
-  ignoreExitValue true
-}
 
 repositories {
     mavenCentral()
@@ -65,7 +59,7 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all']
 }
 
-installApp.dependsOn downloadGsaLibFile, installRPackages
+installApp.dependsOn downloadGsaLibFile
 build.dependsOn installApp
 check.dependsOn installApp
 
@@ -132,24 +126,18 @@ jar {
 }
 
 test {
-    dependsOn installRPackages
     // enable TestNG support (default is JUnit)
     useTestNG{
         excludeGroups 'cloud', 'bucket'
     }
 
-    beforeSuite {
-        boolean ROk = installRPackages.execResult.exitValue == 0
-        if (!ROk) {
-            logger.warn( "R package installation failed" )
-        }
-    }
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
     maxHeapSize = "2G"
+    
+    maxParallelForks=2
   
     String CI = "$System.env.CI"
-    String runRTests = "$System.env.RUNR"
     if (CI == "true") {
         int count = 0
         // listen to events in the test execution lifecycle

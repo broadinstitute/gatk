@@ -53,6 +53,9 @@ public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
     @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics.  ")
     private Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = CollectionUtil.makeSet(MetricAccumulationLevel.ALL_READS);
 
+    @Argument(doc = "Should an output plot be created")
+    public boolean PRODUCE_PLOT = false;
+
     // Calculates InsertSizeMetrics for all METRIC_ACCUMULATION_LEVELs provided
     private InsertSizeMetricsCollector multiCollector;
 
@@ -107,11 +110,13 @@ public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
         }
         else  {
             file.write(OUTPUT);
-            final RScriptExecutor executor = new RScriptExecutor();
-            executor.addScript(new Resource(R_SCRIPT, CollectInsertSizeMetrics.class));
-            executor.addArgs(OUTPUT.getAbsolutePath(), HISTOGRAM_FILE.getAbsolutePath(), INPUT.getName());
-            if (HISTOGRAM_WIDTH != null) executor.addArgs(String.valueOf(HISTOGRAM_WIDTH));
-            executor.exec();
+            if(PRODUCE_PLOT){
+                final RScriptExecutor executor = new RScriptExecutor();
+                executor.addScript(new Resource(R_SCRIPT, CollectInsertSizeMetrics.class));
+                executor.addArgs(OUTPUT.getAbsolutePath(), HISTOGRAM_FILE.getAbsolutePath(), INPUT.getName());
+                if (HISTOGRAM_WIDTH != null) executor.addArgs(String.valueOf(HISTOGRAM_WIDTH));
+                executor.exec();
+            }
         }
     }
 }

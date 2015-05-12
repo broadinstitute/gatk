@@ -57,6 +57,9 @@ public final class CollectGcBiasMetrics extends SinglePassSamProgram {
     @Argument(shortName = "BS", doc = "Whether the SAM or BAM file consists of bisulfite sequenced reads.  ")
     public boolean IS_BISULFITE_SEQUENCED = false;
 
+    @Argument(doc = "Should an output plot be created")
+    public boolean PRODUCE_PLOT = false;
+
     // Used to keep track of the total clusters as this is kinda important for bias
     private int totalClusters = 0;
     private int totalAlignedReads = 0;
@@ -161,11 +164,12 @@ public final class CollectGcBiasMetrics extends SinglePassSamProgram {
                 ", Aligned reads: " + fmt.format(this.totalAlignedReads);
         String title = INPUT.getName().replace(".duplicates_marked", "").replace(".aligned.bam", "");
         title += "." + saveHeader;
-
-        final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new Resource(R_SCRIPT, CollectGcBiasMetrics.class));
-        executor.addArgs(OUTPUT.getAbsolutePath(), CHART_OUTPUT.getAbsolutePath(), title, subtitle, String.valueOf(WINDOW_SIZE));
-        executor.exec();
+        if (PRODUCE_PLOT){
+            final RScriptExecutor executor = new RScriptExecutor();
+            executor.addScript(new Resource(R_SCRIPT, CollectGcBiasMetrics.class));
+            executor.addArgs(OUTPUT.getAbsolutePath(), CHART_OUTPUT.getAbsolutePath(), title, subtitle, String.valueOf(WINDOW_SIZE));
+            executor.exec();
+        }
     }
 
     /** Sums the values in an int[]. */
