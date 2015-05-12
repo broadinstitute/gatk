@@ -65,30 +65,6 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
     }
 
     /**
-     * Test the size of the generated pdf.
-     * <p/>
-     * Unfortunately we cannot test the content as it changes slightly
-     *    every time the tool is run.
-     *
-     * @throws java.io.IOException should never happen. It would be an
-     *    indicator of a problem with the testing environment.
-     */
-    @Test(groups = {"R"})
-    public void testPdfGeneration()
-            throws IOException {
-        final File pdfFile = createTempFile("ACTest", ".pdf");
-        pdfFile.delete();
-
-        final List<String> files = Collections.emptyList();
-        final IntegrationTestSpec spec = new IntegrationTestSpec(
-                buildCommandLine(null,pdfFile.toString(),true,true,true), files);
-        spec.executeTest("testPdfGeneration", this);
-        assertTrue(pdfFile.exists(),"the pdf file was not created");
-        assertTrue(pdfFile.length() > 260000,"the pdf file size does"
-                + " not reach the minimum of 260Kb");
-    }
-
-    /**
      * Test the effect of changing some recalibration parameters.
      * @param afterFileName name of the alternative after recalibration file.
      * @param description describes what has been changed.
@@ -155,16 +131,13 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
     public Iterator<Object[]> alternativeInOutAbsenceCombinations(Method m) {
         List<Object[]> result = new LinkedList<>();
         if (m.getName().endsWith("Exception")) {
-           result.add(new Object[] { false, false, true, true, true });
-           result.add(new Object[] { true, true, false, false ,false});
+           result.add(new Object[] { true, false, false, false ,false});
         }
         else {
-           result.add(new Object[] { true, true, true, false, false });
-           result.add(new Object[] { true, true, false, true, false });
-           result.add(new Object[] { true, true, false, false, true });
-           result.add(new Object[] { true, false,false, true, false });
-           result.add(new Object[] { false, true, true, false, false });
-
+           result.add(new Object[] { true, false, true, false, false });
+           result.add(new Object[] { true, false, false, true, false });
+           result.add(new Object[] { true, false, false, false, true });
+           result.add(new Object[] { true, false, false, true, false });
         }
         return result.iterator();
     }
