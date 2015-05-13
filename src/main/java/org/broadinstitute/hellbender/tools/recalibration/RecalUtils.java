@@ -847,7 +847,7 @@ public class RecalUtils {
      *
      * It populates an array of covariate values where result[i][j] is the covariate
      * value for the ith position in the read and the jth covariate in
-     * reqeustedCovariates list.
+     * requestedCovariates list.
      *
      * @param read                The read for which to compute covariate values.
      * @param requestedCovariates The list of requested covariates.
