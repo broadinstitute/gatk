@@ -14,6 +14,8 @@ import java.util.logging.Logger;
 
 @CommandLineProgramProperties(usage = "Count bases in dataflow with filters and transformers", usageShort = "count bases", programGroup = DataFlowProgramGroup.class)
 public final class CountBasesDataflow extends DataflowReadsPipeline {
+    private static final long serialVersionUID = 1l;
+
     @Override
     protected ImmutableList<ReadFilter> getReadFilters(){
         return ImmutableList.of(ReadFilterLibrary.WELLFORMED);

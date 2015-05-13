@@ -10,8 +10,10 @@ import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
  */
 public final class CountReadsDataflowTransform extends PTransformSAM<Long> {
 
+    private static final long serialVersionUID = 1l;
+
     @Override
-    public PCollection<Long> apply(PCollection<Read> input) {
+    public PCollection<Long> apply(final PCollection<Read> input) {
         return input.apply(Count.globally());
     }
 }

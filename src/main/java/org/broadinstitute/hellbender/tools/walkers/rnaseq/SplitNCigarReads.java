@@ -95,7 +95,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
         final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
         final SAMFileWriter outputWriter = initialize(in);
 
-        final ReadTransformer rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : identity();
+        final ReadTransformer rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
 
         StreamSupport.stream(in.spliterator(), false)
                 .map(rnaReadTransform)

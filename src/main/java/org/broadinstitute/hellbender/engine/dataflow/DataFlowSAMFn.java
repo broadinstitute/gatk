@@ -7,6 +7,7 @@ import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +18,7 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.samHeaderFromSt
  * This is a temporary workaround for not having a common Read interface.
  */
 public abstract class DataFlowSAMFn<Output> extends DoFn<Read, Output> {
+    private static final long serialVersionUID = 1l;
     /**
      * field to cache the reconstructed SAMFileHeader
      * SAMFileHeader is not Serializable, but this class must be, so this is marked transient and reconstructed as needed
@@ -30,7 +32,7 @@ public abstract class DataFlowSAMFn<Output> extends DoFn<Read, Output> {
      * Construct a new DataFlowSAMFn and give it an appropriate {@link SAMFileHeader}
      * @param headerString A header String from a SAM or BAM file.  This can be read from a SAM or BAM file using {@link SAMFileHeader#getTextHeader()}
      */
-    public DataFlowSAMFn(String headerString){
+    public DataFlowSAMFn(final String headerString){
         this.headerString = headerString;
     }
 
@@ -48,7 +50,7 @@ public abstract class DataFlowSAMFn<Output> extends DoFn<Read, Output> {
     @Override
     public final void processElement(ProcessContext c) throws Exception {
         toEmit.clear();
-        SAMRecord sam = GenomicsConverter.makeSAMRecord(c.element(), getHeader());
+        final SAMRecord sam = GenomicsConverter.makeSAMRecord(c.element(), getHeader());
         apply(sam);
         toEmit.forEach(c::output);
         toEmit.clear();

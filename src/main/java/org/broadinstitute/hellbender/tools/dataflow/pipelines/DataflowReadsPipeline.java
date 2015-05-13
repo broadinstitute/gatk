@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
  */
 public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
+    private static final long serialVersionUID = 1l;
+
     @Argument(doc="a prefix for the dataflow output files", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String outputFile;
 
@@ -55,7 +57,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
      * Subclasses must override this.
      * @return the Transform that should be performed in this pipeline.
      */
-    abstract protected PTransformSAM<?> getTool();
+    protected abstract PTransformSAM<?> getTool();
 
     /**
      * @return {@link ReadFilter}s to apply before running the tool
@@ -71,23 +73,23 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
         return ImmutableList.of();
     }
 
-    private static SerializableFunction<Read,Boolean> wrapFilter(ReadFilter filter, String headerString){
+    private static SerializableFunction<Read,Boolean> wrapFilter(final ReadFilter filter, final String headerString){
         return new SAMSerializableFunction<>(headerString, filter);
     }
 
     @Override
     final protected void setupPipeline(Pipeline pipeline) {
-        ReadsSource readsSource = new ReadsSource(bam, pipeline);
-        String headerString = readsSource.getHeaderString();
-        SAMSequenceDictionary sequenceDictionary = ReadUtils.samHeaderFromString(headerString).getSequenceDictionary();
-        List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
+        final ReadsSource readsSource = new ReadsSource(bam, pipeline);
+        final String headerString = readsSource.getHeaderString();
+        final SAMSequenceDictionary sequenceDictionary = ReadUtils.samHeaderFromString(headerString).getSequenceDictionary();
+        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
-        PCollection<Read> preads = readsSource.getReadPCollection(intervals);
+        final PCollection<Read> preads = readsSource.getReadPCollection(intervals);
 
-        PCollection<?> presult = applyTransformsToPipeline(headerString, preads);
+        final PCollection<?> presult = applyTransformsToPipeline(headerString, preads);
 
-        PCollection<String> pstrings = presult.apply(DataflowUtils.convertToString());
+        final PCollection<String> pstrings = presult.apply(DataflowUtils.convertToString());
         pstrings.apply(TextIO.Write.to(outputFile));
     }
 
@@ -99,26 +101,29 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     }
 
     @VisibleForTesting
-    protected PCollection<?> applyTransformsToPipeline(String headerString, PCollection<Read> preads) {
-        for (ReadFilter filter : getReadFilters()) {
+    protected PCollection<?> applyTransformsToPipeline(final String headerString, final PCollection<Read> preadsIn) {
+        PCollection<Read> preads = preadsIn;
+        for (final ReadFilter filter : getReadFilters()) {
             preads = preads.apply(Filter.by(wrapFilter(filter, headerString)));
         }
 
-        for (ReadTransformer transformer : getReadTransformers()){
+        for (final ReadTransformer transformer : getReadTransformers()){
             preads = preads.apply(wrapTransformer(transformer, headerString));
         }
 
-        PTransformSAM<?> f = getTool();
-        f.setHeaderString(headerString);
+        final PTransformSAM<?> tool = getTool();
+        tool.setHeaderString(headerString);
 
-        return preads.apply(f);
+        return preads.apply(tool);
     }
 
-    private static PTransform<? super PCollection<Read>,PCollection<Read>> wrapTransformer(ReadTransformer transformer, String headerString){
+    private static PTransform<? super PCollection<Read>,PCollection<Read>> wrapTransformer(final ReadTransformer transformer, final String headerString){
         return ParDo.of(new DataFlowSAMFn<Read>(headerString){
 
+                    private static final long serialVersionUID = 1l;
+
                     @Override
-                    protected void apply(SAMRecord read) {
+                    protected void apply(final SAMRecord read) {
                         output(ReadConverter.makeRead(transformer.apply(read)));
                     }
                 }

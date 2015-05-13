@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.tools.dataflow.transforms.FlagStatusDataflo
 
 @CommandLineProgramProperties(usage="runs FlagStat on dataflow", usageShort = "FlagStat", programGroup = DataFlowProgramGroup.class)
 public final class FlagStatDataflow extends DataflowReadsPipeline {
+    private static final long serialVersionUID = 1l;
+
     @Override
     protected ImmutableList<ReadFilter> getReadFilters(){
         return ImmutableList.of(ReadFilterLibrary.WELLFORMED);

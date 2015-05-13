@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.tools.dataflow.transforms.PrintReadsDataflo
         programGroup = DataFlowProgramGroup.class
 )
 public final class PrintReadsDataflow extends DataflowReadsPipeline{
+        private static final long serialVersionUID = 1l;
+
         @Override
         protected PTransformSAM<String> getTool() {
                 return new PrintReadsDataflowTransform();
