@@ -10,6 +10,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 import java.util.Random;
 
 public final class ReadCovariatesUnitTest {
@@ -23,26 +24,17 @@ public final class ReadCovariatesUnitTest {
     public void testCovariateGeneration() {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
-        ReadGroupCovariate rgCov = new ReadGroupCovariate();
-        QualityScoreCovariate qsCov = new QualityScoreCovariate();
-        ContextCovariate coCov = new ContextCovariate();
-        CycleCovariate cyCov = new CycleCovariate();
+        final String[] readGroups = {"RG1", "RG2", "RGbla"};
+        ReadGroupCovariate rgCov = new ReadGroupCovariate(RAC, Arrays.asList(readGroups));
+        QualityScoreCovariate qsCov = new QualityScoreCovariate(RAC);
+        ContextCovariate coCov = new ContextCovariate(RAC);
+        CycleCovariate cyCov = new CycleCovariate(RAC);
 
-        rgCov.initialize(RAC);
-        qsCov.initialize(RAC);
-        coCov.initialize(RAC);
-        cyCov.initialize(RAC);
-
-        Covariate[] requestedCovariates = new Covariate[4];
-        requestedCovariates[0] = rgCov;
-        requestedCovariates[1] = qsCov;
-        requestedCovariates[2] = coCov;
-        requestedCovariates[3] = cyCov;
+        StandardCovariateList covariates = new StandardCovariateList(RAC, Arrays.asList(readGroups));
 
         final int NUM_READS = 100;
         final Random rnd = Utils.getRandomGenerator();
 
-        final String[] readGroups = {"RG1", "RG2", "RGbla"};
         for (int idx = 0; idx < NUM_READS; idx++) {
             for (final String rgs : readGroups) {
                 final int length = 10 + rnd.nextInt(100); // random read length, at least 10 bp long
@@ -54,7 +46,7 @@ public final class ReadCovariatesUnitTest {
                 final byte[] mQuals = read.getBaseQualities();
                 final byte[] iQuals = ReadUtils.getBaseInsertionQualities(read);
                 final byte[] dQuals = ReadUtils.getBaseDeletionQualities(read);
-                ReadCovariates rc = RecalUtils.computeCovariates(read, requestedCovariates);
+                ReadCovariates rc = RecalUtils.computeCovariates(read, covariates);
 
                 // check that the length is correct
                 Assert.assertEquals(rc.getMismatchesKeySet().length, length);

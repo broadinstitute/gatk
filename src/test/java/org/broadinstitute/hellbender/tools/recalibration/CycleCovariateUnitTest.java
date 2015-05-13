@@ -22,8 +22,7 @@ public final class CycleCovariateUnitTest {
     @BeforeClass
     public void init() {
         RAC = new RecalibrationArgumentCollection();
-        covariate = new CycleCovariate();
-        covariate.initialize(RAC);
+        covariate = new CycleCovariate(RAC);
     }
 
     @BeforeMethod

@@ -2,14 +2,13 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
-import org.broadinstitute.hellbender.tools.recalibration.BaseRecalibration;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -38,11 +37,11 @@ import java.util.Optional;
  *     <tbody>
  *       <tr><td>Original</td><td>-before</td><td>BEFORE</td><td style="color: #ff34b3">Maroon1</td>
  *         <td>First pass recalibration
- *             tables obtained from applying {@link BaseRecalibration}
+ *             tables obtained from applying {@link org.broadinstitute.hellbender.transformers.BQSRReadTransformer}
  *             on the original alignment.</td></tr>
  *       <tr><td>Recalibrated</td><td>-after</td><td>AFTER</td><td style="color: #0000ff">Blue</td>
  *         <td>Second pass recalibration tables
- *             results from the application of {@link BaseRecalibration}
+ *             results from the application of {@link org.broadinstitute.hellbender.transformers.BQSRReadTransformer}
  *             on the alignment recalibrated using the first pass tables</td></tr>
  *       <tr><td>Input</td><td>-BQSR</td><td>BQSR</td><td style="color: #000000">Black</td>
  *           <td>Any recalibration table without a specific role</td></tr>

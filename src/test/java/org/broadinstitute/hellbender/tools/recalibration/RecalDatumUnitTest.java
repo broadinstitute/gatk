@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
 
+import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -237,7 +238,7 @@ public final class RecalDatumUnitTest extends BaseTest {
             RecalDatum COV = new RecalDatum( (long)15, (long) 1, (byte)45.0); // no data here so Bayesian prior has a huge effect on the empirical quality
 
             // initial epsilon condition shouldn't matter when there are a lot of observations
-            Assert.assertEquals(BaseRecalibration.hierarchicalBayesianQualityEstimate(epsilon, RG, QS, Collections.singletonList(COV)), Q, 1E-4);
+            Assert.assertEquals(BQSRReadTransformer.hierarchicalBayesianQualityEstimate(epsilon, RG, QS, Collections.singletonList(COV)), Q, 1E-4);
         }
 
         for( double epsilon = 15.0; epsilon <= 60.0; epsilon += 2.0 ) {
@@ -248,7 +249,7 @@ public final class RecalDatumUnitTest extends BaseTest {
             RecalDatum COV = new RecalDatum( (long)15, (long) 1, (byte)45.0); // no data here so Bayesian prior has a huge effect on the empirical quality
 
             // initial epsilon condition dominates when there is no data
-            Assert.assertEquals(BaseRecalibration.hierarchicalBayesianQualityEstimate(epsilon, RG, QS, Collections.singletonList(COV)), epsilon, 1E-4);
+            Assert.assertEquals(BQSRReadTransformer.hierarchicalBayesianQualityEstimate(epsilon, RG, QS, Collections.singletonList(COV)), epsilon, 1E-4);
         }
 
     }

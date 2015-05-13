@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
+/**
+ * Merges BQSR Recaliration tables.
+ */
 public final class BQSRGatherer extends Gatherer {
 
     private static final Logger logger = LogManager.getLogger(BQSRGatherer.class);
@@ -35,7 +38,7 @@ public final class BQSRGatherer extends Gatherer {
      */
     public static GATKReport gatherReport(final List<File> inputs) {
         final SortedSet<String> allReadGroups = new TreeSet<>();
-        final LinkedHashMap<File, Set<String>> inputReadGroups = new LinkedHashMap<>();
+        final Map<File, Set<String>> inputReadGroups = new LinkedHashMap<>();
 
         // Get the read groups from each input report
         for (final File input : inputs) {
@@ -60,15 +63,19 @@ public final class BQSRGatherer extends Gatherer {
         RecalibrationReport generalReport = null;
         for (File input : inputs) {
             final RecalibrationReport inputReport = new RecalibrationReport(input, allReadGroups);
-            if( inputReport.isEmpty() ) { continue; }
+            if( inputReport.isEmpty() ) {
+                continue;
+            }
 
-            if (generalReport == null)
+            if (generalReport == null) {
                 generalReport = inputReport;
-            else
+            } else {
                 generalReport.combine(inputReport);
+            }
         }
-        if (generalReport == null)
+        if (generalReport == null) {
             throw new GATKException(EMPTY_INPUT_LIST);
+        }
 
         generalReport.calculateQuantizedQualities();
 

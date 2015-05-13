@@ -18,20 +18,18 @@ import org.broadinstitute.hellbender.utils.SequencerFlowClass;
 
 public final class CycleCovariate implements Covariate {
 
-    private int MAXIMUM_CYCLE_VALUE;
+    private final int MAXIMUM_CYCLE_VALUE;
     public static final int CUSHION_FOR_INDELS = 4;
-    private String default_platform = null;
+    private final String default_platform;   //can be null
 
-    // Initialize any member variables using the command-line arguments passed to the walkers
-    @Override
-    public void initialize(final RecalibrationArgumentCollection RAC) {
+    public CycleCovariate(final RecalibrationArgumentCollection RAC){
         this.MAXIMUM_CYCLE_VALUE = RAC.MAXIMUM_CYCLE_VALUE;
 
-        if (RAC.DEFAULT_PLATFORM != null && !NGSPlatform.isKnown(RAC.DEFAULT_PLATFORM))
+        if (RAC.DEFAULT_PLATFORM != null && !NGSPlatform.isKnown(RAC.DEFAULT_PLATFORM)) {
             throw new UserException.CommandLineException("The requested default platform (" + RAC.DEFAULT_PLATFORM + ") is not a recognized platform.");
+        }
 
-        if (RAC.DEFAULT_PLATFORM != null)
-            default_platform = RAC.DEFAULT_PLATFORM;
+        default_platform = RAC.DEFAULT_PLATFORM;
     }
 
     // Used to pick out the covariate's value from attributes of the read
@@ -61,13 +59,6 @@ public final class CycleCovariate implements Covariate {
                     + ") associated with read group " + read.getReadGroup()
                     + " is not a recognized platform. Allowable options are " + NGSPlatform.knownPlatformsString());
         }
-    }
-
-
-    // Used to get the covariate's value from input csv file during on-the-fly recalibration
-    @Override
-    public final Object getValue(final String str) {
-        return Integer.parseInt(str);
     }
 
     @Override

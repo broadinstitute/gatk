@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadRecalibrationInfo;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -116,7 +117,7 @@ public final class BaseRecalibratorUprooted {
     /**
      * list to hold the all the covariate objects that were requested (required + standard + experimental)
      */
-    private Covariate[] requestedCovariates;
+    private StandardCovariateList covariates;
 
     private RecalibrationEngine recalibrationEngine;
 
@@ -145,13 +146,7 @@ public final class BaseRecalibratorUprooted {
         if (RAC.FORCE_PLATFORM != null)
             RAC.DEFAULT_PLATFORM = RAC.FORCE_PLATFORM;
 
-        requestedCovariates = getCovariatesArray();
-
-        logger.info("The covariates being used here: ");
-        for (Covariate cov : requestedCovariates) { // list all the covariates being used
-            logger.info("\t" + cov.getClass().getSimpleName());
-            cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
-        }
+        covariates = new StandardCovariateList(RAC, getHeaderForReads());
 
         // no output file. We want to be able to output to a PCollection.
 
@@ -159,14 +154,6 @@ public final class BaseRecalibratorUprooted {
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
 
         referenceDataSource = new ReferenceDataSource(refFile);
-    }
-
-    private Covariate[] getCovariatesArray() {
-        Pair<ArrayList<Covariate>, ArrayList<Covariate>> covariates = RecalUtils.initializeCovariates(RAC); // initialize the required and optional covariates
-        List<Covariate> covariatesList = new ArrayList<>(covariates.getLeft().size() + covariates.getRight().size());
-        covariatesList.addAll(covariates.getLeft());
-        covariatesList.addAll(covariates.getRight());
-        return covariatesList.toArray(new Covariate[covariatesList.size()]);
     }
 
     public SAMFileHeader getHeaderForReads() {
@@ -179,7 +166,7 @@ public final class BaseRecalibratorUprooted {
     private void initializeRecalibrationEngine() {
         int numReadGroups = getHeaderForReads().getReadGroups().size();
 
-        recalibrationEngine = new RecalibrationEngine(requestedCovariates, numReadGroups);
+        recalibrationEngine = new RecalibrationEngine(covariates, numReadGroups);
     }
 
     private boolean isLowQualityBase( final SAMRecord read, final int offset ) {
@@ -272,7 +259,7 @@ public final class BaseRecalibratorUprooted {
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
-            final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
+            final ReadCovariates covariates = RecalUtils.computeCovariates(read, this.covariates);
             final boolean[] skip = calculateSkipArray(read, features); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
@@ -527,6 +514,6 @@ public final class BaseRecalibratorUprooted {
     }
 
     private void generateReport() {
-        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), requestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
+        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), covariates, RAC.SORT_BY_ALL_COLUMNS);
     }
 }

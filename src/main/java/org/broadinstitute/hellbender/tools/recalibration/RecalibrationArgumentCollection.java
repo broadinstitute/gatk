@@ -4,6 +4,7 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.Gather;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -41,26 +42,8 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public File RECAL_TABLE_FILE = null;
     public PrintStream RECAL_TABLE;
 
-    /**
-     * Note that the --list argument requires a fully resolved and correct command-line to work.
-     */
-    @Argument(fullName = "list", shortName = "ls", doc = "List the available covariates and exit", optional = true)
-    public boolean LIST_ONLY = false;
-
-    /**
-     * Note that the ReadGroup and QualityScore covariates are required and do not need to be specified.
-     * Also, unless --no_standard_covs is specified, the Cycle and Context covariates are standard and are included by default.
-     * Use the --list argument to see the available covariates.
-     */
-    @Argument(fullName = "covariate", shortName = "cov", doc = "One or more covariates to be used in the recalibration. Can be specified multiple times", optional = true)
-    public List<String> COVARIATES = new ArrayList<>();
-
-    /*
-     * The Cycle and Context covariates are standard and are included by default unless this argument is provided.
-     * Note that the ReadGroup and QualityScore covariates are required and cannot be excluded.
-     */
-    @Argument(fullName = "no_standard_covs", shortName = "noStandard", doc = "Do not use the standard set of covariates, but rather just the ones listed using the -cov argument", optional = true)
-    public boolean DO_NOT_USE_STANDARD_COVARIATES = false;
+    //We always use the same covariates. The field is retained for comparibility with GATK3 reports.
+    public static final boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**
      * This calculation is critically dependent on being able to skip over known polymorphic sites. Please be sure that you know what you are doing if you use this option.
@@ -158,22 +141,6 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     @Argument(fullName = "force_platform", shortName = "fP", optional = true, doc = "If provided, the platform of EVERY read will be forced to be the provided String. Valid options are illumina, 454, and solid.")
     public String FORCE_PLATFORM = null;
 
-    @HiddenOption
-    @Argument(fullName = "force_readgroup", shortName = "fRG", optional = true, doc = "If provided, the read group of EVERY read will be forced to be the provided String.")
-    public String FORCE_READGROUP = null;
-
-    /**
-     * The repeat covariate will use a context of this size to calculate it's covariate value for base insertions and deletions
-     */
-    @HiddenOption
-    @Argument(fullName = "max_str_unit_length", shortName = "maxstr", doc = "Max size of the k-mer context to be used for repeat covariates", optional = true)
-    public int MAX_STR_UNIT_LENGTH = 8;
-
-    @HiddenOption
-    @Argument(fullName = "max_repeat_length", shortName = "maxrep", doc = "Max number of repetitions to be used for repeat covariates", optional = true)
-    public int MAX_REPEAT_LENGTH = 20;
-
-
     public File existingRecalibrationReport = null;
 
     public GATKReportTable generateReportTable(final String covariateNames) {
@@ -242,8 +209,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
      */
     public Map<String,? extends CharSequence> compareReportArguments(final RecalibrationArgumentCollection other,final String thisRole, final String otherRole) {
         final Map<String,String> result = new LinkedHashMap<>(15);
-        compareRequestedCovariates(result, other, thisRole, otherRole);
-        compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, other.DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
+        compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
         compareSimpleReportArgument(result,"run_without_dbsnp",RUN_WITHOUT_DBSNP,other.RUN_WITHOUT_DBSNP,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, other.SOLID_RECAL_MODE,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_nocall_strategy", SOLID_NOCALL_STRATEGY, other.SOLID_NOCALL_STRATEGY,thisRole,otherRole);
@@ -260,50 +226,6 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
         return result;
     }
 
-
-    /**
-     * Compares the covariate report lists.
-     *
-     * @param diffs map where to annotate the difference.
-     * @param other the argument collection to compare against.
-     * @param thisRole the name for this argument collection that makes sense to the user.
-     * @param otherRole  the name for the other argument collection that makes sense to the end user.
-     *
-     * @return <code>true</code> if a difference was found.
-     */
-    private boolean compareRequestedCovariates(final Map<String,String> diffs,
-            final RecalibrationArgumentCollection other, final String thisRole, final String otherRole) {
-
-        final Set<String> beforeNames = new HashSet<>(this.COVARIATES.size());
-        final Set<String> afterNames = new HashSet<>(other.COVARIATES.size());
-        beforeNames.addAll(this.COVARIATES);
-        afterNames.addAll(other.COVARIATES);
-        final Set<String> intersect = new HashSet<>(Math.min(beforeNames.size(), afterNames.size()));
-        intersect.addAll(beforeNames);
-        intersect.retainAll(afterNames);
-
-        String diffMessage = null;
-        if (intersect.size() == 0) { // In practice this is not possible due to required covariates but...
-            diffMessage = String.format("There are no common covariates between '%s' and '%s'"
-                            + " recalibrator reports. Covariates in '%s': {%s}. Covariates in '%s': {%s}.", thisRole, otherRole,
-                    thisRole, String.join(", ", this.COVARIATES),
-                    otherRole, String.join(",", other.COVARIATES));
-        } else if (intersect.size() != beforeNames.size() || intersect.size() != afterNames.size()) {
-            beforeNames.removeAll(intersect);
-            afterNames.removeAll(intersect);
-            diffMessage = String.format("There are differences in the set of covariates requested in the"
-                            + " '%s' and '%s' recalibrator reports. "
-                            + " Exclusive to '%s': {%s}. Exclusive to '%s': {%s}.", thisRole, otherRole,
-                    thisRole, String.join(", ", beforeNames),
-                    otherRole, String.join(", ", afterNames));
-        }
-        if (diffMessage != null) {
-            diffs.put("covariate",diffMessage);
-            return true;
-        } else {
-            return false;
-        }
-    }
 
     /**
      * Annotates a map with any difference encountered in a simple value report argument that differs between this an

@@ -1,46 +1,73 @@
 package org.broadinstitute.hellbender.tools.recalibration.covariates;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 
-import java.util.HashMap;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The Read Group covariate.
  */
-
 public final class ReadGroupCovariate implements Covariate {
 
-    private final HashMap<String, Integer> readGroupLookupTable = new HashMap<>();
-    private final HashMap<Integer, String> readGroupReverseLookupTable = new HashMap<>();
-    private int nextId = 0;
-    private String forceReadGroup;
+    //Note: these maps are initialized and made umodifiable at construction so the whole covariate is an immutable object once it's constructed.
 
-    // Initialize any member variables using the command-line arguments passed to the walkers
-    @Override
-    public void initialize(final RecalibrationArgumentCollection RAC) {
-        forceReadGroup = RAC.FORCE_READGROUP;
+    /*
+     * Stores the mapping from read group id to a number.
+     */
+    private final Map<String, Integer> readGroupLookupTable;
+
+    /*
+     * Stores the revese mapping, from number to read group id.
+     */
+    private final Map<Integer, String> readGroupReverseLookupTable;
+
+    public ReadGroupCovariate(final RecalibrationArgumentCollection RAC, final List<String> readGroups){
+        final Map<String, Integer> rgLookupTable = new HashMap<>();
+        final Map<Integer, String> rgReverseLookupTable = new HashMap<>();
+
+        readGroups.forEach(
+                readGroupId -> {
+                    if (!rgLookupTable.containsKey(readGroupId)) {
+                        final int nextId = rgLookupTable.size();
+                        rgLookupTable.put(readGroupId, nextId);
+                        rgReverseLookupTable.put(nextId, readGroupId);
+                    }
+                }
+        );
+        readGroupLookupTable = Collections.unmodifiableMap(rgLookupTable);
+        readGroupReverseLookupTable = Collections.unmodifiableMap(rgReverseLookupTable);
     }
 
     @Override
     public void recordValues(final SAMRecord read, final ReadCovariates values) {
-        final String readGroupId = readGroupValueFromRG(read.getReadGroup());
+        final SAMReadGroupRecord rg = read.getReadGroup();
+        final String readGroupId = getID(rg);
         final int key = keyForReadGroup(readGroupId);
 
-        final int l = read.getReadLength();
-        for (int i = 0; i < l; i++)
+        final int readLength = read.getReadLength();
+        for (int i = 0; i < readLength; i++) {
             values.addCovariate(key, key, key, i);
+        }
     }
 
-    @Override
-    public final Object getValue(final String str) {
-        return str;
+    /**
+     * Get the ID of the readgroup.
+     */
+    public static String getID(final SAMReadGroupRecord rg) {
+        final String pu = rg.getPlatformUnit();
+        return pu == null ? rg.getId() : pu;
     }
 
     @Override
     public String formatKey(final int key) {
+        if ( ! readGroupReverseLookupTable.containsKey(key) ) {
+            throw new IllegalStateException("missing key " + key);
+        }
         return readGroupReverseLookupTable.get(key);
     }
 
@@ -51,11 +78,8 @@ public final class ReadGroupCovariate implements Covariate {
 
     private int keyForReadGroup(final String readGroupId) {
         if ( ! readGroupLookupTable.containsKey(readGroupId) ) {
-            readGroupLookupTable.put(readGroupId, nextId);
-            readGroupReverseLookupTable.put(nextId, readGroupId);
-            nextId++;
+            throw new IllegalStateException("missing readgroup " + readGroupId);
         }
-
         return readGroupLookupTable.get(readGroupId);
     }
 
@@ -64,20 +88,7 @@ public final class ReadGroupCovariate implements Covariate {
         return readGroupLookupTable.size() - 1;
     }
 
-    /**
-     * If the sample has a PU tag annotation, return that. If not, return the read group id.
-     *
-     * @param rg the read group record
-     * @return platform unit or readgroup id
-     */
-    private String readGroupValueFromRG(final SAMReadGroupRecord rg) {
-        if ( forceReadGroup != null )
-            return forceReadGroup;
-
-        final String platformUnit = rg.getPlatformUnit();
-        return platformUnit == null ? rg.getId() : platformUnit;
+    public static List<String> getReadGroupIDs(final SAMFileHeader header) {
+        return header.getReadGroups().stream().map(rg -> getID(rg)).collect(Collectors.toList());
     }
-    
 }
-
-

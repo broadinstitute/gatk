@@ -27,8 +27,7 @@ public final class ContextCovariateUnitTest {
     @BeforeClass
     public void init() {
         RAC = new RecalibrationArgumentCollection();
-        covariate = new ContextCovariate();
-        covariate.initialize(RAC);
+        covariate = new ContextCovariate(RAC);
     }
 
     @BeforeMethod
