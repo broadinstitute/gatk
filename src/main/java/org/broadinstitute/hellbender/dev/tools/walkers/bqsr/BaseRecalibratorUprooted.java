@@ -1,15 +1,9 @@
 package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPED;
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE;
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO;
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.NOT_DUPLICATE;
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK;
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.PRIMARY_ALIGNMENT;
-
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -18,19 +12,15 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
-import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadRecalibrationInfo;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
@@ -38,20 +28,25 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.EventType;
+
 import java.io.File;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
+
 /**
  * First pass of the base quality score recalibration -- Generates recalibration table based on various covariates
  * (such as read group, reported quality score, machine cycle, and nucleotide context).
- *
+ * <p>
  * Based off of BaseRecalibrator, but changed to be able to work in Dataflow.
  */
 
@@ -63,17 +58,24 @@ import java.util.List;
 public final class BaseRecalibratorUprooted {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibratorUprooted.class);
 
-    final protected SAMFileHeader samHeader;
-
     /**
-     * all the command line arguments for BQSR and its covariates
+     * All the command line arguments for BQSR and its covariates.
      */
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
-    private final RecalibrationArgumentCollection RAC;
+    private final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
-    @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName="bqsrBAQGOP", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
+    @ArgumentCollection
+    protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
+
+    @ArgumentCollection
+    public final ReadInputArgumentCollection readArguments = new OptionalReadInputArgumentCollection();
+
+    @ArgumentCollection
+    public final ReferenceInputArgumentCollection referenceArguments = new OptionalReferenceInputArgumentCollection();
+
+
+    @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName = "bqsrBAQGOP", doc = "BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
     public double BAQGOP = BAQ.DEFAULT_GOP;
-
 
     /**
      * This flag tells GATK not to modify quality scores less than this value. Instead they will be written out unmodified in the recalibrated BAM file.
@@ -97,7 +99,7 @@ public final class BaseRecalibratorUprooted {
      * are stored in the OQ tag, if they are present, rather than use the post-recalibration quality scores. If no OQ
      * tag is present for a read, the standard qual score will be used.
      */
-    @Argument(fullName="useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
+    @Argument(fullName = "useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
     public Boolean useOriginalBaseQualities = false;
 
     /**
@@ -105,8 +107,13 @@ public final class BaseRecalibratorUprooted {
      * By default this is set to -1 to disable default base quality assignment.
      */
     //TODO: minValue = 0, maxValue = Byte.MAX_VALUE)
-    @Argument(fullName="defaultBaseQualities", shortName = "DBQ", doc = "Assign a default base quality", optional = true)
+    @Argument(fullName = "defaultBaseQualities", shortName = "DBQ", doc = "Assign a default base quality", optional = true)
     public byte defaultBaseQualities = -1;
+
+    // --------------------------------------------------------------------------------------------------------------
+    // Non-command line members
+
+    final protected SAMFileHeader samHeader;
 
     /**
      * an object that keeps track of the information necessary for quality score quantization
@@ -126,19 +133,27 @@ public final class BaseRecalibratorUprooted {
 
     private BAQ baq; // BAQ the reads on the fly to generate the alignment uncertainty vector
     private ReferenceDataSource referenceDataSource; // datasource for the reference. We're using a different one from the engine itself to avoid messing with its caches.
-    private final static byte NO_BAQ_UNCERTAINTY = (byte)'@';
+    private final static byte NO_BAQ_UNCERTAINTY = (byte) '@';
 
 
     private long accumulator;
 
-    public BaseRecalibratorUprooted(SAMFileHeader samHeader, RecalibrationArgumentCollection toolArgs) {
-        this.RAC = toolArgs;
+    public static BaseRecalibratorUprooted fromArgs(SAMFileHeader header, String toolArgs, PrintStream out) {
+        BaseRecalibratorUprooted br = new BaseRecalibratorUprooted(header);
+        boolean shouldRun = new CommandLineParser(br).parseArguments(out, Utils.escapeExpressions(toolArgs));
+        if (!shouldRun) return null;
+        if (null == br.RAC.knownSites || br.RAC.knownSites.size() == 0) {
+            throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
+        }
+        return br;
+    }
+
+    private BaseRecalibratorUprooted(SAMFileHeader samHeader) {
         this.samHeader = samHeader;
     }
 
-
     public void onTraversalStart(File refFile) {
-        accumulator= 0L;
+        accumulator = 0L;
 
         baq = new BAQ(BAQGOP); // setup the BAQ object with the provided gap open penalty
 
@@ -153,12 +168,12 @@ public final class BaseRecalibratorUprooted {
             cov.initialize(RAC); // initialize any covariate member variables using the shared argument collection
         }
 
-        // no output file. We want to be able to output to a PCollection.
-
         initializeRecalibrationEngine();
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
 
-        referenceDataSource = new ReferenceDataSource(refFile);
+        if (null!=refFile) {
+            referenceDataSource = new ReferenceDataSource(refFile);
+        }
     }
 
     private Covariate[] getCovariatesArray() {
@@ -182,18 +197,18 @@ public final class BaseRecalibratorUprooted {
         recalibrationEngine = new RecalibrationEngine(requestedCovariates, numReadGroups);
     }
 
-    private boolean isLowQualityBase( final SAMRecord read, final int offset ) {
+    private boolean isLowQualityBase(final SAMRecord read, final int offset) {
         return read.getBaseQualities()[offset] < minimumQToUse;
     }
 
     public static ReadFilter readFilter() {
         return ReadFilterLibrary.WELLFORMED
-            .and(MAPPING_QUALITY_NOT_ZERO)
-            .and(MAPPING_QUALITY_AVAILABLE)
-            .and(MAPPED)
-            .and(PRIMARY_ALIGNMENT)
-            .and(NOT_DUPLICATE)
-            .and(PASSES_VENDOR_QUALITY_CHECK);
+                .and(MAPPING_QUALITY_NOT_ZERO)
+                .and(MAPPING_QUALITY_AVAILABLE)
+                .and(MAPPED)
+                .and(PRIMARY_ALIGNMENT)
+                .and(NOT_DUPLICATE)
+                .and(PASSES_VENDOR_QUALITY_CHECK);
     }
 
     private static SAMRecord consolidateCigar(SAMRecord read) {
@@ -203,8 +218,8 @@ public final class BaseRecalibratorUprooted {
         return read;
     }
 
-    private SAMRecord resetOriginalBaseQualities(SAMRecord read){
-        if (! useOriginalBaseQualities) {
+    private SAMRecord resetOriginalBaseQualities(SAMRecord read) {
+        if (!useOriginalBaseQualities) {
             return read;
         }
         return ReadUtils.resetOriginalBaseQualities(read);
@@ -231,15 +246,22 @@ public final class BaseRecalibratorUprooted {
         return recalibrationEngine.getRecalibrationTables();
     }
 
+    /**
+     * Don't you dare change the returned value!
+     */
+    public Covariate[] getRequestedCovariates() {
+        return this.requestedCovariates;
+    }
 
-    private ReadTransformer makeReadTransform(){
+
+    private ReadTransformer makeReadTransform() {
         ReadTransformer f0 = BaseRecalibratorUprooted::consolidateCigar;
 
         ReadTransformer f =
                 f0.andThen(this::setDefaultBaseQualities)
-                .andThen(this::resetOriginalBaseQualities)
-                .andThen(ReadClipper::hardClipAdaptorSequence)
-                .andThen(ReadClipper::hardClipSoftClippedBases);
+                        .andThen(this::resetOriginalBaseQualities)
+                        .andThen(ReadClipper::hardClipAdaptorSequence)
+                        .andThen(ReadClipper::hardClipSoftClippedBases);
 
         return f;
     }
@@ -248,13 +270,15 @@ public final class BaseRecalibratorUprooted {
     /**
      * For each read at this locus get the various covariate values and increment that location in the map based on
      * whether or not the base matches the reference at this particular location.
-     * The "features" list doesn't need to be complete but it must cover the read
+     * The "knownLocations" list doesn't need to be complete but it must includes all those that overlap with the read.
      */
-    public void apply( SAMRecord originalRead, final ReferenceContext ref, List<? extends Feature> features ) {
+    public void apply(SAMRecord originalRead, final ReferenceContext ref, List<? extends Locatable> knownLocations) {
         ReadTransformer transform = makeReadTransform();
         final SAMRecord read = transform.apply(originalRead);
 
-        if( ReadUtils.isEmpty(read) ) { return; } // the whole read was inside the adaptor so skip it
+        if (ReadUtils.isEmpty(read)) {
+            return;
+        } // the whole read was inside the adaptor so skip it
 
         RecalUtils.parsePlatformForRead(read, RAC);
         if (!RecalUtils.isColorSpaceConsistent(RAC.SOLID_NOCALL_STRATEGY, read)) { // parse the solid color space and check for color no-calls
@@ -271,9 +295,9 @@ public final class BaseRecalibratorUprooted {
         // some error to marginalize over.  For ILMN data ~85% of reads have no error
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read);
 
-        if( baqArray != null ) { // some reads just can't be BAQ'ed
+        if (baqArray != null) { // some reads just can't be BAQ'ed
             final ReadCovariates covariates = RecalUtils.computeCovariates(read, requestedCovariates);
-            final boolean[] skip = calculateSkipArray(read, features); // skip known sites of variation as well as low quality and non-regular bases
+            final boolean[] skip = calculateSkipArray(read, knownLocations); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
             final double[] deletionErrors = calculateFractionalErrorArray(isDeletion, baqArray);
@@ -288,7 +312,7 @@ public final class BaseRecalibratorUprooted {
 
     /**
      * Compute the number of mutational events across all hasEvent vectors
-     *
+     * <p>
      * Simply the sum of entries in hasEvents
      *
      * @param hasEvents a vector a vectors of 0 (no event) and 1 (has event)
@@ -296,42 +320,42 @@ public final class BaseRecalibratorUprooted {
      */
     protected static int nEvents(final int[]... hasEvents) {
         int n = 0;
-        for ( final int[] hasEvent : hasEvents ) {
+        for (final int[] hasEvent : hasEvents) {
             n += MathUtils.sum(hasEvent);
         }
         return n;
     }
 
-    private boolean[] calculateSkipArray( final SAMRecord read, final List<? extends Feature> features ) {
+    private boolean[] calculateSkipArray(final SAMRecord read, final List<? extends Locatable> skipLocations) {
         final byte[] bases = read.getReadBases();
         final boolean[] skip = new boolean[bases.length];
-        final boolean[] knownSites = calculateKnownSites(read, features);
-        for( int iii = 0; iii < bases.length; iii++ ) {
+        final boolean[] knownSites = calculateKnownSites(read, skipLocations);
+        for (int iii = 0; iii < bases.length; iii++) {
             skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSites[iii] || badSolidOffset(read, iii);
         }
         return skip;
     }
 
-    protected boolean badSolidOffset( final SAMRecord read, final int offset ) {
+    protected boolean badSolidOffset(final SAMRecord read, final int offset) {
         return ReadUtils.isSOLiDRead(read) && RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
-    protected boolean[] calculateKnownSites( final SAMRecord read, final List<? extends Feature> features) {
+    protected boolean[] calculateKnownSites(final SAMRecord read, final List<? extends Locatable> knownLocations) {
         final int readLength = read.getReadBases().length;
         final boolean[] knownSites = new boolean[readLength];
         Arrays.fill(knownSites, false);
-        for( final Feature feat : features ) {
+        for (final Locatable feat : knownLocations) {
             int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true); // BUGBUG: should I use LEFT_TAIL here?
-            if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
+            if (featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
                 featureStartOnRead = 0;
             }
 
             int featureEndOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), feat.getEnd(), ReadUtils.ClippingTail.LEFT_TAIL, true);
-            if( featureEndOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
+            if (featureEndOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED) {
                 featureEndOnRead = readLength;
             }
 
-            if( featureStartOnRead > readLength ) {
+            if (featureStartOnRead > readLength) {
                 featureStartOnRead = featureEndOnRead = readLength;
             }
 
@@ -341,7 +365,7 @@ public final class BaseRecalibratorUprooted {
     }
 
     // TODO: can be merged with calculateIsIndel
-    protected static int[] calculateIsSNP( final SAMRecord read, /*final BasesCache ref*/ final ReferenceContext ref, final SAMRecord originalRead ) {
+    protected static int[] calculateIsSNP(final SAMRecord read, /*final BasesCache ref*/ final ReferenceContext ref, final SAMRecord originalRead) {
         final byte[] readBases = read.getReadBases();
         final byte[] refBases = Arrays.copyOfRange(ref.getBases(), read.getAlignmentStart() - originalRead.getAlignmentStart(), ref.getBases().length + read.getAlignmentEnd() - originalRead.getAlignmentEnd());
         int refPos = 0;
@@ -349,14 +373,14 @@ public final class BaseRecalibratorUprooted {
 
         final int[] snp = new int[readBases.length];
         int readPos = 0;
-        for ( final CigarElement ce : read.getCigar().getCigarElements() ) {
+        for (final CigarElement ce : read.getCigar().getCigarElements()) {
             final int elementLength = ce.getLength();
             switch (ce.getOperator()) {
                 case M:
                 case EQ:
                 case X:
-                    for( int iii = 0; iii < elementLength; iii++ ) {
-                        snp[readPos] = ( BaseUtils.basesAreEqual(readBases[readPos], refBases[refPos]) ? 0 : 1 );
+                    for (int iii = 0; iii < elementLength; iii++) {
+                        snp[readPos] = (BaseUtils.basesAreEqual(readBases[readPos], refBases[refPos]) ? 0 : 1);
                         readPos++;
                         refPos++;
                     }
@@ -379,34 +403,31 @@ public final class BaseRecalibratorUprooted {
         return snp;
     }
 
-    protected static int[] calculateIsIndel( final SAMRecord read, final EventType mode ) {
+    protected static int[] calculateIsIndel(final SAMRecord read, final EventType mode) {
         final int[] indel = new int[read.getReadBases().length];
         int readPos = 0;
-        for ( final CigarElement ce : read.getCigar().getCigarElements() ) {
+        for (final CigarElement ce : read.getCigar().getCigarElements()) {
             final int elementLength = ce.getLength();
             switch (ce.getOperator()) {
                 case M:
                 case EQ:
                 case X:
-                case S:
-                {
+                case S: {
                     readPos += elementLength;
                     break;
                 }
-                case D:
-                {
-                    final int index = ( read.getReadNegativeStrandFlag() ? readPos : readPos - 1 );
+                case D: {
+                    final int index = (read.getReadNegativeStrandFlag() ? readPos : readPos - 1);
                     updateIndel(indel, index, mode, EventType.BASE_DELETION);
                     break;
                 }
-                case I:
-                {
+                case I: {
                     final boolean forwardStrandRead = !read.getReadNegativeStrandFlag();
-                    if( forwardStrandRead ) {
+                    if (forwardStrandRead) {
                         updateIndel(indel, readPos - 1, mode, EventType.BASE_INSERTION);
                     }
                     readPos += elementLength;
-                    if( !forwardStrandRead ) {
+                    if (!forwardStrandRead) {
                         updateIndel(indel, readPos, mode, EventType.BASE_INSERTION);
                     }
                     break;
@@ -423,13 +444,13 @@ public final class BaseRecalibratorUprooted {
     }
 
     private static void updateIndel(final int[] indel, final int index, final EventType mode, final EventType requiredMode) {
-        if ( mode == requiredMode && index >= 0 && index < indel.length )
+        if (mode == requiredMode && index >= 0 && index < indel.length)
             // protect ourselves from events at the start or end of the read (1D3M or 3M1D)
             indel[index] = 1;
     }
 
-    protected static double[] calculateFractionalErrorArray( final int[] errorArray, final byte[] baqArray ) {
-        if(errorArray.length != baqArray.length ) {
+    protected static double[] calculateFractionalErrorArray(final int[] errorArray, final byte[] baqArray) {
+        if (errorArray.length != baqArray.length) {
             throw new GATKException("Array length mismatch detected. Malformed read?");
         }
 
@@ -440,9 +461,9 @@ public final class BaseRecalibratorUprooted {
         boolean inBlock = false;
         int blockStartIndex = BLOCK_START_UNSET;
         int iii;
-        for( iii = 0; iii < fractionalErrors.length; iii++ ) {
-            if( baqArray[iii] == NO_BAQ_UNCERTAINTY ) {
-                if( !inBlock ) {
+        for (iii = 0; iii < fractionalErrors.length; iii++) {
+            if (baqArray[iii] == NO_BAQ_UNCERTAINTY) {
+                if (!inBlock) {
                     fractionalErrors[iii] = (double) errorArray[iii];
                 } else {
                     calculateAndStoreErrorsInBlock(iii, blockStartIndex, errorArray, fractionalErrors);
@@ -451,52 +472,56 @@ public final class BaseRecalibratorUprooted {
                 }
             } else {
                 inBlock = true;
-                if( blockStartIndex == BLOCK_START_UNSET ) { blockStartIndex = iii; }
+                if (blockStartIndex == BLOCK_START_UNSET) {
+                    blockStartIndex = iii;
+                }
             }
         }
-        if( inBlock ) {
-            calculateAndStoreErrorsInBlock(iii-1, blockStartIndex, errorArray, fractionalErrors);
+        if (inBlock) {
+            calculateAndStoreErrorsInBlock(iii - 1, blockStartIndex, errorArray, fractionalErrors);
         }
-        if( fractionalErrors.length != errorArray.length ) {
+        if (fractionalErrors.length != errorArray.length) {
             throw new GATKException("Output array length mismatch detected. Malformed read?");
         }
         return fractionalErrors;
     }
 
-    private static void calculateAndStoreErrorsInBlock( final int iii,
-                                                        final int blockStartIndex,
-                                                        final int[] errorArray,
-                                                        final double[] fractionalErrors ) {
+    private static void calculateAndStoreErrorsInBlock(final int iii,
+                                                       final int blockStartIndex,
+                                                       final int[] errorArray,
+                                                       final double[] fractionalErrors) {
         int totalErrors = 0;
-        for( int jjj = Math.max(0, blockStartIndex - 1); jjj <= iii; jjj++ ) {
+        for (int jjj = Math.max(0, blockStartIndex - 1); jjj <= iii; jjj++) {
             totalErrors += errorArray[jjj];
         }
-        for( int jjj = Math.max(0, blockStartIndex - 1); jjj <= iii; jjj++ ) {
-            fractionalErrors[jjj] = ((double) totalErrors) / ((double)(iii - Math.max(0, blockStartIndex - 1) + 1));
+        for (int jjj = Math.max(0, blockStartIndex - 1); jjj <= iii; jjj++) {
+            fractionalErrors[jjj] = ((double) totalErrors) / ((double) (iii - Math.max(0, blockStartIndex - 1) + 1));
         }
     }
 
     /**
      * Create a BAQ style array that indicates no alignment uncertainty
+     *
      * @param read the read for which we want a BAQ array
      * @return a BAQ-style non-null byte[] counting NO_BAQ_UNCERTAINTY values
      * // TODO -- could be optimized avoiding this function entirely by using this inline if the calculation code above
      */
-    protected  static byte[] flatBAQArray(final SAMRecord read) {
+    protected static byte[] flatBAQArray(final SAMRecord read) {
         final byte[] baq = new byte[read.getReadLength()];
         Arrays.fill(baq, NO_BAQ_UNCERTAINTY);
         return baq;
     }
 
-  /**
-   * Compute an actual BAQ array for read, based on its quals and the reference sequence
-   * @param read the read to BAQ
-   * @return a non-null BAQ tag array for read
-   */
-  private byte[] calculateBAQArray( final SAMRecord read ) {
-      baq.baqRead(read, referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
-      return BAQ.getBAQTag(read);
-  }
+    /**
+     * Compute an actual BAQ array for read, based on its quals and the reference sequence
+     *
+     * @param read the read to BAQ
+     * @return a non-null BAQ tag array for read
+     */
+    private byte[] calculateBAQArray(final SAMRecord read) {
+        baq.baqRead(read, referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
+        return BAQ.getBAQTag(read);
+    }
 
     public Object onTraversalDone() {
         recalibrationEngine.finalizeData();
@@ -504,7 +529,7 @@ public final class BaseRecalibratorUprooted {
         logger.info("Calculating quantized quality scores...");
         quantizeQualityScores();
 
-        if (null!=RAC.RECAL_TABLE) {
+        if (null != RAC.RECAL_TABLE) {
             logger.info("Writing recalibration report...");
             generateReport();
             logger.info("...done!");
@@ -528,5 +553,14 @@ public final class BaseRecalibratorUprooted {
 
     private void generateReport() {
         RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), requestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
+    }
+
+    /**
+     * Generates the report based on a finalized recalibrationTables.
+     */
+    public void saveReport(RecalibrationTables rt, Covariate[] finalRequestedCovariates) throws java.io.FileNotFoundException {
+        RAC.RECAL_TABLE = new PrintStream(RAC.RECAL_TABLE_FILE);
+        QuantizationInfo quantizationInfo = new QuantizationInfo(rt, RAC.QUANTIZING_LEVELS);
+        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, rt, finalRequestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
     }
 }
