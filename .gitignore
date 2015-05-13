@@ -3,7 +3,6 @@ hellbender.iml
 *.ipr
 *.iws
 .gradle
-gradle/
 build/
 .idea/libraries/Gradle__*
 *.*~
@@ -12,8 +11,8 @@ hellbender-tools/repos/
 .DS_Store
 testSortingFile.txt
 gsalib.tar.gz
-gradlew*
 *.swp
+gradlew.bat
 
 #Please don't commit me
 client_secret.json
