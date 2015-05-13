@@ -25,6 +25,7 @@ public final class CountBasesDataflowIntegrationTest extends CommandLineProgramT
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         File placeHolder = createTempFile("countbasestest", ".txt");
         args.add(placeHolder.getPath());
+        addDataflowRunnerArgs(args);
 
         runCommandLine(args.getArgsArray());
         File outputFile = findDataflowOutput(placeHolder);

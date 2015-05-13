@@ -35,6 +35,9 @@ public final class FlagStatDataflowIntegrationTest extends CommandLineProgramTes
         File placeHolder = createTempFile("flagStatTest", ".txt");
         args.add(placeHolder.getPath());
 
+        addDataflowRunnerArgs(args);
+
+
         runCommandLine(args);
 
         File outputFile = findDataflowOutput(placeHolder);
@@ -59,6 +62,9 @@ public final class FlagStatDataflowIntegrationTest extends CommandLineProgramTes
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         File placeHolder = createTempFile("flagStatTest", ".txt");
         args.add(placeHolder.getPath());
+
+        addDataflowRunnerArgs(args);
+
 
         runCommandLine(args);
 

@@ -31,6 +31,7 @@ public final class PrintReadsDataflowIntegrationTest extends CommandLineProgramT
         args.add("--L"); args.add("chr7:1-202");
         args.add("--L"); args.add("chr8:1-202");
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME); args.add(placeHolder.getPath());
+        addDataflowRunnerArgs(args);
 
         runCommandLine(args);
         File outputFile = findDataflowOutput(placeHolder);

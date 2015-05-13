@@ -27,6 +27,13 @@ import java.util.function.Consumer;
  */
 @SuppressWarnings("unchecked")
 public abstract class BaseTest {
+
+    static {
+        // set properties for the local Spark runner
+        System.setProperty("spark.driver.allowMultipleContexts", "true");
+        System.setProperty("spark.ui.enabled", "false");
+    }
+
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.gatk");
 
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");

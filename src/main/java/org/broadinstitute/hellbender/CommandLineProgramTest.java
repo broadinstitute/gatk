@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender;
 
+import com.google.common.base.Strings;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
@@ -12,6 +15,8 @@ import java.util.*;
  * Utility class for CommandLine Program testing.
  */
 public abstract class CommandLineProgramTest extends BaseTest {
+
+    public static final String PROPERTY_DATAFLOW_RUNNER = "dataflowRunner";
 
     /**
      * Returns the location of the resource directory. The default implementation points to the common directory for tools.
@@ -79,5 +84,31 @@ public abstract class CommandLineProgramTest extends BaseTest {
         File file =  outputFile.orElseThrow(() -> new IOException("No dataflow output file find for prefix: "+ pathPrefix.getAbsolutePath()));
         file.deleteOnExit();
         return file;
+    }
+
+    /**
+     * Adds arguments to the given <code>args</code> to set the dataflow
+     * runner if specified by the <code>dataflowRunner</code> system property (which
+     * should be the unqualified class name of the runner).
+     */
+    public static void addDataflowRunnerArgs(ArgumentsBuilder args) {
+        String dataflowRunner = System.getProperty(PROPERTY_DATAFLOW_RUNNER);
+        if (!Strings.isNullOrEmpty(dataflowRunner)) {
+            args.add("--runner");
+            args.add(DataflowCommandLineProgram.getRunnerTypeName(dataflowRunner));
+        }
+    }
+
+    /**
+     * Adds arguments to the given <code>args</code> to set the dataflow
+     * runner if specified by the <code>dataflowRunner</code> system property (which
+     * should be the unqualified class name of the runner).
+     */
+    public static void addDataflowRunnerArgs(List<String> args) {
+        String dataflowRunnerProperty = System.getProperty(PROPERTY_DATAFLOW_RUNNER);
+        if (!Strings.isNullOrEmpty(dataflowRunnerProperty)) {
+            args.add("--runner");
+            args.add(DataflowCommandLineProgram.getRunnerTypeName(dataflowRunnerProperty));
+        }
     }
 }
