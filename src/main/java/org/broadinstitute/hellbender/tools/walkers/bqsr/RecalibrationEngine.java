@@ -111,6 +111,35 @@ public final class RecalibrationEngine {
     }
 
     /**
+     * Finalize, if appropriate, all derived data in recalibrationTables.
+     *
+     * Called once after all calls to updateDataForRead have been issued.
+     *
+     * Assumes that all of the principal tables (by quality score) have been completely updated,
+     * and walks over this data to create summary data tables like by read group table.
+     */
+    public static void finalizeRecalibrationTables(final RecalibrationTables tables) {
+        final NestedIntegerArray<RecalDatum> byReadGroupTable = tables.getReadGroupTable();
+        final NestedIntegerArray<RecalDatum> byQualTable = tables.getQualityScoreTable();
+
+        // iterate over all values in the qual table
+        for ( final NestedIntegerArray.Leaf<RecalDatum> leaf : byQualTable.getAllLeaves() ) {
+            final int rgKey = leaf.keys[0];
+            final int eventIndex = leaf.keys[2];
+            final RecalDatum rgDatum = byReadGroupTable.get(rgKey, eventIndex);
+            final RecalDatum qualDatum = leaf.value;
+
+            if ( rgDatum == null ) {
+                // create a copy of qualDatum, and initialize byReadGroup table with it
+                byReadGroupTable.put(new RecalDatum(qualDatum), rgKey, eventIndex);
+            } else {
+                // combine the qual datum with the existing datum in the byReadGroup table
+                rgDatum.combine(qualDatum);
+            }
+        }
+    }
+
+    /**
      * Get a possibly not-final recalibration table, to deal with distributed execution.
      */
     public RecalibrationTables getRecalibrationTables() {
