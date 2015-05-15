@@ -16,7 +16,7 @@ public final class PrintReadsDataflowTransform extends PTransformSAM<String> {
 
         @Override
         public PCollection<String> apply(final PCollection<Read> reads) {
-                return reads.apply(ParDo.of(new DataFlowSAMFn<String>(getHeaderString()) {
+                return reads.apply(ParDo.of(new DataFlowSAMFn<String>(getHeader()) {
                         private static final long serialVersionUID = 1l;
 
                         @Override

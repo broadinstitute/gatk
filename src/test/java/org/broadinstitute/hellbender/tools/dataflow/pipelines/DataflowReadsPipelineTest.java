@@ -88,7 +88,7 @@ public final class DataflowReadsPipelineTest {
         String bam = "src/test/resources/org/broadinstitute/hellbender/tools/count_reads_sorted.bam";
         PCollection<Read> preads = DataflowUtils.getReadsFromLocalBams(p, Lists.newArrayList(new SimpleInterval("chr7", 1, 404)), Lists.newArrayList(new File(bam)));
 
-        PCollection<?> presult = rcp.applyTransformsToPipeline(SamReaderFactory.makeDefault().getFileHeader(new File(bam)).getTextHeader(), preads);
+        PCollection<?> presult = rcp.applyTransformsToPipeline(SamReaderFactory.makeDefault().getFileHeader(new File(bam)), preads);
 
         DataflowAssert.thatSingleton((PCollection<Long>) presult).isEqualTo(expectedCounts);
 

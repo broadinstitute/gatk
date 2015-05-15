@@ -17,7 +17,7 @@ public final class CountBasesDataflowTransform extends PTransformSAM<Long> {
     @Override
     public PCollection<Long> apply(final PCollection<Read> reads) {
 
-        return reads.apply(ParDo.of(new DataFlowSAMFn<Long>(getHeaderString()) {
+        return reads.apply(ParDo.of(new DataFlowSAMFn<Long>(getHeader()) {
             private static final long serialVersionUID = 1l;
 
             @Override
