@@ -4,15 +4,13 @@ buildscript {
      }
 
     dependencies {
-        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.0.1'
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.3.1'
     }
 }
 
 plugins {
     id "de.undercouch.download" version "1.2"
 }
-
-import de.undercouch.gradle.tasks.download.Download
 
 apply plugin: 'java'
 apply plugin: 'idea'
@@ -62,12 +60,11 @@ check.dependsOn installApp
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
-
+    compile 'org.hdfgroup:hdf-java:2.6.1'
+    compile 'org.apache.commons:commons-math3:3.5'
     compile 'org.broadinstitute:hellbender:Hellbender.0.1.1-SNAPSHOT'
 
     testCompile 'org.testng:testng:6.8.8'
-
-
 }
 
 sourceCompatibility = 1.8
@@ -78,7 +75,7 @@ def String deriveVersion(){
     try {
         logger.info("path is $System.env.PATH")
         exec {
-            commandLine "git", "describe", "--always", "--long"
+            commandLine "git", "describe", "--always"
             standardOutput = stdout;
 
             ignoreExitValue = true
@@ -90,6 +87,10 @@ def String deriveVersion(){
 }
 
 version = deriveVersion()
+final SNAPSHOT = "-SNAPSHOT"
+version = deriveVersion() + SNAPSHOT
+boolean isRelease = ! version.endsWith(SNAPSHOT)
+logger.info("build for version:" + version);
 group = 'org.broadinstitute'
 
 
@@ -101,7 +102,17 @@ jar {
     }
 }
 
+// testJavaLibraryPath: Where to find jni libraries (e.g. HDF5's) to be used during testing.
+// The environment variable JAVA_LIBRARY_PATH takes preference if present,
+// Otherwise we used Gradle's 'testJavaLibraryPath' if present (use ~/.gradle.properties to addapt it to your dev. setup)
+// or is left to the default otherwise. This default typically points to the usual system */lib directories.
+def testJavaLibraryPath = System.env['JAVA_LIBRARY_PATH'] ?: hasProperty("testJavaLibraryPath") ? property("testJavaLibraryPath") : null;
+
 test {
+  
+    if (testJavaLibraryPath) {
+      systemProperties['java.library.path'] = testJavaLibraryPath
+    }
     // enable TestNG support (default is JUnit)
     useTestNG{
         excludeGroups 'cloud', 'bucket'
@@ -110,6 +121,8 @@ test {
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
     maxHeapSize = "2G"
+
+    maxParallelForks=2
   
     String CI = "$System.env.CI"
     if (CI == "true") {
@@ -140,6 +153,7 @@ test {
     }
 }
 
+
 task wrapper(type: Wrapper) {
     gradleVersion = '2.2.1'
 }
@@ -155,26 +169,3 @@ task fatJar(type: Jar) {
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from 'build/docs/javadoc'
-}
-
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allSource
-    classifier = 'sources'
-}
-
-artifacts {
-    archives jar
-
-    archives javadocJar
-    archives sourcesJar
-}
-
-signing {
-    sign configurations.archives
-}
-
-
