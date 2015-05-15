@@ -6,13 +6,20 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.values.PCollectionTuple;
+import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -92,5 +99,29 @@ public final class DataflowUtils {
                 c.output(ReadConverter.makeRead(sam));
             }
         }
+    }
+    /*
+     * May have some bugs...
+     */
+    static public List<SimpleInterval> getShardsFromInterval(final Locatable location) {
+        final int shardSize = 100000;
+        List<SimpleInterval> intervalList = new ArrayList<>();
+        // Get all of the shard numbers that span the start and end of the interval.
+        int startShard = location.getStart()/shardSize;
+        int endShard = location.getEnd()/shardSize;
+        for (int i = startShard; i <= endShard; ++i) {
+            intervalList.add(new SimpleInterval(location.getContig(),i*shardSize, (i+1)*shardSize));
+        }
+        return intervalList;
+    }
+
+    // TODO: refactor this please
+    public static <K, T, U> Pair<KeyedPCollectionTuple<K>, Pair<TupleTag<T>, TupleTag<U>>>
+        makeKeyedPCollectionTuple( final PCollection<KV<K, T>> first, final PCollection<KV<K, U>> second ) {
+
+        final TupleTag<T> firstTag = new TupleTag<>();
+        final TupleTag<U> secondTag = new TupleTag<>();
+        final KeyedPCollectionTuple<K> tuple = KeyedPCollectionTuple.of(firstTag, first).and(secondTag, second);
+        return Pair.of(tuple, Pair.of(firstTag, secondTag));
     }
 }

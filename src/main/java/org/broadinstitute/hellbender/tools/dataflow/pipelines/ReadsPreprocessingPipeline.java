@@ -62,6 +62,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
                 .collect(Collectors.toList());
     }
 
+    // NOTE: need a way to ensure that certain tools are guaranteed to have a header -- one option is
+    // an interface with a factory method
     private static class MarkDuplicatesStub extends PTransform<PCollection<Read>, PCollection<Read>> {
 
         private PCollectionView<String> header;
