@@ -103,14 +103,14 @@ public final class DataflowUtils {
     /*
      * May have some bugs...
      */
-    static public List<SimpleInterval> getShardsFromInterval(final Locatable location) {
-        final int shardSize = 100000;
+    static public List<SimpleInterval> getVariantShardsFromInterval(final Locatable location) {
+        final int variantShardSize = 100000;
         List<SimpleInterval> intervalList = new ArrayList<>();
         // Get all of the shard numbers that span the start and end of the interval.
-        int startShard = location.getStart()/shardSize;
-        int endShard = location.getEnd()/shardSize;
+        int startShard = location.getStart()/variantShardSize;
+        int endShard = location.getEnd()/variantShardSize;
         for (int i = startShard; i <= endShard; ++i) {
-            intervalList.add(new SimpleInterval(location.getContig(),i*shardSize, (i+1)*shardSize));
+            intervalList.add(new SimpleInterval(location.getContig(),i*variantShardSize, (i+1)*variantShardSize));
         }
         return intervalList;
     }

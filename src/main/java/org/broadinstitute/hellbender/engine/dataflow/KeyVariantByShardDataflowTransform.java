@@ -20,7 +20,7 @@ public class KeyVariantByShardDataflowTransform extends PTransform<PCollection<V
         return input.apply(ParDo.of(new DoFn<Variant, KV<SimpleInterval, Variant>>() {
             @Override
             public void processElement(ProcessContext c) throws Exception {
-                List<SimpleInterval> intervals = DataflowUtils.getShardsFromInterval(c.element());
+                List<SimpleInterval> intervals = DataflowUtils.getVariantShardsFromInterval(c.element());
                 for (SimpleInterval inteval : intervals) {
                     c.output(KV.of(inteval, c.element()));
                 }
