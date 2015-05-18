@@ -17,26 +17,20 @@ import htsjdk.samtools.util.StringLineReader;
  */
 public final class SAMSerializableFunction<Output> implements SerializableFunction<Read, Output> {
 
-    private transient SAMFileHeader header;  //transient cache of the SAMFileHeader which is not Serializeable
-    private final String headerString;
+    private SAMFileHeader header;
     private final SerializableFunction<SAMRecord, Output> f;
 
     /**
      * Wrap a function from SAMRecord -> Output into a function from Read -> Output
-     * @param headerString A String to construct an appropriate SAMFileHeader from
+     * @param header A {@link SAMFileHeader } that is associated with the Reads this will be used on.
      * @param f the SerializableFunction to wrap
      */
-    public SAMSerializableFunction(String headerString, SerializableFunction<SAMRecord, Output> f){
-        this.headerString = headerString;
+    public SAMSerializableFunction(SAMFileHeader header, SerializableFunction<SAMRecord, Output> f){
+        this.header = header;
         this.f = f;
     }
 
     private SAMFileHeader getHeader(){
-        if (header == null) {
-            final SAMTextHeaderCodec headerCodec = new SAMTextHeaderCodec();
-            headerCodec.setValidationStringency(ValidationStringency.LENIENT);
-            this.header = headerCodec.decode(new StringLineReader(headerString), "magic string");
-        }
         return header;
     }
 

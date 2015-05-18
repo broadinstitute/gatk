@@ -67,15 +67,6 @@ public final class ReadUtils {
     }
 
     /**
-     * create a SAMFileHeader from a String
-     */
-    public static SAMFileHeader samHeaderFromString(String headerString){
-      final SAMTextHeaderCodec headerCodec = new SAMTextHeaderCodec();
-      headerCodec.setValidationStringency(ValidationStringency.LENIENT);
-      return headerCodec.decode(new StringLineReader(headerString), null);
-    }
-
-    /**
      * A marker to tell which end of the read has been clipped
      */
     public enum ClippingTail {

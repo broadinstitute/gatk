@@ -25,7 +25,7 @@ public final class SAMSerializableFunctionTest extends CommandLineProgramTest{
                 .collect(Collectors.toList());
 
 
-        SAMSerializableFunction<Integer> f = new SAMSerializableFunction<>(header.toString() ,SAMRecord::getReadLength);
+        SAMSerializableFunction<Integer> f = new SAMSerializableFunction<>(header ,SAMRecord::getReadLength);
 
         final List<Integer> recoveredLengths = reads.stream()
                 .map(f::apply)

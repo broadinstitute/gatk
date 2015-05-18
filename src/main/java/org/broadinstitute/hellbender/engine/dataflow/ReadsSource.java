@@ -11,6 +11,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -65,24 +66,19 @@ public final class ReadsSource {
     }
 
     /**
-     * Gets a header string representing a valid sam header for the data associated with this ReadsSource
-     *
-     * This method is a hack to get around the non-serializibility of {@link htsjdk.samtools.SAMFileHeader} and
-     * will be replaced with getSamHeader() when that is solved.
-     *
-     * @return a String representation of a {@link htsjdk.samtools.SAMFileHeader}
+     * Get a SAMFileHeader to use with Reads produced by this ReadsSource
      */
-    public String getHeaderString() {
+    public SAMFileHeader getHeader() {
         if(cloudStorageUrl) {
             try {
                 Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
                 final SamReader reader = BAMIO.openBAM(storageClient, bam);
-                return reader.getFileHeader().getTextHeader();
+                return reader.getFileHeader();
             } catch (IOException e) {
                 throw new GATKException("Failed to read bams header from " + bam + ".", e);
             }
         } else {
-            return SamReaderFactory.makeDefault().getFileHeader(new File(bam)).getTextHeader();
+            return SamReaderFactory.makeDefault().getFileHeader(new File(bam));
         }
     }
 

@@ -7,10 +7,10 @@ import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.common.collect.ImmutableList;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -24,10 +24,7 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,21 +70,17 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
         return ImmutableList.of();
     }
 
-    private static SerializableFunction<Read,Boolean> wrapFilter(final ReadFilter filter, final String headerString){
-        return new SAMSerializableFunction<>(headerString, filter);
-    }
-
     @Override
     final protected void setupPipeline(Pipeline pipeline) {
         final ReadsSource readsSource = new ReadsSource(bam, pipeline);
-        final String headerString = readsSource.getHeaderString();
-        final SAMSequenceDictionary sequenceDictionary = ReadUtils.samHeaderFromString(headerString).getSequenceDictionary();
+        final SAMFileHeader header = readsSource.getHeader();
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
         final PCollection<Read> preads = readsSource.getReadPCollection(intervals);
 
-        final PCollection<?> presult = applyTransformsToPipeline(headerString, preads);
+        final PCollection<?> presult = applyTransformsToPipeline(header, preads);
 
         final PCollection<String> pstrings = presult.apply(DataflowUtils.convertToString());
         pstrings.apply(TextIO.Write.to(outputFile));
@@ -101,24 +94,25 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     }
 
     @VisibleForTesting
-    protected PCollection<?> applyTransformsToPipeline(final String headerString, final PCollection<Read> preadsIn) {
+    protected PCollection<?> applyTransformsToPipeline(final SAMFileHeader header, final PCollection<Read> preadsIn) {
+
         PCollection<Read> preads = preadsIn;
         for (final ReadFilter filter : getReadFilters()) {
-            preads = preads.apply(Filter.by(wrapFilter(filter, headerString)));
+            preads = preads.apply(Filter.by(new SAMSerializableFunction<>(header, filter)));
         }
 
-        for (final ReadTransformer transformer : getReadTransformers()){
-            preads = preads.apply(wrapTransformer(transformer, headerString));
+        for (final ReadTransformer transformer : getReadTransformers()) {
+            preads = preads.apply(wrapTransformer(transformer, header));
         }
 
         final PTransformSAM<?> tool = getTool();
-        tool.setHeaderString(headerString);
+        tool.setHeader(header);
 
         return preads.apply(tool);
     }
 
-    private static PTransform<? super PCollection<Read>,PCollection<Read>> wrapTransformer(final ReadTransformer transformer, final String headerString){
-        return ParDo.of(new DataFlowSAMFn<Read>(headerString){
+    private static PTransform<? super PCollection<Read>,PCollection<Read>> wrapTransformer(final ReadTransformer transformer, final SAMFileHeader header){
+        return ParDo.of(new DataFlowSAMFn<Read>(header){
 
                     private static final long serialVersionUID = 1l;
 

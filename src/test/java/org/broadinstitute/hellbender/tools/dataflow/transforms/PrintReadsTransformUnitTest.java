@@ -44,7 +44,7 @@ public final class PrintReadsTransformUnitTest {
         DataflowWorkarounds.registerGenomicsCoders(p);
         PCollection<Read> preads = p.apply(Create.of(reads));
         PTransformSAM<String> transform = new PrintReadsDataflowTransform();
-        transform.setHeaderString(ArtificialSAMUtils.createArtificialSamHeader().toString());
+        transform.setHeader(ArtificialSAMUtils.createArtificialSamHeader());
         PCollection<String> presult = preads.apply(transform);
 
         DataflowAssert.that(presult);

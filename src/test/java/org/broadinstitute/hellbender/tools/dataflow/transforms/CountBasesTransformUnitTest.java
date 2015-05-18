@@ -36,7 +36,7 @@ public final class CountBasesTransformUnitTest {
         DataflowWorkarounds.registerGenomicsCoders(p);
         PCollection<Read> preads = p.apply(Create.of(reads));
         PTransformSAM<Long> transform = new CountBasesDataflowTransform();
-        transform.setHeaderString(ArtificialSAMUtils.createArtificialSamHeader().toString());
+        transform.setHeader(ArtificialSAMUtils.createArtificialSamHeader());
         PCollection<Long> presult = preads.apply(transform);
 
         DataflowAssert.thatSingleton(presult).isEqualTo(expected);

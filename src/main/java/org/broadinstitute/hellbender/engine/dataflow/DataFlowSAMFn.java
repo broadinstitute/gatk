@@ -7,11 +7,8 @@ import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.broadinstitute.hellbender.utils.read.ReadUtils.samHeaderFromString;
 
 /**
  * A DoFn from Read -> Something which presents a SAMRecord to its apply method.
@@ -23,26 +20,22 @@ public abstract class DataFlowSAMFn<Output> extends DoFn<Read, Output> {
      * field to cache the reconstructed SAMFileHeader
      * SAMFileHeader is not Serializable, but this class must be, so this is marked transient and reconstructed as needed
      */
-    private transient SAMFileHeader header;
-    private final String headerString;
+    private final SAMFileHeader header;
 
     private final List<Output> toEmit = new ArrayList<>();
 
     /**
      * Construct a new DataFlowSAMFn and give it an appropriate {@link SAMFileHeader}
-     * @param headerString A header String from a SAM or BAM file.  This can be read from a SAM or BAM file using {@link SAMFileHeader#getTextHeader()}
+     * @param header A header String from a SAM or BAM file.  This can be read from a SAM or BAM file using {@link SAMFileHeader#getTextHeader()}
      */
-    public DataFlowSAMFn(final String headerString){
-        this.headerString = headerString;
+    public DataFlowSAMFn(final SAMFileHeader header){
+        this.header = header;
     }
 
     /**
      * @return a SAMFileHeader reconstituted from the header string this was constructed with
      */
     public final SAMFileHeader getHeader(){
-        if (header == null) {
-            this.header = samHeaderFromString(headerString);
-        }
         return header;
     }
 
