@@ -6,6 +6,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -19,24 +20,16 @@ public class RefBasesToReadsDataflowTransform extends PTransform<PCollection<KV<
             return input.apply(ParDo.of(new DoFn<KV<ReferenceBases, Iterable<Read>>, KV<Read, ReferenceBases>>() {
                 @Override
                 public void processElement(ProcessContext c) throws Exception {
+                    // Each element of the PCollection is a set of reads keyed by a reference shard
+                    // The shard MUST have all of the reference bases for ALL of the reads. If not
+                    // it's an error.
                     final ReferenceBases shard = c.element().getKey();
                     final Iterable<Read> reads = c.element().getValue();
+                    // For every read, find the subset of the reference that matches it.
                     for (Read r : reads) {
-
+                        final ReferenceBases subset = shard.getSubset(new SimpleInterval(r));
+                        c.output(KV.of(r, subset));
                     }
-                    int min = 1000000000; // ????
-                    int max = 0;
-                    for (Read r : reads) {
-                        if (r.getStart() < min) {
-                            min = r.getStart();
-                        }
-                        if (r.getEnd() < max) {
-                            max = r.getEnd();
-                        }
-                    }
-                    ReferenceSource source = new ReferenceSource("ref_name", c.getPipelineOptions());
-                    ReferenceBases bases = source.getReferenceBases(new SimpleInterval(shard.getContig(), min, max));
-                    c.output(KV.of(bases, reads));
                 }
             }));
         }

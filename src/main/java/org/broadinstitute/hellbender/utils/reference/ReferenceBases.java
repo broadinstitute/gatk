@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.reference;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+
+import java.util.Arrays;
 
 public class ReferenceBases {
 
@@ -18,5 +21,19 @@ public class ReferenceBases {
 
     public SimpleInterval getInterval() {
         return interval;
+    }
+
+    public ReferenceBases getSubset(SimpleInterval interval) {
+        // I don't think this is quite right...
+
+        // First check bounds, then if it's a proper subset, then return that subset.
+
+        // Correct check?
+        if (!this.interval.contains(interval)) {
+            throw new GATKException("Reference doesn't match read...");
+        }
+        int start = interval.getStart() - this.interval.getStart();
+        int end = interval.getEnd() - this.interval.getStart();
+        return new ReferenceBases(Arrays.copyOfRange(this.bases, start, end), interval);
     }
 }
