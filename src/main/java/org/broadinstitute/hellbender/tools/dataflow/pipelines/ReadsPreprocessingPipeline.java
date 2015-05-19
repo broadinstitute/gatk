@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -49,7 +50,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
         // TODO: Using a header string for now as a stub. Need a custom coder for SAMFileHeader,
         // TODO: and SAMFileHeader needs to be Serializable
-        final PCollectionView<String> headerSingleton = pipeline.apply(Create.of(headerString)).setCoder(StringUtf8Coder.of()).apply(View.<String>asSingleton());
+        final PCollectionView<SAMFileHeader> headerSingleton = pipeline.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<String>asSingleton());
         final PCollection<Read> initialReads = readsSource.getReadPCollection(intervals);
 
         final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub().withHeader(headerSingleton));
@@ -67,6 +68,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
     private static class MarkDuplicatesStub extends PTransform<PCollection<Read>, PCollection<Read>> {
 
         private PCollectionView<String> header;
+
+        public MarkDuplicatesStub( final )
 
         @Override
         public PCollection<Read> apply( PCollection<Read> input ) {
