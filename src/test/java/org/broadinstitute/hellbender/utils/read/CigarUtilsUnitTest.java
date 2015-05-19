@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.utils.clipping.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

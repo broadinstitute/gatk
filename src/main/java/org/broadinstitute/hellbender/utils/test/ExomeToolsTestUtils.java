@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
@@ -15,23 +15,25 @@ import java.io.File;
  */
 public final class ExomeToolsTestUtils {
 
+    private ExomeToolsTestUtils(){}; //don't instantiate this
+
     /**
      * Returns a {@link File} pointing to the directory that contains the test data.
      * @return never {@code null}.
      */
-    protected static File getTestDataDir(){
+    public static File getTestDataDir(){
         return new File(CommandLineProgramTest.getTestDataDir(),"exome");
     }
 
     /**
      * {@link File} pointing to the test toy reference used in exome analysis tool tests.
      */
-    protected final static File REFERENCE_FILE = new File(getTestDataDir(),"test_reference.fasta");
+    public final static File REFERENCE_FILE = new File(getTestDataDir(),"test_reference.fasta");
 
     /**
      * Sequence dictionary extracted from {@link #REFERENCE_FILE}.
      */
-    protected final static SAMSequenceDictionary REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);
+    public final static SAMSequenceDictionary REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);
 
     /**
      * Creates a {@link SimpleInterval} instance given its contig and base range.
@@ -41,7 +43,7 @@ public final class ExomeToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    protected static SimpleInterval createInterval(final String contig, final int start, final int stop) {
+    public static SimpleInterval createInterval(final String contig, final int start, final int stop) {
         return new SimpleInterval(REFERENCE_DICTIONARY.getSequence(contig).getSequenceName(),start,stop);
     }
 
@@ -52,7 +54,7 @@ public final class ExomeToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    protected static SimpleInterval createOverEntireContig(final int contigIndex) {
+    public static SimpleInterval createOverEntireContig(final int contigIndex) {
         final int contigLength = REFERENCE_DICTIONARY.getSequence(contigIndex).getSequenceLength();
         return new SimpleInterval(REFERENCE_DICTIONARY.getSequence(contigIndex).getSequenceName(),1,contigLength);
     }
@@ -63,7 +65,7 @@ public final class ExomeToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    protected static SimpleInterval createOverEntireContig(final String contig) {
+    public static SimpleInterval createOverEntireContig(final String contig) {
         final int contigLength = REFERENCE_DICTIONARY.getSequence(contig).getSequenceLength();
         return new SimpleInterval(REFERENCE_DICTIONARY.getSequence(contig).getSequenceName(),1,contigLength);
     }
@@ -75,7 +77,7 @@ public final class ExomeToolsTestUtils {
      * @return never {@code null}.
      * @throws UserException if there was some problem when creating the location.
      */
-    protected static SimpleInterval createInterval(final String contig, final int start) {
+    public static SimpleInterval createInterval(final String contig, final int start) {
         return new SimpleInterval(contig,start,start);
     }
 }
