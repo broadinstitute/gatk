@@ -56,9 +56,14 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final PCollection<com.google.api.services.genomics.model.Read> rawReads = readsSource.getReadPCollection(intervals);
 
         final PCollection<Read> initialReads = rawReads.apply(new GoogleReadToReadDataflowTransform());
+
         final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
+
         final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToReads(referenceName, baseRecalibrationKnownVariants));
         final PCollection<GATKReportStub> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
+        final PCollectionView<GATKReportStub> mergedRecalibrationReport = recalibrationReports.apply(View.<GATKReportStub>asSingleton());
+
+        final PCollection<Read> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton));
     }
 
     private List<SimpleInterval> getAllIntervalsForReference(SAMSequenceDictionary sequenceDictionary) {
@@ -105,6 +110,26 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
                         @Override
                         public void processElement( ProcessContext c ) throws Exception {
                             c.output(new GATKReportStub());
+                        }
+                    }).withSideInputs(header));
+        }
+    }
+
+    private static class ApplyBQSRStub extends PTransform<PCollection<Read>, PCollection<Read>> {
+        private PCollectionView<SAMFileHeader> header;
+
+        public ApplyBQSRStub( final PCollectionView<SAMFileHeader> header ) {
+            this.header = header;
+        }
+
+        @Override
+        public PCollection<Read> apply( PCollection<Read> input ) {
+            return input.apply(ParDo.named("ApplyBQSR").
+                    of(new DoFn<Read, Read>() {
+
+                        @Override
+                        public void processElement( ProcessContext c ) throws Exception {
+                            c.output(c.element());
                         }
                     }).withSideInputs(header));
         }
