@@ -16,6 +16,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.dataflow.VariantShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
@@ -99,20 +100,6 @@ public final class DataflowUtils {
                 c.output(ReadConverter.makeRead(sam));
             }
         }
-    }
-    /*
-     * May have some bugs...
-     */
-    static public List<SimpleInterval> getVariantShardsFromInterval(final Locatable location) {
-        final int variantShardSize = 100000;
-        List<SimpleInterval> intervalList = new ArrayList<>();
-        // Get all of the shard numbers that span the start and end of the interval.
-        int startShard = location.getStart()/variantShardSize;
-        int endShard = location.getEnd()/variantShardSize;
-        for (int i = startShard; i <= endShard; ++i) {
-            intervalList.add(new SimpleInterval(location.getContig(),i*variantShardSize, (i+1)*variantShardSize));
-        }
-        return intervalList;
     }
 
     // TODO: refactor this please
