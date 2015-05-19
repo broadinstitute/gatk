@@ -63,7 +63,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final PCollection<GATKReportStub> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
         final PCollectionView<GATKReportStub> mergedRecalibrationReport = recalibrationReports.apply(View.<GATKReportStub>asSingleton());
 
-        final PCollection<Read> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton));
+        final PCollection<Read> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
     }
 
     private List<SimpleInterval> getAllIntervalsForReference(SAMSequenceDictionary sequenceDictionary) {
@@ -117,9 +117,11 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
     private static class ApplyBQSRStub extends PTransform<PCollection<Read>, PCollection<Read>> {
         private PCollectionView<SAMFileHeader> header;
+        private PCollectionView<GATKReportStub> recalibrationReport;
 
-        public ApplyBQSRStub( final PCollectionView<SAMFileHeader> header ) {
+        public ApplyBQSRStub( final PCollectionView<SAMFileHeader> header, final PCollectionView<GATKReportStub> recalibrationReport ) {
             this.header = header;
+            this.recalibrationReport = recalibrationReport;
         }
 
         @Override
@@ -131,7 +133,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
                         public void processElement( ProcessContext c ) throws Exception {
                             c.output(c.element());
                         }
-                    }).withSideInputs(header));
+                    }).withSideInputs(header, recalibrationReport));
         }
     }
 
