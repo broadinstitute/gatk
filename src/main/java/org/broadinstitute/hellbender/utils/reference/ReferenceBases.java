@@ -3,9 +3,10 @@ package org.broadinstitute.hellbender.utils.reference;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
-public class ReferenceBases {
+public class ReferenceBases implements Serializable {
 
     private final byte[] bases;
     private final SimpleInterval interval;

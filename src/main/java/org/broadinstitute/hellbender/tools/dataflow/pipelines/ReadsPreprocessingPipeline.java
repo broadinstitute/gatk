@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
-import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
 import com.google.cloud.dataflow.sdk.transforms.*;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
@@ -15,12 +14,17 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.GoogleReadToReadDataflowTransform;
+import org.broadinstitute.hellbender.engine.dataflow.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReads;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,8 +35,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
             optional = false)
     protected String bam;
 
-    @Argument(doc = "", shortName = "IRKnownVariants", fullName = "indelRealignmentKnownVariants", optional = true)
-    protected List<String> indelRealignmentKnownVariants;
+    @Argument(doc = "", shortName = "R", fullName = "reference", optional = false)
+    protected String referenceName;
 
     @Argument(doc = "", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
     protected List<String> baseRecalibrationKnownVariants;
@@ -48,12 +52,13 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary()):
                                                                                                  getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-        // TODO: Using a header string for now as a stub. Need a custom coder for SAMFileHeader,
-        // TODO: and SAMFileHeader needs to be Serializable
-        final PCollectionView<SAMFileHeader> headerSingleton = pipeline.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<String>asSingleton());
-        final PCollection<Read> initialReads = readsSource.getReadPCollection(intervals);
+        final PCollectionView<SAMFileHeader> headerSingleton = pipeline.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<SAMFileHeader>asSingleton());
+        final PCollection<com.google.api.services.genomics.model.Read> rawReads = readsSource.getReadPCollection(intervals);
 
-        final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub().withHeader(headerSingleton));
+        final PCollection<Read> initialReads = rawReads.apply(new GoogleReadToReadDataflowTransform());
+        final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
+        final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToReads(referenceName, baseRecalibrationKnownVariants));
+        final PCollection<GATKReportStub> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
     }
 
     private List<SimpleInterval> getAllIntervalsForReference(SAMSequenceDictionary sequenceDictionary) {
@@ -67,9 +72,11 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
     // an interface with a factory method
     private static class MarkDuplicatesStub extends PTransform<PCollection<Read>, PCollection<Read>> {
 
-        private PCollectionView<String> header;
+        private PCollectionView<SAMFileHeader> header;
 
-        public MarkDuplicatesStub( final )
+        public MarkDuplicatesStub( final PCollectionView<SAMFileHeader> header ) {
+            this.header = header;
+        }
 
         @Override
         public PCollection<Read> apply( PCollection<Read> input ) {
@@ -81,10 +88,27 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
                         }
                     }).withSideInputs(header));
         }
+    }
 
-        public PTransform<PCollection<Read>, PCollection<Read>> withHeader( final PCollectionView<String> header ) {
+    private static class BaseRecalibratorStub extends PTransform<PCollection<KV<Read, ReadContextData>>, PCollection<GATKReportStub>> {
+        private PCollectionView<SAMFileHeader> header;
+
+        public BaseRecalibratorStub( final PCollectionView<SAMFileHeader> header ) {
             this.header = header;
-            return this;
+        }
+
+        @Override
+        public PCollection<GATKReportStub> apply( PCollection<KV<Read, ReadContextData>> input ) {
+            return input.apply(ParDo.named("BaseRecalibrator").
+                    of(new DoFn<KV<Read, ReadContextData>, GATKReportStub>() {
+
+                        @Override
+                        public void processElement( ProcessContext c ) throws Exception {
+                            c.output(new GATKReportStub());
+                        }
+                    }).withSideInputs(header));
         }
     }
+
+    private static class GATKReportStub implements Serializable {}
 }

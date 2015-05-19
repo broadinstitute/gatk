@@ -4,7 +4,9 @@ package org.broadinstitute.hellbender.engine.dataflow;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
-public class ReadContextData {
+import java.io.Serializable;
+
+public class ReadContextData implements Serializable {
     private final ReferenceBases referenceBases;
     private final Iterable<Variant> variants;
 
