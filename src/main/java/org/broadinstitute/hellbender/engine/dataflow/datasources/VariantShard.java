@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
 import htsjdk.samtools.util.Locatable;
 

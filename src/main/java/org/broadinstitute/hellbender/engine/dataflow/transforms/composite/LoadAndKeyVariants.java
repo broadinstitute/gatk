@@ -10,13 +10,14 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.engine.dataflow.*;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsSource;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.KeyLocatableByVariantShard;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.ReadToInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.Read;
-import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
-import java.net.URI;
 import java.util.List;
 
 /**
@@ -34,7 +35,7 @@ public class LoadAndKeyVariants extends PTransform<PCollection<Read>, PCollectio
     @Override
     public PCollection<KV<Read, Iterable<Variant>>> apply(PCollection<Read> input) {
         VariantsSource source = new VariantsSource(variantSources, pipeline);
-        PCollection<SimpleInterval> readIntervals = input.apply(new ReadToIntervalDataflowTransform());
+        PCollection<SimpleInterval> readIntervals = input.apply(new ReadToInterval());
         // Dear god why?
         PCollectionList<Variant> variants = readIntervals.apply(
                 new DoFn<SimpleInterval, Variant>() {
@@ -50,7 +51,7 @@ public class LoadAndKeyVariants extends PTransform<PCollection<Read>, PCollectio
                 PCollection < Variant > variants = source.getVariantCollection(
                         readIntervals.apply(Combine.globally(new Concatenate<>)));
         PCollection<KV<VariantShard, Variant>> variantShards =
-                variants.apply(new KeyLocatableByVariantShardDataflowTransform()).apply(ParDo.of(
+                variants.apply(new KeyLocatableByVariantShard()).apply(ParDo.of(
                         new DoFn<KV<VariantShard, Locatable>, KV<VariantShard, Variant>>() {
                             @Override
                             public void processElement(ProcessContext c) throws Exception {
@@ -60,7 +61,7 @@ public class LoadAndKeyVariants extends PTransform<PCollection<Read>, PCollectio
                         }));
 
         PCollection<KV<VariantShard, Read>> readShards =
-                input.apply(new KeyLocatableByVariantShardDataflowTransform()).apply(ParDo.of(
+                input.apply(new KeyLocatableByVariantShard()).apply(ParDo.of(
                         new DoFn<KV<VariantShard, Locatable>, KV<VariantShard, Read>>() {
                             @Override
                             public void processElement(ProcessContext c) throws Exception {

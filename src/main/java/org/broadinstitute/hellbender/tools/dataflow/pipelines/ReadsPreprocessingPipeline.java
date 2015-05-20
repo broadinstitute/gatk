@@ -14,7 +14,10 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.*;
-import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReads;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsSource;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.GoogleReadToRead;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
@@ -23,9 +26,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.File;
-import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -57,11 +57,11 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final PCollectionView<SAMFileHeader> headerSingleton = pipeline.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<SAMFileHeader>asSingleton());
         final PCollection<com.google.api.services.genomics.model.Read> rawReads = readsSource.getReadPCollection(intervals);
 
-        final PCollection<Read> initialReads = rawReads.apply(new GoogleReadToReadDataflowTransform());
+        final PCollection<Read> initialReads = rawReads.apply(new GoogleReadToRead());
 
         final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
 
-        final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToReads(referenceName, baseRecalibrationKnownVariants));
+        final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToRead(referenceName, baseRecalibrationKnownVariants));
         final PCollection<RecalibrationTables> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
         final PCollectionView<RecalibrationTables> mergedRecalibrationReport = recalibrationReports.apply(View.<RecalibrationTables>asSingleton());
 

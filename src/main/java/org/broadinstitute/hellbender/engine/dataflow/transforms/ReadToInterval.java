@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
@@ -7,7 +7,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.Read;
 
-public class ReadToIntervalDataflowTransform extends PTransform<PCollection<Read>, PCollection<SimpleInterval>> {
+public class ReadToInterval extends PTransform<PCollection<Read>, PCollection<SimpleInterval>> {
 
     @Override
     public PCollection<SimpleInterval> apply( PCollection<Read> input ) {

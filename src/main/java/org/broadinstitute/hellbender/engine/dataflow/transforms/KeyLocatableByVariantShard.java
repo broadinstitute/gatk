@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
@@ -6,12 +6,11 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.read.Read;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
 
 import java.util.List;
 
-public class KeyLocatableByVariantShardDataflowTransform extends PTransform<PCollection<? extends Locatable>, PCollection<KV<VariantShard, Locatable>>> {
+public class KeyLocatableByVariantShard extends PTransform<PCollection<? extends Locatable>, PCollection<KV<VariantShard, Locatable>>> {
 
     @Override
     public PCollection<KV<VariantShard, Locatable>> apply( PCollection<? extends Locatable> input ) {

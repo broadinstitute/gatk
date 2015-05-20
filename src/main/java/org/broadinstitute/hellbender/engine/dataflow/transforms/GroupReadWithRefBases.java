@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 /**
  * Created by davidada on 5/15/15.
  */
-public class RefBasesToReadsDataflowTransform extends PTransform<PCollection<KV<ReferenceBases, Iterable<Read>>>, PCollection<KV<Read, ReferenceBases>>> {
+public class GroupReadWithRefBases extends PTransform<PCollection<KV<ReferenceBases, Iterable<Read>>>, PCollection<KV<Read, ReferenceBases>>> {
         @Override
         public PCollection<KV<Read, ReferenceBases>> apply(PCollection<KV<ReferenceBases, Iterable<Read>>> input) {
             return input.apply(ParDo.of(new DoFn<KV<ReferenceBases, Iterable<Read>>, KV<Read, ReferenceBases>>() {

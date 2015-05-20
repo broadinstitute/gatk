@@ -1,26 +1,22 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
 import com.google.cloud.dataflow.sdk.transforms.*;
-import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.Variant;
-
-import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * Created by davidada on 5/15/15.
  */
-public class RefBasesFromAPIDataflowTransform extends PTransform<PCollection<KV<ReferenceShard, Read>>, PCollection<KV<ReferenceBases, Iterable<Read>>>> {
+public class RefBasesFromAPI extends PTransform<PCollection<KV<ReferenceShard, Read>>, PCollection<KV<ReferenceBases, Iterable<Read>>>> {
     private final String refName;
 
-    public RefBasesFromAPIDataflowTransform(String refName) {
+    public RefBasesFromAPI( String refName ) {
         this.refName = refName;
     }
 

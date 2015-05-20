@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
-public class GroupReadsWithOverlappingDataTransform extends PTransform<KeyedPCollectionTuple<SimpleInterval>, PCollection<KV<Read, Iterable<Variant>>>> {
+public class GroupReadWithOverlappingData extends PTransform<KeyedPCollectionTuple<SimpleInterval>, PCollection<KV<Read, Iterable<Variant>>>> {
 
     private TupleTag<Read> readTag;
     private TupleTag<Variant> variantTag;

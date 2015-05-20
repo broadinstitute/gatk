@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
@@ -7,7 +7,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.read.ReadStubWrapper;
 
-public class GoogleReadToReadDataflowTransform extends PTransform<PCollection<com.google.api.services.genomics.model.Read>, PCollection<org.broadinstitute.hellbender.utils.read.Read>> {
+public class GoogleReadToRead extends PTransform<PCollection<com.google.api.services.genomics.model.Read>, PCollection<org.broadinstitute.hellbender.utils.read.Read>> {
 
     @Override
     public PCollection<Read> apply( PCollection<com.google.api.services.genomics.model.Read> input ) {
