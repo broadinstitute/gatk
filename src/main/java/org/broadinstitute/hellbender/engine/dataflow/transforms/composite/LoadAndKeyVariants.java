@@ -35,21 +35,8 @@ public class LoadAndKeyVariants extends PTransform<PCollection<Read>, PCollectio
     @Override
     public PCollection<KV<Read, Iterable<Variant>>> apply(PCollection<Read> input) {
         VariantsSource source = new VariantsSource(variantSources, pipeline);
-        PCollection<SimpleInterval> readIntervals = input.apply(new ReadToInterval());
-        // Dear god why?
-        PCollectionList<Variant> variants = readIntervals.apply(
-                new DoFn<SimpleInterval, Variant>() {
-                    @Override
-                    public void processElement(ProcessContext c) throws Exception {
-                        for (Variant vv : source.query(c.element())) {
-                            
-                        }
 
-                    }
-                                                                    source.query()
-                                                                }
-                PCollection < Variant > variants = source.getVariantCollection(
-                        readIntervals.apply(Combine.globally(new Concatenate<>)));
+        PCollection<Variant> variants = source.getAllVariants();
         PCollection<KV<VariantShard, Variant>> variantShards =
                 variants.apply(new KeyLocatableByVariantShard()).apply(ParDo.of(
                         new DoFn<KV<VariantShard, Locatable>, KV<VariantShard, Variant>>() {
