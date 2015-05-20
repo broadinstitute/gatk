@@ -83,6 +83,7 @@ public class LoadAndKeyVariants extends PTransform<PCollection<Read>, PCollectio
                     }
                 }));
         // Remove Duplicates
+        // NOTE: THIS WILL NOT WORK CORRECTLY UNTIL WE IMPLEMENT EQUALS FOR VARIANT.
         return readVariants.apply(RemoveDuplicates.<KV<Read, Variant>>create()).apply(GroupByKey.<Read,Variant>create());
     }
 }
