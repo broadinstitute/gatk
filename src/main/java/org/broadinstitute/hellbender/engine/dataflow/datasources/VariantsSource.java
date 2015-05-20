@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class VariantsSource {
@@ -36,34 +37,46 @@ public class VariantsSource {
         this.pipeline = pipeline;
     }
 
-    public PCollection<Variant> getVariantCollection( final List<SimpleInterval> intervals ) {
-        final List<Variant> variantCollection = new ArrayList<>();
+    public PCollection<Variant> getAllVariants() {
+        final List<Variant> aggregatedResults = new ArrayList<>();
 
         for ( final String variantSource : variantSources ) {
-            variantCollection.addAll(getVariantsForSingleSource(variantSource, intervals));
+            try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(variantSource), getCodecForVariantSource(variantSource), null, 0) ) {
+                aggregatedResults.addAll(wrapQueryResults(dataSource.iterator()));
+            }
         }
 
-        return pipeline.apply(Create.of(variantCollection));
+        return pipeline.apply(Create.of(aggregatedResults));
     }
 
-    public Iterable<Variant> query(final SimpleInterval interval) {
-        return null;
+
+    public PCollection<Variant> getVariantsOverlappingIntervals( final List<SimpleInterval> intervals ) {
+        final List<Variant> aggregatedResults = new ArrayList<>();
+
+        for ( final String variantSource : variantSources ) {
+            try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(variantSource), getCodecForVariantSource(variantSource), null, 0) ) {
+                dataSource.setIntervalsForTraversal(intervals);
+                aggregatedResults.addAll(wrapQueryResults(dataSource.iterator()));
+            }
+        }
+
+        return pipeline.apply(Create.of(aggregatedResults));
     }
-    private List<Variant> getVariantsForSingleSource( final String variantSource, final List<SimpleInterval> intervals ) {
+
+    @SuppressWarnings("unchecked")
+    private FeatureCodec<VariantContext, ?> getCodecForVariantSource( final String variantSource ) {
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(variantSource));
         if ( !VariantContext.class.isAssignableFrom(codec.getFeatureType()) ) {
             throw new UserException(variantSource + " is not in a format that produces VariantContexts");
         }
+        return (FeatureCodec<VariantContext, ?>)codec;
+    }
 
-        try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(variantSource), (FeatureCodec<VariantContext, ?>) codec) ) {
-            dataSource.setIntervalsForTraversal(intervals);
-
-            final List<Variant> variantCollection = new ArrayList<>();
-            for ( final VariantContext variant : dataSource ) {
-                variantCollection.add(new VariantContextVariantAdapter(variant));
-            }
-
-            return variantCollection;
+    private List<Variant> wrapQueryResults( final Iterator<VariantContext> queryResults ) {
+        final List<Variant> wrappedResults = new ArrayList<>();
+        while ( queryResults.hasNext() ) {
+            wrappedResults.add(new VariantContextVariantAdapter(queryResults.next()));
         }
+        return wrappedResults;
     }
 }

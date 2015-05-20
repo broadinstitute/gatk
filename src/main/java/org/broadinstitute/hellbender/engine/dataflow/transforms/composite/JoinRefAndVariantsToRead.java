@@ -35,7 +35,7 @@ public class JoinRefAndVariantsToRead extends PTransform<PCollection<Read>, PCol
     @Override
     public PCollection<KV<Read, Iterable<Variant>>> apply(PCollection<Read> input) {
         VariantsSource source = new VariantsSource(variantSources, pipeline);
-        PCollection<Variant> variants = source.getVariantCollection(intervals);
+        PCollection<Variant> variants = source.getVariantsOverlappingIntervals(intervals);
         PCollection<KV<VariantShard, Variant>> variantShards =
                 variants.apply(new KeyLocatableByVariantShard()).apply(ParDo.of(
                         new DoFn<KV<VariantShard, Locatable>, KV<VariantShard, Variant>>() {
