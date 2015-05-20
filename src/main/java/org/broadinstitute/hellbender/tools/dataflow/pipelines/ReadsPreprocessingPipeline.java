@@ -13,11 +13,11 @@ import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.GoogleReadToReadDataflowTransform;
-import org.broadinstitute.hellbender.engine.dataflow.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
+import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReads;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.Read;
@@ -25,6 +25,8 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,8 +62,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
 
         final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToReads(referenceName, baseRecalibrationKnownVariants));
-        final PCollection<GATKReportStub> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
-        final PCollectionView<GATKReportStub> mergedRecalibrationReport = recalibrationReports.apply(View.<GATKReportStub>asSingleton());
+        final PCollection<RecalibrationTables> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
+        final PCollectionView<RecalibrationTables> mergedRecalibrationReport = recalibrationReports.apply(View.<RecalibrationTables>asSingleton());
 
         final PCollection<Read> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
     }
@@ -95,7 +97,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
     }
 
-    private static class BaseRecalibratorStub extends PTransform<PCollection<KV<Read, ReadContextData>>, PCollection<GATKReportStub>> {
+    private static class BaseRecalibratorStub extends PTransform<PCollection<KV<Read, ReadContextData>>, PCollection<RecalibrationTables>> {
         private PCollectionView<SAMFileHeader> header;
 
         public BaseRecalibratorStub( final PCollectionView<SAMFileHeader> header ) {
@@ -103,13 +105,13 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
 
         @Override
-        public PCollection<GATKReportStub> apply( PCollection<KV<Read, ReadContextData>> input ) {
+        public PCollection<RecalibrationTables> apply( PCollection<KV<Read, ReadContextData>> input ) {
             return input.apply(ParDo.named("BaseRecalibrator").
-                    of(new DoFn<KV<Read, ReadContextData>, GATKReportStub>() {
+                    of(new DoFn<KV<Read, ReadContextData>, RecalibrationTables>() {
 
                         @Override
                         public void processElement( ProcessContext c ) throws Exception {
-                            c.output(new GATKReportStub());
+                            c.output(new RecalibrationTables(new StandardCovariateList(new RecalibrationArgumentCollection(), Collections.emptyList())));
                         }
                     }).withSideInputs(header));
         }
@@ -117,9 +119,9 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
     private static class ApplyBQSRStub extends PTransform<PCollection<Read>, PCollection<Read>> {
         private PCollectionView<SAMFileHeader> header;
-        private PCollectionView<GATKReportStub> recalibrationReport;
+        private PCollectionView<RecalibrationTables> recalibrationReport;
 
-        public ApplyBQSRStub( final PCollectionView<SAMFileHeader> header, final PCollectionView<GATKReportStub> recalibrationReport ) {
+        public ApplyBQSRStub( final PCollectionView<SAMFileHeader> header, final PCollectionView<RecalibrationTables> recalibrationReport ) {
             this.header = header;
             this.recalibrationReport = recalibrationReport;
         }
@@ -137,5 +139,4 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
     }
 
-    private static class GATKReportStub implements Serializable {}
 }
