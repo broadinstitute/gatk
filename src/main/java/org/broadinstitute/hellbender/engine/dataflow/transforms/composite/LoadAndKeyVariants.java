@@ -41,14 +41,14 @@ public class LoadAndKeyVariants extends PTransform<PCollection<Read>, PCollectio
                 new DoFn<SimpleInterval, Variant>() {
                     @Override
                     public void processElement(ProcessContext c) throws Exception {
-                        for (Variant vv : source.getVariantsForSingleInterval(c.element())) {
+                        for (Variant vv : source.query(c.element())) {
                             
                         }
 
                     }
                                                                     source.query()
                                                                 }
-                PCollection < Variant > variants = source.getVariantsOverlappingIntervals(
+                PCollection < Variant > variants = source.getVariantCollection(
                         readIntervals.apply(Combine.globally(new Concatenate<>)));
         PCollection<KV<VariantShard, Variant>> variantShards =
                 variants.apply(new KeyLocatableByVariantShard()).apply(ParDo.of(
