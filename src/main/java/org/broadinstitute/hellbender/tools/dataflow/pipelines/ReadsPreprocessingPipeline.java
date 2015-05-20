@@ -61,7 +61,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
         final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
 
-        final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToRead(referenceName, baseRecalibrationKnownVariants));
+        final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToRead(referenceName, baseRecalibrationKnownVariants, pipeline));
         final PCollection<RecalibrationTables> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
         final PCollectionView<RecalibrationTables> mergedRecalibrationReport = recalibrationReports.apply(View.<RecalibrationTables>asSingleton());
 
