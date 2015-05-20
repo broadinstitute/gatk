@@ -1,8 +1,12 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.transforms.composite;
 
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.engine.dataflow.GroupReadsForRef;
+import org.broadinstitute.hellbender.engine.dataflow.RefBasesFromAPIDataflowTransform;
+import org.broadinstitute.hellbender.engine.dataflow.RefBasesToReadsDataflowTransform;
+import org.broadinstitute.hellbender.engine.dataflow.ReferenceShard;
 import org.broadinstitute.hellbender.utils.read.Read;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -13,6 +17,7 @@ public class APIToRefBasesKeyedByReadDataflowTransform extends PTransform<PColle
     private final String refName;
 
     public APIToRefBasesKeyedByReadDataflowTransform(String refName) {
+
         this.refName = refName;
     }
     @Override

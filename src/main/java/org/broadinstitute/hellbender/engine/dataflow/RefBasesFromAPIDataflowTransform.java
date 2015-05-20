@@ -18,7 +18,6 @@ import java.util.Iterator;
  * Created by davidada on 5/15/15.
  */
 public class RefBasesFromAPIDataflowTransform extends PTransform<PCollection<KV<ReferenceShard, Read>>, PCollection<KV<ReferenceBases, Iterable<Read>>>> {
-    //private RefBasesFromAPIDataflowTransform() {}
     private final String refName;
 
     public RefBasesFromAPIDataflowTransform(String refName) {

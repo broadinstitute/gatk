@@ -46,6 +46,9 @@ public class VariantsSource {
         return pipeline.apply(Create.of(variantCollection));
     }
 
+    public Iterable<Variant> query(final SimpleInterval interval) {
+        return null;
+    }
     private List<Variant> getVariantsForSingleSource( final String variantSource, final List<SimpleInterval> intervals ) {
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(variantSource));
         if ( !VariantContext.class.isAssignableFrom(codec.getFeatureType()) ) {

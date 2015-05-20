@@ -11,10 +11,10 @@ import org.broadinstitute.hellbender.utils.read.Read;
 
 import java.util.List;
 
-public class KeyLocatableByVariantShardDataflowTransform extends PTransform<PCollection<Locatable>, PCollection<KV<VariantShard, Locatable>>> {
+public class KeyLocatableByVariantShardDataflowTransform extends PTransform<PCollection<? extends Locatable>, PCollection<KV<VariantShard, Locatable>>> {
 
     @Override
-    public PCollection<KV<VariantShard, Locatable>> apply( PCollection<Locatable> input ) {
+    public PCollection<KV<VariantShard, Locatable>> apply( PCollection<? extends Locatable> input ) {
         return input.apply(ParDo.of(new DoFn<Locatable, KV<VariantShard, Locatable>>() {
             @Override
             public void processElement( ProcessContext c ) throws Exception {
