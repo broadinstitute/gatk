@@ -118,14 +118,14 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
         String outputDest = "test-table-pre.txt";
 
         // 1. Grab the needed inputs.
-        String toolArgs = String.format(params.getCommandLine(), outputDest);
+        String toolCmdLine = String.format(params.getCommandLine(), outputDest);
         SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(new File(params.bam));
         SAMFileHeader header = reader.getFileHeader();
         List<Read> input = getReads(reader);
         List<SimpleInterval> knownSites = getKnownSites(params);
 
         // 2. Run the computation.
-        CalibrationTablesBuilder calibrationTablesBuilder = new CalibrationTablesBuilder(header, params.reference, toolArgs);
+        CalibrationTablesBuilder calibrationTablesBuilder = new CalibrationTablesBuilder(header, params.reference, toolCmdLine);
         calibrationTablesBuilder.add(input, knownSites);
         calibrationTablesBuilder.done();
         RecalibrationTables output = calibrationTablesBuilder.getRecalibrationTables();
@@ -135,7 +135,8 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
         RecalibrationEngine.finalizeRecalibrationTables(output);
 
         // 4. Generate report.
-        BaseRecalibratorUprooted baseRecalibratorUprooted = BaseRecalibratorUprooted.fromArgs(header, toolArgs, System.out);
+        BaseRecalibratorUprooted baseRecalibratorUprooted = BaseRecalibratorUprooted.fromCommandLine(header, toolCmdLine, System.out);
+        baseRecalibratorUprooted.checkClientArguments();
         baseRecalibratorUprooted.onTraversalStart(null);
         baseRecalibratorUprooted.saveReport(output, requestedCovariates);
 
@@ -202,7 +203,7 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
     private List<SimpleInterval> getKnownSites(BQSRTest params) {
         List<SimpleInterval> ret = new ArrayList<>();
         for (String knownSites : params.getKnownSites()) {
-            System.out.println("Reading the feature input");
+            System.out.println("Reading the known sites");
             FeatureDataSource<VariantContext> source = new FeatureDataSource<>(new File(knownSites), new VCFCodec(), "KnownIntervals");
             for (VariantContext foo : source) {
                 int start = foo.getStart();

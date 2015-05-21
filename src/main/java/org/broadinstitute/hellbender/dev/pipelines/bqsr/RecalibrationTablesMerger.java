@@ -66,5 +66,4 @@ public final class RecalibrationTablesMerger extends Combine.CombineFn<Recalibra
 
     }
 
-
 }

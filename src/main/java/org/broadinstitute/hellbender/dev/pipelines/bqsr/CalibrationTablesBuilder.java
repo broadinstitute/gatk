@@ -6,6 +6,7 @@ import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
+import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorUprooted;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
  * foo = new CalibrationTablesBuilder(header,reference,args);
  * foo.add(reads, skipIntervals);
  * foo.add(moreReads, skipIntervals);
+ * foo.done();
  * return foo.getRecalibrationTables();
  *
  */
@@ -46,17 +48,30 @@ public final class CalibrationTablesBuilder {
     private final ReferenceDataSource reference;
     private boolean done = false;
 
-    public CalibrationTablesBuilder(final SAMFileHeader header, final String referenceFileName, final String toolArgs) {
+    public CalibrationTablesBuilder(final SAMFileHeader header, final String referenceFileName, final BaseRecalibrationArgumentCollection toolArgs) {
         // 1. we'll paste the header onto the new SAMRecord objects, the code needs it.
         this.header = header;
         // 2. the reference we copied
         final File refFile = new File(referenceFileName);
         this.reference = new ReferenceDataSource(refFile);
         // 3. create the class that'll do the actual work
-        this.br = BaseRecalibratorUprooted.fromArgs(header, toolArgs, System.out);
+        this.br = BaseRecalibratorUprooted.fromArgs(header, toolArgs);
         if (null==br) throw new RuntimeException("invalid tool arguments");
         br.onTraversalStart(refFile);
     }
+
+    public CalibrationTablesBuilder(final SAMFileHeader header, final String referenceFileName, String commandLineArguments) {
+        // 1. we'll paste the header onto the new SAMRecord objects, the code needs it.
+        this.header = header;
+        // 2. the reference we copied
+        final File refFile = new File(referenceFileName);
+        this.reference = new ReferenceDataSource(refFile);
+        // 3. create the class that'll do the actual work
+        this.br = BaseRecalibratorUprooted.fromCommandLine(header, commandLineArguments, System.out);
+        if (null==br) throw new GATKException("invalid tool arguments");
+        br.onTraversalStart(refFile);
+    }
+
 
     /**
      * For each read at this locus, computes the various covariate values and updates the RecalibrationTables as needed.

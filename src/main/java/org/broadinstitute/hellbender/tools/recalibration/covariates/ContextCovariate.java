@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class ContextCovariate implements Covariate {
-    private final Logger logger = LogManager.getLogger(ContextCovariate.class);
+    private final static Logger logger = LogManager.getLogger(ContextCovariate.class);
 
     private final int mismatchesContextSize;
     private final int indelsContextSize;

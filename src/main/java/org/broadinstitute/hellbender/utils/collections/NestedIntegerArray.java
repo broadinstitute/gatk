@@ -3,11 +3,12 @@ package org.broadinstitute.hellbender.utils.collections;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class NestedIntegerArray<T> {
+public final class NestedIntegerArray<T extends Serializable> implements Serializable {
 
     private static Logger logger = LogManager.getLogger(NestedIntegerArray.class);
 
