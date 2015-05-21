@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -19,7 +20,7 @@ import java.util.*;
  * This set of arguments will also be passed to the constructor of every Covariate when it is instantiated.
  */
 
-public final class RecalibrationArgumentCollection implements ArgumentCollectionDefinition {
+public final class RecalibrationArgumentCollection implements Serializable, ArgumentCollectionDefinition {
 
     /**
      * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,
@@ -29,7 +30,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
      * reflected those sites skipped by the -XL argument.
      */
     @Argument(fullName = "knownSites", shortName = "knownSites", doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = true)
-    public List<FeatureInput<Feature>> knownSites;
+    public transient List<FeatureInput<Feature>> knownSites;
 
     /**
      * After the header, data records occur one per line until the end of the file. The first several items on a line are the
@@ -40,7 +41,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     @Gather(BQSRGatherer.class)
     @Argument(fullName= "RECAL_TABLE_FILE", shortName="RECAL_TABLE_FILE", doc = "The output recalibration table file to create", optional = false)
     public File RECAL_TABLE_FILE = null;
-    public PrintStream RECAL_TABLE;
+    public transient PrintStream RECAL_TABLE;
 
     //We always use the same covariates. The field is retained for comparibility with GATK3 reports.
     public static final boolean DO_NOT_USE_STANDARD_COVARIATES = false;

@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +15,7 @@ import java.util.List;
  *
  * Covariates are immutable objects after construction. All state setting and parameterization must happen during the construction call.
  */
-public interface Covariate {
+public interface Covariate extends Serializable {
 
     /**
      * Calculates covariate values for all positions in the read.

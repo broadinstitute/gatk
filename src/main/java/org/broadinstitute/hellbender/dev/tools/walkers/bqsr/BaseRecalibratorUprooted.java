@@ -67,57 +67,9 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 public final class BaseRecalibratorUprooted {
     final protected static Logger logger = LogManager.getLogger(BaseRecalibratorUprooted.class);
 
-    /**
-     * All the command line arguments for BQSR and its covariates.
-     */
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
-    private final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
+    private BaseRecalibrationArgumentCollection BRAC;
 
-    @ArgumentCollection
-    protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
-
-    @ArgumentCollection
-    public final ReadInputArgumentCollection readArguments = new OptionalReadInputArgumentCollection();
-
-    @ArgumentCollection
-    public final ReferenceInputArgumentCollection referenceArguments = new OptionalReferenceInputArgumentCollection();
-
-
-    @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName = "bqsrBAQGOP", doc = "BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
-    public double BAQGOP = BAQ.DEFAULT_GOP;
-
-    /**
-     * This flag tells GATK not to modify quality scores less than this value. Instead they will be written out unmodified in the recalibrated BAM file.
-     * In general it's unsafe to change qualities scores below < 6, since base callers use these values to indicate random or bad bases.
-     * For example, Illumina writes Q2 bases when the machine has really gone wrong. This would be fine in and of itself,
-     * but when you select a subset of these reads based on their ability to align to the reference and their dinucleotide effect,
-     * your Q2 bin can be elevated to Q8 or Q10, leading to issues downstream.
-     */
-    @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -BQSR)", optional = true)
-    public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
-
-
-    // --------------------------------------------------------------------------------------------------------------
-    //
-    // quality encoding checking arguments
-    //
-    // --------------------------------------------------------------------------------------------------------------
-
-    /**
-     * This flag tells GATK to use the original base qualities (that were in the data before BQSR/recalibration) which
-     * are stored in the OQ tag, if they are present, rather than use the post-recalibration quality scores. If no OQ
-     * tag is present for a read, the standard qual score will be used.
-     */
-    @Argument(fullName = "useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
-    public Boolean useOriginalBaseQualities = false;
-
-    /**
-     * If reads are missing some or all base quality scores, this value will be used for all base quality scores.
-     * By default this is set to -1 to disable default base quality assignment.
-     */
-    //TODO: minValue = 0, maxValue = Byte.MAX_VALUE)
-    @Argument(fullName = "defaultBaseQualities", shortName = "DBQ", doc = "Assign a default base quality", optional = true)
-    public byte defaultBaseQualities = -1;
 
     // --------------------------------------------------------------------------------------------------------------
     // Non-command line members
@@ -138,7 +90,7 @@ public final class BaseRecalibratorUprooted {
 
     private int minimumQToUse;
 
-    private static final String NO_DBSNP_EXCEPTION = "This calculation is critically dependent on being able to skip over known variant sites. Please provide a VCF file containing known sites of genetic variation.";
+    protected static final String NO_DBSNP_EXCEPTION = "This calculation is critically dependent on being able to skip over known variant sites. Please provide a VCF file containing known sites of genetic variation.";
 
     private BAQ baq; // BAQ the reads on the fly to generate the alignment uncertainty vector
     private ReferenceDataSource referenceDataSource; // datasource for the reference. We're using a different one from the engine itself to avoid messing with its caches.
@@ -153,32 +105,48 @@ public final class BaseRecalibratorUprooted {
      * any diagnostic messages to "out". If the command-line requested the program not be run
      * (e.g. it was "--help"), then this method returns null.
      */
-    public static BaseRecalibratorUprooted fromArgs(SAMFileHeader header, String toolArgs, PrintStream out) {
+    public static BaseRecalibratorUprooted fromCommandLine(SAMFileHeader header, String commandLine, PrintStream out) {
         BaseRecalibratorUprooted br = new BaseRecalibratorUprooted(header);
-        boolean shouldRun = new CommandLineParser(br).parseArguments(out, Utils.escapeExpressions(toolArgs));
+        br.BRAC = new BaseRecalibrationArgumentCollection();
+        boolean shouldRun = new CommandLineParser(br).parseArguments(out, Utils.escapeExpressions(commandLine));
         if (!shouldRun) return null;
-        if (null == br.RAC.knownSites || br.RAC.knownSites.size() == 0) {
-            throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
-        }
         return br;
+    }
+
+    public static BaseRecalibratorUprooted fromArgs(SAMFileHeader header, BaseRecalibrationArgumentCollection toolArgs) {
+        return new BaseRecalibratorUprooted(header, toolArgs);
     }
 
     private BaseRecalibratorUprooted(SAMFileHeader samHeader) {
         this.samHeader = samHeader;
     }
 
+    private BaseRecalibratorUprooted(SAMFileHeader samHeader, BaseRecalibrationArgumentCollection toolArgs) {
+        this.samHeader = samHeader;
+        this.BRAC = toolArgs;
+    }
+
+    /**
+     * Throws if knownSites is missing.
+     */
+    public void checkClientArguments() {
+        if (null == BRAC.RAC.knownSites || BRAC.RAC.knownSites.size() == 0) {
+            throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
+        }
+    }
+
     public void onTraversalStart(File refFile) {
         accumulator = 0L;
 
-        baq = new BAQ(BAQGOP); // setup the BAQ object with the provided gap open penalty
+        baq = new BAQ(BRAC.BAQGOP); // setup the BAQ object with the provided gap open penalty
 
-        if (RAC.FORCE_PLATFORM != null)
-            RAC.DEFAULT_PLATFORM = RAC.FORCE_PLATFORM;
+        if (BRAC.RAC.FORCE_PLATFORM != null)
+            BRAC.RAC.DEFAULT_PLATFORM = BRAC.RAC.FORCE_PLATFORM;
 
-        covariates = new StandardCovariateList(RAC, getHeaderForReads());
+        covariates = new StandardCovariateList(BRAC.RAC, getHeaderForReads());
 
         initializeRecalibrationEngine();
-        minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
+        minimumQToUse = BRAC.PRESERVE_QSCORES_LESS_THAN;
 
         if (null!=refFile) {
             referenceDataSource = new ReferenceDataSource(refFile);
@@ -220,7 +188,7 @@ public final class BaseRecalibratorUprooted {
     }
 
     private SAMRecord resetOriginalBaseQualities(SAMRecord read) {
-        if (!useOriginalBaseQualities) {
+        if (!BRAC.useOriginalBaseQualities) {
             return read;
         }
         return ReadUtils.resetOriginalBaseQualities(read);
@@ -230,14 +198,14 @@ public final class BaseRecalibratorUprooted {
         // if we are using default quals, check if we need them, and add if necessary.
         // 1. we need if reads are lacking or have incomplete quality scores
         // 2. we add if defaultBaseQualities has a positive value
-        if (defaultBaseQualities < 0) {
+        if (BRAC.defaultBaseQualities < 0) {
             return read;
         }
         byte reads[] = read.getReadBases();
         byte quals[] = read.getBaseQualities();
         if (quals == null || quals.length < reads.length) {
             byte new_quals[] = new byte[reads.length];
-            Arrays.fill(new_quals, defaultBaseQualities);
+            Arrays.fill(new_quals, BRAC.defaultBaseQualities);
             read.setBaseQualities(new_quals);
         }
         return read;
@@ -280,8 +248,8 @@ public final class BaseRecalibratorUprooted {
             return;
         } // the whole read was inside the adaptor so skip it
 
-        RecalUtils.parsePlatformForRead(read, RAC);
-        if (!RecalUtils.isColorSpaceConsistent(RAC.SOLID_NOCALL_STRATEGY, read)) { // parse the solid color space and check for color no-calls
+        RecalUtils.parsePlatformForRead(read, BRAC.RAC);
+        if (!RecalUtils.isColorSpaceConsistent(BRAC.RAC.SOLID_NOCALL_STRATEGY, read)) { // parse the solid color space and check for color no-calls
             return; // skip this read completely
         }
 
@@ -337,7 +305,7 @@ public final class BaseRecalibratorUprooted {
     }
 
     protected boolean badSolidOffset(final SAMRecord read, final int offset) {
-        return ReadUtils.isSOLiDRead(read) && RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
+        return ReadUtils.isSOLiDRead(read) && BRAC.RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
     protected boolean[] calculateKnownSites(final SAMRecord read, final List<? extends Locatable> knownLocations) {
@@ -529,12 +497,6 @@ public final class BaseRecalibratorUprooted {
         logger.info("Calculating quantized quality scores...");
         quantizeQualityScores();
 
-        if (null != RAC.RECAL_TABLE) {
-            logger.info("Writing recalibration report...");
-            generateReport();
-            logger.info("...done!");
-        }
-
         return accumulator;
     }
 
@@ -548,19 +510,19 @@ public final class BaseRecalibratorUprooted {
      * generate a quantization map (recalibrated_qual -> quantized_qual)
      */
     private void quantizeQualityScores() {
-        quantizationInfo = new QuantizationInfo(getRecalibrationTable(), RAC.QUANTIZING_LEVELS);
+        quantizationInfo = new QuantizationInfo(getRecalibrationTable(), BRAC.RAC.QUANTIZING_LEVELS);
     }
 
     private void generateReport() {
-        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, getRecalibrationTable(), covariates, RAC.SORT_BY_ALL_COLUMNS);
+        RecalUtils.outputRecalibrationReport(BRAC.RAC, quantizationInfo, getRecalibrationTable(), covariates, BRAC.RAC.SORT_BY_ALL_COLUMNS);
     }
 
     /**
      * Generates the report based on a finalized recalibrationTables.
      */
     public void saveReport(RecalibrationTables rt, StandardCovariateList finalRequestedCovariates) throws java.io.FileNotFoundException {
-        RAC.RECAL_TABLE = new PrintStream(RAC.RECAL_TABLE_FILE);
-        QuantizationInfo quantizationInfo = new QuantizationInfo(rt, RAC.QUANTIZING_LEVELS);
-        RecalUtils.outputRecalibrationReport(RAC, quantizationInfo, rt, finalRequestedCovariates, RAC.SORT_BY_ALL_COLUMNS);
+        BRAC.RAC.RECAL_TABLE = new PrintStream(BRAC.RAC.RECAL_TABLE_FILE);
+        QuantizationInfo quantizationInfo = new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
+        RecalUtils.outputRecalibrationReport(BRAC.RAC, quantizationInfo, rt, finalRequestedCovariates, BRAC.RAC.SORT_BY_ALL_COLUMNS);
     }
 }

@@ -5,11 +5,13 @@ import org.apache.commons.math3.analysis.function.Gaussian;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 
+import java.io.Serializable;
+
 /**
  * An individual piece of recalibration data. Each bin counts up the number of observations and the number
  * of reference mismatches seen for that combination of covariates.
  */
-public final class RecalDatum {
+public final class RecalDatum implements Serializable {
     public final static byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
     private static final double UNINITIALIZED = -1.0;
 

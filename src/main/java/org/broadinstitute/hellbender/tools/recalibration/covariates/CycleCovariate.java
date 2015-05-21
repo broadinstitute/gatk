@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCo
 import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.SequencerFlowClass;
 
+import java.io.Serializable;
+
 /**
  * The Cycle covariate.
  * For Solexa the cycle is simply the position in the read (counting backwards if it is a negative strand read)
