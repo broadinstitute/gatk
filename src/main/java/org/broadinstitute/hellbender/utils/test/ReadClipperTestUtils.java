@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.clipping;
+package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.Utils;

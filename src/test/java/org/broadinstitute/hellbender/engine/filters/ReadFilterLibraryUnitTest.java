@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.clipping.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.testng.Assert;
