@@ -4,8 +4,8 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToReadAdapter;
 import org.broadinstitute.hellbender.utils.read.Read;
-import org.broadinstitute.hellbender.utils.read.ReadStubWrapper;
 
 public class GoogleReadToRead extends PTransform<PCollection<com.google.api.services.genomics.model.Read>, PCollection<org.broadinstitute.hellbender.utils.read.Read>> {
 
@@ -14,7 +14,7 @@ public class GoogleReadToRead extends PTransform<PCollection<com.google.api.serv
         return input.apply(ParDo.of(new DoFn<com.google.api.services.genomics.model.Read, org.broadinstitute.hellbender.utils.read.Read>() {
             @Override
             public void processElement( ProcessContext c ) throws Exception {
-                c.output(new ReadStubWrapper(c.element()));
+                c.output(new GoogleGenomicsReadToReadAdapter(c.element()));
             }
         }));
     }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.StringLineReader;
+import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -644,6 +645,20 @@ public final class ReadUtils {
         if( !read.getReadUnmappedFlag() && read.getAlignmentStart() > contigHeader.getSequenceLength() )
             return false;
         return true;
+    }
+
+    /**
+     * Convert bases in place into canonical form, upper case, and with no-call represented as N.
+     *
+     * @param bases bases to normalize
+     */
+    public static void normalizeBases( final byte[] bases ) {
+        for ( int i = 0; i < bases.length; ++i ) {
+            bases[i] = StringUtil.toUpperCase(bases[i]);
+            if (bases[i] == '.') {
+                bases[i] = 'N';
+            }
+        }
     }
 
 }
