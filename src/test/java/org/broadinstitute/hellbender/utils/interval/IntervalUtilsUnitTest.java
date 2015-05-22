@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.interval;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
@@ -750,6 +751,10 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
         SAMFileHeader picardFileHeader = new SAMFileHeader();
         picardFileHeader.addSequence(genomeLocParser.getContigInfo("1"));
+        // Intentionally add an extra contig not in our genomeLocParser's sequence dictionary
+        // so that we can add intervals to the Picard interval file for contigs not in our dictionary
+        picardFileHeader.addSequence(new SAMSequenceRecord("2", 100000));
+
         IntervalList picardIntervals = new IntervalList(picardFileHeader);
         picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname"));
 
@@ -759,6 +764,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         List<String> intervalArgs = new ArrayList<>(1);
         intervalArgs.add(picardIntervalFile.getAbsolutePath());
 
+        // loadIntervals() will validate all intervals against the sequence dictionary in our genomeLocParser,
+        // and should throw for all intervals in our invalidIntervalTestData set
         IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
     }
 
