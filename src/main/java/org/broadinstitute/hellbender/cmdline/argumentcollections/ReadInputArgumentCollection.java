@@ -16,4 +16,9 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */
     public abstract List<File> getReadFiles();
+
+    /**
+     * Get the list of BAM/SAM/CRAM filenames specified at the command line
+     */
+    public abstract List<String> getReadFilesNames();
 }

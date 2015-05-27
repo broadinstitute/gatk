@@ -9,7 +9,12 @@ import java.io.File;
  */
 public abstract class ReferenceInputArgumentCollection implements ArgumentCollectionDefinition {
     /**
-     * Get the reference file specified at the command line.
+     * Get the reference file specified at the command line, creating the File object first if necessary.
      */
     abstract public File getReferenceFile();
+
+    /**
+     * Get the name of the reference file specified at the command line.
+     */
+    abstract public String getReferenceFileName();
 }

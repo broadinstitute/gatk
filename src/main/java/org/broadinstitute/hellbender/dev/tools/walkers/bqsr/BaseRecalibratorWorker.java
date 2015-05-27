@@ -4,15 +4,11 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.Feature;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -21,14 +17,12 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.ReadRecalibrationInfo;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -38,7 +32,6 @@ import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.File;
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -64,8 +57,8 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
         usageShort = "Generates recalibration table (do not run this one from the cmd line)",
         programGroup = ReadProgramGroup.class
 )
-public final class BaseRecalibratorUprooted {
-    final protected static Logger logger = LogManager.getLogger(BaseRecalibratorUprooted.class);
+public final class BaseRecalibratorWorker {
+    final protected static Logger logger = LogManager.getLogger(BaseRecalibratorWorker.class);
 
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
     private BaseRecalibrationArgumentCollection BRAC;
@@ -105,23 +98,23 @@ public final class BaseRecalibratorUprooted {
      * any diagnostic messages to "out". If the command-line requested the program not be run
      * (e.g. it was "--help"), then this method returns null.
      */
-    public static BaseRecalibratorUprooted fromCommandLine(SAMFileHeader header, String commandLine, PrintStream out) {
-        BaseRecalibratorUprooted br = new BaseRecalibratorUprooted(header);
+    public static BaseRecalibratorWorker fromCommandLine(SAMFileHeader header, String commandLine, PrintStream out) {
+        BaseRecalibratorWorker br = new BaseRecalibratorWorker(header);
         br.BRAC = new BaseRecalibrationArgumentCollection();
         boolean shouldRun = new CommandLineParser(br).parseArguments(out, Utils.escapeExpressions(commandLine));
         if (!shouldRun) return null;
         return br;
     }
 
-    public static BaseRecalibratorUprooted fromArgs(SAMFileHeader header, BaseRecalibrationArgumentCollection toolArgs) {
-        return new BaseRecalibratorUprooted(header, toolArgs);
+    public static BaseRecalibratorWorker fromArgs(SAMFileHeader header, BaseRecalibrationArgumentCollection toolArgs) {
+        return new BaseRecalibratorWorker(header, toolArgs);
     }
 
-    private BaseRecalibratorUprooted(SAMFileHeader samHeader) {
+    private BaseRecalibratorWorker(SAMFileHeader samHeader) {
         this.samHeader = samHeader;
     }
 
-    private BaseRecalibratorUprooted(SAMFileHeader samHeader, BaseRecalibrationArgumentCollection toolArgs) {
+    private BaseRecalibratorWorker(SAMFileHeader samHeader, BaseRecalibrationArgumentCollection toolArgs) {
         this.samHeader = samHeader;
         this.BRAC = toolArgs;
     }
@@ -223,7 +216,7 @@ public final class BaseRecalibratorUprooted {
     }
 
     private ReadTransformer makeReadTransform() {
-        ReadTransformer f0 = BaseRecalibratorUprooted::consolidateCigar;
+        ReadTransformer f0 = BaseRecalibratorWorker::consolidateCigar;
 
         ReadTransformer f =
                 f0.andThen(this::setDefaultBaseQualities)
@@ -522,6 +515,7 @@ public final class BaseRecalibratorUprooted {
      */
     public void saveReport(RecalibrationTables rt, StandardCovariateList finalRequestedCovariates) throws java.io.FileNotFoundException {
         BRAC.RAC.RECAL_TABLE = new PrintStream(BRAC.RAC.RECAL_TABLE_FILE);
+        logger.info("Saving report to "+BRAC.RAC.RECAL_TABLE_FILE.getPath());
         QuantizationInfo quantizationInfo = new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
         RecalUtils.outputRecalibrationReport(BRAC.RAC, quantizationInfo, rt, finalRequestedCovariates, BRAC.RAC.SORT_BY_ALL_COLUMNS);
     }

@@ -1,41 +1,29 @@
 package org.broadinstitute.hellbender.dev;
 
-import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.CalibrationTablesBuilder;
-import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorUprooted;
+import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorWorker;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.testng.asserts.Assertion;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -135,10 +123,10 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
         RecalibrationEngine.finalizeRecalibrationTables(output);
 
         // 4. Generate report.
-        BaseRecalibratorUprooted baseRecalibratorUprooted = BaseRecalibratorUprooted.fromCommandLine(header, toolCmdLine, System.out);
-        baseRecalibratorUprooted.checkClientArguments();
-        baseRecalibratorUprooted.onTraversalStart(null);
-        baseRecalibratorUprooted.saveReport(output, requestedCovariates);
+        BaseRecalibratorWorker baseRecalibratorWorker = BaseRecalibratorWorker.fromCommandLine(header, toolCmdLine, System.out);
+        baseRecalibratorWorker.checkClientArguments();
+        baseRecalibratorWorker.onTraversalStart(null);
+        baseRecalibratorWorker.saveReport(output, requestedCovariates);
 
         // 5. Compare against expected report.
         final File gotTablePre = new File(outputDest);
@@ -185,7 +173,7 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
 
     private List<Read> getReads(SamReader reader) {
         List<Read> ret = new ArrayList<>();
-        ReadFilter readFilter = BaseRecalibratorUprooted.readFilter();
+        ReadFilter readFilter = BaseRecalibratorWorker.readFilter();
         for (SAMRecord sr : reader) {
             if (!readFilter.test(sr)) continue;
             try {

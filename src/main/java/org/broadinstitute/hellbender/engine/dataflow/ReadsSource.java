@@ -14,6 +14,7 @@ import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -72,7 +73,7 @@ public final class ReadsSource {
         if(cloudStorageUrl) {
             try {
                 Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
-                final SamReader reader = BAMIO.openBAM(storageClient, bam);
+                final SamReader reader = BAMIO.openBAM(storageClient, bam, ValidationStringency.DEFAULT_STRINGENCY);
                 return reader.getFileHeader();
             } catch (IOException e) {
                 throw new GATKException("Failed to read bams header from " + bam + ".", e);
@@ -83,18 +84,28 @@ public final class ReadsSource {
     }
 
     /**
-     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals. Malformed reads are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
     public PCollection<Read> getReadPCollection(List<SimpleInterval> intervals) {
+        return getReadPCollection(intervals, ValidationStringency.SILENT);
+    }
+
+    /**
+     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
+     * @param stringency how to react to malformed reads.
+     * @return a PCollection containing all the reads that overlap the given intervals.
+     */
+    public PCollection<Read> getReadPCollection(List<SimpleInterval> intervals, ValidationStringency stringency) {
         PCollection<Read> preads;
         if(cloudStorageUrl){
             Iterable<Contig> contigs = intervals.stream()
                     .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                     .collect(Collectors.toList());
 
-            preads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, ImmutableList.of(bam));
+            preads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, stringency, ImmutableList.of(bam));
         } else {
             preads = DataflowUtils.getReadsFromLocalBams(pipeline, intervals, ImmutableList.of(new File(bam)));
         }

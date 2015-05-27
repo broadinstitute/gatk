@@ -9,6 +9,8 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.util.GcsUtil;
+import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
@@ -18,6 +20,11 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.channels.Channels;
+import java.security.GeneralSecurityException;
 import java.util.List;
 
 /**
@@ -26,6 +33,11 @@ import java.util.List;
  * Provides a a number of useful PTransforms and DoFns
  */
 public final class DataflowUtils {
+
+    public enum SaveDestination {
+        LOCAL_DISK,
+        CLOUD
+    };
 
     private DataflowUtils(){} //prevent instantiation
 
@@ -100,5 +112,64 @@ public final class DataflowUtils {
     }
 
 
+    /**
+     * Serializes the collection's single object to the specified file.
+     *
+     * Of course if you run on the cloud and specify a local path, the file will be saved
+     * on a cloud worker, which may not be very useful.
+     *
+     * @param collection A collection with a single serializable object to save.
+     * @param fname the name of the destination, starting with "gs://" to save to GCS.
+     * @returns SaveDestination.CLOUD if saved to GCS, SaveDestination.LOCAL_DISK otherwise.
+     */
+    public static <T> SaveDestination serializeSingleObject(PCollection<T> collection, String fname) {
+        if (BucketUtils.isCloudStorageUrl(fname)) {
+            saveSingleResultToGCS(collection, fname);
+            return SaveDestination.CLOUD;
+        } else {
+            saveSingleResultToLocalDisk(collection, fname);
+            return SaveDestination.LOCAL_DISK;
+        }
+    }
+
+    /**
+     * Serializes the collection's single object to the specified file.
+     *
+     * @param collection A collection with a single serializable object to save.
+     * @param fname the name of the destination.
+     */
+    public static <T> void saveSingleResultToLocalDisk(PCollection<T> collection, String fname) {
+        collection.apply(ParDo
+                .named("save to " + fname)
+                .of(new DoFn<T, Void>() {
+                    @Override
+                    public void processElement(ProcessContext c) throws IOException {
+                        T obj = c.element();
+                        try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(fname))) {
+                            os.writeObject(obj);
+                        }
+                    }
+                }));
+    }
+
+    /**
+     * Serializes the collection's single object to the specified file.
+     *
+     * @param collection A collection with a single serializable object to save.
+     * @param gcsDestPath the name of the destination (must start with "gs://").
+     */
+    public static <T> void saveSingleResultToGCS(final PCollection<T> collection, String gcsDestPath) {
+        collection.apply(ParDo.named("save to " + gcsDestPath)
+                .of(new DoFn<T, Void>() {
+                    @Override
+                    public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
+                        GcsPath dest = GcsPath.fromUri(gcsDestPath);
+                        GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(c.getPipelineOptions());
+                        try (ObjectOutputStream out = new ObjectOutputStream(Channels.newOutputStream(gcsUtil.create(dest, "application/octet-stream")))) {
+                            out.writeObject(c.element());
+                        }
+                    }
+                }));
+    }
 
 }

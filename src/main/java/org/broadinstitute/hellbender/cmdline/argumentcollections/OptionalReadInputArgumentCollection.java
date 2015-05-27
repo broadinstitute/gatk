@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,10 +14,19 @@ import java.util.List;
 public final class OptionalReadInputArgumentCollection extends ReadInputArgumentCollection {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = true)
-    public List<File> readFiles;
+    private List<String> readFilesNames;
 
     @Override
     public List<File> getReadFiles() {
-        return readFiles;
+        ArrayList<File> ret = new ArrayList<>();
+        for (String fn : readFilesNames) {
+            ret.add(new File(fn));
+        }
+        return ret;
+    }
+
+    @Override
+    public List<String> getReadFilesNames() {
+        return new ArrayList<String>(readFilesNames);
     }
 }

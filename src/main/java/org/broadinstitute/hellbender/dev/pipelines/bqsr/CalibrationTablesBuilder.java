@@ -5,20 +5,14 @@ import com.google.api.services.genomics.model.Read;
 import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorUprooted;
+import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorWorker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
-import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.List;
@@ -43,7 +37,7 @@ import java.util.stream.Collectors;
  */
 public final class CalibrationTablesBuilder {
 
-    private final BaseRecalibratorUprooted br;
+    private final BaseRecalibratorWorker br;
     private final SAMFileHeader header;
     private final ReferenceDataSource reference;
     private boolean done = false;
@@ -55,7 +49,7 @@ public final class CalibrationTablesBuilder {
         final File refFile = new File(referenceFileName);
         this.reference = new ReferenceDataSource(refFile);
         // 3. create the class that'll do the actual work
-        this.br = BaseRecalibratorUprooted.fromArgs(header, toolArgs);
+        this.br = BaseRecalibratorWorker.fromArgs(header, toolArgs);
         if (null==br) throw new RuntimeException("invalid tool arguments");
         br.onTraversalStart(refFile);
     }
@@ -67,7 +61,7 @@ public final class CalibrationTablesBuilder {
         final File refFile = new File(referenceFileName);
         this.reference = new ReferenceDataSource(refFile);
         // 3. create the class that'll do the actual work
-        this.br = BaseRecalibratorUprooted.fromCommandLine(header, commandLineArguments, System.out);
+        this.br = BaseRecalibratorWorker.fromCommandLine(header, commandLineArguments, System.out);
         if (null==br) throw new GATKException("invalid tool arguments");
         br.onTraversalStart(refFile);
     }

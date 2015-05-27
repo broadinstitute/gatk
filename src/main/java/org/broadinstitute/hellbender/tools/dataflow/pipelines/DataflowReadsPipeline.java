@@ -13,6 +13,7 @@ import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -78,7 +79,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
-        final PCollection<Read> preads = readsSource.getReadPCollection(intervals);
+        final PCollection<Read> preads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
 
         final PCollection<?> presult = applyTransformsToPipeline(header, preads);
 
