@@ -10,6 +10,7 @@ import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -34,7 +35,7 @@ public final class ReadsSourceTest extends BaseTest {
         Pipeline p = TestPipeline.create();
         ReadsSource source = new ReadsSource(bam.getAbsolutePath(), p);
         DataflowWorkarounds.registerGenomicsCoders(p);
-        PCollection<Read> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)));
+        PCollection<Read> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)), ValidationStringency.DEFAULT_STRINGENCY);
         PCollection<Long> count = reads.apply(Count.globally());
         DataflowAssert.thatSingleton(count).isEqualTo(7L);
         p.run();

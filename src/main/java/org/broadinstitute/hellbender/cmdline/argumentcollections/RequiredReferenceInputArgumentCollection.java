@@ -11,7 +11,21 @@ import java.io.File;
 public final class RequiredReferenceInputArgumentCollection extends ReferenceInputArgumentCollection {
 
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file", optional = false)
-    private File referenceFile;
+    private String referenceFileName;
 
-    public File getReferenceFile(){ return referenceFile;}
+    private File referenceFile = null;
+
+    // Not thread-safe
+    @Override
+    public File getReferenceFile() {
+        if (null!=referenceFile) return referenceFile;
+        if (null==referenceFileName) return null;
+        referenceFile = new File(referenceFileName);
+        return referenceFile;
+    }
+
+    @Override
+    public String getReferenceFileName() {
+        return referenceFileName;
+    }
 }

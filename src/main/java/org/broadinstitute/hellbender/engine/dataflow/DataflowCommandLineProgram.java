@@ -13,6 +13,7 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
@@ -22,7 +23,7 @@ import java.io.Serializable;
 public abstract class DataflowCommandLineProgram extends CommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1l;
 
-    private enum PipelineRunnerType implements CommandLineParser.ClpEnum {
+    protected enum PipelineRunnerType implements CommandLineParser.ClpEnum {
         LOCAL(DirectPipelineRunner.class, "run the pipeline locally"),
         BLOCKING(BlockingDataflowPipelineRunner.class, "run the pipeline in the cloud, wait and report status"),
         NONBLOCKING(DataflowPipelineRunner.class, "launch the pipeline in the cloud and don't wait for results");
@@ -41,17 +42,21 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     }
     @Argument(fullName="runner", doc="What type of pipeline runner to use for dataflow.  Any type other than LOCAL requires that project and staging be set.")
-    private PipelineRunnerType runnerType = PipelineRunnerType.LOCAL;
+    protected PipelineRunnerType runnerType = PipelineRunnerType.LOCAL;
 
     @Argument(fullName="project", doc="dataflow project id", optional=true)
     private String projectID;
 
     @Argument(fullName = "staging", doc="dataflow staging location, this should be a google bucket of the form gs://", optional = true)
-    private String stagingLocation;
+    protected String stagingLocation;
 
-    @Argument(doc = "path to the client secret file for google cloud authentication, necessary if accessing data from buckets",
+    @Argument(doc = "path to the client secrets file for google cloud authentication, necessary if accessing data from buckets.",
             shortName = "secret", fullName = "client_secret", optional=true)
-    protected File clientSecret = new File("client_secret.json");
+    protected File clientSecret = new File("client-secrets.json");
+
+    @Argument(doc = "API Key for Google Cloud (unnecessary if a client secrets file is provided).",
+            shortName = "apiKey", fullName = "apiKey", optional=true)
+    protected String apiKey = null;
 
     @Override
     protected String[] customCommandLineValidation(){
@@ -62,6 +67,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         return null;
     }
 
+    // ---------------------------------------------------
+    // Classes meant for overriding
 
     @Override
     protected Object doWork() {
@@ -71,11 +78,17 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         options.setProject(projectID);
         options.setStagingLocation(stagingLocation);
         options.setRunner(this.runnerType.runner);
-        options.setGenomicsSecretsFile(clientSecret.getAbsolutePath()); // TODO: Migrate to secrets file (issue 516).
+        if (clientSecret!=null) {
+            options.setGenomicsSecretsFile(clientSecret.getAbsolutePath()); // TODO: Migrate to secrets file (issue 516).
+        }
+        if (apiKey!=null) {
+            options.setApiKey(apiKey);
+        }
         final Pipeline p = Pipeline.create(options);
         DataflowWorkarounds.registerGenomicsCoders(p);
         setupPipeline(p);
         runPipeline(p);
+        afterPipeline(p);
         return null;
     }
 
@@ -98,7 +111,23 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     }
 
     /**
-     * setup the pipeline for running by adding transforms
+     * set up the pipeline for running by adding transforms
      */
     protected abstract void setupPipeline(Pipeline pipeline);
+
+    /**
+     * Override this to run code after the pipeline returns.
+     */
+    protected void afterPipeline(Pipeline pipeline) {}
+
+    // ---------------------------------------------------
+    // Helpers
+
+    /**
+     * True if we're configured to run on the cloud.
+     */
+    public boolean isRemote() {
+        return runnerType != PipelineRunnerType.LOCAL;
+    }
+
 }

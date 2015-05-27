@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
@@ -843,6 +844,16 @@ public final class IntervalUtils {
         }
         final List<GenomeLoc> result = locatables.stream().map(parser::createGenomeLoc).collect(Collectors.toList());
         return Collections.unmodifiableList(result);
+    }
+
+    /**
+     * Builds a list of intervals that cover the whole given sequence.
+     */
+    public static List<SimpleInterval> getAllIntervalsForReference(SAMSequenceDictionary sequenceDictionary) {
+        return GenomeLocSortedSet.createSetFromSequenceDictionary(sequenceDictionary)
+                .stream()
+                .map(SimpleInterval::new)
+                .collect(Collectors.toList());
     }
 
 }

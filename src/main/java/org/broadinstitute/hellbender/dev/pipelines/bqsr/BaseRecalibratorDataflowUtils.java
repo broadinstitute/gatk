@@ -15,14 +15,13 @@ import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.*;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
-import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Iterables;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.StringLineReader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
@@ -43,10 +42,12 @@ import java.util.concurrent.TimeUnit;
  * Base Quality Score Recalibration, phase 1
  * This contains the Dataflow-specific bits.
  */
-public final class BQSR_Dataflow implements Serializable {
+public final class BaseRecalibratorDataflowUtils implements Serializable {
 
+  private static final Logger logger = LogManager.getLogger(BaseRecalibratorDataflowUtils.class);
   // how many bases until we move on to the next shard
   static final int BLOCKSIZE = 1000000;
+  private static final long serialVersionUID = 1L;
   public static final TupleTag<Read> readTag = new TupleTag<>();
   public static final TupleTag<SimpleInterval> intervalTag = new TupleTag<>();
   public static final TupleTag<RecalibrationTables> tablesTag = new TupleTag<>();
@@ -56,7 +57,7 @@ public final class BQSR_Dataflow implements Serializable {
    * <p>
    * The reference file (*.fasta) must also have a .dict and a .fasta.fai next to it.
    */
-  public static PCollection<RecalibrationTables> GetRecalibrationTables(SAMFileHeader readsHeader, PCollection<Read> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
+  public static PCollection<RecalibrationTables> getRecalibrationTables(SAMFileHeader readsHeader, PCollection<Read> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
     PCollection<RecalibrationTables> stats = computeBlockStatistics(readsHeader, referenceFileName, toolArgs, groupByBlock(reads, placesToIgnore));
     PCollection<RecalibrationTables> oneStat = aggregateStatistics(stats);
     return oneStat;
@@ -181,7 +182,6 @@ public final class BQSR_Dataflow implements Serializable {
                 String localReference = referenceFileName;
                 if (BucketUtils.isCloudStorageUrl(referenceFileName)) {
                   // the reference is on GCS, download all 3 files locally first.
-                  System.out.println("Downloading reference files");
                   boolean first = true;
                   for (String fname : getRelatedFiles(referenceFileName)) {
                     String localName = "reference";
@@ -206,7 +206,7 @@ public final class BQSR_Dataflow implements Serializable {
                     }
                     first = false;
                   }
-                  System.out.printf("Done downloading reference files (%s ms)\n", timer.elapsed(TimeUnit.MILLISECONDS));
+                  logger.info(String.format("Done downloading reference files (%s ms)\n", timer.elapsed(TimeUnit.MILLISECONDS)));
                 }
 
                 ct = new CalibrationTablesBuilder(header, localReference, toolArgs);
@@ -218,12 +218,12 @@ public final class BQSR_Dataflow implements Serializable {
                 // get the reads
                 KV<String, CoGbkResult> e = c.element();
                 List<Read> reads = new ArrayList<Read>();
-                Iterable<Read> readsIter = e.getValue().getAll(BQSR_Dataflow.readTag);
+                Iterable<Read> readsIter = e.getValue().getAll(BaseRecalibratorDataflowUtils.readTag);
                 Iterables.addAll(reads, readsIter);
                 nReads += reads.size();
                 // get the skip intervals
                 List<SimpleInterval> skipIntervals = new ArrayList<SimpleInterval>();
-                Iterables.addAll(skipIntervals, e.getValue().getAll(BQSR_Dataflow.intervalTag));
+                Iterables.addAll(skipIntervals, e.getValue().getAll(BaseRecalibratorDataflowUtils.intervalTag));
                 Collections.sort(skipIntervals, new Comparator<SimpleInterval>() {
                   @Override
                   public int compare(SimpleInterval o1, SimpleInterval o2) {
@@ -241,7 +241,7 @@ public final class BQSR_Dataflow implements Serializable {
               public void finishBundle(DoFn.Context c) throws Exception {
                 ct.done();
                 c.output(ct.getRecalibrationTables());
-                System.out.println("Finishing a block statistics bundle. It took " + timer.elapsed(TimeUnit.MILLISECONDS) + " ms to process " + nBlocks + " blocks, " + nReads + " reads.");
+                logger.info("Finishing a block statistics bundle. It took " + timer.elapsed(TimeUnit.MILLISECONDS) + " ms to process " + nBlocks + " blocks, " + nReads + " reads.");
             timer = null;
           }
         }));

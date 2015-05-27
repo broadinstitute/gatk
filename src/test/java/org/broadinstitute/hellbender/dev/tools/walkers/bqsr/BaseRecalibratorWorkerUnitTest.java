@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorUprooted;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class BaseRecalibratorUprootedUnitTest {
+public final class BaseRecalibratorWorkerUnitTest extends BaseTest {
 
     @Test
     public void basicDBQSRFractionalErrorTestEnd() {
@@ -24,7 +24,7 @@ public final class BaseRecalibratorUprootedUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[6] = answer[7] = answer[8] = answer[9] = 1.0 / 4.0;
-        double[] result = BaseRecalibratorUprooted.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibratorWorker.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -39,7 +39,7 @@ public final class BaseRecalibratorUprootedUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[0] = answer[1] = answer[2] = answer[3] = 1.0 / 4.0;
-        double[] result = BaseRecalibratorUprooted.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibratorWorker.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -54,7 +54,7 @@ public final class BaseRecalibratorUprootedUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[7] = 1.0;
-        double[] result = BaseRecalibratorUprooted.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibratorWorker.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -69,7 +69,7 @@ public final class BaseRecalibratorUprootedUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[7] = 1.0;
-        double[] result = BaseRecalibratorUprooted.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibratorWorker.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -84,7 +84,7 @@ public final class BaseRecalibratorUprootedUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[2] = answer[3] = answer[4] = answer[5] = answer[6] = 1.0 / 5.0;
-        double[] result = BaseRecalibratorUprooted.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibratorWorker.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -132,7 +132,7 @@ public final class BaseRecalibratorUprootedUnitTest {
     public void testCalculateIsIndel(final String cigar, final boolean negStrand, final EventType mode, final int[] expected) {
         final SAMRecord read = ArtificialSAMUtils.createArtificialRead(TextCigarCodec.decode(cigar));
         read.setReadNegativeStrandFlag(negStrand);
-        final int[] actual = BaseRecalibratorUprooted.calculateIsIndel(read, mode);
+        final int[] actual = BaseRecalibratorWorker.calculateIsIndel(read, mode);
         Assert.assertEquals(actual, expected, "CalculateIsIndel failed with " + mode + " and cigar " + cigar + " Expected " + Arrays.toString(expected) + " but got " + Arrays.toString(actual));
     }
 }

@@ -14,6 +14,7 @@ import java.lang.annotation.Annotation;
  * All the command line arguments for BQSR and its covariates.
  */
 public final class BaseRecalibrationArgumentCollection implements Serializable, ArgumentCollection {
+    private static final long serialVersionUID = 1L;
 
     public BaseRecalibrationArgumentCollection() {}
 
@@ -24,7 +25,11 @@ public final class BaseRecalibrationArgumentCollection implements Serializable, 
     protected final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
     @ArgumentCollection
-    public final ReadInputArgumentCollection readArguments = new OptionalReadInputArgumentCollection();
+    public final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
+
+    @ArgumentCollection
+    protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
+
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = new OptionalReferenceInputArgumentCollection();

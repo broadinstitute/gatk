@@ -16,6 +16,7 @@ import java.util.stream.StreamSupport;
  */
 @DefaultCoder(SerializableCoder.class)
 public final class RecalibrationTablesMerger extends Combine.CombineFn<RecalibrationTables, RecalibrationTables, RecalibrationTables> implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public RecalibrationTablesMerger() {
     }
