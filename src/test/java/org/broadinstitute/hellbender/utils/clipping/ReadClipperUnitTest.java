@@ -22,11 +22,11 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
 
 public final class ReadClipperUnitTest extends BaseTest {
     List<Cigar> cigarList;
-    int maximumCigarSize = 10;                                                                                           // 6 is the minimum necessary number to try all combinations of cigar types with guarantee of clipping an element with length = 2
+    int maximumCigarElements = 9;                                                                                           // 6 is the minimum necessary number to try all combinations of cigar types with guarantee of clipping an element with length = 2
 
     @BeforeClass
     public void init() {
-        cigarList = ReadClipperTestUtils.generateCigarList(maximumCigarSize);
+        cigarList = ReadClipperTestUtils.generateCigarList(maximumCigarElements);
     }
 
     @Test

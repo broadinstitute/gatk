@@ -77,13 +77,13 @@ public final class ReadClipperTestUtils {
      * - No repeated adjacent element (e.g. 1M2M -> this should be 3M)
      * - No consecutive I/D elements
      *
-     * @param maximumLength the maximum number of elements in the cigar
+     * @param maximumCigarElements the maximum number of elements in the cigar
      * @return a list with all valid Cigar objects
      */
-    public static List<Cigar> generateCigarList(int maximumLength, CigarElement[] cigarElements) {
+    public static List<Cigar> generateCigarList(int maximumCigarElements, CigarElement[] cigarElements) {
         int numCigarElements = cigarElements.length;
         LinkedList<Cigar> cigarList = new LinkedList<>();
-        byte[] cigarCombination = new byte[maximumLength];
+        byte[] cigarCombination = new byte[maximumCigarElements];
 
         Utils.fillArrayWithByte(cigarCombination, (byte) 0);               // we start off with all 0's in the combination array.
         int currentIndex = 0;
@@ -95,12 +95,12 @@ public final class ReadClipperTestUtils {
             }
 
             boolean currentIndexChanged = false;
-            while (currentIndex < maximumLength && cigarCombination[currentIndex] == numCigarElements - 1) {
+            while (currentIndex < maximumCigarElements && cigarCombination[currentIndex] == numCigarElements - 1) {
                 currentIndex++;                                            // find the next index to increment
                 currentIndexChanged = true;                                // keep track of the fact that we have changed indices!
             }
 
-            if (currentIndex == maximumLength)                             // if we hit the end of the array, we're done.
+            if (currentIndex == maximumCigarElements)                             // if we hit the end of the array, we're done.
                 break;
 
             cigarCombination[currentIndex]++;                              // otherwise advance the current index
