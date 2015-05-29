@@ -2,9 +2,10 @@ language: java
 jdk:
 - oraclejdk8
 env:
-  matrix:
-  - TERM=dumb
-    JAVA_LIBRARY_PATH=/usr/lib/jni
+  global:
+  - TERM=dumb 
+  - JAVA_LIBRARY_PATH=/usr/lib/jni
+  - secure: Da9Brv5WKCE3z0bp5u52X1Rqul5C/r7idGj/yLhHnlEvHXPDQHaGXEQw4fNhRkB586lx6xilO8sra2FHoLDMKsqwE0h2+NKsrHQepTSFOR/fp/otoA/kiBue23ZfhsAEFn/uliVU36xLkt+LsyVqSKa+9JKDA5z1hXSemXGGVGw=
 before_install:
 - wget -N https://downloads.gradle.org/distributions/gradle-2.2.1-bin.zip
 - unzip gradle-2.2.1-bin.zip
