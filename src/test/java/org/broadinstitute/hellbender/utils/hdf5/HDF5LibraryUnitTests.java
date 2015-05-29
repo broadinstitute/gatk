@@ -1,10 +1,8 @@
+package org.broadinstitute.hellbender.utils.hdf5;
+
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5Library;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5Reader;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,7 +24,7 @@ public final class HDF5LibraryUnitTests {
 
 
     private static File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/utils/hdf5");
-    private static File TEST_PON = new File(TEST_RESOURCE_DIR,"test_creation_of_panel.pon");
+    public static File TEST_PON = new File(TEST_RESOURCE_DIR,"test_creation_of_panel.pon");
     private static File TEST_PON_TARGETS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-targets.txt");
     private static File TEST_PON_SAMPLES = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-samples.txt");
     private static File TEST_PON_TARGET_FACTORS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-target_factors.txt");

@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 
@@ -153,4 +155,36 @@ public interface PoN {
      * {@code E} the number of eigen samples.
      */
     RealMatrix reducedPoNPseudoInverse();
+
+    /**
+     * Performs target factor normalization on a matrix.
+     *
+     * <p>
+     *     The input matrix remains unchanged.
+     * </p>
+     *
+     * <p>
+     *     The result matrix is a new instance that can be further modified by the calling code.
+     * </p>
+     */
+    default RealMatrix factorNormalization(final RealMatrix input) {
+        Utils.nonNull(input, "the input matrix cannot be null");
+        final RealMatrix targetFactors = targetFactors();
+        if (input.getRowDimension() != targetFactors.getRowDimension()) {
+            throw new IllegalArgumentException(String.format("the input row count must match the PoN's target count: %d != %d",
+                    input.getRowDimension(),targetFactors.getRowDimension()));
+        }
+        final RealMatrix result = new Array2DRowRealMatrix(input.getRowDimension(),input.getColumnDimension());
+        for (int i = 0; i < result.getRowDimension(); i++) {
+            final double[] values = input.getRow(i);
+            final double factor = targetFactors.getEntry(i, 0);
+            final double inverseFactor = 1.0 / factor;
+            for (int j = 0; j < values.length; j++) {
+                values[j] *= inverseFactor;
+            }
+            result.setRow(i,values);
+        }
+        return result;
+    }
+
 }
