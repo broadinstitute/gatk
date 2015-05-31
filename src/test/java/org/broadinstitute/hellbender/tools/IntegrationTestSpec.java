@@ -13,8 +13,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public final class IntegrationTestSpec {
     public static final String DEFAULT_TEMP_EXTENSION = ".tmp";
@@ -117,7 +120,7 @@ public final class IntegrationTestSpec {
         // run the executable
         boolean gotAnException = false;
         try {
-            final String now = new SimpleDateFormat("HH:mm:ss").format(new Date());
+            final String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
             final String cmdline = String.join(" ", command);
             System.out.println(String.format("[%s] Executing test %s:%s with GATK arguments: %s", now, testClass.getClass().getSimpleName(), testName, cmdline));
             // also write the command line to the HTML log for convenient follow-up
