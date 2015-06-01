@@ -31,6 +31,16 @@ public abstract class BaseTest {
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
 
+    // shortname of the project that stores the data and will run the code.
+    public final static String DATAFLOW_TEST_PROJECT = System.getenv("HELLBENDER_TEST_PROJECT");
+    // API key for DATAFLOW_TEST_PROJECT
+    public final static String DATAFLOW_TEST_APIKEY = System.getenv("HELLBENDER_TEST_APIKEY");
+    // A writeable folder on the project's GCS
+    public final static String DATAFLOW_TEST_STAGING = System.getenv("HELLBENDER_TEST_STAGING");
+    // A GCS path (on that project) where the test inputs are stored.
+    public final static String DATAFLOW_TEST_INPUTS = System.getenv("HELLBENDER_TEST_INPUTS");
+
+
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
