@@ -13,8 +13,11 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -109,9 +112,10 @@ public abstract class CommandLineProgram {
         if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtil.getDefaultTmpDir());
 
         // Build the default headers
-        final Date startDate = new Date();
+        final ZonedDateTime startDateTime = ZonedDateTime.now();
         this.defaultHeaders.add(new StringHeader(commandLine));
-        this.defaultHeaders.add(new StringHeader("Started on: " + startDate));
+        this.defaultHeaders.add(new StringHeader("Started on: " +
+                                startDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG))));
 
         Log.setGlobalLogLevel(VERBOSITY);
 
@@ -125,16 +129,18 @@ public abstract class CommandLineProgram {
         }
 
         if (!QUIET) {
-            System.err.println("[" + new Date() + "] " + commandLine);
+            System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                                "] " + commandLine);
 
             // Output a one liner about who/where and what software/os we're running on
             try {
-            System.err.println("[" + new Date() + "] Executing as " +
-                                       System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
-                                       " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
-                                       " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
-                                       " " + System.getProperty("java.runtime.version") +
-                                       "; Version: " + commandLineParser.getVersion() +
+            System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                                    "] Executing as " +
+                                    System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
+                                    " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
+                                    " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
+                                    " " + System.getProperty("java.runtime.version") +
+                                    "; Version: " + commandLineParser.getVersion() +
             " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
             catch (Exception e) { /* Unpossible! */ }
@@ -145,10 +151,11 @@ public abstract class CommandLineProgram {
         } finally {
             // Emit the time even if program throws
             if (!QUIET) {
-                final Date endDate = new Date();
-                final double elapsedMinutes = (endDate.getTime() - startDate.getTime()) / (1000d * 60d);
+                final ZonedDateTime endDateTime = ZonedDateTime.now();
+                final double elapsedMinutes = (Duration.between(startDateTime, endDateTime).toMillis()) / (1000d * 60d);
                 final String elapsedString  = new DecimalFormat("#,##0.00").format(elapsedMinutes);
-                System.err.println("[" + endDate + "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
+                System.err.println("[" + endDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                                    "] " + getClass().getName() + " done. Elapsed time: " + elapsedString + " minutes.");
                 System.err.println("Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory());
             }
         }
