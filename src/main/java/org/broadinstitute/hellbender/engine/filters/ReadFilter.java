@@ -17,6 +17,12 @@ import java.util.function.Predicate;
  */
 public interface ReadFilter extends Predicate<SAMRecord>, SerializableFunction<SAMRecord, Boolean>{
 
+    // It turns out, this is necessary. Please don't remove it.
+    // Without this line, we see the following error:
+    // java.io.InvalidClassException: org.broadinstitute.hellbender.engine.filters.ReadFilter; local class incompatible:
+    // stream classdesc serialVersionUID = -5040289903122017748, local class serialVersionUID = 6814309376393671214
+    static final long serialVersionUID = 1L;
+
     //HACK: These methods are a hack to get to get the type system to accept compositions of ReadFilters.
     /**
      * Specialization of {@link #and(Predicate)} so that ReadFilters anded with other ReadFilters produce a ReadFilter

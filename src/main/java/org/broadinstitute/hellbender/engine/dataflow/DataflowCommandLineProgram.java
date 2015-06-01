@@ -79,7 +79,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         options.setStagingLocation(stagingLocation);
         options.setRunner(this.runnerType.runner);
         if (clientSecret!=null) {
-            options.setGenomicsSecretsFile(clientSecret.getAbsolutePath()); // TODO: Migrate to secrets file (issue 516).
+            options.setSecretsFile(clientSecret.getAbsolutePath());
         }
         if (apiKey!=null) {
             options.setApiKey(apiKey);
