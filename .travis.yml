@@ -16,9 +16,6 @@ cache:
   directories:
   - ~/.gradle
 before_install:
-- wget -N https://downloads.gradle.org/distributions/gradle-2.2.1-bin.zip
-- unzip gradle-2.2.1-bin.zip
-- export PATH=`pwd`/gradle-2.2.1/bin:$PATH
 - R --version
 after_success:
 - gradle jacocoTestReport coveralls
