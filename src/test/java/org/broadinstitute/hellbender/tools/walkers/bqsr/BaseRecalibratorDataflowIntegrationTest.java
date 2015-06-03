@@ -128,6 +128,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
+        final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject();
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String hg18ReferenceCloud = getCloudInputs() + "human_g1k_v37.chr17_1Mb.fasta";
         final String HiSeqBam = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
@@ -139,9 +140,9 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
         return new Object[][]{
                 // reference in cloud, computation local.
-                {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, "-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
+                {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, apiArgs +"-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 // input in cloud, computation local.
-                {new BQSRTest(hg18Reference, HiSeqBamCloud, dbSNPb37, "", getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
+                {new BQSRTest(hg18Reference, HiSeqBamCloud, dbSNPb37, apiArgs, getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
         };
     }
 
