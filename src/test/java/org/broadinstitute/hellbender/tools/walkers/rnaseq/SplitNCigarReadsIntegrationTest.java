@@ -60,8 +60,8 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void splitReadAtN() {
-        final int cigarStringLength = 10;
-        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(cigarStringLength, cigarElements);
+        final int maxCigarElements = 9;
+        final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(maxCigarElements, cigarElements);
 
         // For Debugging use those lines (instead of above cigarList) to create specific read:
         //------------------------------------------------------------------------------------
