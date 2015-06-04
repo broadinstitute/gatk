@@ -1,4 +1,10 @@
 language: java
+addons:
+  apt:
+    sources:
+    - r-packages-precise
+    packages:
+    - r-base
 jdk:
 - oraclejdk8
 env:
@@ -10,7 +16,6 @@ cache:
   directories:
   - ~/.gradle
 before_install:
-- sudo apt-get install -y r-base-dev
 - wget -N https://downloads.gradle.org/distributions/gradle-2.2.1-bin.zip
 - unzip gradle-2.2.1-bin.zip
 - export PATH=`pwd`/gradle-2.2.1/bin:$PATH
