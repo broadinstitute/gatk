@@ -27,10 +27,9 @@ import java.util.Arrays;
  *                          - human_g1k_v37.chr17_1Mb.*
  *                          - NA12878.chr17_69k_70k.dictFix.*
  */
-public final class BaseRecalibratorDataflowIntegrationTest extends CommandLineProgramTest{
+public final class BaseRecalibratorDataflowIntegrationTest extends CommandLineProgramTest {
 
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
-    private final static String CLOUD_INPUTS = DATAFLOW_TEST_INPUTS + THIS_TEST_FOLDER;
 
     private static class BQSRTest {
         final String reference;
@@ -50,7 +49,6 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         public String getCommandLine() {
             return  " -R " + reference +
                     " -I " + bam +
-                    " --apiKey " + DATAFLOW_TEST_APIKEY +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
                     " --RECAL_TABLE_FILE %s" +
@@ -65,6 +63,10 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     private String getResourceDir(){
         return getTestDataDir() + "/" + "BQSR" + "/";
+    }
+
+    private String getCloudInputs() {
+        return getDataflowTestInputs() + THIS_TEST_FOLDER;
     }
 
     @DataProvider(name = "BQSRTest")
@@ -91,13 +93,12 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         };
     }
 
-    @DataProvider(name = "BQSRTestCloud")
-    public Object[][] createBQSRTestDataCloud() {
-        final String cloudArgs = "--runner BLOCKING --project " + DATAFLOW_TEST_PROJECT + " --staging " + DATAFLOW_TEST_STAGING;
+    @DataProvider(name = "BQSRTestBucket")
+    public Object[][] createBQSRTestDataBucket() {
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
-        final String hg18ReferenceCloud = CLOUD_INPUTS + "human_g1k_v37.chr17_1Mb.fasta";
+        final String hg18ReferenceCloud = getCloudInputs() + "human_g1k_v37.chr17_1Mb.fasta";
         final String HiSeqBam = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
-        final String HiSeqBamCloud = CLOUD_INPUTS + "NA12878.chr17_69k_70k.dictFix.bam";
+        final String HiSeqBamCloud = getCloudInputs() + "NA12878.chr17_69k_70k.dictFix.bam";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
 
         final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
@@ -108,6 +109,21 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
                 {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, "-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 // input in cloud, computation local.
                 {new BQSRTest(hg18Reference, HiSeqBamCloud, dbSNPb37, "", getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
+        };
+    }
+
+    @DataProvider(name = "BQSRTestCloud")
+    public Object[][] createBQSRTestDataCloud() {
+        final String cloudArgs = "--runner BLOCKING --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging();
+        final String hg18ReferenceCloud = getCloudInputs() + "human_g1k_v37.chr17_1Mb.fasta";
+        final String HiSeqBam = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
+        final String HiSeqBamCloud = getCloudInputs() + "NA12878.chr17_69k_70k.dictFix.bam";
+        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
+
+        final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
+
+
+        return new Object[][]{
                 // reference in cloud, compute in cloud.
                 {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, cloudArgs + " -knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 // reference and input in cloud, computation in cloud.
@@ -115,9 +131,16 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         };
     }
 
-
     @Test(dataProvider = "BQSRTest")
     public void testBQSRLocal(BQSRTest params) throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                params.getCommandLine(),
+                Arrays.asList(params.expectedFileName));
+        spec.executeTest("testBQSR-" + params.args, this);
+    }
+
+    @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"})
+    public void testBQSRBucket(BQSRTest params) throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 Arrays.asList(params.expectedFileName));
@@ -135,7 +158,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"})
     public void testPlottingWorkflow() throws IOException {
-        final String cloudArgs = "--apiKey " + DATAFLOW_TEST_APIKEY + " ";
+        final String cloudArgs = "--apiKey " + getDataflowTestApiKey() + " ";
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";

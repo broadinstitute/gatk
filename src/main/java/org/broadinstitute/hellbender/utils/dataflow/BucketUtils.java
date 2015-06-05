@@ -28,7 +28,12 @@ public final class BucketUtils {
     }
 
     /**
-     * Open a file regardless of whether it's on GCS or local disk.
+     * Open a file for reading regardless of whether it's on GCS or local disk.
+     *
+     * @param path the GCS or local path to read from. If GCS, it must start with "gs://".
+     * @param popts the pipeline's options, with authentication information.
+     * @return an InputStream that reads from the specified file.
+
      */
     public static InputStream openFile(String path, PipelineOptions popts) {
         try {
@@ -39,6 +44,26 @@ public final class BucketUtils {
             }
         } catch (Exception x) {
             throw new UserException.CouldNotReadInputFile(path, x);
+        }
+    }
+
+    /**
+     * Open a binary file for writing regardless of whether it's on GCS or local disk.
+     * For writing to GCS it'll use the application/octet-stream MIME type.
+     *
+     * @param path the GCS or local path to write to. If GCS, it must start with "gs://".
+     * @param popts the pipeline's options, with authentication information.
+     * @return an OutputStream that writes to the specified file.
+     */
+    public static OutputStream createFile(String path, PipelineOptions popts) {
+        try {
+            if (isCloudStorageUrl(path)) {
+                return Channels.newOutputStream(new GcsUtil.GcsUtilFactory().create(popts).create(GcsPath.fromUri(path), "application/octet-stream"));
+            } else {
+                return new FileOutputStream(path);
+            }
+        } catch (Exception x) {
+            throw new UserException.CouldNotCreateOutputFile(path, x);
         }
     }
 }

@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -32,13 +33,14 @@ public abstract class BaseTest {
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
 
     // shortname of the project that stores the data and will run the code.
-    public final static String DATAFLOW_TEST_PROJECT = System.getenv("HELLBENDER_TEST_PROJECT");
+    // use getDataflowTestProject() to get to it.
+    private final static String DATAFLOW_TEST_PROJECT = System.getenv("HELLBENDER_TEST_PROJECT");
     // API key for DATAFLOW_TEST_PROJECT
-    public final static String DATAFLOW_TEST_APIKEY = System.getenv("HELLBENDER_TEST_APIKEY");
+    private final static String DATAFLOW_TEST_APIKEY = System.getenv("HELLBENDER_TEST_APIKEY");
     // A writeable folder on the project's GCS
-    public final static String DATAFLOW_TEST_STAGING = System.getenv("HELLBENDER_TEST_STAGING");
+    private final static String DATAFLOW_TEST_STAGING = System.getenv("HELLBENDER_TEST_STAGING");
     // A GCS path (on that project) where the test inputs are stored.
-    public final static String DATAFLOW_TEST_INPUTS = System.getenv("HELLBENDER_TEST_INPUTS");
+    private final static String DATAFLOW_TEST_INPUTS = System.getenv("HELLBENDER_TEST_INPUTS");
 
 
     private static final String publicTestDirRelative = "src/test/resources/";
@@ -60,6 +62,33 @@ public abstract class BaseTest {
 
     // used to seed the genome loc parser with a sequence dictionary
     protected SAMFileHeader hg19Header;
+
+    /** @return DATAFLOW_TEST_PROJECT env. var if defined, throws otherwise. */
+    public String getDataflowTestProject() {
+        return ensureEnvNotNull("DATAFLOW_TEST_PROJECT", DATAFLOW_TEST_PROJECT);
+    }
+
+    /** @return DATAFLOW_TEST_APIKEY env. var if defined, throws otherwise. */
+    public String getDataflowTestApiKey() {
+        return ensureEnvNotNull("DATAFLOW_TEST_APIKEY", DATAFLOW_TEST_APIKEY);
+    }
+
+    /** @return DATAFLOW_TEST_STAGING env. var if defined, throws otherwise. */
+    public String getDataflowTestStaging() {
+        return ensureEnvNotNull("DATAFLOW_TEST_STAGING", DATAFLOW_TEST_STAGING);
+    }
+
+    /** @return DATAFLOW_TEST_INPUTS env. var if defined, throws otherwise. */
+    public String getDataflowTestInputs() {
+        return ensureEnvNotNull("DATAFLOW_TEST_INPUTS", DATAFLOW_TEST_INPUTS);
+    }
+
+    private String ensureEnvNotNull(String envVarName, String value) {
+        if (null == value) {
+            throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
+        }
+        return value;
+    }
 
     @BeforeClass
     public void initGenomeLocParser() throws FileNotFoundException {
