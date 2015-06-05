@@ -52,7 +52,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     @Argument(doc = "path to the client secrets file for google cloud authentication, necessary if accessing data from buckets.",
             shortName = "secret", fullName = "client_secret", optional=true)
-    protected File clientSecret = new File("client-secrets.json");
+    protected File clientSecret = new File("client_secret.json");
 
     @Argument(doc = "API Key for Google Cloud (unnecessary if a client secrets file is provided).",
             shortName = "apiKey", fullName = "apiKey", optional=true)
@@ -78,11 +78,11 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         options.setProject(projectID);
         options.setStagingLocation(stagingLocation);
         options.setRunner(this.runnerType.runner);
-        if (clientSecret!=null) {
-            options.setSecretsFile(clientSecret.getAbsolutePath());
-        }
         if (apiKey!=null) {
             options.setApiKey(apiKey);
+        } else {
+            logger.info("Loading "+clientSecret.getName());
+            options.setSecretsFile(clientSecret.getAbsolutePath());
         }
         final Pipeline p = Pipeline.create(options);
         DataflowWorkarounds.registerGenomicsCoders(p);
