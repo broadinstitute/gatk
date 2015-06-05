@@ -42,6 +42,14 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
         final int maxCigarElements = 9;
         final List<Cigar> cigarList = ReadClipperTestUtils.generateCigarList(maxCigarElements, cigarElements);
 
+        // For Debugging use those lines (instead of above cigarList) to create specific read:
+        //------------------------------------------------------------------------------------
+        // final SAMRecord tmpRead = SAMRecord.createRandomRead(6);
+        // tmpRead.setCigarString("1M1N1M");
+
+        // final List<Cigar> cigarList = new ArrayList<>();
+        // cigarList.add(tmpRead.getCigar());
+
         for(Cigar cigar: cigarList){
 
             final int numOfSplits = numOfNElements(cigar.getCigarElements());

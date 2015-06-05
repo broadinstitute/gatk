@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import com.google.common.base.Strings;
+import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -35,9 +36,11 @@ public final class Utils {
     private static Logger logger = LogManager.getLogger(Utils.class);
 
     public static <T> List<T> cons(final T elt, final List<T> l) {
-        List<T> l2 = new ArrayList<>();
+        final List<T> l2 = new ArrayList<>();
         l2.add(elt);
-        if (l != null) l2.addAll(l);
+        if (l != null) {
+            l2.addAll(l);
+        }
         return l2;
     }
 
@@ -46,12 +49,13 @@ public final class Utils {
     }
 
     public static void warnUser(final Logger logger, final String msg) {
-        for (final String line: warnUserLines(msg))
+        for (final String line: warnUserLines(msg)) {
             logger.warn(line);
+        }
     }
 
     public static List<String> warnUserLines(final String msg) {
-        List<String> results = new ArrayList<>();
+        final List<String> results = new ArrayList<>();
         results.add(String.format(TEXT_WARNING_BORDER));
         results.add(String.format(TEXT_WARNING_PREFIX + "WARNING:"));
         results.add(String.format(TEXT_WARNING_PREFIX));
@@ -71,7 +75,9 @@ public final class Utils {
             final StringBuilder builder = new StringBuilder(line);
             while (builder.length() > TEXT_WARNING_WIDTH) {
                 int space = getLastSpace(builder, TEXT_WARNING_WIDTH);
-                if (space <= 0) space = TEXT_WARNING_WIDTH;
+                if (space <= 0) {
+                    space = TEXT_WARNING_WIDTH;
+                }
                 results.add(String.format("%s%s", TEXT_WARNING_PREFIX, builder.substring(0, space)));
                 builder.delete(0, space + 1);
             }
@@ -85,7 +91,7 @@ public final class Utils {
      * @param width The width of the line.
      * @return The last whitespace location.
      */
-    private static int getLastSpace(final CharSequence message, int width) {
+    private static int getLastSpace(final CharSequence message, final int width) {
         final int length = message.length();
         int stopPos = width;
         int currPos = 0;
@@ -98,8 +104,9 @@ public final class Utils {
                 inEscape = true;
             } else if (inEscape) {
                 stopPos++;
-                if (Character.isLetter(c))
+                if (Character.isLetter(c)) {
                     inEscape = false;
+                }
             } else if (Character.isWhitespace(c)) {
                 lastSpace = currPos;
             }
@@ -118,11 +125,10 @@ public final class Utils {
      * @return a string with the values separated by the separator
      */
     public static String join(final String separator, final Object ... objects) {
-        if (separator == null) {
-            throw new IllegalArgumentException("the separator cannot be null");
-        } else if (objects == null) {
-            throw new IllegalArgumentException("the value array cannot be null");
-        } else if (objects.length == 0) {
+        Utils.nonNull(separator, "the separator cannot be null");
+        Utils.nonNull(objects, "the value array cannot be null");
+
+        if (objects.length == 0) {
             return "";
         } else {
             final StringBuilder ret = new StringBuilder();
@@ -141,11 +147,13 @@ public final class Utils {
      * @param ints   the array with values
      * @return a string with the values separated by the separator
      */
-    public static String join(String separator, int[] ints) {
-        if ( ints == null || ints.length == 0)
+    public static String join(final String separator, final int[] ints) {
+        Utils.nonNull(separator, "the separator cannot be null");
+        Utils.nonNull(ints, "the ints cannot be null");
+        if ( ints.length == 0) {
             return "";
-        else {
-            StringBuilder ret = new StringBuilder();
+        } else {
+            final StringBuilder ret = new StringBuilder();
             ret.append(ints[0]);
             for (int i = 1; i < ints.length; ++i) {
                 ret.append(separator);
@@ -162,11 +170,13 @@ public final class Utils {
      * @param doubles   the array with values
      * @return a string with the values separated by the separator
      */
-    public static String join(String separator, double[] doubles) {
-        if ( doubles == null || doubles.length == 0)
+    public static String join(final String separator, final double[] doubles) {
+        Utils.nonNull(separator, "the separator cannot be null");
+        Utils.nonNull(doubles, "the doubles cannot be null");
+        if ( doubles.length == 0) {
             return "";
-        else {
-            StringBuilder ret = new StringBuilder();
+        } else {
+            final StringBuilder ret = new StringBuilder();
             ret.append(doubles[0]);
             for (int i = 1; i < doubles.length; ++i) {
                 ret.append(separator);
@@ -194,8 +204,9 @@ public final class Utils {
             final T first = iter.next();
 
             if ( ! iter.hasNext() ) // fast path for singleton collections
+            {
                 return first.toString();
-            else { // full path for 2+ collection that actually need a join
+            } else { // full path for 2+ collection that actually need a join
                 final StringBuilder ret = new StringBuilder(first.toString());
                 while(iter.hasNext()) {
                     ret.append(separator);
@@ -213,8 +224,7 @@ public final class Utils {
      *   you cannot change the values
      */
     public static List<Integer> asList(final int ... values) {
-        if (values == null)
-            throw new IllegalArgumentException("the input array cannot be null");
+        Utils.nonNull(values, "the input array cannot be null");
         return new AbstractList<Integer>() {
 
             @Override
@@ -236,8 +246,7 @@ public final class Utils {
      *   you cannot change the values.
      */
     public static List<Double> asList(final double ... values) {
-        if (values == null)
-            throw new IllegalArgumentException("the input array cannot be null");
+        Utils.nonNull(values, "the input array cannot be null");
         return new AbstractList<Double>() {
 
             @Override
@@ -259,11 +268,14 @@ public final class Utils {
      * @return A newly allocated linked list containing left followed by elts
      */
     @SafeVarargs
-    public static <T> List<T> append(final List<T> left, T ... elts) {
+    public static <T> List<T> append(final List<T> left, final T ... elts) {
+        Utils.nonNull(left, "left is null");
+        Utils.nonNull(elts, "the input array cannot be null");
         final List<T> l = new LinkedList<>(left);
-	for (T t : elts){
-	    l.add(t);
-	}
+        for (final T t : elts){
+            Utils.nonNull(t, "t is null");
+            l.add(t);
+        }
         return l;
     }
 
@@ -303,12 +315,13 @@ public final class Utils {
         Utils.nonNull(args);
 
         // special case for ' and " so we can allow expressions
-        if (args.indexOf('\'') != -1)
+        if (args.indexOf('\'') != -1) {
             return escapeExpressions(args, "'");
-        else if (args.indexOf('\"') != -1)
+        } else if (args.indexOf('\"') != -1) {
             return escapeExpressions(args, "\"");
-        else
+        } else {
             return args.trim().split(" +");
+        }
     }
 
     /**
@@ -334,11 +347,6 @@ public final class Utils {
         return command;
     }
 
-    static public <T> List<T> reverse(final List<T> l) {
-        final List<T> newL = new ArrayList<>(l);
-        Collections.reverse(newL);
-        return newL;
-    }
 
     /**
      * Make all combinations of N size of objects
@@ -361,10 +369,11 @@ public final class Utils {
             }
         } else if (n > 1) {
             final List<List<T>> sub = makePermutations(objects, n - 1, withReplacement);
-            for ( List<T> subI : sub ) {
+            for ( final List<T> subI : sub ) {
                 for ( final T a : objects ) {
-                    if ( withReplacement || ! subI.contains(a) )
+                    if ( withReplacement || ! subI.contains(a) ) {
                         combinations.add(Utils.cons(a, subI));
+                    }
                 }
             }
         }
@@ -376,6 +385,7 @@ public final class Utils {
      * @see #calcMD5(byte[])
      */
     public static String calcMD5(final String s) {
+        Utils.nonNull(s, "s is null");
         return calcMD5(s.getBytes());
     }
 
@@ -386,16 +396,18 @@ public final class Utils {
      * @return the md5 of bytes, as a 32-character long string
      */
     public static String calcMD5(final byte[] bytes) {
-        if ( bytes == null ) throw new IllegalArgumentException("bytes cannot be null");
+        Utils.nonNull(bytes, "the input array cannot be null");
         try {
             final byte[] thedigest = MessageDigest.getInstance("MD5").digest(bytes);
             final BigInteger bigInt = new BigInteger(1, thedigest);
 
             String md5String = bigInt.toString(16);
-            while (md5String.length() < 32) md5String = "0" + md5String; // pad to length 32
+            while (md5String.length() < 32) {
+                md5String = "0" + md5String; // pad to length 32
+            }
             return md5String;
         }
-        catch ( NoSuchAlgorithmException e ) {
+        catch ( final NoSuchAlgorithmException e ) {
             throw new IllegalStateException("MD5 digest algorithm not present");
         }
     }
@@ -407,7 +419,7 @@ public final class Utils {
      * @throws IllegalArgumentException if a {@code o == null}
      */
     public static <T> T nonNull(final T object) throws IllegalArgumentException {
-        return Utils.nonNull(object,"Null object is not allowed here.");
+        return Utils.nonNull(object, "Null object is not allowed here.");
     }
 
     /**
@@ -422,6 +434,19 @@ public final class Utils {
             throw new IllegalArgumentException(message);
         }
         return object;
+    }
+
+    /**
+     * Checks that the collection does not contain a {@code null} value (throws an {@link IllegalArgumentException} if it does).
+     * The implementation calls {@code c.contains(null)} to determine the presence of null.
+     * @param c collection
+     * @param message the text message that would be pass to the exception thrown when c contains a null.
+     * @throws IllegalArgumentException if a {@code o == null}
+     */
+    public static <T> void containsNoNull(final Collection<?> c, final String s) {
+        if (c.contains(null)){
+            throw new IllegalArgumentException(s);
+        }
     }
 
     /**
@@ -449,7 +474,7 @@ public final class Utils {
      * @return the same as the input {@code file}.
      */
     public static File regularReadableUserFile(final File file) {
-        nonNull(file,"unexpected null file reference");
+        nonNull(file, "unexpected null file reference");
         if (!file.canRead()) {
             throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
         } else if (!file.isFile()) {
@@ -469,6 +494,48 @@ public final class Utils {
      * @return             The optimum initial size for the table, given maxElements
      */
     public static int optimumHashSize ( int maxElements ) {
-        return (int)(maxElements / JAVA_DEFAULT_HASH_LOAD_FACTOR) + 2;
+        return (int) (maxElements / JAVA_DEFAULT_HASH_LOAD_FACTOR) + 2;
     }
+
+    /**
+     * Compares sections from to byte arrays to verify whether they contain the same values.
+     *
+     * @param left first array to compare.
+     * @param leftOffset first position of the first array to compare.
+     * @param right second array to compare.
+     * @param rightOffset first position of the second array to compare.
+     * @param length number of positions to compare.
+     *
+     * @throws IllegalArgumentException if <ul>
+     *     <li>either {@code left} or {@code right} is {@code null} or</li>
+     *     <li>any off the offset or length combine point outside any of the two arrays</li>
+     * </ul>
+     * @return {@code true} iff {@code length} is 0 or all the bytes in both ranges are the same two-by-two.
+     */
+    public static boolean equalRange(final byte[] left, final int leftOffset, final byte[] right, final int rightOffset, final int length) {
+        Utils.nonNull(left, "left cannot be null");
+        Utils.nonNull(right, "right cannot be null");
+        validRange(length, leftOffset, left.length, "left");
+        validRange(length, rightOffset, right.length, "right");
+
+        for (int i = 0; i < length; i++) {
+            if (left[leftOffset + i] != right[rightOffset + i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void validRange(final int length, final int offset, final int size, final String msg){
+        if (length < 0) {
+            throw new IllegalArgumentException(msg + " length cannot be negative");
+        }
+        if (offset < 0) {
+            throw new IllegalArgumentException(msg + " offset cannot be negative");
+        }
+        if (offset + length > size) {
+            throw new IllegalArgumentException(msg + " length goes beyond end of left array");
+        }
+    }
+
 }

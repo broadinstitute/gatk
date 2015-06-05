@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * A canonical, master list of the standard NGS platforms.  These values
- * can be obtained (efficiently) from a GATKSAMRecord object with the
+ * can be obtained (efficiently) from a SAMRecord object with the
  * getNGSPlatform method.
  */
 public enum NGSPlatform {

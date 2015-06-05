@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 
@@ -9,6 +10,11 @@ import static org.testng.Assert.*;
 
 public final class ArtificialReadUtilsUnitTest extends BaseTest {
 
+    @Test
+    public void testReadGroup() {
+        GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+        assertNull(read.getReadGroup());
+    }
 
     @Test
     public void basicReadIteratorTest() {

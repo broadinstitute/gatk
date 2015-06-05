@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -9,10 +8,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -41,12 +37,13 @@ public final class ReadUtils {
      * HACK: This is used to make a copy of a read.
      * Really, SAMRecord should provide a copy constructor or a factory method.
      */
-    public static SAMRecord cloneSAMRecord( final SAMRecord originalRead ) {
-        if ( originalRead == null ) return null;
-        try {
-            return (SAMRecord) originalRead.clone();
+    public static SAMRecord cloneSAMRecord(final SAMRecord originalRead) {
+        if (originalRead == null) {
+            return null;
         }
-        catch ( CloneNotSupportedException e ) {
+        try {
+            return (SAMRecord)originalRead.clone();
+        } catch (final CloneNotSupportedException e) {
             throw new IllegalStateException(e);
         }
     }
@@ -55,6 +52,7 @@ public final class ReadUtils {
      * HACK: This is used to make a copy of a header.
      * Really, SAMFileHeader should provide a copy constructor or a factory method.
      */
+
     public static SAMFileHeader cloneSAMFileHeader( final SAMFileHeader header ) {
         if (header == null) return null;
         return header.clone();
@@ -187,10 +185,14 @@ public final class ReadUtils {
         return read.isReverseStrand() ? read.getUnclippedEnd() : read.getUnclippedStart();
     }
 
-    public static String prettyPrintSequenceRecords( SAMSequenceDictionary sequenceDictionary ) {
-        String[] sequenceRecordNames = new String[sequenceDictionary.size()];
+    public static boolean isEmpty(final SAMRecord read) {
+        return read.getReadBases() == null || read.getReadLength() == 0;
+    }
+
+    public static String prettyPrintSequenceRecords( final SAMSequenceDictionary sequenceDictionary ) {
+        final String[] sequenceRecordNames = new String[sequenceDictionary.size()];
         int sequenceRecordIndex = 0;
-        for (SAMSequenceRecord sequenceRecord : sequenceDictionary.getSequences()) {
+        for (final SAMSequenceRecord sequenceRecord : sequenceDictionary.getSequences()) {
             sequenceRecordNames[sequenceRecordIndex++] = sequenceRecord.getSequenceName();
         }
         return Arrays.deepToString(sequenceRecordNames);
@@ -342,20 +344,28 @@ public final class ReadUtils {
     public static boolean hasWellDefinedFragmentSize(final GATKRead read) {
         if ( read.getFragmentLength() == 0 )
             // no adaptors in reads with mates in another chromosome or unmapped pairs
+        {
             return false;
+	    }
         if ( ! read.isPaired() )
             // only reads that are paired can be adaptor trimmed
+        {
             return false;
+	}
         if ( read.isUnmapped() || read.mateIsUnmapped() )
             // only reads when both reads are mapped can be trimmed
+        {
             return false;
+	}
 //        if ( ! read.isProperlyPaired() )
 //            // note this flag isn't always set properly in BAMs, can will stop us from eliminating some proper pairs
 //            // reads that aren't part of a proper pair (i.e., have strange alignments) can't be trimmed
 //            return false;
         if ( read.isReverseStrand() == read.mateIsReverseStrand() )
             // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
+	    {
             return false;
+        }
 
         if ( read.isReverseStrand() ) {
             // we're on the negative strand, so our read runs right to left
@@ -374,12 +384,13 @@ public final class ReadUtils {
      * @param read
      * @return the length of the first insertion, or 0 if there is none (see warning).
      */
-    public static int getFirstInsertionOffset(GATKRead read) {
-        CigarElement e = read.getCigar().getCigarElement(0);
-        if ( e.getOperator() == CigarOperator.I )
+    public static int getFirstInsertionOffset(final GATKRead read) {
+        final CigarElement e = read.getCigar().getCigarElement(0);
+        if ( e.getOperator() == CigarOperator.I ) {
             return e.getLength();
-        else
+        } else {
             return 0;
+        }
     }
 
     /**
@@ -390,12 +401,13 @@ public final class ReadUtils {
      * @param read
      * @return the length of the last insertion, or 0 if there is none (see warning).
      */
-    public static int getLastInsertionOffset(GATKRead read) {
-        CigarElement e = read.getCigar().getCigarElement(read.getCigar().numCigarElements() - 1);
-        if ( e.getOperator() == CigarOperator.I )
+    public static int getLastInsertionOffset(final GATKRead read) {
+        final CigarElement e = read.getCigar().getCigarElement(read.getCigar().numCigarElements() - 1);
+        if ( e.getOperator() == CigarOperator.I ) {
             return e.getLength();
-        else
+        } else {
             return 0;
+        }
     }
 
     /**
@@ -405,7 +417,7 @@ public final class ReadUtils {
      *
      * @return the unclipped start of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftStart(GATKRead read) {
+    public static int getSoftStart(final GATKRead read) {
         int softStart = read.getStart();
         for (final CigarElement cig : read.getCigar().getCigarElements()) {
             final CigarOperator op = cig.getOperator();
@@ -426,7 +438,7 @@ public final class ReadUtils {
      *
      * @return the unclipped end of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftEnd(GATKRead read) {
+    public static int getSoftEnd(final GATKRead read) {
         boolean foundAlignedBase = false;
         int softEnd = read.getEnd();
         final List<CigarElement> cigs = read.getCigar().getCigarElements();
@@ -435,8 +447,9 @@ public final class ReadUtils {
             final CigarOperator op = cig.getOperator();
 
             if (op == CigarOperator.SOFT_CLIP) // assumes the soft clip that we found is at the end of the aligned read
+            {
                 softEnd += cig.getLength();
-            else if (op != CigarOperator.HARD_CLIP) {
+            } else if (op != CigarOperator.HARD_CLIP) {
                 foundAlignedBase = true;
                 break;
             }
@@ -447,11 +460,7 @@ public final class ReadUtils {
         return softEnd;
     }
 
-    public static int getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord, ClippingTail tail) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
-    }
-
-    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(GATKRead read, int refCoord, ClippingTail tail) {
+    public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
         final int leftmostSafeVariantPosition = Math.max(getSoftStart(read), refCoord);
         return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), leftmostSafeVariantPosition, tail, false);
     }
@@ -470,8 +479,12 @@ public final class ReadUtils {
      *
      * @return the read coordinate corresponding to the requested reference coordinate for clipping.
      */
+    public static int getReadCoordinateForReferenceCoordinate(final GATKRead read, final int refCoord, final ClippingTail tail) {
+        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
+    }
+
     public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
-        Pair<Integer, Boolean> result = getReadCoordinateForReferenceCoordinate(alignmentStart, cigar, refCoord, allowGoalNotReached);
+        final Pair<Integer, Boolean> result = getReadCoordinateForReferenceCoordinate(alignmentStart, cigar, refCoord, allowGoalNotReached);
         int readCoord = result.getLeft();
 
         // Corner case one: clipping the right tail and falls on deletion, move to the next
@@ -509,23 +522,25 @@ public final class ReadUtils {
         }
         boolean goalReached = refBases == goal;
 
-        Iterator<CigarElement> cigarElementIterator = cigar.getCigarElements().iterator();
+        final Iterator<CigarElement> cigarElementIterator = cigar.getCigarElements().iterator();
         while (!goalReached && cigarElementIterator.hasNext()) {
             final CigarElement cigarElement = cigarElementIterator.next();
             int shift = 0;
 
             if (cigarElement.getOperator().consumesReferenceBases() || cigarElement.getOperator() == CigarOperator.SOFT_CLIP) {
-                if (refBases + cigarElement.getLength() < goal)
+                if (refBases + cigarElement.getLength() < goal) {
                     shift = cigarElement.getLength();
-                else
+                } else {
                     shift = goal - refBases;
+                }
 
                 refBases += shift;
             }
             goalReached = refBases == goal;
 
-            if (!goalReached && cigarElement.getOperator().consumesReadBases())
+            if (!goalReached && cigarElement.getOperator().consumesReadBases()) {
                 readBases += cigarElement.getLength();
+            }
 
             if (goalReached) {
                 // Is this base's reference position within this cigar element? Or did we use it all?
@@ -544,10 +559,9 @@ public final class ReadUtils {
                 CigarElement nextCigarElement = null;
 
                 // if we end inside the current cigar element, we just have to check if it is a deletion (or skipped region)
-                if (endsWithinCigar)
-                    fallsInsideDeletionOrSkippedRegion = (cigarElement.getOperator() == CigarOperator.DELETION || cigarElement.getOperator() == CigarOperator.SKIPPED_REGION) ;
-
-                    // if we end outside the current cigar element, we need to check if the next element is an insertion, deletion or skipped region.
+                if (endsWithinCigar) {
+                    fallsInsideDeletionOrSkippedRegion = (cigarElement.getOperator() == CigarOperator.DELETION || cigarElement.getOperator() == CigarOperator.SKIPPED_REGION);
+                }// if we end outside the current cigar element, we need to check if the next element is an insertion, deletion or skipped region.
                 else {
                     nextCigarElement = cigarElementIterator.next();
 
@@ -572,21 +586,20 @@ public final class ReadUtils {
                 fallsInsideOrJustBeforeDeletionOrSkippedRegion = endJustBeforeDeletionOrSkippedRegion || fallsInsideDeletionOrSkippedRegion;
 
                 // If we reached our goal outside a deletion (or skipped region), add the shift
-                if (!fallsInsideOrJustBeforeDeletionOrSkippedRegion && cigarElement.getOperator().consumesReadBases())
+                if (!fallsInsideOrJustBeforeDeletionOrSkippedRegion && cigarElement.getOperator().consumesReadBases()) {
                     readBases += shift;
-
-                    // If we reached our goal just before a deletion (or skipped region) we need
+                }// If we reached our goal just before a deletion (or skipped region) we need
                     // to add the shift of the current cigar element but go back to it's last element to return the last
                     // base before the deletion (or skipped region) (see warning in function contracts)
-                else if (endJustBeforeDeletionOrSkippedRegion && cigarElement.getOperator().consumesReadBases())
+                else if (endJustBeforeDeletionOrSkippedRegion && cigarElement.getOperator().consumesReadBases()) {
                     readBases += shift - 1;
-
-                    // If we reached our goal inside a deletion (or skipped region), or just between a deletion and a skipped region,
+                }// If we reached our goal inside a deletion (or skipped region), or just between a deletion and a skipped region,
                     // then we must backtrack to the last base before the deletion (or skipped region)
                 else if (fallsInsideDeletionOrSkippedRegion ||
                         (endJustBeforeDeletionOrSkippedRegion && nextCigarElement.getOperator().equals(CigarOperator.N)) ||
-                        (endJustBeforeDeletionOrSkippedRegion && nextCigarElement.getOperator().equals(CigarOperator.D)))
+                        (endJustBeforeDeletionOrSkippedRegion && nextCigarElement.getOperator().equals(CigarOperator.D))) {
                     readBases--;
+                }
             }
         }
 
@@ -628,11 +641,11 @@ public final class ReadUtils {
      */
     public static CigarElement readStartsWithInsertion(final Cigar cigarForRead, final boolean ignoreSoftClipOps) {
         for ( final CigarElement cigarElement : cigarForRead.getCigarElements() ) {
-            if ( cigarElement.getOperator() == CigarOperator.INSERTION )
+            if ( cigarElement.getOperator() == CigarOperator.INSERTION ) {
                 return cigarElement;
-
-            else if ( cigarElement.getOperator() != CigarOperator.HARD_CLIP && ( !ignoreSoftClipOps || cigarElement.getOperator() != CigarOperator.SOFT_CLIP) )
+            } else if ( cigarElement.getOperator() != CigarOperator.HARD_CLIP && ( !ignoreSoftClipOps || cigarElement.getOperator() != CigarOperator.SOFT_CLIP) ) {
                 break;
+            }
         }
         return null;
     }
@@ -643,7 +656,7 @@ public final class ReadUtils {
      * @param bases the read bases
      * @return the reverse complement of the read bases
      */
-    public static String getBasesReverseComplement(byte[] bases) {
+    public static String getBasesReverseComplement(final byte[] bases) {
         String reverse = "";
         for (int i = bases.length-1; i >=0; i--) {
             reverse += (char) BaseUtils.getComplement(bases[i]);
@@ -657,7 +670,7 @@ public final class ReadUtils {
      * @param read the read
      * @return the reverse complement of the read bases
      */
-    public static String getBasesReverseComplement(GATKRead read) {
+    public static String getBasesReverseComplement(final GATKRead read) {
         return getBasesReverseComplement(read.getBases());
     }
 
@@ -677,14 +690,14 @@ public final class ReadUtils {
     }
 
     /**
-     * Creates an "empty" MutableRead with the provided read's read group and mate
+     * Creates an "empty" read with the provided read's read group and mate
      * information, but empty (not-null) fields:
      *  - Cigar String
      *  - Read Bases
      *  - Base Qualities
      *
-     * Use this method if you want to create a new empty MutableRead based on
-     * another MutableRead
+     * Use this method if you want to create a new empty read based on
+     * another read
      *
      * @param read a read to copy fields from
      * @return a read with no bases but safe for the GATK
@@ -705,32 +718,32 @@ public final class ReadUtils {
         return emptyRead;
     }
 
-    public static void setInsertionBaseQualities( GATKRead read, final byte[] quals) {
+    public static void setInsertionBaseQualities( final GATKRead read, final byte[] quals) {
         read.setAttribute(BQSR_BASE_INSERTION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals));
     }
 
-    public static void setDeletionBaseQualities( GATKRead read, final byte[] quals) {
+    public static void setDeletionBaseQualities( final GATKRead read, final byte[] quals) {
         read.setAttribute(BQSR_BASE_DELETION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals));
     }
 
     /**
      * @return whether or not this read has base insertion or deletion qualities (one of the two is sufficient to return true)
      */
-    public static boolean hasBaseIndelQualities(GATKRead read) {
+    public static boolean hasBaseIndelQualities(final GATKRead read) {
         return read.hasAttribute(BQSR_BASE_INSERTION_QUALITIES) || read.hasAttribute(BQSR_BASE_DELETION_QUALITIES);
     }
 
     /**
      * @return the base deletion quality or null if read doesn't have one
      */
-    public static byte[] getExistingBaseInsertionQualities(GATKRead read) {
+    public static byte[] getExistingBaseInsertionQualities(final GATKRead read) {
         return SAMUtils.fastqToPhred(read.getAttributeAsString(BQSR_BASE_INSERTION_QUALITIES));
     }
 
     /**
      * @return the base deletion quality or null if read doesn't have one
      */
-    public static byte[] getExistingBaseDeletionQualities(GATKRead read) {
+    public static byte[] getExistingBaseDeletionQualities(final GATKRead read) {
         return SAMUtils.fastqToPhred( read.getAttributeAsString(BQSR_BASE_DELETION_QUALITIES));
     }
 
@@ -740,7 +753,7 @@ public final class ReadUtils {
      *
      * @return the base insertion quality array
      */
-    public static byte[] getBaseInsertionQualities(GATKRead read) {
+    public static byte[] getBaseInsertionQualities(final GATKRead read) {
         byte [] quals = getExistingBaseInsertionQualities(read);
         if( quals == null ) {
             quals = new byte[read.getBaseQualities().length];
@@ -756,7 +769,7 @@ public final class ReadUtils {
      *
      * @return the base deletion quality array
      */
-    public static byte[] getBaseDeletionQualities(GATKRead read) {
+    public static byte[] getBaseDeletionQualities(final GATKRead read) {
         byte[] quals = getExistingBaseDeletionQualities(read);
         if( quals == null ) {
             quals = new byte[read.getBaseQualities().length];
@@ -812,10 +825,11 @@ public final class ReadUtils {
     /**
      * Resets the quality scores of the reads to the orginal (pre-BQSR) ones.
      */
-    public static GATKRead resetOriginalBaseQualities(GATKRead read) {
-        byte[] originalQuals = ReadUtils.getOriginalBaseQualities(read);
-        if ( originalQuals != null )
+    public static GATKRead resetOriginalBaseQualities(final GATKRead read) {
+        final byte[] originalQuals = ReadUtils.getOriginalBaseQualities(read);
+        if ( originalQuals != null ){
             read.setBaseQualities(originalQuals);
+        }
         return read;
     }
 
@@ -833,8 +847,9 @@ public final class ReadUtils {
         }
         final SAMSequenceRecord contigHeader = header.getSequence(referenceIndex);
         // Read is aligned to a point after the end of the contig
-        if( ! read.isUnmapped() && read.getStart() > contigHeader.getSequenceLength() )
+        if( ! read.isUnmapped() && read.getStart() > contigHeader.getSequenceLength() ) {
             return false;
+        }
         return true;
     }
 
