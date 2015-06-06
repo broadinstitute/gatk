@@ -1,5 +1,5 @@
-[![Build Status](https://magnum.travis-ci.com/broadinstitute/hellbender-protected.svg?branch=master)](https://magnum.travis-ci.com/broadinstitute/hellbender-protected)
-[![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender-protected/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/hellbender-protected?branch=master)
+[![Build Status](https://magnum.travis-ci.com/broadinstitute/hellbender-protected.svg?token=yyvS66phxJv6t5Zzsp8M&branch=master)](https://magnum.travis-ci.com/broadinstitute/hellbender-protected)
+[![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender-protected/badge.svg?branch=master&t=fjUaFR)](https://coveralls.io/r/broadinstitute/hellbender-protected?branch=master)
 
 Hellbender Protected
 ====================
