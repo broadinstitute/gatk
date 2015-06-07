@@ -524,10 +524,9 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
         private String[] columnNames;
 
         public static Table fromFile(final File file) throws IOException {
-            final FileReader fr = new FileReader(file);
-            final Table result = new Table(fr);
-            fr.close();
-            return result;
+            try (final FileReader fr = new FileReader(file)) {
+                return new Table(fr);
+            }
         }
 
         public Table(final Reader reader) throws IOException {

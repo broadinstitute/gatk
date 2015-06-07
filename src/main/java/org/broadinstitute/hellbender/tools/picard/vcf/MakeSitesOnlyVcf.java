@@ -74,23 +74,23 @@ public final class MakeSitesOnlyVcf extends PicardCommandLineProgram {
             builder.setOption(Options.INDEX_ON_THE_FLY);
         else
             builder.unsetOption(Options.INDEX_ON_THE_FLY);
-        final VariantContextWriter writer = builder.build();
+        try (final VariantContextWriter writer = builder.build()) {
 
-        final VCFHeader header = new VCFHeader(inputVcfHeader.getMetaDataInInputOrder(), SAMPLE);
-        writer.writeHeader(header);
+            final VCFHeader header = new VCFHeader(inputVcfHeader.getMetaDataInInputOrder(), SAMPLE);
+            writer.writeHeader(header);
 
-        // Go through the input, strip the records and write them to the output
-        final CloseableIterator<VariantContext> iterator = reader.iterator();
-	    while (iterator.hasNext()) {
-		    final VariantContext full = iterator.next();
-            final VariantContext site = subsetToSamplesWithOriginalAnnotations(full, SAMPLE);
-            writer.add(site);
-            progress.record(site.getContig(), site.getStart());
+            // Go through the input, strip the records and write them to the output
+            final CloseableIterator<VariantContext> iterator = reader.iterator();
+            while (iterator.hasNext()) {
+                final VariantContext full = iterator.next();
+                final VariantContext site = subsetToSamplesWithOriginalAnnotations(full, SAMPLE);
+                writer.add(site);
+                progress.record(site.getContig(), site.getStart());
+            }
+
+            CloserUtil.close(iterator);
+            CloserUtil.close(reader);
         }
-
-	    CloserUtil.close(iterator);
-	    CloserUtil.close(reader);
-	    writer.close();
 
         return null;
     }

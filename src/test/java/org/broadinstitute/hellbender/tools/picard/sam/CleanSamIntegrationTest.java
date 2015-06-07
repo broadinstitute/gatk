@@ -35,14 +35,14 @@ public final class CleanSamIntegrationTest extends CommandLineProgramTest {
         validator.setIgnoreWarnings(true);
         validator.setVerbose(true, 1000);
         validator.setErrorsToIgnore(Arrays.asList(SAMValidationError.Type.MISSING_READ_GROUP));
-        SamReader samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(cleanedFile);
-        final SAMRecord rec = samReader.iterator().next();
-        samReader.close();
-        Assert.assertEquals(rec.getCigarString(), expectedCigar);
-        samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(cleanedFile);
-        final boolean validated = validator.validateSamFileVerbose(samReader, null);
-        samReader.close();
-        Assert.assertTrue(validated, "ValidateSamFile failed");
+        try (final SamReader samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(cleanedFile)) {
+            final SAMRecord rec = samReader.iterator().next();
+            Assert.assertEquals(rec.getCigarString(), expectedCigar);
+        }
+        try (final SamReader samReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT).open(cleanedFile)) {
+            final boolean validated = validator.validateSamFileVerbose(samReader, null);
+            Assert.assertTrue(validated, "ValidateSamFile failed");
+        }
     }
 
     @DataProvider(name = "testCleanSamDataProvider")

@@ -332,45 +332,44 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
 
     private Map<String,MatePair> createSamMatePairsMap(final File samFile) throws IOException {
         IOUtil.assertFileIsReadable(samFile);
-        final SamReader reader = SamReaderFactory.makeDefault().open(samFile);
+        final Map<String, MatePair> map = new LinkedHashMap<>();
+        try (final SamReader reader = SamReaderFactory.makeDefault().open(samFile)) {
 
-        final Map<String,MatePair> map = new LinkedHashMap<>();
-        for (final SAMRecord record : reader ) {
-            MatePair mpair = map.get(record.getReadName());
-            if (mpair == null) {
-                mpair = new MatePair();
-                map.put(record.getReadName(), mpair);
+            for (final SAMRecord record : reader) {
+                MatePair mpair = map.get(record.getReadName());
+                if (mpair == null) {
+                    mpair = new MatePair();
+                    map.put(record.getReadName(), mpair);
+                }
+                mpair.add(record);
             }
-            mpair.add(record);
         }
-        reader.close();
         return map;
     }
 
 
     private Map<String, Map<String, MatePair>> createPUPairsMap(final File samFile) throws IOException {
         IOUtil.assertFileIsReadable(samFile);
-        final SamReader reader = SamReaderFactory.makeDefault().open(samFile);
         final Map<String, Map<String, MatePair>> map = new LinkedHashMap<>();
+        try (final SamReader reader = SamReaderFactory.makeDefault().open(samFile)) {
 
-        Map<String,MatePair> curFileMap;
-        for (final SAMRecord record : reader ) {
-            final String platformUnit = record.getReadGroup().getPlatformUnit();
-            curFileMap = map.get(platformUnit);
-            if(curFileMap == null)
-            {
-                curFileMap = new LinkedHashMap<>();
-                map.put(platformUnit, curFileMap);
-            }
+            Map<String, MatePair> curFileMap;
+            for (final SAMRecord record : reader) {
+                final String platformUnit = record.getReadGroup().getPlatformUnit();
+                curFileMap = map.get(platformUnit);
+                if (curFileMap == null) {
+                    curFileMap = new LinkedHashMap<>();
+                    map.put(platformUnit, curFileMap);
+                }
 
-            MatePair mpair = curFileMap.get(record.getReadName());
-            if (mpair == null) {
-                mpair = new MatePair();
-                curFileMap.put(record.getReadName(), mpair);
+                MatePair mpair = curFileMap.get(record.getReadName());
+                if (mpair == null) {
+                    mpair = new MatePair();
+                    curFileMap.put(record.getReadName(), mpair);
+                }
+                mpair.add(record);
             }
-            mpair.add(record);
         }
-        reader.close();
         return map;
     }
 

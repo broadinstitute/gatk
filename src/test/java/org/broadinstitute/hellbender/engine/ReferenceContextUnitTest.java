@@ -51,16 +51,15 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test(dataProvider = "WindowlessReferenceIntervalDataProvider")
     public void testWindowlessReferenceContext( final SimpleInterval interval, final String expectedBases ) {
-        ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
-        ReferenceContext refContext = new ReferenceContext(reference, interval);
+        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+            ReferenceContext refContext = new ReferenceContext(reference, interval);
 
-        checkReferenceContextBases(refContext, expectedBases);
-        Assert.assertEquals(refContext.getInterval(), interval, "Wrong interval in reference context");
-        Assert.assertEquals(refContext.getWindow(), interval, "Window in windowless reference context not equal to original interval");
-        Assert.assertEquals(refContext.numWindowLeadingBases(), 0, "Non-zero leading window size in windowless reference context");
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 0, "Non-zero trailing window size in windowless reference context");
-
-        reference.close();
+            checkReferenceContextBases(refContext, expectedBases);
+            Assert.assertEquals(refContext.getInterval(), interval, "Wrong interval in reference context");
+            Assert.assertEquals(refContext.getWindow(), interval, "Window in windowless reference context not equal to original interval");
+            Assert.assertEquals(refContext.numWindowLeadingBases(), 0, "Non-zero leading window size in windowless reference context");
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 0, "Non-zero trailing window size in windowless reference context");
+        }
     }
 
     @DataProvider(name = "WindowedReferenceIntervalDataProvider")
@@ -83,57 +82,55 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test(dataProvider = "WindowedReferenceIntervalDataProvider")
     public void testWindowedContext( final SimpleInterval interval, final int windowStartOffset, final int windowStopOffset, final SimpleInterval expectedWindow, final String expectedBases ) {
-        ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
-        ReferenceContext refContext = new ReferenceContext(reference, interval, windowStartOffset, windowStopOffset);
+        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+            ReferenceContext refContext = new ReferenceContext(reference, interval, windowStartOffset, windowStopOffset);
 
-        checkReferenceContextBases(refContext, expectedBases);
-        Assert.assertEquals(refContext.getInterval(), interval, "Wrong interval in reference context");
-        Assert.assertEquals(refContext.getWindow(), expectedWindow, "Window in windowed reference context not equal to expected window");
-        Assert.assertEquals(refContext.numWindowLeadingBases(), interval.getStart() - expectedWindow.getStart(),
-                            "Leading window size in windowed reference context not equal to expected value");
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 0, expectedWindow.getEnd() - interval.getEnd(),
-                            "Trailing window size in windowed reference context not equal to expected value");
-
-        reference.close();
+            checkReferenceContextBases(refContext, expectedBases);
+            Assert.assertEquals(refContext.getInterval(), interval, "Wrong interval in reference context");
+            Assert.assertEquals(refContext.getWindow(), expectedWindow, "Window in windowed reference context not equal to expected window");
+            Assert.assertEquals(refContext.numWindowLeadingBases(), interval.getStart() - expectedWindow.getStart(),
+                    "Leading window size in windowed reference context not equal to expected value");
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 0, expectedWindow.getEnd() - interval.getEnd(),
+                    "Trailing window size in windowed reference context not equal to expected value");
+        }
     }
 
     @Test
     public void testDynamicallyChangingWindow() {
-        final ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
-        final SimpleInterval interval = new SimpleInterval("1", 11210, 11220);
-        final ReferenceContext refContext = new ReferenceContext(reference, interval);
-        final String intervalBases = "CGGTGCTGTGC";
+        try (final ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+            final SimpleInterval interval = new SimpleInterval("1", 11210, 11220);
+            final ReferenceContext refContext = new ReferenceContext(reference, interval);
+            final String intervalBases = "CGGTGCTGTGC";
 
-        Assert.assertEquals(interval, refContext.getWindow());
-        Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 0);
-        checkReferenceContextBases(refContext, intervalBases);
+            Assert.assertEquals(interval, refContext.getWindow());
+            Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 0);
+            checkReferenceContextBases(refContext, intervalBases);
 
-        refContext.setWindow(5, 5);
-        Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart() - 5, interval.getEnd() + 5));
-        Assert.assertEquals(refContext.numWindowLeadingBases(), 5);
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 5);
-        checkReferenceContextBases(refContext, "GCTCA" + intervalBases + "CAGGG");
+            refContext.setWindow(5, 5);
+            Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart() - 5, interval.getEnd() + 5));
+            Assert.assertEquals(refContext.numWindowLeadingBases(), 5);
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 5);
+            checkReferenceContextBases(refContext, "GCTCA" + intervalBases + "CAGGG");
 
-        refContext.setWindow(0, 10);
-        Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart(), interval.getEnd() + 10));
-        Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 10);
-        checkReferenceContextBases(refContext, intervalBases + "CAGGGCGCCC");
+            refContext.setWindow(0, 10);
+            Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart(), interval.getEnd() + 10));
+            Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 10);
+            checkReferenceContextBases(refContext, intervalBases + "CAGGGCGCCC");
 
-        refContext.setWindow(20, 3);
-        Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart() - 20, interval.getEnd() + 3));
-        Assert.assertEquals(refContext.numWindowLeadingBases(), 20);
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 3);
-        checkReferenceContextBases(refContext, "CTACAGGACCCGCTTGCTCA" + intervalBases + "CAG");
+            refContext.setWindow(20, 3);
+            Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart() - 20, interval.getEnd() + 3));
+            Assert.assertEquals(refContext.numWindowLeadingBases(), 20);
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 3);
+            checkReferenceContextBases(refContext, "CTACAGGACCCGCTTGCTCA" + intervalBases + "CAG");
 
-        refContext.setWindow(0, 0);
-        Assert.assertEquals(interval, refContext.getWindow());
-        Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
-        Assert.assertEquals(refContext.numWindowTrailingBases(), 0);
-        checkReferenceContextBases(refContext, intervalBases);
-
-        reference.close();
+            refContext.setWindow(0, 0);
+            Assert.assertEquals(interval, refContext.getWindow());
+            Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 0);
+            checkReferenceContextBases(refContext, intervalBases);
+        }
     }
 
     private void checkReferenceContextBases( final ReferenceContext refContext, final String expectedBases ) {

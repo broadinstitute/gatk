@@ -63,27 +63,27 @@ public final class FilterVcf extends PicardCommandLineProgram {
 
         final List<VariantFilter> variantFilters = CollectionUtil.makeList(new AlleleBalanceFilter(MIN_AB), new FisherStrandFilter(MAX_FS), new QdFilter(MIN_QD));
         final List<GenotypeFilter> genotypeFilters = CollectionUtil.makeList(new GenotypeQualityFilter(MIN_GQ), new DepthFilter(MIN_DP));
-        final VCFFileReader in = new VCFFileReader(INPUT, false);
-        final FilterApplyingVariantIterator iterator = new FilterApplyingVariantIterator(in.iterator(), variantFilters, genotypeFilters);
+        try (final VCFFileReader in = new VCFFileReader(INPUT, false)) {
+            final FilterApplyingVariantIterator iterator = new FilterApplyingVariantIterator(in.iterator(), variantFilters, genotypeFilters);
 
-        final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(OUTPUT).build();
-        final VCFHeader header = in.getFileHeader();
-        header.addMetaDataLine(new VCFFilterHeaderLine("AllGtsFiltered", "Site filtered out because all genotypes are filtered out."));
-        header.addMetaDataLine(new VCFFormatHeaderLine("FT", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Genotype filters."));
-        for (final VariantFilter filter : variantFilters) {
-            for (final VCFFilterHeaderLine line : filter.headerLines()) {
-                header.addMetaDataLine(line);
+            try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(OUTPUT).build()) {
+                final VCFHeader header = in.getFileHeader();
+                header.addMetaDataLine(new VCFFilterHeaderLine("AllGtsFiltered", "Site filtered out because all genotypes are filtered out."));
+                header.addMetaDataLine(new VCFFormatHeaderLine("FT", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Genotype filters."));
+                for (final VariantFilter filter : variantFilters) {
+                    for (final VCFFilterHeaderLine line : filter.headerLines()) {
+                        header.addMetaDataLine(line);
+                    }
+                }
+
+                out.writeHeader(in.getFileHeader());
+
+                while (iterator.hasNext()) {
+                    out.add(iterator.next());
+                }
+
             }
         }
-
-        out.writeHeader(in.getFileHeader());
-
-        while (iterator.hasNext()) {
-            out.add(iterator.next());
-        }
-
-        out.close();
-        in.close();
         return null;
     }
 }

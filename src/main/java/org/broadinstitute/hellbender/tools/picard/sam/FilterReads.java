@@ -89,20 +89,20 @@ public final class FilterReads extends PicardCommandLineProgram {
         log.info("Filtering [presorted=" + presorted + "] " + INPUT.getName() + " -> OUTPUT=" +
                 OUTPUT.getName() + " [sortorder=" + fileHeader.getSortOrder().name() + "]");
 
-        // create OUTPUT file
-        final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, presorted, OUTPUT);
-
         final ProgressLogger progress = new ProgressLogger(log, (int) 1e6, "Written");
 
-        while (filteringIterator.hasNext()) {
-            final SAMRecord rec = filteringIterator.next();
-            outputWriter.addAlignment(rec);
-            progress.record(rec);
-        }
+        // create OUTPUT file
+        try (final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, presorted, OUTPUT)) {
 
-        filteringIterator.close();
-        outputWriter.close();
-        log.info(new DecimalFormat("#,###").format(progress.getCount()) + " SAMRecords written to " + OUTPUT.getName());
+           while (filteringIterator.hasNext()) {
+               final SAMRecord rec = filteringIterator.next();
+               outputWriter.addAlignment(rec);
+               progress.record(rec);
+           }
+
+           filteringIterator.close();
+       }
+       log.info(new DecimalFormat("#,###").format(progress.getCount()) + " SAMRecords written to " + OUTPUT.getName());
     }
 
     /**
@@ -112,19 +112,18 @@ public final class FilterReads extends PicardCommandLineProgram {
      *                     containing read names
      */
     private void writeReadsFile(final File samOrBamFile) throws IOException {
-        final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(samOrBamFile);
-        final File readsFile =
-                new File(OUTPUT.getParentFile(), IOUtil.basename(samOrBamFile) + ".reads");
-        IOUtil.assertFileIsWritable(readsFile);
-        final BufferedWriter bw = IOUtil.openFileForBufferedWriting(readsFile, false);
+        File readsFile = null;
+        try (final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(samOrBamFile)) {
+            readsFile = new File(OUTPUT.getParentFile(), IOUtil.basename(samOrBamFile) + ".reads");
+            IOUtil.assertFileIsWritable(readsFile);
+            try (final BufferedWriter bw = IOUtil.openFileForBufferedWriting(readsFile, false)) {
 
-        for (final SAMRecord rec : reader) {
-            bw.write(rec.toString() + "\n");
+                for (final SAMRecord rec : reader) {
+                    bw.write(rec.toString() + "\n");
+                }
+            }
+            IOUtil.assertFileIsReadable(readsFile);
         }
-
-        bw.close();
-        reader.close();
-        IOUtil.assertFileIsReadable(readsFile);
     }
 
     @Override

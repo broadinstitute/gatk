@@ -302,13 +302,13 @@ public final class CommandLineParserTest {
     public void testArgumentsFile() throws Exception {
         final File argumentsFile = File.createTempFile("clp.", ".arguments");
         argumentsFile.deleteOnExit();
-        final PrintWriter writer = new PrintWriter(argumentsFile);
-        writer.println("-T 18");
-        writer.println("--TRUTHINESS");
-        writer.println("--SHMIGGLE_TYPE shmiggle0");
-        writer.println("--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME + " " +argumentsFile.getPath());
-        //writer.println("--STRANGE_ARGUMENT shmiggle0");
-        writer.close();
+        try (final PrintWriter writer = new PrintWriter(argumentsFile)) {
+            writer.println("-T 18");
+            writer.println("--TRUTHINESS");
+            writer.println("--SHMIGGLE_TYPE shmiggle0");
+            writer.println("--" + SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME + " " + argumentsFile.getPath());
+            //writer.println("--STRANGE_ARGUMENT shmiggle0");
+        }
         final String[] args = {
                 "--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME, argumentsFile.getPath(),
                 // Multiple arguments files are allowed
@@ -343,9 +343,9 @@ public final class CommandLineParserTest {
     public void testArgumentsFileWithDisallowedOverride() throws Exception {
         final File argumentsFile = File.createTempFile("clp.", ".arguments");
         argumentsFile.deleteOnExit();
-        final PrintWriter writer = new PrintWriter(argumentsFile);
-        writer.println("--T 18");
-        writer.close();
+        try (final PrintWriter writer = new PrintWriter(argumentsFile)) {
+            writer.println("--T 18");
+        }
         final String[] args = {
                 "--T","17",
                 "--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME ,argumentsFile.getPath()

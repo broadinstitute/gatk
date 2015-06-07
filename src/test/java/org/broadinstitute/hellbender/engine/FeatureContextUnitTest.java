@@ -57,12 +57,11 @@ public final class FeatureContextUnitTest extends BaseTest {
     @Test
     public void testGetHeader() {
         final ArtificialFeatureContainingCommandLineProgram toolInstance = new ArtificialFeatureContainingCommandLineProgram();
-        final FeatureManager featureManager = new FeatureManager(toolInstance);
-        final FeatureContext featureContext = new FeatureContext(featureManager, new SimpleInterval("1", 1, 1));
-        final Object header = featureContext.getHeader(toolInstance.featureArgument);
-        featureManager.close();
-
-        Assert.assertTrue(header instanceof VCFHeader, "Header for " + toolInstance.featureArgument.getFeatureFile().getAbsolutePath() +
-                                                       " not a VCFHeader");
+        try (final FeatureManager featureManager = new FeatureManager(toolInstance)) {
+            final FeatureContext featureContext = new FeatureContext(featureManager, new SimpleInterval("1", 1, 1));
+            final Object header = featureContext.getHeader(toolInstance.featureArgument);
+            Assert.assertTrue(header instanceof VCFHeader, "Header for " + toolInstance.featureArgument.getFeatureFile().getAbsolutePath() +
+                    " not a VCFHeader");
+        }
     }
 }

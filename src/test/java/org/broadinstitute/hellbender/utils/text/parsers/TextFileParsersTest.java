@@ -35,12 +35,12 @@ public final class TextFileParsersTest {
 
         List<String> expected = new ArrayList<>();
         if (fileOrStream instanceof File) {
-            BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream));
-            String line = null;
-            while ((line = reader.readLine()) != null)  {
-                if (!line.startsWith("#")) expected.add(line);
+            try (BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream))) {
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("#")) expected.add(line);
+                }
             }
-            reader.close();
         }
 
         BasicInputParser parser = fileOrStream instanceof File
@@ -88,17 +88,18 @@ public final class TextFileParsersTest {
 
         List<String> expected = new ArrayList<>();
         if (fileOrStream1 instanceof File) {
-            BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream1));
-            String line = null;
-            while ((line = reader.readLine()) != null)  {
-                if (!line.startsWith("#")) expected.add(line);
+            try (final BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream1))) {
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("#")) expected.add(line);
+                }
             }
-            reader.close();
-            reader = new BufferedReader(new FileReader((File)fileOrStream2));
-            while ((line = reader.readLine()) != null)  {
-                if (!line.startsWith("#")) expected.add(line);
+            try (final BufferedReader reader = new BufferedReader(new FileReader((File)fileOrStream2))){
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("#")) expected.add(line);
+                }
             }
-            reader.close();
         }
 
         BasicInputParser parser = fileOrStream1 instanceof File

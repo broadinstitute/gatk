@@ -100,17 +100,17 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
          * 1. Set mate cigar string and mate information
          * 2. push record into SAMFileWriter to the output
          */
-        final SamPairUtil.SetMateInfoIterator sorterIterator = new SamPairUtil.SetMateInfoIterator(sorter.iterator(), true);
-        final ProgressLogger sorterProgress = new ProgressLogger(log, 1000000, " mate cigars added");
-        while (sorterIterator.hasNext()) {
-            final SAMRecord record = sorterIterator.next();
-            out.addAlignment(record);
-            sorterProgress.record(record);
+        try (final SamPairUtil.SetMateInfoIterator sorterIterator = new SamPairUtil.SetMateInfoIterator(sorter.iterator(), true)) {
+            final ProgressLogger sorterProgress = new ProgressLogger(log, 1000000, " mate cigars added");
+            while (sorterIterator.hasNext()) {
+                final SAMRecord record = sorterIterator.next();
+                out.addAlignment(record);
+                sorterProgress.record(record);
+            }
+            CloserUtil.close(out);
+            log.info("Updated " + sorterIterator.getNumMateCigarsAdded() + " records with mate cigar");
+            if (!foundPairedMappedReads) log.info("Did not find any paired mapped reads.");
         }
-        sorterIterator.close();
-        CloserUtil.close(out);
-        log.info("Updated " + sorterIterator.getNumMateCigarsAdded() + " records with mate cigar");
-        if (!foundPairedMappedReads) log.info("Did not find any paired mapped reads.");
 
         return null;
     }

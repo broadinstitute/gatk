@@ -98,76 +98,73 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         // Key: previous PG ID on a SAM Record (or null).  Value: New PG ID to replace it.
         final Map<String, String> chainedPgIds = getChainedPgIds(outputHeader);
 
-        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outputHeader,
+        try (final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outputHeader,
                 true,
-                OUTPUT);
+                OUTPUT)) {
 
-        // Now copy over the file while marking all the necessary indexes as duplicates
-        long recordInFileIndex = 0;
-        long nextDuplicateIndex = (this.duplicateIndexes.hasNext() ? this.duplicateIndexes.next() : -1);
+            // Now copy over the file while marking all the necessary indexes as duplicates
+            long recordInFileIndex = 0;
+            long nextDuplicateIndex = (this.duplicateIndexes.hasNext() ? this.duplicateIndexes.next() : -1);
 
-        final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Written");
-        final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator;
-        while (iterator.hasNext()) {
-            final SAMRecord rec = iterator.next();
-            if (!rec.isSecondaryOrSupplementary()) {
-                final String library = LibraryIdGenerator.getLibraryName(header, rec);
-                DuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
-                if (metrics == null) {
-                    metrics = new DuplicationMetrics();
-                    metrics.LIBRARY = library;
-                    libraryIdGenerator.addMetricsByLibrary(library, metrics);
-                }
+            final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Written");
+            try (final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator) {
+                while (iterator.hasNext()) {
+                    final SAMRecord rec = iterator.next();
+                    if (!rec.isSecondaryOrSupplementary()) {
+                        final String library = LibraryIdGenerator.getLibraryName(header, rec);
+                        DuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
+                        if (metrics == null) {
+                            metrics = new DuplicationMetrics();
+                            metrics.LIBRARY = library;
+                            libraryIdGenerator.addMetricsByLibrary(library, metrics);
+                        }
 
-                // First bring the simple metrics up to date
-                if (rec.getReadUnmappedFlag()) {
-                    ++metrics.UNMAPPED_READS;
-                } else if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
-                    ++metrics.UNPAIRED_READS_EXAMINED;
-                } else {
-                    ++metrics.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
-                }
+                        // First bring the simple metrics up to date
+                        if (rec.getReadUnmappedFlag()) {
+                            ++metrics.UNMAPPED_READS;
+                        } else if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
+                            ++metrics.UNPAIRED_READS_EXAMINED;
+                        } else {
+                            ++metrics.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
+                        }
 
 
-                if (recordInFileIndex == nextDuplicateIndex) {
-                    rec.setDuplicateReadFlag(true);
+                        if (recordInFileIndex == nextDuplicateIndex) {
+                            rec.setDuplicateReadFlag(true);
 
-                    // Update the duplication metrics
-                    if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
-                        ++metrics.UNPAIRED_READ_DUPLICATES;
-                    } else {
-                        ++metrics.READ_PAIR_DUPLICATES;// will need to be divided by 2 at the end
+                            // Update the duplication metrics
+                            if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
+                                ++metrics.UNPAIRED_READ_DUPLICATES;
+                            } else {
+                                ++metrics.READ_PAIR_DUPLICATES;// will need to be divided by 2 at the end
+                            }
+
+                            // Now try and figure out the next duplicate index
+                            if (this.duplicateIndexes.hasNext()) {
+                                nextDuplicateIndex = this.duplicateIndexes.next();
+                            } else {
+                                // Only happens once we've marked all the duplicates
+                                nextDuplicateIndex = -1;
+                            }
+                        } else {
+                            rec.setDuplicateReadFlag(false);
+                        }
                     }
+                    recordInFileIndex++;
 
-                    // Now try and figure out the next duplicate index
-                    if (this.duplicateIndexes.hasNext()) {
-                        nextDuplicateIndex = this.duplicateIndexes.next();
-                    } else {
-                        // Only happens once we've marked all the duplicates
-                        nextDuplicateIndex = -1;
+                    if (!this.REMOVE_DUPLICATES || !rec.getDuplicateReadFlag()) {
+                        if (PROGRAM_RECORD_ID != null) {
+                            rec.setAttribute(SAMTag.PG.name(), chainedPgIds.get(rec.getStringAttribute(SAMTag.PG.name())));
+                        }
+                        out.addAlignment(rec);
+                        progress.record(rec);
                     }
-                } else {
-                    rec.setDuplicateReadFlag(false);
                 }
             }
-            recordInFileIndex++;
+            this.duplicateIndexes.cleanup();
 
-            if (!this.REMOVE_DUPLICATES || !rec.getDuplicateReadFlag()) {
-                if (PROGRAM_RECORD_ID != null) {
-                    rec.setAttribute(SAMTag.PG.name(), chainedPgIds.get(rec.getStringAttribute(SAMTag.PG.name())));
-                }
-                out.addAlignment(rec);
-                progress.record(rec);
-            }
+            reportMemoryStats("Before output close");
         }
-
-        // remember to close the inputs
-        iterator.close();
-
-        this.duplicateIndexes.cleanup();
-
-        reportMemoryStats("Before output close");
-        out.close();
         reportMemoryStats("After output close");
 
         // Write out the metrics

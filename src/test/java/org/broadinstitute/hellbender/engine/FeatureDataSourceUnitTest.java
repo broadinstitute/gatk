@@ -50,31 +50,31 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test
     public void testGetCodecClass() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec());
-        Assert.assertEquals(featureSource.getCodecClass(), VCFCodec.class, "Wrong codec class returned from getCodecClass()");
-        featureSource.close();
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+            Assert.assertEquals(featureSource.getCodecClass(), VCFCodec.class, "Wrong codec class returned from getCodecClass()");
+        }
     }
 
     @Test
     public void testGetFeatureType() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec());
-        Assert.assertEquals(featureSource.getFeatureType(), VariantContext.class, "Wrong feature type returned from getFeatureType()");
-        featureSource.close();
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+            Assert.assertEquals(featureSource.getFeatureType(), VariantContext.class, "Wrong feature type returned from getFeatureType()");
+        }
     }
 
     @Test
     public void testGetName() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName");
-        Assert.assertEquals(featureSource.getName(), "CustomName", "Wrong name returned from getName()");
-        featureSource.close();
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName")) {
+            Assert.assertEquals(featureSource.getName(), "CustomName", "Wrong name returned from getName()");
+        }
     }
 
     @Test
     public void testGetHeader() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName");
-        final Object header = featureSource.getHeader();
-        featureSource.close();
-
+        Object header = null;
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName")) {
+            header = featureSource.getHeader();
+        }
         Assert.assertTrue(header instanceof VCFHeader, "Header for " + QUERY_TEST_VCF.getAbsolutePath() + " not a VCFHeader");
     }
 
@@ -230,18 +230,18 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
      */
     @Test(dataProvider = "IndependentFeatureQueryTestData")
     public void testIndependentFeatureQuerying( final SimpleInterval queryInterval, final List<String> expectedVariantIDs ) {
-        final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec());
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
 
-        // Use query() here rather than queryAndPrefetch() so that query() will have test coverage
-        // (the other tests below use queryAndPrefetch())
-        Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
-        List<VariantContext> queryResults = new ArrayList<>();
-        while ( featureIterator.hasNext() ) {
-            queryResults.add(featureIterator.next());
+            // Use query() here rather than queryAndPrefetch() so that query() will have test coverage
+            // (the other tests below use queryAndPrefetch())
+            Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
+            List<VariantContext> queryResults = new ArrayList<>();
+            while (featureIterator.hasNext()) {
+                queryResults.add(featureIterator.next());
+            }
+
+            checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
         }
-        featureSource.close();
-
-        checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
     }
 
     private void checkVariantQueryResults( final List<VariantContext> queryResults, final List<String> expectedVariantIDs, final SimpleInterval queryInterval ) {
@@ -342,18 +342,17 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
      */
     @Test(dataProvider = "SingleDataSourceMultipleQueriesTestData")
     public void testSingleDataSourceMultipleQueries( final List<Pair<SimpleInterval, List<String>>> testQueries ) {
-        final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec());
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
 
-        // This test re-uses the same FeatureDataSource across queries to test caching of query results.
-        for ( Pair<SimpleInterval, List<String>> testQuery : testQueries ) {
-            final SimpleInterval queryInterval = testQuery.getLeft();
-            final List<String> expectedVariantIDs = testQuery.getRight();
+            // This test re-uses the same FeatureDataSource across queries to test caching of query results.
+            for ( Pair<SimpleInterval, List<String>> testQuery : testQueries ) {
+                final SimpleInterval queryInterval = testQuery.getLeft();
+                final List<String> expectedVariantIDs = testQuery.getRight();
 
-            final List<VariantContext> queryResults = featureSource.queryAndPrefetch(queryInterval);
-            checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
+                final List<VariantContext> queryResults = featureSource.queryAndPrefetch(queryInterval);
+                checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
+            }
         }
-
-        featureSource.close();
     }
 
     @DataProvider(name = "GVCFQueryTestData")
