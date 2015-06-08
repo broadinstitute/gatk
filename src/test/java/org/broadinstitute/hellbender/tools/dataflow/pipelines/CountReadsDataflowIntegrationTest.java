@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
+import com.google.common.base.Strings;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -39,7 +40,7 @@ public final class CountReadsDataflowIntegrationTest extends CommandLineProgramT
         args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME); args.add(ORIG_BAM.getAbsolutePath());
         args.add(interval_args);
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME); args.add(placeHolder);
-
+        addDataflowRunnerArgs(args);
 
         this.runCommandLine(args.getArgsArray());
 

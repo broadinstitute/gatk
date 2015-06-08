@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
+import com.cloudera.dataflow.spark.SparkPipelineRunner;
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
@@ -25,7 +26,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     protected enum PipelineRunnerType implements CommandLineParser.ClpEnum {
         LOCAL(DirectPipelineRunner.class, "run the pipeline locally"),
         BLOCKING(BlockingDataflowPipelineRunner.class, "run the pipeline in the cloud, wait and report status"),
-        NONBLOCKING(DataflowPipelineRunner.class, "launch the pipeline in the cloud and don't wait for results");
+        NONBLOCKING(DataflowPipelineRunner.class, "launch the pipeline in the cloud and don't wait for results"),
+        SPARK(SparkPipelineRunner.class, "run the pipeline on Spark");
 
         public final Class<? extends PipelineRunner<? extends PipelineResult>> runner;
         private final String doc;
@@ -40,8 +42,23 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         }
 
     }
-    @Argument(fullName="runner", doc="What type of pipeline runner to use for dataflow.  Any type other than LOCAL requires that project and staging be set.")
+    @Argument(fullName="runner", doc="What type of pipeline runner to use for dataflow.  " +
+        "BLOCKING or NONBLOCKING requires that project and staging be set.")
     protected PipelineRunnerType runnerType = PipelineRunnerType.LOCAL;
+
+    /**
+     * Converts the unqualified class name of a runner to the name of the corresponding
+     * <code>PipelineRunnerType</code> enum.
+     */
+    @VisibleForTesting
+    public static String getRunnerTypeName(String runnerSimpleName) {
+      for (PipelineRunnerType type : PipelineRunnerType.values()) {
+        if (type.runner.getSimpleName().equals(runnerSimpleName)) {
+          return type.name();
+        }
+      }
+      throw new IllegalArgumentException("No runner found with simple name " + runnerSimpleName);
+    }
 
     @Argument(fullName="project", doc="dataflow project id", optional=true)
     private String projectID;
@@ -59,7 +76,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     @Override
     protected String[] customCommandLineValidation(){
-        if(runnerType != PipelineRunnerType.LOCAL && (projectID == null || stagingLocation==null)){
+        if((runnerType == PipelineRunnerType.BLOCKING || runnerType == PipelineRunnerType.NONBLOCKING)
+            && (projectID == null || stagingLocation==null)){
             throw new UserException.CommandLineException(String.format("Non local dataflow execution requires project " +
                     "and staging to be set. project:%s id:%s.",projectID, stagingLocation));
         }
@@ -126,7 +144,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
      * True if we're configured to run on the cloud.
      */
     public boolean isRemote() {
-        return runnerType != PipelineRunnerType.LOCAL;
+        return runnerType == PipelineRunnerType.BLOCKING || runnerType == PipelineRunnerType.NONBLOCKING;
     }
 
 }

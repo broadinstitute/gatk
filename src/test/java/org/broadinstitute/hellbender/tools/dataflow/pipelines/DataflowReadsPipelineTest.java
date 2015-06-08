@@ -4,7 +4,6 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.ImmutableList;
@@ -12,6 +11,7 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
+import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.CountBasesDataflowTransform;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -23,7 +23,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.UnaryOperator;
 
 
 public final class DataflowReadsPipelineTest {
@@ -83,7 +82,7 @@ public final class DataflowReadsPipelineTest {
     @Test(dataProvider = "configurations", groups = {"dataflow"})
     public void testTransformersAndFilters(List<ReadFilter> filters, List<ReadTransformer> transformers, long expectedCounts){
         RuntimeConfigurablePipeline rcp = new RuntimeConfigurablePipeline(new CountBasesDataflowTransform(), filters, transformers);
-        Pipeline p = TestPipeline.create();
+        Pipeline p = GATKTestPipeline.create();
         DataflowWorkarounds.registerGenomicsCoders(p);
         String bam = "src/test/resources/org/broadinstitute/hellbender/tools/count_reads_sorted.bam";
         PCollection<Read> preads = DataflowUtils.getReadsFromLocalBams(p, Lists.newArrayList(new SimpleInterval("chr7", 1, 404)), Lists.newArrayList(new File(bam)));
