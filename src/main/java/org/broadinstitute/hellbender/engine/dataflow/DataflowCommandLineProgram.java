@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
+import com.cloudera.dataflow.spark.SparkPipelineOptions;
 import com.cloudera.dataflow.spark.SparkPipelineRunner;
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
+import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
@@ -74,6 +77,9 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             shortName = "apiKey", fullName = "apiKey", optional=true)
     protected String apiKey = null;
 
+    @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
+    protected String sparkMaster;
+
     @Override
     protected String[] customCommandLineValidation(){
         if((runnerType == PipelineRunnerType.BLOCKING || runnerType == PipelineRunnerType.NONBLOCKING)
@@ -89,24 +95,35 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     @Override
     protected Object doWork() {
-        // We create GCSOptions instead of DataflowPipelineOptions to keep track of the secrets so we can read
-        // data from buckets.
-        final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
-        options.setProject(projectID);
-        options.setStagingLocation(stagingLocation);
-        options.setRunner(this.runnerType.runner);
-        if (apiKey!=null) {
-            options.setApiKey(apiKey);
-        } else {
-            logger.info("Loading "+clientSecret.getName());
-            options.setSecretsFile(clientSecret.getAbsolutePath());
-        }
-        final Pipeline p = Pipeline.create(options);
+        final Pipeline p = Pipeline.create(buildPipelineOptions());
         DataflowWorkarounds.registerGenomicsCoders(p);
         setupPipeline(p);
         runPipeline(p);
         afterPipeline(p);
         return null;
+    }
+
+    private PipelineOptions buildPipelineOptions() {
+        if (sparkMaster == null) {
+            // We create GCSOptions instead of DataflowPipelineOptions to keep track of the secrets so we can read
+            // data from buckets.
+            final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+            options.setProject(projectID);
+            options.setStagingLocation(stagingLocation);
+            options.setRunner(this.runnerType.runner);
+            if (apiKey != null) {
+                options.setApiKey(apiKey);
+            } else {
+                logger.info("Loading " + clientSecret.getName());
+                options.setSecretsFile(clientSecret.getAbsolutePath());
+            }
+            return options;
+        } else {
+            final SparkPipelineOptions options = PipelineOptionsFactory.as(SparkPipelineOptions.class);
+            options.setRunner(this.runnerType.runner);
+            options.setSparkMaster(sparkMaster);
+            return options;
+        }
     }
 
     /**

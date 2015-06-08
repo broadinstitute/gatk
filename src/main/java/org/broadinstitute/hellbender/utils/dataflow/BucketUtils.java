@@ -20,11 +20,19 @@ import java.nio.channels.Channels;
  */
 public final class BucketUtils {
     public static final String GCS_PREFIX = "gs://";
+    public static final String HDFS_PREFIX = "hdfs://";
 
     private BucketUtils(){} //private so that no one will instantiate this class
 
     public static boolean isCloudStorageUrl(String path) {
         return path.startsWith(GCS_PREFIX);
+    }
+
+    /**
+     * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
+     */
+    public static boolean isHadoopUrl(String path) {
+        return path.startsWith(HDFS_PREFIX);
     }
 
     /**
