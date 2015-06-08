@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.transformers;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
+import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
@@ -12,10 +13,11 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class BQSRReadTransformer implements ReadTransformer{
+public final class BQSRReadTransformer implements ReadTransformer {
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
@@ -53,24 +55,47 @@ public final class BQSRReadTransformer implements ReadTransformer{
     }
 
     /**
-     * Recalibrates the base qualities of a read
-     * <p>
-     * It updates the base qualities of the read with the new recalibrated qualities (for all event types)
-     * <p>
-     * Implements a serial recalibration of the reads using the combinational table.
-     * First, we perform a positional recalibration, and then a subsequent dinuc correction.
-     * <p>
-     * Given the full recalibration table, we perform the following preprocessing steps:
-     * <p>
-     * - calculate the global quality score shift across all data [DeltaQ]
-     * - calculate for each of cycle and dinuc the shift of the quality scores relative to the global shift
-     * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Qempirical(pos, qual, dinuc) - Qreported(pos, qual, dinuc) / Npos * Nqual
-     * - The final shift equation is:
-     * <p>
-     * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
+     * Constructor using a GATK Report file
      *
-     * @param read the read to recalibrate
+     * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
+     * @param quantizationLevels number of bins to quantize the quality scores
+     * @param disableIndelQuals  if true, do not emit base indel qualities
+     * @param preserveQLessThan  preserve quality scores less than this value
      */
+    public BQSRReadTransformer(final BaseRecalOutput recalInfo, int quantizationLevels, boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+        recalibrationTables = recalInfo.getRecalibrationTables();
+        covariates = recalInfo.getCovariates();
+        quantizationInfo = recalInfo.getQuantizationInfo();
+        if (quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
+            quantizationInfo.noQuantization();
+        } else if (quantizationLevels > 0 && quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
+            quantizationInfo.quantizeQualityScores(quantizationLevels);
+        }
+        this.disableIndelQuals = disableIndelQuals;
+        this.preserveQLessThan = preserveQLessThan;
+        this.globalQScorePrior = globalQScorePrior;
+        this.emitOriginalQuals = emitOriginalQuals;
+    }
+
+        /**
+         * Recalibrates the base qualities of a read
+         * <p>
+         * It updates the base qualities of the read with the new recalibrated qualities (for all event types)
+         * <p>
+         * Implements a serial recalibration of the reads using the combinational table.
+         * First, we perform a positional recalibration, and then a subsequent dinuc correction.
+         * <p>
+         * Given the full recalibration table, we perform the following preprocessing steps:
+         * <p>
+         * - calculate the global quality score shift across all data [DeltaQ]
+         * - calculate for each of cycle and dinuc the shift of the quality scores relative to the global shift
+         * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Qempirical(pos, qual, dinuc) - Qreported(pos, qual, dinuc) / Npos * Nqual
+         * - The final shift equation is:
+         * <p>
+         * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
+         *
+         * @param read the read to recalibrate
+         */
     @Override
     public SAMRecord apply(final SAMRecord read) {
         if (emitOriginalQuals && read.getAttribute(SAMTag.OQ.name()) == null) { // Save the old qualities if the tag isn't already taken in the read

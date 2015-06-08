@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -17,8 +18,8 @@ import java.util.stream.Collectors;
  *
  * The remaining covariates are called "additional covariates".
  */
-public final class StandardCovariateList implements Iterable<Covariate>{
-
+public final class StandardCovariateList implements Iterable<Covariate>, Serializable {
+    private static final long serialVersionUID = 1L;
     private final ReadGroupCovariate readGroupCovariate;
     private final QualityScoreCovariate qualityScoreCovariate;
     private final List<Covariate> additionalCovariates;
