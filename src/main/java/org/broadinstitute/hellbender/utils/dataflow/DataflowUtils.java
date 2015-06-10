@@ -15,7 +15,11 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.ValidationStringency;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -63,10 +67,21 @@ public final class DataflowUtils {
      * @return a PCollection<Read> with all the reads the overlap the given intervals in the bams
      */
     public static PCollection<Read> getReadsFromLocalBams(final Pipeline pipeline, final List<SimpleInterval> intervals, final List<File> bams) {
-        return pipeline.apply(Create.of(bams))
-                .apply(ParDo.of(new LoadReadsFromFileFn(intervals)));
+        return getReadsFromLocalBams(pipeline, intervals, ValidationStringency.SILENT, bams);
     }
 
+    /**
+     * ingest local bam files from the file system and loads them into a PCollection<Read>
+     * @param pipeline a configured Pipeline
+     * @param intervals intervals to select reads from
+     * @param stringency stringency of the input validation checks
+     * @param bams paths to bam files to read from
+     * @return a PCollection<Read> with all the reads the overlap the given intervals in the bams
+     */
+    public static PCollection<Read> getReadsFromLocalBams(final Pipeline pipeline, final List<SimpleInterval> intervals, final ValidationStringency stringency, final List<File> bams) {
+        return pipeline.apply(Create.of(bams))
+                .apply(ParDo.of(new LoadReadsFromFileFn(intervals, stringency)));
+    }
 
     /**
      * get a transform that throws a specified exception
@@ -95,10 +110,14 @@ public final class DataflowUtils {
      * Read a bam file and output each of the reads in it
      */
     public static class LoadReadsFromFileFn extends DoFn<File, Read> {
-        private final List<SimpleInterval> intervals;
+        private final static Logger logger = LogManager.getLogger(LoadReadsFromFileFn.class);
 
-        public LoadReadsFromFileFn(List<SimpleInterval> intervals) {
+        private final List<SimpleInterval> intervals;
+        private final ValidationStringency stringency;
+
+        public LoadReadsFromFileFn(List<SimpleInterval> intervals, final ValidationStringency stringency) {
             this.intervals = intervals;
+            this.stringency = stringency;
         }
 
         @Override
@@ -106,7 +125,17 @@ public final class DataflowUtils {
             ReadsDataSource sams = new ReadsDataSource(c.element());
             sams.setIntervalsForTraversal(intervals);
             for (SAMRecord sam : sams) {
-                c.output(ReadConverter.makeRead(sam));
+                try {
+                    Read read = ReadConverter.makeRead(sam);
+                    c.output(read);
+                } catch (SAMException x) {
+                    if (stringency==ValidationStringency.STRICT) {
+                        throw x;
+                    } else if (stringency==ValidationStringency.LENIENT) {
+                        logger.info("LoadReadsFromFileFn: "+x.getMessage());
+                    }
+                    // do nothing if silent
+                }
             }
         }
     }

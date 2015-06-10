@@ -12,6 +12,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -49,7 +50,7 @@ public final class DataflowUtilsUnitTest extends BaseTest {
     @Test
     public void testReadFromFileFn(){
         List<SimpleInterval> intervals = Lists.newArrayList(new SimpleInterval("chr7:1-202"), new SimpleInterval("chr8:2-202"));
-        DoFn<File, Read> readfn = new DataflowUtils.LoadReadsFromFileFn(intervals);
+        DoFn<File, Read> readfn = new DataflowUtils.LoadReadsFromFileFn(intervals, ValidationStringency.SILENT);
 
         File inputFile = new File(getToolTestDataDir(), "example_reads.bam");
         List<Read> expected = getReadsFromFile(intervals, inputFile);
