@@ -14,7 +14,7 @@ import java.io.Serializable;
  * from the pipeline (without having to touch disk), or via a saved textual
  * report file.
  */
-public class BaseRecalOutput implements Serializable {
+public final class BaseRecalOutput implements Serializable {
     private static final long serialVersionUID = 1L;
     private final RecalibrationTables recalibrationTables;
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)

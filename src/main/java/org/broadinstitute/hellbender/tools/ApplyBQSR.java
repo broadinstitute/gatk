@@ -21,7 +21,7 @@ import java.io.File;
 
 @CommandLineProgramProperties(
         usage = "Applies the BQSR table to the input BAM.",
-        usageShort = "ApplyBQSR -bqsr RECAL_TABLE -I input -O output",
+        usageShort = "Applies the BQSR table to the input BAM.",
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyBQSR extends ReadWalker{
@@ -38,10 +38,10 @@ public final class ApplyBQSR extends ReadWalker{
     public File BQSR_RECAL_FILE;
 
     /**
-     * command-line options to fine tune the recalibration.
+     * command-line arguments to fine tune the recalibration.
      */
     @ArgumentCollection
-    public ApplyBQSRArgumentCollection bqsrOpts = new ApplyBQSRArgumentCollection();
+    public ApplyBQSRArgumentCollection bqsrArgs = new ApplyBQSRArgumentCollection();
 
 
     private SAMFileWriter outputWriter;
@@ -52,7 +52,7 @@ public final class ApplyBQSR extends ReadWalker{
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
         outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile());
-        transform = new BQSRReadTransformer(BQSR_RECAL_FILE, bqsrOpts.quantizationLevels, bqsrOpts.disableIndelQuals, bqsrOpts.PRESERVE_QSCORES_LESS_THAN, bqsrOpts.emitOriginalQuals, bqsrOpts.globalQScorePrior);
+        transform = new BQSRReadTransformer(BQSR_RECAL_FILE, bqsrArgs.quantizationLevels, bqsrArgs.disableIndelQuals, bqsrArgs.PRESERVE_QSCORES_LESS_THAN, bqsrArgs.emitOriginalQuals, bqsrArgs.globalQScorePrior);
     }
 
     @Override

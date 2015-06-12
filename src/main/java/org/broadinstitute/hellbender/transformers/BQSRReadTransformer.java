@@ -36,7 +36,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param disableIndelQuals  if true, do not emit base indel qualities
      * @param preserveQLessThan  preserve quality scores less than this value
      */
-    public BQSRReadTransformer(File bqsrRecalFile, int quantizationLevels, boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+    public BQSRReadTransformer(final File bqsrRecalFile, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
         final RecalibrationReport recalibrationReport = new RecalibrationReport(bqsrRecalFile);
 
         recalibrationTables = recalibrationReport.getRecalibrationTables();
@@ -62,7 +62,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param disableIndelQuals  if true, do not emit base indel qualities
      * @param preserveQLessThan  preserve quality scores less than this value
      */
-    public BQSRReadTransformer(final BaseRecalOutput recalInfo, int quantizationLevels, boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+    public BQSRReadTransformer(final BaseRecalOutput recalInfo, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
         recalibrationTables = recalInfo.getRecalibrationTables();
         covariates = recalInfo.getCovariates();
         quantizationInfo = recalInfo.getQuantizationInfo();

@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
@@ -22,13 +23,8 @@ import java.io.File;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
 
-public class ApplyBQSRArgumentCollection implements ArgumentCollection, Serializable {
+public class ApplyBQSRArgumentCollection implements ArgumentCollectionDefinition, Serializable {
     private static final long serialVersionUID = 1L;
-
-    @Override
-    public String doc() {
-        return "Options related to applying quality score recalibration";
-    }
 
     /**
      * Turns on the base quantization module. It requires a recalibration report.
@@ -71,9 +67,4 @@ public class ApplyBQSRArgumentCollection implements ArgumentCollection, Serializ
      */
     @Argument(fullName = "globalQScorePrior", shortName = "globalQScorePrior", doc = "Global Qscore Bayesian prior to use for BQSR", optional = true)
     public double globalQScorePrior = -1.0;
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return ApplyBQSRArgumentCollection.class;
-    }
 }

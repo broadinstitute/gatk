@@ -24,17 +24,17 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
 
     private final SAMFileHeader header;
     private final PCollectionView<BaseRecalOutput> recalView;
-    private final ApplyBQSRArgumentCollection options;
+    private final ApplyBQSRArgumentCollection args;
 
     /**
      * @param header The SAM header that corresponds to the reads you're going to pass as input.
-     * @param phaseOne the output from BaseRecalibration
-     * @param options the recalibration options
+     * @param recalibrationOutput the output from BaseRecalibration, with a single BaseRecalOutput object.
+     * @param args the recalibration args
      */
-    public ApplyBQSRTransform(SAMFileHeader header, PCollection<BaseRecalOutput> phaseOne, ApplyBQSRArgumentCollection options) {
+    public ApplyBQSRTransform(SAMFileHeader header, PCollection<BaseRecalOutput> recalibrationOutput, ApplyBQSRArgumentCollection args) {
         this.header = header;
-        this.recalView = phaseOne.apply(View.asSingleton());
-        this.options = options;
+        this.recalView = recalibrationOutput.apply(View.asSingleton());
+        this.args = args;
     }
 
     /**
@@ -44,6 +44,7 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
     public PCollection<Read> apply(PCollection<Read> input) {
         return input.apply(ParDo
                 .named("ApplyBQSR")
+                .withSideInputs(recalView)
                 .of(new ApplyBQSR()));
     }
 
@@ -56,7 +57,7 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
             if (null==transformer) {
                 // set up the transformer, as needed
                 BaseRecalOutput info = c.sideInput(recalView);
-                transformer = new BQSRReadTransformer(info, options.quantizationLevels, options.disableIndelQuals, options.PRESERVE_QSCORES_LESS_THAN, options.emitOriginalQuals, options.globalQScorePrior);
+                transformer = new BQSRReadTransformer(info, args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
                 // it's OK if this same object is used for multiple bundles
             }
             Read r = c.element();
@@ -66,7 +67,7 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
                 Read e = ReadConverter.makeRead(transformed);
                 c.output(e);
             } catch (SAMException x) {
-                logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it.");
+                logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it ("+x.getMessage()+").");
             } catch (NullPointerException y) {
                 logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
             }
