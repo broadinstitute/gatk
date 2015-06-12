@@ -90,14 +90,28 @@ public abstract class CommandLineProgram {
      * Template method that runs the startup hook, doWork and then the shutdown hook.
      */
     public final Object runTool(){
+        boolean doWorkCompleted = false;
         try {
             logger.info("Initializing engine");
             onStartup();
             logger.info("Done initializing engine");
+            Object result =  doWork();
+            doWorkCompleted = true;
             return doWork();
         } finally {
-            logger.info("Shutting down engine");
-            onShutdown();
+            try {
+                logger.info("Shutting down engine");
+                onShutdown();
+            } catch ( Exception e){
+                //if onShutdown throws an exception we don't want it to suppress an earlier exception in doWork or onStartup
+                if(doWorkCompleted ){
+                    throw e;
+                } else {
+                    logger.error("The following exception occured in onShutdown, but a previous exception was already in progress.");
+                    logger.error(e.getMessage());
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
