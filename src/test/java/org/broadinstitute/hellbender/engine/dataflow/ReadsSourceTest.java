@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.engine.dataflow;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
@@ -30,6 +32,8 @@ public final class ReadsSourceTest extends BaseTest {
 
     private final File bam = new File(this.getToolTestDataDir(), "count_reads_sorted.bam");
     final String hiSeqBam = "src/test/resources/org/broadinstitute/hellbender/engine/dataflow/ReadsSource/HiSeq.1mb.1RG.2k_lines.bam";
+    final String hiSeqBamAllAligned = "org/broadinstitute/hellbender/tools/BQSR/HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
+    final String hiSeqBamAllAlignedLocal = "src/test/resources/" + hiSeqBamAllAligned;
 
     @Test
     public void testGetHeaderFromLocalBAM(){
@@ -67,6 +71,41 @@ public final class ReadsSourceTest extends BaseTest {
         pipeline.run();
     }
     */
+
+    @Test
+    public void testLocalAlignedFile() {
+        Pipeline pipeline = TestPipeline.create();
+        DataflowWorkarounds.registerGenomicsCoders(pipeline);
+        ReadsSource readsSource = new ReadsSource(hiSeqBamAllAlignedLocal, pipeline);
+        SAMFileHeader header = readsSource.getHeader();
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        PCollection<Read> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<Long> count = reads.apply(Count.globally());
+        DataflowAssert.thatSingleton(count).isEqualTo(1649L);
+        pipeline.run();
+    }
+
+    @Test(groups = {"bucket"})
+    public void testCloudAlignedFile() {
+        String fname = getDataflowTestInputs() + hiSeqBamAllAligned;
+        System.out.println("Looking for "+fname);
+        // quick hack, work around TestPipeline.create that doesn't have the features I need right now
+        // Pipeline pipeline = TestPipeline.create();
+        final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+        options.setApiKey(getDataflowTestApiKey());
+        options.setProject(getDataflowTestProject());
+        Pipeline pipeline = Pipeline.create(options);
+        DataflowWorkarounds.registerGenomicsCoders(pipeline);
+        ReadsSource readsSource = new ReadsSource(fname, pipeline);
+        SAMFileHeader header = readsSource.getHeader();
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        PCollection<Read> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<Long> count = reads.apply(Count.globally());
+        DataflowAssert.thatSingleton(count).isEqualTo(1649L);
+        pipeline.run();
+    }
 
     @Test
     public void testGetInvalidPCollectionLocal() {
