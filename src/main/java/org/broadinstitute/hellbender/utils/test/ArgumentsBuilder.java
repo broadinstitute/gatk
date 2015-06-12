@@ -73,6 +73,13 @@ public final class ArgumentsBuilder {
         return this.args.toArray(new String[this.args.size()]);
     }
 
+    /**
+     * get the arguments as a single String
+     * @return
+     */
+    public String getString() {
+        return String.join(" ", args);
+    }
 
 
 }

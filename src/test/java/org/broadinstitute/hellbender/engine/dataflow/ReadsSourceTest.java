@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Count;
+import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.ImmutableList;
@@ -13,6 +15,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,6 +24,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.List;
 
 public final class ReadsSourceTest extends BaseTest {
 
@@ -45,6 +49,24 @@ public final class ReadsSourceTest extends BaseTest {
         DataflowAssert.thatSingleton(count).isEqualTo(7L);
         p.run();
     }
+    /*
+    // TODO: once ReadsSource has an option for including unmapped reads, we can add this test.
+    @Test
+    public void testLocalFile() {
+        final String bam2 = "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/HiSeq.1mb.1RG.2k_lines.alternate.bam";
+        Pipeline pipeline = TestPipeline.create();
+        DataflowWorkarounds.registerGenomicsCoders(pipeline);
+        ReadsSource readsSource = new ReadsSource(bam2, pipeline);
+        SAMFileHeader header = readsSource.getHeader();
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        PCollection<Read> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<Long> count = reads.apply(Count.globally());
+        // for now we only get 1649, because it removes unmapped reads.
+        DataflowAssert.thatSingleton(count).isEqualTo(1674L);
+        pipeline.run();
+    }
+    */
 
     @Test
     public void testGetInvalidPCollectionLocal() {

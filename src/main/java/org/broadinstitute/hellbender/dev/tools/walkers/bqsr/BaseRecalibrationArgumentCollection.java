@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -13,7 +14,7 @@ import java.lang.annotation.Annotation;
 /**
  * All the command line arguments for BQSR and its covariates.
  */
-public final class BaseRecalibrationArgumentCollection implements Serializable, ArgumentCollection {
+public final class BaseRecalibrationArgumentCollection implements Serializable, ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
 
     public BaseRecalibrationArgumentCollection() {}
@@ -71,14 +72,4 @@ public final class BaseRecalibrationArgumentCollection implements Serializable, 
     @Argument(fullName = "defaultBaseQualities", shortName = "DBQ", doc = "Assign a default base quality", optional = true)
     public byte defaultBaseQualities = -1;
 
-
-    @Override
-    public String doc() {
-        return "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).";
-    }
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return BaseRecalibrationArgumentCollection.class;
-    }
 }

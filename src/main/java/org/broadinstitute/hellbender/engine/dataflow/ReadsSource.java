@@ -84,7 +84,8 @@ public final class ReadsSource {
     }
 
     /**
-     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals. Malformed reads are ignored.
+     * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * Reads that are malformed or unmapped are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
@@ -94,6 +95,7 @@ public final class ReadsSource {
 
     /**
      * Create a {@link PCollection<Read>} containing all the reads overlapping the given intervals.
+     * Reads that are unmapped are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @param stringency how to react to malformed reads.
      * @return a PCollection containing all the reads that overlap the given intervals.
