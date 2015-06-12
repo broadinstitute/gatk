@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -181,11 +182,24 @@ public final class CommandLineParser {
     public void usage(final PrintStream stream, final boolean printCommon) {
         stream.print(getStandardUsagePreamble(callerArguments.getClass()) + getUsagePreamble());
         stream.println("\n" + getVersion());
-        stream.println("\n\nArguments:\n");
+        stream.println("\n\nRequired Arguments:\n");
+
+        // print required args first; temporarily buffer output for optional args
+        try (final ByteArrayOutputStream tmpStream = new ByteArrayOutputStream();
+             final PrintStream optionalStream = new PrintStream(tmpStream)) {
 
             argumentDefinitions.stream()
                     .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon)
-                    .forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
+                    .forEach(argumentDefinition -> printArgumentUsage(argumentDefinition.optional ? optionalStream : stream, argumentDefinition));
+
+            if (tmpStream.size() != 0) {
+                stream.println("Optional Arguments:\n");
+                optionalStream.flush();
+                tmpStream.writeTo(stream);
+            }
+        } catch (IOException e) {
+            throw new GATKException.ShouldNeverReachHereException("Should never happen",e);
+        }
     }
 
     /**
