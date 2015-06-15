@@ -3,17 +3,15 @@ package org.broadinstitute.hellbender.utils.dataflow;
 import com.google.api.services.genomics.model.Read;
 import com.google.appengine.repackaged.com.google.common.collect.Lists;
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -29,7 +27,7 @@ public final class DataflowUtilsUnitTest extends BaseTest {
 
     @Test
     public void testConvertToString(){
-        Pipeline p = TestPipeline.create();
+        Pipeline p = GATKTestPipeline.create();
         PCollection<Integer> pints = p.apply(Create.of(Lists.newArrayList(1, 2, 3)));
         PCollection<String> presults = pints.apply(DataflowUtils.convertToString());
         DataflowAssert.that(presults).containsInAnyOrder("1","2","3");
@@ -41,7 +39,7 @@ public final class DataflowUtilsUnitTest extends BaseTest {
      */
     @Test(expectedExceptions = RuntimeException.class)
     public void testThrowException() {
-        Pipeline p = TestPipeline.create();
+        Pipeline p = GATKTestPipeline.create();
         PCollection<Integer> pints = p.apply(Create.of(Lists.newArrayList(1, 2, 3)));
         pints.apply(DataflowUtils.throwException(new IOException("fail")));
         p.run();
