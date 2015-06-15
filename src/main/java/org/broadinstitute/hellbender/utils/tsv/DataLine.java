@@ -9,17 +9,21 @@ import java.util.function.Function;
  * <p>
  * This wrapper includes convenience methods to {@link #get get} and {@link #set} values on <i>data-line</i> string array from within
  * record type conversion methods:
- * {@link TableReader#record(DataLine) TableReader.record} and {@link TableWriter#dataLine TableWriter.dataLine}.
+ * {@link TableReader#createRecord(DataLine) TableReader.record} and {@link TableWriter#composeLine TableWriter.composeLine}.
  * </p>
  * <p>
  * Apart for {@link #set set} operations, it includes convenience methods to set column values in order
  * of appearance when this is known using {@link #append append}.
  * </p>
  * <p>
- * There are various method overload for type conversion to and from primitive type {@code int} and {@code double}.
+ * There are various method overloads for type conversion to and from primitive type {@code int} and {@code double}.
+ * </p>
+ * <p>
+ * You can use {@link #columns()} to obtain the corresponding {@link TableColumnCollection} and query the presence of
+ * and the index of columns.
  * </p>
  */
-public class DataLine {
+public final class DataLine {
 
     /**
      * Holds the values for the data line in construction.
@@ -34,7 +38,7 @@ public class DataLine {
     /**
      * Reference to the enclosing table's columns.
      */
-    private final TableColumns columns;
+    private final TableColumnCollection columns;
 
     /**
      * Reference to the format error exception factory.
@@ -47,7 +51,7 @@ public class DataLine {
      * The value array passed is not copied and will be used directly to store the data-line values.
      * </p>
      * <p>
-     * Therefore later modification of its content after creating this {@link #DataLine} may result in
+     * Therefore later modification of its content after creating this data-line may result in
      * breaking the consistency of this instance.
      * </p>
      *
@@ -56,7 +60,7 @@ public class DataLine {
      * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
      * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
      */
-    DataLine(final String[] values, final TableColumns columns, final Function<String, RuntimeException> formatErrorFactory) {
+    DataLine(final String[] values, final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
         this.values = Utils.nonNull(values, "the value array cannot be null");
         this.columns = Utils.nonNull(columns, "the columns cannot be null");
         this.formatErrorFactory = Utils.nonNull(formatErrorFactory, "the format error factory cannot be null");
@@ -72,8 +76,17 @@ public class DataLine {
      * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
      * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
      */
-    DataLine(final TableColumns columns, final Function<String, RuntimeException> formatErrorFactory) {
+    DataLine(final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
         this(new String[Utils.nonNull(columns, "the columns cannot be null").columnCount()], columns, formatErrorFactory);
+    }
+
+    /**
+     * Returns the column collection for this data-line instance.
+     *
+     * @return never {@code null}.
+     */
+    public TableColumnCollection columns() {
+        return columns;
     }
 
     /**
@@ -91,9 +104,6 @@ public class DataLine {
                 throw new IllegalStateException(String.format("some data line value remains undefined: e.g. column '%s' index %d", columns.nameAt(i), i));
             }
         }
-        if (values[0].startsWith(TableConstants.COMMENT_PREFIX)) {
-            throw new IllegalStateException(String.format("the first column value cannot start with the comment prefix string %s; consider to change the record encoding or re-order columns", TableConstants.COMMENT_PREFIX));
-        }
         return values;
     }
 
@@ -102,12 +112,11 @@ public class DataLine {
      *
      * @param name  the column name.
      * @param value the new value.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
      */
     public DataLine set(final String name, final String value) {
-        values[columnIndex(name)] = value;
-        return this;
+        return set(columnIndex(name), value);
     }
 
     /**
@@ -115,11 +124,11 @@ public class DataLine {
      *
      * @param name  the column name.
      * @param value the new value.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
      */
     public DataLine set(final String name, final int value) {
-        return set(name, "" + value);
+        return set(name, Integer.toString(value));
     }
 
     /**
@@ -127,11 +136,11 @@ public class DataLine {
      *
      * @param name  the column name.
      * @param value the new value.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
      */
     public DataLine set(final String name, final double value) {
-        return set(name, "" + value);
+        return set(name, Double.toString(value));
     }
 
     /**
@@ -139,11 +148,16 @@ public class DataLine {
      *
      * @param index the target column index.
      * @param value the new value for that column.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalArgumentException if {@code index} is not a valid column index.
      */
     public DataLine set(final int index, final String value) {
         Utils.validIndex(index, values.length);
+        if (index == 0 && value != null) {
+            if (value.startsWith(TableUtils.COMMENT_PREFIX)) {
+                throw new IllegalArgumentException("the value of the first column cannot start with the comment prefix: " + TableUtils.COMMENT_PREFIX);
+            }
+        }
         values[index] = value;
         return this;
     }
@@ -153,7 +167,7 @@ public class DataLine {
      *
      * @param index the target column index.
      * @param value the new value for that column.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalArgumentException if {@code index} is not a valid column index.
      */
     public DataLine set(final int index, final int value) {
@@ -165,7 +179,7 @@ public class DataLine {
      *
      * @param index the target column index.
      * @param value the new value for that column.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalArgumentException if {@code index} is not a valid column index.
      */
     public DataLine set(final int index, final double value) {
@@ -296,7 +310,7 @@ public class DataLine {
      * </p>
      *
      * @param value the new value.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalStateException if the next column to set is beyond the last column.
      */
     public DataLine append(final String value) {
@@ -315,7 +329,7 @@ public class DataLine {
      * </p>
      *
      * @param value the new value.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalStateException if the next column to set is beyond the last column.
      */
     public DataLine append(final int value) {
@@ -330,7 +344,7 @@ public class DataLine {
      * </p>
      *
      * @param value the new value.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalStateException if the next column to set is beyond the last column.
      */
     public DataLine append(final double value) {
@@ -345,7 +359,7 @@ public class DataLine {
      * </p>
      *
      * @param values the new values.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalStateException if this operation goes beyond the last column index.
      */
     public DataLine append(final int... values) {
@@ -363,7 +377,7 @@ public class DataLine {
      * </p>
      *
      * @param values the new values.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalStateException if this operation goes beyond the last column index.
      */
     public DataLine append(final String... values) {
@@ -380,7 +394,7 @@ public class DataLine {
      * the following column and so forth.
      * </p>
      * @param values the new values.
-     * @return reference to this builder.
+     * @return reference to this data-line.
      * @throws IllegalStateException if this operation goes beyond the last column index.
      */
     public DataLine append(final double... values) {
@@ -391,11 +405,31 @@ public class DataLine {
     }
 
     /**
+     * Sets all the data-line values at once.
+     * @param values the new values.
+     * @throws IllegalArgumentException if {@code values} is {@code null}, its length does not match
+     *         this data-line column count, or the first element starts like a comment line.
+     * @return a reference to this data-line.
+     */
+    public DataLine setAll(final String... values) {
+        Utils.nonNull(values,"the input values cannot be null");
+        if (values.length != this.values.length) {
+            throw new IllegalArgumentException("the input value length must be equal to the total number of columns ");
+        }
+        // No index error here this.values.length is guaranteed to be greater than 0, as 0 columns is not allowed.
+        if (values[0] != null && values[0].startsWith(TableUtils.COMMENT_PREFIX)) {
+            throw new IllegalArgumentException("first column value cannot start as a comment: " + TableUtils.COMMENT_PREFIX);
+        }
+        System.arraycopy(values,0,this.values,0,values.length);
+        return this;
+    }
+
+    /**
      * Changes the index of the next value to set using {@link #append append} operations.
      *
      * @param index the new index.
-     * @return a reference to this builder.
-     * @throws IllegalArgumentException if {@code index} is not a valid column index.
+     * @return a reference to this data-line.
+     * @throws IllegalArgumentException if {@code index} is greater than the number of columns
      */
     public DataLine seek(final int index) {
         // +1 as is valid to seek to the position after the last value.
@@ -407,7 +441,7 @@ public class DataLine {
      * Changes the index of the next value to set using {@link #append append} operations.
      *
      * @param columnName the name of the column to seek to.
-     * @return a reference to this builder.
+     * @return a reference to this data-line.
      * @throws IllegalArgumentException if {@code columnName} is {@code null} or an unknown column name.
      */
     public DataLine seek(final String columnName) {

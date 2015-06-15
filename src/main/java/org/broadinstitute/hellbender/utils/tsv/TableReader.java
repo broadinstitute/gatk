@@ -14,11 +14,11 @@ import java.util.stream.StreamSupport;
  * records of an arbitrary type {@link R}.
  * <h3>Format description</h3>
  * <p>
- * Tab separated values may contain any number of <i>comment lines</i> (started with {@link TableConstants#COMMENT_PREFIX}),
+ * Tab separated values may contain any number of <i>comment lines</i> (started with {@link TableUtils#COMMENT_PREFIX}),
  * a column name containing line (aka. the <i>header line</i>) and any number of <i>data lines</i> one per record.
  * </p>
  * <p>While comment lines can contain any sequence of characters, the header and data lines are divided in
- * columns using exactly one {@link TableConstants#COLUMN_SEPARATOR} character.</p>
+ * columns using exactly one {@link TableUtils#COLUMN_SEPARATOR} character.</p>
  * <p>Blank lines are treated is having a single column with the empty string as the only value (or column name)</p>
  * <p>
  * The header line is the first non-comment line, whereas any other non-comment line after that is
@@ -29,16 +29,16 @@ import java.util.stream.StreamSupport;
  * The header line values, the column names, must all be different (otherwise a formatting exception will be thrown), and
  * all data lines have to have as many values as the header line.
  * </p>
- * <p>Values can be quoted using {@link TableConstants#QUOTE_CHARACTER} becoming necessary when the value contain
+ * <p>Values can be quoted using {@link TableUtils#QUOTE_CHARACTER} becoming necessary when the value contain
  * any special formatting characters like a new-line, the quote character itself, the column separator character or
- * the escape character {@link TableConstants#ESCAPE_CHARACTER}.</p>
- * <p>Within quotes, especial characters must be escaped using the {@link TableConstants#ESCAPE_CHARACTER}</p>
+ * the escape character {@link TableUtils#ESCAPE_CHARACTER}.</p>
+ * <p>Within quotes, especial characters must be escaped using the {@link TableUtils#ESCAPE_CHARACTER}</p>
  * <h3>Implementing your own reader</h3>
  * <p>
  * Implementations control how instances of {@link R} are instantiated by extending
- * {@link #record(DataLine)}. This method is passed an non-null nor null containing
+ * {@link #createRecord(DataLine) createRecord}. This method is passed an non-null nor null containing
  * {@link DataLine} with exactly as many elements are columns where passed to the
- * {@link #processTableColumns(TableColumns)} earlier on in the execution.
+ * {@link #processColumns(TableColumnCollection)} earlier on in the execution.
  * </p>
  * <p>
  * The i-th element in the input array represent the value for the i-th column for that record.
@@ -47,7 +47,7 @@ import java.util.stream.StreamSupport;
  * The exact list (array) of column names are always accessible through {@link #columns}.
  * </p>
  * <p>
- * Implementations can also override {@link #processTableColumns} (that by default does nothing) in order to
+ * Implementations can also override {@link #processColumns} (that by default does nothing) in order to
  * get prepared to received data lines following the that format or simply to verify that
  * that the sequence of column names is expected, throwing an exception if not.
  * </p>
@@ -70,13 +70,13 @@ import java.util.stream.StreamSupport;
  *             // If you don't trust the columns that you are given,
  *             // you can check them here:
  *             &#64Override
- *             public void processTableColumns(final TableColumns columns) {
+ *             public void processColumns(final TableColumns columns) {
  *                 if (!columns.containsExactly("name","age","net.worth"))
  *                     throw formatException("invalid column names")
  *             }
  *
  *             &#64;Override
- *             protected Person record(final DataLine dataLine) {
+ *             protected Person createRecord(final DataLine dataLine) {
  *                  return new Person(
  *                      dataLine.get("name"),
  *                      dataLine.getInt("age"),
@@ -109,7 +109,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     /**
      * Holds a reference to the column names.
      */
-    protected TableColumns columns;
+    private TableColumnCollection columns;
 
     /**
      * Holds a reference to the csvReader object use to read and parse the input
@@ -173,7 +173,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         Utils.nonNull(sourceReader, "the reader cannot be null");
         this.source = sourceName;
         this.reader = sourceReader instanceof LineNumberReader ? (LineNumberReader) sourceReader : new LineNumberReader(sourceReader);
-        this.csvReader = new CSVReader(this.reader, TableConstants.COLUMN_SEPARATOR, TableConstants.QUOTE_CHARACTER, TableConstants.ESCAPE_CHARACTER);
+        this.csvReader = new CSVReader(this.reader, TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
         findAndProcessHeaderLine();
         this.nextRecord = fetchNextRecord();
     }
@@ -190,9 +190,9 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
             throw formatException("premature end of table: header line not found");
         } else {
 
-            TableColumns.checkNames(line, UserException.BadInput::new);
-            columns = new TableColumns(line);
-            processTableColumns(columns);
+            TableColumnCollection.checkNames(line, UserException.BadInput::new);
+            columns = new TableColumnCollection(line);
+            processColumns(columns);
         }
     }
 
@@ -202,8 +202,8 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param line input line already split into line-values.
      * @return {@code true} if {@code line} seems to be a comment line.
      */
-    protected boolean isCommentLine(final String[] line) {
-        return line.length > 0 && line[0].startsWith(TableConstants.COMMENT_PREFIX);
+    private boolean isCommentLine(final String[] line) {
+        return line.length > 0 && line[0].startsWith(TableUtils.COMMENT_PREFIX);
     }
 
     /**
@@ -215,7 +215,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param message custom error message.
      * @return never {@code null}.
      */
-    protected UserException.BadInput formatException(final String message) {
+    protected final UserException.BadInput formatException(final String message) {
         return new UserException.BadInput(formatExceptionMessage(message));
     }
 
@@ -228,7 +228,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param message custom error message.
      * @return never {@code null}.
      */
-    protected String formatExceptionMessage(final String message) {
+    private String formatExceptionMessage(final String message) {
         final String explanation = message == null ? "" : ": " + message;
         if (source == null) {
             return String.format("format error at line %d" + explanation, reader.getLineNumber());
@@ -248,8 +248,16 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      *                     a {@code null} and not to contain any {@code null} values.
      * @throws UserException.BadInput if there is a formatting issue.
      */
-    protected void processTableColumns(@SuppressWarnings("unused") final TableColumns tableColumns) {
+    protected void processColumns(@SuppressWarnings("unused") final TableColumnCollection tableColumns) {
         // nothing by default.
+    }
+
+    /**
+     * Returns the column collection for this reader.
+     * @return never {@code null}.
+     */
+    public TableColumnCollection columns() {
+        return columns;
     }
 
     /**
@@ -283,7 +291,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
             if (line.length != columns.columnCount()) {
                 throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
             } else {
-                final R result = record(new DataLine(line, columns, (message) -> formatException(message)));
+                final R result = createRecord(new DataLine(line, columns, this::formatException));
                 if (result == null) {
                     throw new IllegalStateException("line resulted in a null record " +
                             ((source == null) ? String.format("at line %d: %s", reader.getLineNumber(), Arrays.toString(line))
@@ -321,12 +329,12 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * that makes impossible to create a instance of {@link R} given the input line values {@code dataLine}.
      * </p>
      *
-     * @param dataLine values corresponding to the column names that was passed earlier to {@link #processTableColumns(TableColumns)}}.
+     * @param dataLine values corresponding to the column names that was passed earlier to {@link #processColumns(TableColumnCollection)}}.
      *                 it is guaranteed to not be {@code null}, contain no {@code null} value and have the same columns
      *                 as this readers' (accessible through {@link #columns}).
      * @return never {@code null}.
      */
-    protected abstract R record(final DataLine dataLine);
+    protected abstract R createRecord(final DataLine dataLine);
 
     @Override
     public void close() throws IOException {

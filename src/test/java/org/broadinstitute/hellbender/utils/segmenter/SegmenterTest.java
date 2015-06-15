@@ -102,7 +102,7 @@ public class SegmenterTest extends BaseTest {
         }
 
         @Override
-        protected Segment record(DataLine dataLine) {
+        protected Segment createRecord(DataLine dataLine) {
             return new Segment(dataLine.getDouble("Segment_Mean"));
         }
     }

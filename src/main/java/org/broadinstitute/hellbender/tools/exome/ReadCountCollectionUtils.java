@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumns;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
@@ -105,7 +105,7 @@ public final class ReadCountCollectionUtils {
         }
     }
 
-    private static class ReadCountRecord {
+    private final static class ReadCountRecord {
 
         public final Target target;
         public final double[] counts;
@@ -122,13 +122,12 @@ public final class ReadCountCollectionUtils {
         final List<String> columnNames = new ArrayList<>();
         columnNames.add(ReadCountsSpecialColumns.NAME.name());
         columnNames.addAll(collection.columnNames());
-        final TableColumns columns = new TableColumns(columnNames);
+        final TableColumnCollection columns = new TableColumnCollection(columnNames);
         return new TableWriter<ReadCountRecord>(writer, columns) {
 
             @Override
-            protected DataLine dataLine(final ReadCountRecord record) {
-                return dataLine()
-                        .append(record.target.getName())
+            protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
+                dataLine.append(record.target.getName())
                         .append(record.counts);
             }
         };
@@ -142,17 +141,16 @@ public final class ReadCountCollectionUtils {
         columnNames.add(ReadCountsSpecialColumns.END.name());
         columnNames.add(ReadCountsSpecialColumns.NAME.name());
         columnNames.addAll(collection.columnNames());
-        final TableColumns columns = new TableColumns(columnNames);
+        final TableColumnCollection columns = new TableColumnCollection(columnNames);
 
         return new TableWriter<ReadCountRecord>(writer, columns) {
             @Override
-            protected DataLine dataLine(final ReadCountRecord record) {
+            protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
                 final SimpleInterval interval = record.target.getInterval();
                 if (interval == null) {
                     throw new IllegalStateException("invalid combination of targets with and without intervals defined");
                 }
-                return dataLine()
-                        .append(interval.getContig())
+                dataLine.append(interval.getContig())
                         .append(interval.getStart())
                         .append(interval.getEnd())
                         .append(record.target.getName())
@@ -200,7 +198,7 @@ public final class ReadCountCollectionUtils {
             private Function<DataLine, ReadCountRecord> recordExtractor;
 
             @Override
-            protected void processTableColumns(final TableColumns columns) {
+            protected void processColumns(final TableColumnCollection columns) {
                 countColumnNames.clear();
                 countColumnNames.addAll(columns.names().stream()
                         .filter(name -> !ReadCountsSpecialColumns.isSpecialColumnName(name))
@@ -219,7 +217,7 @@ public final class ReadCountCollectionUtils {
             }
 
             @Override
-            protected ReadCountRecord record(final DataLine dataLine) {
+            protected ReadCountRecord createRecord(final DataLine dataLine) {
                 return recordExtractor.apply(dataLine);
             }
 
@@ -234,7 +232,7 @@ public final class ReadCountCollectionUtils {
                 };
             }
 
-            private Function<DataLine, double[]> countExtractor(final TableColumns columns) {
+            private Function<DataLine, double[]> countExtractor(final TableColumnCollection columns) {
                 final int[] countColumnIndexes = IntStream.range(0, columns.columnCount())
                         .filter(i -> !ReadCountsSpecialColumns.isSpecialColumnName(columns.nameAt(i))).toArray();
                 return (v) -> {
@@ -291,7 +289,7 @@ public final class ReadCountCollectionUtils {
      * @param columns the column-name array for that file.
      * @return non-{@code null} iff is not possible to extract the target name from the input directly.
      */
-    private static Function<DataLine, String> targetNameExtractor(final TableColumns columns) {
+    private static Function<DataLine, String> targetNameExtractor(final TableColumnCollection columns) {
         final int nameColumnIndex = columns.indexOf(ReadCountsSpecialColumns.NAME.name());
         return nameColumnIndex < 0 ? null : (v) -> v.get(nameColumnIndex);
     }
@@ -303,7 +301,7 @@ public final class ReadCountCollectionUtils {
      * @param errorExceptionFactory the error handler to be called when there is any problem resoling the interval.
      * @return never {@code null} if there is enough columns to extract the coordinate information, {@code null} otherwise.
      */
-    private static Function<DataLine, SimpleInterval> intervalExtractor(final TableColumns columns,
+    private static Function<DataLine, SimpleInterval> intervalExtractor(final TableColumnCollection columns,
                                                                         final Function<String, RuntimeException> errorExceptionFactory) {
 
         final int contigColumnNumber = columns.indexOf(ReadCountsSpecialColumns.CONTIG.name());

@@ -40,15 +40,15 @@ public class TableReaderUnitTest extends BaseTest {
         }
 
         public String toTabFileLine() {
-            return String.join("" + TableConstants.COLUMN_SEPARATOR, strValue, Integer.toString(intValue), Double.toString(dblValue));
+            return String.join("" + TableUtils.COLUMN_SEPARATOR, strValue, Integer.toString(intValue), Double.toString(dblValue));
         }
 
         public String toTabFileLineWithAlterInt(final String replace) {
-            return String.join("" + TableConstants.COLUMN_SEPARATOR, strValue, replace, Double.toString(dblValue));
+            return String.join("" + TableUtils.COLUMN_SEPARATOR, strValue, replace, Double.toString(dblValue));
         }
 
         public String toTabFileLineWithAlterDouble(final String replace) {
-            return String.join("" + TableConstants.COLUMN_SEPARATOR, strValue, Integer.toString(intValue), replace);
+            return String.join("" + TableUtils.COLUMN_SEPARATOR, strValue, Integer.toString(intValue), replace);
         }
 
         public int hashCode() {
@@ -83,7 +83,7 @@ public class TableReaderUnitTest extends BaseTest {
         }
 
         @Override
-        protected void processTableColumns(final TableColumns columns) {
+        protected void processColumns(final TableColumnCollection columns) {
             if (columns.columnCount() != 3)
                 throw formatException("bad header, must have 3 columns but has " + columns.columnCount() + " instead");
             if (!columns.nameAt(0).equals("col1.str"))
@@ -95,7 +95,7 @@ public class TableReaderUnitTest extends BaseTest {
         }
 
         @Override
-        protected TestTuple record(final DataLine dataLine) {
+        protected TestTuple createRecord(final DataLine dataLine) {
             return new TestTuple(
                     dataLine.get("col1.str"),
                     dataLine.getInt("col2.int"),
@@ -217,7 +217,7 @@ public class TableReaderUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testBadHeader() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         new TestTupleReader(testFile);
     }
@@ -225,7 +225,7 @@ public class TableReaderUnitTest extends BaseTest {
     @Test(dependsOnMethods = "testBadHeader", expectedExceptions = UserException.BadInput.class)
     public void testSourceNameFromFile() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         try {
             new TestTupleReader(testFile);
@@ -238,7 +238,7 @@ public class TableReaderUnitTest extends BaseTest {
     @Test(dependsOnMethods = "testBadHeader", expectedExceptions = UserException.BadInput.class)
     public void testArbitrarySourceName() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         try {
             new TestTupleReader("funny-name", new FileReader(testFile));
@@ -251,17 +251,17 @@ public class TableReaderUnitTest extends BaseTest {
     @Test
     public void testColumnNames() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
 
         final boolean[] tested = new boolean[1];
 
         new TableReader<String[]>(testFile) {
             @Override
-            protected String[] record(final DataLine dataLine) {
-                Assert.assertNotNull(columns);
-                Assert.assertTrue(columns.matchesExactly("col1", "col2", "col3"));
+            protected String[] createRecord(final DataLine dataLine) {
+                Assert.assertNotNull(columns());
+                Assert.assertTrue(columns().matchesExactly("col1", "col2", "col3"));
                 tested[0] = true;
                 return dataLine.toArray();
             }
@@ -273,38 +273,38 @@ public class TableReaderUnitTest extends BaseTest {
     @Test
     public void testColumnIndex() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
 
         final boolean[] tested = new boolean[1];
 
         new TableReader<String[]>(testFile) {
             @Override
-            protected String[] record(final DataLine dataLine) {
-                Assert.assertNotNull(columns);
-                Assert.assertTrue(columns.matches(0, "col1", "col2", "col3"));
-                Assert.assertEquals(columns.indexOf("no-col"), -1);
+            protected String[] createRecord(final DataLine dataLine) {
+                Assert.assertNotNull(columns());
+                Assert.assertTrue(columns().matchesAll(0, "col1", "col2", "col3"));
+                Assert.assertEquals(columns().indexOf("no-col"), -1);
                 tested[0] = true;
                 return dataLine.toArray();
             }
         };
 
-        Assert.assertTrue(tested[0], "the readDataLine code did not get exected");
+        Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
     }
 
     @Test
     public void testColumnValueAsInt() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
 
         final boolean[] tested = new boolean[1];
 
         new TableReader<String[]>(testFile) {
             @Override
-            protected String[] record(final DataLine dataLine) {
+            protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertEquals(dataLine.getInt("col1"), 1);
                 Assert.assertEquals(dataLine.getInt("col2"), 2);
                 Assert.assertEquals(dataLine.getInt("col3"), 3);
@@ -327,15 +327,15 @@ public class TableReaderUnitTest extends BaseTest {
     @Test
     public void testColumnValueAsDouble() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
 
         final boolean[] tested = new boolean[1];
 
         new TableReader<String[]>(testFile) {
             @Override
-            protected String[] record(final DataLine dataLine) {
+            protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertEquals(dataLine.getDouble("col1"), 1.0);
                 Assert.assertEquals(dataLine.getDouble("col2"), 2.0);
                 Assert.assertEquals(dataLine.getDouble("col3"), 3.0);
@@ -358,15 +358,15 @@ public class TableReaderUnitTest extends BaseTest {
     @Test
     public void testColumnValueAsString() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
 
         final boolean[] tested = new boolean[1];
 
         new TableReader<String[]>(testFile) {
             @Override
-            protected String[] record(final DataLine dataLine) {
+            protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertEquals(dataLine.get("col1"), "1");
                 Assert.assertEquals(dataLine.get("col2"), "2");
                 Assert.assertEquals(dataLine.get("col3"), "3");
@@ -390,7 +390,7 @@ public class TableReaderUnitTest extends BaseTest {
     @Test(dependsOnMethods = "testBadHeader", expectedExceptions = UserException.BadInput.class)
     public void testNoSourceName() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1")
         );
         try {
             new TestTupleReader(null, new FileReader(testFile));
@@ -403,10 +403,10 @@ public class TableReaderUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testTooManyValues() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3", "4"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3", "4"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
         final TableReader<String> reader = firstOfThreeColumnReader(testFile);
         final String firstTestTuple = reader.readRecord();
@@ -426,7 +426,7 @@ public class TableReaderUnitTest extends BaseTest {
         return new TableReader<String>(testFile) {
 
             @Override
-            protected String record(final DataLine dataLine) {
+            protected String createRecord(final DataLine dataLine) {
                 return dataLine.get(0);
             }
         };
@@ -435,10 +435,10 @@ public class TableReaderUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testTooFewValues() throws IOException {
         final File testFile = createTestInput(
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "col1", "col2", "col3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2"),
-                String.join("" + TableConstants.COLUMN_SEPARATOR, "1", "2", "3")
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
         final TableReader<String> reader = firstOfThreeColumnReader(testFile);
         final String firstTestTuple = reader.readRecord();
@@ -458,21 +458,21 @@ public class TableReaderUnitTest extends BaseTest {
     @Test
     public void testSingleColumnWithEmptyDataLines() throws IOException {
         final File testFile = createTestInput(
-                TableConstants.COMMENT_PREFIX + "comment1",
+                TableUtils.COMMENT_PREFIX + "comment1",
                 "Column1",
                 "",
-                TableConstants.COMMENT_PREFIX + "comment2"
+                TableUtils.COMMENT_PREFIX + "comment2"
         );
         final TableReader<String> tableReader = new TableReader<String>(testFile) {
 
             @Override
-            protected void processTableColumns(final TableColumns columns) {
+            protected void processColumns(final TableColumnCollection columns) {
                 Assert.assertEquals(columns.columnCount(), 1);
                 Assert.assertEquals(columns.nameAt(0), "Column1");
             }
 
             @Override
-            protected String record(final DataLine dataLine) {
+            protected String createRecord(final DataLine dataLine) {
                 return dataLine.get(0);
             }
         };
@@ -498,16 +498,16 @@ public class TableReaderUnitTest extends BaseTest {
 
     @DataProvider(name = "ordinaryValuesData")
     public Object[][] ordinaryValuesData() {
-        final String comment1 = TableConstants.COMMENT_PREFIX + "comment1";
-        final String comment2 = TableConstants.COMMENT_PREFIX + "comment2";
-        final String header = String.join("" + TableConstants.COLUMN_SEPARATOR, "col1.str", "col2.int", "col3.dbl");
-        final String comment3 = TableConstants.COMMENT_PREFIX + "comment3";
+        final String comment1 = TableUtils.COMMENT_PREFIX + "comment1";
+        final String comment2 = TableUtils.COMMENT_PREFIX + "comment2";
+        final String header = String.join("" + TableUtils.COLUMN_SEPARATOR, "col1.str", "col2.int", "col3.dbl");
+        final String comment3 = TableUtils.COMMENT_PREFIX + "comment3";
         final String dataLine1 = ORDINARY_VALUE_TEST_TUPLES[0].toTabFileLine();
-        final String comment4 = TableConstants.COMMENT_PREFIX + "comment4";
-        final String comment5 = TableConstants.COMMENT_PREFIX + "comment5";
+        final String comment4 = TableUtils.COMMENT_PREFIX + "comment4";
+        final String comment5 = TableUtils.COMMENT_PREFIX + "comment5";
         final String dataLine2 = ORDINARY_VALUE_TEST_TUPLES[1].toTabFileLine();
         final String dataLine3 = ORDINARY_VALUE_TEST_TUPLES[2].toTabFileLine();
-        final String comment6 = TableConstants.COMMENT_PREFIX + "comment6";
+        final String comment6 = TableUtils.COMMENT_PREFIX + "comment6";
         final String dataLine4 = ORDINARY_VALUE_TEST_TUPLES[3].toTabFileLine();
         return new Object[][]{
                 {new String[]{comment1, comment2, header, comment3, dataLine1, comment4, comment5, dataLine2, dataLine3, comment6, dataLine4}},
@@ -518,12 +518,12 @@ public class TableReaderUnitTest extends BaseTest {
 
     @DataProvider(name = "commentsOnlyData")
     public Object[][] commentsOnlyData() {
-        final String comment1 = TableConstants.COMMENT_PREFIX + "comment1";
-        final String comment2 = TableConstants.COMMENT_PREFIX + "comment2";
-        final String comment3 = TableConstants.COMMENT_PREFIX + "comment3";
-        final String comment4 = TableConstants.COMMENT_PREFIX + "comment4";
-        final String comment5 = TableConstants.COMMENT_PREFIX + "comment5";
-        final String comment6 = TableConstants.COMMENT_PREFIX + "comment6";
+        final String comment1 = TableUtils.COMMENT_PREFIX + "comment1";
+        final String comment2 = TableUtils.COMMENT_PREFIX + "comment2";
+        final String comment3 = TableUtils.COMMENT_PREFIX + "comment3";
+        final String comment4 = TableUtils.COMMENT_PREFIX + "comment4";
+        final String comment5 = TableUtils.COMMENT_PREFIX + "comment5";
+        final String comment6 = TableUtils.COMMENT_PREFIX + "comment6";
         return new Object[][]{
                 {new String[]{comment1, comment2, comment3, comment4, comment5, comment6}},
                 {new String[]{comment1, comment2}},
@@ -534,7 +534,7 @@ public class TableReaderUnitTest extends BaseTest {
 
     @DataProvider(name = "dataTypeConversionErrorData")
     public Object[][] dataTypeConversionErrorData() {
-        final String header = String.join("" + TableConstants.COLUMN_SEPARATOR, "col1.str", "col2.int", "col3.dbl");
+        final String header = String.join("" + TableUtils.COLUMN_SEPARATOR, "col1.str", "col2.int", "col3.dbl");
         final String dataLine1 = ORDINARY_VALUE_TEST_TUPLES[0].toTabFileLine();
         final String dataLine2 = ORDINARY_VALUE_TEST_TUPLES[1].toTabFileLine();
         final String dataLine2withBadInt = ORDINARY_VALUE_TEST_TUPLES[1].toTabFileLineWithAlterInt("no-int");
@@ -550,13 +550,13 @@ public class TableReaderUnitTest extends BaseTest {
 
     @DataProvider(name = "headerOnlyData")
     public Object[][] headerOnlyData() {
-        final String header = String.join("" + TableConstants.COLUMN_SEPARATOR, "col1.str", "col2.int", "col3.dbl");
-        final String comment1 = TableConstants.COMMENT_PREFIX + "comment1";
-        final String comment2 = TableConstants.COMMENT_PREFIX + "comment2";
-        final String comment3 = TableConstants.COMMENT_PREFIX + "comment3";
-        final String comment4 = TableConstants.COMMENT_PREFIX + "comment4";
-        final String comment5 = TableConstants.COMMENT_PREFIX + "comment5";
-        final String comment6 = TableConstants.COMMENT_PREFIX + "comment6";
+        final String header = String.join("" + TableUtils.COLUMN_SEPARATOR, "col1.str", "col2.int", "col3.dbl");
+        final String comment1 = TableUtils.COMMENT_PREFIX + "comment1";
+        final String comment2 = TableUtils.COMMENT_PREFIX + "comment2";
+        final String comment3 = TableUtils.COMMENT_PREFIX + "comment3";
+        final String comment4 = TableUtils.COMMENT_PREFIX + "comment4";
+        final String comment5 = TableUtils.COMMENT_PREFIX + "comment5";
+        final String comment6 = TableUtils.COMMENT_PREFIX + "comment6";
         return new Object[][]{
                 {new String[]{comment1, comment2, comment3, header, comment4, comment5, comment6}},
                 {new String[]{header, comment1, comment2}},

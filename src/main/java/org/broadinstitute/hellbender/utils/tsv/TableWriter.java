@@ -13,7 +13,7 @@ import java.io.*;
  * </p>
  * <p>
  * Extending classes must indicate how we can transcribe row record or type {@link R} to the corresponding
- * record data-line in the output by overriding {@link #dataLine(R)}.
+ * record data-line in the output by overriding {@link #composeLine(R,DataLine)}.
  * </p>
  * <p>
  * Example:
@@ -31,14 +31,14 @@ import java.io.*;
  *             }
  *
  *             &#64;Override
- *             protected DataLine dataLine(final Person person) {
- *                  return dataLine(person.name, "" + person.age, "" + person.netWorth);
+ *             protected void dataLine(final Person person, final DataLine dataLine) {
+ *                  dataLine.setAll(person.name, "" + person.age, "" + person.netWorth);
  *             }
  *         }
  *     </pre>
  * </p>
  * <p>
- * You must instantiate the result {@link DataLine} using the {@link #dataLine()} method.
+ * You must use the {@link DataLine} instance passed and no other.
  * </p>
  * <p>
  * Instead of passing all the values as converted string in column order you may opt to use {@link DataLine#set}
@@ -48,8 +48,8 @@ import java.io.*;
  * Example (using the column index):
  * <pre>
  *          &#64;Override
- *          protected DataLine dataLine(final Person person) {
- *              return dataLine()
+ *          protected void composeLine(final Person person, final DataLine dataLine) {
+ *              dataLine
  *                  .set(0,person.name)
  *                  .set(1,person.age)
  *                  .set(2,person.netWorth);
@@ -60,23 +60,23 @@ import java.io.*;
  * Example (using column names):
  * <pre>
  *          &#64;Override
- *          protected DataLine dataLine(final Person person) {
- *              return dataLine()
+ *          protected void composeLine(final Person person, final DataLine dataLine) {
+ *              dataLine
  *                  .set("name",person.name)
  *                  .set("age",person.age)
  *                  .set("net.worth",person.netWorth);
  *          }
  * </pre>
  * Notice that you don't need to explicitly convert neither the age nor the net-worth into a
- * string thanks to {@link DataLine#set set} overloads.
+ * string thanks to {@link DataLine#set set} various overloads.
  * </p>
  * <p>
- * Alternatively, if you know the column order, that should quite often the case, you can avoid indexing all together
- * using {@link DataLine#append append} operations instead:
+ * Alternatively, if you know the column order, that should quite often the case, you can avoid
+ * indexing all together using {@link DataLine#append append} operations instead:
  * <pre>
  *         &#64;Override
- *          protected DataLine dataLine(final Person person) {
- *              return dataLine()
+ *          protected void composeLine(final Person person, final DataLine dataLine) {
+ *              dataLine
  *                  .append(person.name)
  *                  .append(person.age)
  *                  .append(person.netWorth);
@@ -85,7 +85,21 @@ import java.io.*;
  * </p>
  * <p>
  * At any time the implementation can query the correspondence between column names and position within the data-line
- * by querying the {@link TableColumns} object directly referenced by the {@link #columns} field.
+ * by querying the {@link TableColumnCollection} object directly that can be obtained from the dataLine's {@link #columns} field.
+ * </p>
+ * <p>
+ * Example (using column names):
+ * <pre>
+ *          &#64;Override
+ *          protected void composeLine(final Person person, final DataLine dataLine) {
+ *              dataLine
+ *                .set("name",person.name)
+ *                .set("age",person.age);
+ *
+ *              if (dataLine.columns().contains("net.worth"))
+ *                dataLine.set("net.worth",person.netWorth);
+ *          }
+ * </pre>
  * </p>
  *
  * @param <R> the row record type.
@@ -101,7 +115,7 @@ public abstract class TableWriter<R> implements Closeable {
     /**
      * The table column names.
      */
-    private final TableColumns columns;
+    private final TableColumnCollection columns;
 
     /**
      * Whether the header column name line has been written or not.
@@ -116,7 +130,7 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws IllegalArgumentException if either {@code file} or {@code tableColumns} are {@code null}.
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
-    public TableWriter(final File file, final TableColumns tableColumns) throws IOException {
+    public TableWriter(final File file, final TableColumnCollection tableColumns) throws IOException {
         this(new FileWriter(Utils.nonNull(file, "the file cannot be null")), tableColumns);
     }
 
@@ -128,11 +142,11 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws IllegalArgumentException if either {@code writer} or {@code columns} are {@code null}.
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
-    public TableWriter(final Writer writer, final TableColumns columns) throws IOException {
+    public TableWriter(final Writer writer, final TableColumnCollection columns) throws IOException {
 
         this.columns = Utils.nonNull(columns, "the columns cannot be null");
         this.writer = new CSVWriter(Utils.nonNull(writer, "the input writer cannot be null"),
-                TableConstants.COLUMN_SEPARATOR, TableConstants.QUOTE_CHARACTER, TableConstants.ESCAPE_CHARACTER);
+                TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
     }
 
     /**
@@ -150,7 +164,7 @@ public abstract class TableWriter<R> implements Closeable {
      */
     public final void writeComment(final String comment) throws IOException {
         Utils.nonNull(comment, "the comment cannot be null");
-        writer.writeNext(new String[]{TableConstants.COMMENT_PREFIX + comment}, false);
+        writer.writeNext(new String[]{TableUtils.COMMENT_PREFIX + comment}, false);
     }
 
     /**
@@ -161,12 +175,14 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws ClassCastException       if {@code record} is of the correct type
      *                                  for this writer.
      * @throws IllegalArgumentException if {@code record} is {@code null} or it is not a valid record
-     *                                  as per the implementation of this writer (see {@link #dataLine}).
+     *                                  as per the implementation of this writer (see {@link #composeLine}).
      */
     public final void writeRecord(final R record) throws IOException {
         Utils.nonNull(record, "the record cannot be null");
         writeHeaderIfApplies();
-        writer.writeNext(dataLine(record).unpack(), false);
+        final DataLine dataLine = new DataLine(columns,IllegalArgumentException::new);
+        composeLine(record,dataLine);
+        writer.writeNext(dataLine.unpack(), false);
     }
 
     /**
@@ -220,31 +236,23 @@ public abstract class TableWriter<R> implements Closeable {
     }
 
     /**
-     * Returns the array of values that represent a record in the output text format.
+     * Composes the data-line to write into the output to represent a given record
      * <p>
-     * This method must not return {@code null} {@link DataLine data-line}, and all its
-     * values must have been set.
-     * </p>
-     * <p>
-     * Also the first element cannot contain the {@link TableConstants#COMMENT_PREFIX comment prefix}.
+     * Also the first element cannot contain the {@link TableUtils#COMMENT_PREFIX comment prefix}.
      * If that is a genuine valid value for the first column you shall consider to re-order the columns or
      * change the encoding of the first column to avoid this issue.
      * </p>
+     * <p>
+     * Both inputs, {@code record} and {@code dataLine} are guaranteed not to be {@code null}s.
+     * </p>
      *
+     * @param record the record to write into the data-line.
+     * @param dataLine the destination data-line object.
      * @return never {@code null}.
      * @throws ClassCastException       if {@code record} is of the correct type
      *                                  for this writer.
      * @throws IllegalArgumentException if there is some conversion issue that does
      *                                  not allow the current write to generate a valid string array to encode the record.
      */
-    protected abstract DataLine dataLine(final R record);
-
-    /**
-     * Instantiates a record {@link DataLine} appropriate for this writer column set.
-     *
-     * @return never {@code null}.
-     */
-    protected DataLine dataLine() {
-        return new DataLine(columns, IllegalArgumentException::new);
-    }
+    protected abstract void composeLine(final R record, final DataLine dataLine);
 }

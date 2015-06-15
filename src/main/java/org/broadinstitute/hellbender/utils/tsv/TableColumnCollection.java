@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -13,10 +14,16 @@ import java.util.stream.StreamSupport;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TableColumns {
+public final class TableColumnCollection {
 
+    /**
+     * List of column names sorted by their index.
+     */
     private final List<String> names;
 
+    /**
+     * Map from column name to its index, the first column has index 0, the second 1 and so forth.
+     */
     private final Map<String, Integer> indexByName;
 
     /**
@@ -31,8 +38,35 @@ public final class TableColumns {
      * @throws IllegalArgumentException if {@code names} is not a valid column name iterable
      *                                  of names as determined by {@link #checkNames checkNames}.
      */
-    public TableColumns(final Iterable<String> names) {
-        this(StreamSupport.stream(Utils.nonNull(names, "the names cannot be null").spliterator(), false).toArray(size -> new String[size]));
+    public TableColumnCollection(final Iterable<String> names) {
+        this(StreamSupport.stream(Utils.nonNull(names, "the names cannot be null").spliterator(), false).toArray(String[]::new));
+    }
+
+    /**
+     * Creates a new table-column names collection.
+     * <p>
+     * The new instance will have its own copy of the input name array,
+     * thus is safe to modify such an array after calling this constructor;
+     * it won't modify the state of this object.
+     * </p>
+     *
+     * @param names the column names.
+     * @throws IllegalArgumentException if {@code names} is not a valid column name array
+     *                                  of names as determined by {@link #checkNames checkNames}.
+     */
+    public TableColumnCollection(final String... names) {
+        this.names = Collections.unmodifiableList(Arrays.asList(checkNames(names.clone(), IllegalArgumentException::new)));
+        this.indexByName = IntStream.range(0, names.length).boxed()
+                .collect(Collectors.toMap(this.names::get, Function.identity()));
+    }
+
+    /**
+     * Returns the column names ordered by column index.
+     *
+     * @return never {@code null}, a unmodifiable view to this collection column names.
+     */
+    public List<String> names() {
+        return names;
     }
 
     /**
@@ -48,33 +82,6 @@ public final class TableColumns {
     public String nameAt(final int index) {
         Utils.validIndex(index, names.size());
         return names.get(index);
-    }
-
-    /**
-     * Creates a new table-column names collection.
-     * <p>
-     * The new instance will have its own copy of the input name array,
-     * thus is safe to modify such an array after calling this constructor;
-     * it won't modify the state of this object.
-     * </p>
-     *
-     * @param names the column names.
-     * @throws IllegalArgumentException if {@code names} is not a valid column name array
-     *                                  of names as determined by {@link #checkNames checkNames}.
-     */
-    public TableColumns(final String... names) {
-        this.names = Collections.unmodifiableList(Arrays.asList(checkNames(names.clone(), IllegalArgumentException::new)));
-        this.indexByName = IntStream.range(0, names.length).boxed()
-                .collect(Collectors.toMap(i -> this.names.get(i), Function.identity()));
-    }
-
-    /**
-     * Returns the column names ordered by column index.
-     *
-     * @return never {@code null}, a unmodifiable view to this collection column names.
-     */
-    public List<String> names() {
-        return names;
     }
 
     /**
@@ -106,13 +113,8 @@ public final class TableColumns {
      * @return {@code true} iff all the names in {@code names} correspond to columns in this collection.
      * @throws IllegalArgumentException if {@code names} is {@code null} or contains {@code null}.
      */
-    public boolean contains(final String... names) {
-        for (final String name : Utils.nonNull(names, "names cannot be null")) {
-            if (!contains(name)) {
-                return false;
-            }
-        }
-        return true;
+    public boolean containsAll(final String... names) {
+        return Stream.of(Utils.nonNull(names, "names cannot be null")).allMatch(this::contains);
     }
 
     /**
@@ -124,7 +126,7 @@ public final class TableColumns {
      * @throws IllegalArgumentException if {@code names} is {@code null} or contains {@code null}.
      */
     public boolean containsExactly(final String... names) {
-        return contains(names) && columnCount() == names.length;
+        return containsAll(names) && columnCount() == names.length;
     }
 
     /**
@@ -146,7 +148,7 @@ public final class TableColumns {
     }
 
     /**
-     * Checks a array of column matches the column names from a given index.
+     * Checks an array of column matches the column names starting from a given index.
      *
      * @param offset the column index to match to the first name in {@code names} test.
      * @param names  the expected column names.
@@ -154,7 +156,7 @@ public final class TableColumns {
      * @throws IllegalArgumentException if {@code names} is {@code null}, contains any {@code null}
      *                                  or {@code index} is not a valid index.
      */
-    public boolean matches(final int offset, final String... names) {
+    public boolean matchesAll(final int offset, final String... names) {
         Utils.validIndex(offset, this.names.size() + 1);
         final int toIndex = offset + names.length;
         if (toIndex > this.names.size()) {
@@ -177,7 +179,7 @@ public final class TableColumns {
      * @throws IllegalArgumentException if {@code names} is {@code null} or contains {@code null}.
      */
     public boolean matchesExactly(final String... names) {
-        return matches(0, names) && names.length == this.names.size();
+        return matchesAll(0, names) && names.length == this.names.size();
     }
 
     /**
@@ -226,7 +228,7 @@ public final class TableColumns {
                 throw Utils.nonNull(exceptionFactory.apply("more than one column have the same name: " + columnNames[i]), "exception factory produces null exceptions");
             }
         }
-        if (columnNames[0].startsWith(TableConstants.COMMENT_PREFIX)) {
+        if (columnNames[0].startsWith(TableUtils.COMMENT_PREFIX)) {
             throw Utils.nonNull(exceptionFactory.apply("the first column name cannot start with the comment prefix"), "exception factory produces null exceptions");
         }
         return columnNames;

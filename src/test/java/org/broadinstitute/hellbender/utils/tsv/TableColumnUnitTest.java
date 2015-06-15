@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 
 /**
- * Unit tests for {@link TableColumns}.
+ * Unit tests for {@link TableColumnCollection}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -19,58 +19,58 @@ public class TableColumnUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCheckNamesOnANullArray() {
-        TableColumns.checkNames(null, GATKException::new);
+        TableColumnCollection.checkNames(null, GATKException::new);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCheckNamesOnNullExceptionFactory() {
-        TableColumns.checkNames(new String[] { "col1" },null);
+        TableColumnCollection.checkNames(new String[]{"col1"}, null);
     }
 
     @Test(expectedExceptions = GATKException.class)
     public void testCheckNamesOnNoColumnArray() {
-        TableColumns.checkNames(new String[0], GATKException::new);
+        TableColumnCollection.checkNames(new String[0], GATKException::new);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCheckNamesOnNullContainingArray() {
-        TableColumns.checkNames(new String[] { "col1", null , "col3"}, GATKException::new);
+        TableColumnCollection.checkNames(new String[]{"col1", null, "col3"}, GATKException::new);
     }
 
     @Test(expectedExceptions = GATKException.class)
     public void testCheckNamesOnCommentPrefixedArray() {
-        TableColumns.checkNames(new String[] { "#col1", "col2" , "col3"}, GATKException::new);
+        TableColumnCollection.checkNames(new String[]{"#col1", "col2", "col3"}, GATKException::new);
     }
 
     @Test(expectedExceptions = GATKException.class)
     public void testCheckNamesWithRepeats() {
-        TableColumns.checkNames(new String[] { "col1", "col2" , "col1"}, GATKException::new);
+        TableColumnCollection.checkNames(new String[]{"col1", "col2", "col1"}, GATKException::new);
     }
 
     @Test(dataProvider= "correctColumnNamesData")
     public void testCheckNamesOnCorrectData(final String[] names) {
-        Assert.assertSame(TableColumns.checkNames(names, IllegalArgumentException::new), names);
+        Assert.assertSame(TableColumnCollection.checkNames(names, IllegalArgumentException::new), names);
     }
 
     @Test(dataProvider = "correctColumnNamesData")
     public void testArrayCreation(final String[] names) {
-        Assert.assertNotNull(new TableColumns(names));
+        Assert.assertNotNull(new TableColumnCollection(names));
     }
 
     @Test(dataProvider = "correctColumnNamesData")
     public void testIterableCreation(final String[] names) {
-        Assert.assertNotNull(new TableColumns(Arrays.asList(names)));
+        Assert.assertNotNull(new TableColumnCollection(Arrays.asList(names)));
     }
 
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testColumnCount(final String[] names) {
-        Assert.assertEquals(new TableColumns(names).columnCount(), names.length);
+        Assert.assertEquals(new TableColumnCollection(names).columnCount(), names.length);
     }
 
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testMatches(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         for (int i = 0; i < testNames.length; i++) {
             Assert.assertTrue(subject.matches(i, names[i]));
             Assert.assertFalse(subject.matches(i + 1, names[i]));
@@ -79,34 +79,34 @@ public class TableColumnUnitTest extends BaseTest {
             }
             for (int j = i; j < testNames.length; j++) {
                 final String[] subset = Arrays.copyOfRange(testNames, i, j + 1);
-                Assert.assertTrue(subject.matches(i, subset));
-                Assert.assertFalse(subject.matches(i + 1, subset));
+                Assert.assertTrue(subject.matchesAll(i, subset));
+                Assert.assertFalse(subject.matchesAll(i + 1, subset));
             }
-            Assert.assertTrue(subject.matches(i));
+            Assert.assertTrue(subject.matchesAll(i));
         }
     }
 
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testContains(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         for (int i = 0; i < testNames.length; i++) {
             Assert.assertTrue(subject.contains(names[i]));
             Assert.assertFalse(subject.contains(names[i] + "_no_there"));
             for (int j = i; j < testNames.length; j++) {
                 final String[] subset = Arrays.copyOfRange(testNames, i, j + 1);
-                Assert.assertTrue(subject.contains(subset));
+                Assert.assertTrue(subject.containsAll(subset));
                 subset[subset.length >> 1] = subset[0] + "_no_there";
-                Assert.assertFalse(subject.contains(subset));
+                Assert.assertFalse(subject.containsAll(subset));
             }
-            Assert.assertTrue(subject.matches(i));
+            Assert.assertTrue(subject.matchesAll(i));
         }
     }
 
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testNameAt(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         for (int i = 0; i < testNames.length; i++) {
             Assert.assertEquals(subject.nameAt(i), names[i]);
         }
@@ -115,14 +115,14 @@ public class TableColumnUnitTest extends BaseTest {
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testNames(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         Assert.assertEquals(subject.names(), Arrays.asList(names));
     }
 
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testIndexOf(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         for (int i = 0; i < testNames.length; i++) {
             Assert.assertEquals(subject.indexOf(names[i]), i);
         }
@@ -131,7 +131,7 @@ public class TableColumnUnitTest extends BaseTest {
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testMatchesExactly(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         Assert.assertTrue(subject.matchesExactly(testNames));
 
         // try changing a single name.
@@ -172,7 +172,7 @@ public class TableColumnUnitTest extends BaseTest {
     @Test(dataProvider = "correctColumnNamesData", dependsOnMethods = "testArrayCreation")
     public void testContainsExactly(final String[] names) {
         final String[] testNames = names.clone();
-        final TableColumns subject = new TableColumns(testNames);
+        final TableColumnCollection subject = new TableColumnCollection(testNames);
         Assert.assertTrue(subject.containsExactly(testNames));
 
         // try changing a single name.
