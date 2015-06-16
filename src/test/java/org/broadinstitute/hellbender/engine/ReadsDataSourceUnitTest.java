@@ -22,8 +22,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     private static final File FIRST_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private static final File SECOND_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
     private static final File THIRD_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
-    private static final File FOURTH_TEST_BAM = new File(publicTestDir +
-            "org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/invalid_coord_sort_order.sam");
+    private static final File FIRST_TEST_SAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "invalid_coord_sort_order.sam");
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
@@ -62,9 +61,9 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test
-    public void testdDefaultSamReaderValidationStringency() {
+    public void testDefaultSamReaderValidationStringency() {
         // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
-        final ReadsDataSource readsSource = new ReadsDataSource(FOURTH_TEST_BAM);
+        final ReadsDataSource readsSource = new ReadsDataSource(FIRST_TEST_SAM);
         //noinspection StatementWithEmptyBody
         for ( @SuppressWarnings("unused") final SAMRecord read : readsSource ) {
         }
@@ -74,7 +73,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     public void testCustomSamReaderFactory() {
         // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
         final ReadsDataSource readsSource = new ReadsDataSource(
-                FOURTH_TEST_BAM,
+                FIRST_TEST_SAM,
                 SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
         //noinspection StatementWithEmptyBody
         for ( @SuppressWarnings("unused") final SAMRecord read : readsSource ) {
