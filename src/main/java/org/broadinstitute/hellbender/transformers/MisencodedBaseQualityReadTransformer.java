@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
  * Q64.  The idea here is simple: if we are asked to fix the scores then we just subtract 31 from every quality score.
  */
 public final class MisencodedBaseQualityReadTransformer implements ReadTransformer {
+    private static final long serialVersionUID = 1L;
 
     private static final int ILLUMINA_ENCODING_FIX_VALUE = 31;  // Illumina_64 - PHRED_33
 

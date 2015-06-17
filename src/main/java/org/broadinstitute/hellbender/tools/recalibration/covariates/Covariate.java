@@ -16,7 +16,7 @@ import java.util.List;
  * Covariates are immutable objects after construction. All state setting and parameterization must happen during the construction call.
  */
 public interface Covariate extends Serializable {
-
+    public static long serialVersionUID = 1L;
     /**
      * Calculates covariate values for all positions in the read.
      *

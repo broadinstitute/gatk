@@ -294,6 +294,7 @@ public class UserException extends RuntimeException {
     }
 
     public static class MissingContigInSequenceDictionary extends UserException {
+        private static final long serialVersionUID = 1L;
         public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict1) {
             super(String.format("Contig %s not present in the sequence dictionary %s\n",
                     contigName, ReadUtils.prettyPrintSequenceRecords(dict1)));

@@ -473,6 +473,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
  also, same item cannot be added more than once (like a set)
  */
 final class OrderedSet<T> extends ArrayList<T> {
+    private static final long serialVersionUID = 1L;
 
     public boolean smartAdd(final T o) {
         if (!this.contains(o)) {

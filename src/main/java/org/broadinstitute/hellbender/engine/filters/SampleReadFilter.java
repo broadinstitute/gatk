@@ -11,6 +11,7 @@ import java.util.Set;
  * Matching is done by case-sensitive exact match.
  */
 public final class SampleReadFilter implements ReadFilter {
+    private static final long serialVersionUID = 1L;
     @Argument(fullName = "sample_to_keep", shortName = "goodSM", doc="The name of the sample(s) to keep, filtering out all others", optional=false)
     public Set<String> samplesToKeep = null;
 

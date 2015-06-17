@@ -12,8 +12,9 @@ import java.util.function.UnaryOperator;
  * Classes which perform transformations from SAMRecord -> SAMRecord should implement this interface by overriding {@link #apply(SAMRecord)
  */
 public interface ReadTransformer extends UnaryOperator<SAMRecord>, SerializableFunction<SAMRecord, SAMRecord>{
-    //HACK: These methods are a hack to get to get the type system to accept compositions of ReadTransformers.
+    public static long serialVersionUID = 1L;
 
+    //HACK: These methods are a hack to get to get the type system to accept compositions of ReadTransformers.
     @SuppressWarnings("overloads")
     default ReadTransformer andThen(ReadTransformer after) {
         Objects.requireNonNull(after);

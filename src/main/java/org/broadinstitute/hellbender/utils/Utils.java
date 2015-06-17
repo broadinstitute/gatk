@@ -266,23 +266,24 @@ public final class Utils {
     }
 
     /**
-     * Create a new string thats a n duplicate copies of s
-     * @param s the string to duplicate
+     * Create a new string that's n copies of c
+     * @param c the char to duplicate
      * @param nCopies how many copies?
      * @return a string
-     *
-     * @Deprecated use {@link Strings#repeat} directly. Left here temporarily for the ease of porting GATK3 code.
      */
-    @Deprecated
-    public static String dupString(final String s, final int nCopies) {
-        return Strings.repeat(s, nCopies);
-    }
 
-    public static String dupString(final char c, final int nCopies) {
+    public static String dupChar(final char c, final int nCopies) {
         final char[] chars = new char[nCopies];
         Arrays.fill(chars, c);
         return new String(chars);
     }
+
+    /**
+     * Create a new byte array that's n copies of b
+     * @param b the byte to duplicate
+     * @param nCopies how many copies?
+     * @return a byte array
+     */
 
     public static byte[] dupBytes(final byte b, final int nCopies) {
         final byte[] bytes = new byte[nCopies];

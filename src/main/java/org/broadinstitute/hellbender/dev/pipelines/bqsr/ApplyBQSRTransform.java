@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
  * This transforms applies BQSR to the input reads.
  */
 public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCollection<Read>> {
+    private static final long serialVersionUID = 1L;
 
     private final SAMFileHeader header;
     private final PCollectionView<BaseRecalOutput> recalView;
@@ -49,6 +50,7 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<Read>, PCol
     }
 
     private class ApplyBQSR extends DoFn<Read, Read> {
+        private static final long serialVersionUID = 1L;
         private final transient Logger logger = LogManager.getLogger(ApplyBQSR.class);
         private transient BQSRReadTransformer transformer;
 

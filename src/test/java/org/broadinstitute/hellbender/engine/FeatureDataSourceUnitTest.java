@@ -398,8 +398,10 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
             this.start = start;
             this.end = end;
         }
-
+        //suppressing deprecation; function required because it's part of the implemented class
         @Override
+        @SuppressWarnings("deprecation")
+        @Deprecated
         public String getChr() {
             return getContig();
         }

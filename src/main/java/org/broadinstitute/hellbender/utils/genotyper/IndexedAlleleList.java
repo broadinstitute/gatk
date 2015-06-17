@@ -17,6 +17,7 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
     /**
      * Constructs a new empty allele-list
      */
+    @SuppressWarnings("unchecked")
     public IndexedAlleleList() {
         alleles = new IndexedSet<>();
     }
@@ -33,6 +34,8 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
      *
      * @throws java.lang.IllegalArgumentException if {@code alleles} is {@code null} or contains {@code null}s.
      */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
     public IndexedAlleleList(final A... alleles) {
         this.alleles = new IndexedSet<>(alleles);
     }

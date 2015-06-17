@@ -65,6 +65,7 @@ import java.util.List;
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Output path. Can be local or gs://
@@ -114,6 +115,7 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
 
 
     /** list of known intervals -> PCollection */
+    @SuppressWarnings("unchecked")
     private static PCollection<SimpleInterval> ingestKnownIntervals(final Pipeline pipeline, List<FeatureInput<Feature>> knownSites) {
         // known sites
         List<SimpleInterval> knownSitesLst = new ArrayList<>();
@@ -124,7 +126,7 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
                 knownSitesLst.add(new SimpleInterval(f));
             }
         }
-        return pipeline.apply(Create.of(knownSitesLst).withName("known intervals ingest"))
+        return pipeline.apply(Create.of(knownSitesLst).setName("known intervals ingest"))
                 .setCoder(SerializableCoder.of(SimpleInterval.class));
     }
 }

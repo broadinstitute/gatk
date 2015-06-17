@@ -47,9 +47,10 @@ public final class ReadsFilter extends PTransform<PCollection<Read>, PCollection
         return in.apply(ParDo
                 .named(getName())
                 .of(new DoFn<Read, Read>() {
+                    private static final long serialVersionUID = 1L;
                     @Override
-                    public void processElement(DoFn.ProcessContext c) throws Exception {
-                        Read r = (Read) c.element();
+                    public void processElement(DoFn<Read,Read>.ProcessContext c) throws Exception {
+                        Read r = c.element();
                         // TODO: remove this conversion once we switch to a Read interface
                         final SAMRecord sr = GenomicsConverter.makeSAMRecord(r, header);
                         if (readFilter.test(sr)) {

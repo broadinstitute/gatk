@@ -37,6 +37,7 @@ public final class AlleleListUnitTester {
      * @throws RuntimeException         if there is some testing assertion exception which
      *                                  is an indication of an actual bug the code that is been tested.
      */
+    @SuppressWarnings("unchecked")
     public static <A extends Allele> void assertAlleleList(final AlleleList<A> actual, final List<A> expected) {
         if (expected == null)
             throw new IllegalArgumentException("the expected list cannot be null");

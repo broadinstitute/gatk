@@ -45,6 +45,7 @@ import static org.broadinstitute.hellbender.tools.dataflow.GenomicsReadUtils.isP
         usageShort="Mark Duplicates",
         programGroup = DataFlowProgramGroup.class)
 public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
+    private static final long serialVersionUID = 1L;
 
     //Bases below this quality will not be included in picking the best read from a set of duplicates.
     private static final int MIN_BASE_QUAL = 15;
@@ -177,6 +178,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                     .named("pair ends")
                     .withSideInputs(headerPcolView)
                     .of(new DoFn<KV<String, Iterable<Read>>, KV<String, PairedEnds>>() {
+                        private static final long serialVersionUID = 1L;
                         @Override
                         public void processElement(final ProcessContext context) throws Exception {
                             final SAMFileHeader header = context.sideInput(headerPcolView);
@@ -297,6 +299,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                     .named("make keys for reads")
                     .withSideInputs(headerPcolView)
                     .of(new DoFn<Read, KV<String, Read>>() {
+                        private static final long serialVersionUID = 1L;
                         @Override
                         public void processElement(final ProcessContext context) throws Exception {
                             final Read record = context.element();
@@ -382,6 +385,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
      * Special coder for the PairedEnds class.
      */
     private static final class PairedEndsCoder extends AtomicCoder<PairedEnds> {
+        private static final long serialVersionUID = 1L;
         private final KvCoder<Read, Read> delegate =
                 KvCoder.of(GenericJsonCoder.of(Read.class), GenericJsonCoder.of(Read.class));
 

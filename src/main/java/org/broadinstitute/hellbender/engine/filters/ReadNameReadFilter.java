@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.cmdline.Argument;
  * Matching is done by case-sensitive exact match.
  */
 public final class ReadNameReadFilter implements ReadFilter {
+    private static final long serialVersionUID = 1L;
+
      @Argument(fullName = "readName", shortName = "rn", doc="Keep only reads with this read name", optional=false)
     public String readName;
 

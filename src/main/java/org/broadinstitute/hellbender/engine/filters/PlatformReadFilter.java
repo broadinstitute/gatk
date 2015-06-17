@@ -12,6 +12,7 @@ import java.util.Set;
  * (checking if the read's platform tag contains the given string).
  */
 public final class PlatformReadFilter implements ReadFilter {
+    private static final long serialVersionUID = 1L;
     @Argument(fullName = "PLFilterName", shortName = "PLFilterName", doc="Keep reads with RG:PL attribute containing this string", optional=true)
     public Set<String> PLFilterNames;
 

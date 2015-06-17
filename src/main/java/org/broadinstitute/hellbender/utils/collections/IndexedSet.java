@@ -85,6 +85,8 @@ public final class IndexedSet<E> extends AbstractSet<E> implements Set<E> {
      * @throws IllegalArgumentException
      * if {@code values} collection is {@code null} itself, or it contains {@code null}.
      */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
     public IndexedSet(final E... values) {
         Utils.nonNull(values, "input values cannot be null");
 

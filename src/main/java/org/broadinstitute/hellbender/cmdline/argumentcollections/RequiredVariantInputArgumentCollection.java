@@ -14,6 +14,7 @@ import java.util.List;
  * (eg., VCF/BCF files), and require at least one such input.
  */
 public final class RequiredVariantInputArgumentCollection implements ArgumentCollectionDefinition {
+    private static final long serialVersionUID = 1L;
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more files containing variants", optional = false)
     public List<FeatureInput<VariantContext>> variantFiles;

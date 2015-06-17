@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.picard.vcf;
 
+import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
@@ -12,12 +13,12 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.variantcontext.writer.VariantContextWriterFactory;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -89,12 +90,12 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     }
 
     /** Checks (via filename checking) that all files appear to be block compressed files. */
-    private boolean areAllBlockCompressed(final List<File> input) {
+    @VisibleForTesting
+    static boolean areAllBlockCompressed(final List<File> input) {
         for (final File f : input) {
-            // TODO move/expose these methods elsewhere, since VariantContextWriterFactory is deprecated
-            if (VariantContextWriterFactory.isBCFOutput(f) || !VariantContextWriterFactory.isCompressedVcf(f)) return false;
+            if (f == null || f.getName().contains(".bcf") || !AbstractFeatureReader.hasBlockCompressedExtension(f)){
+                return false;}
         }
-
         return true;
     }
 
@@ -267,5 +268,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
         catch (final IOException ioe) {
             throw new RuntimeIOException(ioe);
         }
+
     }
+
 }

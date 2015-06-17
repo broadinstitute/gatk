@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class ContextCovariate implements Covariate {
+    private static final long serialVersionUID = 1L;
     private final static Logger logger = LogManager.getLogger(ContextCovariate.class);
 
     private final int mismatchesContextSize;

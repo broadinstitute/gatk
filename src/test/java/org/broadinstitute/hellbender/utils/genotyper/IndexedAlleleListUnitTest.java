@@ -20,8 +20,8 @@ public final class IndexedAlleleListUnitTest {
 
     @Test
     public void testEmptyConstructor() {
-        final IndexedAlleleList<Allele> subject = new IndexedAlleleList<>();
-        assertAlleleList(subject, Collections.EMPTY_LIST);
+        final AlleleList<Allele> subject = new IndexedAlleleList<>();
+        assertAlleleList(subject, Collections.<Allele>emptyList());
     }
 
     @Test(dataProvider= "alleleCountMaxAlleleLengthData")

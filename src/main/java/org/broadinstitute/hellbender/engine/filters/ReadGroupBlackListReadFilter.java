@@ -18,6 +18,7 @@ import java.util.Map.Entry;
  * would filter out a read with the read group PU:1000G-mpimg-080821-1_1
  */
 public final class ReadGroupBlackListReadFilter implements ReadFilter {
+    private static final long serialVersionUID = 1L;
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 

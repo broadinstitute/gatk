@@ -19,6 +19,7 @@ import java.io.Serializable;
  */
 
 public final class CycleCovariate implements Covariate {
+    private static final long serialVersionUID = 1L;
 
     private final int MAXIMUM_CYCLE_VALUE;
     public static final int CUSHION_FOR_INDELS = 4;

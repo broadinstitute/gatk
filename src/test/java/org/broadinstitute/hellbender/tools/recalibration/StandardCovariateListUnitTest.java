@@ -71,6 +71,7 @@ public final class StandardCovariateListUnitTest extends BaseTest {
 
         //finally, test an anonymous subclass
         Assert.assertEquals(scl.indexByClass(new Covariate() {
+            private static final long serialVersionUID = 1L;
 
             @Override
             public void recordValues(SAMRecord read, ReadCovariates values) {

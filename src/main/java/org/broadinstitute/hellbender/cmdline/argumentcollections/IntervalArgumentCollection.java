@@ -19,7 +19,7 @@ import java.util.List;
 public abstract class IntervalArgumentCollection implements ArgumentCollectionDefinition {
     static private Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
     final protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
-
+    private static final long serialVersionUID = 1L;
 
     /**
      * Subclasses must provide a -L argument and override this to return the results of that argument.

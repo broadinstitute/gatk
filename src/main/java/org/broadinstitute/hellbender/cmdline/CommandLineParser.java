@@ -558,12 +558,12 @@ public final class CommandLineParser {
      * @param clazz the target argument's class.
      * @return never {@code null}.
      */
+    @SuppressWarnings({"unchecked","rawtypes"})
     private String getOptions(final Class<?> clazz) {
         if (clazz == Boolean.class) {
             return getBooleanOptions();
         } else if (clazz.isEnum()) {
-            @SuppressWarnings("unchecked")
-            final Class<? extends Enum> enumClass = (Class<? extends Enum>) clazz;
+            final Class<? extends Enum> enumClass = (Class<? extends Enum>)clazz;
             return getEnumOptions(enumClass);
         } else {
             return "";

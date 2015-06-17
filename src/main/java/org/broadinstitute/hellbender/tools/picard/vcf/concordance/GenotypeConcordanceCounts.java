@@ -169,8 +169,10 @@ public final class GenotypeConcordanceCounts {
     /**
      * Returns the count defined by the truth state set and call state set.
      */
+
+    @SuppressWarnings("unchecked")
     public int getCount(final TruthAndCallStates truthAndCallStates) {
-        final Histogram<TruthAndCallStates>.Bin bin = this.counter.get(truthAndCallStates);
+        final Histogram<TruthAndCallStates>.Bin bin = (Histogram<TruthAndCallStates>.Bin)this.counter.get(truthAndCallStates);
         return (bin == null ? 0 : (int) bin.getValue());
     }
 

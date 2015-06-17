@@ -59,6 +59,7 @@ public final class DataflowUtils {
     public static <I> PTransform<PCollection<? extends I>,PCollection<String>> convertToString(){
         return ParDo.of(
                 new DoFn<I, String>() {
+                    private static final long serialVersionUID = 1L;
                   @Override
                   public void processElement(ProcessContext c) {
                       c.output(c.element().toString());
@@ -99,12 +100,14 @@ public final class DataflowUtils {
      * @return a <code>PCollection<Read></code> with all the reads that overlap the
      * given intervals in the BAM file
      */
+    @SuppressWarnings("unchecked")
     public static PCollection<Read> getReadsFromHadoopBam(final Pipeline pipeline, final List<SimpleInterval> intervals, final ValidationStringency stringency, final String bam) {
         PCollection<KV<LongWritable, SAMRecordWritable>> input =
             (PCollection<KV<LongWritable, SAMRecordWritable>>) pipeline.apply(
-                HadoopIO.Read.from(bam).withFormatClass(AnySAMInputFormat.class)
-                    .withKeyClass(LongWritable.class).withValueClass(SAMRecordWritable.class));
+                    HadoopIO.Read.from(bam).withFormatClass(AnySAMInputFormat.class)
+                            .withKeyClass(LongWritable.class).withValueClass(SAMRecordWritable.class));
         return input.apply(ParDo.of(new DoFn<KV<LongWritable, SAMRecordWritable>, Read>() {
+            private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {
                 SAMRecord sam = c.element().getValue().get();
@@ -152,6 +155,7 @@ public final class DataflowUtils {
      * throw a specified exception on execution
      */
     public static class ThrowExceptionFn<I,O> extends DoFn<I,O> {
+        private static final long serialVersionUID = 1L;
         private final Exception e;
 
         public ThrowExceptionFn(Exception e){
@@ -168,6 +172,7 @@ public final class DataflowUtils {
      * Read a bam file and output each of the reads in it
      */
     public static class LoadReadsFromFileFn extends DoFn<File, Read> {
+        private static final long serialVersionUID = 1L;
         private final static Logger logger = LogManager.getLogger(LoadReadsFromFileFn.class);
 
         private final List<SimpleInterval> intervals;
@@ -229,6 +234,7 @@ public final class DataflowUtils {
         collection.apply(ParDo
                 .named("save to " + fname)
                 .of(new DoFn<T, Void>() {
+                    private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(ProcessContext c) throws IOException {
                         T obj = c.element();
@@ -248,6 +254,7 @@ public final class DataflowUtils {
     public static <T> void saveSingleResultToGCS(final PCollection<T> collection, String gcsDestPath) {
         collection.apply(ParDo.named("save to " + gcsDestPath)
                 .of(new DoFn<T, Void>() {
+                    private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
                         GcsPath dest = GcsPath.fromUri(gcsDestPath);

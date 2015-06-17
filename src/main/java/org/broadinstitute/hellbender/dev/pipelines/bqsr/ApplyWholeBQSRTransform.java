@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
  *                     .and(BaseRecalibratorDataflowUtils.intervalTag, intervals);
  */
 public class ApplyWholeBQSRTransform extends PTransform<PCollectionTuple, PCollection<Read>> {
+    private static final long serialVersionUID = 1L;
 
 
     private final SAMFileHeader header;

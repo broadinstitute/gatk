@@ -11,7 +11,7 @@ import java.util.List;
  * (eg., BAM/SAM/CRAM files).
  */
 public abstract class ReadInputArgumentCollection implements ArgumentCollectionDefinition {
-
+    private static final long serialVersionUID = 1L;
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */

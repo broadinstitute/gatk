@@ -13,6 +13,7 @@ public final class SpecialArgumentsCollection implements ArgumentCollectionDefin
     public static final String HELP_FULLNAME = "help";
     public static final String VERSION_FULLNAME = "version";
     public static final String ARGUMENTS_FILE_FULLNAME = "arguments_file";
+    private static final long serialVersionUID = 1L;
 
     @Argument(shortName = "h", fullName = HELP_FULLNAME, doc= "display the help message", special = true)
     public boolean HELP = false;

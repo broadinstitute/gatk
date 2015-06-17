@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 
 import com.google.common.collect.ImmutableList;
+import com.sun.tools.doclets.internal.toolkit.util.DocFinder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
@@ -22,7 +23,7 @@ public final class CountBasesDataflow extends DataflowReadsPipeline {
     }
 
     @Override
-    protected PTransformSAM getTool() {
+    protected PTransformSAM<Long> getTool() {
         return new CountBasesDataflowTransform();
     }
 

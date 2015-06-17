@@ -14,6 +14,7 @@ import java.io.Serializable;
  */
 public final class SimpleInterval implements Locatable, Serializable {
 
+    private static final long serialVersionUID = 1L;
     public static final char CONTIG_SEPARATOR = ':';
     public static final char START_END_SEPARATOR = '-';
     public static final String END_OF_CONTIG = "+"; //note: needs to be a String because it's used in an endsWith call.
