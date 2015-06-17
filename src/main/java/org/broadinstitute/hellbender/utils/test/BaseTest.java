@@ -39,17 +39,6 @@ public abstract class BaseTest {
     private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
     public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
 
-    // shortname of the project that stores the data and will run the code.
-    // use getDataflowTestProject() to get to it.
-    private final static String DATAFLOW_TEST_PROJECT = System.getenv("HELLBENDER_TEST_PROJECT");
-    // API key for DATAFLOW_TEST_PROJECT
-    private final static String DATAFLOW_TEST_APIKEY = System.getenv("HELLBENDER_TEST_APIKEY");
-    // A writeable folder on the project's GCS
-    private final static String DATAFLOW_TEST_STAGING = System.getenv("HELLBENDER_TEST_STAGING");
-    // A GCS path (on that project) where the test inputs are stored.
-    private final static String DATAFLOW_TEST_INPUTS = System.getenv("HELLBENDER_TEST_INPUTS");
-
-
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
@@ -70,27 +59,40 @@ public abstract class BaseTest {
     // used to seed the genome loc parser with a sequence dictionary
     protected SAMFileHeader hg19Header;
 
-    /** @return DATAFLOW_TEST_PROJECT env. var if defined, throws otherwise. */
+    /**
+     *  name of the google cloud project that stores the data and will run the code, probably broad-dsde-dev
+     *  @return HELLBENDER_TEST_PROJECT env. var if defined, throws otherwise.
+     */
     public String getDataflowTestProject() {
-        return ensureEnvNotNull("DATAFLOW_TEST_PROJECT", DATAFLOW_TEST_PROJECT);
+        return getNonNullEnvironmentVariable("HELLBENDER_TEST_PROJECT");
     }
 
-    /** @return DATAFLOW_TEST_APIKEY env. var if defined, throws otherwise. */
+    /**
+     * API key for HELLBENDER_TEST_PROJECT
+     * @return HELLBENDER_TEST_APIKEY env. var if defined, throws otherwise.
+     */
     public String getDataflowTestApiKey() {
-        return ensureEnvNotNull("DATAFLOW_TEST_APIKEY", DATAFLOW_TEST_APIKEY);
+        return getNonNullEnvironmentVariable("HELLBENDER_TEST_APIKEY");
     }
 
-    /** @return DATAFLOW_TEST_STAGING env. var if defined, throws otherwise. */
+    /**
+     * A writeable folder on the project's GCS, where java files will be staged for execution
+     * @return HELLBENDER_TEST_STAGING env. var if defined, throws otherwise.
+     */
     public String getDataflowTestStaging() {
-        return ensureEnvNotNull("DATAFLOW_TEST_STAGING", DATAFLOW_TEST_STAGING);
+        return getNonNullEnvironmentVariable("HELLBENDER_TEST_STAGING");
     }
 
-    /** @return DATAFLOW_TEST_INPUTS env. var if defined, throws otherwise. */
-    public String getDataflowTestInputs() {
-        return ensureEnvNotNull("DATAFLOW_TEST_INPUTS", DATAFLOW_TEST_INPUTS);
+    /**
+     *  A GCS path where the test inputs are stored
+     *  @return HELLBENDER_TEST_INPUTS env. var if defined, throws otherwise.
+     */
+    public String getDataflowTestInputPath() {
+        return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
     }
 
-    private String ensureEnvNotNull(String envVarName, String value) {
+    private String getNonNullEnvironmentVariable(String envVarName) {
+        String value = System.getenv(envVarName);
         if (null == value) {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
         }
@@ -189,8 +191,6 @@ public abstract class BaseTest {
 
         /**
          * Return all of the data providers in the form expected by TestNG of type class C
-         * @param c
-         * @return
          */
         public static Object[][] getTests(Class<?> c) {
             List<Object[]> params2 = new ArrayList<>();
@@ -229,8 +229,6 @@ public abstract class BaseTest {
 
     /**
      * Log this message so that it shows up inline during output as well as in html reports
-     *
-     * @param message
      */
     public static void log(final String message) {
         Reporter.log(message, true);
