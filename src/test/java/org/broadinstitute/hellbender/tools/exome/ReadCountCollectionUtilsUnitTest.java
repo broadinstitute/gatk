@@ -18,10 +18,11 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class ReadCountCollectionUtilsTest {
+public class ReadCountCollectionUtilsUnitTest {
 
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/tools/exome");
-    private static final File FULL_CORRECT_FILE = new File(TEST_FILE_DIR,"rcc-test-full-counts.txt");
+    private static final File FULL_CORRECT_FILE = new File(TEST_FILE_DIR, "rcc-test-full-counts.txt");
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullFile() throws IOException {
         ReadCountCollectionUtils.parse(null);
@@ -49,7 +50,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testCommentHeaderOnly() throws IOException  {
+    public void testCommentHeaderOnly() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -59,7 +60,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testNoCountColumns() throws IOException  {
+    public void testNoCountColumns() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -70,7 +71,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testNoSpecialColumns() throws IOException  {
+    public void testNoSpecialColumns() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -81,7 +82,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testRepeatedSampleNames() throws IOException  {
+    public void testRepeatedSampleNames() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -92,7 +93,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testRepeatedSpecialColumnNames() throws IOException  {
+    public void testRepeatedSpecialColumnNames() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -103,7 +104,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testReadEmptyCounts() throws IOException  {
+    public void testReadEmptyCounts() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -114,7 +115,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testRepeatedTargets() throws IOException  {
+    public void testRepeatedTargets() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
@@ -142,14 +143,14 @@ public class ReadCountCollectionUtilsTest {
         Assert.assertEquals(subject.columnNames(), Arrays.asList("SAMPLE1", "SAMPLE2"));
         Assert.assertEquals(subject.targets().stream().map(Target::getName).collect(Collectors.toList()), Arrays.asList("tgt_0", "tgt_1"));
         Assert.assertEquals(subject.targets().stream().map(Target::getInterval).collect(Collectors.toList()), Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("2", 200, 300)));
-        Assert.assertEquals(subject.targets().size(),2);
+        Assert.assertEquals(subject.targets().size(), 2);
         final RealMatrix counts = subject.counts();
-        Assert.assertEquals(counts.getRowDimension(),2);
-        Assert.assertEquals(counts.getColumnDimension(),2);
-        Assert.assertEquals(counts.getEntry(0,0),1.1,0.0001);
-        Assert.assertEquals(counts.getEntry(0,1),2.2,0.0001);
-        Assert.assertEquals(counts.getEntry(1,0),-1.1E-7,0.000000001);
-        Assert.assertEquals(counts.getEntry(1,1),-2.2E-8,0.000000001);
+        Assert.assertEquals(counts.getRowDimension(), 2);
+        Assert.assertEquals(counts.getColumnDimension(), 2);
+        Assert.assertEquals(counts.getEntry(0, 0), 1.1, 0.0001);
+        Assert.assertEquals(counts.getEntry(0, 1), 2.2, 0.0001);
+        Assert.assertEquals(counts.getEntry(1, 0), -1.1E-7, 0.000000001);
+        Assert.assertEquals(counts.getEntry(1, 1), -2.2E-8, 0.000000001);
     }
 
     @Test
@@ -167,14 +168,14 @@ public class ReadCountCollectionUtilsTest {
         Assert.assertEquals(subject.columnNames(), Arrays.asList("SAMPLE2", "SAMPLE1"));
         Assert.assertEquals(subject.targets().stream().map(Target::getName).collect(Collectors.toList()), Arrays.asList("tgt_0", "tgt_1"));
         Assert.assertEquals(subject.targets().stream().map(Target::getInterval).collect(Collectors.toList()), Arrays.asList(null, null));
-        Assert.assertEquals(subject.targets().size(),2);
+        Assert.assertEquals(subject.targets().size(), 2);
         final RealMatrix counts = subject.counts();
-        Assert.assertEquals(counts.getRowDimension(),2);
-        Assert.assertEquals(counts.getColumnDimension(),2);
-        Assert.assertEquals(counts.getEntry(0, 0),1.1,0.0001);
-        Assert.assertEquals(counts.getEntry(0, 1),2.2,0.0001);
-        Assert.assertEquals(counts.getEntry(1, 0),-1.1E-7,0.000000001);
-        Assert.assertEquals(counts.getEntry(1,1),-2.2E-8,0.000000001);
+        Assert.assertEquals(counts.getRowDimension(), 2);
+        Assert.assertEquals(counts.getColumnDimension(), 2);
+        Assert.assertEquals(counts.getEntry(0, 0), 1.1, 0.0001);
+        Assert.assertEquals(counts.getEntry(0, 1), 2.2, 0.0001);
+        Assert.assertEquals(counts.getEntry(1, 0), -1.1E-7, 0.000000001);
+        Assert.assertEquals(counts.getEntry(1, 1), -2.2E-8, 0.000000001);
     }
 
     @Test
@@ -198,14 +199,14 @@ public class ReadCountCollectionUtilsTest {
         Assert.assertEquals(subject.columnNames(), Arrays.asList("SAMPLE3", "SAMPLE2"));
         Assert.assertEquals(subject.targets().stream().map(Target::getInterval).collect(Collectors.toList()), Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("2", 200, 300)));
         Assert.assertEquals(subject.targets().stream().map(Target::getName).collect(Collectors.toList()), Arrays.asList("TGT_0", "TGT_1"));
-        Assert.assertEquals(subject.targets().size(),2);
+        Assert.assertEquals(subject.targets().size(), 2);
         final RealMatrix counts = subject.counts();
-        Assert.assertEquals(counts.getRowDimension(),2);
-        Assert.assertEquals(counts.getColumnDimension(),2);
-        Assert.assertEquals(counts.getEntry(0,0),1.1,0.0001);
-        Assert.assertEquals(counts.getEntry(0,1),2.2,0.0001);
-        Assert.assertEquals(counts.getEntry(1,0),-1.1E-7,0.000000001);
-        Assert.assertEquals(counts.getEntry(1,1),-2.2E-8,0.000000001);
+        Assert.assertEquals(counts.getRowDimension(), 2);
+        Assert.assertEquals(counts.getColumnDimension(), 2);
+        Assert.assertEquals(counts.getEntry(0, 0), 1.1, 0.0001);
+        Assert.assertEquals(counts.getEntry(0, 1), 2.2, 0.0001);
+        Assert.assertEquals(counts.getEntry(1, 0), -1.1E-7, 0.000000001);
+        Assert.assertEquals(counts.getEntry(1, 1), -2.2E-8, 0.000000001);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -231,7 +232,7 @@ public class ReadCountCollectionUtilsTest {
     }
 
     private File createTempFile() throws IOException {
-        final File result = File.createTempFile("file",".test");
+        final File result = File.createTempFile("file", ".test");
         result.deleteOnExit();
         return result;
     }

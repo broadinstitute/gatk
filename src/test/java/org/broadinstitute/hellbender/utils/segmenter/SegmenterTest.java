@@ -1,25 +1,18 @@
 package org.broadinstitute.hellbender.utils.segmenter;
 
-import org.testng.annotations.Test;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.apache.commons.csv.*;
 
-public class SegmenterTest {
-    public static File createTempFile(String prefix, String suffix) {
-        try {
-            final File result = File.createTempFile(prefix, suffix, null);
-            result.deleteOnExit();
-            return result;
-        } catch (IOException e) {
-            Assert.fail("Failure on creating temp file.");
-            return null;
-        }
-    }
+public class SegmenterTest extends BaseTest {
 
     @Test
     public void testHCC1143Reduced() throws IOException {
@@ -31,18 +24,7 @@ public class SegmenterTest {
         File segmentFile = RCBSSegmenter.segment(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
         Assert.assertTrue(segmentFile.exists(), "R library was not written to temp file: " + output);
 
-        final CSVParser parser = new CSVParser(new FileReader(output), CSVFormat.TDF.withHeader());
-        final CSVParser expectedParser = new CSVParser(new FileReader(EXPECTED), CSVFormat.TDF.withHeader());
-        final List<CSVRecord> resultRecord = parser.getRecords();
-        final List<CSVRecord> expectedRecord = expectedParser.getRecords();
-        Assert.assertEquals(resultRecord.size(), expectedRecord.size());
-        for (int i=0; i<resultRecord.size(); i++) {
-            Assert.assertEquals(Double.parseDouble(resultRecord.get(i).get("Segment_Mean")),
-                    Double.parseDouble(expectedRecord.get(i).get("Segment_Mean")), 0.0000000000001,
-                    "Different on line: "+(i+2));
-        }
-        parser.close();
-        expectedParser.close();
+        assertEqualSegments(output,EXPECTED);
     }
 
     @Test
@@ -54,19 +36,7 @@ public class SegmenterTest {
         String sampleName = "HCC1143";
         File segmentFile = RCBSSegmenter.segment(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
         Assert.assertTrue(segmentFile.exists(), "R library was not written to temp file: " + output);
-
-        final CSVParser parser = new CSVParser(new FileReader(output), CSVFormat.TDF.withHeader());
-        final CSVParser expectedParser = new CSVParser(new FileReader(EXPECTED), CSVFormat.TDF.withHeader());
-        final List<CSVRecord> resultRecord = parser.getRecords();
-        final List<CSVRecord> expectedRecord = expectedParser.getRecords();
-        Assert.assertEquals(resultRecord.size(), expectedRecord.size());
-        for (int i=0; i<resultRecord.size(); i++) {
-            Assert.assertEquals(Double.parseDouble(resultRecord.get(i).get("Segment_Mean")),
-                    Double.parseDouble(expectedRecord.get(i).get("Segment_Mean")), 0.0000000000001,
-                    "Different on line: "+(i+2));
-        }
-        parser.close();
-        expectedParser.close();
+        assertEqualSegments(output,EXPECTED);
     }
 
     @Test
@@ -79,17 +49,61 @@ public class SegmenterTest {
         File segmentFile = RCBSSegmenter.segment(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
         Assert.assertTrue(segmentFile.exists(), "R library was not written to temp file: " + output);
 
-        final CSVParser parser = new CSVParser(new FileReader(output), CSVFormat.TDF.withHeader());
-        final CSVParser expectedParser = new CSVParser(new FileReader(EXPECTED), CSVFormat.TDF.withHeader());
-        final List<CSVRecord> resultRecord = parser.getRecords();
-        final List<CSVRecord> expectedRecord = expectedParser.getRecords();
-        Assert.assertEquals(resultRecord.size(), expectedRecord.size());
-        for (int i=0; i<resultRecord.size(); i++) {
-            Assert.assertEquals(Double.parseDouble(resultRecord.get(i).get("Segment_Mean")),
-                    Double.parseDouble(expectedRecord.get(i).get("Segment_Mean")), 0.0000000000001,
-                    "Different on line: "+(i+2));
+        assertEqualSegments(output,EXPECTED);
+    }
+
+    /**
+     * Compares the content of two segmenter output files.
+     * @param actualOutput the actual segmenter output containing file.
+     * @param expectedOutput the expected segmenter output containing file.
+     * @throws NullPointerException if either {@code actualOutput} or {@code expectedOutput} is {@code null}.
+     * @throws IOException if any was thrown when reading the input files.
+     * @throws AssertionError if there are significant between both files.
+     */
+    private void assertEqualSegments(final File actualOutput, final File expectedOutput) throws IOException {
+        try (final SegmentReader actual = new SegmentReader(actualOutput);
+             final SegmentReader expected = new SegmentReader(expectedOutput)) {
+            final List<Segment> actualSegments = actual.stream().collect(Collectors.toList());
+            final List<Segment> expectedSegments = expected.stream().collect(Collectors.toList());
+            Assert.assertEquals(actualSegments, expectedSegments);
         }
-        parser.close();
-        expectedParser.close();
+    }
+
+    /**
+     * Represent a Segment in the segmenter output.
+     */
+    private static class Segment {
+        public final double segmentMean;
+
+        public Segment(final double segmentMean) {
+            this.segmentMean = segmentMean;
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            if (!(other instanceof Segment))
+                return false;
+            final Segment otherSegment = (Segment) other;
+            return Math.abs(otherSegment.segmentMean - segmentMean) < 0.0000000000001;
+        }
+
+        @Override
+        public int hashCode() {
+            return Double.hashCode(segmentMean);
+        }
+    }
+
+    /**
+     * Tsv reader for the Segmenter output.
+     */
+    private static class SegmentReader extends TableReader<Segment> {
+        public SegmentReader(final File file) throws IOException {
+            super(file);
+        }
+
+        @Override
+        protected Segment createRecord(DataLine dataLine) {
+            return new Segment(dataLine.getDouble("Segment_Mean"));
+        }
     }
 }
