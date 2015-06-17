@@ -186,17 +186,17 @@ public final class SimpleInterval implements Locatable, Serializable {
     }
 
     /**
-     * Determines whether this interval overlaps the provided interval.
+     * Determines whether this interval overlaps the provided locatable.
      *
      * @param other interval to check
      * @return true if this interval overlaps other, otherwise false
      */
-    public final boolean overlaps( final SimpleInterval other ) {
-        if ( other == null ) {
+    public final boolean overlaps( final Locatable other ) {
+        if ( other == null || other.getContig() == null ) {
             return false;
         }
 
-        return this.contig.equals(other.contig) && this.start <= other.end && other.start <= this.end;
+        return this.contig.equals(other.getContig()) && this.start <= other.getEnd() && other.getStart() <= this.end;
     }
 
     /**
@@ -205,11 +205,11 @@ public final class SimpleInterval implements Locatable, Serializable {
      * @param other interval to check
      * @return true if this interval contains all of the bases spanned by other, otherwise false
      */
-    public final boolean contains( final SimpleInterval other ) {
-        if ( other == null ) {
+    public final boolean contains( final Locatable other ) {
+        if ( other == null || other.getContig() == null ) {
             return false;
         }
 
-        return this.contig.equals(other.contig) && this.start <= other.start && this.end >= other.end;
+        return this.contig.equals(other.getContig()) && this.start <= other.getStart() && this.end >= other.getEnd();
     }
 }
