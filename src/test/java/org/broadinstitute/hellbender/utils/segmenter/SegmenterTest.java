@@ -63,28 +63,28 @@ public class SegmenterTest extends BaseTest {
     private void assertEqualSegments(final File actualOutput, final File expectedOutput) throws IOException {
         try (final SegmentReader actual = new SegmentReader(actualOutput);
              final SegmentReader expected = new SegmentReader(expectedOutput)) {
-            final List<Segment> actualSegments = actual.stream().collect(Collectors.toList());
-            final List<Segment> expectedSegments = expected.stream().collect(Collectors.toList());
-            Assert.assertEquals(actualSegments, expectedSegments);
+            final List<SegmentMean> actualSegmentMeans = actual.stream().collect(Collectors.toList());
+            final List<SegmentMean> expectedSegmentMeans = expected.stream().collect(Collectors.toList());
+            Assert.assertEquals(actualSegmentMeans, expectedSegmentMeans);
         }
     }
 
     /**
      * Represent a Segment in the segmenter output.
      */
-    private static class Segment {
+    private static class SegmentMean {
         public final double segmentMean;
 
-        public Segment(final double segmentMean) {
+        public SegmentMean(final double segmentMean) {
             this.segmentMean = segmentMean;
         }
 
         @Override
         public boolean equals(final Object other) {
-            if (!(other instanceof Segment))
+            if (!(other instanceof SegmentMean))
                 return false;
-            final Segment otherSegment = (Segment) other;
-            return Math.abs(otherSegment.segmentMean - segmentMean) < 0.0000000000001;
+            final SegmentMean otherSegmentMean = (SegmentMean) other;
+            return Math.abs(otherSegmentMean.segmentMean - segmentMean) < 0.0000000000001;
         }
 
         @Override
@@ -96,14 +96,14 @@ public class SegmenterTest extends BaseTest {
     /**
      * Tsv reader for the Segmenter output.
      */
-    private static class SegmentReader extends TableReader<Segment> {
+    private static class SegmentReader extends TableReader<SegmentMean> {
         public SegmentReader(final File file) throws IOException {
             super(file);
         }
 
         @Override
-        protected Segment createRecord(DataLine dataLine) {
-            return new Segment(dataLine.getDouble("Segment_Mean"));
+        protected SegmentMean createRecord(DataLine dataLine) {
+            return new SegmentMean(dataLine.getDouble("Segment_Mean"));
         }
     }
 }

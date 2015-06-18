@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -10,7 +11,7 @@ import org.broadinstitute.hellbender.utils.Utils;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class Target {
+public class Target implements Locatable {
 
     /**
      * The target name. Always specified; never {@code null}.
@@ -23,7 +24,7 @@ public final class Target {
     private final SimpleInterval interval;
 
     /**
-     * Construct a new interval given all its properties.
+     * Construct a new target given all its properties except coverage
      * @param interval the interval.
      * @param name the name of the interval.
      *
@@ -35,6 +36,8 @@ public final class Target {
         this.name = name;
         this.interval = interval;
     }
+
+
 
     /**
      * Returns the interval.
@@ -51,6 +54,19 @@ public final class Target {
     public String getName() {
         return name;
     }
+
+    /*
+     * Three methods to implement Locatable
+     */
+
+    @Override
+    public String getContig() {return interval.getContig(); }
+
+    @Override
+    public int getStart() {return interval.getStart(); }
+
+    @Override
+    public int getEnd() {return interval.getEnd(); }
 
     @Override
     public boolean equals(final Object other) {
