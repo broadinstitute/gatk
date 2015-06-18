@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.Lists;
@@ -14,7 +15,7 @@ public final class DataflowCommandLineProgramUnitTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testUserExceptionUnwrapping(){
-        Pipeline p = GATKTestPipeline.create();
+        Pipeline p = TestPipeline.create(); // use regular pipeline as Spark doesn't return user exceptions yet
         PCollection<String> pstrings = p.apply(Create.of(Lists.newArrayList("Some", "Values")));
         pstrings.apply(DataflowUtils.throwException(new UserException("fail")));
         DataflowCommandLineProgram.runPipeline(p);

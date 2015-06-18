@@ -14,6 +14,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.spark.SparkException;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -81,7 +82,7 @@ public final class ReadsSourceTest extends BaseTest {
         p.run();
     }
 
-    @Test(expectedExceptions = SAMException.class)
+    @Test(expectedExceptions = { SAMException.class, SparkException.class }) // Spark doesn't unwrap exceptions
     public void testGetInvalidPCollectionLocalStrict() throws Throwable {
         // ValidationStringency.STRICT should trigger an error on an invalid file
         try {
