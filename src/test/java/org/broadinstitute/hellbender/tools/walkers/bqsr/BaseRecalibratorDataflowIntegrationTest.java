@@ -66,7 +66,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     }
 
     private String getCloudInputs() {
-        return getDataflowTestInputs() + THIS_TEST_FOLDER;
+        return getDataflowTestInputPath() + THIS_TEST_FOLDER;
     }
 
     @DataProvider(name = "BQSRTest")
