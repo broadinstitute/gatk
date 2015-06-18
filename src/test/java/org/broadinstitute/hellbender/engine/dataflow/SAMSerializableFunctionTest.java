@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.appengine.repackaged.com.google.common.collect.Lists;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
