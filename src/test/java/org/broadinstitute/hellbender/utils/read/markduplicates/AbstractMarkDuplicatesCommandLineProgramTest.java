@@ -16,7 +16,7 @@ import java.io.File;
  */
 public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends CommandLineProgramTest {
 
-    protected static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MarkDuplicates/");
+    public static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MarkDuplicates/");
 
     protected abstract AbstractMarkDuplicatesTester getTester();
 
