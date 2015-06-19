@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
-import com.google.appengine.repackaged.com.google.common.collect.Lists;
+
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
