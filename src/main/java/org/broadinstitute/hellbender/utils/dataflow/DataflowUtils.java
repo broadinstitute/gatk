@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.dataflow;
 
+import com.cloudera.dataflow.hadoop.HadoopIO;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -11,6 +12,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.cloud.genomics.dataflow.utils.GenomicsDatasetOptions;
@@ -18,10 +20,13 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.seqdoop.hadoop_bam.AnySAMInputFormat;
+import org.seqdoop.hadoop_bam.SAMRecordWritable;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,6 +42,8 @@ import java.util.List;
  * Provides a a number of useful PTransforms and DoFns
  */
 public final class DataflowUtils {
+
+    private final static Logger logger = LogManager.getLogger(DataflowUtils.class);
 
     public enum SaveDestination {
         LOCAL_DISK,
@@ -81,6 +88,57 @@ public final class DataflowUtils {
     public static PCollection<Read> getReadsFromLocalBams(final Pipeline pipeline, final List<SimpleInterval> intervals, final ValidationStringency stringency, final List<File> bams) {
         return pipeline.apply(Create.of(bams))
                 .apply(ParDo.of(new LoadReadsFromFileFn(intervals, stringency)));
+    }
+
+    /**
+     * Ingest a BAM file from a Hadoop file system and loads into a
+     * <code>PCollection<Read></code>.
+     * @param pipeline a configured Pipeline
+     * @param intervals intervals to select reads from
+     * @param bam Hadoop file path to read from
+     * @return a <code>PCollection<Read></code> with all the reads that overlap the
+     * given intervals in the BAM file
+     */
+    public static PCollection<Read> getReadsFromHadoopBam(final Pipeline pipeline, final List<SimpleInterval> intervals, final ValidationStringency stringency, final String bam) {
+        PCollection<KV<LongWritable, SAMRecordWritable>> input =
+            (PCollection<KV<LongWritable, SAMRecordWritable>>) pipeline.apply(
+                HadoopIO.Read.from(bam).withFormatClass(AnySAMInputFormat.class)
+                    .withKeyClass(LongWritable.class).withValueClass(SAMRecordWritable.class));
+        return input.apply(ParDo.of(new DoFn<KV<LongWritable, SAMRecordWritable>, Read>() {
+            @Override
+            public void processElement(ProcessContext c) throws Exception {
+                SAMRecord sam = c.element().getValue().get();
+                if (overlaps(sam, intervals)) {
+                    try {
+                        Read read = ReadConverter.makeRead(sam);
+                        c.output(read);
+                    } catch (SAMException e) {
+                        if (stringency == ValidationStringency.STRICT) {
+                            throw e;
+                        } else if (stringency == ValidationStringency.LENIENT) {
+                            logger.info("getReadsFromHadoopBam: " + e.getMessage());
+                        }
+                        // do nothing if silent
+                    }
+                }
+            }
+        }));
+    }
+
+    /**
+     * Tests if a given record overlaps any interval in a collection.
+     */
+    //TODO: remove this method when https://github.com/broadinstitute/hellbender/issues/559 is fixed
+    private static boolean overlaps(SAMRecord record, List<SimpleInterval> intervals) {
+        if (intervals == null || intervals.isEmpty()) {
+            return true;
+        }
+        for (SimpleInterval interval : intervals) {
+            if (interval.overlaps(record)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

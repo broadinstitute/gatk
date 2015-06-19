@@ -15,11 +15,14 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,11 +30,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Class to load reads into a PCollection from either a cloud storage bucket or a local bam file.
+ * Class to load reads into a PCollection from a cloud storage bucket, a Hadoop filesystem, or a local bam file.
  */
 public final class ReadsSource {
     private final String bam;
     private final boolean cloudStorageUrl;
+    private final boolean hadoopUrl;
     private GCSOptions options;
     private Pipeline pipeline;
     private GenomicsFactory.OfflineAuth auth;
@@ -46,6 +50,7 @@ public final class ReadsSource {
         this.pipeline = p;
 
         cloudStorageUrl = BucketUtils.isCloudStorageUrl(bam);
+        hadoopUrl = BucketUtils.isHadoopUrl(bam);
         if(cloudStorageUrl) {
             // The options used to create the pipeline must be GCSOptions to get the secret file.
             try {
@@ -75,6 +80,12 @@ public final class ReadsSource {
                 Storage.Objects storageClient = GCSOptions.Methods.createStorageClient(options, auth);
                 final SamReader reader = BAMIO.openBAM(storageClient, bam, ValidationStringency.DEFAULT_STRINGENCY);
                 return reader.getFileHeader();
+            } catch (IOException e) {
+                throw new GATKException("Failed to read bams header from " + bam + ".", e);
+            }
+        } else if (hadoopUrl) {
+            try {
+                return SAMHeaderReader.readSAMHeaderFrom(new Path(bam), new Configuration());
             } catch (IOException e) {
                 throw new GATKException("Failed to read bams header from " + bam + ".", e);
             }
@@ -108,6 +119,8 @@ public final class ReadsSource {
                     .collect(Collectors.toList());
 
             preads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, stringency, ImmutableList.of(bam));
+        } else if (hadoopUrl) {
+            preads = DataflowUtils.getReadsFromHadoopBam(pipeline, intervals, stringency, bam);
         } else {
             preads = DataflowUtils.getReadsFromLocalBams(pipeline, intervals, stringency, ImmutableList.of(new File(bam)));
         }

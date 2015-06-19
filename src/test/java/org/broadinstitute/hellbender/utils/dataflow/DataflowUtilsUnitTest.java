@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.utils.dataflow;
 
+import com.cloudera.dataflow.spark.EvaluationResult;
+import com.cloudera.dataflow.spark.SparkPipelineRunner;
 import com.google.api.services.genomics.model.Read;
-import com.google.appengine.repackaged.com.google.common.collect.Lists;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -9,7 +10,10 @@ import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
+import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -57,6 +61,21 @@ public final class DataflowUtilsUnitTest extends BaseTest {
         List<Read> output = tester.processBatch(inputFile);
 
         Assert.assertEquals(output, expected);
+    }
+
+
+    @Test
+    public void testGetReadsFromHadoopBam() {
+        List<SimpleInterval> intervals = Lists.newArrayList(new SimpleInterval("chr7:1-202"), new SimpleInterval("chr8:2-202"));
+        File inputFile = new File(getToolTestDataDir(), "example_reads.bam");
+        List<Read> expected = getReadsFromFile(intervals, inputFile);
+
+        Pipeline p = GATKTestPipeline.create();
+        DataflowWorkarounds.registerGenomicsCoders(p);
+        PCollection<Read> reads = DataflowUtils.getReadsFromHadoopBam(p, intervals, ValidationStringency.SILENT,
+                new Path(inputFile.getAbsoluteFile().toURI()).toString());
+        EvaluationResult result = SparkPipelineRunner.create().run(p);
+        Assert.assertEquals(expected, result.get(reads));
     }
 
     public List<Read> getReadsFromFile(List<SimpleInterval> intervals, File inputFile) {

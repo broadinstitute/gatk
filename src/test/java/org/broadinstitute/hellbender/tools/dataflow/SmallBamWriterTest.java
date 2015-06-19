@@ -167,6 +167,6 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     private String getCloudInput() {
-        return getDataflowTestInputs() + THIS_TEST_FOLDER;
+        return getDataflowTestInputPath() + THIS_TEST_FOLDER;
     }
 }

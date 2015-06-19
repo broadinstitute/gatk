@@ -1,10 +1,12 @@
 buildscript {
     repositories {
         mavenCentral()
+        jcenter() // for shadow plugin
      }
 
     dependencies {
         classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.3.1'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.1'
     }
 }
 
@@ -21,6 +23,7 @@ apply plugin: "jacoco"
 apply plugin: 'com.github.kt3k.coveralls'
 apply plugin: 'maven'
 apply plugin: 'signing'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -87,18 +90,20 @@ dependencies {
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.23'
     compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.testng:testng:6.9.4' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.1.0'
-    compile('org.apache.spark:spark-core_2.10:1.3.1') {
-        // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
-        exclude module: 'jul-to-slf4j'
-        exclude module: 'javax.servlet'
-        exclude module: 'servlet-api'
+    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.1.1'
+    compile('org.seqdoop:hadoop-bam:7.0.0') {
+        exclude module: 'htsjdk'
     }
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
-
+    testCompile('org.apache.spark:spark-core_2.10:1.3.1') {
+        // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+    }
 
 }
 
@@ -191,6 +196,19 @@ task fatJar(type: Jar) {
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+}
+
+shadowJar {
+    manifest {
+        attributes 'Implementation-Title': 'Hellbender',
+                'Implementation-Version': version,
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+    baseName = project.name + '-all'
+    classifier = 'spark'
+    mergeServiceFiles()
+    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
+    zip64 true
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
