@@ -68,15 +68,13 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      */
     private boolean indicesAvailable;
 
-
-
     /**
      * Initialize this data source with a single SAM/BAM file
      *
      * @param samFile SAM/BAM file, not null.
      */
     public ReadsDataSource( final File samFile ) {
-        this(samFile != null ? Arrays.asList(samFile) : null);
+        this(samFile != null ? Arrays.asList(samFile) : null, null);
     }
 
     /**
@@ -85,6 +83,26 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
      * @param samFiles SAM/BAM files, not null.
      */
     public ReadsDataSource( final List<File> samFiles ) {
+        this(samFiles, null);
+    }
+
+    /**
+     * Initialize this data source with a single SAM/BAM file and a custom SamReaderFactory
+     *
+     * @param samFile SAM/BAM file, not null.
+     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with validation stringency SILENT is used.
+     */
+    public ReadsDataSource( final File samFile, SamReaderFactory customSamReaderFactory) {
+        this(samFile != null ? Arrays.asList(samFile) : null, customSamReaderFactory);
+    }
+
+    /**
+     * Initialize this data source with multiple SAM/BAM files and a custom SamReaderFactory
+     *
+     * @param samFiles SAM/BAM files, not null.
+     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with validation stringency SILENT is used.
+     */
+    public ReadsDataSource( final List<File> samFiles, SamReaderFactory customSamReaderFactory) {
         if ( samFiles == null || samFiles.size() == 0 ) {
             throw new IllegalArgumentException("ReadsDataSource cannot be created from empty file list");
         }
@@ -93,7 +111,12 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
         backingFiles = new LinkedHashMap<>(samFiles.size() *2);
         indicesAvailable = true;
 
-        for ( File samFile : samFiles ) {
+        final SamReaderFactory samReaderFactory =
+                customSamReaderFactory == null ?
+                    SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT) :
+                    customSamReaderFactory;
+
+        for ( final File samFile : samFiles ) {
             // Ensure each file can be read
             try {
                 IOUtil.assertFileIsReadable(samFile);
@@ -102,8 +125,7 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
                 throw new UserException.CouldNotReadInputFile(samFile, e);
             }
 
-            // TODO: allow SamReader settings to be customized by the client
-            SamReader reader = SamReaderFactory.makeDefault().validationStringency(getValidationStringency()).open(samFile);
+            SamReader reader = samReaderFactory.open(samFile);
 
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {
@@ -117,10 +139,6 @@ public final class ReadsDataSource implements GATKDataSource<SAMRecord>, AutoClo
         // Prepare a header merger only if we have multiple readers
         headerMerger = samFiles.size() > 1 ? createHeaderMerger() : null;
         mergingIterator = null;
-    }
-
-    private ValidationStringency getValidationStringency() {
-        return ValidationStringency.SILENT;
     }
 
     /**

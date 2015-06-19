@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -19,6 +22,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     private static final File FIRST_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private static final File SECOND_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
     private static final File THIRD_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
+    private static final File FIRST_TEST_SAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "invalid_coord_sort_order.sam");
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
@@ -54,6 +58,26 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         // Construction should succeed, since we don't pass in any intervals, but the query should throw.
         ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
         readsSource.query(new SimpleInterval("1", 1, 5));
+    }
+
+    @Test
+    public void testDefaultSamReaderValidationStringency() {
+        // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
+        final ReadsDataSource readsSource = new ReadsDataSource(FIRST_TEST_SAM);
+        //noinspection StatementWithEmptyBody
+        for ( @SuppressWarnings("unused") final SAMRecord read : readsSource ) {
+        }
+    }
+
+    @Test(expectedExceptions = SAMFormatException.class)
+    public void testCustomSamReaderFactory() {
+        // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
+        final ReadsDataSource readsSource = new ReadsDataSource(
+                FIRST_TEST_SAM,
+                SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
+        //noinspection StatementWithEmptyBody
+        for ( @SuppressWarnings("unused") final SAMRecord read : readsSource ) {
+        }
     }
 
     @DataProvider(name = "SingleFileCompleteTraversalData")
