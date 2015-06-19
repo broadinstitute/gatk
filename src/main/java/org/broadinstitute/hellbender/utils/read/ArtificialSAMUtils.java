@@ -178,11 +178,11 @@ public final class ArtificialSAMUtils {
     }
 
     public static SAMRecord createArtificialRead(Cigar cigar) {
-        int length = cigar.getReadLength();
-        byte [] base = {'A'};
-        byte [] qual = {30};
-        byte [] bases = Utils.arrayFromArrayWithLength(base, length);
-        byte [] quals = Utils.arrayFromArrayWithLength(qual, length);
+        final int length = cigar.getReadLength();
+        final byte base = 'A';
+        final byte qual = 30;
+        final byte [] bases = Utils.dupBytes(base, length);
+        final byte [] quals = Utils.dupBytes(qual, length);
         SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader();
         return ArtificialSAMUtils.createArtificialRead(header, "default_read", 0, 10000, bases, quals, cigar.toString());
     }

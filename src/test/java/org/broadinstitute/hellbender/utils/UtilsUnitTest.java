@@ -11,6 +11,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
+import static java.util.Arrays.asList;
+
 /**
  * Testing framework for general purpose utilities class.
  *
@@ -18,9 +20,54 @@ import java.util.*;
 public final class UtilsUnitTest extends BaseTest {
 
     @Test
+    public void testReverse(){
+        Assert.assertEquals(asList(2,1,0), Utils.reverse(asList(0,1,2)));
+    }
+
+    @Test
+    public void testMakePermutations(){
+//        * if objects = [A, B, C]
+//        * if N = 1 => [[A], [B], [C]]
+//        * if N = 2 => [[A, A], [B, A], [C, A], [A, B], [B, B], [C, B], [A, C], [B, C], [C, C]]
+
+        final List<List<String>> p1 = Utils.makePermutations(asList("A", "B", "C"), 1, false);
+        final List<List<String>> r1 = Utils.makePermutations(asList("A", "B", "C"), 1, true);
+
+        final List<List<String>> p2 = Utils.makePermutations(asList("A", "B", "C"), 2, false);
+        final List<List<String>> r2 = Utils.makePermutations(asList("A", "B", "C"), 2, true);
+
+        Assert.assertEquals(asList(asList("A"), asList("B"), asList("C")), p1);
+        Assert.assertEquals(asList(asList("A"), asList("B"), asList("C")), r1);
+
+        Assert.assertEquals(asList(asList("B", "A"), asList("C", "A"), asList("A", "B"), asList("C", "B"), asList("A", "C"), asList("B", "C")), p2);
+        Assert.assertEquals(asList(asList("A", "A"), asList("B", "A"), asList("C", "A"), asList("A", "B"), asList("B", "B"), asList("C", "B"), asList("A", "C"), asList("B", "C"), asList("C", "C")), r2);
+
+    }
+
+    @Test
+    public void testJoinCollection() {
+        Assert.assertEquals("0-1-2", Utils.join("-", asList(0, 1, 2)));
+        Assert.assertEquals("0", Utils.join("-", asList(0)));
+        Assert.assertEquals("", Utils.join("-", asList()));
+    }
+
+    @Test
+    public void testCons() {
+        final List<Integer> list = asList(0, 1, 2, 3);
+        Assert.assertEquals(asList(6, 0, 1, 2, 3), Utils.cons(6, list));
+    }
+
+    @Test
+    public void testDupString() {
+        Assert.assertEquals("ababab", Utils.dupString("ab", 3));
+        Assert.assertEquals("aaa", Utils.dupString('a', 3));
+        Assert.assertEquals(new byte[]{(byte)'a',(byte)'a',(byte)'a'}, Utils.dupBytes((byte)'a', 3));
+    }
+
+    @Test
     public void testAppend() {
-        for ( int leftSize : Arrays.asList(0, 1, 2, 3) ) {
-            for ( final int rightSize : Arrays.asList(0, 1, 2) ) {
+        for ( int leftSize : asList(0, 1, 2, 3) ) {
+            for ( final int rightSize : asList(0, 1, 2) ) {
                 final List<Integer> left = new LinkedList<>();
                 for ( int i = 0; i < leftSize; i++ ) left.add(i);
                 final List<Integer> total = new LinkedList<>();
@@ -41,7 +88,7 @@ public final class UtilsUnitTest extends BaseTest {
     public void testWarnUserLines(){
         String message = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut" +
                 " labore et dolore magna aliqua.";
-        Assert.assertEquals(Utils.warnUserLines(message), new ArrayList<>(Arrays.asList(
+        Assert.assertEquals(Utils.warnUserLines(message), new ArrayList<>(asList(
                 "**********************************************************************",
                 "* WARNING:",
                 "* ",

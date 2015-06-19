@@ -236,9 +236,27 @@ public abstract class BaseTest {
 
     private static final double DEFAULT_FLOAT_TOLERANCE = 1e-1;
 
+
+    /**
+     * Checks whether two double array contain the same values or not.
+     * @param actual actual produced array.
+     * @param expected expected array.
+     * @param tolerance maximum difference between double value to be consider equivalent.
+     */
+    protected static void assertEqualsDoubleArray(final double[] actual, final double[] expected, final double tolerance) {
+        if (expected == null)
+            Assert.assertNull(actual);
+        else {
+            Assert.assertNotNull(actual);
+            Assert.assertEquals(actual.length,expected.length,"array length");
+        }
+        for (int i = 0; i < actual.length; i++)
+            Assert.assertEquals(actual[i],expected[i],tolerance,"array position " + i);
+    }
+
     public static void assertEqualsDoubleSmart(final Object actual, final Double expected, final double tolerance) {
         Assert.assertTrue(actual instanceof Double, "Not a double");
-        assertEqualsDoubleSmart((double)(Double)actual, (double)expected, tolerance);
+        assertEqualsDoubleSmart((double) (Double) actual, (double) expected, tolerance);
     }
 
     public static void assertEqualsDoubleSmart(final double actual, final double expected) {

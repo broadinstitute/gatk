@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -46,7 +47,15 @@ public final class ReadClipperTestUtils {
         if (readLength >= -lengthChange) {
             readLength += lengthChange;
         }
-        return ArtificialSAMUtils.createArtificialRead(Utils.arrayFromArrayWithLength(BASES, readLength), Utils.arrayFromArrayWithLength(QUALS, readLength), cigar.toString());
+        return ArtificialSAMUtils.createArtificialRead(arrayFromArrayWithLength(BASES, readLength), arrayFromArrayWithLength(QUALS, readLength), cigar.toString());
+    }
+
+    private static byte [] arrayFromArrayWithLength(final byte[] array, final int length) {
+        final byte [] output = new byte[length];
+        for (int j = 0; j < length; j++) {
+            output[j] = array[(j % array.length)];
+        }
+        return output;
     }
 
     /**
@@ -85,7 +94,7 @@ public final class ReadClipperTestUtils {
         LinkedList<Cigar> cigarList = new LinkedList<>();
         byte[] cigarCombination = new byte[maximumCigarElements];
 
-        Utils.fillArrayWithByte(cigarCombination, (byte) 0);               // we start off with all 0's in the combination array.
+        Arrays.fill(cigarCombination, (byte) 0);
         int currentIndex = 0;
         while (true) {
             Cigar cigar = createCigarFromCombination(cigarCombination, cigarElements);    // create the cigar
