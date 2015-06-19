@@ -77,23 +77,21 @@ public final class GATKReportUnitTest extends BaseTest {
         boolean result = true;
         File testingSortingTableFile = createTempFile("testSortingFile",".txt");
 
-        try {
-            // Connect print stream to the output stream
-            PrintStream ps = new PrintStream(testingSortingTableFile);
+        // Connect print stream to the output stream
+        try (final PrintStream ps = new PrintStream(testingSortingTableFile)) {
             table.write(ps);
-            ps.close();
         }
         catch (Exception e){
             System.err.println ("Error: " + e.getMessage());
         }
 
         ArrayList<int[]> rows = new ArrayList<>();
-        try {
-            // Open the file
-            FileInputStream fStream = new FileInputStream(testingSortingTableFile);
-            // Get the object of DataInputStream
-            DataInputStream in = new DataInputStream(fStream);
-            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        try (// Open the file
+             final FileInputStream fStream = new FileInputStream(testingSortingTableFile);
+             // Get the object of DataInputStream
+             final DataInputStream in = new DataInputStream(fStream);
+             final BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
+
             String strLine;
             //Read File Line By Line
             while ((strLine = br.readLine()) != null) {
@@ -106,8 +104,6 @@ public final class GATKReportUnitTest extends BaseTest {
                 }
                 rows.add(row);
             }
-            //Close the input stream
-            in.close();
         } catch (Exception e){//Catch exception if any
             System.err.println("Error: " + e.getMessage());
         }
@@ -160,14 +156,14 @@ public final class GATKReportUnitTest extends BaseTest {
         try {
             File file = createTempFile("GATKReportGatherer-UnitTest", ".tbl");
             //System.out.format("The temporary file" + " has been created: %s%n", file);
-            PrintStream ps = new PrintStream(file);
-            report.print(ps);
-            //System.out.println("File successfully outputted!");
-            GATKReport inputRead = new GATKReport(file);
-            //System.out.println("File successfully read!");
-            //inputRead.print(System.out);
-            Assert.assertTrue(report.isSameFormat(inputRead));
-
+            try (PrintStream ps = new PrintStream(file)) {
+                report.print(ps);
+                //System.out.println("File successfully outputted!");
+                GATKReport inputRead = new GATKReport(file);
+                //System.out.println("File successfully read!");
+                //inputRead.print(System.out);
+                Assert.assertTrue(report.isSameFormat(inputRead));
+            }
         } catch (IOException x) {
             System.err.format("IOException: %s%n", x);
         }
@@ -234,15 +230,15 @@ public final class GATKReportUnitTest extends BaseTest {
         try {
             File file = createTempFile("GATKReportGatherer-UnitTest", ".tbl");
             //System.out.format("The temporary file" + " has been created: %s%n", file);
-            PrintStream ps = new PrintStream(file);
-            report1.print(ps);
-            //System.out.println("File successfully outputted!");
-            GATKReport inputRead = new GATKReport(file);
-            //System.out.println("File successfully read!");
-            //inputRead.print(System.out);
-            Assert.assertTrue(report1.isSameFormat(inputRead));
-            Assert.assertTrue(report1.equals(inputRead));
-
+            try (final PrintStream ps = new PrintStream(file)) {
+                report1.print(ps);
+                //System.out.println("File successfully outputted!");
+                GATKReport inputRead = new GATKReport(file);
+                //System.out.println("File successfully read!");
+                //inputRead.print(System.out);
+                Assert.assertTrue(report1.isSameFormat(inputRead));
+                Assert.assertTrue(report1.equals(inputRead));
+            }
         } catch (IOException x) {
             System.err.format("IOException: %s%n", x);
         }

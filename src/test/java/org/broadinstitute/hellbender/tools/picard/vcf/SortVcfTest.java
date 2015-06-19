@@ -99,14 +99,14 @@ public final class SortVcfTest extends AbstractVcfMergingClpTester {
         final VariantContextComparator outputComparator = outputReader.getFileHeader().getVCFRecordComparator();
         VariantContext last = null;
         int variantContextCount = 0;
-        final CloseableIterator<VariantContext> iterator = outputReader.iterator();
-        while (iterator.hasNext()) {
-            final VariantContext outputContext = iterator.next();
-            if (last != null) Assert.assertTrue(outputComparator.compare(last, outputContext) <= 0);
-            last = outputContext;
-            variantContextCount++;
+        try (final CloseableIterator<VariantContext> iterator = outputReader.iterator()) {
+            while (iterator.hasNext()) {
+                final VariantContext outputContext = iterator.next();
+                if (last != null) Assert.assertTrue(outputComparator.compare(last, outputContext) <= 0);
+                last = outputContext;
+                variantContextCount++;
+            }
         }
-        iterator.close();
         Assert.assertEquals(variantContextCount, expectedVariantContextCount);
     }
 }

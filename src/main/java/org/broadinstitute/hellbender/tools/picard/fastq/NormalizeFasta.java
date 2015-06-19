@@ -52,39 +52,37 @@ public final class NormalizeFasta extends CommandLineProgram {
             throw new IllegalArgumentException("Input and output cannot be the same file.");
         }
 
-        final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(INPUT, TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE);
-        final BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
+        try (final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(INPUT, TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE);
+             final BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);) {
 
-        ReferenceSequence seq = null;
-        while ((seq = ref.nextSequence()) != null) {
-            final String name  = seq.getName();
-            final byte[] bases = seq.getBases();
+            ReferenceSequence seq = null;
+            while ((seq = ref.nextSequence()) != null) {
+                final String name  = seq.getName();
+                final byte[] bases = seq.getBases();
 
-            try {
-                out.write(">");
-                out.write(name);
-                out.newLine();
+                try {
+                    out.write(">");
+                    out.write(name);
+                    out.newLine();
 
-                if (bases.length == 0) {
-                    log.warn("Sequence " + name + " contains 0 bases.");
-                }
-                else {
-                    for (int i=0; i<bases.length; ++i) {
-                        if (i > 0 && i % LINE_LENGTH == 0) out.write("\n");
-                        out.write(bases[i]);
+                    if (bases.length == 0) {
+                        log.warn("Sequence " + name + " contains 0 bases.");
                     }
+                    else {
+                        for (int i=0; i<bases.length; ++i) {
+                            if (i > 0 && i % LINE_LENGTH == 0) out.write("\n");
+                            out.write(bases[i]);
+                        }
 
-                    out.write("\n");
+                        out.write("\n");
+                    }
+                }
+                catch (IOException ioe) {
+                    throw new RuntimeIOException("Error writing to file " + OUTPUT.getAbsolutePath(), ioe);
+
                 }
             }
-            catch (IOException ioe) {
-                throw new RuntimeIOException("Error writing to file " + OUTPUT.getAbsolutePath(), ioe);
 
-            }
-        }
-
-        try {
-            out.close();
         } catch (IOException e) {
             throw new RuntimeIOException(e);
         }

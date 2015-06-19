@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -19,6 +22,8 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     private static final File FIRST_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
     private static final File SECOND_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
     private static final File THIRD_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
+    private static final File FOURTH_TEST_BAM = new File(publicTestDir +
+            "org/broadinstitute/hellbender/tools/picard/sam/ValidateSamFile/invalid_coord_sort_order.sam");
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
@@ -56,6 +61,26 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         readsSource.query(new SimpleInterval("1", 1, 5));
     }
 
+    @Test
+    public void testdDefaultSamReaderValidationStringency() {
+        // Default validation stringency = SILENT results in no validation errors on invalid coordinate sort
+        final ReadsDataSource readsSource = new ReadsDataSource(FOURTH_TEST_BAM);
+        //noinspection StatementWithEmptyBody
+        for ( @SuppressWarnings("unused") final SAMRecord read : readsSource ) {
+        }
+    }
+
+    @Test(expectedExceptions = SAMFormatException.class)
+    public void testCustomSamReaderFactory() {
+        // Custom SamReaderFactory with validation stringency = STRICT fails on invalid coordinate sort
+        final ReadsDataSource readsSource = new ReadsDataSource(
+                FOURTH_TEST_BAM,
+                SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT));
+        //noinspection StatementWithEmptyBody
+        for ( @SuppressWarnings("unused") final SAMRecord read : readsSource ) {
+        }
+    }
+
     @DataProvider(name = "SingleFileCompleteTraversalData")
     public Object[][] getSingleFileCompleteTraversalData() {
         // Files, with expected read names in the expected order
@@ -68,22 +93,21 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "SingleFileCompleteTraversalData")
     public void testSingleFileCompleteTraversal( final File samFile, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFile);
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
 
-        List<SAMRecord> reads = new ArrayList<>();
-        for ( SAMRecord read : readsSource ) {
-            reads.add(read);
+            List<SAMRecord> reads = new ArrayList<>();
+            for (SAMRecord read : readsSource) {
+                reads.add(read);
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.getAbsolutePath());
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.getAbsolutePath() + " not equal to expected read");
+            }
         }
-
-        // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.getAbsolutePath());
-
-        // Make sure we got the reads we expected in the right order
-        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-            Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.getAbsolutePath() + " not equal to expected read");
-        }
-
-        readsSource.close();
     }
 
     @DataProvider(name = "SingleFileTraversalWithIntervalsData")
@@ -119,23 +143,22 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
     public void testSingleFileTraversalWithIntervals( final File samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFile);
-        readsSource.setIntervalsForTraversal(intervals);
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            readsSource.setIntervalsForTraversal(intervals);
 
-        List<SAMRecord> reads = new ArrayList<>();
-        for ( SAMRecord read : readsSource ) {
-            reads.add(read);
+            List<SAMRecord> reads = new ArrayList<>();
+            for (SAMRecord read : readsSource) {
+                reads.add(read);
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.getAbsolutePath());
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.getAbsolutePath() + " not equal to expected read");
+            }
         }
-
-        // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.getAbsolutePath());
-
-        // Make sure we got the reads we expected in the right order
-        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-            Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.getAbsolutePath() + " not equal to expected read");
-        }
-
-        readsSource.close();
     }
 
     @DataProvider(name = "SingleFileQueryByIntervalData")
@@ -171,23 +194,22 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "SingleFileQueryByIntervalData")
     public void testSingleFileQueryByInterval( final File samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFile);
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
 
-        List<SAMRecord> reads = new ArrayList<>();
-        Iterator<SAMRecord> queryIterator = readsSource.query(interval);
-        while ( queryIterator.hasNext() ) {
-            reads.add(queryIterator.next());
+            List<SAMRecord> reads = new ArrayList<>();
+            Iterator<SAMRecord> queryIterator = readsSource.query(interval);
+            while (queryIterator.hasNext()) {
+                reads.add(queryIterator.next());
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.getAbsolutePath());
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.getAbsolutePath() + " not equal to expected read");
+            }
         }
-
-        // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.getAbsolutePath());
-
-        // Make sure we got the reads we expected in the right order
-        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-            Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.getAbsolutePath() + " not equal to expected read");
-        }
-
-        readsSource.close();
     }
 
     @DataProvider(name = "MultipleFilesCompleteTraversalData")
@@ -203,22 +225,21 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "MultipleFilesCompleteTraversalData")
     public void testMultipleFilesCompleteTraversal(final List<File> samFiles, final List<String> expectedReadNames) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFiles);
-        List<SAMRecord> reads = new ArrayList<>();
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+            List<SAMRecord> reads = new ArrayList<>();
 
-        for ( SAMRecord read : readsSource ) {
-            reads.add(read);
+            for (SAMRecord read : readsSource) {
+                reads.add(read);
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFiles);
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFiles + " not equal to expected read");
+            }
         }
-
-        // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFiles);
-
-        // Make sure we got the reads we expected in the right order
-        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-            Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFiles + " not equal to expected read");
-        }
-
-        readsSource.close();
     }
 
     @DataProvider(name = "MultipleFilesTraversalWithIntervalsData")
@@ -254,23 +275,22 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
     public void testMultipleFilesTraversalWithIntervals( final List<File> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFiles);
-        readsSource.setIntervalsForTraversal(intervals);
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+            readsSource.setIntervalsForTraversal(intervals);
 
-        List<SAMRecord> reads = new ArrayList<>();
-        for ( SAMRecord read : readsSource ) {
-            reads.add(read);
+            List<SAMRecord> reads = new ArrayList<>();
+            for (SAMRecord read : readsSource) {
+                reads.add(read);
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFiles);
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFiles + " not equal to expected read");
+            }
         }
-
-        // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFiles);
-
-        // Make sure we got the reads we expected in the right order
-        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-            Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFiles + " not equal to expected read");
-        }
-
-        readsSource.close();
     }
 
     @DataProvider(name = "MultipleFilesQueryByIntervalData")
@@ -302,23 +322,21 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "MultipleFilesQueryByIntervalData")
     public void testMultipleFilesQueryByInterval( final List<File> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
-        ReadsDataSource readsSource = new ReadsDataSource(samFiles);
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
 
-        List<SAMRecord> reads = new ArrayList<>();
-        Iterator<SAMRecord> queryIterator = readsSource.query(interval);
-        while ( queryIterator.hasNext() ) {
-            reads.add(queryIterator.next());
+            List<SAMRecord> reads = new ArrayList<>();
+            Iterator<SAMRecord> queryIterator = readsSource.query(interval);
+            while (queryIterator.hasNext()) {
+                reads.add(queryIterator.next());
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFiles);
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFiles + " not equal to expected read");
+            }
         }
-
-        // Make sure we got the right number of reads
-        Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFiles);
-
-        // Make sure we got the reads we expected in the right order
-        for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-            Assert.assertEquals(reads.get(readIndex).getReadName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFiles + " not equal to expected read");
-        }
-
-        readsSource.close();
     }
-
 }

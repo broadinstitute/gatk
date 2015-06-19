@@ -148,48 +148,47 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                                       final File outputFile) {
         final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
         if (createIndex) options.add(Options.INDEX_ON_THE_FLY); else options.remove(Options.INDEX_ON_THE_FLY);
-        final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(outputFile)
-                .setReferenceDictionary(sequenceDictionary).setOptions(options).build();
+        try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(outputFile)
+                .setReferenceDictionary(sequenceDictionary).setOptions(options).build()) {
 
-        final ProgressLogger progress = new ProgressLogger(log, 10000);
-        VariantContext lastContext = null;
-        File lastFile = null;
-        VCFHeader firstHeader = null;
-        VariantContextComparator comparator = null;
+            final ProgressLogger progress = new ProgressLogger(log, 10000);
+            VariantContext lastContext = null;
+            File lastFile = null;
+            VCFHeader firstHeader = null;
+            VariantContextComparator comparator = null;
 
-        for (final File f : inputFiles) {
-            log.debug("Gathering from file: ", f.getAbsolutePath());
-            final VCFFileReader variantReader = new VCFFileReader(f, false);
-            final PeekableIterator<VariantContext> variantIterator = new PeekableIterator<>(variantReader.iterator());
-            final VCFHeader header = variantReader.getFileHeader();
+            for (final File f : inputFiles) {
+                log.debug("Gathering from file: ", f.getAbsolutePath());
+                final VCFFileReader variantReader = new VCFFileReader(f, false);
+                final PeekableIterator<VariantContext> variantIterator = new PeekableIterator<>(variantReader.iterator());
+                final VCFHeader header = variantReader.getFileHeader();
 
-            if (firstHeader == null) {
-                firstHeader = header;
-                out.writeHeader(firstHeader);
-                comparator = new VariantContextComparator(firstHeader.getContigLines());
-            }
-
-            if (lastContext != null && variantIterator.hasNext()) {
-                final VariantContext vc = variantIterator.peek();
-                if (comparator.compare(vc, lastContext) <= 0) {
-                    throw new IllegalStateException("First variant in file " + f.getAbsolutePath() + " is at " + vc.getSource() +
-                            " but last variant in earlier file " + lastFile.getAbsolutePath() + " is at " + lastContext.getSource());
+                if (firstHeader == null) {
+                    firstHeader = header;
+                    out.writeHeader(firstHeader);
+                    comparator = new VariantContextComparator(firstHeader.getContigLines());
                 }
+
+                if (lastContext != null && variantIterator.hasNext()) {
+                    final VariantContext vc = variantIterator.peek();
+                    if (comparator.compare(vc, lastContext) <= 0) {
+                        throw new IllegalStateException("First variant in file " + f.getAbsolutePath() + " is at " + vc.getSource() +
+                                " but last variant in earlier file " + lastFile.getAbsolutePath() + " is at " + lastContext.getSource());
+                    }
+                }
+
+                while (variantIterator.hasNext()) {
+                    lastContext = variantIterator.next();
+                    out.add(lastContext);
+                    progress.record(lastContext.getContig(), lastContext.getStart());
+                }
+
+                lastFile = f;
+
+                CloserUtil.close(variantIterator);
+                CloserUtil.close(variantReader);
             }
-
-            while (variantIterator.hasNext()) {
-                lastContext = variantIterator.next();
-                out.add(lastContext);
-                progress.record(lastContext.getContig(), lastContext.getStart());
-            }
-
-            lastFile = f;
-
-            CloserUtil.close(variantIterator);
-            CloserUtil.close(variantReader);
         }
-
-        out.close();
     }
 
     /**
@@ -199,72 +198,71 @@ public final class GatherVcfs extends PicardCommandLineProgram {
      * blocks (excluding a terminator block if present) are copied directly from input to output.
      */
     private static void gatherWithBlockCopying(final List<File> vcfs, final File output) {
-        try {
-            final FileOutputStream out = new FileOutputStream(output);
+         try (final FileOutputStream out = new FileOutputStream(output)) {
             boolean isFirstFile = true;
 
             for (final File f : vcfs) {
                 log.info("Gathering " + f.getAbsolutePath());
-                final FileInputStream in = new FileInputStream(f);
+                try (final FileInputStream in = new FileInputStream(f)) {
+                    // a) It's good to check that the end of the file is valid and b) we need to know if there's a terminator block and not copy it
+                    final BlockCompressedInputStream.FileTermination term = BlockCompressedInputStream.checkTermination(f);
+                    if (term == BlockCompressedInputStream.FileTermination.DEFECTIVE)
+                        throw new UserException.MalformedFile(f.getAbsolutePath() + " does not have a valid GZIP block at the end of the file.");
 
-                // a) It's good to check that the end of the file is valid and b) we need to know if there's a terminator block and not copy it
-                final BlockCompressedInputStream.FileTermination term = BlockCompressedInputStream.checkTermination(f);
-                if (term == BlockCompressedInputStream.FileTermination.DEFECTIVE) throw new UserException.MalformedFile(f.getAbsolutePath() + " does not have a valid GZIP block at the end of the file.");
+                    if (!isFirstFile) {
+                        final BlockCompressedInputStream blockIn = new BlockCompressedInputStream(in, false);
+                        boolean lastByteNewline = true;
 
-                if (!isFirstFile) {
-                    final BlockCompressedInputStream blockIn = new BlockCompressedInputStream(in, false);
-                    boolean lastByteNewline = true;
+                        while (in.available() > 0) {
+                            // Read a block - blockIn.available() is guaranteed to return the bytes remaining in the block that has been
+                            // read, and since we haven't consumed any yet, that is the block size.
+                            final int blockLength = blockIn.available();
+                            final byte[] blockContents = new byte[blockLength];
+                            final int read = blockIn.read(blockContents);
+                            if (blockLength == 0 || read != blockLength)
+                                throw new IllegalStateException("Could not read available bytes from BlockCompressedInputStream.");
 
-                    while (in.available() > 0) {
-                        // Read a block - blockIn.available() is guaranteed to return the bytes remaining in the block that has been
-                        // read, and since we haven't consumed any yet, that is the block size.
-                        final int blockLength = blockIn.available();
-                        final byte[] blockContents = new byte[blockLength];
-                        final int read = blockIn.read(blockContents);
-                        if (blockLength == 0 || read != blockLength) throw new IllegalStateException("Could not read available bytes from BlockCompressedInputStream.");
+                            // Scan forward within the block to see if we can find the end of the header within this block
+                            int firstNonHeaderByteIndex = -1;
+                            for (int i = 0; i < read; ++i) {
+                                final byte b = blockContents[i];
+                                final boolean thisByteNewline = (b == '\n' || b == '\r');
 
-                        // Scan forward within the block to see if we can find the end of the header within this block
-                        int firstNonHeaderByteIndex = -1;
-                        for (int i=0; i<read; ++i) {
-                            final byte b = blockContents[i];
-                            final boolean thisByteNewline = (b == '\n' || b == '\r');
+                                if (lastByteNewline && !thisByteNewline && b != '#') {
+                                    // Aha!  Found first byte of non-header data in file!
+                                    firstNonHeaderByteIndex = i;
+                                    break;
+                                }
 
-                            if (lastByteNewline && !thisByteNewline && b != '#') {
-                                // Aha!  Found first byte of non-header data in file!
-                                firstNonHeaderByteIndex = i;
-                                break;
+                                lastByteNewline = thisByteNewline;
                             }
 
-                            lastByteNewline = thisByteNewline;
-                        }
-
-                        // If we found the end of the header then write the remainder of this block out as a
-                        // new gzip block and then break out of the while loop
-                        if (firstNonHeaderByteIndex >= 0) {
-                            final BlockCompressedOutputStream blockOut = new BlockCompressedOutputStream(out, null);
-                            blockOut.write(blockContents, firstNonHeaderByteIndex, blockContents.length - firstNonHeaderByteIndex);
-                            blockOut.flush();
-                            // Don't close blockOut because closing underlying stream would break everything
-                            break;
+                            // If we found the end of the header then write the remainder of this block out as a
+                            // new gzip block and then break out of the while loop
+                            if (firstNonHeaderByteIndex >= 0) {
+                                final BlockCompressedOutputStream blockOut = new BlockCompressedOutputStream(out, null);
+                                blockOut.write(blockContents, firstNonHeaderByteIndex, blockContents.length - firstNonHeaderByteIndex);
+                                blockOut.flush();
+                                // Don't close blockOut because closing underlying stream would break everything
+                                break;
+                            }
                         }
                     }
+
+                    // Copy remainder of input stream into output stream
+                    final long currentPos = in.getChannel().position();
+                    final long length = f.length();
+                    final long skipLast = (term == BlockCompressedInputStream.FileTermination.HAS_TERMINATOR_BLOCK) ?
+                            BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK.length : 0;
+                    final long bytesToWrite = length - skipLast - currentPos;
+
+                    IOUtil.transferByStream(in, out, bytesToWrite);
+                    isFirstFile = false;
                 }
-
-                // Copy remainder of input stream into output stream
-                final long currentPos = in.getChannel().position();
-                final long length     = f.length();
-                final long skipLast   = (term == BlockCompressedInputStream.FileTermination.HAS_TERMINATOR_BLOCK) ?
-                        BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK.length : 0;
-                final long bytesToWrite = length - skipLast - currentPos;
-
-                IOUtil.transferByStream(in, out, bytesToWrite);
-                in.close();
-                isFirstFile = false;
             }
 
             // And lastly add the Terminator block and close up
             out.write(BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK);
-            out.close();
         }
         catch (final IOException ioe) {
             throw new RuntimeIOException(ioe);

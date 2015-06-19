@@ -290,112 +290,110 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
         log.info("Finished reading - moving on to scanning for duplicates.");
 
         // Now go through the sorted reads and attempt to find duplicates
-        final PeekableIterator<PairedReadSequence> iterator = new PeekableIterator<>(sorter.iterator());
+        try (final PeekableIterator<PairedReadSequence> iterator = new PeekableIterator<>(sorter.iterator())) {
 
-        final Map<String, Histogram<Integer>> duplicationHistosByLibrary = new HashMap<>();
-        final Map<String, Histogram<Integer>> opticalHistosByLibrary = new HashMap<>();
+            final Map<String, Histogram<Integer>> duplicationHistosByLibrary = new HashMap<>();
+            final Map<String, Histogram<Integer>> opticalHistosByLibrary = new HashMap<>();
 
-        int groupsProcessed = 0;
-        long lastLogTime = System.currentTimeMillis();
-        final int meanGroupSize = Math.max(1, (recordsRead / 2) / (int) pow(4, MIN_IDENTICAL_BASES * 2));
+            int groupsProcessed = 0;
+            long lastLogTime = System.currentTimeMillis();
+            final int meanGroupSize = Math.max(1, (recordsRead / 2) / (int) pow(4, MIN_IDENTICAL_BASES * 2));
 
-        while (iterator.hasNext()) {
-            // Get the next group and split it apart by library
-            final List<PairedReadSequence> group = getNextGroup(iterator);
+            while (iterator.hasNext()) {
+                // Get the next group and split it apart by library
+                final List<PairedReadSequence> group = getNextGroup(iterator);
 
-            if (group.size() > meanGroupSize * MAX_GROUP_RATIO) {
-                final PairedReadSequence prs = group.get(0);
-                log.warn("Omitting group with over " + MAX_GROUP_RATIO + " times the expected mean number of read pairs. " +
-                        "Mean=" + meanGroupSize + ", Actual=" + group.size() + ". Prefixes: " +
-                        StringUtil.bytesToString(prs.read1, 0, MIN_IDENTICAL_BASES) +
-                        " / " +
-                        StringUtil.bytesToString(prs.read1, 0, MIN_IDENTICAL_BASES));
-            } else {
-                final Map<String, List<PairedReadSequence>> sequencesByLibrary = splitByLibrary(group, readGroups);
+                if (group.size() > meanGroupSize * MAX_GROUP_RATIO) {
+                    final PairedReadSequence prs = group.get(0);
+                    log.warn("Omitting group with over " + MAX_GROUP_RATIO + " times the expected mean number of read pairs. " +
+                            "Mean=" + meanGroupSize + ", Actual=" + group.size() + ". Prefixes: " +
+                            StringUtil.bytesToString(prs.read1, 0, MIN_IDENTICAL_BASES) +
+                            " / " +
+                            StringUtil.bytesToString(prs.read1, 0, MIN_IDENTICAL_BASES));
+                } else {
+                    final Map<String, List<PairedReadSequence>> sequencesByLibrary = splitByLibrary(group, readGroups);
 
-                // Now process the reads by library
-                for (final Map.Entry<String, List<PairedReadSequence>> entry : sequencesByLibrary.entrySet()) {
-                    final String library = entry.getKey();
-                    final List<PairedReadSequence> seqs = entry.getValue();
+                    // Now process the reads by library
+                    for (final Map.Entry<String, List<PairedReadSequence>> entry : sequencesByLibrary.entrySet()) {
+                        final String library = entry.getKey();
+                        final List<PairedReadSequence> seqs = entry.getValue();
 
-                    Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
-                    Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
-                    if (duplicationHisto == null) {
-                        duplicationHisto = new Histogram<>("duplication_group_count", library);
-                        opticalHisto = new Histogram<>("duplication_group_count", "optical_duplicates");
-                        duplicationHistosByLibrary.put(library, duplicationHisto);
-                        opticalHistosByLibrary.put(library, opticalHisto);
-                    }
-
-                    // Figure out if any reads within this group are duplicates of one another
-                    for (int i = 0; i < seqs.size(); ++i) {
-                        final PairedReadSequence lhs = seqs.get(i);
-                        if (lhs == null) continue;
-                        final List<PairedReadSequence> dupes = new ArrayList<>();
-
-                        for (int j = i + 1; j < seqs.size(); ++j) {
-                            final PairedReadSequence rhs = seqs.get(j);
-                            if (rhs == null) continue;
-
-                            if (matches(lhs, rhs, MAX_DIFF_RATE)) {
-                                dupes.add(rhs);
-                                seqs.set(j, null);
-                            }
+                        Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
+                        Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
+                        if (duplicationHisto == null) {
+                            duplicationHisto = new Histogram<>("duplication_group_count", library);
+                            opticalHisto = new Histogram<>("duplication_group_count", "optical_duplicates");
+                            duplicationHistosByLibrary.put(library, duplicationHisto);
+                            opticalHistosByLibrary.put(library, opticalHisto);
                         }
 
-                        if (dupes.size() > 0) {
-                            dupes.add(lhs);
-                            final int duplicateCount = dupes.size();
-                            duplicationHisto.increment(duplicateCount);
+                        // Figure out if any reads within this group are duplicates of one another
+                        for (int i = 0; i < seqs.size(); ++i) {
+                            final PairedReadSequence lhs = seqs.get(i);
+                            if (lhs == null) continue;
+                            final List<PairedReadSequence> dupes = new ArrayList<>();
 
-                            final boolean[] flags = opticalDuplicateFinder.findOpticalDuplicates(dupes);
-                            for (final boolean b : flags) {
-                                if (b) opticalHisto.increment(duplicateCount);
+                            for (int j = i + 1; j < seqs.size(); ++j) {
+                                final PairedReadSequence rhs = seqs.get(j);
+                                if (rhs == null) continue;
+
+                                if (matches(lhs, rhs, MAX_DIFF_RATE)) {
+                                    dupes.add(rhs);
+                                    seqs.set(j, null);
+                                }
                             }
-                        } else {
-                            duplicationHisto.increment(1);
+
+                            if (dupes.size() > 0) {
+                                dupes.add(lhs);
+                                final int duplicateCount = dupes.size();
+                                duplicationHisto.increment(duplicateCount);
+
+                                final boolean[] flags = opticalDuplicateFinder.findOpticalDuplicates(dupes);
+                                for (final boolean b : flags) {
+                                    if (b) opticalHisto.increment(duplicateCount);
+                                }
+                            } else {
+                                duplicationHisto.increment(1);
+                            }
                         }
+                    }
+
+                    ++groupsProcessed;
+                    if (lastLogTime < System.currentTimeMillis() - 60000) {
+                        log.info("Processed " + groupsProcessed + " groups.");
+                        lastLogTime = System.currentTimeMillis();
+                    }
+                }
+            }
+            sorter.cleanup();
+
+            final MetricsFile<DuplicationMetrics, Integer> file = getMetricsFile();
+            for (final String library : duplicationHistosByLibrary.keySet()) {
+                final Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
+                final Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
+                final DuplicationMetrics metrics = new DuplicationMetrics();
+                metrics.LIBRARY = library;
+
+                // Filter out any bins that have only a single entry in them and calcu
+                for (final Integer bin : duplicationHisto.keySet()) {
+                    final double duplicateGroups = duplicationHisto.get(bin).getValue();
+                    final double opticalDuplicates = opticalHisto.get(bin) == null ? 0 : opticalHisto.get(bin).getValue();
+
+                    if (duplicateGroups > 1) {
+                        metrics.READ_PAIRS_EXAMINED += (bin * duplicateGroups);
+                        metrics.READ_PAIR_DUPLICATES += ((bin - 1) * duplicateGroups);
+                        metrics.READ_PAIR_OPTICAL_DUPLICATES += opticalDuplicates;
                     }
                 }
 
-                ++groupsProcessed;
-                if (lastLogTime < System.currentTimeMillis() - 60000) {
-                    log.info("Processed " + groupsProcessed + " groups.");
-                    lastLogTime = System.currentTimeMillis();
-                }
-            }
-        }
+                metrics.calculateDerivedMetrics();
+                file.addMetric(metrics);
+                file.addHistogram(duplicationHisto);
 
-        iterator.close();
-        sorter.cleanup();
-
-        final MetricsFile<DuplicationMetrics, Integer> file = getMetricsFile();
-        for (final String library : duplicationHistosByLibrary.keySet()) {
-            final Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
-            final Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
-            final DuplicationMetrics metrics = new DuplicationMetrics();
-            metrics.LIBRARY = library;
-
-            // Filter out any bins that have only a single entry in them and calcu
-            for (final Integer bin : duplicationHisto.keySet()) {
-                final double duplicateGroups = duplicationHisto.get(bin).getValue();
-                final double opticalDuplicates = opticalHisto.get(bin) == null ? 0 : opticalHisto.get(bin).getValue();
-
-                if (duplicateGroups > 1) {
-                    metrics.READ_PAIRS_EXAMINED += (bin * duplicateGroups);
-                    metrics.READ_PAIR_DUPLICATES += ((bin - 1) * duplicateGroups);
-                    metrics.READ_PAIR_OPTICAL_DUPLICATES += opticalDuplicates;
-                }
             }
 
-            metrics.calculateDerivedMetrics();
-            file.addMetric(metrics);
-            file.addHistogram(duplicationHisto);
-
+            file.write(OUTPUT);
         }
-
-        file.write(OUTPUT);
-
         return null;
     }
 

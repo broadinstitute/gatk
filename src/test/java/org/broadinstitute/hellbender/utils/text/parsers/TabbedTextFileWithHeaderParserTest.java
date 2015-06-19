@@ -20,14 +20,13 @@ public final class TabbedTextFileWithHeaderParserTest {
 
         final File tmp = File.createTempFile("tabbedTextTest.", ".txt");
         tmp.deleteOnExit();
-        final BufferedWriter out = new BufferedWriter(new FileWriter(tmp));
+        try (final BufferedWriter out = new BufferedWriter(new FileWriter(tmp))) {
 
-        for (final String[] fields : data) {
-            out.write(StringUtil.join("\t", fields));
-            out.newLine();
+            for (final String[] fields : data) {
+                out.write(StringUtil.join("\t", fields));
+                out.newLine();
+            }
         }
-
-        out.close();
 
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(tmp);
         for (final String col : data[0]) Assert.assertTrue(parser.hasColumn(col));
@@ -54,14 +53,14 @@ public final class TabbedTextFileWithHeaderParserTest {
 
         final File tmp = File.createTempFile("tabbedTextTest.", ".txt");
         tmp.deleteOnExit();
-        final BufferedWriter out = new BufferedWriter(new FileWriter(tmp));
 
-        for (final String[] fields : data) {
-            out.write(StringUtil.join("\t", fields));
-            out.newLine();
+        try (final BufferedWriter out = new BufferedWriter(new FileWriter(tmp))) {
+
+            for (final String[] fields : data) {
+                out.write(StringUtil.join("\t", fields));
+                out.newLine();
+            }
         }
-
-        out.close();
 
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(tmp, headers);
         for (final String col : headers) Assert.assertTrue(parser.hasColumn(col));

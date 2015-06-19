@@ -40,31 +40,31 @@ public final class RenameSampleInVcf extends PicardCommandLineProgram {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
-        final VCFFileReader in = new VCFFileReader(INPUT);
-        final VCFHeader header = in.getFileHeader();
+        try (final VCFFileReader in = new VCFFileReader(INPUT)) {
+            final VCFHeader header = in.getFileHeader();
 
-        if (header.getGenotypeSamples().size() > 1) {
-            throw new IllegalArgumentException("Input VCF must be single-sample.");
+            if (header.getGenotypeSamples().size() > 1) {
+                throw new IllegalArgumentException("Input VCF must be single-sample.");
+            }
+
+            if (OLD_SAMPLE_NAME != null && !OLD_SAMPLE_NAME.equals(header.getGenotypeSamples().get(0))) {
+                throw new IllegalArgumentException("Input VCF did not contain expected sample. Contained: " + header.getGenotypeSamples().get(0));
+            }
+
+            final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
+            if (CREATE_INDEX) options.add(Options.INDEX_ON_THE_FLY);
+            else options.remove(Options.INDEX_ON_THE_FLY);
+
+            final VCFHeader outHeader = new VCFHeader(header.getMetaDataInInputOrder(), CollectionUtil.makeList(NEW_SAMPLE_NAME));
+            try (final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(OUTPUT)
+                    .setReferenceDictionary(outHeader.getSequenceDictionary()).setOptions(options).build()) {
+                out.writeHeader(outHeader);
+
+                for (final VariantContext ctx : in) {
+                    out.add(ctx);
+                }
+            }
         }
-
-        if (OLD_SAMPLE_NAME != null && !OLD_SAMPLE_NAME.equals(header.getGenotypeSamples().get(0))) {
-            throw new IllegalArgumentException("Input VCF did not contain expected sample. Contained: " + header.getGenotypeSamples().get(0));
-        }
-
-        final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
-        if (CREATE_INDEX) options.add(Options.INDEX_ON_THE_FLY); else options.remove(Options.INDEX_ON_THE_FLY);
-
-        final VCFHeader outHeader = new VCFHeader(header.getMetaDataInInputOrder(), CollectionUtil.makeList(NEW_SAMPLE_NAME));
-        final VariantContextWriter out = new VariantContextWriterBuilder().setOutputFile(OUTPUT)
-                .setReferenceDictionary(outHeader.getSequenceDictionary()).setOptions(options).build();
-        out.writeHeader(outHeader);
-
-        for (final VariantContext ctx : in) {
-            out.add(ctx);
-        }
-
-        out.close();
-        in.close();
 
         return null;
     }

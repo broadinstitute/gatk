@@ -266,11 +266,11 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private File createInputFile() {
         // Create the input file
         final File input = new File(outputDir, "input.sam");
-        final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(samRecordSetBuilder.getHeader(), true, input);
-        for (final SAMRecord record : samRecordSetBuilder.getRecords()) {
-            writer.addAlignment(record);
+        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(samRecordSetBuilder.getHeader(), true, input)) {
+            for (final SAMRecord record : samRecordSetBuilder.getRecords()) {
+                writer.addAlignment(record);
+            }
         }
-        writer.close();
         return input;
     }
 

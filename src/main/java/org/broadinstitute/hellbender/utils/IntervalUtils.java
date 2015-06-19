@@ -169,14 +169,12 @@ public final class IntervalUtils {
                 if ( isPicardInterval ) // definitely a picard file, but we failed to parse
                     throw new UserException.CouldNotReadInputFile(inputFile, e);
                 else {
-                    try {
-                        XReadLines reader = new XReadLines(new File(file_name));
-                        for(String line: reader) {
-                            if ( line.trim().length() > 0 ) {
+                    try (XReadLines reader = new XReadLines(new File(file_name))) {
+                        for (String line : reader) {
+                            if (line.trim().length() > 0) {
                                 ret.add(glParser.parseGenomeLoc(line));
                             }
                         }
-                        reader.close();
                     }
                     catch (IOException e2) {
                         throw new UserException.CouldNotReadInputFile(inputFile, e2);

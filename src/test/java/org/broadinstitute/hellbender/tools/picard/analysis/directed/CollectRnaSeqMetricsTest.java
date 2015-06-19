@@ -46,9 +46,9 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         builder.addFrag("ignoredFrag", builder.getHeader().getSequenceIndex(ignoredSequence), 1, false);
 
         final File samFile = File.createTempFile("tmp.collectRnaSeqMetrics.", ".sam");
-        final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(builder.getHeader(), false, samFile);
-        for (final SAMRecord rec: builder.getRecords()) samWriter.addAlignment(rec);
-        samWriter.close();
+        try (final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(builder.getHeader(), false, samFile)) {
+            for (final SAMRecord rec : builder.getRecords()) samWriter.addAlignment(rec);
+        }
 
         // Create an interval list with one ribosomal interval.
         final Interval rRnaInterval = new Interval(sequence, 300, 520, true, "rRNA");
@@ -117,9 +117,9 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         builder.addFrag("ignoredFrag", builder.getHeader().getSequenceIndex(ignoredSequence), 1, false);
 
         final File samFile = File.createTempFile("tmp.collectRnaSeqMetrics.", ".sam");
-        final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(builder.getHeader(), false, samFile);
-        for (final SAMRecord rec: builder.getRecords()) samWriter.addAlignment(rec);
-        samWriter.close();
+        try (final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(builder.getHeader(), false, samFile)) {
+            for (final SAMRecord rec : builder.getRecords()) samWriter.addAlignment(rec);
+        }
 
         // Create an interval list with one ribosomal interval.
         final Interval rRnaInterval = new Interval(sequence, 300, 520, true, "rRNA");
@@ -208,9 +208,9 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
 
         final File refFlatFile = File.createTempFile("tmp.", ".refFlat");
         refFlatFile.deleteOnExit();
-        final PrintStream refFlatStream = new PrintStream(refFlatFile);
-        refFlatStream.println(StringUtil.join("\t", refFlatFields));
-        refFlatStream.close();
+        try (final PrintStream refFlatStream = new PrintStream(refFlatFile)) {
+            refFlatStream.println(StringUtil.join("\t", refFlatFields));
+        }
 
         return refFlatFile;
     }

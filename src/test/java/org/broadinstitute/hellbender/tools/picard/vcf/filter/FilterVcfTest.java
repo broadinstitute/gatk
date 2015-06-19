@@ -108,14 +108,14 @@ public final class FilterVcfTest extends CommandLineProgramTest {
     /** Consumes a VCF and returns a ListMap where each they keys are the IDs of filtered out sites and the values are the set of filters. */
     ListMap<String,String> slurpFilters(final File vcf) {
         final ListMap<String,String> map = new ListMap<>();
-        final VCFFileReader in = new VCFFileReader(vcf, false);
-        for (final VariantContext ctx : in) {
-            if (ctx.isNotFiltered()) continue;
-            for (final String filter : ctx.getFilters()) {
-                map.add(ctx.getID(), filter);
+        try (final VCFFileReader in = new VCFFileReader(vcf, false)) {
+            for (final VariantContext ctx : in) {
+                if (ctx.isNotFiltered()) continue;
+                for (final String filter : ctx.getFilters()) {
+                    map.add(ctx.getID(), filter);
+                }
             }
         }
-        in.close();
         return map;
     }
 }
