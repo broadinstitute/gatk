@@ -5,8 +5,9 @@ buildscript {
      }
 
     dependencies {
-        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.3.1'
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.4.0'
         classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.1'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.10.1'  //used for identifying dependencies that need updating
     }
 }
 
@@ -24,6 +25,7 @@ apply plugin: 'com.github.kt3k.coveralls'
 apply plugin: 'maven'
 apply plugin: 'signing'
 apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'com.github.ben-manes.versions'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -72,33 +74,33 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
-    compile 'com.github.samtools:htsjdk:1.132'
-    compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.10'
-    compile 'com.google.cloud.genomics:gatk-tools-java:1.0'
-    compile 'org.apache.logging.log4j:log4j-api:2.2'
-    compile 'org.apache.logging.log4j:log4j-core:2.2'
+    compile 'com.github.samtools:htsjdk:1.134'
+    compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.11'
+    compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
+    compile 'org.apache.logging.log4j:log4j-api:2.3'
+    compile 'org.apache.logging.log4j:log4j-core:2.3'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.apache.commons:commons-math3:3.5'
     compile 'org.apache.commons:commons-collections4:4.0'
     compile 'org.apache.commons:commons-vfs2:2.0'
     compile 'commons-io:commons-io:2.4'
-    compile 'org.reflections:reflections:0.9.9'
+    compile 'org.reflections:reflections:0.9.10'
     compile 'net.sf.jopt-simple:jopt-simple:4.9-beta-1'
     compile 'com.google.guava:guava:18.0'
-    compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150414'
-    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev39-1.20.0'
-    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.23'
+    compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150602'
+    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev50-1.19.0'
+    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.25'
     compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.testng:testng:6.9.4' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.1.1'
-    compile('org.seqdoop:hadoop-bam:7.0.0') {
+    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.2.0'
+    compile('org.seqdoop:hadoop-bam:7.1.0') {
         exclude module: 'htsjdk'
     }
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
-    testCompile('org.apache.spark:spark-core_2.10:1.3.1') {
+    testCompile('org.apache.spark:spark-core_2.10:1.4.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'

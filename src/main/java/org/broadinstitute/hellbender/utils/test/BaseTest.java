@@ -30,7 +30,7 @@ public abstract class BaseTest {
 
     static {
         // set properties for the local Spark runner
-        System.setProperty("spark.driver.allowMultipleContexts", "true");
+        System.setProperty("dataflow.spark.test.reuseSparkContext", "true");
         System.setProperty("spark.ui.enabled", "false");
     }
 

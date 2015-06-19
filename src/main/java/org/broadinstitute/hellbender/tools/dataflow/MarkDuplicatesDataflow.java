@@ -416,8 +416,8 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         }
 
         @Override
-        public boolean isDeterministic() {
-            return delegate.isDeterministic();
+        public void verifyDeterministic() throws NonDeterministicException {
+            delegate.verifyDeterministic();
         }
     }
 
