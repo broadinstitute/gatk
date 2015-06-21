@@ -78,33 +78,82 @@ public final class CommandLineParserTest {
         
     }
 
+    @CommandLineProgramProperties(
+            usage = "[oscillation_frequency]\n\nResets oscillation frequency.\n",
+            usageShort = "Reset oscillation frequency."
+    )
+    public class RequiredOnlyArguments {
+        @Argument(doc="Oscillation frequency.", optional = false)
+        public String OSCILLATION_FREQUENCY;
+    }
 
     @Test
-    public void testUsage() {
+    public void testRequiredOnlyUsage() {
+        final RequiredOnlyArguments nr = new RequiredOnlyArguments();
+        final CommandLineParser clp = new CommandLineParser(nr);
+        final String out = BaseTest.captureStderr(() -> clp.usage(System.err, false)); // without common args
+        final int reqIndex = out.indexOf("Required Arguments:");
+        Assert.assertTrue(reqIndex > 0);
+        Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) < 0);
+    }
+
+    @CommandLineProgramProperties(
+            usage = "[oscillation_frequency]\n\nRecalibrates overthruster oscillation. \n",
+            usageShort = "Recalibrates the overthruster."
+    )
+    public class OptionalOnlyArguments {
+        @Argument(doc="Oscillation frequency.", optional = true)
+        public String OSCILLATION_FREQUENCY = "20";
+    }
+
+    @Test
+    public void testOptionalOnlyUsage() {
+        final OptionalOnlyArguments oo = new OptionalOnlyArguments();
+        final CommandLineParser clp = new CommandLineParser(oo);
+        final String out = BaseTest.captureStderr(() -> clp.usage(System.err, false)); // without common args
+        final int reqIndex = out.indexOf("Required Arguments:");
+        Assert.assertTrue(reqIndex < 0);
+        Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) > 0);
+    }
+
+    /**
+     * Validate the text emitted by a call to usage by ensuring that required arguments are
+     * emitted before optional ones.
+     */
+    private void validateRequiredOptionalUsage(final CommandLineParser clp, final boolean withDefault) {
+        final String out = BaseTest.captureStderr(() -> clp.usage(System.err, withDefault)); // with common args
+        // Required arguments should appear before optional ones
+        final int reqIndex = out.indexOf("Required Arguments:");
+        Assert.assertTrue(reqIndex > 0);
+        Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) > 0);
+    }
+
+    @Test
+    public void testRequiredOptionalWithDefaultUsage() {
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        clp.usage(System.out, false);
+        validateRequiredOptionalUsage(clp, true); // with common args
     }
 
     @Test
-    public void testUsageWithDefault() {
+    public void testRequiredOptionalWithoutDefaultUsage() {
         final FrobnicateArguments fo = new FrobnicateArguments();
         final CommandLineParser clp = new CommandLineParser(fo);
-        clp.usage(System.out, true);
+        validateRequiredOptionalUsage(clp, false); // without common args
     }
 
     @Test
-    public void testUsageWithoutPositional() {
+    public void testWithoutPositionalWithDefaultUsage() {
         final ArgumentsWithoutPositional fo = new ArgumentsWithoutPositional();
         final CommandLineParser clp = new CommandLineParser(fo);
-        clp.usage(System.out, false);
+        validateRequiredOptionalUsage(clp, true); // with common args
     }
 
     @Test
-    public void testUsageWithoutPositionalWithDefault() {
+    public void testWithoutPositionalWithoutDefaultUsage() {
         final ArgumentsWithoutPositional fo = new ArgumentsWithoutPositional();
         final CommandLineParser clp = new CommandLineParser(fo);
-        clp.usage(System.out, true);
+        validateRequiredOptionalUsage(clp, false); // without commoon args
     }
 
     @Test
