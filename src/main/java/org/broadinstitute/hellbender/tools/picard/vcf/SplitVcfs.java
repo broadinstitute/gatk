@@ -81,34 +81,33 @@ public final class SplitVcfs extends PicardCommandLineProgram {
         if (CREATE_INDEX)
             builder.setOption(Options.INDEX_ON_THE_FLY);
 
-        final VariantContextWriter snpWriter = builder.setOutputFile(SNP_OUTPUT).build();
-        final VariantContextWriter indelWriter = builder.setOutputFile(INDEL_OUTPUT).build();
-        snpWriter.writeHeader(fileHeader);
-        indelWriter.writeHeader(fileHeader);
+        try (final VariantContextWriter snpWriter = builder.setOutputFile(SNP_OUTPUT).build();
+             final VariantContextWriter indelWriter = builder.setOutputFile(INDEL_OUTPUT).build()) {
+            snpWriter.writeHeader(fileHeader);
+            indelWriter.writeHeader(fileHeader);
 
-        int incorrectVariantCount = 0;
+            int incorrectVariantCount = 0;
 
-        final CloseableIterator<VariantContext> iterator = fileReader.iterator();
-        while (iterator.hasNext()) {
-            final VariantContext context = iterator.next();
-            if (context.isIndel()) indelWriter.add(context);
-            else if (context.isSNP()) snpWriter.add(context);
-            else {
-                if (STRICT) throw new IllegalStateException("Found a record with type " + context.getType().name());
-                else incorrectVariantCount++;
+            final CloseableIterator<VariantContext> iterator = fileReader.iterator();
+            while (iterator.hasNext()) {
+                final VariantContext context = iterator.next();
+                if (context.isIndel()) indelWriter.add(context);
+                else if (context.isSNP()) snpWriter.add(context);
+                else {
+                    if (STRICT) throw new IllegalStateException("Found a record with type " + context.getType().name());
+                    else incorrectVariantCount++;
+                }
+
+                progress.record(context.getContig(), context.getStart());
             }
 
-            progress.record(context.getContig(), context.getStart());
-        }
+            if (incorrectVariantCount > 0) {
+                log.debug("Found " + incorrectVariantCount + " records that didn't match SNP or INDEL");
+            }
 
-        if (incorrectVariantCount > 0) {
-            log.debug("Found " + incorrectVariantCount + " records that didn't match SNP or INDEL");
+            CloserUtil.close(iterator);
+            CloserUtil.close(fileReader);
         }
-
-        CloserUtil.close(iterator);
-        CloserUtil.close(fileReader);
-        snpWriter.close();
-        indelWriter.close();
 
         return null;
     }

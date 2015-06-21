@@ -110,19 +110,19 @@ public final class MergeSamFiles extends PicardCommandLineProgram {
         if (USE_THREADING) {
             samFileWriterFactory.setUseAsyncIo(true);
         }
-        final SAMFileWriter out = samFileWriterFactory.makeSAMOrBAMWriter(header, presorted, OUTPUT);
+        try (final SAMFileWriter out = samFileWriterFactory.makeSAMOrBAMWriter(header, presorted, OUTPUT)) {
 
-        // Lastly loop through and write out the records
-        final ProgressLogger progress = new ProgressLogger(log, PROGRESS_INTERVAL);
-        while (iterator.hasNext()) {
-            final SAMRecord record = iterator.next();
-            out.addAlignment(record);
-            progress.record(record);
+            // Lastly loop through and write out the records
+            final ProgressLogger progress = new ProgressLogger(log, PROGRESS_INTERVAL);
+            while (iterator.hasNext()) {
+                final SAMRecord record = iterator.next();
+                out.addAlignment(record);
+                progress.record(record);
+            }
+
+            log.info("Finished reading inputs.");
+            CloserUtil.close(readers);
         }
-
-        log.info("Finished reading inputs.");
-        CloserUtil.close(readers);
-        out.close();
         return null;
     }
 

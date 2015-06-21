@@ -39,20 +39,20 @@ public final class SortSam extends PicardCommandLineProgram {
         final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
         ;
         reader.getFileHeader().setSortOrder(SORT_ORDER);
-        final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, OUTPUT);
-        writer.setProgressLogger(
-                new ProgressLogger(log, (int) 1e7, "Wrote", "records from a sorting collection"));
+        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, OUTPUT)) {
+            writer.setProgressLogger(
+                    new ProgressLogger(log, (int) 1e7, "Wrote", "records from a sorting collection"));
 
-        final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Read");
-        for (final SAMRecord rec : reader) {
-            writer.addAlignment(rec);
-            progress.record(rec);
+            final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Read");
+            for (final SAMRecord rec : reader) {
+                writer.addAlignment(rec);
+                progress.record(rec);
+            }
+
+            log.info("Finished reading inputs, merging and writing to output now.");
+
         }
-
-        log.info("Finished reading inputs, merging and writing to output now.");
-
         CloserUtil.close(reader);
-        writer.close();
         return null;
     }
 }

@@ -436,41 +436,42 @@ public final class BamToBfq extends PicardCommandLineProgram {
                 //but it doesn't check this early, nor produce an understandable error message."
                 throw new UserException("Input file (" + this.bamFile.getAbsolutePath() +") needs to be sorted by queryname.");
             }
-            final PeekableIterator<SAMRecord> it = new PeekableIterator<>(reader.iterator());
-            if (!this.pairedReads) {
-                // Filter out noise reads and reads that fail the quality filter
-                final List<SamRecordFilter> filters = new ArrayList<>();
-                filters.add(new TagFilter(ReservedTagConstants.XN, 1));
-                if (!this.includeNonPfReads) {
-                    filters.add(new FailsVendorReadQualityFilter());
-                }
-                final FilteringIterator itr = new FilteringIterator(it, new AggregateFilter(filters));
-                while (itr.hasNext()) {
-                    itr.next();
-                    count++;
-                }
-            }
-            else {
-                while (it.hasNext()) {
-                    final SAMRecord first = it.next();
-                    final SAMRecord second = it.next();
-                    // If both are noise reads, filter them out
-                    if (first.getAttribute(ReservedTagConstants.XN) != null &&
-                            second.getAttribute(ReservedTagConstants.XN) != null)  {
-                        // skip it
+            try (final PeekableIterator<SAMRecord> it = new PeekableIterator<>(reader.iterator())) {
+                if (!this.pairedReads) {
+                    // Filter out noise reads and reads that fail the quality filter
+                    final List<SamRecordFilter> filters = new ArrayList<>();
+                    filters.add(new TagFilter(ReservedTagConstants.XN, 1));
+                    if (!this.includeNonPfReads) {
+                        filters.add(new FailsVendorReadQualityFilter());
                     }
-                    // If either fails to pass filter, then exclude them as well
-                    else if (!this.includeNonPfReads && (first.getReadFailsVendorQualityCheckFlag() || second.getReadFailsVendorQualityCheckFlag()) ) {
-                        // skip it
-                    }
-                    // Otherwise, write them out
-                    else {
+                    final FilteringIterator itr = new FilteringIterator(it, new AggregateFilter(filters));
+                    while (itr.hasNext()) {
+                        itr.next();
                         count++;
                     }
+                } else {
+                    while (it.hasNext()) {
+                        final SAMRecord first = it.next();
+                        final SAMRecord second = it.next();
+                        // If both are noise reads, filter them out
+                        if (first.getAttribute(ReservedTagConstants.XN) != null &&
+                                second.getAttribute(ReservedTagConstants.XN) != null) {
+                            // skip it
+                        }
+                        // If either fails to pass filter, then exclude them as well
+                        else if (!this.includeNonPfReads && (first.getReadFailsVendorQualityCheckFlag() || second.getReadFailsVendorQualityCheckFlag())) {
+                            // skip it
+                        }
+                        // Otherwise, write them out
+                        else {
+                            count++;
+                        }
+                    }
                 }
             }
-            it.close();
-            CloserUtil.close(reader);
+            finally {
+                CloserUtil.close(reader);
+            }
             return count;
         }
 

@@ -41,13 +41,12 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test
     public void testGetSequenceDictionary() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE);
-        SAMSequenceDictionary sequenceDictionary = refDataSource.getSequenceDictionary();
-        refDataSource.close();
-
-        Assert.assertEquals(sequenceDictionary.size(), 4, "Wrong number of sequences in sequence dictionary returned from refDataSource.getSequenceDictionary()");
-        for ( String contig : Arrays.asList("1", "2", "3", "4") ) {
-            Assert.assertNotNull(sequenceDictionary.getSequence(contig), "Sequence dictionary returned from refDataSource.getSequenceDictionary() lacks expected contig " + contig);
+        try (ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE)) {
+            SAMSequenceDictionary sequenceDictionary = refDataSource.getSequenceDictionary();
+            Assert.assertEquals(sequenceDictionary.size(), 4, "Wrong number of sequences in sequence dictionary returned from refDataSource.getSequenceDictionary()");
+            for ( String contig : Arrays.asList("1", "2", "3", "4") ) {
+                Assert.assertNotNull(sequenceDictionary.getSequence(contig), "Sequence dictionary returned from refDataSource.getSequenceDictionary() lacks expected contig " + contig);
+            }
         }
     }
 
@@ -67,33 +66,31 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
     public void testQueryAndPrefetch( final SimpleInterval interval, final String expectedBases ) {
-        ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
-        ReferenceSequence queryResult = reference.queryAndPrefetch(interval);
+        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE))  {
+            ReferenceSequence queryResult = reference.queryAndPrefetch(interval);
 
-        Assert.assertEquals(new String(queryResult.getBases()), expectedBases,
-                            "Wrong bases returned from queryAndPrefetch() for interval " + interval);
-
-        reference.close();
+            Assert.assertEquals(new String(queryResult.getBases()), expectedBases,
+                    "Wrong bases returned from queryAndPrefetch() for interval " + interval);
+        }
     }
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
     public void testQueryAndIterate( final SimpleInterval interval, final String expectedBases ) {
-        ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE);
-        Iterator<Byte> queryResultIterator = reference.query(interval);
-        List<Byte> queryResult = new ArrayList<>();
+        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+            Iterator<Byte> queryResultIterator = reference.query(interval);
+            List<Byte> queryResult = new ArrayList<>();
 
-        while ( queryResultIterator.hasNext() ) {
-            queryResult.add(queryResultIterator.next());
+            while (queryResultIterator.hasNext()) {
+                queryResult.add(queryResultIterator.next());
+            }
+
+            Assert.assertEquals(queryResult.size(), expectedBases.length(), "Wrong number of bases returned in iterator from query() call");
+
+            byte[] expectedBytes = expectedBases.getBytes();
+            for (int baseIndex = 0; baseIndex < queryResult.size(); ++baseIndex) {
+                Assert.assertEquals(queryResult.get(baseIndex).byteValue(), expectedBytes[baseIndex],
+                        "Base number " + (baseIndex + 1) + " in iterator from query() call is incorrect");
+            }
         }
-
-        Assert.assertEquals(queryResult.size(), expectedBases.length(), "Wrong number of bases returned in iterator from query() call");
-
-        byte[] expectedBytes = expectedBases.getBytes();
-        for ( int baseIndex = 0; baseIndex < queryResult.size(); ++baseIndex ) {
-            Assert.assertEquals(queryResult.get(baseIndex).byteValue(), expectedBytes[baseIndex],
-                    "Base number " + (baseIndex + 1) + " in iterator from query() call is incorrect");
-        }
-
-        reference.close();
     }
 }

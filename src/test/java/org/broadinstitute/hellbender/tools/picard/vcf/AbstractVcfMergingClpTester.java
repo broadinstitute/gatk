@@ -87,15 +87,17 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
         final VCFFileReader outputReader = new VCFFileReader(output, false);
         final VariantContextComparator outputComparator = outputReader.getFileHeader().getVCFRecordComparator();
         VariantContext last = null;
-        final CloseableIterator<VariantContext> iterator = outputReader.iterator();
-        while (iterator.hasNext()) {
-            final VariantContext outputContext = iterator.next();
-            if (outputContext.isIndel()) Assert.assertEquals(getContigPosition(outputContext), indelContigPositions.poll());
-            if (outputContext.isSNP()) Assert.assertEquals(getContigPosition(outputContext), snpContigPositions.poll());
-            if (last != null) Assert.assertTrue(outputComparator.compare(last, outputContext) <= 0);
-            last = outputContext;
+        try (final CloseableIterator<VariantContext> iterator = outputReader.iterator()) {
+            while (iterator.hasNext()) {
+                final VariantContext outputContext = iterator.next();
+                if (outputContext.isIndel())
+                    Assert.assertEquals(getContigPosition(outputContext), indelContigPositions.poll());
+                if (outputContext.isSNP())
+                    Assert.assertEquals(getContigPosition(outputContext), snpContigPositions.poll());
+                if (last != null) Assert.assertTrue(outputComparator.compare(last, outputContext) <= 0);
+                last = outputContext;
+            }
         }
-        iterator.close();
 
         // We should have polled everything off the indel (snp) queues
         Assert.assertEquals(indelContigPositions.size(), 0);
@@ -132,20 +134,20 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
         final VCFFileReader outputReader = new VCFFileReader(output, false);
         final VariantContextComparator outputComparator = outputReader.getFileHeader().getVCFRecordComparator();
         VariantContext last = null;
-        final CloseableIterator<VariantContext> iterator = outputReader.iterator();
-        while (iterator.hasNext()) {
-            final VariantContext outputContext = iterator.next();
-            final String position = getContigPosition(outputContext);
-            for (final Queue<String> positionQueue : positionQueues) {
-                if (position.equals(positionQueue.peek())) {
-                    positionQueue.poll();
-                    break;
+        try (final CloseableIterator<VariantContext> iterator = outputReader.iterator()) {
+            while (iterator.hasNext()) {
+                final VariantContext outputContext = iterator.next();
+                final String position = getContigPosition(outputContext);
+                for (final Queue<String> positionQueue : positionQueues) {
+                    if (position.equals(positionQueue.peek())) {
+                        positionQueue.poll();
+                        break;
+                    }
                 }
+                if (last != null) Assert.assertTrue(outputComparator.compare(last, outputContext) <= 0);
+                last = outputContext;
             }
-            if (last != null) Assert.assertTrue(outputComparator.compare(last, outputContext) <= 0);
-            last = outputContext;
         }
-        iterator.close();
 
         for (final Queue<String> positionQueue : positionQueues) {
             Assert.assertEquals(positionQueue.size(), 0);
@@ -153,13 +155,12 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
     }
 
     static Queue<String> loadContigPositions(final File inputFile) {
-		final VCFFileReader reader = new VCFFileReader(inputFile, false);
-		final Queue<String> contigPositions = new LinkedList<>();
-		final CloseableIterator<VariantContext> iterator = reader.iterator();
-		while (iterator.hasNext()) contigPositions.add(getContigPosition(iterator.next()));
-		iterator.close();
-		reader.close();
-		return contigPositions;
+        final Queue<String> contigPositions = new LinkedList<>();
+		try (final VCFFileReader reader = new VCFFileReader(inputFile, false);
+             final CloseableIterator<VariantContext> iterator = reader.iterator()) {
+                while (iterator.hasNext()) contigPositions.add(getContigPosition(iterator.next()));
+        }
+        return contigPositions;
 	}
 
 	static String getContigPosition(final VariantContext context) {

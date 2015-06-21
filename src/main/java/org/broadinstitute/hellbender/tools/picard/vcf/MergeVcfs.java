@@ -113,19 +113,19 @@ public final class MergeVcfs extends PicardCommandLineProgram {
         if (CREATE_INDEX) {
             builder.setOption(Options.INDEX_ON_THE_FLY);
         }
-        final VariantContextWriter writer = builder.build();
+        try (final VariantContextWriter writer = builder.build()) {
 
-        writer.writeHeader(new VCFHeader(VCFUtils.smartMergeHeaders(headers, false), sampleList));
+            writer.writeHeader(new VCFHeader(VCFUtils.smartMergeHeaders(headers, false), sampleList));
 
-        final MergingIterator<VariantContext> mergingIterator = new MergingIterator<>(variantContextComparator, iteratorCollection);
-        while (mergingIterator.hasNext()) {
-            final VariantContext context = mergingIterator.next();
-            writer.add(context);
-            progress.record(context.getContig(), context.getStart());
+            final MergingIterator<VariantContext> mergingIterator = new MergingIterator<>(variantContextComparator, iteratorCollection);
+            while (mergingIterator.hasNext()) {
+                final VariantContext context = mergingIterator.next();
+                writer.add(context);
+                progress.record(context.getContig(), context.getStart());
+            }
+
+            CloserUtil.close(mergingIterator);
         }
-
-        CloserUtil.close(mergingIterator);
-        writer.close();
         return null;
     }
 }

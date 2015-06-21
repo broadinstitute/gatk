@@ -20,34 +20,32 @@ public final class SamComparisonTest {
         File sam1 = new File(TEST_FILES_DIR, f1);
         File sam2 = new File(TEST_FILES_DIR, f2);
 
-        SamReader reader1 = factory.open(sam1);
-        SamReader reader2 = factory.open(sam2);
-        SamComparison comparison = new SamComparison(reader1, reader2);
-        Assert.assertEquals(areEqual, comparison.areEqual());
-        Assert.assertEquals(expectedMatch, comparison.getMappingsMatch());
-        Assert.assertEquals(expectedDiffer, comparison.getMappingsDiffer());
-        Assert.assertEquals(expectedUnmappedBoth, comparison.getUnmappedBoth());
-        Assert.assertEquals(expectedUnmappedLeft, comparison.getUnmappedLeft());
-        Assert.assertEquals(expectedUnmappedRight, comparison.getUnmappedRight());
-        Assert.assertEquals(expectedMissingLeft, comparison.getMissingLeft());
-        Assert.assertEquals(expectedMissingRight, comparison.getMissingRight());
-        reader1.close();
-        reader2.close();
+        try (final SamReader reader1 = factory.open(sam1);
+             final SamReader reader2 = factory.open(sam2)) {
+            final SamComparison comparison = new SamComparison(reader1, reader2);
+            Assert.assertEquals(areEqual, comparison.areEqual());
+            Assert.assertEquals(expectedMatch, comparison.getMappingsMatch());
+            Assert.assertEquals(expectedDiffer, comparison.getMappingsDiffer());
+            Assert.assertEquals(expectedUnmappedBoth, comparison.getUnmappedBoth());
+            Assert.assertEquals(expectedUnmappedLeft, comparison.getUnmappedLeft());
+            Assert.assertEquals(expectedUnmappedRight, comparison.getUnmappedRight());
+            Assert.assertEquals(expectedMissingLeft, comparison.getMissingLeft());
+            Assert.assertEquals(expectedMissingRight, comparison.getMissingRight());
+        }
 
         // now reverse the comparison
-        reader1 = factory.open(sam1);
-        reader2 = factory.open(sam2);
-        comparison = new SamComparison(reader2, reader1);
-        Assert.assertEquals(areEqual, comparison.areEqual());
-        Assert.assertEquals(expectedMatch, comparison.getMappingsMatch());
-        Assert.assertEquals(expectedDiffer, comparison.getMappingsDiffer());
-        Assert.assertEquals(expectedUnmappedBoth, comparison.getUnmappedBoth());
-        Assert.assertEquals(expectedUnmappedRight, comparison.getUnmappedLeft());
-        Assert.assertEquals(expectedUnmappedLeft, comparison.getUnmappedRight());
-        Assert.assertEquals(expectedMissingRight, comparison.getMissingLeft());
-        Assert.assertEquals(expectedMissingLeft, comparison.getMissingRight());
-        reader1.close();
-        reader2.close();
+        try (final SamReader reader1 = factory.open(sam1);
+             final SamReader reader2 = factory.open(sam2)) {
+            final SamComparison comparison = new SamComparison(reader2, reader1);
+            Assert.assertEquals(areEqual, comparison.areEqual());
+            Assert.assertEquals(expectedMatch, comparison.getMappingsMatch());
+            Assert.assertEquals(expectedDiffer, comparison.getMappingsDiffer());
+            Assert.assertEquals(expectedUnmappedBoth, comparison.getUnmappedBoth());
+            Assert.assertEquals(expectedUnmappedRight, comparison.getUnmappedLeft());
+            Assert.assertEquals(expectedUnmappedLeft, comparison.getUnmappedRight());
+            Assert.assertEquals(expectedMissingRight, comparison.getMissingLeft());
+            Assert.assertEquals(expectedMissingLeft, comparison.getMissingRight());
+        }
     }
 
     @Test
