@@ -7,7 +7,6 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -30,11 +29,8 @@ public class RefAPISourceUnitTest extends BaseTest {
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
 
-        final RefAPISource ref = RefAPISource.getInstance();
-        Map<String, String> referenceNameToIdTable = ref.getReferenceNameToIdTableFromMap(ref.getReferenceNameToReferenceTable(p.getOptions(), referenceName));
-        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-
-        return ref.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
+        RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
+        return refAPISource.getReferenceBases(p.getOptions(), interval);
     }
 
     @DataProvider(name = "sortData")
@@ -60,11 +56,10 @@ public class RefAPISourceUnitTest extends BaseTest {
 
     @Test(dataProvider="sortData")
     public void testSequenceDictionarySorting(String inputs, String outputs) {
-        final RefAPISource ref = RefAPISource.getInstance();
         final String[] input = inputs.split(",");
         final String[] expected = outputs.split(",");
-        Map<String, Reference> fake = createDummyReferenceMap(input);
-        final SAMSequenceDictionary seq = ref.getReferenceSequenceDictionaryFromMap(fake, null);
+        final RefAPISource ref = new RefAPISource(createDummyReferenceMap(input));
+        final SAMSequenceDictionary seq = ref.getReferenceSequenceDictionary(null);
         checkSequenceDictionary(seq, expected);
     }
 
@@ -83,10 +78,8 @@ public class RefAPISourceUnitTest extends BaseTest {
         options.setProject(getDataflowTestProject());
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
-        RefAPISource refAPISource = RefAPISource.getInstance();
-        Map<String, String> referenceNameToIdTable = refAPISource.getReferenceNameToIdTableFromMap(refAPISource.getReferenceNameToReferenceTable(p.getOptions(), referenceName));
-        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-        ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
+        RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
+        ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), interval);
         final String actual = new String(bases.getBases());
         Assert.assertEquals(actual, expected, "Wrong bases returned");
         p.run();

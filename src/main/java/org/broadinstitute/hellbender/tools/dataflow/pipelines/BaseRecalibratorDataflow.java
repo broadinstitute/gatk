@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.Reference;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -30,8 +29,7 @@ import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibr
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
@@ -76,7 +74,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
     /**
       * Reference window function for BQSR. For each read, returns an interval representing the span of
       * reference bases required by the BQSR algorithm for that read. Should be passed into the
-      * {@link RefAPIMetadata} object for the {@link AddContextDataToRead} transform.
+      * {@link ReferenceDataflowSource} object for the {@link AddContextDataToRead} transform.
       */
     public static final SerializableFunction<GATKRead, SimpleInterval> BQSR_REFERENCE_WINDOW_FUNCTION =
             read -> BAQ.getReferenceWindowForRead(read, BAQ.DEFAULT_BANDWIDTH, BAQ.DEFAULT_INCLUDE_CLIPPED_BASES);
@@ -132,11 +130,6 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
 
             String referenceURL = BRAC.referenceArguments.getReferenceFileName();
 
-            if (!RefAPISource.isApiSourceUrl(referenceURL)) {
-                throw new UserException.CouldNotReadInputFile("Only API reference names are supported for now (start with " + RefAPISource.URL_PREFIX + ")");
-            }
-            referenceID = RefAPISource.getReferenceSetID(referenceURL);
-
             if (BRAC.readArguments.getReadFilesNames().size()!=1) {
                 throw new UserException("Sorry, we only support a single reads input for now.");
             }
@@ -171,21 +164,16 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
             // Load the Variants and the Reference
             final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
 
-            final RefAPISource ref = RefAPISource.getInstance();
+            final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BQSR_REFERENCE_WINDOW_FUNCTION);
 
-            Map<String, Reference> referenceMap = ref.getReferenceNameToReferenceTable(pipeline.getOptions(), referenceID);
-            final SAMSequenceDictionary refDictionary = ref.getReferenceSequenceDictionaryFromMap(referenceMap, readsDictionary);
-            final Map<String, String> referenceNameToIdTable = ref.getReferenceNameToIdTableFromMap(referenceMap);
+            final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
 
             checkSequenceDictionaries(refDictionary, readsDictionary);
             PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
             bunny.stepEnd("load ref sequence dictionary");
 
-            RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceID, referenceNameToIdTable, BQSR_REFERENCE_WINDOW_FUNCTION);
-            bunny.stepEnd("build reference name to ID table");
-
             // Set up the data pipeline-style
-            final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(filteredReads, refAPIMetadata, variantsDataflowSource);
+            final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(filteredReads, referenceDataflowSource, variantsDataflowSource);
 
             // run the base recalibrator, grab just the output we want.
             final PCollection<RecalibrationTables> recalibrationTable = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC))

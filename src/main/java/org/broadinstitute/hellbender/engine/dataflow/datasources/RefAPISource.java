@@ -1,15 +1,16 @@
 package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
+import com.google.api.client.json.JsonFactory;
 import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.ListBasesResponse;
 import com.google.api.services.genomics.model.Reference;
-import com.google.api.services.genomics.model.ReferenceSet;
 import com.google.api.services.genomics.model.SearchReferencesRequest;
 import com.google.api.services.genomics.model.SearchReferencesResponse;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
@@ -21,6 +22,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -35,7 +38,7 @@ import java.util.Map;
  * at workers.
  * It also has helper methods for parsing Ref API URLs (intended for the Hellbender command line).
  */
-public class RefAPISource implements Serializable {
+public class RefAPISource implements ReferenceSource, Serializable {
 
     // from https://cloud.google.com/genomics/data/references
     public static final String GRCH37_REF_ID = "EOSsjdnTicvzwAE";
@@ -59,26 +62,20 @@ public class RefAPISource implements Serializable {
     // genomicsService is created on each worker.
     private transient Genomics genomicsService;
 
-    // We use the singleton pattern because we need only once instance.
-    private static RefAPISource singletonSource = null;
+    private Map<String, Reference> referenceMap;
+    private Map<String, String> referenceNameToIdTable;
 
-    /**
-     * Sets the singleton source for the reference API. This is intended for testing use only. This will not work
-     * using the Dataflow or Spark runners as the static values will be cleared when the class is reconstituted on
-     * each worker.
-     * @param source the (mock) Ref API source to use.
-     */
-    public static void setInstance(RefAPISource source) {
-        singletonSource = source;
+    public RefAPISource(final PipelineOptions pipelineOptions, final String referenceURL) {
+        String referenceName = getReferenceSetID(referenceURL);
+        this.referenceMap = getReferenceNameToReferenceTable(pipelineOptions, referenceName);
+        this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
     }
 
-    public static RefAPISource getInstance() {
-        if (singletonSource == null) {
-            singletonSource = new RefAPISource();
-        }
-        return singletonSource;
+    @VisibleForTesting
+    public RefAPISource(final Map<String, Reference> referenceMap) {
+        this.referenceMap = referenceMap;
+        this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
     }
-    private RefAPISource() { /* To prevent instantiation */ }
 
     public static boolean isApiSourceUrl(String url) {
         return url.startsWith(URL_PREFIX);
@@ -97,24 +94,23 @@ public class RefAPISource implements Serializable {
      * Footnote: queries larger than pageSize will be truncated.
      *
      * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
-     * @param apiData - contains the hashmap that maps from reference name to Id needed for the API call.
      * @param interval - the range of bases to retrieve.
      * @return the reference bases specified by interval and apiData (using the Google Genomics API).
      */
-    public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final RefAPIMetadata apiData, final SimpleInterval interval) {
+    @Override
+    public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) {
         Utils.nonNull(pipelineOptions);
-        Utils.nonNull(apiData);
         Utils.nonNull(interval);
 
         if (genomicsService == null) {
             genomicsService = createGenomicsService(pipelineOptions);
         }
-        if ( !apiData.getReferenceNameToIdTable().containsKey(interval.getContig()) ) {
+        if ( !referenceNameToIdTable.containsKey(interval.getContig()) ) {
             throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
         }
 
         try {
-            final Genomics.References.Bases.List listRequest = genomicsService.references().bases().list(apiData.getReferenceNameToIdTable().get(interval.getContig())).setPageSize(pageSize);
+            final Genomics.References.Bases.List listRequest = genomicsService.references().bases().list(referenceNameToIdTable.get(interval.getContig())).setPageSize(pageSize);
             // We're subtracting 1 with the start but not the end because GA4GH is zero-based (inclusive,exclusive)
             // for its intervals.
             listRequest.setStart((long) interval.getGA4GHStart());
@@ -134,6 +130,16 @@ public class RefAPISource implements Serializable {
         catch ( IOException e ) {
             throw new UserException("Query to genomics service failed for reference interval " + interval, e);
         }
+    }
+
+    /**
+     * Return a sequence dictionary for the reference.
+     * @param optReadSequenceDictionaryToMatch - (optional) the sequence dictionary of the reads, we'll match its order if possible.
+     * @return sequence dictionary for the reference
+     */
+    @Override
+    public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) {
+        return getReferenceSequenceDictionaryFromMap(referenceMap, optReadSequenceDictionaryToMatch);
     }
 
     /**
@@ -271,5 +277,26 @@ public class RefAPISource implements Serializable {
         }
     }
 
-
+    // implement methods for Java serialization, since Reference does not implement Serializable
+    private void writeObject(ObjectOutputStream stream) throws IOException {
+        JsonFactory jsonFactory = com.google.api.client.googleapis.util.Utils.getDefaultJsonFactory();
+        stream.writeInt(referenceMap.size());
+        for (Map.Entry<String, Reference> e : referenceMap.entrySet()) {
+            stream.writeUTF(e.getKey());
+            stream.writeUTF(jsonFactory.toString(e.getValue()));
+        }
+        stream.writeObject(referenceNameToIdTable);
+    }
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        JsonFactory jsonFactory = com.google.api.client.googleapis.util.Utils.getDefaultJsonFactory();
+        final Map<String, Reference> refs = new HashMap<>();
+        int size = stream.readInt();
+        for (int i = 0; i < size; i++) {
+            refs.put(stream.readUTF(), jsonFactory.fromString(stream.readUTF(), Reference.class));
+        }
+        @SuppressWarnings("unchecked")
+        final Map<String, String> refTable = (Map<String, String>) stream.readObject();
+        this.referenceMap = refs;
+        this.referenceNameToIdTable = refTable;
+    }
 }
