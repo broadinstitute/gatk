@@ -46,7 +46,7 @@ public final class ReadWriteReadsIntegrationTest extends CommandLineProgramTest 
 
     @DataProvider(name = "ApplyTest_GCS")
     public Object[][] createTestData_GCS() {
-        final String resourceDirGCS = getDataflowTestInputs() + THIS_TEST_FOLDER;
+        final String resourceDirGCS = getDataflowTestInputPath() + THIS_TEST_FOLDER;
         final String hiSeqBamGCS = resourceDirGCS + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
         List<Object[]> tests = new ArrayList<>();
 
