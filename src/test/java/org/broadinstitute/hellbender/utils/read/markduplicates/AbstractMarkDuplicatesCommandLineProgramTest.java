@@ -474,19 +474,19 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMatePair("RUNID:3:1:15029:113060", 0, 129384554, 129384554, false, false, true, true, "68M", "68M", false, false, false, false, false, DEFAULT_BASE_QUALITY);
 
         // Create the pathology
-        CloseableIterator<SAMRecord> iterator = tester.getRecordIterator();
-        int[] qualityOffset = {20, 30, 10, 40}; // creates an interesting pathological ordering
-        int index = 0;
-        while (iterator.hasNext()) {
-            final SAMRecord record = iterator.next();
-            byte[] quals = new byte[record.getReadLength()];
-            for (int i = 0; i < record.getReadLength(); i++) {
-                quals[i] = (byte)(qualityOffset[index] + 10);
+        try (CloseableIterator<SAMRecord> iterator = tester.getRecordIterator()) {
+            int[] qualityOffset = {20, 30, 10, 40}; // creates an interesting pathological ordering
+            int index = 0;
+            while (iterator.hasNext()) {
+                final SAMRecord record = iterator.next();
+                byte[] quals = new byte[record.getReadLength()];
+                for (int i = 0; i < record.getReadLength(); i++) {
+                    quals[i] = (byte) (qualityOffset[index] + 10);
+                }
+                record.setBaseQualities(quals);
+                index++;
             }
-            record.setBaseQualities(quals);
-            index++;
         }
-        iterator.close();
 
         // Run the test
         tester.runTest();

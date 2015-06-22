@@ -39,29 +39,30 @@ public final class CleanSam extends PicardCommandLineProgram {
             factory.validationStringency(ValidationStringency.LENIENT);
         }
         final SamReader reader = factory.open(INPUT);
-        final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), true, OUTPUT);
-        final CloseableIterator<SAMRecord> it = reader.iterator();
-        final ProgressLogger progress = new ProgressLogger(Log.getInstance(CleanSam.class));
+        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), true, OUTPUT);
+             final CloseableIterator<SAMRecord> it = reader.iterator()) {
 
-        // If the read (or its mate) maps off the end of the alignment, clip it
-        while (it.hasNext()) {
-            final SAMRecord rec = it.next();
+            final ProgressLogger progress = new ProgressLogger(Log.getInstance(CleanSam.class));
 
             // If the read (or its mate) maps off the end of the alignment, clip it
-            AbstractAlignmentMerger.createNewCigarsIfMapsOffEndOfReference(rec);
+            while (it.hasNext()) {
+                final SAMRecord rec = it.next();
 
-            // check the read's mapping quality
-            if (rec.getReadUnmappedFlag() && 0 != rec.getMappingQuality()) {
-                rec.setMappingQuality(0);
+                // If the read (or its mate) maps off the end of the alignment, clip it
+                AbstractAlignmentMerger.createNewCigarsIfMapsOffEndOfReference(rec);
+
+                // check the read's mapping quality
+                if (rec.getReadUnmappedFlag() && 0 != rec.getMappingQuality()) {
+                    rec.setMappingQuality(0);
+                }
+
+                writer.addAlignment(rec);
+                progress.record(rec);
             }
-
-            writer.addAlignment(rec);
-            progress.record(rec);
         }
-
-        writer.close();
-        it.close();
-        CloserUtil.close(reader);
+        finally {
+            CloserUtil.close(reader);
+        }
         return null;
     }
 }

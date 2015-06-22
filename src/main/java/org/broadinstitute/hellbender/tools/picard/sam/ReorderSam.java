@@ -75,20 +75,20 @@ public final class ReorderSam extends PicardCommandLineProgram {
 
         log.info("Writing reads...");
         if (in.hasIndex()) {
-            final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, true, OUTPUT);
+            try (final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, true, OUTPUT)) {
 
-            // write the reads in contig order
-            for (final SAMSequenceRecord contig : refDict.getSequences()) {
-                final SAMRecordIterator it = in.query(contig.getSequenceName(), 0, 0, false);
-                writeReads(out, it, newOrder, contig.getSequenceName());
+                // write the reads in contig order
+                for (final SAMSequenceRecord contig : refDict.getSequences()) {
+                    final SAMRecordIterator it = in.query(contig.getSequenceName(), 0, 0, false);
+                    writeReads(out, it, newOrder, contig.getSequenceName());
+                }
+                // don't forget the unmapped reads
+                writeReads(out, in.queryUnmapped(), newOrder, "unmapped");
             }
-            // don't forget the unmapped reads
-            writeReads(out, in.queryUnmapped(), newOrder, "unmapped");
-            out.close();
         } else {
-            SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, false, OUTPUT);
-            writeReads(out, in.iterator(), newOrder, "All reads");
-            out.close();
+            try (SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, false, OUTPUT)) {
+                writeReads(out, in.iterator(), newOrder, "All reads");
+            }
         }
 
         // cleanup

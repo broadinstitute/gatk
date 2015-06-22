@@ -49,39 +49,41 @@ public final class DownsampleSam extends PicardCommandLineProgram {
 
         final Random r = RANDOM_SEED == null ? new Random() : new Random(RANDOM_SEED);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
-        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT);
-        final Map<String, Boolean> decisions = new HashMap<>();
 
         long total = 0;
         long kept = 0;
 
-        final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Read");
+        try(final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT)) {
+            final Map<String, Boolean> decisions = new HashMap<>();
 
-        for (final SAMRecord rec : in) {
-            if (rec.isSecondaryOrSupplementary()) continue;
-            ++total;
+            final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Read");
 
-            final String key = rec.getReadName();
-            final Boolean previous = decisions.remove(key);
-            final boolean keeper;
+            for (final SAMRecord rec : in) {
+                if (rec.isSecondaryOrSupplementary()) continue;
+                ++total;
 
-            if (previous == null) {
-                keeper = r.nextDouble() <= PROBABILITY;
-                if (rec.getReadPairedFlag()) decisions.put(key, keeper);
-            } else {
-                keeper = previous;
+                final String key = rec.getReadName();
+                final Boolean previous = decisions.remove(key);
+                final boolean keeper;
+
+                if (previous == null) {
+                    keeper = r.nextDouble() <= PROBABILITY;
+                    if (rec.getReadPairedFlag()) decisions.put(key, keeper);
+                } else {
+                    keeper = previous;
+                }
+
+                if (keeper) {
+                    out.addAlignment(rec);
+                    ++kept;
+                }
+
+                progress.record(rec);
             }
-
-            if (keeper) {
-                out.addAlignment(rec);
-                ++kept;
-            }
-
-            progress.record(rec);
         }
-
-        out.close();
-        CloserUtil.close(in);
+        finally {
+            CloserUtil.close(in);
+        }
         log.info("Finished! Kept " + kept + " out of " + total + " reads.");
 
         return null;

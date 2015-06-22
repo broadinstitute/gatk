@@ -41,10 +41,8 @@ public final class CalculateReadGroupChecksum extends PicardCommandLineProgram {
         IOUtil.assertFileIsWritable(output);
         final String hashText = SAMUtils.calculateReadGroupRecordChecksum(INPUT, REFERENCE_SEQUENCE);
 
-        try {
-            final FileWriter outputWriter = new FileWriter(output);
+        try (final FileWriter outputWriter = new FileWriter(output)) {
             outputWriter.write(hashText);
-            outputWriter.close();
         } catch (final IOException ioe) {
             throw new UserException("Could not write the computed hash (" + hashText + ") to the output file: " + ioe.getMessage(), ioe);
         }
