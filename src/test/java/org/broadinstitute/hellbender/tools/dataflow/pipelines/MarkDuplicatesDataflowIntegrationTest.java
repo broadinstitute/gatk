@@ -25,7 +25,15 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
         };
     }
 
-    @Test(groups = "dataflow", dataProvider = "md")
+    @DataProvider(name="md_optical")
+    public Object[][] md_optical() {
+        return new Object[][] {
+          {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes.bam"), 4, 2},
+          /*{new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes_casava.bam"), 4, 2},*/
+        };
+    }
+
+  @Test(groups = "dataflow", dataProvider = "md")
     public void testMarkDuplicatesDataflowIntegrationTestLocal(final File input, final long totalExpected, final long dupsExpected) throws IOException {
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--"+StandardArgumentDefinitions.INPUT_LONG_NAME); args.add(input.getPath());
@@ -40,5 +48,25 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(new XReadLines(outputFile).readLines().size(), totalExpected);
 
         Assert.assertEquals(new XReadLines(outputFile).readLines().stream().filter(line -> line.contains("duplicateFragment\":true")).count(), dupsExpected);
+  }
+
+
+  @Test(groups = "dataflow", dataProvider = "md_optical")
+    public void testOpticalDuplicateDetection(final File input, final long totalExpected, final long dupsExpected) throws IOException {
+      ArgumentsBuilder args = new ArgumentsBuilder();
+      args.add("--"+StandardArgumentDefinitions.INPUT_LONG_NAME);
+      args.add(input.getPath());
+      args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+      File placeHolder = createTempFile("markdups", ".txt");
+      args.add(placeHolder.getPath());
+
+      runCommandLine(args.getArgsArray());
+      File outputFile = findDataflowOutput(placeHolder);
+
+      Assert.assertTrue(outputFile.exists());
+      Assert.assertEquals(new XReadLines(outputFile).readLines().size(), totalExpected);
+
+      Assert.assertEquals(new XReadLines(outputFile).readLines().stream().filter(line -> line.contains("duplicateFragment\":true")).count(), dupsExpected);
     }
+
 }

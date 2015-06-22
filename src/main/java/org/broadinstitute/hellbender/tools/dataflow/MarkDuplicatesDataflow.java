@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.dataflow.transforms.MarkDuplicatesRea
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,6 +58,25 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
             optional = false)
     protected String bam;
 
+    @Argument(doc = "Regular expression that can be used to parse read names in the incoming SAM file. Read names are " +
+            "parsed to extract three variables: tile/region, x coordinate and y coordinate. These values are used " +
+            "to estimate the rate of optical duplication in order to give a more accurate estimated library size. " +
+            "Set this option to null to disable optical duplicate detection. " +
+            "The regular expression should contain three capture groups for the three variables, in order. " +
+            "It must match the entire read name. " +
+            "Note that if the default regex is specified, a regex match is not actually done, but instead the read name " +
+            " is split on colon character. " +
+            "For 5 element names, the 3rd, 4th and 5th elements are assumed to be tile, x and y values. " +
+            "For 7 element names (CASAVA 1.8), the 5th, 6th, and 7th elements are assumed to be tile, x and y values.",
+            optional = true)
+    public String READ_NAME_REGEX = OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX;
+
+    @Argument(doc = "The maximum offset between two duplicte clusters in order to consider them optical duplicates. This " +
+            "should usually be set to some fairly small number (e.g. 5-10 pixels) unless using later versions of the " +
+            "Illumina pipeline that multiply pixel values by 10, in which case 50-100 is more normal.")
+    public int OPTICAL_DUPLICATE_PIXEL_DISTANCE = OpticalDuplicateFinder.DEFAULT_OPTICAL_DUPLICATE_DISTANCE;
+
+
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
@@ -71,7 +91,10 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         final PCollectionView<SAMFileHeader> headerPcolView = pipeline.apply(Create.of(header)).apply(View.<SAMFileHeader>asSingleton());
 
         final PCollection<Read> preads = readsSource.getReadPCollection(intervals);
-        final PCollection<Read> results = preads.apply(new MarkDuplicatesDataflowTransform(headerPcolView));
+        OpticalDuplicateFinder finder = READ_NAME_REGEX != null ?
+                new OpticalDuplicateFinder(READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE) : null;
+        final PCollection<Read> results = preads.apply(new MarkDuplicatesDataflowTransform(
+            headerPcolView, finder));
 
         final PCollection<String> pstrings = results.apply(DataflowUtils.convertToString());
         pstrings.apply(TextIO.Write.to(outputFile));
@@ -94,8 +117,21 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         */
         private final PCollectionView<SAMFileHeader> header;
 
-        public MarkDuplicatesDataflowTransform( final PCollectionView<SAMFileHeader> header ) {
+        /**
+         * Optical duplicate finder finds the physical location of the reads and determines if they are close enough to
+         * be considered optical duplicates.
+         */
+        private final OpticalDuplicateFinder opticalDuplicateFinder;
+
+        /**
+         * The number of duplicate pairs that are optical duplicates (as opposed to PCR duplicates)
+         */
+        private int numOpticalDuplicatePairs;
+
+        public MarkDuplicatesDataflowTransform( final PCollectionView<SAMFileHeader> header, final OpticalDuplicateFinder opticalDuplicateFinder ) {
             this.header = header;
+            this.opticalDuplicateFinder = opticalDuplicateFinder;
+            this.numOpticalDuplicatePairs = 0;
         }
 
         @Override
@@ -200,6 +236,48 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                     });
         }
 
+        /**
+         * Gets the physical location of a given read from the OpticalDuplicateFinder. Caches results for future use
+         * @param read The read to locate.
+         * @return The ReadEndPhysicalLocation for the given read.
+         */
+        private ReadEndPhysicalLocation getPhysicalLocation(Read read,
+            Map<String, ReadEndPhysicalLocation> readNamesToPhysicalLocations) {
+          String readName = read.getFragmentName();
+          if (readNamesToPhysicalLocations.containsKey(readName)) {
+            return readNamesToPhysicalLocations.get(readName);
+          }
+
+          ReadEndPhysicalLocation loc = new ReadEndPhysicalLocation();
+          if (opticalDuplicateFinder.addLocationInformation(readName, loc)) {
+              readNamesToPhysicalLocations.put(readName, loc);
+          }
+          // Should we throw an error if  addLocationInformation fails?
+          return loc;
+        }
+
+        /**
+         * Given PairedEnds and a list of pairs that are duplicates of this pair, determine if the given pair
+         * is an optical duplicate.
+         * @param pair
+         * @param duplicatePairs
+         * @return
+         */
+        private boolean isOpticalDuplicate(final PairedEnds pair, Iterable<PairedEnds> duplicatePairs,
+            Map<String, ReadEndPhysicalLocation> readNamesToPhysicalLocations) {
+
+          ReadEndPhysicalLocation first = getPhysicalLocation(pair.first(), readNamesToPhysicalLocations);
+          ReadEndPhysicalLocation second = getPhysicalLocation(pair.second(), readNamesToPhysicalLocations);
+          for (final PairedEnds duplicatePair : duplicatePairs) {
+            if (opticalDuplicateFinder.isOpticalDuplicate(
+                getPhysicalLocation(duplicatePair.first, readNamesToPhysicalLocations), first) &&
+                opticalDuplicateFinder.isOpticalDuplicate(
+                    getPhysicalLocation(duplicatePair.second, readNamesToPhysicalLocations), second)) {
+              return true;
+            }
+          }
+          return false;
+          }
 
         private PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<Read>> markPairedEnds() {
             return ParDo
@@ -224,7 +302,16 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                                 context.output(best.second());
                             }
                             //Mark everyone who's not best as a duplicate
+                            int index = 1;
+
+                            // Keep a local cache for the name -> physical location map to avoid
+                            // repeating the regex throughout the loops.
+                            Map<String, ReadEndPhysicalLocation> readNamesToPhysicalLocations = new HashMap<>();
                             for (final PairedEnds pair : Iterables.skip(scored, 1)) {
+                                if (opticalDuplicateFinder != null &&
+                                    isOpticalDuplicate(pair, Iterables.limit(scored, index), readNamesToPhysicalLocations)) {
+                                    numOpticalDuplicatePairs++;
+                                }
                                 Read record = pair.first();
                                 record.setDuplicateFragment(true);
                                 context.output(record);
@@ -232,6 +319,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                                 record = pair.second();
                                 record.setDuplicateFragment(true);
                                 context.output(record);
+                                index++;
                             }
                         }
                     });
@@ -330,6 +418,46 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
             .stream()
             .map(SimpleInterval::new)
             .collect(Collectors.toList());
+    }
+
+
+
+    private static class ReadEndPhysicalLocation implements OpticalDuplicateFinder.PhysicalLocation {
+
+        public short libraryId;
+        public short readGroup = -1;
+        public short tile = -1;
+        public short x = -1, y = -1;
+
+        @Override
+        public short getReadGroup() { return this.readGroup; }
+
+        @Override
+        public void setReadGroup(short rg) { this.readGroup = rg; }
+
+        @Override
+        public short getTile() { return this.tile; }
+
+        @Override
+        public void setTile(short tile) { this.tile = tile; }
+
+        @Override
+        public short getX() { return this.x; }
+
+        @Override
+        public void setX(final short x) { this.x = x; }
+
+        @Override
+        public short getY() { return this.y; }
+
+        @Override
+        public void setY(final short y) { this.y = y; }
+
+        @Override
+        public short getLibraryId() { return this.libraryId; }
+
+        @Override
+        public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
     }
 
     /**
