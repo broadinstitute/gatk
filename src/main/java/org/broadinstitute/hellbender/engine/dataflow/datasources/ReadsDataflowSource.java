@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 /**
  * Class to load reads into a PCollection from a cloud storage bucket, a Hadoop filesystem, or a local bam file.
  */
-public final class ReadsSource {
+public final class ReadsDataflowSource {
     private final String bam;
     private final boolean cloudStorageUrl;
     private final boolean hadoopUrl;
@@ -47,7 +47,7 @@ public final class ReadsSource {
      * @param p the pipeline object for the job. This is needed to read a bam from a bucket.
      *          The options inside of the pipeline MUST BE GCSOptions (to get the secret file).
      */
-    public ReadsSource(String bam, Pipeline p){
+    public ReadsDataflowSource(String bam, Pipeline p){
         this.bam = Utils.nonNull(bam);
         this.pipeline = p;
 

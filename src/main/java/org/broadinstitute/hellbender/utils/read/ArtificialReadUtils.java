@@ -404,6 +404,17 @@ public final class ArtificialReadUtils {
         return createRandomRead(header, length, allowNs);
     }
 
+    public static GATKRead createRandomRead(int start, int length, int UUIDSeed) {
+        List<CigarElement> cigarElements = new LinkedList<>();
+        cigarElements.add(new CigarElement(length, CigarOperator.M));
+        Cigar cigar = new Cigar(cigarElements);
+        GATKRead artificialRead = ArtificialReadUtils.createArtificialRead(cigar);
+        artificialRead.setPosition(artificialRead.getContig(), start);
+        // We know that a SAMRecordToGATKReadAdapter is backing the MutableGATKRead at this point.
+        SAMRecordToGATKReadAdapter sam = (SAMRecordToGATKReadAdapter) artificialRead;
+        //sam.setUUID(new UUID(UUIDSeed, UUIDSeed));
+        return artificialRead;
+    }
     /**
      * Create random read qualities
      *

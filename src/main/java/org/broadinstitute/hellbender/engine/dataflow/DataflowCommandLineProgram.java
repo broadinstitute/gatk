@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.cloudera.dataflow.spark.SparkPipelineOptions;
 import com.cloudera.dataflow.spark.SparkPipelineRunner;
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
@@ -12,8 +11,8 @@ import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -105,6 +104,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         setupPipeline(p);
         runPipeline(p);
         afterPipeline(p);
+
         return null;
     }
 

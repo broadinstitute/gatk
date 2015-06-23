@@ -1,19 +1,28 @@
 package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
+import com.google.cloud.dataflow.sdk.coders.*;
+import com.google.cloud.dataflow.sdk.values.KV;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by davidada on 5/15/15.
+ * VariantShard is section of the genome that's used for sharding work for pairing things with
+ * variants. The primary use case is pairing reads with overlapping variants.
+ * This class designed to be simple a data-storage class with related static utilities.
  */
 public final class VariantShard {
-    private int shardNumber;
-    private String contig;
+    private final int shardNumber;
+    private final String contig;
+    static public final int VARIANT_SHARDSIZE = 100000; // This value is likely to be tweaked.
 
     public VariantShard(int shardNumber, String contig) {
         this.shardNumber = shardNumber;
+        if (contig == null) {
+            throw new IllegalArgumentException("contig cannot be null");
+        }
         this.contig = contig;
     }
 
@@ -24,8 +33,7 @@ public final class VariantShard {
 
         VariantShard that = (VariantShard) o;
 
-        if (getShardNumber() != that.getShardNumber()) return false;
-        return getContig().equals(that.getContig());
+        return getShardNumber() == that.getShardNumber() && getContig().equals(that.getContig());
 
     }
 
@@ -45,18 +53,46 @@ public final class VariantShard {
         return shardNumber;
     }
 
-    /*
-      * May have some bugs...
-      */
+    /**
+     * getVariantShardsFromInterval calculates *all* shards overlapping location.
+     * @param location the range of sites determines which shards are overlapping
+     * @return All overlapping VariantShards
+     */
     static public List<VariantShard> getVariantShardsFromInterval(final Locatable location) {
-        final int variantShardSize = 100000;
-        List<VariantShard> intervalList = new ArrayList<>();
+        List<VariantShard> shardList = new ArrayList<>();
         // Get all of the shard numbers that span the start and end of the interval.
-        int startShard = location.getStart()/variantShardSize;
-        int endShard = location.getEnd()/variantShardSize;
+        int startShard = location.getStart()/ VARIANT_SHARDSIZE;
+        int endShard = location.getEnd()/ VARIANT_SHARDSIZE;
         for (int i = startShard; i <= endShard; ++i) {
-            intervalList.add(new VariantShard(i, location.getContig()));
+            shardList.add(new VariantShard(i, location.getContig()));
         }
-        return intervalList;
+        return shardList;
     }
+
+    @Override
+    public String toString() {
+        return "VariantShard{" +
+                "shardNumber=" + shardNumber +
+                ", contig='" + contig + '\'' +
+                '}';
+    }
+
+    public static final DelegateCoder<VariantShard, KV<Integer, String>> CODER =
+            DelegateCoder.of(
+                    KvCoder.of(VarIntCoder.of(), StringUtf8Coder.of()),
+                    new DelegateCoder.CodingFunction<VariantShard, KV<Integer, String>>() {
+                        private static final long serialVersionUID = 1L;
+                        @Override
+                        public KV<Integer, String> apply(VariantShard ref) throws Exception {
+                            return KV.of(ref.getShardNumber(), ref.getContig());
+                        }
+                    },
+                    new DelegateCoder.CodingFunction<KV<Integer, String>, VariantShard>() {
+                        private static final long serialVersionUID = 1L;
+                        @Override
+                        public VariantShard apply(KV<Integer, String> kv) throws Exception {
+                            return new VariantShard(kv.getKey(), kv.getValue());
+                        }
+                    }
+            );
 }

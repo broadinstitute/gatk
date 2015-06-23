@@ -38,6 +38,7 @@ task downloadGsaLibFile(type: Download) {
 
 repositories {
     mavenCentral()
+    jcenter()
     maven {
         url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
     }
@@ -61,10 +62,10 @@ jacoco {
 
 //NOTE: we ignore contracts for now
 compileJava {
-  options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror']
+  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
 }
 compileTestJava { 
-  options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror']
+  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
 }
 
 installApp.dependsOn downloadGsaLibFile
@@ -109,13 +110,14 @@ dependencies {
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
+    testCompile "org.mockito:mockito-core:1.+"
     testCompile('org.apache.spark:spark-core_2.10:1.4.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
     }
-
+    
 }
 
 sourceCompatibility = 1.8

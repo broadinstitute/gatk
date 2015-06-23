@@ -20,14 +20,21 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
+import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
@@ -66,6 +73,8 @@ public final class DataflowUtils {
      */
     public static void registerGATKCoders( final Pipeline p ) {
         DataflowWorkarounds.registerGenomicsCoders(p);
+        p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
+        p.getCoderRegistry().registerCoder(VariantShard.class, VariantShard.CODER);
         p.getCoderRegistry().registerCoder(GATKRead.class, new GATKReadCoder());
         p.getCoderRegistry().registerCoder(GoogleGenomicsReadToGATKReadAdapter.class, GoogleGenomicsReadToGATKReadAdapter.CODER);
         p.getCoderRegistry().registerCoder(SAMRecordToGATKReadAdapter.class, SerializableCoder.of(SAMRecordToGATKReadAdapter.class));
@@ -74,6 +83,10 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(Variant.class, new VariantCoder());
         p.getCoderRegistry().registerCoder(VariantContextVariantAdapter.class, SerializableCoder.of(VariantContextVariantAdapter.class));
         p.getCoderRegistry().registerCoder(SkeletonVariant.class, SerializableCoder.of(SkeletonVariant.class));
+        p.getCoderRegistry().registerCoder(RefAPISource.class, SerializableCoder.of(RefAPISource.class));
+        p.getCoderRegistry().registerCoder(RefAPIMetadata.class, SerializableCoder.of(RefAPIMetadata.class));
+        p.getCoderRegistry().registerCoder(ReferenceBases.class, SerializableCoder.of(ReferenceBases.class));
+        p.getCoderRegistry().registerCoder(ReadContextData.class, SerializableCoder.of(ReadContextData.class));
     }
 
     /**
@@ -218,6 +231,7 @@ public final class DataflowUtils {
             }
         }
     }
+
 
 
     /**

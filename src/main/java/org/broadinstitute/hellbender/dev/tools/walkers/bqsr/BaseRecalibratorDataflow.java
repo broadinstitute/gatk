@@ -28,6 +28,8 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -37,6 +39,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
@@ -194,7 +197,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             final ReadFilter readFilter = BaseRecalibratorWorker.readFilter(header);
             final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(sequenceDictionary) :
                     IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-            return new ReadsSource(beforePath, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT)
+            return new ReadsDataflowSource(beforePath, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT)
                     // keep only the ones BQSR's interested in.
                     .apply(new DataflowReadFilter(readFilter, header));
         } else {
