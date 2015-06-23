@@ -54,7 +54,7 @@
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds ratio of being a true variant versus being false under the trained gaussian mixture model">
 ##INFO=<ID=culprit,Number=1,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
-##contig=<ID=1,length=249250621>
+##contig=<ID=1,length=1000000>
 ##contig=<ID=2,length=243199373>
 ##contig=<ID=3,length=198022430>
 ##contig=<ID=4,length=191154276>

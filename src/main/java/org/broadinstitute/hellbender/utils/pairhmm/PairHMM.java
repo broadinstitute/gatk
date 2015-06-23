@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

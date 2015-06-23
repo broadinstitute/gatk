@@ -13,7 +13,7 @@ import static org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateV
 
 public final class ValidateVariantsIntegrationTest extends CommandLineProgramTest {
 
-    public String baseTestString(final boolean sharedFile, final String file, boolean exclude, ValidateVariants.ValidationType type) {
+    public String baseTestString(final boolean sharedFile, final String file, final boolean exclude, final ValidateVariants.ValidationType type) {
         final String defaultRegion = "1:1-1000000";
 
         return baseTestString(sharedFile, file, exclude, type, defaultRegion, hg19_chr1_1M_Reference);
@@ -167,6 +167,28 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         );
 
         spec.executeTest("test bad ref allele in deletion", this);
+    }
+
+    @Test
+    public void testComplexEventsDictError() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "complexEvents_lexDict.vcf", false, ALL),
+                0,
+                UserException.LexicographicallySortedSequenceDictionary.class
+        );
+
+        spec.executeTest("test validating complex events", this);
+    }
+
+    @Test
+    public void testComplexEventsDictError2() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "complexEvents_incompatibleDict.vcf", false, ALL),
+                0,
+                UserException.IncompatibleSequenceDictionaries.class
+        );
+
+        spec.executeTest("test validating complex events", this);
     }
 
     @Test

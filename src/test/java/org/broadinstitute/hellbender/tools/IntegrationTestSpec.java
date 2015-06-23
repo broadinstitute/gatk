@@ -156,12 +156,12 @@ public final class IntegrationTestSpec {
         }
     }
 
-    public static void assertMatchingFiles(List<File> resultFiles, List<String> expectedFiles) throws IOException {
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
-            File resultFile = resultFiles.get(i);
-            String expectedFileName = expectedFiles.get(i);
-            File expectedFile = new File(expectedFileName);
+            final File resultFile = resultFiles.get(i);
+            final String expectedFileName = expectedFiles.get(i);
+            final File expectedFile = new File(expectedFileName);
             if (expectedFileName.endsWith(".bam")){
                 assertEqualBamFiles(resultFile, expectedFile);
             } else {
