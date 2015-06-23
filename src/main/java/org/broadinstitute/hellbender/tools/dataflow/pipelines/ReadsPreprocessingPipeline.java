@@ -10,37 +10,58 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.*;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsSource;
-import org.broadinstitute.hellbender.engine.dataflow.transforms.GoogleReadToRead;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.read.Read;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.sql.Ref;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+
+@CommandLineProgramProperties(
+        summary = "Takes aligned reads (likely from BWA) and runs MarkDuplicates and BQSR. The final result is analysis-ready reads.",
+        oneLineSummary = "Takes aligned reads (likely from BWA) and runs MarkDuplicates and BQSR. The final result is analysis-ready reads.",
+        usageExample = "Hellbender ReadsPreprocessingPipeline -I single.bam -R referenceName -BQSRKnownVariants variants.vcf -O output.bam",
+        programGroup = DataFlowProgramGroup.class
+)
+
+/**
+ * ReadsPreprocessingPipeline is our standard pipeline that takes aligned reads (likely from BWA) and runs MarkDuplicates
+ * and BQSR. The final result is analysis-ready reads.
+ */
 public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
+    private static final long serialVersionUID = 1L;
 
     @Argument(doc = "uri for the input bam, either a local file path or a gs:// bucket path",
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             optional = false)
     protected String bam;
 
-    @Argument(doc = "", shortName = "R", fullName = "reference", optional = false)
+    @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
+    protected String output;
+
+    @Argument(doc = "the reference name", shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, optional = false)
     protected String referenceName;
 
-    @Argument(doc = "", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
+    @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
     protected List<String> baseRecalibrationKnownVariants;
 
     @ArgumentCollection
@@ -48,35 +69,38 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
     @Override
     protected void setupPipeline( Pipeline pipeline ) {
-        final ReadsSource readsSource = new ReadsSource(bam, pipeline);
-        final SAMFileHeader readsHeader = readsSource.getHeader();
-        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary()):
-                                                                                                 getAllIntervalsForReference(readsHeader.getSequenceDictionary());
+        // Load the reads.
+        final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
+        final SAMFileHeader readsHeader = readsDataflowSource.getHeader();
+        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
+                : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-        final PCollectionView<SAMFileHeader> headerSingleton = pipeline.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<SAMFileHeader>asSingleton());
-        final PCollection<com.google.api.services.genomics.model.Read> rawReads = readsSource.getReadPCollection(intervals);
+        final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
+        final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
-        final PCollection<Read> initialReads = rawReads.apply(new GoogleReadToRead());
+        // Apply MarkDuplicates to produce updated GATKReads.
+        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
 
-        final PCollection<Read> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
+        // Load the Variants and the Reference and join them to reads.
+        final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
 
-        final PCollection<KV<Read, ReadContextData>> readsWithContext = markedReads.apply(new AddContextDataToRead(referenceName, baseRecalibrationKnownVariants, pipeline));
+        Map<String, String> referenceNameToIdTable = RefAPISource.buildReferenceNameToIdTable(pipeline.getOptions(), referenceName);
+        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
+
+        final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, refAPIMetadata, variantsDataflowSource);
+
+        // Apply BQSR.
         final PCollection<RecalibrationTables> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
         final PCollectionView<RecalibrationTables> mergedRecalibrationReport = recalibrationReports.apply(View.<RecalibrationTables>asSingleton());
 
-        final PCollection<Read> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
-    }
-
-    private List<SimpleInterval> getAllIntervalsForReference(SAMSequenceDictionary sequenceDictionary) {
-        return GenomeLocSortedSet.createSetFromSequenceDictionary(sequenceDictionary)
-                .stream()
-                .map(SimpleInterval::new)
-                .collect(Collectors.toList());
+        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
+        SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
     }
 
     // NOTE: need a way to ensure that certain tools are guaranteed to have a header -- one option is
     // an interface with a factory method
-    private static class MarkDuplicatesStub extends PTransform<PCollection<Read>, PCollection<Read>> {
+    private static class MarkDuplicatesStub extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
+        private static final long serialVersionUID = 1L;
 
         private PCollectionView<SAMFileHeader> header;
 
@@ -85,9 +109,10 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
 
         @Override
-        public PCollection<Read> apply( PCollection<Read> input ) {
+        public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
             return input.apply(ParDo.named("MarkDuplicates").
-                    of(new DoFn<Read, Read>() {
+                    of(new DoFn<GATKRead, GATKRead>() {
+                        private static final long serialVersionUID = 1L;
                         @Override
                         public void processElement( ProcessContext c ) throws Exception {
                             c.output(c.element());
@@ -96,7 +121,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
     }
 
-    private static class BaseRecalibratorStub extends PTransform<PCollection<KV<Read, ReadContextData>>, PCollection<RecalibrationTables>> {
+    private static class BaseRecalibratorStub extends PTransform<PCollection<KV<GATKRead, ReadContextData>>, PCollection<RecalibrationTables>> {
+        private static final long serialVersionUID = 1L;
         private PCollectionView<SAMFileHeader> header;
 
         public BaseRecalibratorStub( final PCollectionView<SAMFileHeader> header ) {
@@ -104,9 +130,10 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
 
         @Override
-        public PCollection<RecalibrationTables> apply( PCollection<KV<Read, ReadContextData>> input ) {
+        public PCollection<RecalibrationTables> apply( PCollection<KV<GATKRead, ReadContextData>> input ) {
             return input.apply(ParDo.named("BaseRecalibrator").
-                    of(new DoFn<KV<Read, ReadContextData>, RecalibrationTables>() {
+                    of(new DoFn<KV<GATKRead, ReadContextData>, RecalibrationTables>() {
+                        private static final long serialVersionUID = 1L;
 
                         @Override
                         public void processElement( ProcessContext c ) throws Exception {
@@ -116,7 +143,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
     }
 
-    private static class ApplyBQSRStub extends PTransform<PCollection<Read>, PCollection<Read>> {
+    private static class ApplyBQSRStub extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
+        private static final long serialVersionUID = 1L;
         private PCollectionView<SAMFileHeader> header;
         private PCollectionView<RecalibrationTables> recalibrationReport;
 
@@ -126,9 +154,10 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         }
 
         @Override
-        public PCollection<Read> apply( PCollection<Read> input ) {
+        public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
             return input.apply(ParDo.named("ApplyBQSR").
-                    of(new DoFn<Read, Read>() {
+                    of(new DoFn<GATKRead, GATKRead>() {
+                        private static final long serialVersionUID = 1L;
 
                         @Override
                         public void processElement( ProcessContext c ) throws Exception {

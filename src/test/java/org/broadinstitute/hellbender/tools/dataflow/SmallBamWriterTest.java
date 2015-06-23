@@ -18,7 +18,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -144,7 +144,7 @@ public class SmallBamWriterTest extends BaseTest {
 
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-            return new ReadsSource(filename, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT);
+            return new ReadsDataflowSource(filename, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT);
         } else {
             // ingestion from local file
             try( ReadsDataSource readsSource = new ReadsDataSource(new File(filename)) ) {

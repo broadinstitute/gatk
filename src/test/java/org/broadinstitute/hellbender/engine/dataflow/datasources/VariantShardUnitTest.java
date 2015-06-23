@@ -1,0 +1,33 @@
+package org.broadinstitute.hellbender.engine.dataflow.datasources;
+
+import com.google.api.services.genomics.model.Read;
+import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import java.util.Arrays;
+import java.util.List;
+
+public final class VariantShardUnitTest extends BaseTest {
+
+    @DataProvider(name = "variantShards")
+    public Object[][] reads() {
+        return new Object[][]{
+                {ReadsPreprocessingPipelineTestData.makeRead(1, 300, 1, Read.class),
+                        Arrays.asList(new VariantShard(0, "1"))},  //right in the middle of the shard
+                {ReadsPreprocessingPipelineTestData.makeRead(VariantShard.VARIANT_SHARDSIZE, 10, 2, Read.class),
+                        Arrays.asList(new VariantShard(1, "1"))}, //at  the start of a shard
+                {ReadsPreprocessingPipelineTestData.makeRead(3 * VariantShard.VARIANT_SHARDSIZE - 1, 2, 3, Read.class),
+                        Arrays.asList(new VariantShard(2, "1"), new VariantShard(3, "1"))}  // overlapping the end of a shard
+        };
+    }
+
+    @Test(dataProvider = "variantShards")
+    public void getVariantShardsFromIntervalTest(GATKRead read, Iterable<VariantShard> expectedShards) {
+            List<VariantShard> foundShards = VariantShard.getVariantShardsFromInterval(read);
+            Assert.assertEquals(foundShards, expectedShards);
+    }
+}

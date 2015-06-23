@@ -1,37 +1,72 @@
-package org.broadinstitute.hellbender.utils.variant;
+package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
-import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
+import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
+import org.broadinstitute.hellbender.utils.variant.VariantUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
-public class VariantContextVariantAdapterTest extends BaseTest {
-    // Clearly, only for testing.
-    public static VariantContextVariantAdapter createVariantContextVariantAdapterForTesting(VariantContextVariantAdapter vc, UUID uuid) {
-        return new VariantContextVariantAdapter(vc, uuid);
-    }
+// Why this static import? We need to be able to set UUID, but we don't want to expose this to the dev code,
+// so we put in in VariantContextVariantAdapterTest.
+import static org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapterTest.createVariantContextVariantAdapterForTesting;
 
+public class VariantSourceUnitTest extends BaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
 
-    UUID defaultUUID() {
+    static UUID defaultUUID() {
         return new UUID(0L, 0L);
+    }
+
+    static class clearUUIDDoFn extends DoFn<Variant, Variant> {
+        private static final long serialVersionUID = 1L;
+        @Override
+        public void processElement(ProcessContext c) throws Exception {
+            VariantContextVariantAdapter variantContextVariantAdapterForTesting =
+                    createVariantContextVariantAdapterForTesting(((VariantContextVariantAdapter) c.element()), defaultUUID());
+            c.output(variantContextVariantAdapterForTesting);
+        }
+    }
+
+    @Test(dataProvider = "RealVariantData")
+    public void testVariantPCollection(final List<Variant> variants) {
+        for (int i = 0; i < variants.size(); ++i) {
+            // Update the element with a cleared UUID.
+            variants.set(i, createVariantContextVariantAdapterForTesting(((VariantContextVariantAdapter) variants.get(i)), defaultUUID()));
+        }
+        // Now make a PCollection, to verify that variants can be coded.
+        Pipeline p = GATKTestPipeline.create();
+
+        // Now, we can test that we can get a PCollection from a file
+        List<String> files = Arrays.asList(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
+        VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(files, p);
+        PCollection<Variant> allVariants = variantsDataflowSource.getAllVariants();
+
+        // We have to clear the UUIDs to make the comparison.
+        PCollection<Variant> allVariants2 = allVariants.apply(ParDo.of(new clearUUIDDoFn()));
+        DataflowAssert.that(allVariants2).containsInAnyOrder(variants);
+        p.run();
     }
 
     @Test(dataProvider = "VariantDataProvider")
@@ -62,15 +97,19 @@ public class VariantContextVariantAdapterTest extends BaseTest {
         // The simplest way to figure out if a class is coded correctly is to create a PCollection
         // of that type and see if matches the List version.
         Pipeline p = GATKTestPipeline.create();
-        DataflowTestUtils.pCollectionCreateAndVerify(p, variantList, new VariantCoder());
+        // Turns out we don't need to register a coder for VariantContextVariantAdapter.
+
+        PCollection<Variant> pShards = p.apply(Create.of(variantList));
+
+        List<Variant> sameVariants = Lists.newArrayList();
+        Assert.assertTrue(sameVariants.addAll(variantList));
+        DataflowAssert.that(pShards).containsInAnyOrder(sameVariants);
         p.run();
     }
 
 
     @DataProvider(name = "VariantDataProvider")
     public Object[][] getVariantData() {
-        // We use the defaultUUID because we want to have be able to use equals (without clearing, we'd see items
-        // aren't the same because of UUIDs).
         List<Variant> variantSet = new ArrayList<>();
         variantSet.add(new SkeletonVariant(new SimpleInterval("1", 100, 100), true, false, defaultUUID()));
         variantSet.add(new SkeletonVariant(new SimpleInterval("1", 199, 200), false, true, defaultUUID()));
@@ -115,5 +154,14 @@ public class VariantContextVariantAdapterTest extends BaseTest {
         return new Object[][]{
                 {variantList},
         };
+    }
+    @DataProvider(name = "RealVariantData")
+    public Object[][] getRealVariantData() {
+        List<String> files = Lists.newArrayList(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
+        List<Variant> variants = VariantsDataflowSource.getVariantsList(files);
+        return new Object[][]{
+            {variants},
+        };
+
     }
 }
