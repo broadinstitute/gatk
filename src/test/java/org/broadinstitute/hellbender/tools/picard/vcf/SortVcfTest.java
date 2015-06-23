@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Test class for SortVCF. Several tests also conducted by AbstractVcfMergingClpTester
+ * Test class for SortVCF. Several tests lso conducted by AbstractVcfMergingClpTester
  *
  * Created by bradt on 9/3/14.
  */
