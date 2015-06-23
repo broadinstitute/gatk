@@ -225,6 +225,11 @@ shadowJar {
     mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
+    dependencies {
+        // exclude Hadoop dependencies, since they are provided when running with Spark
+        exclude(dependency('org.apache.hadoop:.*:.*'))
+        exclude(dependency('org.xerial.snappy:snappy-java:.*'))
+    }
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
