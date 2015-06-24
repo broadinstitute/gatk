@@ -16,7 +16,8 @@ import java.util.*;
  */
 public abstract class CommandLineProgramTest extends BaseTest {
 
-    public static final String PROPERTY_DATAFLOW_RUNNER = "dataflowRunner";
+    private static final String PROPERTY_DATAFLOW_RUNNER = "dataflowRunner";
+    private static final String ENV_DATAFLOW_RUNNER = "DATAFLOW_RUNNER";
 
     /**
      * Returns the location of the resource directory. The default implementation points to the common directory for tools.
@@ -87,12 +88,30 @@ public abstract class CommandLineProgramTest extends BaseTest {
     }
 
     /**
+     * @return The unqualified class name of the dataflow runner if specified by either the
+     * <code>dataflowRunner</code> system property or the <code>DATAFLOW_RUNNER</code> environment variable,
+     * or <code>null</code> if no runner is specified.
+     */
+    public static String getExternallySpecifiedRunner() {
+        String dataflowRunnerProperty = System.getProperty(PROPERTY_DATAFLOW_RUNNER);
+        String dataflowRunnerEnv = System.getenv(ENV_DATAFLOW_RUNNER);
+        if (!Strings.isNullOrEmpty(dataflowRunnerProperty)) {
+            return dataflowRunnerProperty;
+        } else if (!Strings.isNullOrEmpty(dataflowRunnerEnv)) {
+            return dataflowRunnerEnv;
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Adds arguments to the given <code>args</code> to set the dataflow
-     * runner if specified by the <code>dataflowRunner</code> system property (which
+     * runner if specified by either the <code>dataflowRunner</code> system property
+     * or the <code>DATAFLOW_RUNNER</code> environment variable (which
      * should be the unqualified class name of the runner).
      */
     public static void addDataflowRunnerArgs(ArgumentsBuilder args) {
-        String dataflowRunner = System.getProperty(PROPERTY_DATAFLOW_RUNNER);
+        String dataflowRunner = getExternallySpecifiedRunner();
         if (!Strings.isNullOrEmpty(dataflowRunner)) {
             args.add("--runner");
             args.add(DataflowCommandLineProgram.getRunnerTypeName(dataflowRunner));
@@ -101,14 +120,15 @@ public abstract class CommandLineProgramTest extends BaseTest {
 
     /**
      * Adds arguments to the given <code>args</code> to set the dataflow
-     * runner if specified by the <code>dataflowRunner</code> system property (which
+     * runner if specified by either the <code>dataflowRunner</code> system property
+     * or the <code>DATAFLOW_RUNNER</code> environment variable (which
      * should be the unqualified class name of the runner).
      */
     public static void addDataflowRunnerArgs(List<String> args) {
-        String dataflowRunnerProperty = System.getProperty(PROPERTY_DATAFLOW_RUNNER);
-        if (!Strings.isNullOrEmpty(dataflowRunnerProperty)) {
+        String dataflowRunner = getExternallySpecifiedRunner();
+        if (!Strings.isNullOrEmpty(dataflowRunner)) {
             args.add("--runner");
-            args.add(DataflowCommandLineProgram.getRunnerTypeName(dataflowRunnerProperty));
+            args.add(DataflowCommandLineProgram.getRunnerTypeName(dataflowRunner));
         }
     }
 }

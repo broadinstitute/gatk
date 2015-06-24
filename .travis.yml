@@ -10,8 +10,12 @@ jdk:
 env:
   matrix:
   - TERM=dumb
+  - TERM=dumb DATAFLOW_RUNNER=SparkPipelineRunner
   global:
   - secure: RA4LKD82cW+0xPayPVAWSpYqJu5uoPcz7oXXYtYNVuilFmS8PGYx0g/BXs4QMvQsGMt6aMLN8m7lMAPN5XTH/8JSeM3VmQ3mdpgNdP+p3CVlwrapZ2lTq27Wb/E8J1CGEHOg76z716t//FUElyC/gdhS+tfBmXk3YanM5fMXEHs=
+matrix:
+  allow_failures:
+    - env: TERM=dumb DATAFLOW_RUNNER=SparkPipelineRunner
 cache:
   directories:
   - ~/.gradle
