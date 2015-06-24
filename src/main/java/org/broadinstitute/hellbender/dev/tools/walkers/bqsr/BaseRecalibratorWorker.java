@@ -215,6 +215,14 @@ public final class BaseRecalibratorWorker {
         return this.covariates;
     }
 
+    /**
+     * @param rt recalibration tables
+     * @return the quantization information
+     */
+    public QuantizationInfo getQuantizationInfo(RecalibrationTables rt) {
+        return new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
+    }
+
     private ReadTransformer makeReadTransform() {
         ReadTransformer f0 = BaseRecalibratorWorker::consolidateCigar;
 
@@ -515,8 +523,7 @@ public final class BaseRecalibratorWorker {
      */
     public void saveReport(RecalibrationTables rt, StandardCovariateList finalRequestedCovariates) throws java.io.FileNotFoundException {
         BRAC.RAC.RECAL_TABLE = new PrintStream(BRAC.RAC.RECAL_TABLE_FILE);
-        logger.info("Saving report to "+BRAC.RAC.RECAL_TABLE_FILE.getPath());
-        QuantizationInfo quantizationInfo = new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
+        QuantizationInfo quantizationInfo = getQuantizationInfo(rt); //new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
         RecalUtils.outputRecalibrationReport(BRAC.RAC, quantizationInfo, rt, finalRequestedCovariates, BRAC.RAC.SORT_BY_ALL_COLUMNS);
     }
 }

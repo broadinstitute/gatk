@@ -32,6 +32,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
 
     final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
     final String hiSeqBam = resourceDir + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
+    final String naBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
     @DataProvider(name = "ApplyBQSRTest")
     public Object[][] createABQSRTestData() {
@@ -43,6 +44,15 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -DIQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate_allaligned.bam")});
 
         // TODO: add test inputs with some unaligned reads
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @DataProvider(name = "ApplyBQSRTestNA")
+    public Object[][] createABQSRTestDataNA() {
+        List<Object[]> tests = new ArrayList<>();
+
+        tests.add(new Object[]{new ABQSRTest(naBam, "", resourceDir + "expected.NA12878.chr17.69k_70k.bqsr.bam")});
 
         return tests.toArray(new Object[][]{});
     }
@@ -61,6 +71,24 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(params.expectedFile));
         spec.executeTest("testPrintReads-" + params.args, this);
     }
+
+    /*
+    // this fails because it says the input file is malformed.
+    @Test(dataProvider = "ApplyBQSRTestNA")
+    public void testNA12878(ABQSRTest params) throws IOException {
+        String args =
+                " -I " + params.bam +
+                        " --bqsr_recal_file " + resourceDir + "NA12878.chr17.69k_70k.table.gz " +
+                        params.args +
+                        " -O %s";
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+        addDataflowRunnerArgs(ab);
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                ab.getString(),
+                Arrays.asList(params.expectedFile));
+        spec.executeTest("testPrintReads-" + params.args, this);
+    }
+    */
 
     @Test
     public void testPRNoFailWithHighMaxCycle() throws IOException {

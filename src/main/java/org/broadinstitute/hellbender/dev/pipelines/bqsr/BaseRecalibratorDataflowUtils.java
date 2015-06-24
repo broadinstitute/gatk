@@ -23,11 +23,16 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorWorker;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.*;
 import java.nio.channels.Channels;
@@ -53,12 +58,24 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   public static final TupleTag<RecalibrationTables> tablesTag = new TupleTag<>();
 
   /**
-   * Get a single RecalibrationTables object that represents the output of phase 1 of BQSR.
+   * Get a single BaseRecalOutput object that contains RecalibrationTables and more, output by phase 1 of BQSR.
+   * <p>
+   * The reference file (*.fasta) must also have a .dict and a .fasta.fai next to it.
+   */
+  public static PCollection<BaseRecalOutput> getRecalibrationOutput(SAMFileHeader readsHeader, PCollection<Read> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
+    PCollection<RecalibrationTables> recalibrationTables = getRecalibrationTables(readsHeader, reads, referenceFileName, toolArgs, placesToIgnore);
+    return addQuantizationInfo(readsHeader, toolArgs, recalibrationTables);
+  }
+
+  /**
+   * Get a single RecalibrationTables object, output by phase 1 of BQSR.
    * <p>
    * The reference file (*.fasta) must also have a .dict and a .fasta.fai next to it.
    */
   public static PCollection<RecalibrationTables> getRecalibrationTables(SAMFileHeader readsHeader, PCollection<Read> reads, String referenceFileName, BaseRecalibrationArgumentCollection toolArgs, PCollection<SimpleInterval> placesToIgnore) {
-    PCollection<RecalibrationTables> stats = computeBlockStatistics(readsHeader, referenceFileName, toolArgs, groupByBlock(reads, placesToIgnore));
+    final ReadFilter readFilter = BaseRecalibratorWorker.readFilter();
+    PCollection<Read> filteredReads = reads.apply(new ReadsFilter(readFilter, readsHeader));
+    PCollection<RecalibrationTables> stats = computeBlockStatistics(readsHeader, referenceFileName, toolArgs, groupByBlock(filteredReads, placesToIgnore));
     PCollection<RecalibrationTables> oneStat = aggregateStatistics(stats);
     return oneStat;
   }
@@ -89,6 +106,33 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
 
   // ---------------------------------------------------------------------------------------------------
   // non-public methods
+
+
+  private static PCollection<BaseRecalOutput> addQuantizationInfo(SAMFileHeader readsHeader, BaseRecalibrationArgumentCollection toolArgs, PCollection<RecalibrationTables> recal) {
+    return recal.apply(ParDo
+            .named("addQuantizationInfo")
+            .of(new DoFn<RecalibrationTables, BaseRecalOutput>() {
+              @Override
+              public void processElement(ProcessContext c) {
+                RecalibrationTables rt = c.element();
+                BaseRecalibratorWorker baseRecalibratorWorker = BaseRecalibratorWorker.fromArgs(readsHeader, toolArgs);
+                baseRecalibratorWorker.onTraversalStart(null);
+                //BaseRecalOutput ret = new BaseRecalOutput(rt, baseRecalibratorWorker.getQuantizationInfo(rt), baseRecalibratorWorker.getRequestedCovariates());
+
+                // Saving and loading back the report actually changes it. So we have to do it.
+                // TODO: Figure out what it changes, and just do that instead of doing the whole rigamarole.
+                try {
+                  File temp = BaseTest.createTempFile("temp-recalibrationtable",".tmp");
+                  toolArgs.RAC.RECAL_TABLE = new PrintStream(temp);
+                    RecalUtils.outputRecalibrationReport(toolArgs.RAC, baseRecalibratorWorker.getQuantizationInfo(rt), rt, baseRecalibratorWorker.getRequestedCovariates(), false);
+                    BaseRecalOutput ret = new BaseRecalOutput(temp);
+                    c.output(ret);
+                } catch (FileNotFoundException e) {
+                    throw new GATKException("can't find my own temporary file",e);
+                }
+              }
+            })).setCoder(SerializableCoder.of(BaseRecalOutput.class));
+  }
 
   private static String[] getRelatedFiles(String fastaFilename) {
     return new String[] { fastaFilename, ReferenceUtils.getFastaDictionaryFileName(fastaFilename), ReferenceUtils.getFastaIndexFileName(fastaFilename) };

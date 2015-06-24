@@ -4,9 +4,12 @@ import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
@@ -24,6 +27,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ReadsFilter;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -120,6 +124,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             PCollection<RecalibrationTables> aggregated =
                     BaseRecalibratorDataflowUtils.getRecalibrationTables(header, reads, referencePath, BRAC, skipIntervals);
 
+
             // If saving textual output then we need to make sure we can get to the output
             if (saveTextualTables) {
                 if (null == outputTablesPath) {
@@ -167,7 +172,6 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
 
     /** reads local disks or GCS -> header, and PCollection */
     private PCollection<Read> ingestReadsAndGrabHeader(final Pipeline pipeline, List<String> filenames) throws IOException {
-
         if (filenames.size() > 1) {
             throw new UserException("Sorry, we only support a single input file for now.");
         }
@@ -208,7 +212,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                     logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
                 }
             }
-            return pipeline.apply(Create.of(readLst).withName("input ingest"));
+            return pipeline.apply(Create.of(readLst).withName("input ingest")).setCoder(GenericJsonCoder.of(Read.class));
         }
     }
 

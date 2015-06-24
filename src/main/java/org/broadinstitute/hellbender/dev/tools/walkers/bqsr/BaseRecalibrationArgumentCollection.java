@@ -23,7 +23,7 @@ public final class BaseRecalibrationArgumentCollection implements Serializable, 
      * (Almost) all the command line arguments for BQSR and its covariates.
      */
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
-    protected final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
+    public final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
     @ArgumentCollection
     public final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
