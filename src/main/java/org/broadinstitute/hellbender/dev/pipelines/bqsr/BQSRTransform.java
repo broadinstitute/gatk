@@ -16,10 +16,10 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
  * PCollection<Read> reads = ...
  * PCollection<SimpleInterval> knownIntervals = ...
  * PCollectionTuple inputs =
- *     PCollectionTuple.of(BQSR_Dataflow.readTag, reads)
- *                     .and(BQSR_Dataflow.intervalTag, intervals);
+ *     PCollectionTuple.of(BaseRecalibratorDataflowUtils.readTag, reads)
+ *                     .and(BaseRecalibratorDataflowUtils.intervalTag, intervals);
  */
-public final class BQSRTransform extends PTransform<PCollectionTuple, PCollection<RecalibrationTables>> {
+public final class BQSRTransform extends PTransform<PCollectionTuple, PCollection<BaseRecalOutput>> {
 
     private final SAMFileHeader header;
     // local or GCS
@@ -41,8 +41,8 @@ public final class BQSRTransform extends PTransform<PCollectionTuple, PCollectio
      * @return a single RecalibrationTables object that represents the output of phase 1 of BQSR.
      */
     @Override
-    public PCollection<RecalibrationTables> apply(PCollectionTuple input) {
-        return BaseRecalibratorDataflowUtils.getRecalibrationTables(header, input.get(BaseRecalibratorDataflowUtils.readTag), referencePath, toolArgs, input.get(BaseRecalibratorDataflowUtils.intervalTag));
+    public PCollection<BaseRecalOutput> apply(PCollectionTuple input) {
+        return BaseRecalibratorDataflowUtils.getRecalibrationOutput(header, input.get(BaseRecalibratorDataflowUtils.readTag), referencePath, toolArgs, input.get(BaseRecalibratorDataflowUtils.intervalTag));
     }
 
 

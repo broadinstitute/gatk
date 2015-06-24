@@ -102,4 +102,5 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
                 .apply(new ApplyBQSRTransform(header, recalInfoSingletonCollection, bqsrOpts));
         SmallBamWriter.writeToFile(pipeline, output, header, OUTPUT);
     }
+
 }
