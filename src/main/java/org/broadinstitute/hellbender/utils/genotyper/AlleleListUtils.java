@@ -14,7 +14,7 @@ import java.util.List;
 public final class AlleleListUtils {
     private AlleleListUtils(){}
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked","rawtypes"})
     private static final AlleleList EMPTY_LIST = new AlleleList() {
         @Override
         public int alleleCount() {
@@ -98,6 +98,7 @@ public final class AlleleListUtils {
      *
      * @return never {@code null}.
      */
+    @SuppressWarnings({"unchecked","rawtypes"})
     public static <A extends Allele> List<A> asList(final AlleleList<A> list) {
         Utils.nonNull(list, "the list cannot be null");
         return new AsList(list);

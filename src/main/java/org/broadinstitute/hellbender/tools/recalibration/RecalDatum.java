@@ -14,6 +14,7 @@ import java.io.Serializable;
 public final class RecalDatum implements Serializable {
     public final static byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
     private static final double UNINITIALIZED = -1.0;
+    private static final long serialVersionUID = 1L;
 
     /**
      * estimated reported quality score based on combined data's individual q-reporteds and number of observations

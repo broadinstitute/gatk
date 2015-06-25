@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import com.google.common.base.Strings;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -169,8 +170,8 @@ public final class PairHMMUnitTest extends BaseTest {
                             final int expected = indelQual + (size - 2) * gcp;
 
                             for ( boolean insertionP : Arrays.asList(true, false)) {
-                                final String small = Utils.dupString((char) base, 1);
-                                final String big = Utils.dupString((char) base, size);
+                                final String small = Utils.dupChar((char) base, 1);
+                                final String big = Utils.dupChar((char) base, size);
 
                                 final String ref = insertionP ? small : big;
                                 final String read = insertionP ? big : small;
@@ -390,8 +391,8 @@ public final class PairHMMUnitTest extends BaseTest {
             for ( final int nRefCopies : Arrays.asList(1, 2, 10, 20, 100) ) {
                 if ( nRefCopies > nReadCopies ) {
                     for ( final PairHMM hmm : getHMMs() ) {
-                        final String read = Utils.dupString(read1, nReadCopies);
-                        final String ref  = Utils.dupString(ref1, nRefCopies);
+                        final String read = Strings.repeat(read1, nReadCopies);
+                        final String ref  = Strings.repeat(ref1, nRefCopies);
                         tests.add(new Object[]{hmm, read, ref});
                     }
                 }

@@ -35,7 +35,7 @@ import java.util.*;
  * @param <HISTOGRAM_KEY> If there is are Histograms related to metrics of type <BEAN> then <HKEY> is the key value to these Histograms
  * @param <ARGTYPE> The type of argument passed to individual PerUnitMetricCollector (see SAMRecordMultilevelCollector and PerUnitMetricCollector)
  */
-public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOGRAM_KEY extends Comparable, ARGTYPE>  {
+public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOGRAM_KEY extends Comparable<HISTOGRAM_KEY>, ARGTYPE>  {
 
     public static final String UNKNOWN = "unknown";
     //The collector that will accept all records (allReads is NULL if !calculateAll)

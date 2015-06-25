@@ -67,6 +67,7 @@ import java.util.List;
         programGroup = ReadProgramGroup.class
 )
 public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
+    private static final long serialVersionUID = 1L;
 
     private final static Logger logger = LogManager.getLogger(BaseRecalibratorDataflow.class);
     // temporary file with the serialized recalibrationTables.
@@ -212,11 +213,12 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                     logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
                 }
             }
-            return pipeline.apply(Create.of(readLst).withName("input ingest")).setCoder(GenericJsonCoder.of(Read.class));
+            return pipeline.apply(Create.of(readLst).setName("input ingest")).setCoder(GenericJsonCoder.of(Read.class));
         }
     }
 
     /** list of known intervals -> PCollection */
+    @SuppressWarnings("unchecked")
     private static PCollection<SimpleInterval> ingestKnownIntervals(final Pipeline pipeline, List<FeatureInput<Feature>> knownSites) {
         // known sites
         List<SimpleInterval> knownSitesLst = new ArrayList<>();
@@ -227,7 +229,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                 knownSitesLst.add(new SimpleInterval(f));
             }
         }
-        return pipeline.apply(Create.of(knownSitesLst).withName("known intervals ingest"))
+        return pipeline.apply(Create.of(knownSitesLst).setName("known intervals ingest"))
                 .setCoder(SerializableCoder.of(SimpleInterval.class)); // Dataflow boilerplate
     }
 

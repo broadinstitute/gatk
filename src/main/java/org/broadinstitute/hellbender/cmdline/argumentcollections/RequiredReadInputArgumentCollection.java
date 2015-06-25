@@ -12,7 +12,7 @@ import java.util.List;
  * (eg., BAM/SAM/CRAM files), and require at least one such input.
  */
 public final class RequiredReadInputArgumentCollection extends ReadInputArgumentCollection {
-
+    private static final long serialVersionUID = 1L;
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = false)
     private List<String> readFilesNames;
 

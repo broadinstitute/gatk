@@ -12,6 +12,7 @@ import java.util.*;
  * Utility class to facilitate base quality score recalibration.
  */
 public final class RecalibrationTables implements Serializable, Iterable<NestedIntegerArray<RecalDatum>> {
+    private static final long serialVersionUID = 1L;
     private final int qualDimension;
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;

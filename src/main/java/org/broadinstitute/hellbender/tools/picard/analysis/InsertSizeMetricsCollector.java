@@ -108,6 +108,7 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
             return totalInserts;
         }
 
+        @SuppressWarnings("unchecked")
         public void addMetricsToFile(final MetricsFile<InsertSizeMetrics,Integer> file) {
             for (final Histogram<Integer> h : this.Histograms.values()) totalInserts += h.getCount();
 

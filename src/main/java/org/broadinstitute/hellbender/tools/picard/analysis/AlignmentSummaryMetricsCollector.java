@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.metrics.SAMRecordAndReferenceMultiLevelColl
 
 import java.util.*;
 
-public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<AlignmentSummaryMetrics, Comparable<?>> {
+public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<AlignmentSummaryMetrics,  Long> {
     // If we have a reference sequence, collect metrics on how well we aligned to it
     private final boolean doRefMetrics;
 
@@ -60,7 +60,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
     }
 
     @Override
-    protected PerUnitMetricCollector<AlignmentSummaryMetrics, Comparable<?>, SAMRecordAndReference> makeChildCollector(String sample, String library, String readGroup) {
+    protected PerUnitMetricCollector<AlignmentSummaryMetrics, Long, SAMRecordAndReference> makeChildCollector(String sample, String library, String readGroup) {
         return new GroupAlignmentSummaryMetricsPerUnitMetricCollector(sample, library, readGroup);
     }
 
@@ -123,7 +123,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
         return false;
     }
 
-    private class GroupAlignmentSummaryMetricsPerUnitMetricCollector implements PerUnitMetricCollector<AlignmentSummaryMetrics, Comparable<?>, SAMRecordAndReference> {
+    private class GroupAlignmentSummaryMetricsPerUnitMetricCollector implements PerUnitMetricCollector<AlignmentSummaryMetrics, Long, SAMRecordAndReference> {
         final IndividualAlignmentSummaryMetricsCollector unpairedCollector;
         final IndividualAlignmentSummaryMetricsCollector firstOfPairCollector;
         final IndividualAlignmentSummaryMetricsCollector secondOfPairCollector;
@@ -171,7 +171,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
         }
 
         @Override
-        public void addMetricsToFile(final MetricsFile<AlignmentSummaryMetrics, Comparable<?>> file) {
+        public void addMetricsToFile(final MetricsFile<AlignmentSummaryMetrics, Long> file) {
             if (firstOfPairCollector.getMetrics().TOTAL_READS > 0) {
                 // override how bad cycle is determined for paired reads, it should be
                 // the sum of first and second reads
@@ -227,7 +227,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
                 collectReadData(record, ref);
                 collectQualityData(record, ref);
             }
-
+            @SuppressWarnings("unchecked")
             public void onComplete() {
                 //summarize read data
                 if (metrics.TOTAL_READS > 0)
@@ -238,6 +238,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
 
                     //Calculate BAD_CYCLES
                     metrics.BAD_CYCLES = 0;
+
                     for (final Histogram<Integer>.Bin cycleBin : badCycleHistogram.values()) {
                         final double badCyclePercentage = cycleBin.getValue() / metrics.TOTAL_READS;
                         if (badCyclePercentage >= .8) {

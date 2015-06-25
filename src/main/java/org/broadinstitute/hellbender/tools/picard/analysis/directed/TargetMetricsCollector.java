@@ -117,7 +117,7 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
             }
         }
 
-        final Class mtClass = outputMetrics.getClass();
+        final Class<?> mtClass = outputMetrics.getClass();
         final Set<Field> targetSet = CollectionUtil.makeSet(TargetMetrics.class.getFields());
 
         for(final String targetKey : targetKeys) {

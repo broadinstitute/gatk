@@ -93,7 +93,7 @@ public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
     protected void finish() {
         collector.finish();
 
-        final MetricsFile<AlignmentSummaryMetrics, Comparable<?>> file = getMetricsFile();
+        final MetricsFile<AlignmentSummaryMetrics, Long> file = getMetricsFile();
         collector.addAllLevelsToFile(file);
 
         file.write(OUTPUT);

@@ -13,6 +13,7 @@ import java.util.Set;
  * Matching is done by exact case-sensitive text matching.
  */
 public final class PlatformUnitReadFilter implements ReadFilter {
+    private static final long serialVersionUID = 1L;
 
     @Argument(fullName = "blackListedLanes", shortName = "blackListedLanes", doc="Keep reads with platform units not on the list", optional=true)
     public Set<String> blackListedLanes = new HashSet<>();

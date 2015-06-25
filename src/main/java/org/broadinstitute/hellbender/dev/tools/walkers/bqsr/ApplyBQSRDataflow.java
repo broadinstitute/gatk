@@ -59,6 +59,7 @@ import java.util.List;
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
+    private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
     public final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
@@ -97,7 +98,7 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary) :
                 IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         final BaseRecalOutput recalInfo = new BaseRecalOutput(BQSR_RECAL_FILE);
-        PCollection<BaseRecalOutput> recalInfoSingletonCollection = pipeline.apply(Create.of(recalInfo).withName("recal_file ingest"));
+        PCollection<BaseRecalOutput> recalInfoSingletonCollection = pipeline.apply(Create.of(recalInfo).setName("recal_file ingest"));
         PCollection<Read> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT)
                 .apply(new ApplyBQSRTransform(header, recalInfoSingletonCollection, bqsrOpts));
         SmallBamWriter.writeToFile(pipeline, output, header, OUTPUT);

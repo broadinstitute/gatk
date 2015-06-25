@@ -106,7 +106,7 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
             }
         }
         metricsCollector.finish();
-        final MetricsFile<RrbsMetrics, Comparable<?>> rrbsMetrics = getMetricsFile();
+        final MetricsFile<RrbsMetrics, Long> rrbsMetrics = getMetricsFile();
         metricsCollector.addAllLevelsToFile(rrbsMetrics);
 
         // Using RrbsMetrics as a way to get both of the metrics objects through the MultiLevelCollector. Once

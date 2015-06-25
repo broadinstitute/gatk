@@ -179,8 +179,9 @@ public final class AlleleListUtilsUnitTest {
     private List<Allele>[] alleleLists;
 
     @BeforeClass
+    @SuppressWarnings("unchecked")
     public void setUp() {
-        alleleLists = new List[ALLELE_COUNT.length * MAX_ALLELE_LENGTH.length];
+        alleleLists = (List<Allele>[]) new List<?>[ALLELE_COUNT.length * MAX_ALLELE_LENGTH.length];
         int nextIndex = 0;
         for (int i = 0; i < ALLELE_COUNT.length; i++)
             for (int j = 0; j < MAX_ALLELE_LENGTH.length; j++)

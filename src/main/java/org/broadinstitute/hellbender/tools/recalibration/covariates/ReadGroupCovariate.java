@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
  * The Read Group covariate.
  */
 public final class ReadGroupCovariate implements Covariate {
+    private static final long serialVersionUID = 1L;
 
     //Note: these maps are initialized and made umodifiable at construction so the whole covariate is an immutable object once it's constructed.
 

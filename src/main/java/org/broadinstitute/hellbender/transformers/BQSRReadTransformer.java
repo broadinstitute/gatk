@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class BQSRReadTransformer implements ReadTransformer {
+    private static final long serialVersionUID = 1L;
 
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;

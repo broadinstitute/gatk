@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  * The Reported Quality Score covariate.
  */
 public final class QualityScoreCovariate implements Covariate {
+    private static final long serialVersionUID = 1L;
 
     public QualityScoreCovariate(final RecalibrationArgumentCollection RAC){
         //nothing to initialize

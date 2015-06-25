@@ -16,6 +16,7 @@ import htsjdk.samtools.util.StringLineReader;
  * @param <Output>
  */
 public final class SAMSerializableFunction<Output> implements SerializableFunction<Read, Output> {
+    private static final long serialVersionUID = 1L;
 
     private SAMFileHeader header;
     private final SerializableFunction<SAMRecord, Output> f;

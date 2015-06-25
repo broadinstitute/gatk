@@ -670,6 +670,8 @@ public final class CommandLineParserTest {
     }
 
     private static class GatherArgumentValuesTestSourceParentCollection implements ArgumentCollectionDefinition {
+        private static final long serialVersionUID = 1L;
+
         @Argument(fullName = "parentCollectionSuperTypeTarget", shortName = "parentCollectionSuperTypeTarget", doc = "")
         private GatherArgumentValuesTargetSuperType parentCollectionSuperTypeTarget;
 
@@ -686,6 +688,8 @@ public final class CommandLineParserTest {
     }
 
     private static class GatherArgumentValuesTestSourceChildCollection implements ArgumentCollectionDefinition {
+        private static final long serialVersionUID = 1L;
+
         @Argument(fullName = "childCollectionSuperTypeTarget", shortName = "childCollectionSuperTypeTarget", doc = "")
         private GatherArgumentValuesTargetSuperType childCollectionSuperTypeTarget;
 

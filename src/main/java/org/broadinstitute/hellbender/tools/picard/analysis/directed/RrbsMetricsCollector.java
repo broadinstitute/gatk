@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.metrics.SAMRecordAndReferenceMultiLevelColl
 
 import java.util.*;
 
-public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<RrbsMetrics, Comparable<?>> {
+public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelCollector<RrbsMetrics, Long> {
 	private final int minReadLength;
 	private final double maxMismatchRate;
 	private final int cQualityThreshold;
@@ -31,11 +31,11 @@ public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelC
 	}
 
 	@Override
-	protected PerUnitMetricCollector<RrbsMetrics, Comparable<?>, SAMRecordAndReference> makeChildCollector(final String sample, final String library, final String readGroup) {
+	protected PerUnitMetricCollector<RrbsMetrics, Long, SAMRecordAndReference> makeChildCollector(final String sample, final String library, final String readGroup) {
 		return new PerUnitRrbsMetricsCollector(sample, library, readGroup);
 	}
 
-	private class PerUnitRrbsMetricsCollector implements PerUnitMetricCollector<RrbsMetrics, Comparable<?>, SAMRecordAndReference> {
+	private class PerUnitRrbsMetricsCollector implements PerUnitMetricCollector<RrbsMetrics, Long, SAMRecordAndReference> {
 		final String sample;
 		final String library;
 		final String readGroup;
@@ -150,7 +150,7 @@ public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelC
 		}
 
 		@Override
-		public void addMetricsToFile(final MetricsFile<RrbsMetrics, Comparable<?>> metricsFile) {
+		public void addMetricsToFile(final MetricsFile<RrbsMetrics, Long> metricsFile) {
 			// Create both the summary and detail metrics & add them to the RrbsMetrics container class for
 			// the downstream code to use as desired
 			final RrbsSummaryMetrics summaryMetrics = buildSummaryMetrics();

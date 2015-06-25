@@ -488,6 +488,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
 
     /** Comparator for ReadEndsForMarkDuplicates that orders by read1 position then pair orientation then read2 position. */
     static class ReadEndsMDComparator implements Comparator<ReadEndsForMarkDuplicates>, Serializable {
+        private static final long serialVersionUID = 1L;
         public int compare(final ReadEndsForMarkDuplicates lhs, final ReadEndsForMarkDuplicates rhs) {
             int retval = lhs.libraryId - rhs.libraryId;
             if (retval == 0) retval = lhs.read1ReferenceIndex - rhs.read1ReferenceIndex;

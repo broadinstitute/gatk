@@ -33,8 +33,8 @@ public final class CompareMetrics extends PicardCommandLineProgram {
     @Override
     protected Object doWork() {
         IOUtil.assertFilesAreReadable(metricsFiles);
-        final MetricsFile<?, ?> metricsA = new MetricsFile();
-        final MetricsFile<?, ?> metricsB = new MetricsFile();
+        final MetricsFile<?, ?> metricsA = new MetricsFile<>();
+        final MetricsFile<?, ?> metricsB = new MetricsFile<>();
         try {
             metricsA.read(new FileReader(metricsFiles.get(0)));
             metricsB.read(new FileReader(metricsFiles.get(1)));

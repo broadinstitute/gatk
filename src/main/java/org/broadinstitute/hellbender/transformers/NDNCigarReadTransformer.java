@@ -23,6 +23,7 @@ import htsjdk.samtools.SAMRecord;
  */
 
 public final class NDNCigarReadTransformer implements ReadTransformer {
+    private static final long serialVersionUID = 1L;
 
     @Override
     public SAMRecord apply(final SAMRecord read) {

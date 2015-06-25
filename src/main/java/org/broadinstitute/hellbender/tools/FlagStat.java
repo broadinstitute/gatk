@@ -20,6 +20,7 @@ import java.text.NumberFormat;
 )
 public final class FlagStat extends ReadWalker {
 
+
     private FlagStatus sum = new FlagStatus();
 
     @Override
@@ -34,6 +35,7 @@ public final class FlagStat extends ReadWalker {
 
     // what comes out of the flagstat
     public final static class FlagStatus implements Serializable{
+        private static final long serialVersionUID = 1L;
         long readCount = 0L;
         long QC_failure = 0L;
         long duplicates = 0L;

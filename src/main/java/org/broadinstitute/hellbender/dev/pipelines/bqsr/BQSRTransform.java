@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
  *                     .and(BaseRecalibratorDataflowUtils.intervalTag, intervals);
  */
 public final class BQSRTransform extends PTransform<PCollectionTuple, PCollection<BaseRecalOutput>> {
+    private static final long serialVersionUID = 1L;
 
     private final SAMFileHeader header;
     // local or GCS

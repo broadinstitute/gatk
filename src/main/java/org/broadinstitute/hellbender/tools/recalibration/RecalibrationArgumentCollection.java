@@ -21,7 +21,7 @@ import java.util.*;
  */
 
 public final class RecalibrationArgumentCollection implements Serializable, ArgumentCollectionDefinition {
-
+    private static final long serialVersionUID = 1L;
     /**
      * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,
      * so it is critical that a database of known polymorphic sites is given to the tool in order to skip over those sites. This tool accepts any number of

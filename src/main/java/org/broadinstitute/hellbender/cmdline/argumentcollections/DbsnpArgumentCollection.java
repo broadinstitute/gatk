@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 
 public final class DbsnpArgumentCollection implements ArgumentCollectionDefinition{
+    private static final long serialVersionUID = 1L;
 
     /**
      * A dbSNP VCF file.

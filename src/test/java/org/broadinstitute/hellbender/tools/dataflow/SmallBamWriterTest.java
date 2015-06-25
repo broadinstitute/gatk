@@ -162,7 +162,7 @@ public class SmallBamWriterTest extends BaseTest {
                     logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
                 }
             }
-            return pipeline.apply(Create.of(readLst).withName("input ingest"));
+            return pipeline.apply(Create.of(readLst).setName("input ingest"));
         }
     }
 
