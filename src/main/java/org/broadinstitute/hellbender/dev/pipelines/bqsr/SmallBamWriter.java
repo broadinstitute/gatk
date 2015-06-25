@@ -43,7 +43,7 @@ public class SmallBamWriter implements Serializable {
         PCollectionView<Iterable<Read>> iterableView =
                 reads.apply(View.<Read>asIterable());
 
-        PCollection<String> dummy = pipeline.apply(Create.<String>of(destPath));
+        PCollection<String> dummy = pipeline.apply(Create.<String>of(destPath).setName("output file name"));
 
         dummy.apply(ParDo.named("save to BAM file")
                         .withSideInputs(iterableView)

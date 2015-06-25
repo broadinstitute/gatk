@@ -31,6 +31,11 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
 
+    // this is a hack so we can run the stuff from a Jar file without too much hassle
+    public static void main(String[] args) throws Exception {
+        new BaseRecalibratorDataflowIntegrationTest().runAllTests();
+    }
+
     private static class BQSRTest {
         final String reference;
         final String bam;
@@ -68,6 +73,31 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     private String getCloudInputs() {
         return getDataflowTestInputPath() + THIS_TEST_FOLDER;
     }
+
+
+    public void runAllTests() throws Exception {
+        System.out.println("testBQSRLocal");
+        for(Object[] in : createBQSRTestData()) {
+            BQSRTest testCase = (BQSRTest)in[0];
+            testBQSRLocal(testCase);
+        }
+        System.out.println("testBQSRFailWithoutDBSNP");
+        testBQSRFailWithoutDBSNP();
+        System.out.println("testBQSRFailWithIncompatibleReference");
+        testBQSRFailWithIncompatibleReference();
+        System.out.println("testBQSRBucket");
+        for(Object[] in : createBQSRTestDataBucket()) {
+            BQSRTest testCase = (BQSRTest)in[0];
+            testBQSRBucket(testCase);
+        }
+        System.out.println("testBQSRCloud");
+        for(Object[] in : createBQSRTestDataCloud()) {
+            BQSRTest testCase = (BQSRTest)in[0];
+            testBQSRCloud(testCase);
+        }
+        System.out.println("Tests passed.");
+    }
+
 
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
@@ -138,6 +168,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
                 Arrays.asList(params.expectedFileName));
         spec.executeTest("testBQSR-" + params.args, this);
     }
+
 
     @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"})
     public void testBQSRBucket(BQSRTest params) throws IOException {

@@ -4,8 +4,6 @@ import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -27,7 +25,6 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ReadsFilter;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -44,7 +41,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-
 
 import java.io.File;
 import java.io.IOException;
@@ -86,7 +82,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
      * Path to save the serialized tables to. Local or GCS.
      */
     @Argument(doc = "Path to save the serialized recalibrationTables to. If running on the cloud, either leave outputTablesPath unset or point it to a GCS location.",
-            shortName="otp", fullName="outputTablesPath", optional = true)
+            shortName = "otp", fullName = "outputTablesPath", optional = true)
     protected String outputTablesPath = null;
 
     // ------------------------------------------
@@ -142,7 +138,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
         } catch (GATKException rx) {
             throw rx;
         } catch (Exception x) {
-            throw new GATKException("Unexpected: "+x.getMessage(), x);
+            throw new GATKException("Unexpected: " + x.getMessage(), x);
         }
     }
 
@@ -171,7 +167,9 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
         }
     }
 
-    /** reads local disks or GCS -> header, and PCollection */
+    /**
+     * reads local disks or GCS -> header, and PCollection
+     */
     private PCollection<Read> ingestReadsAndGrabHeader(final Pipeline pipeline, List<String> filenames) throws IOException {
         if (filenames.size() > 1) {
             throw new UserException("Sorry, we only support a single input file for now.");
@@ -224,7 +222,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
         List<SimpleInterval> knownSitesLst = new ArrayList<>();
         for (FeatureInput<Feature> vcfSource : knownSites) {
             File featureFile = vcfSource.getFeatureFile();
-            FeatureDataSource<Feature> source = new FeatureDataSource<Feature>(featureFile, (FeatureCodec<Feature, ?>)FeatureManager.getCodecForFile(featureFile), "KnownIntervals");
+            FeatureDataSource<Feature> source = new FeatureDataSource<Feature>(featureFile, (FeatureCodec<Feature, ?>) FeatureManager.getCodecForFile(featureFile), "KnownIntervals");
             for (Feature f : source) {
                 knownSitesLst.add(new SimpleInterval(f));
             }

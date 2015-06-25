@@ -1,0 +1,23 @@
+# Not quite a script. This is how you'd make a far jar that contains the test classes and jars
+
+# get the test classes
+gradle compileTest
+# get the non-test classes and dependencies
+gradle fatJar
+mkdir jar-temp
+cd jar-temp
+jar xf ../build/libs/hellbender*jar
+cp -R ../build/classes/main/* .
+cp -R ../build/classes/test/* .
+# add the test dependencies (you have to download them first, of course)
+jar xf ~/Downloads/hamcrest-all-1.3.jar 
+jar xf ~/Downloads/junit-4.12.jar 
+jar xf ~/Downloads/guava-18.0.jar 
+jar cf ../hb-fat.jar *
+cd ..
+
+# now we can run tests, like for example those two.
+java -cp hb-fat.jar org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibratorDataflowIntegrationTest
+java -cp hb-fat.jar org.broadinstitute.hellbender.tools.walkers.bqsr.ApplyBQSRDataflowIntegrationTest
+
+# you can delete jar-temp/* and hb-fat.jar when you're done.

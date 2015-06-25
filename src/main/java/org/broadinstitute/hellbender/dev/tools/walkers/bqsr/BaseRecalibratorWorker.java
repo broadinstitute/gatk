@@ -45,11 +45,11 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
  *
  * Expected usage:
  * -ship the command line to Dataflow workers
- * -create a BaseCalibratorUprooted there,
+ * -create a BaseRecalibratorWorker there,
  * -feed it the right inputs (use the CalibrationTablesBuilder wrapper
  *  to help)
  * -extract the outputs, merge them, and save.
- * -use a BaseRecalibratorUprooted to format the outputs into a report.
+ * -use a BaseRecalibratorWorker to format the outputs into a report.
  */
 
 @CommandLineProgramProperties(
@@ -93,7 +93,7 @@ public final class BaseRecalibratorWorker {
     private long accumulator;
 
     /**
-     * This method returns a new BaseCalibratorUprooted that is configured according to the command-line
+     * This method returns a new BaseRecalibratorWorker that is configured according to the command-line
      * arguments in "toolArgs" and the input file header in "header". The command-line parser will print
      * any diagnostic messages to "out". If the command-line requested the program not be run
      * (e.g. it was "--help"), then this method returns null.
@@ -523,7 +523,7 @@ public final class BaseRecalibratorWorker {
      */
     public void saveReport(RecalibrationTables rt, StandardCovariateList finalRequestedCovariates) throws java.io.FileNotFoundException {
         BRAC.RAC.RECAL_TABLE = new PrintStream(BRAC.RAC.RECAL_TABLE_FILE);
-        QuantizationInfo quantizationInfo = getQuantizationInfo(rt); //new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
+        QuantizationInfo quantizationInfo = getQuantizationInfo(rt);
         RecalUtils.outputRecalibrationReport(BRAC.RAC, quantizationInfo, rt, finalRequestedCovariates, BRAC.RAC.SORT_BY_ALL_COLUMNS);
     }
 }

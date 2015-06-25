@@ -43,12 +43,12 @@ public final class BQSRReadTransformer implements ReadTransformer {
         recalibrationTables = recalibrationReport.getRecalibrationTables();
         covariates = recalibrationReport.getCovariates();
         quantizationInfo = recalibrationReport.getQuantizationInfo();
+
         if (quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
         } else if (quantizationLevels > 0 && quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
             quantizationInfo.quantizeQualityScores(quantizationLevels);
         }
-
         this.disableIndelQuals = disableIndelQuals;
         this.preserveQLessThan = preserveQLessThan;
         this.globalQScorePrior = globalQScorePrior;
@@ -67,6 +67,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         recalibrationTables = recalInfo.getRecalibrationTables();
         covariates = recalInfo.getCovariates();
         quantizationInfo = recalInfo.getQuantizationInfo();
+
         if (quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
         } else if (quantizationLevels > 0 && quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
