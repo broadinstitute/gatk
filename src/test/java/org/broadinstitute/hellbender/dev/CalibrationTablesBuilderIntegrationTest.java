@@ -103,7 +103,7 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
     }
     @Test(dataProvider = "BQSRTest")
     public void testBQSR(BQSRTest params) throws IOException {
-        String outputDest = "test-table-pre.txt";
+        String outputDest = createTempFile("test-table-pre",".txt").getAbsolutePath();
 
         // 1. Grab the needed inputs.
         String toolCmdLine = String.format(params.getCommandLine(), outputDest);
