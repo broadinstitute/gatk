@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -206,6 +209,23 @@ public final class FeatureManager implements AutoCloseable {
      */
     public boolean isEmpty() {
         return featureSources.isEmpty();
+    }
+
+
+    /**
+     * This method finds and returns all of the variant headers from the feature sources.
+     *
+     * @return A list of all variant headers for features.
+     */
+    public List<VCFHeader> getAllVariantHeaders() {
+        List<VCFHeader> headers = new ArrayList<>();
+        for (Map.Entry<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> entry : featureSources.entrySet()) {
+            final Object header = entry.getValue().getHeader();
+            if ( header != null && header instanceof VCFHeader ) {
+                headers.add((VCFHeader)header);
+            }
+        }
+        return headers;
     }
 
     /**

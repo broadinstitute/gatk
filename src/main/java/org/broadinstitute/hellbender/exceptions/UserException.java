@@ -313,7 +313,37 @@ public class UserException extends RuntimeException {
         }
     }
 
+    /**
+     * <p/>
+     * Class UserException.MalformedFile
+     * <p/>
+     * For errors parsing files
+     */
+    public static class IncompatibleSequenceDictionaries extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public IncompatibleSequenceDictionaries(String message,
+                                                String name1,
+                                                SAMSequenceDictionary dict1,
+                                                String name2,
+                                                SAMSequenceDictionary dict2) {
+            super(String.format("Input files %s and %s have incompatible contigs: %s.\n  %s contigs = %s\n  %s contigs = %s",
+                    name1, name2, message,
+                    name1, ReadUtils.prettyPrintSequenceRecords(dict1),
+                    name2, ReadUtils.prettyPrintSequenceRecords(dict2)));
+        }
+    }
+
+    public static class LexicographicallySortedSequenceDictionary extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public LexicographicallySortedSequenceDictionary(String name, SAMSequenceDictionary dict) {
+            super(String.format("Lexicographically sorted human genome sequence detected in %s."
+                            + "\nFor safety's sake the GATK requires human contigs in karyotypic order: 1, 2, ..., 10, 11, ..., 20, 21, 22, X, Y with M either leading or trailing these contigs."
+                            + "\nThis is because all distributed GATK resources are sorted in karyotypic order, and your processing will fail when you need to use these files."
+                            + "\nYou can use the ReorderSam utility to fix this problem: " + HelpConstants.forumPost("discussion/58/companion-utilities-reordersam")
+                            + "\n  %s contigs = %s",
+                    name, name, ReadUtils.prettyPrintSequenceRecords(dict)));
+        }
+    }
 }
-
-
-

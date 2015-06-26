@@ -29,6 +29,8 @@ public final class Utils {
     private static final String TEXT_WARNING_BORDER = StringUtils.repeat('*', TEXT_WARNING_PREFIX.length() + TEXT_WARNING_WIDTH);
     private static final char ESCAPE_CHAR = '\u001B';
 
+    public static final float JAVA_DEFAULT_HASH_LOAD_FACTOR = 0.75f;
+
     /** our log, which we want to capture anything from this class */
     private static Logger logger = LogManager.getLogger(Utils.class);
 
@@ -455,5 +457,18 @@ public final class Utils {
         } else {
             return file;
         }
+    }
+
+    /**
+     * Calculates the optimum initial size for a hash table given the maximum number
+     * of elements it will need to hold. The optimum size is the smallest size that
+     * is guaranteed not to result in any rehash/table-resize operations.
+     *
+     * @param maxElements  The maximum number of elements you expect the hash table
+     *                     will need to hold
+     * @return             The optimum initial size for the table, given maxElements
+     */
+    public static int optimumHashSize ( int maxElements ) {
+        return (int)(maxElements / JAVA_DEFAULT_HASH_LOAD_FACTOR) + 2;
     }
 }
