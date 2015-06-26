@@ -17,13 +17,17 @@ import java.util.*;
  */
 public final class SamAssertionUtils {
 
-    public static void assertSamsEqual(final File sam1, final File sam2) throws IOException {
-        try (final SamReader reader1 = SamReaderFactory.makeDefault().open(sam1);
-             final SamReader reader2 = SamReaderFactory.makeDefault().open(sam2)) {
+    public static void assertSamsEqual(final File sam1, final File sam2, ValidationStringency validationStringency) throws IOException {
+        try (final SamReader reader1 = SamReaderFactory.makeDefault().validationStringency(validationStringency).open(sam1);
+             final SamReader reader2 = SamReaderFactory.makeDefault().validationStringency(validationStringency).open(sam2)) {
             final SamComparison comparison = new SamComparison(reader1, reader2);
             final boolean equal = comparison.areEqual();
             Assert.assertTrue(equal, "SAM file output differs from expected output");
         }
+    }
+
+    public static void assertSamsEqual(final File sam1, final File sam2) throws IOException {
+        assertSamsEqual(sam1, sam2, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
     public static void assertSamsNonEqual(final File sam1, final File sam2) throws IOException {

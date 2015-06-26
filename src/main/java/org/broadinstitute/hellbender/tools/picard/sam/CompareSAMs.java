@@ -28,7 +28,7 @@ public final class CompareSAMs extends PicardCommandLineProgram {
 
     @Override
     protected Object doWork() {
-        SamReaderFactory factory = SamReaderFactory.makeDefault();
+        SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(VALIDATION_STRINGENCY);
         SamReader sam1 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(0));
         SamReader sam2 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(1));
         SamComparison comparison = new SamComparison(sam1, sam2);
@@ -40,6 +40,6 @@ public final class CompareSAMs extends PicardCommandLineProgram {
         }
         CloserUtil.close(sam1);
         CloserUtil.close(sam2);
-        return null;
+        return comparison.areEqual();
     }
 }
