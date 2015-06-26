@@ -92,7 +92,7 @@ dependencies {
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.25'
     compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.testng:testng:6.9.4' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.2.0'
+    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.2.1'
     compile('org.seqdoop:hadoop-bam:7.1.0') {
         exclude module: 'htsjdk'
     }
