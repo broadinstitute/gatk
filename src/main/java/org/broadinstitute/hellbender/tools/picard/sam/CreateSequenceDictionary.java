@@ -50,6 +50,9 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
      * Use reference filename to create URI to go into header if URI was not passed on cmd line.
      */
     protected String[] customCommandLineValidation() {
+        if (REFERENCE_SEQUENCE == null) {
+            return new String[]{"********************************\nUSER ERROR: No reference file was specified\n********************************"};
+        }
         if (URI == null) {
             URI = "file:" + REFERENCE_SEQUENCE.getAbsolutePath();
         }
