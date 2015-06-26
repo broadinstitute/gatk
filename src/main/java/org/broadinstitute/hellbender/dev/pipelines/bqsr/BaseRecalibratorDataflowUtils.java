@@ -107,7 +107,10 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   // ---------------------------------------------------------------------------------------------------
   // non-public methods
 
-
+  /*
+  * addQuantizationInfo takes the computed RecalibrationTable and adds the QuantizationInfo and RequestedCovariates objects.
+  * We call this triplet "BaseRecalOutput". It contains everything we need from phase 1 to continue onto phase 2 of BQSR.
+  */
   private static PCollection<BaseRecalOutput> addQuantizationInfo(SAMFileHeader readsHeader, BaseRecalibrationArgumentCollection toolArgs, PCollection<RecalibrationTables> recal) {
     return recal.apply(ParDo
             .named("addQuantizationInfo")
@@ -123,8 +126,8 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                 // Saving and loading back the report actually changes it. So we have to do it.
                 // TODO: Figure out what it changes, and just do that instead of doing the whole rigamarole.
                 try {
-                  File temp = BaseTest.createTempFile("temp-recalibrationtable",".tmp");
-                  toolArgs.RAC.RECAL_TABLE = new PrintStream(temp);
+                    File temp = BaseTest.createTempFile("temp-recalibrationtable-",".tmp");
+                    toolArgs.RAC.RECAL_TABLE = new PrintStream(temp);
                     RecalUtils.outputRecalibrationReport(toolArgs.RAC, baseRecalibratorWorker.getQuantizationInfo(rt), rt, baseRecalibratorWorker.getRequestedCovariates(), false);
                     BaseRecalOutput ret = new BaseRecalOutput(temp);
                     c.output(ret);

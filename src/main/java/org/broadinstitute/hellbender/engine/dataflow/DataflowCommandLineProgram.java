@@ -77,6 +77,10 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             shortName = "apiKey", fullName = "apiKey", optional=true)
     protected String apiKey = null;
 
+    @Argument(doc = "Number of Dataflow workers to use (or auto if unset).",
+            shortName = "numWorkers", fullName = "numWorkers", optional=true)
+    protected int numWorkers = 0;
+
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster;
 
@@ -111,6 +115,9 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             options.setProject(projectID);
             options.setStagingLocation(stagingLocation);
             options.setRunner(this.runnerType.runner);
+            if (numWorkers!=0) {
+                options.setNumWorkers(numWorkers);
+            }
             if (apiKey != null) {
                 options.setApiKey(apiKey);
             } else {

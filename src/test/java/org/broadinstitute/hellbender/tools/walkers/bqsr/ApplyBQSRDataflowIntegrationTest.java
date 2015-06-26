@@ -13,6 +13,14 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTest {
+
+    private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
+
+    // this is a hack so we can run the stuff from a Jar file without too much hassle
+    public static void main(String[] args) throws Exception {
+        new ApplyBQSRDataflowIntegrationTest().runAllTests();
+    }
+
     private static class ABQSRTest {
         final String bam;
         final String args;
@@ -48,14 +56,44 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         return tests.toArray(new Object[][]{});
     }
 
-    @DataProvider(name = "ApplyBQSRTestNA")
-    public Object[][] createABQSRTestDataNA() {
+    @DataProvider(name = "ApplyBQSRTestGCS")
+    public Object[][] createABQSRTestDataGCS() {
+        final String resourceDirGCS = getDataflowTestInputPath() + THIS_TEST_FOLDER;
+        final String hiSeqBamGCS = resourceDirGCS + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
+
         List<Object[]> tests = new ArrayList<>();
 
-        tests.add(new Object[]{new ABQSRTest(naBam, "", resourceDir + "expected.NA12878.chr17.69k_70k.bqsr.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBamGCS, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.alternate_allaligned.bam")});
+
+        // TODO: add test inputs with some unaligned reads
 
         return tests.toArray(new Object[][]{});
     }
+
+
+    public void runAllTests() throws Exception {
+        System.out.println("testPR");
+        for(Object[] in : createABQSRTestData()) {
+            ABQSRTest testCase = (ABQSRTest)in[0];
+            testPR(testCase);
+        }
+        System.out.println("testPRNoFailWithHighMaxCycle");
+        testPRNoFailWithHighMaxCycle();
+        System.out.println("testPRFailWithLowMaxCycle");
+        testPRFailWithLowMaxCycle();
+        System.out.println("testBQSRBucket");
+        for(Object[] in : createABQSRTestDataGCS()) {
+            ABQSRTest testCase = (ABQSRTest)in[0];
+            testPR_GCS(testCase);
+        }
+        System.out.println("testBQSRCloud");
+        for(Object[] in : createABQSRTestDataGCS()) {
+            ABQSRTest testCase = (ABQSRTest)in[0];
+            testPR_Cloud(testCase);
+        }
+        System.out.println("Tests passed.");
+    }
+
 
     @Test(dataProvider = "ApplyBQSRTest")
     public void testPR(ABQSRTest params) throws IOException {
@@ -72,15 +110,13 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    /*
-    // this fails because it says the input file is malformed.
-    @Test(dataProvider = "ApplyBQSRTestNA")
-    public void testNA12878(ABQSRTest params) throws IOException {
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"bucket"})
+    public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                        " --bqsr_recal_file " + resourceDir + "NA12878.chr17.69k_70k.table.gz " +
-                        params.args +
-                        " -O %s";
+                " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
+                params.args +
+                " -O %s";
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
         addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -88,7 +124,23 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(params.expectedFile));
         spec.executeTest("testPrintReads-" + params.args, this);
     }
-    */
+
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"cloud"})
+    public void testPR_Cloud(ABQSRTest params) throws IOException {
+        String args =
+                " -I " + params.bam +
+                " --runner BLOCKING " +
+                " --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging() +
+                " --bqsr_recal_file " + getDataflowTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
+                params.args +
+                " -O %s";
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
+        addDataflowRunnerArgs(ab);
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                ab.getString(),
+                Arrays.asList(params.expectedFile));
+        spec.executeTest("testPrintReads-" + params.args, this);
+    }
 
     @Test
     public void testPRNoFailWithHighMaxCycle() throws IOException {
