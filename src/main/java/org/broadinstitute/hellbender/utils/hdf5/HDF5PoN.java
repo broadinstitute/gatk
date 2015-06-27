@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
+import htsjdk.samtools.util.Lazy;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -50,6 +51,8 @@ public final class HDF5PoN implements PoN {
 
     private final static String REDUCED_PON_PATH = REDUCED_PON_GROUP_NAME + "/block0_values";
 
+    private final static String REDUCED_PON_TARGET_PATH = REDUCED_PON_GROUP_NAME + "/axis1";
+
     private final static String REDUCED_PON_PINV_PATH = REDUCED_PON_PINV_GROUP_NAME + "/block0_values";
 
     private final static String VERSION_PATH = VERSION_GROUP_NAME + "/values";
@@ -57,6 +60,8 @@ public final class HDF5PoN implements PoN {
     private final HDF5Reader reader;
 
     private final List<String> targetNames;
+
+    private final Lazy<List<String>> reducedTargetNames;
 
     private final List<String> sampleNames;
 
@@ -68,6 +73,7 @@ public final class HDF5PoN implements PoN {
         }
         targetNames = readTargetNames(reader);
         sampleNames = readSampleNames(reader);
+        reducedTargetNames = new Lazy<>(() -> Collections.unmodifiableList(Arrays.asList(reader.readStringArray(REDUCED_PON_TARGET_PATH))));
         this.reader = reader;
     }
 
@@ -132,6 +138,11 @@ public final class HDF5PoN implements PoN {
     }
 
     @Override
+    public List<String> reducedPoNTargetNames() {
+        return reducedTargetNames.get();
+    }
+
+    @Override
     public List<String> sampleNames() {
         return sampleNames;
     }
@@ -175,7 +186,7 @@ public final class HDF5PoN implements PoN {
     @Override
     public RealMatrix reducedPoN() {
         return readMatrixAndCheckDimensions(REDUCED_PON_PATH,
-                r -> r == targetNames.size(),
+                r -> r == reducedTargetNames.get().size(),
                 c -> c <= logNormalSampleNames().size());
     }
 
@@ -183,7 +194,7 @@ public final class HDF5PoN implements PoN {
     public RealMatrix reducedPoNPseudoInverse() {
         return readMatrixAndCheckDimensions(REDUCED_PON_PINV_PATH,
                 r -> r <= logNormalSampleNames().size(),
-                c -> c == targetNames.size());
+                c -> c == reducedTargetNames.get().size());
     }
 
     @Override
