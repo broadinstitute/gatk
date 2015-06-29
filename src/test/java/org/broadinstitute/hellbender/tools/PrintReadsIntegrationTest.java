@@ -10,7 +10,7 @@ import java.io.File;
 
 public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
-    private static final File TEST_DATA_DIR = getTestDataDir();
+    private final File TEST_DATA_DIR = getTestDataDir();
 
     @Override
     public String getTestedClassName() {

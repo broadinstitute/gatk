@@ -6,24 +6,30 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
-public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
+public class MedianCoverageByGenotypeIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "filenames")
-    public void testCountBases(String fileIn) throws Exception {
+    public void testBasic(String fileIn) throws Exception {
         final File ORIG_FILE = new File(getTestDataDir(), fileIn);
         final String[] args = new String[]{
-            "--variant" ,  ORIG_FILE.getAbsolutePath(),
+                "--variant" ,  ORIG_FILE.getAbsolutePath(),
+                "--output", "testBasic_MedianCoverageByGenotypeIntegrationTest.txt"
 
         };
-        final long res = (Long)this.runCommandLine(args);
-        Assert.assertEquals(res, 26l);
+
+        final String res = (String)this.runCommandLine(args);
+        System.out.print(res);
+
+        Assert.assertEquals(res, 5);
     }
 
     @DataProvider(name="filenames")
     public Object[][] filenames() {
         return new String[][]{
-                {"count_variants.vcf"},
+                {"CEUTrio-snps.vcf"},
         };
     }
 }

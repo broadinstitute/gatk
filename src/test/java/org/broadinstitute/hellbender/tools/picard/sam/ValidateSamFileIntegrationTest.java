@@ -13,7 +13,7 @@ import java.io.*;
  */
 public final class ValidateSamFileIntegrationTest extends CommandLineProgramTest {
 
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/ValidateSamFile");
+    private final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/ValidateSamFile");
 
     @Override
     public String getTestedClassName() {

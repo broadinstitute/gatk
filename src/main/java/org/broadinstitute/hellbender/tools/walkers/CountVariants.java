@@ -14,7 +14,12 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
         programGroup = VariantProgramGroup.class
 )
 public final class CountVariants extends VariantWalker{
-    private long count = 0;
+    private long count;
+
+    @Override
+    public void onTraversalStart() {
+        count = 0;
+    }
 
     @Override
     public void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext ) {
@@ -22,7 +27,7 @@ public final class CountVariants extends VariantWalker{
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Long onTraversalDone() {
         return count;
     }
 }

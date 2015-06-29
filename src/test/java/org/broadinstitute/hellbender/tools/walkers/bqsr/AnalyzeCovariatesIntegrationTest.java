@@ -29,23 +29,23 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
     /**
      * Directory where the testdata is located.
      */
-    private static final File TEST_DATA_DIR = new File(CommandLineProgramTest.getTestDataDir(),"AnalyzeCovariates");
+    private final File TEST_DATA_DIR = new File(getTestDataDir(),"AnalyzeCovariates");
 
     /**
      * File containing the before report for normal testing.
      */
-    private static final File BEFORE_FILE = new File(TEST_DATA_DIR,"before.table.gz");
+    private final File BEFORE_FILE = new File(TEST_DATA_DIR,"before.table.gz");
 
     /**
      * File containing the after report for normal testing.
      */
-    private static final File AFTER_FILE = new File(TEST_DATA_DIR,"after.table.gz");
+    private final File AFTER_FILE = new File(TEST_DATA_DIR,"after.table.gz");
 
 
     /**
      * File containing the bqsr report for normal testing.
      */
-    private static final File BQSR_FILE = new File(TEST_DATA_DIR,"bqsr.table.gz");
+    private final File BQSR_FILE = new File(TEST_DATA_DIR,"bqsr.table.gz");
 
 
     /**

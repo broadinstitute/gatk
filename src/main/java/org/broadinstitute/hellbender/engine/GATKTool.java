@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of

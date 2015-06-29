@@ -22,34 +22,34 @@ import java.util.*;
  */
 public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTest {
 
-    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MergeBamAlignment");
+    private final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MergeBamAlignment");
 
-    private static final File unmappedBam = new File(TEST_DATA_DIR, "unmapped.sam");
-    private static final File alignedBam = new File(TEST_DATA_DIR, "aligned.sam");
-    private static final File oneHalfAlignedBam = new File(TEST_DATA_DIR, "onehalfaligned.sam");
-    private static final File otherHalfAlignedBam = new File(TEST_DATA_DIR, "otherhalfaligned.sam");
-    private static final File mergingUnmappedBam = new File(TEST_DATA_DIR, "merging.unmapped.sam");
-    private static final File firstReadAlignedBam = new File(TEST_DATA_DIR, "allread1.trimmed.aligned.sam");
-    private static final File secondReadAlignedBam = new File(TEST_DATA_DIR, "allread2.trimmed.aligned.sam");
-    private static final File firstReadAlignedBam_firstHalf = new File(TEST_DATA_DIR, "firsthalf.read1.trimmed.aligned.sam");
-    private static final File firstReadAlignedBam_secondHalf = new File(TEST_DATA_DIR, "secondhalf.read1.trimmed.aligned.sam");
-    private static final File secondReadAlignedBam_firstHalf = new File(TEST_DATA_DIR, "firsthalf.read2.trimmed.aligned.sam");
-    private static final File secondReadAlignedBam_secondHalf = new File(TEST_DATA_DIR, "secondhalf.read2.trimmed.aligned.sam");
-    private static final File supplementalReadAlignedBam = new File(TEST_DATA_DIR, "aligned.supplement.sam");
-    private static final File badorderUnmappedBam = new File(TEST_DATA_DIR, "unmapped.badorder.sam");
-    private static final File badorderAlignedBam = new File(TEST_DATA_DIR, "aligned.badorder.sam");
-    private static final File alignedQuerynameSortedBam = new File(TEST_DATA_DIR, "aligned_queryname_sorted.sam");
-    private static final File multiHitUnmappedBam = new File(TEST_DATA_DIR, "multihit.unmapped.sam");
-    private static final File multiHitAlignedBam = new File(TEST_DATA_DIR, "multihit.aligned.sam");
-    private static final File multiHitFilterUnmappedBam = new File(TEST_DATA_DIR, "multihit.filter.unmapped.sam");
-    private static final File multiHitFilterFragmentUnmappedBam = new File(TEST_DATA_DIR, "multihit.filter.fragment.unmapped.sam");
-    private static final File clipTestUnmappedBam = new File(TEST_DATA_DIR, "cliptest.unmapped.sam");
-    private static final File clipTestAlignedBam = new File(TEST_DATA_DIR, "cliptest.aligned.sam");
-    private static final File clippedReference = new File(TEST_DATA_DIR, "cliptest.fasta");
+    private final File unmappedBam = new File(TEST_DATA_DIR, "unmapped.sam");
+    private final File alignedBam = new File(TEST_DATA_DIR, "aligned.sam");
+    private final File oneHalfAlignedBam = new File(TEST_DATA_DIR, "onehalfaligned.sam");
+    private final File otherHalfAlignedBam = new File(TEST_DATA_DIR, "otherhalfaligned.sam");
+    private final File mergingUnmappedBam = new File(TEST_DATA_DIR, "merging.unmapped.sam");
+    private final File firstReadAlignedBam = new File(TEST_DATA_DIR, "allread1.trimmed.aligned.sam");
+    private final File secondReadAlignedBam = new File(TEST_DATA_DIR, "allread2.trimmed.aligned.sam");
+    private final File firstReadAlignedBam_firstHalf = new File(TEST_DATA_DIR, "firsthalf.read1.trimmed.aligned.sam");
+    private final File firstReadAlignedBam_secondHalf = new File(TEST_DATA_DIR, "secondhalf.read1.trimmed.aligned.sam");
+    private final File secondReadAlignedBam_firstHalf = new File(TEST_DATA_DIR, "firsthalf.read2.trimmed.aligned.sam");
+    private final File secondReadAlignedBam_secondHalf = new File(TEST_DATA_DIR, "secondhalf.read2.trimmed.aligned.sam");
+    private final File supplementalReadAlignedBam = new File(TEST_DATA_DIR, "aligned.supplement.sam");
+    private final File badorderUnmappedBam = new File(TEST_DATA_DIR, "unmapped.badorder.sam");
+    private final File badorderAlignedBam = new File(TEST_DATA_DIR, "aligned.badorder.sam");
+    private final File alignedQuerynameSortedBam = new File(TEST_DATA_DIR, "aligned_queryname_sorted.sam");
+    private final File multiHitUnmappedBam = new File(TEST_DATA_DIR, "multihit.unmapped.sam");
+    private final File multiHitAlignedBam = new File(TEST_DATA_DIR, "multihit.aligned.sam");
+    private final File multiHitFilterUnmappedBam = new File(TEST_DATA_DIR, "multihit.filter.unmapped.sam");
+    private final File multiHitFilterFragmentUnmappedBam = new File(TEST_DATA_DIR, "multihit.filter.fragment.unmapped.sam");
+    private final File clipTestUnmappedBam = new File(TEST_DATA_DIR, "cliptest.unmapped.sam");
+    private final File clipTestAlignedBam = new File(TEST_DATA_DIR, "cliptest.aligned.sam");
+    private final File clippedReference = new File(TEST_DATA_DIR, "cliptest.fasta");
 
-    private static final File fasta = new File(TEST_DATA_DIR, "merger.fasta");
+    private final File fasta = new File(TEST_DATA_DIR, "merger.fasta");
     private static final String bigSequenceName = "chr7"; // The longest sequence in merger.fasta
-    private static final File sequenceDict = new File(TEST_DATA_DIR, "merger.dict");
+    private final File sequenceDict = new File(TEST_DATA_DIR, "merger.dict");
 
     // For EarliestFragment tests, tag placed on the alignments which are expected to be marked as primary.
     private static final String ONE_OF_THE_BEST_TAG = "YB";
