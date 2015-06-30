@@ -177,15 +177,28 @@ public final class CommandLineParser {
      * Print a usage message based on the arguments object passed to the ctor.
      *
      * @param stream Where to write the usage message.
+     * @param printCommon True if common args should be included in the usage message.
      */
     public void usage(final PrintStream stream, final boolean printCommon) {
         stream.print(getStandardUsagePreamble(callerArguments.getClass()) + getUsagePreamble());
         stream.println("\n" + getVersion());
-        stream.println("\n\nArguments:\n");
 
-            argumentDefinitions.stream()
-                    .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon)
-                    .forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
+        // filter on common and partition on optional
+        final Map<Boolean, List<ArgumentDefinition>> argMap = argumentDefinitions.stream()
+                .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon)
+                .collect(Collectors.partitioningBy(a -> a.optional));
+
+        final List<ArgumentDefinition> reqArgs = argMap.get(false); // required args
+        if (reqArgs != null && reqArgs.size() != 0) {
+            stream.println("\n\nRequired Arguments:\n");
+            reqArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
+        }
+
+        final List<ArgumentDefinition> optArgs = argMap.get(true); // optional args
+        if (optArgs != null && optArgs.size() != 0) {
+            stream.println("\nOptional Arguments:\n");
+            optArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
+        }
     }
 
     /**
