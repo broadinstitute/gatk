@@ -25,8 +25,8 @@ public final class AlleleListUnitTester {
      * Test that the contents of an allele-list are the ones expected.
      * <p/>
      * <p>
-     * This method perform various consistency check involving all the {@link org.broadinstitute.gatk.utils.genotyper.AlleleList} interface methods.
-     * Therefore calling this method is equivalent to a thorough check of the {@link org.broadinstitute.gatk.utils.genotyper.AlleleList} aspect of
+     * This method perform various consistency check involving all the {@link org.broadinstitute.hellbender.utils.genotyper.AlleleList} interface methods.
+     * Therefore calling this method is equivalent to a thorough check of the {@link org.broadinstitute.hellbender.utils.genotyper.AlleleList} aspect of
      * the {@code actual} argument.
      * </p>
      *

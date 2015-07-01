@@ -11,7 +11,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 /**
- * Test {@link org.broadinstitute.gatk.utils.genotyper.AlleleListUtils}.
+ * Test {@link org.broadinstitute.hellbender.utils.genotyper.AlleleListUtils}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -209,7 +209,6 @@ public final class AlleleListUtilsUnitTest {
                 result[index++] = new Object[] { alleleLists[i], alleleLists[j]};
         return result;
     }
-
 
 
 
