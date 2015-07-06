@@ -1,0 +1,218 @@
+package org.broadinstitute.hellbender.tools.exome;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.filter.DuplicateReadFilter;
+import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
+import htsjdk.samtools.filter.SamRecordFilter;
+import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.SamLocusIterator;
+import org.apache.commons.math3.stat.inference.AlternativeHypothesis;
+import org.apache.commons.math3.stat.inference.BinomialTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+/**
+ * Gets heterozygous SNP pulldown for normal and tumor samples.
+ *
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ */
+public final class HetPulldownCalculator {
+    private final File refFile;
+    private final IntervalList snpIntervals;
+
+    /** Set quality and read-depth thresholds for pulldown, interval threshold for indexing for SamLocusIterator. */
+    private static final int MIN_QUALITY = 0;
+    private static final int READ_DEPTH_THRESHOLD = 10;
+    private static final int MAX_INTERVALS_FOR_INDEX = 25000;
+
+    public HetPulldownCalculator(final File refFile, final File snpFile) {
+        this.refFile = refFile;
+        this.snpIntervals = IntervalList.fromFile(snpFile);
+    }
+
+    /**
+     * Provide flags for running getHetPulldown based on sample type (normal or tumor).
+     */
+    private enum SampleType {
+        NORMAL, TUMOR
+    }
+
+    /**
+     * Returns map of base-pair counts at a given locus.  Only includes ACGT counts.
+     * @param locus locus
+     * @return      map of base-pair counts
+     */
+    public static Map<Character,Integer> getPileupBaseCounts(final SamLocusIterator.LocusInfo locus) {
+        int aCount = 0, cCount = 0, gCount = 0, tCount = 0;
+
+        for (final SamLocusIterator.RecordAndOffset rec : locus.getRecordAndPositions()) {
+            switch (Character.toUpperCase(rec.getReadBase())) {
+                case 'A':
+                    ++aCount;
+                    break;
+                case 'C':
+                    ++cCount;
+                    break;
+                case 'G':
+                    ++gCount;
+                    break;
+                case 'T':
+                    ++tCount;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        Map<Character,Integer> baseCounts = new HashMap<>();
+        baseCounts.put('A', aCount);
+        baseCounts.put('C', cCount);
+        baseCounts.put('G', gCount);
+        baseCounts.put('T', tCount);
+        return baseCounts;
+    }
+
+    /**
+     * Returns true if the distribution of major and other base-pair counts from a pileup at a locus is compatible with
+     * a given heterozygous allele fraction.
+     *
+     * <p>
+     *     Compatibility is defined by a p-value threshold.  That is, compute the two-sided p-value of observing
+     *     a number of major read counts out of a total number of reads, assuming the given heterozygous
+     *     allele fraction.  If the p-value is less than the given threshold, then reject the null hypothesis
+     *     that the heterozygous allele fraction is as given (i.e., SNP is likely to be homozygous) and return false,
+     *     otherwise return true.
+     * </p>
+     * @param baseCounts        map of base-pair counts
+     * @param totalBaseCount    total base-pair counts (excluding N, etc.)
+     * @param hetAlleleFraction skewed heterozygous allele fraction (0.5 in the ideal case)
+     * @param pvalThreshold     p-value threshold for two-sided binomial test
+     * @return                  boolean compatibility with heterozygous allele fraction
+     */
+    public static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
+                                                final double hetAlleleFraction, final double pvalThreshold) {
+        final int majorReadCount = Collections.max(baseCounts.values());
+
+        if (majorReadCount == 0 || totalBaseCount - majorReadCount == 0) {
+            return false;
+        }
+
+        final double pval = new BinomialTest().binomialTest(totalBaseCount, majorReadCount, hetAlleleFraction,
+                AlternativeHypothesis.TWO_SIDED);
+
+        return pval >= pvalThreshold;
+    }
+
+    /**
+     * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a normal sample.
+     */
+    public Pulldown getNormal(final File normalBAMFile, final double hetAlleleFraction, final double pvalThreshold) {
+        return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, hetAlleleFraction, pvalThreshold);
+    }
+
+    /**
+     * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a tumor sample.
+     */
+    public Pulldown getTumor(final File tumorBAMFile, final IntervalList normalHetIntervals) {
+        return getHetPulldown(tumorBAMFile, normalHetIntervals, SampleType.TUMOR, -1, -1);
+    }
+
+    /**
+     * For a normal or tumor sample, returns a data structure giving (intervals, reference counts, alternate counts),
+     * where intervals give positions of likely heterozygous SNP sites.
+     *
+     * <p>
+     *     For a normal sample:
+     *     <ul>
+     *         The IntervalList snpIntervals gives common SNP sites.  This can be from an external file
+     *         in the format (seq, pos-1, pos).
+     *     </ul>
+     *     <ul>
+     *         The skewed heterozygous allele fraction and p-value threshold for binomial test must be specified for a
+     *         two-sided binomial test, which is used to determine SNP sites from snpIntervals that are
+     *         compatible with a heterozygous SNP, given the sample.  Only these sites are output.
+     *     </ul>
+     * </p>
+     * <p>
+     *     For a tumor sample:
+     *     <ul>
+     *         The IntervalList snpIntervals gives heterozygous SNP sites likely to be present in the normal sample.
+     *         This should be from {@link HetPulldownCalculator#getNormal} in the format (seq, pos, pos).
+     *         Only these sites are output.
+     *     </ul>
+     * </p>
+     * @param bamFile           sorted BAM file for sample
+     * @param snpIntervals      IntervalList of SNP sites
+     * @param sampleType        flag indicating type of sample (SampleType.NORMAL or SampleType.TUMOR)
+     *                          (determines whether to perform binomial test)
+     * @param hetAlleleFraction skewed heterozygous allele fraction (0.5 in an ideal case), used for normal sample
+     * @param pvalThreshold     p-value threshold for two-sided binomial test, used for normal sample
+     * @return                  Pulldown of heterozygous SNP sites in the format (seq, pos, pos)
+     */
+    private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, SampleType sampleType,
+                                           final double hetAlleleFraction, final double pvalThreshold) {
+        try (final SamReader bamReader = SamReaderFactory.makeDefault().open(bamFile);
+             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)
+        ) {
+            if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
+                throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");
+            }
+
+            final Pulldown hetPulldown = new Pulldown(bamReader.getFileHeader());
+
+            final SamLocusIterator locusIterator = new SamLocusIterator(bamReader, snpIntervals,
+                    snpIntervals.size() < MAX_INTERVALS_FOR_INDEX);
+
+            //set read and locus filters [note: read counts match IGV, but off by a few from pysam.mpileup]
+            final List<SamRecordFilter> samFilters = Arrays.asList(new NotPrimaryAlignmentFilter(),
+                    new DuplicateReadFilter());
+            locusIterator.setSamFilters(samFilters);
+            locusIterator.setEmitUncoveredLoci(false);
+            locusIterator.setQualityScoreCutoff(MIN_QUALITY);
+            locusIterator.setIncludeNonPfReads(false);
+
+            //SamLocusIterator includes loci at interval starts. however, these loci are not SNP sites if interval file
+            //specifies a SNP at position pos as (seq, pos-1, pos). you could skip these loci by only looking at every
+            //other locus (which you would presume are interval ends, and hence, SNPs), except for the fact that
+            //SamLocusIterator uniquifies the interval list. this combines MNPs into a single interval, so that an MNP
+            //at posB and posA = posB - 1, denoted by (seq, posB - 2, posB - 1) and (seq, posB - 1, posB), enters the
+            //iteration as ...posSNP - 1, posSNP, posB - 2, posB - 1, posB, posOtherSNP - 1, posOtherSNP...
+            //so you cannot simply assume every other locus is a SNP/interval end.
+            for (final SamLocusIterator.LocusInfo locus : locusIterator) {
+                //include N, etc. reads here
+                final int totalReadCount = locus.getRecordAndPositions().size();
+                if (totalReadCount <= READ_DEPTH_THRESHOLD) {
+                    continue;
+                }
+
+                final Map<Character, Integer> baseCounts = getPileupBaseCounts(locus);
+                //only include total ACGT counts in binomial test (exclude N, etc.)
+                final int totalBaseCount = baseCounts.values().stream().mapToInt(Number::intValue).sum();
+
+                if (sampleType == SampleType.NORMAL &&
+                        !isPileupHetCompatible(baseCounts, totalBaseCount, hetAlleleFraction, pvalThreshold)) {
+                    continue;
+                }
+
+                final char refBase = (char) refWalker.get(locus.getSequenceIndex()).getBases()[locus.getPosition() - 1];
+                final int refReadCount = baseCounts.get(refBase);
+                final int altReadCount = totalBaseCount - refReadCount;
+
+                //intervals are output as (seq, pos, pos) rather than (seq, pos-1, pos)
+                //this avoids having to skip loci at interval starts during tumor het pulldown
+                hetPulldown.add(new Interval(locus.getSequenceName(), locus.getPosition(), locus.getPosition()),
+                        refReadCount, altReadCount);
+            }
+            return hetPulldown;
+        } catch (IOException e) {
+            throw new UserException(e.getMessage());
+        }
+    }
+}
