@@ -2,9 +2,12 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
+
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.mergealignment.AbstractAlignmentMerger;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 
@@ -42,7 +45,7 @@ public final class CleanSam extends PicardCommandLineProgram {
         try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), true, OUTPUT);
              final CloseableIterator<SAMRecord> it = reader.iterator()) {
 
-            final ProgressLogger progress = new ProgressLogger(Log.getInstance(CleanSam.class));
+            final ProgressLogger progress = new ProgressLogger(logger);
 
             // If the read (or its mate) maps off the end of the alignment, clip it
             while (it.hasNext()) {

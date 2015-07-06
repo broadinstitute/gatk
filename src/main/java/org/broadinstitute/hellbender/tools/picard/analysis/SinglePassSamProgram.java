@@ -9,13 +9,15 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.*;
@@ -41,7 +43,7 @@ public abstract class SinglePassSamProgram extends PicardCommandLineProgram {
     @Argument(doc = "Stop after processing N reads, mainly for debugging.")
     public long STOP_AFTER = 0;
 
-    private static final Log log = Log.getInstance(SinglePassSamProgram.class);
+    private static final Logger logger = LogManager.getLogger();
 
     /**
      * Final implementation of doWork() that checks and loads the input and optionally reference
@@ -82,7 +84,7 @@ public abstract class SinglePassSamProgram extends PicardCommandLineProgram {
             final SortOrder sort = in.getFileHeader().getSortOrder();
             if (sort != SortOrder.coordinate) {
                 if (assumeSorted) {
-                    log.warn("File reports sort order '" + sort + "', assuming it's coordinate sorted anyway.");
+                    logger.warn("File reports sort order '" + sort + "', assuming it's coordinate sorted anyway.");
                 } else {
                     throw new UserException("File " + input.getAbsolutePath() + " should be coordinate sorted but " +
                             "the header says the sort order is " + sort + ". If you believe the file " +
@@ -99,7 +101,7 @@ public abstract class SinglePassSamProgram extends PicardCommandLineProgram {
         }
 
 
-        final ProgressLogger progress = new ProgressLogger(log);
+        final ProgressLogger progress = new ProgressLogger(logger);
 
         for (final SAMRecord rec : in) {
             final ReferenceSequence ref;

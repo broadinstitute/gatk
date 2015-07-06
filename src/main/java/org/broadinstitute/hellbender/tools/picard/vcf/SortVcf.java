@@ -4,8 +4,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -15,11 +13,13 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFRecordCodec;
 import htsjdk.variant.vcf.VCFUtils;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.*;
@@ -46,8 +46,6 @@ public final class SortVcf extends PicardCommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, optional = true)
     public File SEQUENCE_DICTIONARY;
-
-    private final Log log = Log.getInstance(SortVcf.class);
 
     private final List<VCFFileReader> inputReaders = new ArrayList<>();
     private final List<VCFHeader> inputHeaders = new ArrayList<>();
@@ -130,7 +128,7 @@ public final class SortVcf extends PicardCommandLineProgram {
      * @param outputHeader - The merged header whose information we intend to use in the final output file
      */
     private SortingCollection<VariantContext> sortInputs(final List<VCFFileReader> readers, final VCFHeader outputHeader) {
-        final ProgressLogger readProgress = new ProgressLogger(log, 25000, "read", "records");
+        final ProgressLogger readProgress = new ProgressLogger(logger, 25000, "read", "records");
 
         // NB: The default MAX_RECORDS_IN_RAM may not be appropriate here. VariantContexts are smaller than SamRecords
         // We would have to play around empirically to find an appropriate value. We are not performing this optimization at this time.
@@ -143,7 +141,7 @@ public final class SortVcf extends PicardCommandLineProgram {
                         TMP_DIR);
         int readerCount = 1;
         for (final VCFFileReader reader : readers) {
-            log.info("Reading entries from input file " + readerCount);
+            logger.info("Reading entries from input file " + readerCount);
             for (final VariantContext variantContext : reader) {
                 sorter.add(variantContext);
                 readProgress.record(variantContext.getContig(), variantContext.getStart());
@@ -155,7 +153,7 @@ public final class SortVcf extends PicardCommandLineProgram {
     }
 
     private void writeSortedOutput(final VCFHeader outputHeader, final SortingCollection<VariantContext> sortedOutput) {
-        final ProgressLogger writeProgress = new ProgressLogger(log, 25000, "wrote", "records");
+        final ProgressLogger writeProgress = new ProgressLogger(logger, 25000, "wrote", "records");
         final EnumSet<Options> options = CREATE_INDEX ? EnumSet.of(Options.INDEX_ON_THE_FLY) : EnumSet.noneOf(Options.class);
         final VariantContextWriter out = new VariantContextWriterBuilder().
                 setReferenceDictionary(outputHeader.getSequenceDictionary()).

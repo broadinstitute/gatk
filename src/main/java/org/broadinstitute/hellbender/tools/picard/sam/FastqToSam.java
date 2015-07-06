@@ -4,10 +4,13 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.fastq.FastqReader;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -26,7 +29,8 @@ import java.util.List;
         programGroup = ReadProgramGroup.class
 )
 public final class FastqToSam extends PicardCommandLineProgram {
-    private static final Log LOG = Log.getInstance(FastqToSam.class);
+
+    private static final Logger LOG = LogManager.getLogger();
 
     @Argument(shortName="F1", doc="Input fastq file (optionally gzipped) for single end data, or first read in paired end data.")
     public File FASTQ;

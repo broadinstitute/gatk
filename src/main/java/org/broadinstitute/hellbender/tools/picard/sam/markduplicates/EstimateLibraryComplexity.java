@@ -6,6 +6,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.*;
 import java.util.*;
@@ -84,8 +86,6 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
             "I.e. if the input contains 10m read pairs and MIN_IDENTICAL_BASES is set to 5, then the mean expected " +
             "group size would be approximately 10 reads.")
     public int MAX_GROUP_RATIO = 500;
-
-    private final Log log = Log.getInstance(EstimateLibraryComplexity.class);
 
     /**
      * Little class to hold the sequence of a pair of reads and tile location information.
@@ -226,7 +226,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
     protected Object doWork() {
         for (final File f : INPUT) IOUtil.assertFileIsReadable(f);
 
-        log.info("Will store " + MAX_RECORDS_IN_RAM + " read pairs in memory before sorting.");
+        logger.info("Will store " + MAX_RECORDS_IN_RAM + " read pairs in memory before sorting.");
 
         final List<SAMReadGroupRecord> readGroups = new ArrayList<>();
         final int recordsRead = 0;
@@ -237,7 +237,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
                 TMP_DIR);
 
         // Loop through the input files and pick out the read sequences etc.
-        final ProgressLogger progress = new ProgressLogger(log, (int) 1e6, "Read");
+        final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");
         for (final File f : INPUT) {
             final Map<String, PairedReadSequence> pendingByName = new HashMap<>();
             final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(f);
@@ -287,7 +287,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
             CloserUtil.close(in);
         }
 
-        log.info("Finished reading - moving on to scanning for duplicates.");
+        logger.info("Finished reading - moving on to scanning for duplicates.");
 
         // Now go through the sorted reads and attempt to find duplicates
         try (final PeekableIterator<PairedReadSequence> iterator = new PeekableIterator<>(sorter.iterator())) {
@@ -305,7 +305,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
 
                 if (group.size() > meanGroupSize * MAX_GROUP_RATIO) {
                     final PairedReadSequence prs = group.get(0);
-                    log.warn("Omitting group with over " + MAX_GROUP_RATIO + " times the expected mean number of read pairs. " +
+                    logger.warn("Omitting group with over " + MAX_GROUP_RATIO + " times the expected mean number of read pairs. " +
                             "Mean=" + meanGroupSize + ", Actual=" + group.size() + ". Prefixes: " +
                             StringUtil.bytesToString(prs.read1, 0, MIN_IDENTICAL_BASES) +
                             " / " +
@@ -360,7 +360,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
 
                     ++groupsProcessed;
                     if (lastLogTime < System.currentTimeMillis() - 60000) {
-                        log.info("Processed " + groupsProcessed + " groups.");
+                        logger.info("Processed " + groupsProcessed + " groups.");
                         lastLogTime = System.currentTimeMillis();
                     }
                 }

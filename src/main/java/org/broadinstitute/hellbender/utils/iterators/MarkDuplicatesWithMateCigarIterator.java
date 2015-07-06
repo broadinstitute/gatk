@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.iterators;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
@@ -132,7 +133,7 @@ public final class MarkDuplicatesWithMateCigarIterator implements SAMRecordItera
         nextRecord = markDuplicatesAndGetTheNextAvailable(); // get one directly, or null
     }
 
-    public void logMemoryStats(final Log log) {
+    public void logMemoryStats(final Logger log) {
         System.gc();
         final Runtime runtime = Runtime.getRuntime();
         log.info("freeMemory: " + runtime.freeMemory() +

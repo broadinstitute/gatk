@@ -2,10 +2,11 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,8 +46,6 @@ public final class FixMateInformation extends PicardCommandLineProgram {
 
     @Argument(shortName = "MC", optional = true, doc = "Adds the mate CIGAR tag (MC) if true, does not if false.")
     public Boolean ADD_MATE_CIGAR = true;
-
-    private static final Log log = Log.getInstance(FixMateInformation.class);
 
     protected SAMFileWriter out;
 
@@ -107,7 +106,7 @@ public final class FixMateInformation extends PicardCommandLineProgram {
             if (ASSUME_SORTED || allQueryNameSorted) {
                 iterator = new SamPairUtil.SetMateInfoIterator(new PeekableIterator<>(tmp), ADD_MATE_CIGAR);
             } else {
-                log.info("Sorting input into queryname order.");
+                logger.info("Sorting input into queryname order.");
                 final SortingCollection<SAMRecord> sorter = SortingCollection.newInstance(SAMRecord.class,
                         new BAMRecordCodec(header),
                         new SAMRecordQueryNameComparator(),
@@ -125,12 +124,12 @@ public final class FixMateInformation extends PicardCommandLineProgram {
                         sorter.cleanup();
                     }
                 }, ADD_MATE_CIGAR);
-                log.info("Sorting by queryname complete.");
+                logger.info("Sorting by queryname complete.");
             }
 
             // Deal with the various sorting complications
             final SAMFileHeader.SortOrder outputSortOrder = SORT_ORDER == null ? readers.get(0).getFileHeader().getSortOrder() : SORT_ORDER;
-            log.info("Output will be sorted by " + outputSortOrder);
+            logger.info("Output will be sorted by " + outputSortOrder);
             header.setSortOrder(outputSortOrder);
         }
 
@@ -140,8 +139,8 @@ public final class FixMateInformation extends PicardCommandLineProgram {
 
         createSamFileWriter(header);
 
-        log.info("Traversing query name sorted records and fixing up mate pair information.");
-        final ProgressLogger progress = new ProgressLogger(log);
+        logger.info("Traversing query name sorted records and fixing up mate pair information.");
+        final ProgressLogger progress = new ProgressLogger(logger);
         while (iterator.hasNext()) {
             final SAMRecord record = iterator.next();
             out.addAlignment(record);
@@ -150,16 +149,16 @@ public final class FixMateInformation extends PicardCommandLineProgram {
         iterator.close();
 
         if (header.getSortOrder() == SAMFileHeader.SortOrder.queryname) {
-            log.info("Closing output file.");
+            logger.info("Closing output file.");
         } else {
-            log.info("Finished processing reads; re-sorting output file.");
+            logger.info("Finished processing reads; re-sorting output file.");
         }
         closeWriter();
 
         // Lastly if we're fixing in place, swap the files
         // TODO throw appropriate exceptions instead of writing to log.error and returning
         if (!differentOutputSpecified) {
-            log.info("Replacing input file with fixed file.");
+            logger.info("Replacing input file with fixed file.");
 
             final File soleInput = INPUT.get(0).getAbsoluteFile();
             final File old = new File(soleInput.getParentFile(), soleInput.getName() + ".old");
@@ -167,7 +166,7 @@ public final class FixMateInformation extends PicardCommandLineProgram {
                 if (OUTPUT.renameTo(soleInput)) {
 
                     if (!old.delete()) {
-                        log.warn("Could not delete old file: " + old.getAbsolutePath());
+                        logger.warn("Could not delete old file: " + old.getAbsolutePath());
                         return null;
                     }
 
@@ -178,21 +177,21 @@ public final class FixMateInformation extends PicardCommandLineProgram {
                                 soleInput.getName().substring(0, soleInput.getName().length() - 4) + ".bai");
 
                         if (!newIndex.renameTo(oldIndex)) {
-                            log.warn("Could not overwrite index file: " + oldIndex.getAbsolutePath());
+                            logger.warn("Could not overwrite index file: " + oldIndex.getAbsolutePath());
                         }
                     }
 
                 } else {
-                    log.error("Could not move new file to " + soleInput.getAbsolutePath());
-                    log.error("Input file preserved as: " + old.getAbsolutePath());
-                    log.error("New file preserved as: " + OUTPUT.getAbsolutePath());
+                    logger.error("Could not move new file to " + soleInput.getAbsolutePath());
+                    logger.error("Input file preserved as: " + old.getAbsolutePath());
+                    logger.error("New file preserved as: " + OUTPUT.getAbsolutePath());
                     return null;
                 }
             } else {
-                log.error("Could not move input file out of the way: " + soleInput.getAbsolutePath());
+                logger.error("Could not move input file out of the way: " + soleInput.getAbsolutePath());
 
                 if (!OUTPUT.delete()) {
-                    log.error("Could not delete temporary file: " + OUTPUT.getAbsolutePath());
+                    logger.error("Could not delete temporary file: " + OUTPUT.getAbsolutePath());
                 }
 
                 return null;

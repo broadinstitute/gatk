@@ -4,7 +4,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.liftover.LiftOver;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -18,7 +19,6 @@ import static htsjdk.samtools.liftover.LiftOver.DEFAULT_LIFTOVER_MINMATCH;
 import static htsjdk.samtools.util.IOUtil.assertFileIsReadable;
 import static htsjdk.samtools.util.IOUtil.assertFileIsWritable;
 import static htsjdk.samtools.util.IntervalList.fromFile;
-import static htsjdk.samtools.util.Log.getInstance;
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.INPUT_SHORT_NAME;
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME;
@@ -33,8 +33,6 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
         programGroup = IntervalProgramGroup.class
 )
 public final class LiftOverIntervalList extends PicardCommandLineProgram {
-
-    private static final Log LOG = getInstance(LiftOverIntervalList.class);
 
     @Argument(doc = "Interval list to be lifted over.", shortName = INPUT_SHORT_NAME)
     public File INPUT;
@@ -77,10 +75,10 @@ public final class LiftOverIntervalList extends PicardCommandLineProgram {
                 toIntervals.add(toInterval);
             } else {
                 anyFailed = true;
-                LOG.warn("Liftover failed for ", fromInterval, "(len ", fromInterval.length(), ")");
+                logger.warn("Liftover failed for ", fromInterval, "(len ", fromInterval.length(), ")");
                 final List<LiftOver.PartialLiftover> partials = liftOver.diagnosticLiftover(fromInterval);
                 for (final LiftOver.PartialLiftover partial : partials) {
-                    LOG.info(partial);
+                    logger.info(partial);
                 }
             }
         }

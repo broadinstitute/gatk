@@ -5,9 +5,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.MergingIterator;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -16,13 +14,14 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFUtils;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import java.io.File;
 import java.util.*;
 
@@ -54,15 +53,13 @@ public final class MergeVcfs extends PicardCommandLineProgram {
     @Argument(shortName = "D", doc = "The index sequence dictionary to use instead of the sequence dictionary in the input file", optional = true)
     public File SEQUENCE_DICTIONARY;
 
-    private final Log log = Log.getInstance(MergeVcfs.class);
-
     public MergeVcfs() {
         this.CREATE_INDEX = true;
     }
 
     @Override
     protected Object doWork() {
-        final ProgressLogger progress = new ProgressLogger(log, 10000);
+        final ProgressLogger progress = new ProgressLogger(logger, 10000);
         final List<String> sampleList = new ArrayList<>();
         final Collection<CloseableIterator<VariantContext>> iteratorCollection = new ArrayList<>(INPUT.size());
         final Collection<VCFHeader> headers = new HashSet<>(INPUT.size());

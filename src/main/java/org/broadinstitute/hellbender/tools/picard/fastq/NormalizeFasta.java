@@ -4,14 +4,13 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MiscProgramGroup;
-
+import org.apache.logging.log4j.Logger;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -41,8 +40,6 @@ public final class NormalizeFasta extends CommandLineProgram {
     @Argument(doc="Truncate sequence names at first whitespace.")
     public boolean TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE=false;
 
-    private final Log log = Log.getInstance(NormalizeFasta.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -66,7 +63,7 @@ public final class NormalizeFasta extends CommandLineProgram {
                     out.newLine();
 
                     if (bases.length == 0) {
-                        log.warn("Sequence " + name + " contains 0 bases.");
+                        logger.warn("Sequence " + name + " contains 0 bases.");
                     }
                     else {
                         for (int i=0; i<bases.length; ++i) {

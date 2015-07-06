@@ -5,11 +5,12 @@ import htsjdk.samtools.filter.AlignedFilter;
 import htsjdk.samtools.filter.FilteringIterator;
 import htsjdk.samtools.filter.ReadNameFilter;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -30,7 +31,7 @@ import java.text.DecimalFormat;
 )
 public final class FilterReads extends PicardCommandLineProgram {
 
-    private static final Log log = Log.getInstance(FilterReads.class);
+    private static final Logger log = LogManager.getLogger();
 
     private static enum Filter {
         includeAligned("OUTPUT SAM/BAM will contain aligned reads only. INPUT SAM/BAM must be in queryname SortOrder. (Note that *both* first and second of paired reads must be aligned to be included in the OUTPUT SAM or BAM)"),
@@ -86,10 +87,10 @@ public final class FilterReads extends PicardCommandLineProgram {
             fileHeader.setSortOrder(SORT_ORDER);
         }
         final boolean presorted = inputSortOrder.equals(fileHeader.getSortOrder());
-        log.info("Filtering [presorted=" + presorted + "] " + INPUT.getName() + " -> OUTPUT=" +
+        logger.info("Filtering [presorted=" + presorted + "] " + INPUT.getName() + " -> OUTPUT=" +
                 OUTPUT.getName() + " [sortorder=" + fileHeader.getSortOrder().name() + "]");
 
-        final ProgressLogger progress = new ProgressLogger(log, (int) 1e6, "Written");
+        final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Written");
 
         // create OUTPUT file
         try (final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, presorted, OUTPUT)) {
@@ -102,7 +103,7 @@ public final class FilterReads extends PicardCommandLineProgram {
 
            filteringIterator.close();
        }
-       log.info(new DecimalFormat("#,###").format(progress.getCount()) + " SAMRecords written to " + OUTPUT.getName());
+       logger.info(new DecimalFormat("#,###").format(progress.getCount()) + " SAMRecords written to " + OUTPUT.getName());
     }
 
     /**

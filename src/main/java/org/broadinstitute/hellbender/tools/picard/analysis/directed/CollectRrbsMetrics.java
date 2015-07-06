@@ -10,8 +10,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -20,6 +19,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import org.broadinstitute.hellbender.utils.io.Resource;
 
 import java.io.File;
@@ -75,8 +75,6 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
     public static final String SUMMARY_FILE_EXTENSION = "rrbs_summary_metrics";
     public static final String PDF_FILE_EXTENSION = "rrbs_qc.pdf";
 
-    private static final Log log = Log.getInstance(CollectRrbsMetrics.class);
-
     @Override
     protected Object doWork() {
         if (!METRICS_FILE_PREFIX.endsWith(".")) {
@@ -93,7 +91,7 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
         }
 
         final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
-        final ProgressLogger progressLogger = new ProgressLogger(log);
+        final ProgressLogger progressLogger = new ProgressLogger(logger);
 
         final RrbsMetricsCollector metricsCollector = new RrbsMetricsCollector(METRIC_ACCUMULATION_LEVEL, samReader.getFileHeader().getReadGroups(),
                 C_QUALITY_THRESHOLD, NEXT_BASE_QUALITY_THRESHOLD, MINIMUM_READ_LENGTH, MAX_MISMATCH_RATE);
