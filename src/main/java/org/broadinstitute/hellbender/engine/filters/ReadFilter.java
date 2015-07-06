@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
 import java.util.function.Predicate;
-
 
 /**
  * Filters which operate on {@link GATKRead} should implement this interface by overriding {@link #test(GATKRead)}
@@ -27,15 +27,15 @@ public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GA
      * Specialization of {@link #and(Predicate)} so that ReadFilters anded with other ReadFilters produce a ReadFilter
      */
     default ReadFilter and( ReadFilter other ) {
-            Objects.requireNonNull(other);
-            return (t) -> test(t) && other.test(t);
+        Utils.nonNull(other);
+        return (t) -> test(t) && other.test(t);
     }
 
     /**
      * Specialization of {@link #or(Predicate)} so that ReadFilters ored with other ReadFilters produce a ReadFilter
      */
     default ReadFilter or( ReadFilter other ) {
-        Objects.requireNonNull(other);
+        Utils.nonNull(other);
         return (t) -> test(t) || other.test(t);
     }
 

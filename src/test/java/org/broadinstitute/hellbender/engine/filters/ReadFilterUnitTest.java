@@ -9,6 +9,7 @@ import org.testng.annotations.Test;
 
 public final class ReadFilterUnitTest {
 
+    // Mirrors CountedReadFilterUnitTest
     static final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10);
     static final GATKRead goodRead = ArtificialReadUtils.createArtificialRead(header, "Zuul", 0, 2,2);
     static final GATKRead endBad = ArtificialReadUtils.createArtificialRead(header, "Peter", 0, 1,100);
@@ -56,7 +57,6 @@ public final class ReadFilterUnitTest {
         ReadFilter endAndStartOk = endOk.and(startOk);
         Assert.assertEquals(startAndEndOk.test(read), expected);
         Assert.assertEquals(endAndStartOk.test(read), expected);
-
     }
 
     @DataProvider(name = "readsOr")
@@ -72,10 +72,10 @@ public final class ReadFilterUnitTest {
 
     @Test(dataProvider = "readsOr")
     public void testOr(GATKRead read, boolean expected) {
-        ReadFilter startAndEndOk = startOk.or(endOk);
-        ReadFilter endAndStartOk = endOk.or(startOk);
-        Assert.assertEquals(startAndEndOk.test(read), expected);
-        Assert.assertEquals(endAndStartOk.test(read), expected);
+        ReadFilter startOrEndOk = startOk.or(endOk);
+        ReadFilter endOrStartOk = endOk.or(startOk);
+        Assert.assertEquals(startOrEndOk.test(read), expected);
+        Assert.assertEquals(endOrStartOk.test(read), expected);
     }
 
     @DataProvider(name = "deeper")

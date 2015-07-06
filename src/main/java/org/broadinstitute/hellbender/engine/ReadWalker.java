@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -54,10 +54,12 @@ public abstract class ReadWalker extends GATKTool {
     public void traverse() {
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        ReadFilter filter = disable_all_read_filters ? ReadFilterLibrary.ALLOW_ALL_READS : makeReadFilter();
+        CountingReadFilter countedFilter = disable_all_read_filters ?
+                                                    new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
+                                                    makeReadFilter();
 
         StreamSupport.stream(reads.spliterator(), false)
-                .filter(filter)
+                .filter(countedFilter)
                 .forEach(read -> {
                     final SimpleInterval readInterval = read.isUnmapped() ? null :
                                                                             new SimpleInterval(read);
@@ -65,7 +67,10 @@ public abstract class ReadWalker extends GATKTool {
                           new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
                           new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null
                 });
+
+        logger.info(countedFilter.getSummaryLine());
     }
+
 
     /**
      * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
@@ -76,8 +81,8 @@ public abstract class ReadWalker extends GATKTool {
      * Subclasses can extend to provide own filters (ie override and call super).
      * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
      */
-    public ReadFilter makeReadFilter() {
-          return new WellformedReadFilter(getHeaderForReads());
+    public CountingReadFilter makeReadFilter(){
+          return new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()));
     }
 
     /**
