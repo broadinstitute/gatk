@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools;
 
-import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
 import java.text.DecimalFormat;
@@ -20,11 +19,10 @@ import java.text.NumberFormat;
 )
 public final class FlagStat extends ReadWalker {
 
-
     private FlagStatus sum = new FlagStatus();
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
         sum.add(read);
     }
 
@@ -34,8 +32,9 @@ public final class FlagStat extends ReadWalker {
     }
 
     // what comes out of the flagstat
-    public final static class FlagStatus implements Serializable{
+    public final static class FlagStatus implements Serializable {
         private static final long serialVersionUID = 1L;
+
         long readCount = 0L;
         long QC_failure = 0L;
         long duplicates = 0L;
@@ -86,87 +85,45 @@ public final class FlagStat extends ReadWalker {
 
         }
 
-
-        public FlagStatus add(final Read read){
-            if(read == null){
-                return this;
-            }
-
+        public FlagStatus add( final GATKRead read ) {
             this.readCount++;
 
-            if (read.getFailedVendorQualityChecks() != null && read.getFailedVendorQualityChecks()) {
+            if ( read.failsVendorQualityCheck() ) {
                 this.QC_failure++;
             }
-            if (read.getDuplicateFragment() != null && read.getDuplicateFragment()) {
+            if ( read.isDuplicate() ) {
                 this.duplicates++;
             }
-            if (read.getAlignment() != null) {
+            if ( ! read.isUnmapped() ) {
                 this.mapped++;
             }
-            if (read.getNumberReads() != null && read.getNumberReads() == 2) {
+            if ( read.isPaired() ) {
                 this.paired_in_sequencing++;
 
-                if (read.getReadNumber() != null && read.getReadNumber() == 1) {
+                if ( read.isSecondOfPair() ) {
                     this.read2++;
-                } else if (read.getReadNumber() != null && read.getReadNumber() == 0) {
+                }
+                else if ( read.isFirstOfPair() ) {
                     this.read1++;
                 }
-                if (read.getProperPlacement() != null && read.getProperPlacement()) {
+
+                if ( read.isProperlyPaired() ) {
                     this.properly_paired++;
                 }
-                if (read.getAlignment() != null && read.getNextMatePosition() != null){
+
+                if ( ! read.isUnmapped() && ! read.mateIsUnmapped() ) {
                     this.with_itself_and_mate_mapped++;
 
-                    if (!read.getAlignment().getPosition().getReferenceName().equals(read.getNextMatePosition().getReferenceName())) {
+                    if ( ! read.getContig().equals(read.getMateContig()) ) {
                         this.with_mate_mapped_to_a_different_chr++;
 
-                        if (read.getAlignment().getMappingQuality() >= 5) {
+                        if ( read.getMappingQuality() >= 5 ) {
                             this.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5++;
                         }
                     }
                 }
-                if (read.getAlignment() != null && read.getNextMatePosition() == null) {
-                    this.singletons++;
-                }
-            }
-            return this;
-        }
 
-        public FlagStatus add(final SAMRecord read) {
-            this.readCount++;
-
-            if (read.getReadFailsVendorQualityCheckFlag()) {
-                this.QC_failure++;
-            }
-            if (read.getDuplicateReadFlag()) {
-                this.duplicates++;
-            }
-            if (!read.getReadUnmappedFlag()) {
-                this.mapped++;
-            }
-            if (read.getReadPairedFlag()) {
-                this.paired_in_sequencing++;
-
-                if (read.getSecondOfPairFlag()) {
-                    this.read2++;
-                } else if (read.getReadPairedFlag()) {
-                    this.read1++;
-                }
-                if (read.getProperPairFlag()) {
-                    this.properly_paired++;
-                }
-                if (!read.getReadUnmappedFlag() && !read.getMateUnmappedFlag()) {
-                    this.with_itself_and_mate_mapped++;
-
-                    if (!read.getReferenceIndex().equals(read.getMateReferenceIndex())) {
-                        this.with_mate_mapped_to_a_different_chr++;
-
-                        if (read.getMappingQuality() >= 5) {
-                            this.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5++;
-                        }
-                    }
-                }
-                if (!read.getReadUnmappedFlag() && read.getMateUnmappedFlag()) {
+                if ( ! read.isUnmapped() && read.mateIsUnmapped() ) {
                     this.singletons++;
                 }
             }

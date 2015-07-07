@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
@@ -21,7 +21,7 @@ public final class PileupElement implements Comparable<PileupElement> {
     public static final byte T_FOLLOWED_BY_INSERTION_BASE = (byte) 89;
     public static final byte G_FOLLOWED_BY_INSERTION_BASE = (byte) 90;
 
-    protected final SAMRecord read;         // the read this base belongs to
+    protected final GATKRead read;         // the read this base belongs to
     protected final int offset;                 // the offset in the bases array for this base
 
     private final CigarElement currentCigarElement;
@@ -38,7 +38,7 @@ public final class PileupElement implements Comparable<PileupElement> {
      * @param currentCigarOffset the offset of currentElement in read.getCigar().getElement(currentCigarOffset) == currentElement)
      * @param offsetInCurrentCigar how far into the currentElement are we in our alignment to the genome?
      */
-    public PileupElement(final SAMRecord read, final int baseOffset,
+    public PileupElement(final GATKRead read, final int baseOffset,
                          final CigarElement currentElement, final int currentCigarOffset,
                          final int offsetInCurrentCigar) {
         assert currentElement != null;
@@ -51,9 +51,9 @@ public final class PileupElement implements Comparable<PileupElement> {
 
         // for performance regions these are assertions
         assert this.read != null;
-        assert this.offset >= 0 && this.offset < this.read.getReadLength();
+        assert this.offset >= 0 && this.offset < this.read.getLength();
         assert this.currentCigarOffset >= 0;
-        assert this.currentCigarOffset < read.getCigarLength();
+        assert this.currentCigarOffset < read.getCigar().numCigarElements();
         assert this.offsetInCurrentCigar >= 0;
         assert this.offsetInCurrentCigar < currentElement.getLength();
     }
@@ -94,9 +94,9 @@ public final class PileupElement implements Comparable<PileupElement> {
 
     /**
      * Get the read for this pileup element
-     * @return a non-null GATKSAMRecord
+     * @return a non-null Read
      */
-    public SAMRecord getRead() {
+    public GATKRead getRead() {
         return read;
     }
 
@@ -119,7 +119,7 @@ public final class PileupElement implements Comparable<PileupElement> {
      * @return a base encoded as a byte
      */
     public byte getBase() {
-        return isDeletion() ? DELETION_BASE : read.getReadBases()[offset];
+        return isDeletion() ? DELETION_BASE : read.getBases()[offset];
     }
 
     /**
@@ -180,7 +180,7 @@ public final class PileupElement implements Comparable<PileupElement> {
     }
 
     public String toString() {
-        return String.format("%s @ %d = %c Q%d", getRead().getReadName(), getOffset(), (char) getBase(), getQual());
+        return String.format("%s @ %d = %c Q%d", getRead().getName(), getOffset(), (char) getBase(), getQual());
     }
 
     @Override
@@ -189,9 +189,9 @@ public final class PileupElement implements Comparable<PileupElement> {
             return -1;
         else if (offset > pileupElement.offset)
             return 1;
-        else if (read.getAlignmentStart() < pileupElement.read.getAlignmentStart())
+        else if (read.getStart() < pileupElement.read.getStart())
             return -1;
-        else if (read.getAlignmentStart() > pileupElement.read.getAlignmentStart())
+        else if (read.getStart() > pileupElement.read.getStart())
             return 1;
         else
             return 0;
@@ -263,7 +263,7 @@ public final class PileupElement implements Comparable<PileupElement> {
     private LinkedList<CigarElement> getBetween(final Direction direction) {
         final int increment = direction == Direction.NEXT ? 1 : -1;
         LinkedList<CigarElement> elements = null;
-        final int nCigarElements = read.getCigarLength();
+        final int nCigarElements = read.getCigar().numCigarElements();
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
             final CigarElement elt = read.getCigar().getCigarElement(i);
             if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) )
@@ -319,7 +319,7 @@ public final class PileupElement implements Comparable<PileupElement> {
      */
     private CigarElement getNeighboringOnGenomeCigarElement(final Direction direction) {
         final int increment = direction == Direction.NEXT ? 1 : -1;
-        final int nCigarElements = read.getCigarLength();
+        final int nCigarElements = read.getCigar().numCigarElements();
 
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
             final CigarElement elt = read.getCigar().getCigarElement(i);

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -162,27 +161,27 @@ public final class AlignmentUtils {
      * @param refSeq              the byte array representing the reference sequence
      * @param refIndex            the index in the reference byte array of the read's first base (the reference index
      *                            is matching the alignment start, there may be tons of soft-clipped bases before/after
-     *                            that so it's wrong to compare with getReadLength() here.).  Note that refIndex is
+     *                            that so it's wrong to compare with getLength() here.).  Note that refIndex is
      *                            zero based, not 1 based
      * @param startOnRead         the index in the read's bases from which we start counting
      * @param nReadBases          the number of bases after (but including) startOnRead that we check
      * @return non-null object representing the mismatch count
      */
     @SuppressWarnings("fallthrough")
-    public static MismatchCount getMismatchCount(SAMRecord r, byte[] refSeq, int refIndex, int startOnRead, int nReadBases) {
+    public static MismatchCount getMismatchCount(GATKRead r, byte[] refSeq, int refIndex, int startOnRead, int nReadBases) {
         if ( r == null ) throw new IllegalArgumentException("attempting to calculate the mismatch count from a read that is null");
         if ( refSeq == null ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a reference sequence that is null");
         if ( refIndex < 0 ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a reference index that is negative");
         if ( startOnRead < 0 ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a read start that is negative");
         if ( nReadBases < 0 ) throw new IllegalArgumentException("attempting to calculate the mismatch count for a negative number of read bases");
-        if ( refSeq.length - refIndex < (r.getAlignmentEnd() - r.getAlignmentStart()) )
+        if ( refSeq.length - refIndex < (r.getEnd() - r.getStart()) )
             throw new IllegalArgumentException("attempting to calculate the mismatch count against a reference string that is smaller than the read");
 
         MismatchCount mc = new MismatchCount();
 
         int readIdx = 0;
         final int endOnRead = startOnRead + nReadBases - 1; // index of the last base on read we want to count (note we are including soft-clipped bases with this math)
-        final byte[] readSeq = r.getReadBases();
+        final byte[] readSeq = r.getBases();
         final Cigar c = r.getCigar();
         final byte[] readQuals = r.getBaseQualities();
         for (final CigarElement ce : c.getCigarElements()) {
@@ -247,7 +246,7 @@ public final class AlignmentUtils {
      * @param r alignment
      * @return number of continuous alignment blocks (i.e. 'M' elements of the cigar; all indel and clipping elements are ignored).
      */
-    public static int getNumAlignmentBlocks(final SAMRecord r) {
+    public static int getNumAlignmentBlocks(final GATKRead r) {
         if ( r == null ) throw new IllegalArgumentException("read cannot be null");
         final Cigar cigar = r.getCigar();
         if (cigar == null) return 0;
@@ -267,10 +266,10 @@ public final class AlignmentUtils {
      *
      * If read is not mapped (i.e., doesn't have a cigar) returns 0
      *
-     * @param r a non-null GATKSAMRecord
+     * @param r a non-null Read
      * @return the number of bases aligned to the genome in R, including soft clipped bases
      */
-    public static int getNumAlignedBasesCountingSoftClips(final SAMRecord r) {
+    public static int getNumAlignedBasesCountingSoftClips(final GATKRead r) {
         int n = 0;
         final Cigar cigar = r.getCigar();
         if (cigar == null) return 0;
@@ -290,7 +289,7 @@ public final class AlignmentUtils {
      * @param r a non-null read
      * @return a positive integer
      */
-    public static int getNumHardClippedBases(final SAMRecord r) {
+    public static int getNumHardClippedBases(final GATKRead r) {
         if ( r == null ) throw new IllegalArgumentException("Read cannot be null");
 
         int n = 0;
@@ -309,11 +308,11 @@ public final class AlignmentUtils {
      *
      * Handles the case where the cigar is null (i.e., the read is unmapped), returning 0
      *
-     * @param read a non-null GATKSAMRecord.
+     * @param read a non-null read.
      * @param qualThreshold consider bases with quals > this value as high quality.  Must be >= 0
      * @return positive integer
      */
-    public static int calcNumHighQualitySoftClips( final SAMRecord read, final byte qualThreshold ) {
+    public static int calcNumHighQualitySoftClips( final GATKRead read, final byte qualThreshold ) {
         if ( read == null ) throw new IllegalArgumentException("Read cannot be null");
         if ( qualThreshold < 0 ) throw new IllegalArgumentException("Expected qualThreshold to be a positive byte but saw " + qualThreshold);
 
@@ -482,43 +481,6 @@ public final class AlignmentUtils {
             }
         }
         return alignment;
-    }
-
-    /**
-     * Returns true if the read does not belong to a contig, i.e. it's location is GenomeLoc.UNMAPPED.
-     * NOTE: A read can have a mapped GenomeLoc and still have an unmapped flag!
-     *
-     * @param r record
-     * @return true if read is unmapped to a genome loc
-     */
-    public static boolean isReadGenomeLocUnmapped(final SAMRecord r) {
-        return SAMRecord.NO_ALIGNMENT_REFERENCE_NAME.equals(r.getReferenceName());
-    }
-
-    /**
-     * Due to (unfortunate) multiple ways to indicate that read is unmapped allowed by SAM format
-     * specification, one may need this convenience shortcut. Checks both 'read unmapped' flag and
-     * alignment reference index/start.
-     *
-     * Our life would be so much easier if all sam files followed the specs. In reality,
-     * sam files (including those generated by maq or bwa) miss headers altogether. When
-     * reading such a SAM file, reference name is set, but since there is no sequence dictionary,
-     * null is always returned for referenceIndex. Let's be paranoid here, and make sure that
-     * we do not call the read "unmapped" when it has only reference name set with ref. index missing
-     * or vice versa.
-     *
-     * @param r a non-null record
-     * @return true if read is unmapped
-     */
-    public static boolean isReadUnmapped(final SAMRecord r) {
-        if ( r == null )
-            throw new IllegalArgumentException("Read cannot be null");
-
-        return r.getReadUnmappedFlag() ||
-                !((r.getReferenceIndex() != null && r.getReferenceIndex() != SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX ||
-                        r.getReferenceName() != null && !r.getReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME)) &&
-                        r.getAlignmentStart() != SAMRecord.NO_ALIGNMENT_START);
-
     }
 
     /**
@@ -884,7 +846,7 @@ public final class AlignmentUtils {
      *
      * @param cigar a non-null Cigar to trim down
      * @param start Where should we start keeping bases in the cigar?  The first position is 0
-     * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getReadLength()
+     * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getLength()
      * @return a new Cigar containing == start - end + 1 reads
      */
     public static Cigar trimCigarByBases(final Cigar cigar, final int start, final int end) {
@@ -906,7 +868,7 @@ public final class AlignmentUtils {
      *
      * @param cigar a non-null Cigar to trim down
      * @param start Where should we start keeping bases in the cigar?  The first position is 0
-     * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getReadLength()
+     * @param end Where should we stop keeping bases in the cigar?  The maximum value is cigar.getLength()
      * @param byReference should start and end be intrepreted as position in the reference or the read to trim to/from?
      * @return a non-null cigar
      */

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -10,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Factory class for creating GenomeLocs
@@ -318,22 +318,14 @@ public final class GenomeLocParser {
     //
     // --------------------------------------------------------------------------------------------------------------
 
-    /**
-     * Create a genome loc, given a read. If the read is unmapped, *and* yet the read has a contig and start position,
-     * then a GenomeLoc is returned for contig:start-start, otherwise an UNMAPPED GenomeLoc is returned.
-     *
-     * @param read the read from which to create a genome loc
-     *
-     * @return the GenomeLoc that was created
-     */
-    public GenomeLoc createGenomeLoc(final SAMRecord read) {
-        if ( read.getReadUnmappedFlag() && read.getReferenceIndex() == -1 )
-            // read is unmapped and not placed anywhere on the genome
+    public GenomeLoc createGenomeLoc( final GATKRead read ) {
+        if ( read.isUnmapped() ) {
             return GenomeLoc.UNMAPPED;
+        }
         else {
             // Use Math.max to ensure that end >= start (Picard assigns the end to reads that are entirely within an insertion as start-1)
-            final int end = read.getReadUnmappedFlag() ? read.getAlignmentStart() : Math.max(read.getAlignmentEnd(), read.getAlignmentStart());
-            return createGenomeLoc(read.getReferenceName(), read.getReferenceIndex(), read.getAlignmentStart(), end, false);
+            final int end = Math.max(read.getEnd(), read.getStart());
+            return createGenomeLoc(read.getContig(), getSequenceDictionary().getSequenceIndex(read.getContig()), read.getStart(), end, false);
         }
     }
 

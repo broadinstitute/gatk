@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -40,18 +40,18 @@ public final class SampleCollectionUnitTest extends BaseTest {
     @BeforeClass
     public void setUp() {
         final Random rnd = new Random(randomSeed);
-        emptyHeader = new SAMFileHeader();
+        emptyHeader = ArtificialReadUtils.createArtificialSamHeader();
         final SAMReadGroupRecord rg1_1 = new SAMReadGroupRecord("RG1");
         rg1_1.setSample("SM1");
         final SAMReadGroupRecord rg1_0 = new SAMReadGroupRecord("RG0");
-        singleSampleReadGroupHeader = new SAMFileHeader();
+        singleSampleReadGroupHeader = ArtificialReadUtils.createArtificialSamHeader();
         singleSampleReadGroupHeader.addReadGroup(rg1_1);
-        singleSampleLessReadGroupHeader = new SAMFileHeader();
+        singleSampleLessReadGroupHeader = ArtificialReadUtils.createArtificialSamHeader();
         singleSampleLessReadGroupHeader.addReadGroup(rg1_0);
         multiSampleHeaders = new SAMFileHeader[multiSampleWithOrphanReadGroupCount + multiSampleWithoutOrphanReadGroupCount];
         for (int i = 0; i < multiSampleWithOrphanReadGroupCount; i++) {
             final int orphanCount = rnd.nextInt(maxOrphanReadGroupCount - minOrphanReadGroupCount) + minOrphanReadGroupCount;
-            final SAMFileHeader header = new SAMFileHeader();
+            final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
             for (int j = 0; j < orphanCount; j++) {
                 header.addReadGroup(new SAMReadGroupRecord("RG0_" + j));
             }
@@ -60,7 +60,7 @@ public final class SampleCollectionUnitTest extends BaseTest {
         }
 
         for (int i = 0; i < multiSampleWithoutOrphanReadGroupCount; i++) {
-            final SAMFileHeader header = new SAMFileHeader();
+            final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
             addSampleReadGroups(rnd, header);
             multiSampleHeaders[i + multiSampleWithOrphanReadGroupCount] = header;
         }
@@ -148,26 +148,26 @@ public final class SampleCollectionUnitTest extends BaseTest {
     @Test(dataProvider = "samFileHeaderData", dependsOnMethods = "testCreation")
     public void testReadGroupIndexByReadWithNullReadGroup(final SAMFileHeader header) {
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
-        read.setAttribute(SAMTag.RG.name(),null);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
+        read.setReadGroup(null);
         Assert.assertEquals(sampleCollection.readGroupIndexByRead(read), -1);
     }
 
     @Test(dataProvider = "samFileHeaderData", dependsOnMethods = "testCreation", expectedExceptions = IllegalArgumentException.class)
     public void testReadGroupIndexByReadWithNonExistentReadGroup(final SAMFileHeader header) {
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
-        read.setAttribute(SAMTag.RG.name(),"NO_EXISTENT");
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
+        read.setReadGroup("NON_EXISTENT");
         Assert.assertEquals(sampleCollection.readGroupIndexByRead(read), -1);
     }
 
     @Test(dataProvider = "samFileHeaderData", dependsOnMethods = "testCreation")
     public void testReadGroupIndexByReadWithReadGroupWithSample(final SAMFileHeader header) {
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
         if (sampleCollection.sampleCount() > 0) {
-            final String readGroup;
-            read.setAttribute(SAMTag.RG.name(), readGroup = sampleCollection.samples().get(0).readGroups().stream().findFirst().get());
+            final String readGroup = sampleCollection.samples().get(0).readGroups().stream().findFirst().get();
+            read.setReadGroup(readGroup);
             Assert.assertEquals(sampleCollection.readGroupIndexByRead(read), sampleCollection.readGroupIndexById(readGroup));
         }
     }
@@ -178,8 +178,8 @@ public final class SampleCollectionUnitTest extends BaseTest {
         if (readGroup == null)
             return;
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
-        read.setAttribute(SAMTag.RG.name(), readGroup);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
+        read.setReadGroup(readGroup);
         Assert.assertEquals(sampleCollection.readGroupIndexByRead(read), sampleCollection.readGroupIndexById(readGroup));
 
     }
@@ -187,25 +187,25 @@ public final class SampleCollectionUnitTest extends BaseTest {
     @Test(dataProvider = "samFileHeaderData", dependsOnMethods = "testCreation")
     public void testSampleIndexByReadWithNullReadGroup(final SAMFileHeader header) {
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
-        read.setAttribute(SAMTag.RG.name(),null);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
+        read.setReadGroup(null);
         Assert.assertEquals(sampleCollection.sampleIndexByRead(read), -1);
     }
 
     @Test(dataProvider = "samFileHeaderData", dependsOnMethods = "testCreation", expectedExceptions = IllegalArgumentException.class)
     public void testSampleIndexByReadWithNonExistentReadGroup(final SAMFileHeader header) {
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
-        read.setAttribute(SAMTag.RG.name(),"NO_EXISTENT");
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
+        read.setReadGroup("NON_EXISTENT");
         Assert.assertEquals(sampleCollection.sampleIndexByRead(read), -1);
     }
 
     @Test(dataProvider = "samFileHeaderData", dependsOnMethods = "testCreation")
     public void testSampleIndexByReadWithReadGroupWithSample(final SAMFileHeader header) {
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
         if (sampleCollection.sampleCount() > 0) {
-            read.setAttribute(SAMTag.RG.name(), sampleCollection.samples().get(0).readGroups().stream().findFirst().get());
+            read.setReadGroup(sampleCollection.samples().get(0).readGroups().stream().findFirst().get());
             Assert.assertEquals(sampleCollection.sampleIndexByRead(read), 0);
         }
     }
@@ -216,9 +216,9 @@ public final class SampleCollectionUnitTest extends BaseTest {
         if (readGroup == null)
             return;
         final SampleCollection sampleCollection = new SampleCollection(header);
-        final SAMRecord read = new SAMRecord(header);
+        final GATKRead read = ArtificialReadUtils.createRandomRead(header, 100);
         if (sampleCollection.sampleCount() > 0) {
-            read.setAttribute(SAMTag.RG.name(), readGroup);
+            read.setReadGroup(readGroup);
             Assert.assertEquals(sampleCollection.sampleIndexByRead(read), -1);
         }
     }

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
@@ -10,11 +9,11 @@ import java.util.List;
 /**
  * @author aaron
  *
- * allows query calls to the artificial sam iterator, which allows you
+ * allows query calls to the artificial read iterator, which allows you
  * to test out classes that use specific itervals.  The reads returned will
  * all lie in order in the specified interval.
  */
-public final class ArtificialSAMQueryIterator extends ArtificialSAMIterator {
+public final class ArtificialReadQueryIterator extends ArtificialReadIterator {
 
     // get the next position
     protected int finalPos = 0;
@@ -32,7 +31,7 @@ public final class ArtificialSAMQueryIterator extends ArtificialSAMIterator {
      * @param readCount   the number of reads in each chromosome
      * @param header      the associated header
      */
-    ArtificialSAMQueryIterator( int startingChr, int endingChr, int readCount, int unmappedReadCount, SAMFileHeader header ) {
+    ArtificialReadQueryIterator( int startingChr, int endingChr, int readCount, int unmappedReadCount, SAMFileHeader header ) {
         super(startingChr, endingChr, readCount, unmappedReadCount, header);
         this.startingChr = startingChr;
     }
@@ -108,17 +107,17 @@ public final class ArtificialSAMQueryIterator extends ArtificialSAMIterator {
             }
         }
         if (contigIndex < 0) { throw new IllegalArgumentException("ArtificialContig" + contig + " doesn't exist"); }
-        while (super.hasNext() && this.peek().getReferenceIndex() < contigIndex) {
+        while (super.hasNext() && ReadUtils.getReferenceIndex(this.peek(), header) < contigIndex) {
             super.next();
         }
         if (!super.hasNext()) {
             throw new GATKException("Unable to find the target chromosome");
         }
-        while (super.hasNext() && this.peek().getAlignmentStart() < start) {
+        while (super.hasNext() && this.peek().getStart() < start) {
             super.next();
         }
         // sanity check that we have an actual matching read next
-        SAMRecord rec = this.peek();
+        GATKRead rec = this.peek();
         if (!matches(rec)) {
             throw new GATKException("The next read doesn't match");
         }
@@ -133,23 +132,25 @@ public final class ArtificialSAMQueryIterator extends ArtificialSAMIterator {
      *
      * @return true if it belongs in our region
      */
-    public boolean matches( SAMRecord rec ) {
-        if (rec.getReferenceIndex() != this.contigIndex) {
+    public boolean matches( GATKRead rec ) {
+        final int recReferenceIndex = ReadUtils.getReferenceIndex(rec, header);
+
+        if (recReferenceIndex != this.contigIndex) {
             return false;
         }
         // if we have an unmapped read, matching the contig is good enough for us
-        if (rec.getReferenceIndex() < 0) {
+        if (recReferenceIndex < 0) {
             return true;
         }
 
         if (!overlapping) {
             // if the start or the end are somewhere within our range
-            if (( rec.getAlignmentStart() >= startPos && rec.getAlignmentEnd() <= finalPos )) {
+            if (( rec.getStart() >= startPos && rec.getEnd() <= finalPos )) {
                 return true;
             }
         } else {
-            if (( rec.getAlignmentStart() <= finalPos && rec.getAlignmentStart() >= startPos ) ||
-                    ( rec.getAlignmentEnd() <= finalPos && rec.getAlignmentEnd() >= startPos )) {
+            if (( rec.getStart() <= finalPos && rec.getStart() >= startPos ) ||
+                    ( rec.getEnd() <= finalPos && rec.getEnd() >= startPos )) {
                 return true;
             }
         }

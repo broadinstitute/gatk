@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -26,7 +23,9 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -208,7 +207,7 @@ public final class ClipReads extends ReadWalker {
     /**
      * Output reads is written to this BAM.
      */
-    private SAMFileWriter outputBam;
+    private SAMFileGATKReadWriter outputBam;
 
     /**
      * Accumulator for the stats.
@@ -278,8 +277,8 @@ public final class ClipReads extends ReadWalker {
         }
 
         final boolean presorted = EnumSet.of(ClippingRepresentation.WRITE_NS, ClippingRepresentation.WRITE_NS_Q0S, ClippingRepresentation.WRITE_Q0S).contains(clippingRepresentation);
-        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
-        outputBam = new SAMFileWriterFactory().makeWriter(outputHeader, presorted, OUTPUT, referenceArguments.getReferenceFile());
+        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
+        outputBam = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, presorted, OUTPUT, referenceArguments.getReferenceFile()));
 
         accumulator = new ClippingData(sequencesToClip);
         try {
@@ -290,8 +289,8 @@ public final class ClipReads extends ReadWalker {
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext ref, FeatureContext featureContext ) {
-        if ( onlyDoRead == null || read.getReadName().equals(onlyDoRead) ) {
+    public void apply( GATKRead read, ReferenceContext ref, FeatureContext featureContext ) {
+        if ( onlyDoRead == null || read.getName().equals(onlyDoRead) ) {
             if ( clippingRepresentation == ClippingRepresentation.HARDCLIP_BASES || clippingRepresentation == ClippingRepresentation.REVERT_SOFTCLIPPED_BASES )
                 read = ReadClipper.revertSoftClippedBases(read);
             ReadClipperWithData clipper = new ReadClipperWithData(read, sequencesToClip);
@@ -311,7 +310,9 @@ public final class ClipReads extends ReadWalker {
         if ( out != null ){
            out.printf(accumulator.toString());
         }
-        CloserUtil.close(outputBam);
+        if ( outputBam != null ) {
+            outputBam.close();
+        }
         return accumulator;
     }
     /**
@@ -335,13 +336,13 @@ public final class ClipReads extends ReadWalker {
      */
     private void clipSequences(ReadClipperWithData clipper) {
         if (sequencesToClip != null) {                // don't bother if we don't have any sequences to clip
-            SAMRecord read = clipper.getRead();
+            GATKRead read = clipper.getRead();
             ClippingData data = clipper.getData();
 
             for (SeqToClip stc : sequencesToClip) {
                 // we have a pattern for both the forward and the reverse strands
-                Pattern pattern = read.getReadNegativeStrandFlag() ? stc.revPat : stc.fwdPat;
-                String bases = read.getReadString();
+                Pattern pattern = read.isReverseStrand() ? stc.revPat : stc.fwdPat;
+                String bases = read.getBasesString();
                 Matcher match = pattern.matcher(bases);
 
                 // keep clipping until match.find() says it can't find anything else
@@ -372,9 +373,9 @@ public final class ClipReads extends ReadWalker {
      * @param stop
      * @return
      */
-    private Pair<Integer, Integer> strandAwarePositions(SAMRecord read, int start, int stop) {
-        if (read.getReadNegativeStrandFlag())
-            return new MutablePair<>(read.getReadLength() - stop - 1, read.getReadLength() - start - 1);
+    private Pair<Integer, Integer> strandAwarePositions(GATKRead read, int start, int stop) {
+        if (read.isReverseStrand())
+            return new MutablePair<>(read.getLength() - stop - 1, read.getLength() - start - 1);
         else
             return new MutablePair<>(start, stop);
     }
@@ -386,18 +387,18 @@ public final class ClipReads extends ReadWalker {
      */
     private void clipCycles(ReadClipperWithData clipper) {
         if (cyclesToClip != null) {
-            SAMRecord read = clipper.getRead();
+            GATKRead read = clipper.getRead();
             ClippingData data = clipper.getData();
 
             for (Pair<Integer, Integer> p : cyclesToClip) {   // iterate over each cycle range
                 int cycleStart = p.getLeft();
                 int cycleStop = p.getRight();
 
-                if (cycleStart < read.getReadLength()) {
+                if (cycleStart < read.getLength()) {
                     // only try to clip if the cycleStart is less than the read's length
-                    if (cycleStop >= read.getReadLength())
+                    if (cycleStop >= read.getLength())
                         // we do tolerate [for convenience) clipping when the stop is beyond the end of the read
-                        cycleStop = read.getReadLength() - 1;
+                        cycleStop = read.getLength() - 1;
 
                     Pair<Integer, Integer> startStop = strandAwarePositions(read, cycleStart, cycleStop);
                     int start = startStop.getLeft();
@@ -428,15 +429,15 @@ public final class ClipReads extends ReadWalker {
      * @param clipper
      */
     private void clipBadQualityScores(ReadClipperWithData clipper) {
-        SAMRecord read = clipper.getRead();
+        GATKRead read = clipper.getRead();
         ClippingData data = clipper.getData();
-        int readLen = read.getReadBases().length;
+        int readLen = read.getBases().length;
         byte[] quals = read.getBaseQualities();
 
 
         int clipSum = 0, lastMax = -1, clipPoint = -1; // -1 means no clip
         for (int i = readLen - 1; i >= 0; i--) {
-            int baseIndex = read.getReadNegativeStrandFlag() ? readLen - i - 1 : i;
+            int baseIndex = read.isReverseStrand() ? readLen - i - 1 : i;
             byte qual = quals[baseIndex];
             clipSum += (qTrimmingThreshold - qual);
             if (clipSum >= 0 && (clipSum >= lastMax)) {
@@ -446,8 +447,8 @@ public final class ClipReads extends ReadWalker {
         }
 
         if (clipPoint != -1) {
-            int start = read.getReadNegativeStrandFlag() ? 0 : clipPoint;
-            int stop = read.getReadNegativeStrandFlag() ? clipPoint : readLen - 1;
+            int start = read.isReverseStrand() ? 0 : clipPoint;
+            int stop = read.isReverseStrand() ? clipPoint : readLen - 1;
             //clipper.addOp(new ClippingOp(ClippingOp.ClippingType.LOW_Q_SCORES, start, stop, null));
             ClippingOp op = new ClippingOp(start, stop);
             clipper.addOp(op);
@@ -460,15 +461,15 @@ public final class ClipReads extends ReadWalker {
         if ( clipper == null )
             return;
 
-        SAMRecord clippedRead = clipper.clipRead(clippingRepresentation);
+        GATKRead clippedRead = clipper.clipRead(clippingRepresentation);
         if (outputBam != null) {
-            outputBam.addAlignment(clippedRead);
+            outputBam.addRead(clippedRead);
         } else {
-            out.println(clippedRead.getSAMString());
+            out.println(clippedRead.toString());
         }
 
         accumulator.nTotalReads++;
-        accumulator.nTotalBases += clipper.getRead().getReadLength();
+        accumulator.nTotalBases += clipper.getRead().getLength();
         if (clipper.wasClipped()) {
             accumulator.nClippedReads++;
             accumulator.addData(clipper.getData());
@@ -571,7 +572,7 @@ public final class ClipReads extends ReadWalker {
     public static class ReadClipperWithData extends ReadClipper {
         private ClippingData data;
 
-        public ReadClipperWithData(SAMRecord read, List<SeqToClip> clipSeqs) {
+        public ReadClipperWithData(GATKRead read, List<SeqToClip> clipSeqs) {
             super(read);
             data = new ClippingData(clipSeqs);
         }

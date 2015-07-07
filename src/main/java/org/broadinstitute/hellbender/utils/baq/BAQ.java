@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.baq;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -12,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 /*
@@ -378,12 +378,12 @@ public final class BAQ {
      * @param read
      * @return
      */
-    public static byte[] getBAQTag(SAMRecord read) {
-        String s = read.getStringAttribute(BAQ_TAG);
+    public static byte[] getBAQTag(GATKRead read) {
+        String s = read.getAttributeAsString(BAQ_TAG);
         return s != null ? s.getBytes() : null;
     }
 
-    public static String encodeBQTag(SAMRecord read, byte[] baq) {
+    public static String encodeBQTag(GATKRead read, byte[] baq) {
         // Offset to base alignment quality (BAQ), of the same length as the read sequence.
         // At the i-th read base, BAQi = Qi - (BQi - 64) where Qi is the i-th base quality.
         // so BQi = Qi - BAQi + 64
@@ -397,13 +397,13 @@ public final class BAQ {
                 throw new GATKException("BAQ tag calculation error.  BAQ value above base quality at " + read);
             // the original quality is too high, almost certainly due to using the wrong encoding in the BAM file
             if ( tag > Byte.MAX_VALUE )
-                throw new UserException.MisencodedBAM(read, "we encountered an extremely high quality score (" + (int)read.getBaseQualities()[i] + ") with BAQ correction factor of " + baq_i);
+                throw new UserException.MisencodedQualityScoresRead(read, "we encountered an extremely high quality score (" + (int)read.getBaseQualities()[i] + ") with BAQ correction factor of " + baq_i);
             bqTag[i] = (byte)tag;
         }
         return new String(bqTag);
     }
 
-    public static void addBAQTag(SAMRecord read, byte[] baq) {
+    public static void addBAQTag(GATKRead read, byte[] baq) {
         read.setAttribute(BAQ_TAG, encodeBQTag(read, baq));
     }
 
@@ -413,19 +413,19 @@ public final class BAQ {
       * @param read
       * @return
       */
-    public static boolean hasBAQTag(SAMRecord read) {
-        return read.getStringAttribute(BAQ_TAG) != null;
+    public static boolean hasBAQTag(GATKRead read) {
+        return read.getAttributeAsString(BAQ_TAG) != null;
     }
 
     /**
      * Returns a new qual array for read that includes the BAQ adjustment.  Does not support on-the-fly BAQ calculation
      *
-     * @param read the SAMRecord to operate on
+     * @param read the GATKRead to operate on
      * @param overwriteOriginalQuals If true, we replace the original qualities scores in the read with their BAQ'd version
      * @param useRawQualsIfNoBAQTag If useRawQualsIfNoBAQTag is true, then if there's no BAQ annotation we just use the raw quality scores.  Throws IllegalStateException is false and no BAQ tag is present
      * @return
      */
-    public static byte[] calcBAQFromTag(SAMRecord read, boolean overwriteOriginalQuals, boolean useRawQualsIfNoBAQTag) {
+    public static byte[] calcBAQFromTag(GATKRead read, boolean overwriteOriginalQuals, boolean useRawQualsIfNoBAQTag) {
         byte[] rawQuals = read.getBaseQualities();
         byte[] newQuals = rawQuals;
         byte[] baq = getBAQTag(read);
@@ -439,11 +439,11 @@ public final class BAQ {
                 int baq_delta = (int)baq[i] - 64;
                 int newval =  rawQual - baq_delta;
                 if ( newval < 0 )
-                    throw new UserException.MalformedBAM(read, "BAQ tag error: the BAQ value is larger than the base quality");
+                    throw new UserException.MalformedRead(read, "BAQ tag error: the BAQ value is larger than the base quality");
                 newQuals[i] = (byte)newval;
             }
         } else if ( ! useRawQualsIfNoBAQTag ) {
-            throw new IllegalStateException("Required BAQ tag to be present, but none was on read " + read.getReadName());
+            throw new IllegalStateException("Required BAQ tag to be present, but none was on read " + read.getName());
         }
 
         return newQuals;
@@ -452,12 +452,12 @@ public final class BAQ {
     /**
      * Returns the BAQ adjusted quality score for this read at this offset.  Does not support on-the-fly BAQ calculation
      *
-     * @param read the SAMRecord to operate on
+     * @param read the GATKRead to operate on
      * @param offset the offset of operate on
      * @param useRawQualsIfNoBAQTag If useRawQualsIfNoBAQTag is true, then if there's no BAQ annotation we just use the raw quality scores.  Throws IllegalStateException is false and no BAQ tag is present
      * @return
      */
-    public static byte calcBAQFromTag(SAMRecord read, int offset, boolean useRawQualsIfNoBAQTag) {
+    public static byte calcBAQFromTag(GATKRead read, int offset, boolean useRawQualsIfNoBAQTag) {
         byte rawQual = read.getBaseQualities()[offset];
         byte newQual = rawQual;
         byte[] baq = getBAQTag(read);
@@ -468,11 +468,11 @@ public final class BAQ {
             int baq_delta = (int)baq[offset] - 64;
             int newval =  rawQual - baq_delta;
             if ( newval < 0 )
-                throw new UserException.MalformedBAM(read, "BAQ tag error: the BAQ value is larger than the base quality");
+                throw new UserException.MalformedRead(read, "BAQ tag error: the BAQ value is larger than the base quality");
             newQual = (byte)newval;
         
         } else if ( ! useRawQualsIfNoBAQTag ) {
-            throw new IllegalStateException("Required BAQ tag to be present, but none was on read " + read.getReadName());
+            throw new IllegalStateException("Required BAQ tag to be present, but none was on read " + read.getName());
         }
 
         return newQual;
@@ -482,8 +482,8 @@ public final class BAQ {
         public byte[] refBases, rawQuals, readBases, bq;
         public int[] state;
 
-        public BAQCalculationResult(SAMRecord read, byte[] ref) {
-            this(read.getBaseQualities(), read.getReadBases(), ref);
+        public BAQCalculationResult(GATKRead read, byte[] ref) {
+            this(read.getBaseQualities(), read.getBases(), ref);
         }
 
         public BAQCalculationResult(byte[] bases, byte[] quals, byte[] ref) {
@@ -498,18 +498,18 @@ public final class BAQ {
         }
     }
 
-     public BAQCalculationResult calcBAQFromHMM(SAMRecord read, ReferenceDataSource refDS) {
+     public BAQCalculationResult calcBAQFromHMM(GATKRead read, ReferenceDataSource refDS) {
         // start is alignment start - band width / 2 - size of first I element, if there is one.  Stop is similar
         int offset = getBandWidth() / 2;
-        long readStart = includeClippedBases ? read.getUnclippedStart() : read.getAlignmentStart();
+        long readStart = includeClippedBases ? read.getUnclippedStart() : read.getStart();
         long start = Math.max(readStart - offset - ReadUtils.getFirstInsertionOffset(read), 0);
-        long stop = (includeClippedBases ? read.getUnclippedEnd() : read.getAlignmentEnd()) + offset + ReadUtils.getLastInsertionOffset(read);
+        long stop = (includeClippedBases ? read.getUnclippedEnd() : read.getEnd()) + offset + ReadUtils.getLastInsertionOffset(read);
 
-        if ( stop > refDS.getSequenceDictionary().getSequence(read.getReferenceName()).getSequenceLength() ) {
+        if ( stop > refDS.getSequenceDictionary().getSequence(read.getContig()).getSequenceLength() ) {
             return null;
         } else {
             // now that we have the start and stop, get the reference sequence covering it
-            ReferenceSequence refSeq = refDS.queryAndPrefetch(read.getReferenceName(), start, stop);
+            ReferenceSequence refSeq = refDS.queryAndPrefetch(read.getContig(), start, stop);
             return calcBAQFromHMM(read, refSeq.getBases(), (int)(start - readStart));
         }
     }
@@ -541,7 +541,7 @@ public final class BAQ {
      * @param read
      * @return
      */
-    private final Pair<Integer,Integer> calculateQueryRange(SAMRecord read) {
+    private final Pair<Integer,Integer> calculateQueryRange(GATKRead read) {
         int queryStart = -1, queryStop = -1;
         int readI = 0;
 
@@ -561,7 +561,7 @@ public final class BAQ {
                     // in the else case we aren't including soft clipped bases, so we don't update
                     // queryStart or queryStop
                     break;
-                default: throw new GATKException("BUG: Unexpected CIGAR element " + elt + " in read " + read.getReadName());
+                default: throw new GATKException("BUG: Unexpected CIGAR element " + elt + " in read " + read.getName());
             }
         }
 
@@ -577,7 +577,7 @@ public final class BAQ {
 
     // we need to pad ref by at least the bandwidth / 2 on either side
     @SuppressWarnings("fallthrough")
-    public BAQCalculationResult calcBAQFromHMM(SAMRecord read, byte[] ref, int refOffset) {
+    public BAQCalculationResult calcBAQFromHMM(GATKRead read, byte[] ref, int refOffset) {
         // todo -- need to handle the case where the cigar sum of lengths doesn't cover the whole read
         Pair<Integer, Integer> queryRange = calculateQueryRange(read);
         if ( queryRange == null ) return null; // read has Ns, or is completely clipped away
@@ -585,7 +585,7 @@ public final class BAQ {
         int queryStart = queryRange.getLeft();
         int queryEnd = queryRange.getRight();
 
-        BAQCalculationResult baqResult = calcBAQFromHMM(ref, read.getReadBases(), read.getBaseQualities(), queryStart, queryEnd);
+        BAQCalculationResult baqResult = calcBAQFromHMM(ref, read.getBases(), read.getBaseQualities(), queryStart, queryEnd);
 
         // cap quals
         int readI = 0, refI = 0;
@@ -611,10 +611,10 @@ public final class BAQ {
                     readI += l; refI += l;
                     break;
                 default:
-                    throw new GATKException("BUG: Unexpected CIGAR element " + elt + " in read " + read.getReadName());
+                    throw new GATKException("BUG: Unexpected CIGAR element " + elt + " in read " + read.getName());
             }
         }
-        if ( readI != read.getReadLength() ) // odd cigar string
+        if ( readI != read.getLength() ) // odd cigar string
             System.arraycopy(baqResult.rawQuals, 0, baqResult.bq, 0, baqResult.bq.length);
 
         return baqResult;
@@ -639,8 +639,8 @@ public final class BAQ {
      * 
      * @return BQ qualities for use, in case qmode is DONT_MODIFY
      */
-    public byte[] baqRead(SAMRecord read, ReferenceDataSource refDS, CalculationMode calculationType, QualityMode qmode ) {
-        if ( DEBUG ) System.out.printf("BAQ %s read %s%n", calculationType, read.getReadName());
+    public byte[] baqRead(GATKRead read, ReferenceDataSource refDS, CalculationMode calculationType, QualityMode qmode ) {
+        if ( DEBUG ) System.out.printf("BAQ %s read %s%n", calculationType, read.getName());
 
         byte[] BAQQuals = read.getBaseQualities();      // in general we are overwriting quals, so just get a pointer to them
         if ( calculationType == CalculationMode.OFF) { // we don't want to do anything
@@ -662,7 +662,7 @@ public final class BAQ {
                     }
                 } else if ( readHasBAQTag ) {
                     // remove the BAQ tag if it's there because we cannot trust it
-                    read.setAttribute(BAQ_TAG, null);
+                    read.clearAttribute(BAQ_TAG);
                 }
             } else if ( qmode == QualityMode.OVERWRITE_QUALS ) { // only makes sense if we are overwriting quals
                 if ( DEBUG ) System.out.printf("  Taking BAQ from tag%n");
@@ -681,8 +681,8 @@ public final class BAQ {
      * @param read
      * @return
      */
-    public boolean excludeReadFromBAQ(SAMRecord read) {
+    public boolean excludeReadFromBAQ(GATKRead read) {
         // keeping mapped reads, regardless of pairing status, or primary alignment status.
-        return read.getReadUnmappedFlag() || read.getReadFailsVendorQualityCheckFlag() || read.getDuplicateReadFlag();
+        return read.isUnmapped() || read.failsVendorQualityCheck() || read.isDuplicate();
     }
 }

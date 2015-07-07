@@ -1,48 +1,46 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
-import com.google.common.collect.Lists;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class PrintReadsTransformUnitTest {
 
-    @DataProvider(name = "sams")
-    public Object[][] sams(){
-
+    @DataProvider(name = "reads")
+    public Object[][] reads(){
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         return new Object[][]{
-                {Lists.newArrayList(ArtificialSAMUtils.createRandomRead(30))},
-                {Lists.newArrayList(ArtificialSAMUtils.createRandomRead(50), ArtificialSAMUtils.createRandomRead(100), ArtificialSAMUtils.createRandomRead(1000))}
+                {Arrays.asList(ArtificialReadUtils.createRandomRead(30)), header},
+                {Arrays.asList(ArtificialReadUtils.createRandomRead(50), ArtificialReadUtils.createRandomRead(100), ArtificialReadUtils.createRandomRead(1000)), header}
         };
     }
 
-    @Test(dataProvider = "sams", groups= {"dataflow"})
-    public void printReadsTransformTest(List<SAMRecord> sams){
-        List<Read> reads = sams.stream().map(ReadConverter::makeRead).collect(Collectors.toList());
-        Set<String> expected = sams.stream().
-                map(r -> {r.setMateUnmappedFlag(true); return r;}) // this is a weird hack, mateUnmapped is undefined if there is no mate
-                // but our standard if false, google genomics defaults to true instead, but both are ok...
-        .map(SAMRecord::getSAMString).collect(Collectors.toSet());
+    @Test(dataProvider = "reads", groups= {"dataflow"})
+    public void printReadsTransformTest(List<GATKRead> reads, SAMFileHeader header){
+        Set<String> expected = reads.stream().
+                 map(r -> r.convertToSAMRecord(header))
+                .map(SAMRecord::getSAMString).collect(Collectors.toSet());
 
         Pipeline p = GATKTestPipeline.create();
-        DataflowWorkarounds.registerGenomicsCoders(p);
-        PCollection<Read> preads = p.apply(Create.of(reads));
+        DataflowUtils.registerGATKCoders(p);
+        PCollection<GATKRead> preads = p.apply(Create.of(reads));
         PTransformSAM<String> transform = new PrintReadsDataflowTransform();
-        transform.setHeader(ArtificialSAMUtils.createArtificialSamHeader());
+        transform.setHeader(ArtificialReadUtils.createArtificialSamHeader());
         PCollection<String> presult = preads.apply(transform);
 
         DataflowAssert.that(presult);

@@ -1,21 +1,21 @@
 package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 public final class ReadFilterUnitTest {
 
-    static final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(1, 1, 10);
-    static final SAMRecord goodRead = ArtificialSAMUtils.createArtificialRead(header, "Zuul", 0, 2,2);
-    static final SAMRecord endBad = ArtificialSAMUtils.createArtificialRead(header, "Peter", 0, 1,100);
-    static final SAMRecord startBad = ArtificialSAMUtils.createArtificialRead(header, "Ray", 0, -1,2);
-    static final SAMRecord bothBad = ArtificialSAMUtils.createArtificialRead(header, "Egon", 0, -1,100);
-    static final ReadFilter startOk = r -> r.getAlignmentStart() >= 1;
-    static final ReadFilter endOk = r -> r.getAlignmentEnd() <= 10;
+    static final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10);
+    static final GATKRead goodRead = ArtificialReadUtils.createArtificialRead(header, "Zuul", 0, 2,2);
+    static final GATKRead endBad = ArtificialReadUtils.createArtificialRead(header, "Peter", 0, 1,100);
+    static final GATKRead startBad = ArtificialReadUtils.createArtificialRead(header, "Ray", 0, -1,2);
+    static final GATKRead bothBad = ArtificialReadUtils.createArtificialRead(header, "Egon", 0, -1,100);
+    static final ReadFilter startOk = r -> r.getStart() >= 1;
+    static final ReadFilter endOk = r -> r.getEnd() <= 10;
 
     @DataProvider(name = "readsStartEnd")
     public Object[][] readsStartEnd(){
@@ -29,13 +29,13 @@ public final class ReadFilterUnitTest {
 
 
     @Test(dataProvider = "readsStartEnd")
-    public void testTest(SAMRecord read, boolean start, boolean end){
+    public void testTest(GATKRead read, boolean start, boolean end){
         Assert.assertEquals(startOk.test(read), start);
         Assert.assertEquals(endOk.test(read), end);
     }
 
     @Test(dataProvider = "readsStartEnd")
-    public void testNegate(SAMRecord read, boolean start, boolean end){
+    public void testNegate(GATKRead read, boolean start, boolean end){
         Assert.assertEquals(startOk.negate().test(read), !start);
         Assert.assertEquals(endOk.negate().test(read), !end);
     }
@@ -51,7 +51,7 @@ public final class ReadFilterUnitTest {
     }
 
     @Test(dataProvider = "readsAnd")
-    public void testAnd(SAMRecord read, boolean expected){
+    public void testAnd(GATKRead read, boolean expected){
         ReadFilter startAndEndOk = startOk.and(endOk);
         ReadFilter endAndStartOk = endOk.and(startOk);
         Assert.assertEquals(startAndEndOk.test(read), expected);
@@ -71,7 +71,7 @@ public final class ReadFilterUnitTest {
 
 
     @Test(dataProvider = "readsOr")
-    public void testOr(SAMRecord read, boolean expected) {
+    public void testOr(GATKRead read, boolean expected) {
         ReadFilter startAndEndOk = startOk.or(endOk);
         ReadFilter endAndStartOk = endOk.or(startOk);
         Assert.assertEquals(startAndEndOk.test(read), expected);
@@ -89,8 +89,8 @@ public final class ReadFilterUnitTest {
     }
 
     @Test(dataProvider = "deeper")
-    public void testDeeperChaining(SAMRecord read, boolean expected){
-        ReadFilter notAMinionOfGozer = r -> !r.getReadName().equals("Zuul");
+    public void testDeeperChaining(GATKRead read, boolean expected){
+        ReadFilter notAMinionOfGozer = r -> !r.getName().equals("Zuul");
         ReadFilter readChecksOut = startOk.or(endOk).and(notAMinionOfGozer);
         Assert.assertEquals(readChecksOut.test(read), expected);
         Assert.assertEquals(readChecksOut.and(readChecksOut).test(read), expected);

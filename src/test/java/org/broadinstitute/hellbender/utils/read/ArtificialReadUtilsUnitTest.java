@@ -1,21 +1,21 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.iterators.GATKSAMIterator;
 import org.testng.annotations.Test;
+
+import java.util.Iterator;
 
 import static org.testng.Assert.*;
 
-public final class ArtificialSAMUtilsUnitTest extends BaseTest {
+public final class ArtificialReadUtilsUnitTest extends BaseTest {
 
 
     @Test
     public void basicReadIteratorTest() {
-        GATKSAMIterator iter = ArtificialSAMUtils.mappedReadIterator(1, 100, 100);
+        Iterator<GATKRead> iter = ArtificialReadUtils.mappedReadIterator(1, 100, 100);
         int count = 0;
         while (iter.hasNext()) {
-            SAMRecord rec = iter.next();
+            GATKRead rec = iter.next();
             count++;
         }
         assertEquals(count, 100 * 100);
@@ -23,12 +23,12 @@ public final class ArtificialSAMUtilsUnitTest extends BaseTest {
 
     @Test
     public void tenPerChromosome() {
-        GATKSAMIterator iter = ArtificialSAMUtils.mappedReadIterator(1, 100, 10);
+        ArtificialReadQueryIterator iter = ArtificialReadUtils.mappedReadIterator(1, 100, 10);
         int count = 0;
         while (iter.hasNext()) {
-            SAMRecord rec = iter.next();
+            GATKRead rec = iter.next();
 
-            assertEquals(Integer.valueOf(Math.round(count / 10)), rec.getReferenceIndex());
+            assertEquals(Math.round(count / 10), ReadUtils.getReferenceIndex(rec, iter.getHeader()));
             count++;
         }
         assertEquals(count, 100 * 10);
@@ -36,27 +36,27 @@ public final class ArtificialSAMUtilsUnitTest extends BaseTest {
 
     @Test
     public void onePerChromosome() {
-        GATKSAMIterator iter = ArtificialSAMUtils.mappedReadIterator(1, 100, 1);
+        ArtificialReadQueryIterator iter = ArtificialReadUtils.mappedReadIterator(1, 100, 1);
         int count = 0;
         while (iter.hasNext()) {
-            SAMRecord rec = iter.next();
+            GATKRead rec = iter.next();
 
-            assertEquals(Integer.valueOf(count), rec.getReferenceIndex());
+            assertEquals(count, ReadUtils.getReferenceIndex(rec, iter.getHeader()));
             count++;
         }
-        assertEquals(count, 100 * 1);
+        assertEquals(count, 100);
     }
 
     @Test
     public void basicUnmappedIteratorTest() {
-        GATKSAMIterator iter = ArtificialSAMUtils.mappedAndUnmappedReadIterator(1, 100, 100, 1000);
+        Iterator<GATKRead> iter = ArtificialReadUtils.mappedAndUnmappedReadIterator(1, 100, 100, 1000);
         int count = 0;
         for (int x = 0; x < (100* 100); x++ ) {
             if (!iter.hasNext()) {
                 fail ("we didn't get the expected number of reads");
             }
-            SAMRecord rec = iter.next();
-            assertTrue(rec.getReferenceIndex() >= 0);
+            GATKRead rec = iter.next();
+            assertFalse(rec.isUnmapped());
             count++;
         }
         assertEquals(100 * 100, count);
@@ -64,8 +64,8 @@ public final class ArtificialSAMUtilsUnitTest extends BaseTest {
         // now we should have 1000 unmapped reads
         count = 0;
         while (iter.hasNext()) {
-            SAMRecord rec = iter.next();
-            assertTrue(rec.getReferenceIndex() < 0);
+            GATKRead rec = iter.next();
+            assertTrue(rec.isUnmapped());
             count++;
         }
         assertEquals(count, 1000);

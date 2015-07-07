@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Keep only reads whose length is >= min value and <= max value.
@@ -15,7 +15,7 @@ public final class ReadLengthReadFilter implements ReadFilter {
     public int minReadLength = 1;
 
     @Override
-    public boolean test(final SAMRecord read) {
-        return read.getReadLength() >= minReadLength && read.getReadLength() <= maxReadLength;
+    public boolean test( final GATKRead read ) {
+        return read.getLength() >= minReadLength && read.getLength() <= maxReadLength;
     }
 }

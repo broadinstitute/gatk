@@ -70,7 +70,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
         Map<Integer, Integer> newOrder = buildSequenceDictionaryMap(refDict, in.getFileHeader().getSequenceDictionary());
 
         // has to be after we create the newOrder
-        SAMFileHeader outHeader = ReadUtils.clone(in.getFileHeader());
+        SAMFileHeader outHeader = ReadUtils.cloneSAMFileHeader(in.getFileHeader());
         outHeader.setSequenceDictionary(refDict);
 
         log.info("Writing reads...");

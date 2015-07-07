@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.utils.clipping;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
  *
  */
 public class ReadClipper {
-    final SAMRecord read;
+    final GATKRead read;
     boolean wasClipped;
     List<ClippingOp> ops = null;
 
@@ -61,7 +61,7 @@ public class ReadClipper {
      *
      * @param read the read to clip
      */
-    public ReadClipper(final SAMRecord read) {
+    public ReadClipper(final GATKRead read) {
         this.read = read;
         this.wasClipped = false;
     }
@@ -106,7 +106,7 @@ public class ReadClipper {
      *
      * @return  returns the read to be clipped (original)
      */
-    public SAMRecord getRead() {
+    public GATKRead getRead() {
         return read;
     }
 
@@ -116,13 +116,13 @@ public class ReadClipper {
      * @param algorithm What mode of clipping do you want to apply for the stacked operations.
      * @return the read with the clipping applied.
      */
-    public SAMRecord clipRead(ClippingRepresentation algorithm) {
+    public GATKRead clipRead(ClippingRepresentation algorithm) {
         if (ops == null)
             return getRead();
 
-        SAMRecord clippedRead = read;
+        GATKRead clippedRead = read;
         for (ClippingOp op : getOps()) {
-            final int readLength = clippedRead.getReadLength();
+            final int readLength = clippedRead.getLength();
             //check if the clipped read can still be clipped in the range requested
             if (op.start < readLength) {
                 ClippingOp fixedOperation = op;
@@ -134,7 +134,7 @@ public class ReadClipper {
         }
         wasClipped = true;
         ops.clear();
-        if ( isEmpty(clippedRead) )
+        if ( clippedRead.isEmpty() )
             return ReadUtils.emptyRead(clippedRead);
         return clippedRead;
     }
@@ -147,10 +147,10 @@ public class ReadClipper {
      * @param refStop the last base to be hard clipped in the left tail of the read.
      * @return a new read, without the left tail.
      */
-    private SAMRecord hardClipByReferenceCoordinatesLeftTail(int refStop) {
+    private GATKRead hardClipByReferenceCoordinatesLeftTail(int refStop) {
         return hardClipByReferenceCoordinates(-1, refStop);
     }
-    public static SAMRecord hardClipByReferenceCoordinatesLeftTail(SAMRecord read, int refStop) {
+    public static GATKRead hardClipByReferenceCoordinatesLeftTail(GATKRead read, int refStop) {
         return (new ReadClipper(read)).hardClipByReferenceCoordinates(-1, refStop);
     }
 
@@ -161,10 +161,10 @@ public class ReadClipper {
      * @param refStart refStop the first base to be hard clipped in the right tail of the read.
      * @return a new read, without the right tail.
      */
-    private SAMRecord hardClipByReferenceCoordinatesRightTail(int refStart) {
+    private GATKRead hardClipByReferenceCoordinatesRightTail(int refStart) {
         return hardClipByReferenceCoordinates(refStart, -1);
     }
-    public static SAMRecord hardClipByReferenceCoordinatesRightTail(SAMRecord read, int refStart) {
+    public static GATKRead hardClipByReferenceCoordinatesRightTail(GATKRead read, int refStart) {
         return (new ReadClipper(read)).hardClipByReferenceCoordinates(refStart, -1);
     }
 
@@ -175,15 +175,15 @@ public class ReadClipper {
      * @param stop the last base to clip (inclusive)
      * @return a new read, without the clipped bases
      */
-    private SAMRecord hardClipByReadCoordinates(int start, int stop) {
-        if (isEmpty(read) || (start == 0 && stop == read.getReadLength() - 1))
+    private GATKRead hardClipByReadCoordinates(int start, int stop) {
+        if (read.isEmpty() || (start == 0 && stop == read.getLength() - 1))
             return ReadUtils.emptyRead(read);
 
         this.addOp(new ClippingOp(start, stop));
         return clipRead(ClippingRepresentation.HARDCLIP_BASES);
     }
 
-    public static SAMRecord hardClipByReadCoordinates(SAMRecord read, int start, int stop) {
+    public static GATKRead hardClipByReadCoordinates(GATKRead read, int start, int stop) {
         return (new ReadClipper(read)).hardClipByReadCoordinates(start, stop);
     }
 
@@ -197,21 +197,21 @@ public class ReadClipper {
      * @param right the coordinate of the first base to be clipped in the right tail (inclusive)
      * @return a new read, without the clipped bases
      */
-    private SAMRecord hardClipBothEndsByReferenceCoordinates(int left, int right) {
-        if (isEmpty(read) || left == right)
+    private GATKRead hardClipBothEndsByReferenceCoordinates(int left, int right) {
+        if (read.isEmpty() || left == right)
             return ReadUtils.emptyRead(read);
-        SAMRecord leftTailRead = hardClipByReferenceCoordinates(right, -1);
+        GATKRead leftTailRead = hardClipByReferenceCoordinates(right, -1);
 
         // after clipping one tail, it is possible that the consequent hard clipping of adjacent deletions
         // make the left cut index no longer part of the read. In that case, clip the read entirely.
-        if (left > leftTailRead.getAlignmentEnd())
+        if (left > leftTailRead.getEnd())
             return ReadUtils.emptyRead(read);
 
         ReadClipper clipper = new ReadClipper(leftTailRead);
         return clipper.hardClipByReferenceCoordinatesLeftTail(left);
     }
 
-    public static SAMRecord hardClipBothEndsByReferenceCoordinates(SAMRecord read, int left, int right) {
+    public static GATKRead hardClipBothEndsByReferenceCoordinates(GATKRead read, int left, int right) {
         return (new ReadClipper(read)).hardClipBothEndsByReferenceCoordinates(left, right);
     }
 
@@ -226,12 +226,12 @@ public class ReadClipper {
      * @param lowQual every base quality lower than or equal to this in the tail of the read will be hard clipped
      * @return a new read without low quality tails
      */
-    private SAMRecord clipLowQualEnds(ClippingRepresentation algorithm, byte lowQual) {
-        if (isEmpty(read))
+    private GATKRead clipLowQualEnds(ClippingRepresentation algorithm, byte lowQual) {
+        if (read.isEmpty())
             return read;
 
         final byte [] quals = read.getBaseQualities();
-        final int readLength = read.getReadLength();
+        final int readLength = read.getLength();
         int leftClipIndex = 0;
         int rightClipIndex = readLength - 1;
 
@@ -252,15 +252,15 @@ public class ReadClipper {
         return this.clipRead(algorithm);
     }
 
-    private SAMRecord hardClipLowQualEnds(byte lowQual) {
+    private GATKRead hardClipLowQualEnds(byte lowQual) {
         return this.clipLowQualEnds(ClippingRepresentation.HARDCLIP_BASES, lowQual);
     }
 
-    public static SAMRecord clipLowQualEnds(SAMRecord read, byte lowQual, ClippingRepresentation algorithm) {
+    public static GATKRead clipLowQualEnds(GATKRead read, byte lowQual, ClippingRepresentation algorithm) {
         return (new ReadClipper(read)).clipLowQualEnds(algorithm, lowQual);
     }
 
-    public static SAMRecord hardClipLowQualEnds(SAMRecord read, byte lowQual) {
+    public static GATKRead hardClipLowQualEnds(GATKRead read, byte lowQual) {
         return (new ReadClipper(read)).hardClipLowQualEnds(lowQual);
     }
 
@@ -269,8 +269,8 @@ public class ReadClipper {
      *
      * @return a new read without the soft clipped bases
      */
-    private SAMRecord hardClipSoftClippedBases () {
-        if (isEmpty(read))
+    private GATKRead hardClipSoftClippedBases () {
+        if (read.isEmpty())
             return read;
 
         int readIndex = 0;
@@ -296,13 +296,13 @@ public class ReadClipper {
 
         // It is extremely important that we cut the end first otherwise the read coordinates change.
         if (cutRight >= 0)
-            this.addOp(new ClippingOp(cutRight, read.getReadLength() - 1));
+            this.addOp(new ClippingOp(cutRight, read.getLength() - 1));
         if (cutLeft >= 0)
             this.addOp(new ClippingOp(0, cutLeft));
 
         return clipRead(ClippingRepresentation.HARDCLIP_BASES);
     }
-    public static SAMRecord hardClipSoftClippedBases (SAMRecord read) {
+    public static GATKRead hardClipSoftClippedBases (GATKRead read) {
         return (new ReadClipper(read)).hardClipSoftClippedBases();
     }
 
@@ -314,13 +314,13 @@ public class ReadClipper {
      * @param refStop  the end of the variant region (inclusive)
      * @return the read hard clipped to the variant region
      */
-    public static SAMRecord hardClipToRegionIncludingClippedBases( final SAMRecord read, final int refStart, final int refStop ) {
+    public static GATKRead hardClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesBasedOnCigar(read, 0, read.getCigarLength()) - 1;
+        final int stop = start + CigarUtils.countRefBasesBasedOnCigar(read, 0, read.getCigar().numCigarElements()) - 1;
         return hardClipToRegion(read, refStart, refStop, start, stop);
     }
 
-    private static SAMRecord hardClipToRegion( final SAMRecord read, final int refStart, final int refStop, final int alignmentStart, final int alignmentStop){
+    private static GATKRead hardClipToRegion( final GATKRead read, final int refStart, final int refStop, final int alignmentStart, final int alignmentStop){
         // check if the read is contained in region
         if (alignmentStart <= refStop && alignmentStop >= refStart) {
             if (alignmentStart < refStart && alignmentStop > refStop)
@@ -342,15 +342,15 @@ public class ReadClipper {
      *
      * @return a new read without adaptor sequence
      */
-    private SAMRecord hardClipAdaptorSequence () {
+    private GATKRead hardClipAdaptorSequence () {
         final int adaptorBoundary = getAdaptorBoundary(read);
 
         if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || !isInsideRead(read, adaptorBoundary))
             return read;
 
-        return read.getReadNegativeStrandFlag() ? hardClipByReferenceCoordinatesLeftTail(adaptorBoundary) : hardClipByReferenceCoordinatesRightTail(adaptorBoundary);
+        return read.isReverseStrand() ? hardClipByReferenceCoordinatesLeftTail(adaptorBoundary) : hardClipByReferenceCoordinatesRightTail(adaptorBoundary);
     }
-    public static SAMRecord hardClipAdaptorSequence (SAMRecord read) {
+    public static GATKRead hardClipAdaptorSequence (GATKRead read) {
         return (new ReadClipper(read)).hardClipAdaptorSequence();
     }
 
@@ -359,24 +359,24 @@ public class ReadClipper {
      *
      * @return a new read without leading insertions
      */
-    private SAMRecord hardClipLeadingInsertions() {
-        if (ReadUtils.isEmpty(read)) {
+    private GATKRead hardClipLeadingInsertions() {
+        if (read.isEmpty()) {
             return read;
         }
 
         for(CigarElement cigarElement : read.getCigar().getCigarElements()) {
             if (cigarElement.getOperator() != CigarOperator.HARD_CLIP && cigarElement.getOperator() != CigarOperator.SOFT_CLIP &&
-                    cigarElement.getOperator() != CigarOperator.INSERTION)
+                    cigarElement.getOperator() != CigarOperator.INSERTION) {
                 break;
-
-            else if (cigarElement.getOperator() == CigarOperator.INSERTION)
+            }
+            else if (cigarElement.getOperator() == CigarOperator.INSERTION) {
                 this.addOp(new ClippingOp(0, cigarElement.getLength() - 1));
-
+            }
         }
         return clipRead(ClippingRepresentation.HARDCLIP_BASES);
     }
 
-    public static SAMRecord hardClipLeadingInsertions(SAMRecord read) {
+    public static GATKRead hardClipLeadingInsertions(GATKRead read) {
         return (new ReadClipper(read)).hardClipLeadingInsertions();
     }
 
@@ -384,8 +384,8 @@ public class ReadClipper {
      * Turns soft clipped bases into matches
      * @return a new read with every soft clip turned into a match
      */
-    private SAMRecord revertSoftClippedBases() {
-        if (isEmpty(read))
+    private GATKRead revertSoftClippedBases() {
+        if (read.isEmpty())
             return read;
 
         this.addOp(new ClippingOp(0, 0));
@@ -398,7 +398,7 @@ public class ReadClipper {
      * @param read the read
      * @return the read with all soft-clipped bases turned into matches
      */
-    public static SAMRecord revertSoftClippedBases(SAMRecord read) {
+    public static GATKRead revertSoftClippedBases(GATKRead read) {
         return (new ReadClipper(read)).revertSoftClippedBases();
     }
 
@@ -413,8 +413,8 @@ public class ReadClipper {
      * @param refStop last base to clip (inclusive)
      * @return a new read, without the clipped bases
      */
-    protected SAMRecord hardClipByReferenceCoordinates(int refStart, int refStop) {
-        if (isEmpty(read))
+    protected GATKRead hardClipByReferenceCoordinates(int refStart, int refStop) {
+        if (read.isEmpty())
             return read;
 
         int start;
@@ -431,20 +431,20 @@ public class ReadClipper {
             if (refStop >= 0)
                 throw new GATKException("Either refStart or refStop must be < 0 (" + refStart + ", " + refStop + ")");
             start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ReadUtils.ClippingTail.RIGHT_TAIL);
-            stop = read.getReadLength() - 1;
+            stop = read.getLength() - 1;
         }
 
-        if (start < 0 || stop > read.getReadLength() - 1)
+        if (start < 0 || stop > read.getLength() - 1)
             throw new GATKException("Trying to clip before the start or after the end of a read");
 
         if ( start > stop )
-            throw new GATKException(String.format("START (%d) > (%d) STOP -- this should never happen, please check read: %s (CIGAR: %s)", start, stop, read, read.getCigarString()));
+            throw new GATKException(String.format("START (%d) > (%d) STOP -- this should never happen, please check read: %s (CIGAR: %s)", start, stop, read, read.getCigar().toString()));
 
-        if ( start > 0 && stop < read.getReadLength() - 1)
-            throw new GATKException(String.format("Trying to clip the middle of the read: start %d, stop %d, cigar: %s", start, stop, read.getCigarString()));
+        if ( start > 0 && stop < read.getLength() - 1)
+            throw new GATKException(String.format("Trying to clip the middle of the read: start %d, stop %d, cigar: %s", start, stop, read.getCigar().toString()));
 
         this.addOp(new ClippingOp(start, stop));
-        SAMRecord clippedRead = clipRead(ClippingRepresentation.HARDCLIP_BASES);
+        GATKRead clippedRead = clipRead(ClippingRepresentation.HARDCLIP_BASES);
         this.ops = null;
         return clippedRead;
     }

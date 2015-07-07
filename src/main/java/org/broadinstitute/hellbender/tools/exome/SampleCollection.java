@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -248,8 +247,8 @@ public final class SampleCollection {
      * @return {@code -1} if there the read does not have a corresponding sample in this collection,
      * otherwise the corresponding sample's index; always within <code>[0..{@link #sampleCount()})</code>.
      */
-    public int sampleIndexByRead(final SAMRecord read) {
-        final String groupId = readToReadGroupId(read);
+    public int sampleIndexByRead(final GATKRead read) {
+        final String groupId = read.getReadGroup();
         if (groupId == null) {
             return -1;
         } else {
@@ -264,24 +263,6 @@ public final class SampleCollection {
     }
 
     /**
-     * Retrieves a read's read-group id.
-     *
-     * <p>
-     *     It will check whether the input read is {@code null}, and in that case will throw the appropriate
-     *     contract violation exception.
-     * </p>
-     * @param read the input read.
-     * @return may be {@code null} indicating that the input read does not have a read-group.
-     * @throws IllegalArgumentException if {@code read} is {@code null}.
-     */
-    private String readToReadGroupId(final SAMRecord read) {
-        if (read == null) {
-            throw new IllegalArgumentException("the input read cannot be null");
-        }
-        return read.getStringAttribute(SAMTag.RG.name());
-    }
-
-    /**
      * Returns the read-group index for a read.
      *
      * <p>This method returns {@code -1} if the read has no read-group.</p>
@@ -292,8 +273,8 @@ public final class SampleCollection {
      * @return {@code -1} if there read does not have a read-group, otherwise the corresponding read-group
      * index; always in <code>[0..{@link #readGroupCount()})</code>.
      */
-    public int readGroupIndexByRead(final SAMRecord read) {
-        final String groupId = readToReadGroupId(read);
+    public int readGroupIndexByRead(final GATKRead read) {
+        final String groupId = read.getReadGroup();
         if (groupId == null) {
             return -1;
         } else {

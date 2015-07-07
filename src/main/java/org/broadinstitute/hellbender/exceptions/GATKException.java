@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.exceptions;
 
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+
 /**
  * <p/>
  * Class GATKException.
@@ -52,6 +54,35 @@ public class GATKException extends RuntimeException {
             super(s, throwable);
         }
         public ShouldNeverReachHereException( final Throwable throwable) {this("Should never reach here.", throwable);}
+    }
+
+
+    public static class MissingReadField extends GATKException {
+        private static final long serialVersionUID = 0L;
+
+        public MissingReadField( final String fieldName ) {
+            super(String.format("Attempted to access field \"%s\" in read, but field is not present", fieldName));
+        }
+
+        public MissingReadField( final String fieldName, final String message ) {
+            super(String.format("Attempted to access field \"%s\" in read, but field is not present. %s", fieldName, message));
+        }
+
+        public MissingReadField( final String fieldName, final GATKRead read ) {
+            super(String.format("Attempted to access field \"%s\" in read %s, but field is not present", fieldName, read));
+        }
+    }
+
+    public static class ReadAttributeTypeMismatch extends GATKException {
+        private static final long serialVersionUID = 0L;
+
+        public ReadAttributeTypeMismatch( final String attributeName, final String targetType ) {
+            super(String.format("Attribute %s not of (or convertible to) type %s", attributeName, targetType));
+        }
+
+        public ReadAttributeTypeMismatch( final String attributeName, final String targetType, final Throwable throwable ) {
+            super(String.format("Attribute %s not of (or convertible to) type %s", attributeName, targetType), throwable);
+        }
     }
 }
 

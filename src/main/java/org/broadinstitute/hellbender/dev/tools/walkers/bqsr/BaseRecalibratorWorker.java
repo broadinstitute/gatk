@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +13,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
@@ -34,8 +35,6 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
 /**
  * First pass of the base quality score recalibration -- Generates recalibration table based on various covariates
@@ -159,42 +158,42 @@ public final class BaseRecalibratorWorker {
         recalibrationEngine = new RecalibrationEngine(covariates, numReadGroups);
     }
 
-    private boolean isLowQualityBase(final SAMRecord read, final int offset) {
+    private boolean isLowQualityBase(final GATKRead read, final int offset) {
         return read.getBaseQualities()[offset] < minimumQToUse;
     }
 
-    public static ReadFilter readFilter() {
-        return ReadFilterLibrary.WELLFORMED
-                .and(MAPPING_QUALITY_NOT_ZERO)
-                .and(MAPPING_QUALITY_AVAILABLE)
-                .and(MAPPED)
-                .and(PRIMARY_ALIGNMENT)
-                .and(NOT_DUPLICATE)
-                .and(PASSES_VENDOR_QUALITY_CHECK);
+    public static ReadFilter readFilter( final SAMFileHeader header ) {
+        return new WellformedReadFilter(header)
+                    .and(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO)
+                    .and(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE)
+                    .and(ReadFilterLibrary.MAPPED)
+                    .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
+                    .and(ReadFilterLibrary.NOT_DUPLICATE)
+                    .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
     }
 
-    private static SAMRecord consolidateCigar(SAMRecord read) {
+    private static GATKRead consolidateCigar(GATKRead read) {
         // Always consolidate the cigar string into canonical form, collapsing zero-length / repeated cigar elements.
         // Downstream code cannot necessarily handle non-consolidated cigar strings.
         read.setCigar(AlignmentUtils.consolidateCigar(read.getCigar()));
         return read;
     }
 
-    private SAMRecord resetOriginalBaseQualities(SAMRecord read) {
+    private GATKRead resetOriginalBaseQualities(GATKRead read) {
         if (!BRAC.useOriginalBaseQualities) {
             return read;
         }
         return ReadUtils.resetOriginalBaseQualities(read);
     }
 
-    private SAMRecord setDefaultBaseQualities(SAMRecord read) {
+    private GATKRead setDefaultBaseQualities(GATKRead read) {
         // if we are using default quals, check if we need them, and add if necessary.
         // 1. we need if reads are lacking or have incomplete quality scores
         // 2. we add if defaultBaseQualities has a positive value
         if (BRAC.defaultBaseQualities < 0) {
             return read;
         }
-        byte reads[] = read.getReadBases();
+        byte reads[] = read.getBases();
         byte quals[] = read.getBaseQualities();
         if (quals == null || quals.length < reads.length) {
             byte new_quals[] = new byte[reads.length];
@@ -241,16 +240,16 @@ public final class BaseRecalibratorWorker {
      * whether or not the base matches the reference at this particular location.
      * The "knownLocations" list doesn't need to be complete but it must includes all those that overlap with the read.
      */
-    public void apply(SAMRecord originalRead, final ReferenceContext ref, List<? extends Locatable> knownLocations) {
+    public void apply(GATKRead originalRead, final ReferenceContext ref, List<? extends Locatable> knownLocations) {
         ReadTransformer transform = makeReadTransform();
-        final SAMRecord read = transform.apply(originalRead);
+        final GATKRead read = transform.apply(originalRead);
 
-        if (ReadUtils.isEmpty(read)) {
+        if (read.isEmpty()) {
             return;
         } // the whole read was inside the adaptor so skip it
 
-        RecalUtils.parsePlatformForRead(read, BRAC.RAC);
-        if (!RecalUtils.isColorSpaceConsistent(BRAC.RAC.SOLID_NOCALL_STRATEGY, read)) { // parse the solid color space and check for color no-calls
+        RecalUtils.parsePlatformForRead(read, samHeader, BRAC.RAC);
+        if (!RecalUtils.isColorSpaceConsistent(BRAC.RAC.SOLID_NOCALL_STRATEGY, read, samHeader)) { // parse the solid color space and check for color no-calls
             return; // skip this read completely
         }
 
@@ -265,7 +264,7 @@ public final class BaseRecalibratorWorker {
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
-            final ReadCovariates covariates = RecalUtils.computeCovariates(read, this.covariates);
+            final ReadCovariates covariates = RecalUtils.computeCovariates(read, samHeader, this.covariates);
             final boolean[] skip = calculateSkipArray(read, knownLocations); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
@@ -295,8 +294,8 @@ public final class BaseRecalibratorWorker {
         return n;
     }
 
-    private boolean[] calculateSkipArray(final SAMRecord read, final List<? extends Locatable> skipLocations) {
-        final byte[] bases = read.getReadBases();
+    private boolean[] calculateSkipArray(final GATKRead read, final List<? extends Locatable> skipLocations) {
+        final byte[] bases = read.getBases();
         final boolean[] skip = new boolean[bases.length];
         final boolean[] knownSites = calculateKnownSites(read, skipLocations);
         for (int iii = 0; iii < bases.length; iii++) {
@@ -305,12 +304,12 @@ public final class BaseRecalibratorWorker {
         return skip;
     }
 
-    protected boolean badSolidOffset(final SAMRecord read, final int offset) {
-        return ReadUtils.isSOLiDRead(read) && BRAC.RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
+    protected boolean badSolidOffset(final GATKRead read, final int offset) {
+        return ReadUtils.isSOLiDRead(read, samHeader) && BRAC.RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
-    protected boolean[] calculateKnownSites(final SAMRecord read, final List<? extends Locatable> knownLocations) {
-        final int readLength = read.getReadBases().length;
+    protected boolean[] calculateKnownSites(final GATKRead read, final List<? extends Locatable> knownLocations) {
+        final int readLength = read.getBases().length;
         final boolean[] knownSites = new boolean[readLength];
         Arrays.fill(knownSites, false);
         for (final Locatable feat : knownLocations) {
@@ -334,9 +333,9 @@ public final class BaseRecalibratorWorker {
     }
 
     // TODO: can be merged with calculateIsIndel
-    protected static int[] calculateIsSNP(final SAMRecord read, /*final BasesCache ref*/ final ReferenceContext ref, final SAMRecord originalRead) {
-        final byte[] readBases = read.getReadBases();
-        final byte[] refBases = Arrays.copyOfRange(ref.getBases(), read.getAlignmentStart() - originalRead.getAlignmentStart(), ref.getBases().length + read.getAlignmentEnd() - originalRead.getAlignmentEnd());
+    protected static int[] calculateIsSNP(final GATKRead read, /*final BasesCache ref*/ final ReferenceContext ref, final GATKRead originalRead) {
+        final byte[] readBases = read.getBases();
+        final byte[] refBases = Arrays.copyOfRange(ref.getBases(), read.getStart() - originalRead.getStart(), ref.getBases().length + read.getEnd() - originalRead.getEnd());
         int refPos = 0;
 
 
@@ -372,8 +371,8 @@ public final class BaseRecalibratorWorker {
         return snp;
     }
 
-    protected static int[] calculateIsIndel(final SAMRecord read, final EventType mode) {
-        final int[] indel = new int[read.getReadBases().length];
+    protected static int[] calculateIsIndel(final GATKRead read, final EventType mode) {
+        final int[] indel = new int[read.getBases().length];
         int readPos = 0;
         for (final CigarElement ce : read.getCigar().getCigarElements()) {
             final int elementLength = ce.getLength();
@@ -386,12 +385,12 @@ public final class BaseRecalibratorWorker {
                     break;
                 }
                 case D: {
-                    final int index = (read.getReadNegativeStrandFlag() ? readPos : readPos - 1);
+                    final int index = (read.isReverseStrand() ? readPos : readPos - 1);
                     updateIndel(indel, index, mode, EventType.BASE_DELETION);
                     break;
                 }
                 case I: {
-                    final boolean forwardStrandRead = !read.getReadNegativeStrandFlag();
+                    final boolean forwardStrandRead = !read.isReverseStrand();
                     if (forwardStrandRead) {
                         updateIndel(indel, readPos - 1, mode, EventType.BASE_INSERTION);
                     }
@@ -475,8 +474,8 @@ public final class BaseRecalibratorWorker {
      * @return a BAQ-style non-null byte[] counting NO_BAQ_UNCERTAINTY values
      * // TODO -- could be optimized avoiding this function entirely by using this inline if the calculation code above
      */
-    protected static byte[] flatBAQArray(final SAMRecord read) {
-        final byte[] baq = new byte[read.getReadLength()];
+    protected static byte[] flatBAQArray(final GATKRead read) {
+        final byte[] baq = new byte[read.getLength()];
         Arrays.fill(baq, NO_BAQ_UNCERTAINTY);
         return baq;
     }
@@ -487,7 +486,7 @@ public final class BaseRecalibratorWorker {
      * @param read the read to BAQ
      * @return a non-null BAQ tag array for read
      */
-    private byte[] calculateBAQArray(final SAMRecord read) {
+    private byte[] calculateBAQArray(final GATKRead read) {
         baq.baqRead(read, referenceDataSource, BAQ.CalculationMode.RECALCULATE, BAQ.QualityMode.ADD_TAG);
         return BAQ.getBAQTag(read);
     }

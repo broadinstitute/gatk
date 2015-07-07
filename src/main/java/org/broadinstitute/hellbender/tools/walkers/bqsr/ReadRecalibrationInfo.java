@@ -1,19 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 public final class ReadRecalibrationInfo {
-    private final SAMRecord read;
+    private final GATKRead read;
     private final int length;
     private final ReadCovariates covariates;
     private final boolean[] skips;
     private final byte[] baseQuals, insertionQuals, deletionQuals;
     private final double[] snpErrors, insertionErrors, deletionErrors;
 
-    public ReadRecalibrationInfo(final SAMRecord read,
+    public ReadRecalibrationInfo(final GATKRead read,
                                  final ReadCovariates covariates,
                                  final boolean[] skips,
                                  final double[] snpErrors,
@@ -83,9 +83,9 @@ public final class ReadRecalibrationInfo {
 
     /**
      * Get the read involved in this recalibration info
-     * @return a non-null GATKSAMRecord
+     * @return a non-null Read
      */
-    public SAMRecord getRead() {
+    public GATKRead getRead() {
         return read;
     }
 

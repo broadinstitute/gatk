@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.examples;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -11,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalVariant
 import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -68,8 +68,8 @@ public final class ExampleIntervalWalker extends IntervalWalker {
     }
 
     private void printReads( final ReadsContext readsContext ) {
-        for ( SAMRecord read : readsContext ) {
-            outputStream.printf("\tOverlapping read at %s:%d-%d\n", read.getReferenceName(), read.getAlignmentStart(), read.getAlignmentEnd());
+        for ( GATKRead read : readsContext ) {
+            outputStream.printf("\tOverlapping read at %s:%d-%d\n", read.getContig(), read.getStart(), read.getEnd());
         }
         outputStream.println();
     }

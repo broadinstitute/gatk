@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
@@ -21,9 +20,8 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.io.IOException;
@@ -397,7 +395,7 @@ public final class ExomeReadCounts extends ReadWalker {
     }
 
     @Override
-    public void apply(final SAMRecord read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
         final SimpleInterval readLocation = referenceContext.getInterval();
 
@@ -630,7 +628,7 @@ public final class ExomeReadCounts extends ReadWalker {
          * @param read the query read.
          * @return a value from 0 to <code>{@link #columnCount()} - 1</code>, or -1 if the value is to be discarded.
          */
-        protected abstract int columnIndex(SAMRecord read);
+        protected abstract int columnIndex(GATKRead read);
     }
 
     /**
@@ -651,7 +649,7 @@ public final class ExomeReadCounts extends ReadWalker {
         }
 
         @Override
-        protected int columnIndex(final SAMRecord read) {
+        protected int columnIndex(final GATKRead read) {
             return 0;
         }
     }
@@ -677,7 +675,7 @@ public final class ExomeReadCounts extends ReadWalker {
         }
 
         @Override
-        protected int columnIndex(final SAMRecord read) {
+        protected int columnIndex(final GATKRead read) {
             return tool.sampleCollection.sampleIndexByRead(read);
         }
     }
@@ -703,7 +701,7 @@ public final class ExomeReadCounts extends ReadWalker {
         }
 
         @Override
-        protected int columnIndex(final SAMRecord read) {
+        protected int columnIndex(final GATKRead read) {
             return tool.sampleCollection.readGroupIndexByRead(read);
         }
     }

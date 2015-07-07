@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
@@ -23,6 +25,7 @@ public final class ReadGroupBlackListReadFilter implements ReadFilter {
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 
     private Set<Entry<String, Collection<String>>> blacklistEntries;
+    private final SAMFileHeader header;
 
     /**
      * Creates a filter using the lists of files with blacklisted read groups.
@@ -30,16 +33,17 @@ public final class ReadGroupBlackListReadFilter implements ReadFilter {
      * will load blacklist from that file. This scheme works recursively
      * (ie the file may contain names of further files etc).
      */
-    public ReadGroupBlackListReadFilter(final List<String> blackLists) {
-            final Map<String, Collection<String>> filters = new TreeMap<>();
-            for (String blackList : blackLists) {
-                try {
-                    addFilter(filters, blackList, null, 0);
-                } catch (IOException e) {
-                    throw new UserException("Incorrect blacklist:" + blackList, e);
-                }
+    public ReadGroupBlackListReadFilter(final List<String> blackLists, final SAMFileHeader header) {
+        final Map<String, Collection<String>> filters = new TreeMap<>();
+        for (String blackList : blackLists) {
+            try {
+                addFilter(filters, blackList, null, 0);
+            } catch (IOException e) {
+                throw new UserException("Incorrect blacklist:" + blackList, e);
             }
-            this.blacklistEntries = filters.entrySet();
+        }
+        this.blacklistEntries = filters.entrySet();
+        this.header = header;
     }
 
     private void addFilter(final Map<String, Collection<String>> filters, final String filter, final File parentFile, final int parentLineNum) throws IOException {
@@ -89,9 +93,9 @@ public final class ReadGroupBlackListReadFilter implements ReadFilter {
     }
 
     @Override
-    public boolean test(final SAMRecord read) {
-        final SAMReadGroupRecord readGroup = read.getReadGroup();
-        if (readGroup == null){
+    public boolean test( final GATKRead read ) {
+        final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
+        if ( readGroup == null ) {
             return true;
         }
 

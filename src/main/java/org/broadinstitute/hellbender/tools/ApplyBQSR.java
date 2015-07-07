@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -15,7 +12,9 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 
@@ -42,27 +41,28 @@ public final class ApplyBQSR extends ReadWalker{
      */
     @ArgumentCollection
     public ApplyBQSRArgumentCollection bqsrArgs = new ApplyBQSRArgumentCollection();
-
-
-    private SAMFileWriter outputWriter;
+    
+    private SAMFileGATKReadWriter outputWriter;
 
     private ReadTransformer transform;
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = ReadUtils.clone(getHeaderForReads());
-        outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile());
-        transform = new BQSRReadTransformer(BQSR_RECAL_FILE, bqsrArgs.quantizationLevels, bqsrArgs.disableIndelQuals, bqsrArgs.PRESERVE_QSCORES_LESS_THAN, bqsrArgs.emitOriginalQuals, bqsrArgs.globalQScorePrior);
+        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
+        outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
+        transform = new BQSRReadTransformer(outputHeader, BQSR_RECAL_FILE, bqsrArgs.quantizationLevels, bqsrArgs.disableIndelQuals, bqsrArgs.PRESERVE_QSCORES_LESS_THAN, bqsrArgs.emitOriginalQuals, bqsrArgs.globalQScorePrior);
     }
 
     @Override
-    public void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputWriter.addAlignment(transform.apply(read));
+    public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
+        outputWriter.addRead(transform.apply(read));
     }
 
     @Override
     public Object onTraversalDone() {
-        CloserUtil.close(outputWriter);
+        if ( outputWriter != null ) {
+            outputWriter.close();
+        }
         return null;
     }
 

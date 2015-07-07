@@ -1,28 +1,27 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.Combine.AccumulatingCombineFn;
 import com.google.cloud.dataflow.sdk.transforms.Combine.AccumulatingCombineFn.Accumulator;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
-import org.broadinstitute.hellbender.tools.FlagStat;
 import org.broadinstitute.hellbender.tools.FlagStat.FlagStatus;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
 
 /**
- * Computes Flag stats a {@link PCollection<Read>}
+ * Computes Flag stats on a {@link PCollection<GATKRead>}
  */
 public final class FlagStatusDataflowTransform extends PTransformSAM<FlagStatus> {
     private static final long serialVersionUID = 1l;
 
     @Override
-    public PCollection<FlagStatus> apply(final PCollection<Read> input) {
+    public PCollection<FlagStatus> apply(final PCollection<GATKRead> input) {
         return input.apply(Combine.globally(new CombineCounts()));
     }
 
-    private static class CombineCounts extends AccumulatingCombineFn<Read, StatCounter, FlagStatus> {
+    private static class CombineCounts extends AccumulatingCombineFn<GATKRead, StatCounter, FlagStatus> {
         private static final long serialVersionUID = 1l;
 
         @Override
@@ -31,12 +30,12 @@ public final class FlagStatusDataflowTransform extends PTransformSAM<FlagStatus>
         }
     }
 
-    private static class StatCounter implements Accumulator<Read, StatCounter, FlagStatus>, Serializable {
+    private static class StatCounter implements Accumulator<GATKRead, StatCounter, FlagStatus>, Serializable {
         private static final long serialVersionUID = 1l;
         private FlagStatus stats = new FlagStatus();
 
         @Override
-        public void addInput(final Read read) {
+        public void addInput(final GATKRead read) {
             stats.add(read);
         }
 

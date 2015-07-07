@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Keep reads with high mapping qualities.
@@ -12,7 +12,7 @@ public final class MappingQualityReadFilter implements ReadFilter {
 
     private static final long serialVersionUID = 1L;
     @Override
-    public boolean test(final SAMRecord read) {
+    public boolean test( final GATKRead read ) {
         return read.getMappingQuality() >= minMappingQualtyScore;
     }
 }

@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.stream.StreamSupport;
 
@@ -58,8 +59,8 @@ public abstract class ReadWalker extends GATKTool {
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(filter)
                 .forEach(read -> {
-                    final SimpleInterval readInterval = read.getReadUnmappedFlag() ? null :
-                                                                                     new SimpleInterval(read);
+                    final SimpleInterval readInterval = read.isUnmapped() ? null :
+                                                                            new SimpleInterval(read);
                     apply(read,
                           new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
                           new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null
@@ -68,15 +69,15 @@ public abstract class ReadWalker extends GATKTool {
 
     /**
      * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.WELLFORMED} filter with all default options.
+     * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.WellformedReadFilter} filter with all default options.
      * Default implementation of {@link #traverse()} calls this method once before iterating
      * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
      *
      * Subclasses can extend to provide own filters (ie override and call super).
      * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
      */
-    public ReadFilter makeReadFilter(){
-          return ReadFilterLibrary.WELLFORMED;
+    public ReadFilter makeReadFilter() {
+          return new WellformedReadFilter(getHeaderForReads());
     }
 
     /**
@@ -91,13 +92,12 @@ public abstract class ReadWalker extends GATKTool {
      * @param referenceContext Reference bases spanning the current read. Will be an empty, but non-null, context object
      *                         if there is no backing source of reference data (in which case all queries on it will return
      *                         an empty array/iterator). Can request extra bases of context around the current read's interval
-     *                         by invoking {@link org.broadinstitute.hellbender.engine.ReferenceContext#setWindow}
-     *                         on this object before calling {@link org.broadinstitute.hellbender.engine.ReferenceContext#getBases}
+     *                         by invoking {@link ReferenceContext#setWindow} on this object before calling {@link ReferenceContext#getBases}
      * @param featureContext Features spanning the current read. Will be an empty, but non-null, context object
      *                       if there is no backing source of Feature data (in which case all queries on it will return an
      *                       empty List).
      */
-    public abstract void apply( SAMRecord read, ReferenceContext referenceContext, FeatureContext featureContext );
+    public abstract void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
      * Shutdown data sources.

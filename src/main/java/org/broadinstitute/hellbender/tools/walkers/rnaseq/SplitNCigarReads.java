@@ -15,15 +15,14 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
+import org.broadinstitute.hellbender.utils.read.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
-import static org.broadinstitute.hellbender.transformers.ReadTransformer.*;
 
 /**
  *
@@ -93,11 +92,12 @@ public final class SplitNCigarReads extends CommandLineProgram {
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
-        final SAMFileWriter outputWriter = initialize(in);
+        final Iterable<GATKRead> readIter = new SAMRecordToReadIterator(in.iterator());
+        final SAMFileGATKReadWriter outputWriter = initialize(in);
 
         final ReadTransformer rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
 
-        StreamSupport.stream(in.spliterator(), false)
+        StreamSupport.stream(readIter.spliterator(), false)
                 .map(rnaReadTransform)
                 .forEach(read -> splitNCigarRead(read, overhangManager));
         overhangManager.close();
@@ -106,14 +106,14 @@ public final class SplitNCigarReads extends CommandLineProgram {
         return null;
     }
 
-    private SAMFileWriter initialize(final SamReader in) {
-        final SAMFileHeader outputHeader = ReadUtils.clone(in.getFileHeader());
-        final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_SEQUENCE);
+    private SAMFileGATKReadWriter initialize(final SamReader in) {
+        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(in.getFileHeader());
+        final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_SEQUENCE));
 
         try {
             final IndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_SEQUENCE);
             GenomeLocParser genomeLocParser= new GenomeLocParser(referenceReader.getSequenceDictionary());
-            overhangManager = new OverhangFixingManager(outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs);
+            overhangManager = new OverhangFixingManager(outputHeader, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs);
             return outputWriter;
         } catch (FileNotFoundException ex) {
             throw new UserException.CouldNotReadInputFile(REFERENCE_SEQUENCE, ex);
@@ -126,7 +126,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
      *
      * @param read     the read to split
      */
-    public static SAMRecord splitNCigarRead(final SAMRecord read, OverhangFixingManager manager) {
+    public static GATKRead splitNCigarRead(final GATKRead read, OverhangFixingManager manager) {
         final int numCigarElements = read.getCigar().numCigarElements();
 
         int firstCigarIndex = 0;
@@ -159,7 +159,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
      * @param forSplitPositions  the manager for keeping track of split positions; can be null
      * @return a non-null read representing the section of the original read being split out
      */
-    private static SAMRecord splitReadBasedOnCigar(final SAMRecord read, final int cigarStartIndex, final int cigarEndIndex, final OverhangFixingManager forSplitPositions) {
+    private static GATKRead splitReadBasedOnCigar(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex, final OverhangFixingManager forSplitPositions) {
         int cigarFirstIndex = cigarStartIndex;
         int cigarSecondIndex = cigarEndIndex;
 
@@ -170,7 +170,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
         while(read.getCigar().getCigarElement(cigarSecondIndex-1).getOperator().equals(CigarOperator.D))
             cigarSecondIndex--;
         if(cigarFirstIndex > cigarSecondIndex)
-            throw new IllegalArgumentException("Cannot split this read (might be an empty section between Ns, for example 1N1D1N): "+read.getCigarString());
+            throw new IllegalArgumentException("Cannot split this read (might be an empty section between Ns, for example 1N1D1N): " + read.getCigar().toString());
 
         // we keep only the section of the read that is aligned to the reference between startRefIndex and stopRefIndex (inclusive).
         // the other sections of the read are clipped:
@@ -178,7 +178,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
         final int stopRefIndex = startRefIndex + CigarUtils.countRefBasesBasedOnCigar(read,cigarFirstIndex,cigarSecondIndex)-1; //goes through a consecutive non-N section of the cigar (up to cigarEndIndex) and move the reference index.
 
         if ( forSplitPositions != null ) {
-            final String contig = read.getReferenceName();
+            final String contig = read.getContig();
             final int splitStart = startRefIndex + CigarUtils.countRefBasesBasedOnCigar(read,cigarFirstIndex,cigarEndIndex);  //we use cigarEndIndex instead of cigarSecondIndex so we won't take into account the D's at the end.
             final int splitEnd = splitStart + read.getCigar().getCigarElement(cigarEndIndex).getLength() - 1;
             forSplitPositions.addSplicePosition(contig, splitStart, splitEnd);

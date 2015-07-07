@@ -1,22 +1,22 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
+import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.CountBasesDataflowTransform;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -41,7 +41,7 @@ public final class DataflowReadsPipelineTest {
         }
 
         @Override
-        protected ImmutableList<ReadFilter> getReadFilters() {
+        protected ImmutableList<ReadFilter> getReadFilters( SAMFileHeader header ) {
             return ImmutableList.copyOf(filters);
         }
 
@@ -62,7 +62,7 @@ public final class DataflowReadsPipelineTest {
         ReadFilter all = r -> true;
         ReadFilter none = r -> false;
         ReadTransformer replaceBasesWithA = r -> {
-                r.setReadBases(new byte[]{ (byte)'A'});
+                r.setBases(new byte[]{(byte) 'A'});
                 return r;
         };
 
@@ -83,9 +83,9 @@ public final class DataflowReadsPipelineTest {
     public void testTransformersAndFilters(List<ReadFilter> filters, List<ReadTransformer> transformers, long expectedCounts){
         RuntimeConfigurablePipeline rcp = new RuntimeConfigurablePipeline(new CountBasesDataflowTransform(), filters, transformers);
         Pipeline p = GATKTestPipeline.create();
-        DataflowWorkarounds.registerGenomicsCoders(p);
+        DataflowUtils.registerGATKCoders(p);
         String bam = "src/test/resources/org/broadinstitute/hellbender/tools/count_reads_sorted.bam";
-        PCollection<Read> preads = DataflowUtils.getReadsFromLocalBams(p, Lists.newArrayList(new SimpleInterval("chr7", 1, 404)), Lists.newArrayList(new File(bam)));
+        PCollection<GATKRead> preads = DataflowUtils.getReadsFromLocalBams(p, Lists.newArrayList(new SimpleInterval("chr7", 1, 404)), Lists.newArrayList(new File(bam)));
 
         PCollection<?> presult = rcp.applyTransformsToPipeline(SamReaderFactory.makeDefault().getFileHeader(new File(bam)), preads);
 

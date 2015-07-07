@@ -3,11 +3,11 @@ package org.broadinstitute.hellbender.utils.locusiterator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Steps a single read along its alignment to the genome
@@ -22,7 +22,7 @@ public final class AlignmentStateMachine {
     /**
      * Our read
      */
-    private final SAMRecord read;
+    private final GATKRead read;
     private final Cigar cigar;
     private final int nCigarElements;
     private int currentCigarElementOffset = -1;
@@ -47,7 +47,7 @@ public final class AlignmentStateMachine {
      */
     private int offsetIntoCurrentCigarElement;
 
-    public AlignmentStateMachine(final SAMRecord read) {
+    public AlignmentStateMachine(final GATKRead read) {
         this.read = read;
         this.cigar = read.getCigar();
         this.nCigarElements = cigar.numCigarElements();
@@ -66,10 +66,19 @@ public final class AlignmentStateMachine {
 
     /**
      * Get the read we are aligning to the genome
-     * @return a non-null GATKSAMRecord
+     * @return a non-null Read
      */
-    public SAMRecord getRead() {
+    public GATKRead getRead() {
         return read;
+    }
+
+    /**
+     * Get the contig of the underlying read
+     *
+     * @return the contig of the read
+     */
+    public String getContig() {
+        return getRead().getContig();
     }
 
     /**
@@ -85,7 +94,7 @@ public final class AlignmentStateMachine {
      * @return true if off the right edge, false if otherwise
      */
     public boolean isRightEdge() {
-        return readOffset == read.getReadLength();
+        return readOffset == read.getLength();
     }
 
     /**
@@ -112,7 +121,7 @@ public final class AlignmentStateMachine {
      * @return the position on the genome of the current state in absolute coordinates
      */
     public int getGenomePosition() {
-        return read.getAlignmentStart() + getGenomeOffset();
+        return read.getStart() + getGenomeOffset();
     }
 
     /**
@@ -122,7 +131,7 @@ public final class AlignmentStateMachine {
      */
     public GenomeLoc getLocation(final GenomeLocParser genomeLocParser) {
         // TODO -- may return wonky results if on an edge (could be 0 or could be beyond genome location)
-        return genomeLocParser.createGenomeLoc(read.getReferenceName(), getGenomePosition());
+        return genomeLocParser.createGenomeLoc(read.getContig(), getGenomePosition());
     }
 
     /**
@@ -183,7 +192,7 @@ public final class AlignmentStateMachine {
 
     @Override
     public String toString() {
-        return String.format("%s ro=%d go=%d cec=%d %s", read.getReadName(), readOffset, genomeOffset, offsetIntoCurrentCigarElement, currentElement);
+        return String.format("%s ro=%d go=%d cec=%d %s", read.getName(), readOffset, genomeOffset, offsetIntoCurrentCigarElement, currentElement);
     }
 
     // -----------------------------------------------------------------------------------------------
@@ -231,11 +240,11 @@ public final class AlignmentStateMachine {
                     continue;
                 } else {
                     if (currentElement != null && currentElement.getOperator() == CigarOperator.D)
-                        throw new UserException.MalformedBAM(read, "read ends with deletion. Cigar: " + read.getCigarString() + ". Although the SAM spec technically permits such reads, this is often indicative of malformed files. If you are sure you want to use this file, re-run your analysis with the extra option: -rf BadCigar");
+                        throw new UserException.MalformedRead(read, "read ends with deletion. Cigar: " + read.getCigar().toString() + ". Although the SAM spec technically permits such reads, this is often indicative of malformed files.");
 
                     // we're done, so set the offset of the cigar to 0 for cleanliness, as well as the current element
                     offsetIntoCurrentCigarElement = 0;
-                    readOffset = read.getReadLength();
+                    readOffset = read.getLength();
                     currentElement = null;
 
                     // Reads that contain indels model the genomeOffset as the following base in the reference.  Because
@@ -263,7 +272,7 @@ public final class AlignmentStateMachine {
                     break;
                 case D: // deletion w.r.t. the reference
                     if (readOffset < 0)             // we don't want reads starting with deletion, this is a malformed cigar string
-                        throw new UserException.MalformedBAM(read, "read starts with deletion. Cigar: " + read.getCigarString() + ". Although the SAM spec technically permits such reads, this is often indicative of malformed files. If you are sure you want to use this file, re-run your analysis with the extra option: -rf BadCigar");
+                        throw new UserException.MalformedRead(read, "read starts with deletion. Cigar: " + read.getCigar().toString() + ". Although the SAM spec technically permits such reads, this is often indicative of malformed files.");
                     // should be the same as N case
                     genomeOffset++;
                     done = true;

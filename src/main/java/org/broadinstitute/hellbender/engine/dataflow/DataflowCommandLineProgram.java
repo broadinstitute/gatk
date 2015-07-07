@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 
 import java.io.File;
 import java.io.Serializable;
@@ -100,7 +101,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     @Override
     protected Object doWork() {
         final Pipeline p = Pipeline.create(buildPipelineOptions());
-        DataflowWorkarounds.registerGenomicsCoders(p);
+        DataflowUtils.registerGATKCoders(p);
         setupPipeline(p);
         runPipeline(p);
         afterPipeline(p);

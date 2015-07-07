@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.transformers;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * Checks for and errors out (or fixes if requested) when it detects reads with base qualities that are not encoded with
@@ -14,7 +14,7 @@ public final class MisencodedBaseQualityReadTransformer implements ReadTransform
     private static final int ILLUMINA_ENCODING_FIX_VALUE = 31;  // Illumina_64 - PHRED_33
 
     @Override
-    public SAMRecord apply(final SAMRecord read) {
+    public GATKRead apply(final GATKRead read) {
         final byte[] quals = read.getBaseQualities();
         for ( int i = 0; i < quals.length; i++ ) {
             quals[i] -= ILLUMINA_ENCODING_FIX_VALUE;

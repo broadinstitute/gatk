@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.dataflow;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -10,23 +9,22 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.SmallBamWriter;
+import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 
@@ -90,7 +88,7 @@ public class SmallBamWriterTest extends BaseTest {
             logger.info("Downloading the input to "+localInput+" (for comparison).");
             downloadFromGCS(pipeline.getOptions(), inputPath, localInput);
         }
-        PCollection<Read> input = ingestReadsAndGrabHeader(pipeline, inputPath);
+        PCollection<GATKRead> input = ingestReadsAndGrabHeader(pipeline, inputPath);
         SmallBamWriter.writeToFile(pipeline, input, header, outputPath);
         pipeline.run();
         if (BucketUtils.isCloudStorageUrl(outputPath)) {
@@ -127,12 +125,12 @@ public class SmallBamWriterTest extends BaseTest {
             options.setApiKey(getDataflowTestApiKey());
         }
         final Pipeline p = Pipeline.create(options);
-        DataflowWorkarounds.registerGenomicsCoders(p);
+        DataflowUtils.registerGATKCoders(p);
         return p;
     }
 
     /** reads local disks or GCS -> header, and PCollection */
-    private PCollection<Read> ingestReadsAndGrabHeader(final Pipeline pipeline, String filename) throws IOException {
+    private PCollection<GATKRead> ingestReadsAndGrabHeader(final Pipeline pipeline, String filename) throws IOException {
 
         // input reads
         if (BucketUtils.isCloudStorageUrl(filename)) {
@@ -149,20 +147,14 @@ public class SmallBamWriterTest extends BaseTest {
             return new ReadsSource(filename, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT);
         } else {
             // ingestion from local file
-            SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(new File(filename));
-            header = reader.getFileHeader();
-            List<Read> readLst = new ArrayList<>();
-            for (SAMRecord sr : reader) {
-                try {
-                    Read e = ReadConverter.makeRead(sr);
-                    readLst.add(e);
-                } catch (SAMException x) {
-                    logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it.");
-                } catch (NullPointerException y) {
-                    logger.warn("Skipping read " + sr.getReadName() + " because we can't convert it. (null?)");
+            try( ReadsDataSource readsSource = new ReadsDataSource(new File(filename)) ) {
+                header = readsSource.getHeader();
+                List<GATKRead> reads = new ArrayList<>();
+                for ( GATKRead read : readsSource ) {
+                    reads.add(read);
                 }
+                return pipeline.apply(Create.of(reads).setName("input ingest"));
             }
-            return pipeline.apply(Create.of(readLst).setName("input ingest"));
         }
     }
 

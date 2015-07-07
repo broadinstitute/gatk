@@ -265,8 +265,8 @@ public abstract class AbstractAlignmentMerger {
                         final SAMRecord firstToWrite;
                         final SAMRecord secondToWrite;
                         if (clone) {
-                            firstToWrite = ReadUtils.clone(rec);
-                            secondToWrite = ReadUtils.clone(secondOfPair);
+                            firstToWrite = ReadUtils.cloneSAMRecord(rec);
+                            secondToWrite = ReadUtils.cloneSAMRecord(secondOfPair);
                         } else {
                             firstToWrite = rec;
                             secondToWrite = secondOfPair;
@@ -300,7 +300,7 @@ public abstract class AbstractAlignmentMerger {
                         final SAMRecord matePrimary = isRead1 ? r2Primary : r1Primary;
 
                         for (final SAMRecord supp : supplementals) {
-                            final SAMRecord out = ReadUtils.clone(sourceRec);
+                            final SAMRecord out = ReadUtils.cloneSAMRecord(sourceRec);
                             transferAlignmentInfoToFragment(out, supp);
                             if (matePrimary != null) SamPairUtil.setMateInformationOnSupplementalAlignment(out, matePrimary, addMateCigar);
                             ++aligned;
@@ -309,7 +309,7 @@ public abstract class AbstractAlignmentMerger {
                     }
                 } else {
                     for (int i = 0; i < nextAligned.numHits(); ++i) {
-                        final SAMRecord recToWrite = clone ? ReadUtils.clone(rec) : rec;
+                        final SAMRecord recToWrite = clone ? ReadUtils.cloneSAMRecord(rec) : rec;
                         transferAlignmentInfoToFragment(recToWrite, nextAligned.getFragment(i));
                         addIfNotFiltered(sorted, recToWrite);
                         if (recToWrite.getReadUnmappedFlag()) ++unmapped;
@@ -317,7 +317,7 @@ public abstract class AbstractAlignmentMerger {
                     }
                     // Take all of the supplemental reads which had been stashed and add them (as appropriate) to sorted
                     for (final SAMRecord supplementalRec : nextAligned.getSupplementalFirstOfPairOrFragment()) {
-                        final SAMRecord recToWrite = ReadUtils.clone(rec);
+                        final SAMRecord recToWrite = ReadUtils.cloneSAMRecord(rec);
                         transferAlignmentInfoToFragment(recToWrite, supplementalRec);
                         addIfNotFiltered(sorted, recToWrite);
                         ++aligned;

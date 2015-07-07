@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
-import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,12 +17,12 @@ public final class AlignmentStateMachineUnitTest extends LocusIteratorByStateBas
 
     @Test(dataProvider = "AlignmentStateMachineTest")
     public void testAlignmentStateMachineTest(LIBSTest params) {
-        final SAMRecord read = params.makeRead();
+        final GATKRead read = params.makeRead();
         final AlignmentStateMachine state = new AlignmentStateMachine(read);
         final LIBS_position tester = new LIBS_position(read);
 
         // min is one because always visit something, even for 10I reads
-        final int expectedBpToVisit = read.getAlignmentEnd() - read.getAlignmentStart() + 1;
+        final int expectedBpToVisit = read.getEnd() - read.getStart() + 1;
 
         Assert.assertSame(state.getRead(), read);
         Assert.assertNotNull(state.toString());
@@ -58,7 +58,7 @@ public final class AlignmentStateMachineUnitTest extends LocusIteratorByStateBas
             Assert.assertTrue(state.getOffsetIntoCurrentCigarElement() < state.getCurrentCigarElement().getLength(), "Offset into current cigar too big");
 
             Assert.assertEquals(state.getGenomeOffset(), tester.getCurrentGenomeOffsetBase0(), "Offset from alignment start is bad");
-            Assert.assertEquals(state.getGenomePosition(), tester.getCurrentGenomeOffsetBase0() + read.getAlignmentStart(), "GenomePosition start is bad");
+            Assert.assertEquals(state.getGenomePosition(), tester.getCurrentGenomeOffsetBase0() + read.getStart(), "GenomePosition start is bad");
             Assert.assertEquals(state.getLocation(genomeLocParser).size(), 1, "GenomeLoc position should have size == 1");
             Assert.assertEquals(state.getLocation(genomeLocParser).getStart(), state.getGenomePosition(), "GenomeLoc position is bad");
             // most tests of this functionality are in LIBS
@@ -69,8 +69,8 @@ public final class AlignmentStateMachineUnitTest extends LocusIteratorByStateBas
         }
 
         Assert.assertEquals(bpVisited, expectedBpToVisit, "Didn't visit the expected number of bp");
-        Assert.assertEquals(state.getReadOffset(), read.getReadLength());
-        Assert.assertEquals(state.getCurrentCigarElementOffset(), read.getCigarLength());
+        Assert.assertEquals(state.getReadOffset(), read.getLength());
+        Assert.assertEquals(state.getCurrentCigarElementOffset(), read.getCigar().numCigarElements());
         Assert.assertEquals(state.getCurrentCigarElement(), null);
         Assert.assertNotNull(state.toString());
     }

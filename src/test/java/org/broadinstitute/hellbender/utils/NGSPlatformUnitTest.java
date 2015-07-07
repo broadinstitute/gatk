@@ -6,10 +6,10 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.read.ArtificialSAMUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -108,32 +108,32 @@ public final class NGSPlatformUnitTest extends BaseTest {
      */
     @Test(dataProvider = "TestMappings")
     public void testPLFromReadWithRG(final String plField, final NGSPlatform expected) {
-        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final String rgID = "ID";
         final SAMReadGroupRecord rg = new SAMReadGroupRecord(rgID);
         if ( plField != null )
             rg.setPlatform(plField);
         header.addReadGroup(rg);
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, 10);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, 10);
         read.setAttribute("RG", rgID);
-        Assert.assertEquals(NGSPlatform.fromRead(read), expected);
+        Assert.assertEquals(NGSPlatform.fromRead(read, header), expected);
     }
 
     @Test()
     public void testPLFromReadWithRGButNoPL() {
-        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final String rgID = "ID";
         final SAMReadGroupRecord rg = new SAMReadGroupRecord(rgID);
         header.addReadGroup(rg);
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, 10);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, 10);
         read.setAttribute("RG", rgID);
-        Assert.assertEquals(NGSPlatform.fromRead(read), NGSPlatform.UNKNOWN);
+        Assert.assertEquals(NGSPlatform.fromRead(read, header), NGSPlatform.UNKNOWN);
     }
 
     @Test
     public void testReadWithoutRG() {
-        final SAMFileHeader header = ArtificialSAMUtils.createArtificialSamHeader(seq.getSequenceDictionary());
-        final SAMRecord read = ArtificialSAMUtils.createArtificialRead(header, "myRead", 0, 1, 10);
-        Assert.assertEquals(NGSPlatform.fromRead(read), NGSPlatform.UNKNOWN);
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, 10);
+        Assert.assertEquals(NGSPlatform.fromRead(read, header), NGSPlatform.UNKNOWN);
     }
 }

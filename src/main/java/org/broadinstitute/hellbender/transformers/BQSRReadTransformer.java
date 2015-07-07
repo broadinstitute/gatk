@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.transformers;
 
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
@@ -9,11 +9,11 @@ import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +23,8 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private final QuantizationInfo quantizationInfo; // histogram containing the map for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables;
     private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
-
+    private final SAMFileHeader header;
+    
     private final boolean disableIndelQuals;
     private final int preserveQLessThan;
     private final double globalQScorePrior;
@@ -32,14 +33,16 @@ public final class BQSRReadTransformer implements ReadTransformer {
     /**
      * Constructor using a GATK Report file
      *
+     * @param header header for the reads
      * @param bqsrRecalFile         a GATK Report file containing the recalibration information
      * @param quantizationLevels number of bins to quantize the quality scores
      * @param disableIndelQuals  if true, do not emit base indel qualities
      * @param preserveQLessThan  preserve quality scores less than this value
      */
-    public BQSRReadTransformer(final File bqsrRecalFile, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+    public BQSRReadTransformer(final SAMFileHeader header, File bqsrRecalFile, int quantizationLevels, boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
         final RecalibrationReport recalibrationReport = new RecalibrationReport(bqsrRecalFile);
 
+        this.header = header;
         recalibrationTables = recalibrationReport.getRecalibrationTables();
         covariates = recalibrationReport.getCovariates();
         quantizationInfo = recalibrationReport.getQuantizationInfo();
@@ -58,12 +61,14 @@ public final class BQSRReadTransformer implements ReadTransformer {
     /**
      * Constructor using a GATK Report file
      *
+     * @param header header for the reads
      * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
      * @param quantizationLevels number of bins to quantize the quality scores
      * @param disableIndelQuals  if true, do not emit base indel qualities
      * @param preserveQLessThan  preserve quality scores less than this value
      */
-    public BQSRReadTransformer(final BaseRecalOutput recalInfo, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+    public BQSRReadTransformer(final SAMFileHeader header, final BaseRecalOutput recalInfo, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+        this.header = header;
         recalibrationTables = recalInfo.getRecalibrationTables();
         covariates = recalInfo.getCovariates();
         quantizationInfo = recalInfo.getQuantizationInfo();
@@ -79,37 +84,37 @@ public final class BQSRReadTransformer implements ReadTransformer {
         this.emitOriginalQuals = emitOriginalQuals;
     }
 
-        /**
-         * Recalibrates the base qualities of a read
-         * <p>
-         * It updates the base qualities of the read with the new recalibrated qualities (for all event types)
-         * <p>
-         * Implements a serial recalibration of the reads using the combinational table.
-         * First, we perform a positional recalibration, and then a subsequent dinuc correction.
-         * <p>
-         * Given the full recalibration table, we perform the following preprocessing steps:
-         * <p>
-         * - calculate the global quality score shift across all data [DeltaQ]
-         * - calculate for each of cycle and dinuc the shift of the quality scores relative to the global shift
-         * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Qempirical(pos, qual, dinuc) - Qreported(pos, qual, dinuc) / Npos * Nqual
-         * - The final shift equation is:
-         * <p>
-         * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
-         *
-         * @param read the read to recalibrate
-         */
+    /**
+     * Recalibrates the base qualities of a read
+     * <p>
+     * It updates the base qualities of the read with the new recalibrated qualities (for all event types)
+     * <p>
+     * Implements a serial recalibration of the reads using the combinational table.
+     * First, we perform a positional recalibration, and then a subsequent dinuc correction.
+     * <p>
+     * Given the full recalibration table, we perform the following preprocessing steps:
+     * <p>
+     * - calculate the global quality score shift across all data [DeltaQ]
+     * - calculate for each of cycle and dinuc the shift of the quality scores relative to the global shift
+     * -- i.e., DeltaQ(dinuc) = Sum(pos) Sum(Qual) Qempirical(pos, qual, dinuc) - Qreported(pos, qual, dinuc) / Npos * Nqual
+     * - The final shift equation is:
+     * <p>
+     * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
+     *
+     * @param read the read to recalibrate
+     */
     @Override
-    public SAMRecord apply(final SAMRecord read) {
-        if (emitOriginalQuals && read.getAttribute(SAMTag.OQ.name()) == null) { // Save the old qualities if the tag isn't already taken in the read
+    public GATKRead apply(final GATKRead read) {
+        if (emitOriginalQuals && ! read.hasAttribute(SAMTag.OQ.name())) { // Save the old qualities if the tag isn't already taken in the read
             try {
                 read.setAttribute(SAMTag.OQ.name(), SAMUtils.phredToFastq(read.getBaseQualities()));
             } catch (IllegalArgumentException e) {
-                throw new UserException.MalformedBAM(read, "illegal base quality encountered; " + e.getMessage());
+                throw new UserException.MalformedRead(read, "illegal base quality encountered; " + e.getMessage());
             }
         }
 
-        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, covariates);
-        final int readLength = read.getReadLength();
+        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, header, covariates);
+        final int readLength = read.getLength();
 
         for (final EventType errorModel : EventType.values()) { // recalibrate all three quality strings
             if (disableIndelQuals && errorModel != EventType.BASE_SUBSTITUTION) {

@@ -1,17 +1,16 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -25,6 +24,7 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * Handles lifting reads from a bams into a PCollection and provides hooks to apply {@link ReadFilter}, {@link ReadConverter}, and
  * a {@link PTransformSAM}.
  *
- *Subclasses must override {@link #getTool()} and optionally override {@link #getReadFilters()} and {@link #getReadTransformers()}
+ *Subclasses must override {@link #getTool()} and optionally override {@link #getReadFilters(htsjdk.samtools.SAMFileHeader)} and {@link #getReadTransformers()}
  */
 public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
@@ -59,8 +59,9 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
     /**
      * @return {@link ReadFilter}s to apply before running the tool
+     * @param header
      */
-    protected ImmutableList<ReadFilter> getReadFilters(){
+    protected ImmutableList<ReadFilter> getReadFilters( SAMFileHeader header ){
         return ImmutableList.of();
     }
 
@@ -79,7 +80,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
-        final PCollection<Read> preads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        final PCollection<GATKRead> preads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
 
         final PCollection<?> presult = applyTransformsToPipeline(header, preads);
 
@@ -95,11 +96,11 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     }
 
     @VisibleForTesting
-    protected PCollection<?> applyTransformsToPipeline(final SAMFileHeader header, final PCollection<Read> preadsIn) {
+    protected PCollection<?> applyTransformsToPipeline(final SAMFileHeader header, final PCollection<GATKRead> preadsIn) {
 
-        PCollection<Read> preads = preadsIn;
-        for (final ReadFilter filter : getReadFilters()) {
-            preads = preads.apply(Filter.by(new SAMSerializableFunction<>(header, filter)));
+        PCollection<GATKRead> preads = preadsIn;
+        for (final ReadFilter filter : getReadFilters(header)) {
+            preads = preads.apply(Filter.by(wrapReadFilter(filter)));
         }
 
         for (final ReadTransformer transformer : getReadTransformers()) {
@@ -112,14 +113,24 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
         return preads.apply(tool);
     }
 
-    private static PTransform<? super PCollection<Read>,PCollection<Read>> wrapTransformer(final ReadTransformer transformer, final SAMFileHeader header){
-        return ParDo.of(new DataFlowSAMFn<Read>(header){
+    private static SerializableFunction<GATKRead, Boolean> wrapReadFilter( final ReadFilter filter ) {
+        return new SerializableFunction<GATKRead, Boolean>() {
+            private static final long serialVersionUID = 1l;
 
+            @Override
+            public Boolean apply( GATKRead input ) {
+                return filter.apply(input);  // Necessary because we can't use wildcard types for our SerializableFunction
+            }
+        };
+    }
+
+    private static PTransform<? super PCollection<GATKRead>,PCollection<GATKRead>> wrapTransformer(final ReadTransformer transformer, final SAMFileHeader header){
+        return ParDo.of(new DataFlowReadFn<GATKRead>(header){
                     private static final long serialVersionUID = 1l;
 
                     @Override
-                    protected void apply(final SAMRecord read) {
-                        output(ReadConverter.makeRead(transformer.apply(read)));
+                    protected void apply(final GATKRead read) {
+                        output(transformer.apply(read));
                     }
                 }
         );
