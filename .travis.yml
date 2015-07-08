@@ -23,3 +23,5 @@ before_install:
 - R --version
 after_success:
 - gradle jacocoTestReport coveralls
+after_failure:
+- dmesg | tail -100

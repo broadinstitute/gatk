@@ -150,6 +150,8 @@ test {
 
     // ensure dataflowRunner is passed to the test VM if specified on the command line
     systemProperty "dataflowRunner", System.getProperty("dataflowRunner")
+    // increase max buffer size for Spark serialization
+    systemProperty "spark.kryoserializer.buffer.max", "256m"
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
