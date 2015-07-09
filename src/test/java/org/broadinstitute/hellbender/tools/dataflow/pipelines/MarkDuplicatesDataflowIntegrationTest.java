@@ -19,9 +19,13 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
     @DataProvider(name = "md")
     public Object[][] md(){
         return new Object[][]{
-                {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"), 20, 0},
-                {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.bam"), 90, 6},
-                {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.markedDups.bam"), 90, 6},  //90 total reads, 6 dups
+          // Duplicates here are number of duplicate reads. To get number of
+          // duplicate pairs, divide by 2.
+          //{new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"), 20, 0},
+          //{new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.bam"), 90, 6},
+          //{new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.markedDups.bam"), 90, 6},  //90 total reads, 6 dups
+          {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes.bam"), 4, 2},
+          //{new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes_casava.bam"), 4, 2},
         };
     }
 
@@ -51,5 +55,7 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
 
         Assert.assertEquals(totalReads, totalExpected, "Wrong number of reads in output BAM");
         Assert.assertEquals(duplicateReads, dupsExpected, "Wrong number of duplicate reads in output BAM");
+        // Add assertion about optical duplicates
     }
+
 }
