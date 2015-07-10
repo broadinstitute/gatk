@@ -20,6 +20,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorWorker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -113,15 +114,15 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   private static PCollection<BaseRecalOutput> addQuantizationInfo(SAMFileHeader readsHeader, BaseRecalibrationArgumentCollection toolArgs, PCollection<RecalibrationTables> recal) {
     return recal.apply(ParDo
             .named("addQuantizationInfo")
-            .of(new DoFn<RecalibrationTables, BaseRecalOutput>() {
+            .of(new DoFnWLog<RecalibrationTables, BaseRecalOutput>("addQuantizationInfo") {
               private static final long serialVersionUID = 1L;
+
               @Override
               public void processElement(ProcessContext c) {
                 RecalibrationTables rt = c.element();
                 BaseRecalibratorWorker baseRecalibratorWorker = BaseRecalibratorWorker.fromArgs(readsHeader, toolArgs);
                 baseRecalibratorWorker.onTraversalStart(null);
                 //BaseRecalOutput ret = new BaseRecalOutput(rt, baseRecalibratorWorker.getQuantizationInfo(rt), baseRecalibratorWorker.getRequestedCovariates());
-
                 // Saving and loading back the report actually changes it. So we have to do it.
                 // TODO: Figure out what it changes, and just do that instead of doing the whole rigamarole.
                 try {
@@ -169,7 +170,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
     PCollection<KV<String, GATKRead>> shardedReads = reads.apply(ParDo
             .named("shard reads")
             .of(
-                    new DoFn<GATKRead, KV<String, GATKRead>>() {
+                    new DoFnWLog<GATKRead, KV<String, GATKRead>>("groupByBlock", "shard reads") {
                       private static final long serialVersionUID = 1L;
 
                       @Override
@@ -177,15 +178,15 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                         GATKRead r = c.element();
                         c.output(KV.of(posKey(r), r));
                       }
-
                     }));
     // send ignores to every shard that overlaps with them (so, possibly more than one).
     // (for now we assume they can't span more than two)
     PCollection<KV<String, SimpleInterval>> shardedIgnore = placesToIgnore.apply(ParDo
             .named("shard known intervals")
             .of(
-                    new DoFn<SimpleInterval, KV<String, SimpleInterval>>() {
+                    new DoFnWLog<SimpleInterval, KV<String, SimpleInterval>>("groupByBlock", "shard known intervals") {
                       private static final long serialVersionUID = 1L;
+
                       @Override
                       public void processElement( ProcessContext c ) {
                         SimpleInterval i = c.element();
@@ -213,7 +214,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
   private static PCollection<RecalibrationTables> computeBlockStatistics(final SAMFileHeader readsHeader, String referenceFileName, final BaseRecalibrationArgumentCollection toolArgs, final PCollection<KV<String, CoGbkResult>> readsAndIgnores) {
     PCollection<RecalibrationTables> ret = readsAndIgnores.apply(ParDo
             .named("computeBlockStatistics")
-            .of(new DoFn<KV<String, CoGbkResult>, RecalibrationTables>() {
+            .of(new DoFnWLog<KV<String, CoGbkResult>, RecalibrationTables>("computeBlockStatistics") {
               private static final long serialVersionUID = 1L;
               CalibrationTablesBuilder ct;
               Stopwatch timer;
@@ -222,6 +223,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
 
               @Override
               public void startBundle(DoFn<KV<String, CoGbkResult>, RecalibrationTables>.Context c) throws Exception {
+                super.startBundle(c);
                 timer = Stopwatch.createStarted();
                 SAMFileHeader header = readsHeader;
 
@@ -253,6 +255,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                     first = false;
                   }
                   logger.info(String.format("Done downloading reference files (%s ms)\n", timer.elapsed(TimeUnit.MILLISECONDS)));
+                  bunny.stepEnd("Download reference files");
                 }
 
                 ct = new CalibrationTablesBuilder(header, localReference, toolArgs);
@@ -266,7 +269,8 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                 List<GATKRead> reads = new ArrayList<>();
                 Iterable<GATKRead> readsIter = e.getValue().getAll(BaseRecalibratorDataflowUtils.readTag);
                 Iterables.addAll(reads, readsIter);
-                nReads += reads.size();
+                int readsInThisGroup = reads.size();
+                nReads += readsInThisGroup;
                 // get the skip intervals
                 List<SimpleInterval> skipIntervals = new ArrayList<>();
                 Iterables.addAll(skipIntervals, e.getValue().getAll(BaseRecalibratorDataflowUtils.intervalTag));
@@ -281,10 +285,12 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                 });
                 // update our statistics
                 ct.add(reads, skipIntervals);
+                bunny.stepEnd("processElement '"+e.getKey()+"' with "+readsInThisGroup+" reads.");
               }
 
               @Override
               public void finishBundle(DoFn<KV<String, CoGbkResult>, RecalibrationTables>.Context c) throws Exception {
+                super.finishBundle(c);
                 ct.done();
                 c.output(ct.getRecalibrationTables());
                 logger.info("Finishing a block statistics bundle. It took " + timer.elapsed(TimeUnit.MILLISECONDS) + " ms to process " + nBlocks + " blocks, " + nReads + " reads.");
@@ -306,7 +312,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
         // call finalize on the result
         .apply(ParDo
             .named("finalizeRecalTables")
-            .of(new DoFn<RecalibrationTables, RecalibrationTables>() {
+            .of(new DoFnWLog<RecalibrationTables, RecalibrationTables>("finalizeRecalTables") {
               private static final long serialVersionUID = 1L;
               @Override
               public void processElement(ProcessContext c) throws Exception {

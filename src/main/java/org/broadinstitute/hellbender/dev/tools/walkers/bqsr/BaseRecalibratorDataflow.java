@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.dev.BunnyLog;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.DataflowReadFilter;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -103,9 +104,12 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
     // set up with the user's arguments, kept around to save the textual report.
     private BaseRecalibratorWorker baseRecalibratorWorker;
 
+    private BunnyLog bunny = new BunnyLog(logger);
+
     @Override
     protected void setupPipeline(Pipeline pipeline) {
         try {
+            bunny.start("BaseRecalibratorDataflow");
             saveTextualTables = (null != BRAC.RAC.RECAL_TABLE_FILE);
 
             referencePath = BRAC.referenceArguments.getReferenceFileName();
@@ -119,7 +123,6 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             PCollection<RecalibrationTables> aggregated =
                     BaseRecalibratorDataflowUtils.getRecalibrationTables(header, reads, referencePath, BRAC, skipIntervals);
 
-
             // If saving textual output then we need to make sure we can get to the output
             if (saveTextualTables) {
                 if (null == outputTablesPath) {
@@ -131,6 +134,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                     throw new UserException("If running on the cloud, either leave outputTablesPath unset or point it to a GCS location.");
                 }
             }
+            bunny.stepEnd("setup");
         } catch (UserException rx) {
             throw rx;
         } catch (GATKException rx) {
@@ -142,6 +146,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
 
     @Override
     protected void afterPipeline(Pipeline p) {
+        bunny.stepEnd("dataflow");
         if (saveTextualTables) {
             //  Get the table back and output it in text form to RAC.RECAL_TABLE.
             // TODO: if running on the cloud and the output destination is on the cloud, then it's faster to have a worker do it directly, without the file roundtrip.
@@ -150,10 +155,12 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                 RecalibrationTables rt = (RecalibrationTables) o;
                 baseRecalibratorWorker.onTraversalStart(null);
                 baseRecalibratorWorker.saveReport(rt, baseRecalibratorWorker.getRequestedCovariates());
+                bunny.stepEnd("repatriate_report");
             } catch (Exception e) {
                 throw new GATKException("Unexpected: unable to read results file. (bug?)", e);
             }
         }
+        bunny.end();
     }
 
     protected static String pickOutputTablesPath(boolean remote, String stagingLocation) {
