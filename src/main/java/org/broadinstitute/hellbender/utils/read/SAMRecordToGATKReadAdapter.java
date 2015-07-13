@@ -28,7 +28,11 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
         this(samRecord, UUID.randomUUID());
     }
 
-    private SAMRecordToGATKReadAdapter( final SAMRecord samRecord, final UUID uuid ) {
+    /**
+     * Constructor that allows an explicit UUID to be passed in -- only meant
+     * for internal use and test class use, which is why it's package protected.
+     */
+    SAMRecordToGATKReadAdapter( final SAMRecord samRecord, final UUID uuid ) {
         this.samRecord = samRecord;
         this.uuid = uuid;
     }
