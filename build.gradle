@@ -75,8 +75,13 @@ dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
     compile 'com.github.samtools:htsjdk:1.134'
-    compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.11'
-    compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
+    compile ('com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.11') {
+        // an upstream dependency includes guava-jdk5, but we want the newer version instead.
+        exclude module: 'guava-jdk5'
+    }
+    compile ('com.google.cloud.genomics:gatk-tools-java:1.1') {
+        exclude module: 'guava-jdk5'
+    }
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
     compile 'org.apache.commons:commons-lang3:3.4'
@@ -86,10 +91,14 @@ dependencies {
     compile 'commons-io:commons-io:2.4'
     compile 'org.reflections:reflections:0.9.10'
     compile 'net.sf.jopt-simple:jopt-simple:4.9-beta-1'
-    compile 'com.google.guava:guava:18.0'
     compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150602'
-    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev50-1.19.0'
-    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.25'
+    compile ('com.google.apis:google-api-services-genomics:v1beta2-rev50-1.19.0') {
+        exclude module: 'guava-jdk5'
+    }
+    compile ('com.google.cloud.genomics:google-genomics-utils:v1beta2-0.25') {
+        exclude module: 'guava-jdk5'
+    }
+    compile 'com.google.guava:guava:18.0'
     compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.testng:testng:6.9.4' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
     compile 'com.cloudera.dataflow.spark:spark-dataflow:0.2.1'
