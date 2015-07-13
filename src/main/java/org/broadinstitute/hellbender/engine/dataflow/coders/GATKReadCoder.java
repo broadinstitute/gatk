@@ -18,6 +18,11 @@ import java.io.OutputStream;
  * Examines the actual implementation backing the interface, and delegates to the appropriate coder.
  * Encodes the actual type in the byte stream so that the appropriate decoder can be used on the other
  * end.
+ *
+ * Note that when dealing with a GATKRead PCollection that contains a mix of different backing implementations,
+ * you may need to explicitly invoke setCoder(new GATKReadCoder()) on your transform, even if GATKReadCoder
+ * has already been registered as the coder for GATKRead, otherwise dataflow may be unable to infer the
+ * right coder for your PCollection. This is known to be the case with Create.of(Iterable), in particular.
  */
 public final class GATKReadCoder extends CustomCoder<GATKRead> {
     private static final long serialVersionUID = 1l;

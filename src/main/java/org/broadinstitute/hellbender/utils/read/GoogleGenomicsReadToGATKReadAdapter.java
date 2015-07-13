@@ -33,7 +33,11 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
         this(genomicsRead, UUID.randomUUID());
     }
 
-    private GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead, final UUID uuid ) {
+    /**
+     * Constructor that allows an explicit UUID to be passed in -- only meant
+     * for internal use and test class use, which is why it's package protected.
+     */
+    GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead, final UUID uuid ) {
         this.genomicsRead = genomicsRead;
         this.uuid = uuid;
     }

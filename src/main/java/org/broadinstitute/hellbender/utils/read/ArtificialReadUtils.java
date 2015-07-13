@@ -163,6 +163,49 @@ public final class ArtificialReadUtils {
     }
 
     /**
+     * Creates an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     *
+     * The read will consist of the specified number of Q30 'A' bases, and will be
+     * mapped to contig "1" at the specified start position.
+     *
+     * @param uuid UUID of the new read
+     * @param name name of the new read
+     * @param start start position of the new read
+     * @param length number of bases in the new read
+     * @return an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     */
+    public static GATKRead createSamBackedReadWithUUID( final UUID uuid, final String name, final int start, final int length ) {
+        final SAMFileHeader header = createArtificialSamHeader();
+        final byte[] bases = Utils.dupBytes((byte)'A', length);
+        final byte[] quals = Utils.dupBytes((byte) 30, length);
+
+        final SAMRecord sam = createArtificialSAMRecord(header, bases, quals, length + "M");
+        sam.setReadName(name);
+        sam.setAlignmentStart(start);
+        return new SAMRecordToGATKReadAdapter(sam, uuid);
+    }
+
+    /**
+     * Creates an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
+     *
+     * The read will consist of the specified number of Q30 'A' bases, and will be
+     * mapped to contig "1" at the specified start position.
+     *
+     * @param uuid UUID of the new read
+     * @param name name of the new read
+     * @param start start position of the new read
+     * @param length number of bases in the new read
+     * @return an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
+     */
+    public static GATKRead createGoogleBackedReadWithUUID( final UUID uuid, final String name, final int start, final int length ) {
+        final byte[] bases = Utils.dupBytes((byte)'A', length);
+        final byte[] quals = Utils.dupBytes((byte) 30, length);
+
+        final Read googleRead = createArtificialGoogleGenomicsRead(name, "1", start, bases, quals, length + "M");
+        return new GoogleGenomicsReadToGATKReadAdapter(googleRead, uuid);
+    }
+
+    /**
      * Create an artificial SAMRecord based on the parameters.  The cigar string will be *M, where * is the length of the read
      *
      * @param header         the SAM header to associate the read with
