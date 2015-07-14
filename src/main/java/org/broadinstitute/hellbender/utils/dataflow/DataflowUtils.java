@@ -124,10 +124,8 @@ public final class DataflowUtils {
      */
     @SuppressWarnings("unchecked")
     public static PCollection<GATKRead> getReadsFromHadoopBam(final Pipeline pipeline, final List<SimpleInterval> intervals, final ValidationStringency stringency, final String bam) {
-        PCollection<KV<LongWritable, SAMRecordWritable>> input =
-            (PCollection<KV<LongWritable, SAMRecordWritable>>) pipeline.apply(
-                HadoopIO.Read.from(bam).withFormatClass(AnySAMInputFormat.class)
-                    .withKeyClass(LongWritable.class).withValueClass(SAMRecordWritable.class));
+        PCollection<KV<LongWritable, SAMRecordWritable>> input = pipeline.apply(
+                HadoopIO.Read.from(bam, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class));
         return input.apply(ParDo.of(new DoFn<KV<LongWritable, SAMRecordWritable>, GATKRead>() {
             private static final long serialVersionUID = 1L;
             @Override
