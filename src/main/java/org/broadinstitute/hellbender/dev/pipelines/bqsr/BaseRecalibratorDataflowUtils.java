@@ -8,8 +8,6 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
 import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
@@ -92,11 +90,12 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
      */
     public static void ensureReferenceIsReadable(final PipelineOptions popts, String filename) throws IOException, GeneralSecurityException {
         for (String fn : getRelatedFiles(filename)) {
-            if (BucketUtils.isCloudStorageUrl(fn)) {
-                // make sure we can access those files on Google Cloud Storage.
-                GcsPath path = GcsPath.fromUri(fn);
-                // this will throw if we can't get to the file.
-                new GcsUtil.GcsUtilFactory().create(popts).fileSize(path);
+            if (BucketUtils.isRemoteStorageUrl(fn)) {
+                // make sure we can access those remote files.
+                try (InputStream inputStream = BucketUtils.openFile(fn, popts)) {
+                    // this will throw if we can't get to the file.
+                    int ignored = inputStream.read();
+                }
             } else {
                 // make sure we can access those files on the local filesystem.
                 if (!new File(fn).canRead()) {
@@ -232,7 +231,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                     SAMFileHeader header = readsHeader;
 
                     String localReference = referenceFileName;
-                    if (BucketUtils.isCloudStorageUrl(referenceFileName)) {
+                    if (BucketUtils.isRemoteStorageUrl(referenceFileName)) {
                         // the reference is on GCS, download all 3 files locally first.
                         boolean first = true;
                         for (String fname : getRelatedFiles(referenceFileName)) {
@@ -246,7 +245,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                                 if (first) localReference = localName;
                             } else {
                                 try (
-                                    InputStream in = Channels.newInputStream(new GcsUtil.GcsUtilFactory().create(c.getPipelineOptions()).open(GcsPath.fromUri(fname)));
+                                    InputStream in = BucketUtils.openFile(fname, c.getPipelineOptions());
                                     FileOutputStream fout = new FileOutputStream(localName)) {
                                     final byte[] buf = new byte[1024 * 1024];
                                     int count;

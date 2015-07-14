@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import htsjdk.samtools.SAMFileHeader;
@@ -45,7 +44,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -183,14 +181,13 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
         String beforePath = filenames.get(0);
 
         // input reads
-        if (BucketUtils.isCloudStorageUrl(beforePath)) {
+        if (BucketUtils.isRemoteStorageUrl(beforePath)) {
             // set up ingestion on the cloud
             // but read the header locally
-            GcsPath path = GcsPath.fromUri(beforePath);
-            InputStream inputstream = Channels.newInputStream(new GcsUtil.GcsUtilFactory().create(pipeline.getOptions())
-                    .open(path));
+            InputStream inputstream = BucketUtils.openFile(beforePath, pipeline.getOptions());
             SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(SamInputResource.of(inputstream));
             header = reader.getFileHeader();
+            reader.close();
 
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final ReadFilter readFilter = BaseRecalibratorWorker.readFilter(header);
