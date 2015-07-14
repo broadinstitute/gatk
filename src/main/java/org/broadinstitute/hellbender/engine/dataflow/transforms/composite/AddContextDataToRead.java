@@ -9,7 +9,11 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
 import com.google.common.collect.Lists;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.KeyReadsByUUID;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -22,18 +26,23 @@ import java.util.UUID;
 /**
  * AddContextDataToRead pairs reference bases and overlapping variants with each GATKRead in the PCollection input.
  * The variants are obtained from a local file (later a GCS Bucket). The reference bases come from the Google Genomics API.
+ *
+ * This transform is intended for direct use in pipelines.
  */
 public class AddContextDataToRead {
-    public static PCollection<KV<GATKRead, ReadContextData>> Add(PCollection<GATKRead> pReads,  RefAPISource refAPISource, RefAPIMetadata refAPIMetadata, VariantsDataflowSource variantsDataflowSource) {
+    public static PCollection<KV<GATKRead, ReadContextData>> add(PCollection<GATKRead> pReads, RefAPISource refAPISource, RefAPIMetadata refAPIMetadata, VariantsDataflowSource variantsDataflowSource) {
         PCollection<Variant> pVariants = variantsDataflowSource.getAllVariants();
-        PCollection<KV<GATKRead, Iterable<Variant>>> kvReadVariants = KeyVariantsByRead.Key(pVariants, pReads);
+        PCollection<KV<GATKRead, Iterable<Variant>>> kvReadVariants = KeyVariantsByRead.key(pVariants, pReads);
         PCollection<KV<GATKRead, ReferenceBases>> kvReadRefBases =
                 RefBasesForReads.addBases(pReads, refAPISource, refAPIMetadata);
-        return Join(pReads, kvReadRefBases, kvReadVariants);
+        return join(pReads, kvReadRefBases, kvReadVariants);
 
     }
 
-    protected static PCollection<KV<GATKRead, ReadContextData>> Join(PCollection<GATKRead> pReads, PCollection<KV<GATKRead, ReferenceBases>> kvReadRefBases, PCollection<KV<GATKRead, Iterable<Variant>>> kvReadVariants) {
+    /**
+     * Preconditions per read: Exactly one ReferenceBases object and zero or one iterable of Variants.
+     */
+    protected static PCollection<KV<GATKRead, ReadContextData>> join(PCollection<GATKRead> pReads, PCollection<KV<GATKRead, ReferenceBases>> kvReadRefBases, PCollection<KV<GATKRead, Iterable<Variant>>> kvReadVariants) {
         // We could add a check that all of the reads in kvReadRefBases, pVariants, and pReads are the same.
         PCollection<KV<UUID, Iterable<Variant>>> UUIDVariants = kvReadVariants.apply(ParDo.of(new DoFn<KV<GATKRead, Iterable<Variant>>, KV<UUID, Iterable<Variant>>>() {
             private static final long serialVersionUID = 1L;
@@ -63,36 +72,29 @@ public class AddContextDataToRead {
 
         PCollection<KV<UUID, ReadContextData>> UUIDcontext = coGbkInput.apply(ParDo.of(new DoFn<KV<UUID, CoGbkResult>, KV<UUID, ReadContextData>>() {
             private static final long serialVersionUID = 1L;
+
             @Override
             public void processElement(ProcessContext c) throws Exception {
                 Iterable<Iterable<Variant>> variants = c.element().getValue().getAll(variantTag);
                 Iterable<ReferenceBases> referenceBases = c.element().getValue().getAll(referenceTag);
 
-                // TODO: We should be enforcing that this is a singleton with getOnly somehow...
                 List<Iterable<Variant>> vList = Lists.newArrayList(variants);
                 if (vList.isEmpty()) {
                     vList.add(Lists.newArrayList());
                 }
                 if (vList.size() > 1) {
-                    throw new GATKException("expected one list of varints, got " + vList.size());
+                    throw new GATKException("expected one list of variants, got " + vList.size());
                 }
                 List<ReferenceBases> bList = Lists.newArrayList(referenceBases);
                 if (bList.size() != 1) {
                     throw new GATKException("expected one ReferenceBases, got " + bList.size());
                 }
-
                 c.output(KV.of(c.element().getKey(), new ReadContextData(bList.get(0), vList.get(0))));
             }
         })).setName("kVUUIDReadContextData");
 
-        // Now add the reads back in.
-        PCollection<KV<UUID, GATKRead>> UUIDRead = pReads.apply(ParDo.of(new DoFn<GATKRead, KV<UUID, GATKRead>>() {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public void processElement(ProcessContext c) throws Exception {
-                c.output(KV.of(c.element().getUUID(), c.element()));
-            }
-        })).setName("AddReadsBackIn");
+        // Now add the reads back in: key by UUID, then join back in.
+        PCollection<KV<UUID, GATKRead>> UUIDRead = pReads.apply(new KeyReadsByUUID());
         final TupleTag<GATKRead> readTag = new TupleTag<>();
         final TupleTag<ReadContextData> contextDataTag = new TupleTag<>();
 
@@ -107,7 +109,6 @@ public class AddContextDataToRead {
                 Iterable<GATKRead> reads = c.element().getValue().getAll(readTag);
                 Iterable<ReadContextData> contextDatas = c.element().getValue().getAll(contextDataTag);
 
-                // TODO: We should be enforcing that this is a singleton with getOnly somehow...
                 List<GATKRead> rList = Lists.newArrayList();
                 for (GATKRead r : reads) {
                     rList.add(r);
@@ -125,7 +126,7 @@ public class AddContextDataToRead {
 
                 c.output(KV.of(rList.get(0), cList.get(0)));
             }
-        })).setName("lastAddContextDataToRead");
+        })).setName("joinReadwithContextData");
     }
 
 }

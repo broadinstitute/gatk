@@ -2,10 +2,14 @@ package org.broadinstitute.hellbender.utils.reference;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.Arrays;
 
+/**
+ * ReferenceBases stores the bases of the reference genome for a particular interval.
+ */
 public class ReferenceBases implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -13,6 +17,8 @@ public class ReferenceBases implements Serializable {
     private final SimpleInterval interval;
 
     public ReferenceBases( final byte[] bases, final SimpleInterval interval ) {
+        Utils.nonNull(bases);
+        Utils.nonNull(interval);
         if (interval.size() != bases.length) {
             throw new IllegalArgumentException(
                     "interval must have same length as bases, " + interval + " " + interval.size() + "," + bases.length);
@@ -56,12 +62,17 @@ public class ReferenceBases implements Serializable {
         return interval;
     }
 
+    /**
+     * getSubset returns only the bases of the interval passed in.
+     * @param interval, the subset to be returned
+     * @return the subset of ReferenceBases
+     */
     public ReferenceBases getSubset(SimpleInterval interval) {
         if (!this.interval.contains(interval)) {
-            throw new GATKException("Reference doesn't match read...");
+            throw new GATKException("Reference doesn't match input interval");
         }
         int start = interval.getStart() - this.interval.getStart();
         int end = interval.getEnd() - this.interval.getStart();
-        return new ReferenceBases(Arrays.copyOfRange(this.bases, start, end + 1/* ??? */), interval);
+        return new ReferenceBases(Arrays.copyOfRange(this.bases, start, end + 1), interval);
     }
 }

@@ -27,11 +27,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import static org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapterTest.createVariantContextVariantAdapterForTesting;
+
 public class VariantSourceTest extends BaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
 
-    UUID defaultUUID() {
+    static UUID defaultUUID() {
         return new UUID(0L, 0L);
     }
 
@@ -39,34 +41,29 @@ public class VariantSourceTest extends BaseTest {
         private static final long serialVersionUID = 1L;
         @Override
         public void processElement(ProcessContext c) throws Exception {
-            ((VariantContextVariantAdapter) c.element()).clearUUID();
-            c.output(c.element());
+            VariantContextVariantAdapter variantContextVariantAdapterForTesting =
+                    createVariantContextVariantAdapterForTesting(((VariantContextVariantAdapter) c.element()), defaultUUID());
+            c.output(variantContextVariantAdapterForTesting);
         }
     }
 
     @Test(dataProvider = "RealVariantData")
     public void testVariantPCollection(final List<Variant> variants) {
-        List<Variant> variants2 = Lists.newArrayList(variants.iterator());
-
+        for (int i = 0; i < variants.size(); ++i) {
+            // Update the element with a cleared UUID.
+            variants.set(i, createVariantContextVariantAdapterForTesting(((VariantContextVariantAdapter) variants.get(i)), defaultUUID()));
+        }
         // Now make a PCollection, to verify that variants can be coded.
         Pipeline p = TestPipeline.create();
-
-        PCollection<Variant> pVariants = p.apply(Create.of(variants));
-        DataflowAssert.that(pVariants).containsInAnyOrder(variants2);
 
         // Now, we can test that we can get a PCollection from a file
         List<String> files = Arrays.asList(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
         VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(files, p);
         PCollection<Variant> allVariants = variantsDataflowSource.getAllVariants();
 
-
         // We have to clear the UUIDs to make the comparison.
-        allVariants = allVariants.apply(ParDo.of(new clearUUIDDoFn()));
-        for (Variant v : variants2) {
-            ((VariantContextVariantAdapter) v).clearUUID();
-        }
-        DataflowAssert.that(allVariants).containsInAnyOrder(variants2);
-
+        PCollection<Variant> allVariants2 = allVariants.apply(ParDo.of(new clearUUIDDoFn()));
+        DataflowAssert.that(allVariants2).containsInAnyOrder(variants);
         p.run();
     }
 

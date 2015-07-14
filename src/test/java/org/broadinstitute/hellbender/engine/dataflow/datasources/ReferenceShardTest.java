@@ -39,7 +39,7 @@ public final class ReferenceShardTest {
     }
 
     public GATKRead makeRead(int start, int length, int i) {
-        return ArtificialReadUtils.createRandomRead(start, length, i);
+        return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, i), Integer.toString(i), start, length);
     }
 
     @Test(dataProvider = "reads")

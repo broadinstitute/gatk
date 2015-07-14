@@ -128,7 +128,7 @@ public class DataflowTestData {
     }
 
     public GATKRead makeRead(int start, int length, int i) {
-        return ArtificialReadUtils.createRandomRead(start, length, i);
+        return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, i), Integer.toString(i), start, length);
     }
 
     private SimpleInterval makeInterval(KV<Integer, Integer> startLength) {

@@ -13,12 +13,18 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
     private static final long serialVersionUID = 1L;
 
     final private VariantContext variantContext;
-    private UUID uuid;
+    final private UUID uuid;
 
     public VariantContextVariantAdapter(VariantContext vc) {
         this.variantContext = vc;
         this.uuid = UUID.randomUUID();
     }
+
+    VariantContextVariantAdapter(VariantContextVariantAdapter vcvc, UUID uuid) {
+        this.variantContext = vcvc.variantContext;
+        this.uuid = uuid;
+    }
+
     @Override
     public String getContig() { return variantContext.getContig(); }
     @Override
@@ -33,11 +39,6 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
     @Override
     public UUID getUUID() {
         return uuid;
-    }
-
-    // For testing purposes only.
-    public void clearUUID() {
-        this.uuid = new UUID(0L, 0L);
     }
 
     @Override

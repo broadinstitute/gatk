@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
-import com.beust.jcommander.internal.Maps;
 import com.google.api.client.util.Sets;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.transforms.join.CoGbkResult;
@@ -12,7 +11,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 
 /**
@@ -94,6 +95,7 @@ public class RemoveDuplicateReadVariantPairs extends PTransform<PCollection<KV<G
                                     uuidHashSet.add(uuid);
                                 }
                             }
+                            /*
                             // Now find every variant for each UUID.
                             Map<UUID, Variant> variantMap = Maps.newHashMap();
                             for (KV<UUID,Variant> uVariants : kVariants) {
@@ -107,14 +109,13 @@ public class RemoveDuplicateReadVariantPairs extends PTransform<PCollection<KV<G
                             while (iterator.hasNext()) {
                                 iVariants.add(iterator.next().getValue());
                                 iterator.remove();
-                            }
-                            /*
+                            }*/
                             Set<Variant> iVariants = Sets.newHashSet();
                             for (KV<UUID,Variant> uVariants : kVariants) {
                                 if (uuidHashSet.contains(uVariants.getKey())) {
                                     iVariants.add(uVariants.getValue());
                                 }
-                            }*/
+                            }
 
                             // Output KV<ReadUUID,Iterable<Variant>>
                             c.output(KV.of(c.element().getKey(), iVariants));

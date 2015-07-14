@@ -16,7 +16,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class keyReadByRefShardTest {
+public final class KeyReadByRefShardTest {
 
     @DataProvider(name = "refShards")
     public Object[][] refShards(){

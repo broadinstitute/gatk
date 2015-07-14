@@ -30,7 +30,7 @@ public final class RemoveDuplicateReadVariantPairsTest {
                 KV.of(dupes.get(3).getKey().getUUID(), dupes.get(3).getValue().getUUID()),
                 KV.of(dupes.get(4).getKey().getUUID(), dupes.get(4).getValue().getUUID()));
 
-        Iterable<UUID> uuids0 = Arrays.asList(dupes.get(0).getValue().getUUID(), dupes.get(1).getValue().getUUID());
+        Iterable<UUID> uuids0 = Arrays.asList(dupes.get(1).getValue().getUUID(), dupes.get(0).getValue().getUUID());
         Iterable<UUID> uuids2 = Arrays.asList(dupes.get(2).getValue().getUUID());
         Iterable<UUID> uuids3 = Arrays.asList(dupes.get(3).getValue().getUUID());
         List<KV<UUID, Iterable<UUID>>> kvUUIDiUUID = Arrays.asList(

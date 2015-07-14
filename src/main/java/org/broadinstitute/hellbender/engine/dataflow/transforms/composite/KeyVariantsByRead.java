@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.utils.variant.Variant;
  * See the diagram in PairReadsAndVariants.java for more details.
  */
 public class KeyVariantsByRead {
-    public static PCollection<KV<GATKRead, Iterable<Variant>>> Key(PCollection<Variant> pVariants, PCollection<GATKRead> pReads) {
+    public static PCollection<KV<GATKRead, Iterable<Variant>>> key(PCollection<Variant> pVariants, PCollection<GATKRead> pReads) {
         PCollection<KV<GATKRead, Variant>> readVariants = PairReadsAndVariants.pair(pReads, pVariants);
 
         // At this point, we ALMOST have what we want, but we need to remove duplicates KV<Read, Variant> pairs.

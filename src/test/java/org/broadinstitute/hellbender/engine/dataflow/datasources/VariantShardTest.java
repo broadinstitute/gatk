@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -29,7 +25,7 @@ public final class VariantShardTest {
     }
 
     public GATKRead makeRead(int start, int length, int i) {
-        return ArtificialReadUtils.createRandomRead(start, length, i);
+        return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, i), Integer.toString(i), start, length);
     }
 
     @Test(dataProvider = "variantShards")

@@ -59,7 +59,7 @@ public final class AddContextDataToReadTest {
         PCollection<KV<GATKRead, Iterable<Variant>>> pReadVariants =
                 p.apply(Create.of(kvReadiVariant)).setCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder())));
 
-        PCollection<KV<GATKRead, ReadContextData>> joinedResults = AddContextDataToRead.Join(pReads, pReadRef, pReadVariants);
+        PCollection<KV<GATKRead, ReadContextData>> joinedResults = AddContextDataToRead.join(pReads, pReadRef, pReadVariants);
         DataflowAssert.that(joinedResults).containsInAnyOrder(kvReadContextData);
         p.run();
     }
@@ -88,7 +88,7 @@ public final class AddContextDataToReadTest {
         Map<String, String> referenceNameToIdTable = Maps.newHashMap();
         referenceNameToIdTable.put(referenceName, refId);
         RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-        PCollection<KV<GATKRead, ReadContextData>> result = AddContextDataToRead.Add(pReads, mockSource, refAPIMetadata, mockVariantsSource);
+        PCollection<KV<GATKRead, ReadContextData>> result = AddContextDataToRead.add(pReads, mockSource, refAPIMetadata, mockVariantsSource);
         DataflowAssert.that(result).containsInAnyOrder(kvReadContextData);
         p.run();
     }

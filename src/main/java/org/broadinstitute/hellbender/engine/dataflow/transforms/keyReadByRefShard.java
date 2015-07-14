@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * KeyReadByVariantShard takes a PCollection of reads and keys each read by the reference shard using start position.
+ * KeyReadByRefShard takes a PCollection of reads and keys each read by the reference shard using start position.
  * This is part of a transform that joins references bases to reads.
  *
  * |---- shard 0 -----|---- shard 1 -----|---- shard 2 -----|---- shard 3 -----|---- shard 4 -----|

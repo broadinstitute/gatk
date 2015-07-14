@@ -73,8 +73,6 @@ public final class DataflowUtils {
      */
     public static void registerGATKCoders( final Pipeline p ) {
         DataflowWorkarounds.registerGenomicsCoders(p);
-        p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
-        p.getCoderRegistry().registerCoder(VariantShard.class, VariantShard.CODER);
         p.getCoderRegistry().registerCoder(GATKRead.class, new GATKReadCoder());
         p.getCoderRegistry().registerCoder(GoogleGenomicsReadToGATKReadAdapter.class, GoogleGenomicsReadToGATKReadAdapter.CODER);
         p.getCoderRegistry().registerCoder(SAMRecordToGATKReadAdapter.class, SerializableCoder.of(SAMRecordToGATKReadAdapter.class));
@@ -87,6 +85,8 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(RefAPIMetadata.class, SerializableCoder.of(RefAPIMetadata.class));
         p.getCoderRegistry().registerCoder(ReferenceBases.class, SerializableCoder.of(ReferenceBases.class));
         p.getCoderRegistry().registerCoder(ReadContextData.class, SerializableCoder.of(ReadContextData.class));
+        p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
+        p.getCoderRegistry().registerCoder(VariantShard.class, VariantShard.CODER);
     }
 
     /**
@@ -231,7 +231,6 @@ public final class DataflowUtils {
             }
         }
     }
-
 
 
     /**

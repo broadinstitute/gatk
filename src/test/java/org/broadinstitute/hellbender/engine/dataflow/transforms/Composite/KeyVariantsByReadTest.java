@@ -39,7 +39,7 @@ public final class KeyVariantsByReadTest {
         PCollection<GATKRead> pReads = DataflowTestUtils.PCollectionCreateAndVerify(p, reads);
         PCollection<Variant> pVariant = DataflowTestUtils.PCollectionCreateAndVerify(p, variantList);
 
-        PCollection<KV<GATKRead, Iterable<Variant>>> result = KeyVariantsByRead.Key(pVariant, pReads);
+        PCollection<KV<GATKRead, Iterable<Variant>>> result = KeyVariantsByRead.key(pVariant, pReads);
         DataflowAssert.that(result).containsInAnyOrder(kvReadiVariant);
         p.run();
     }

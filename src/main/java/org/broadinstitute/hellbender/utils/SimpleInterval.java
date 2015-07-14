@@ -1,8 +1,6 @@
  package org.broadinstitute.hellbender.utils;
 
 
-import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
-import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -14,7 +12,6 @@ import java.io.Serializable;
  *
  *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
- @DefaultCoder(SerializableCoder.class)
 public final class SimpleInterval implements Locatable, Serializable {
 
     private static final long serialVersionUID = 1L;

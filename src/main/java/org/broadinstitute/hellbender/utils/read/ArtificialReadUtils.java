@@ -404,6 +404,7 @@ public final class ArtificialReadUtils {
         return createRandomRead(header, length, allowNs);
     }
 
+    /*
     public static GATKRead createRandomRead(int start, int length, int UUIDSeed) {
         List<CigarElement> cigarElements = new LinkedList<>();
         cigarElements.add(new CigarElement(length, CigarOperator.M));
@@ -414,7 +415,8 @@ public final class ArtificialReadUtils {
         SAMRecordToGATKReadAdapter sam = (SAMRecordToGATKReadAdapter) artificialRead;
         //sam.setUUID(new UUID(UUIDSeed, UUIDSeed));
         return artificialRead;
-    }
+    }*/
+
     /**
      * Create random read qualities
      *
