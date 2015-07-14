@@ -542,5 +542,11 @@ public interface GATKRead extends Locatable {
      * @return This read as a Google Genomics model read.
      */
     Read convertToGoogleGenomicsRead();
+
+    /**
+     * @param other Object to compare against
+     * @return True if this is the same class as other and the underlying reads are equal, ignoring UUIDs in the comparison
+     */
+    boolean equalsIgnoreUUID( final Object other );
 }
 

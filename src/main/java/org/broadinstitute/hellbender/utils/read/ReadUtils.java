@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -834,6 +835,32 @@ public final class ReadUtils {
         // Read is aligned to a point after the end of the contig
         if( ! read.isUnmapped() && read.getStart() > contigHeader.getSequenceLength() )
             return false;
+        return true;
+    }
+
+    /**
+     * Returns true if both Lists contain the same reads in the same order, ignoring UUIDs in the comparison.
+     *
+     * @param first first List of GATKReads to check
+     * @param second second List of GATKReads to check
+     * @return true if both Lists contain the same reads in the same order, ignoring UUIDs in the comparison,
+     *         otherwise false
+     */
+    public static boolean readListsAreEqualIgnoreUUID( final List<GATKRead> first, final List<GATKRead> second ) {
+        if ( first == null || second == null ) {
+            return first == null && second == null;
+        }
+
+        if ( first.size() != second.size() ) {
+            return false;
+        }
+
+        for ( int i = 0; i < first.size(); ++i ) {
+            if ( ! first.get(i).equalsIgnoreUUID(second.get(i)) ) {
+                return false;
+            }
+        }
+
         return true;
     }
 }
