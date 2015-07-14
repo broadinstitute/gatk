@@ -9,8 +9,10 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -33,6 +35,7 @@ public class RefAPISource implements Serializable {
     public RefAPISource() { }
 
     /**
+     * Query the Google Genomics API for reference bases spanning the specified interval from the specified reference name.
      *
      * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
      * @param apiData - contains the hashmap that maps from reference name to Id needed for the API call.
@@ -40,11 +43,15 @@ public class RefAPISource implements Serializable {
      * @return the reference bases specified by interval and apiData (using the Google Genomics API).
      */
     public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final RefAPIMetadata apiData, final SimpleInterval interval) {
+        Utils.nonNull(pipelineOptions);
+        Utils.nonNull(apiData);
+        Utils.nonNull(interval);
+
         if (genomicsService == null) {
             genomicsService = createGenomicsService(pipelineOptions);
         }
         if ( !apiData.getReferenceNameToIdTable().containsKey(interval.getContig()) ) {
-            throw new IllegalArgumentException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
+            throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
         }
 
         try {
@@ -55,6 +62,10 @@ public class RefAPISource implements Serializable {
             listRequest.setEnd((long)interval.getEnd());
 
             final ListBasesResponse result = listRequest.execute();
+            if ( result.getSequence() == null ) {
+                throw new UserException("No reference bases returned in query for interval " + interval + ". Is the interval valid for this reference?");
+            }
+
             return new ReferenceBases(result.getSequence().getBytes(), interval);
         }
         catch ( IOException e ) {
@@ -76,7 +87,7 @@ public class RefAPISource implements Serializable {
     }
 
     /**
-     * buildReferenceNameToIdTable produces a table from reference name (sadly not standard names like grch37),
+     * buildReferenceNameToIdTable produces a table from reference name (sadly not standard names like GRCh37),
      * to Ids need for Google Genomics API calls. The table is produced via a query to get the mapping. The query
      * currently takes ~10 seconds, so this table should be cached and no produced per query to get the reference bases.
      * This is clumsy and should be refactored with better Genomics API use (issue 643).
