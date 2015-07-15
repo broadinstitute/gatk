@@ -103,12 +103,15 @@ dependencies {
     compile 'org.testng:testng:6.9.4' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
     compile 'com.cloudera.dataflow.spark:spark-dataflow:0.2.1'
     compile('org.seqdoop:hadoop-bam:7.1.0') {
+        exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
+    compile('org.apache.hadoop:hadoop-client:2.2.0')
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.apache.hadoop:hadoop-minicluster:2.2.0'
     testCompile('org.apache.spark:spark-core_2.10:1.4.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'

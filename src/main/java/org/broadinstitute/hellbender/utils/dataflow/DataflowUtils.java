@@ -8,8 +8,6 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
@@ -38,7 +36,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.nio.channels.Channels;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.UUID;
@@ -54,7 +51,8 @@ public final class DataflowUtils {
 
     public enum SaveDestination {
         LOCAL_DISK,
-        CLOUD
+        CLOUD,
+        HDFS
     };
 
     private DataflowUtils(){} //prevent instantiation
@@ -227,13 +225,17 @@ public final class DataflowUtils {
      * on a cloud worker, which may not be very useful.
      *
      * @param collection A collection with a single serializable object to save.
-     * @param fname the name of the destination, starting with "gs://" to save to GCS.
-     * @returns SaveDestination.CLOUD if saved to GCS, SaveDestination.LOCAL_DISK otherwise.
+     * @param fname the name of the destination, starting with "gs://" to save to GCS, or "hdfs://" to save to HDFS.
+     * @returns SaveDestination.CLOUD if saved to GCS, SaveDestination.HDFS if saved to HDFS,
+     * SaveDestination.LOCAL_DISK otherwise.
      */
     public static <T> SaveDestination serializeSingleObject(PCollection<T> collection, String fname) {
         if (BucketUtils.isCloudStorageUrl(fname)) {
-            saveSingleResultToGCS(collection, fname);
+            saveSingleResultToRemoteStorage(collection, fname);
             return SaveDestination.CLOUD;
+        } else if (BucketUtils.isHadoopUrl(fname)) {
+            saveSingleResultToRemoteStorage(collection, fname);
+            return SaveDestination.HDFS;
         } else {
             saveSingleResultToLocalDisk(collection, fname);
             return SaveDestination.LOCAL_DISK;
@@ -265,17 +267,15 @@ public final class DataflowUtils {
      * Serializes the collection's single object to the specified file.
      *
      * @param collection A collection with a single serializable object to save.
-     * @param gcsDestPath the name of the destination (must start with "gs://").
+     * @param destPath the name of the destination (must start with "gs://" or "hdfs://").
      */
-    public static <T> void saveSingleResultToGCS(final PCollection<T> collection, String gcsDestPath) {
-        collection.apply(ParDo.named("save to " + gcsDestPath)
+    public static <T> void saveSingleResultToRemoteStorage(final PCollection<T> collection, String destPath) {
+        collection.apply(ParDo.named("save to " + destPath)
                 .of(new DoFn<T, Void>() {
                     private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
-                        GcsPath dest = GcsPath.fromUri(gcsDestPath);
-                        GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(c.getPipelineOptions());
-                        try (ObjectOutputStream out = new ObjectOutputStream(Channels.newOutputStream(gcsUtil.create(dest, "application/octet-stream")))) {
+                        try (ObjectOutputStream out = new ObjectOutputStream(BucketUtils.createFile(destPath, c.getPipelineOptions()))) {
                             out.writeObject(c.element());
                         }
                     }
