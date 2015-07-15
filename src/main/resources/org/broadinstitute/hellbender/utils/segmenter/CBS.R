@@ -5,22 +5,24 @@
 library(DNAcopy)
 library(naturalsort)
 
-# Parse arguments
-library(argparser)
-p <- arg.parser("A text file modifying program");
-p <- add.argument(p, "sample_name", help="sample name");
-p <- add.argument(p, "targets_file", help="input file");
-p <- add.argument(p, "output_file", help="output file name");
-p <- add.argument(p, "min_log_value", help="values will be thresholded to this value", default=-10);
-argv = parse.args(p, argv = commandArgs(trailingOnly = TRUE))
-print(argv)
+library(optparse)
+option_list <- list(
+    make_option(c("--sample_name", "-sample_name"), dest="sample_name", action="store"),
+    make_option(c("--targets_file", "-targets_file"), dest="targets_file", action="store"),
+    make_option(c("--output_file", "-output_file"), dest="output_file", action="store"),
+    make_option(c("--min_log_value", "-min_log_value"), dest="min_log_value", action="store"))
 
-sample_name=argv[["sample_name"]]
-tn_file=argv[["targets_file"]]
-output_file=argv[["output_file"]]
+opt <- parse_args(OptionParser(option_list=option_list))
+print(opt)
+save(opt, file="debug.RData")
+
+sample_name=opt[["sample_name"]]
+tn_file=opt[["targets_file"]]
+output_file=opt[["output_file"]]
+min_log_value=as.numeric(opt[["min_log_value"]])
 
 # Use a function for debugging purposes
-segment_data = function(sample_name, tn_file, output_file, min_log_value=-10) {
+segment_data = function(sample_name, tn_file, output_file, min_log_value) {
 	# Read in file and extract needed data
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	contig = tn[,"CONTIG"]
@@ -55,4 +57,4 @@ segment_data = function(sample_name, tn_file, output_file, min_log_value=-10) {
 	write.table(segmented, file=output_file, sep="\t", quote=FALSE, row.names=FALSE)
 }
 
-segment_data(sample_name, tn_file, output_file)
+segment_data(sample_name, tn_file, output_file, min_log_value)
