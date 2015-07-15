@@ -11,6 +11,10 @@ import java.util.Random;
  */
 public final class BaseUtils {
 
+    public static boolean isNBase(byte base) {
+        return base == 'N' || base == 'n';
+    }
+
     public enum Base {
         A ('A'),
         C ('C'),

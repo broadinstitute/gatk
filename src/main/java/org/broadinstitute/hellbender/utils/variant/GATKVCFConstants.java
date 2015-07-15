@@ -13,11 +13,8 @@ public final class GATKVCFConstants {
     public static final String ALLELE_BALANCE_HET_KEY =             "ABHet";
     public static final String ALLELE_BALANCE_HOM_KEY =             "ABHom";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
-    public static final String BEAGLE_AC_COMP_KEY =                 "ACH"; //BeagleOutputToVCF
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
-    public static final String BEAGLE_AF_COMP_KEY =                 "AFH"; //BeagleOutputToVCF
     public static final String ORIGINAL_AN_KEY =                    "AN_Orig"; //SelectVariants
-    public static final String BEAGLE_AN_COMP_KEY =                 "ANH"; //BeagleOutputToVCF
     public static final String BASE_COUNTS_KEY =                    "BaseCounts";
     public static final String BASE_QUAL_RANK_SUM_KEY =             "BaseQRankSum";
     public static final String GENOTYPE_AND_VALIDATE_STATUS_KEY =   "callStatus";
@@ -53,9 +50,7 @@ public final class GATKVCFConstants {
     public static final String NOCALL_CHROM_KEY =                   "NCC";
     public static final String NUMBER_OF_DISCOVERED_ALLELES_KEY =   "NDA";
     public static final String NEGATIVE_LABEL_KEY =                 "NEGATIVE_TRAIN_SITE";
-    public static final String NUM_GENOTYPES_CHANGED_KEY =          "NumGenotypesChanged"; //BeagleOutputToVCF
     public static final String NON_DIPLOID_RATIO_KEY =              "OND";
-    public static final String ORIGINAL_ALT_ALLELE_INFO_KEY =       "OriginalAltAllele"; //BeagleOutputToVCF
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
     public static final String N_BASE_COUNT_KEY =                   "PercentNBase";
@@ -65,7 +60,6 @@ public final class GATKVCFConstants {
     public static final String PANEL_OF_NORMALS_COUNT_KEY =         "PON"; //M2
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
     public static final String QUAL_BY_DEPTH_KEY =                  "QD";
-    public static final String BEAGLE_R2_KEY =                      "R2"; //BeagleOutputToVCF
     public static final String READ_POS_RANK_SUM_KEY =              "ReadPosRankSum";
     public static final String REFSAMPLE_DEPTH_KEY =                "REFDEPTH";
     public static final String REPEATS_PER_ALLELE_KEY =             "RPA";
@@ -94,7 +88,6 @@ public final class GATKVCFConstants {
     public static final String LOW_COVERAGE_LOCI =                  "LL"; //DiagnoseTargets
     public final static String MIN_DP_FORMAT_KEY =                  "MIN_DP";
     public static final String MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY = "MQ0";
-    public static final String ORIGINAL_GENOTYPE_KEY =              "OG"; //BeagleOutputToVCF
     public static final String HAPLOTYPE_CALLER_PHASING_GT_KEY =    "PGT";
     public static final String HAPLOTYPE_CALLER_PHASING_ID_KEY =    "PID";
     public static final String PHRED_SCALED_POSTERIORS_KEY =        "PP"; //FamilyLikelihoodsUtils / PosteriorLikelihoodsUtils
@@ -110,7 +103,6 @@ public final class GATKVCFConstants {
        their names (or descriptions) depend on some threshold.  Those filters are not included here
      */
     public static final String ALT_ALLELE_IN_NORMAL_FILTER_NAME =             "alt_allele_in_normal"; //M2
-    public static final String BEAGLE_MONO_FILTER_NAME =                      "BGL_SET_TO_MONOMORPHIC";
     public static final String CLUSTERED_EVENTS_FILTER_NAME =                 "clustered_events"; //M2
     public static final String GERMLINE_RISK_FILTER_NAME =                    "germline_risk"; //M2
     public static final String HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME =         "homologous_mapping_event"; //M2

@@ -12,6 +12,16 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+
+import java.util.*;
 
 /**
  *   Wrapper class that holds a set of maps of the form (Read -> Map(Allele->Double))

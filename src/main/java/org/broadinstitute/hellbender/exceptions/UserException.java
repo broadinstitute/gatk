@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -297,6 +298,30 @@ public class UserException extends RuntimeException {
                     read.getContig(),
                     read.getStart(),
                     message));
+        }
+    }
+
+    public static class MalformedBAM extends UserException {
+        private static final long serialVersionUID = 1l;
+
+        public MalformedBAM(GATKRead read, String message) {
+            this("(unknown)", message);
+        }
+
+        public MalformedBAM(File file, String message) {
+            this(file.toString(), message);
+        }
+
+        public MalformedBAM(String source, String message) {
+            super(String.format("SAM/BAM/CRAM file %s is malformed: %s", source, message));
+        }
+    }
+
+    public static class ReadMissingReadGroup extends MalformedBAM {
+        private static final long serialVersionUID = 1l;
+
+        public ReadMissingReadGroup(final GATKRead read) {
+            super(read, String.format("Read %s is missing the read group (RG) tag, which is required by the GATK.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getName()));
         }
     }
 

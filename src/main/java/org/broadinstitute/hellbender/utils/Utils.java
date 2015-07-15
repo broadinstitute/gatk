@@ -493,6 +493,12 @@ public final class Utils {
         return index;
     }
 
+    public static void validateArg(final boolean condition, final String msg){
+        if (!condition){
+            throw new IllegalArgumentException(msg);
+        }
+    }
+
     /**
      * Checks that a user provided file is in fact a regular (i.e. not a directory or a special device) readable file.
      *

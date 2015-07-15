@@ -19,12 +19,24 @@ public final class ReadRecalibrationInfo {
                                  final double[] snpErrors,
                                  final double[] insertionErrors,
                                  final double[] deletionErrors) {
-        if ( read == null ) throw new IllegalArgumentException("read cannot be null");
-        if ( covariates == null ) throw new IllegalArgumentException("covariates cannot be null");
-        if ( skips == null ) throw new IllegalArgumentException("skips cannot be null");
-        if ( snpErrors == null ) throw new IllegalArgumentException("snpErrors cannot be null");
-        if ( insertionErrors == null ) throw new IllegalArgumentException("insertionErrors cannot be null");
-        if ( deletionErrors == null ) throw new IllegalArgumentException("deletionErrors cannot be null");
+        if ( read == null ) {
+            throw new IllegalArgumentException("read cannot be null");
+        }
+        if ( covariates == null ) {
+            throw new IllegalArgumentException("covariates cannot be null");
+        }
+        if ( skips == null ) {
+            throw new IllegalArgumentException("skips cannot be null");
+        }
+        if ( snpErrors == null ) {
+            throw new IllegalArgumentException("snpErrors cannot be null");
+        }
+        if ( insertionErrors == null ) {
+            throw new IllegalArgumentException("insertionErrors cannot be null");
+        }
+        if ( deletionErrors == null ) {
+            throw new IllegalArgumentException("deletionErrors cannot be null");
+        }
 
         this.read = read;
         this.baseQuals = read.getBaseQualities();
@@ -37,10 +49,18 @@ public final class ReadRecalibrationInfo {
         this.insertionErrors = insertionErrors;
         this.deletionErrors = deletionErrors;
 
-        if ( skips.length != length ) throw new IllegalArgumentException("skips.length " + snpErrors.length + " != length " + length);
-        if ( snpErrors.length != length ) throw new IllegalArgumentException("snpErrors.length " + snpErrors.length + " != length " + length);
-        if ( insertionErrors.length != length ) throw new IllegalArgumentException("insertionErrors.length " + snpErrors.length + " != length " + length);
-        if ( deletionErrors.length != length ) throw new IllegalArgumentException("deletionErrors.length " + snpErrors.length + " != length " + length);
+        if ( skips.length != length ) {
+            throw new IllegalArgumentException("skips.length " + snpErrors.length + " != length " + length);
+        }
+        if ( snpErrors.length != length ) {
+            throw new IllegalArgumentException("snpErrors.length " + snpErrors.length + " != length " + length);
+        }
+        if ( insertionErrors.length != length ) {
+            throw new IllegalArgumentException("insertionErrors.length " + snpErrors.length + " != length " + length);
+        }
+        if ( deletionErrors.length != length ) {
+            throw new IllegalArgumentException("deletionErrors.length " + snpErrors.length + " != length " + length);
+        }
     }
 
     /**

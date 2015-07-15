@@ -345,6 +345,10 @@ public final class AlignmentUtils {
         return numHQSoftClips;
     }
 
+    public static int calcAlignmentByteArrayOffset(final Cigar cigar, final PileupElement pileupElement, final int alignmentStart, final int refLocus) {
+        return calcAlignmentByteArrayOffset( cigar, pileupElement.getOffset(), pileupElement.isDeletion(), alignmentStart, refLocus );
+    }
+
     /**
      * Calculate the index into the read's bases of the beginning of the encompassing cigar element for a given cigar and offset
      *

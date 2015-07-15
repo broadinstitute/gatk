@@ -55,7 +55,7 @@ public final class SimpleInterval implements Locatable, Serializable {
             throw new IllegalArgumentException("contig cannot be null");
         }
         if ( start <= 0 ) {
-            throw new IllegalArgumentException("SimpleInterval is 1 based, so start must be >= 1, start:%d" + start);
+            throw new IllegalArgumentException(String.format("SimpleInterval is 1 based, so start must be >= 1, start: %d", start));
         }
         if ( end < start ) {
             throw new IllegalArgumentException(String.format("end must be >= start. start:%d end:%d", start, end));
