@@ -136,7 +136,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
-                UserException.MissingContigInSequenceDictionary.class);
+                UserException.IncompatibleSequenceDictionaries.class);
         spec.executeTest("testBQSRFailWithIncompatibleReference", this);
     }
 }

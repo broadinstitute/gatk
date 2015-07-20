@@ -94,7 +94,8 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
         final Set<String> sequenceNames = new HashSet<>();
         for (int numSequences = 0; numSequences < NUM_SEQUENCES && (refSeq = refSeqFile.nextSequence()) != null; ++numSequences) {
             if (sequenceNames.contains(refSeq.getName())) {
-                throw new UserException.MalformedFile(referenceFile, "Sequence name appears more than once in reference: " + refSeq.getName());
+                throw new UserException.MalformedFile(referenceFile,
+                        "Sequence name appears more than once in reference: " + refSeq.getName());
             }
             sequenceNames.add(refSeq.getName());
             ret.add(makeSequenceRecord(refSeq));

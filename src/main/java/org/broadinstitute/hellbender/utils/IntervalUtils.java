@@ -46,6 +46,25 @@ public final class IntervalUtils {
 
     private static Logger logger = LogManager.getLogger(IntervalUtils.class);
 
+
+    /**
+     * Convert a List of intervals in GenomeLoc format into a List of intervals in SimpleInterval format.
+     *
+     * @param genomeLocIntervals list of GenomeLoc intervals to convert
+     * @return equivalent List of SimpleIntervals
+     */
+    public static List<SimpleInterval> convertGenomeLocsToSimpleIntervals( final List<GenomeLoc> genomeLocIntervals ) {
+        List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
+        for ( GenomeLoc genomeLoc : genomeLocIntervals ) {
+            if ( genomeLoc.isUnmapped() ) {
+                throw new UserException("Unmapped intervals are not currently supported");
+            }
+
+            convertedIntervals.add(new SimpleInterval(genomeLoc));
+        }
+        return convertedIntervals;
+    }
+
     public static GenomeLocSortedSet loadIntervals(
             final List<String> intervalStrings,
             final IntervalSetRule intervalSetRule,

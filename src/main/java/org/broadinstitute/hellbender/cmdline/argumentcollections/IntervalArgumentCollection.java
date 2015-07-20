@@ -124,26 +124,9 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
         }
 
         logger.info(String.format("Processing %d bp from intervals", intervals.coveredSize()));
-        return convertGenomeLocsToSimpleIntervals(intervals.toList());
+        return IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList());
     }
 
-    /**
-     * Convert a List of intervals in GenomeLoc format into a List of intervals in SimpleInterval format.
-     *
-     * @param genomeLocIntervals list of GenomeLoc intervals to convert
-     * @return equivalent List of SimpleIntervals
-     */
-    private List<SimpleInterval> convertGenomeLocsToSimpleIntervals( final List<GenomeLoc> genomeLocIntervals ) {
-        List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
-        for ( GenomeLoc genomeLoc : genomeLocIntervals ) {
-            if ( genomeLoc.isUnmapped() ) {
-                throw new UserException("Unmapped intervals are not currently supported");
-            }
-
-            convertedIntervals.add(new SimpleInterval(genomeLoc));
-        }
-        return convertedIntervals;
-    }
 
     /**
      * Have any intervals been specified for inclusion or exclusion
