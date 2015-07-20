@@ -6,6 +6,7 @@ import htsjdk.samtools.util.FastqQualityFormat;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -176,14 +177,12 @@ public final class FastqToSamIntegrationTest extends CommandLineProgramTest {
     }
 
     private static File newTempSamFile(final String filename) throws IOException {
-        final File file = File.createTempFile(filename,".sam");
-        file.deleteOnExit();
+        final File file = BaseTest.createTempFile(filename, ".sam");
         return file;
     }
 
     private static File newTempFile(final String filename) throws IOException {
-        final File file = File.createTempFile(filename,".tmp");
-        file.deleteOnExit();
+        final File file = BaseTest.createTempFile(filename, ".tmp");
         return file;
     }
 

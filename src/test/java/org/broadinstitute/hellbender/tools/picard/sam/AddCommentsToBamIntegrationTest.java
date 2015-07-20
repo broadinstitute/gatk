@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -28,7 +29,7 @@ public final class AddCommentsToBamIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testAddCommentsToBam() throws Exception {
-        final File outputFile = File.createTempFile("addCommentsToBamTest.", BamFileIoUtils.BAM_FILE_EXTENSION);
+        final File outputFile = BaseTest.createTempFile("addCommentsToBamTest.", BamFileIoUtils.BAM_FILE_EXTENSION);
         runIt(BAM_FILE, outputFile, commentList);
 
         final SAMFileHeader newHeader = SamReaderFactory.makeDefault().getFileHeader(outputFile);
@@ -45,14 +46,14 @@ public final class AddCommentsToBamIntegrationTest extends CommandLineProgramTes
 
     @Test(expectedExceptions = UserException.class)
     public void testUsingSam() throws Exception {
-        final File outputFile = File.createTempFile("addCommentsToBamTest.samFile", BamFileIoUtils.BAM_FILE_EXTENSION);
+        final File outputFile = BaseTest.createTempFile("addCommentsToBamTest.samFile", BamFileIoUtils.BAM_FILE_EXTENSION);
         runIt(SAM_FILE, outputFile, commentList);
         throw new IllegalStateException("We shouldn't be here!");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testUsingNewlines() throws Exception {
-        final File outputFile = File.createTempFile("addCommentsToBamTest.newLine", BamFileIoUtils.BAM_FILE_EXTENSION);
+        final File outputFile = BaseTest.createTempFile("addCommentsToBamTest.newLine", BamFileIoUtils.BAM_FILE_EXTENSION);
         runIt(SAM_FILE, outputFile, new String[]{"this is\n a crazy\n test"});
         throw new IllegalStateException("We shouldn't be here!");
     }

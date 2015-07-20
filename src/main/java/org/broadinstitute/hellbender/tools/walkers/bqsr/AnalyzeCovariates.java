@@ -10,10 +10,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -477,13 +477,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         if (csvFile != null)  {
             return csvFile;
         } else {
-            try {
-              final File result = File.createTempFile("AnalyzeCovariates", ".csv");
-              result.deleteOnExit();
-              return result;
-            } catch (IOException e) {
-                throw new UserException("Could not create temporary Csv file",e);
-            }
+            return IOUtils.createTempFile("AnalyzeCovariates", ".csv");
         }
     }
 

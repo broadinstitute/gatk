@@ -4,6 +4,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,9 +22,8 @@ public final class SortVcfTest extends AbstractVcfMergingClpTester {
     @Test
     public void testPresortedFile() throws IOException {
         final File snpInputFile = new File(TEST_DATA_PATH, "CEUTrio-snps.vcf");
-        final File output = File.createTempFile("sort-presorted-test-output.", ".vcf");
+        final File output = BaseTest.createTempFile("sort-presorted-test-output.", ".vcf");
         final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        output.deleteOnExit();
 
         final int numberOfVariantContexts = loadContigPositions(snpInputFile).size();
 
@@ -34,9 +34,8 @@ public final class SortVcfTest extends AbstractVcfMergingClpTester {
     @Test
     public void testSingleScrambledFile() throws IOException {
         final File snpInputFile = new File(TEST_DATA_PATH, "CEUTrio-snps-scrambled.1.vcf");
-        final File output = File.createTempFile("sort-single-scrambled-test-output.", ".vcf");
+        final File output = BaseTest.createTempFile("sort-single-scrambled-test-output.", ".vcf");
         final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        output.deleteOnExit();
 
         final int numberOfVariantContexts = loadContigPositions(snpInputFile).size();
 
@@ -48,9 +47,8 @@ public final class SortVcfTest extends AbstractVcfMergingClpTester {
     public void testTwoScrambledSnpFiles() throws IOException {
         final File inputFile1 = new File(TEST_DATA_PATH, "CEUTrio-snps-scrambled.1.vcf");
         final File inputFile2 = new File(TEST_DATA_PATH, "CEUTrio-snps-scrambled.2.vcf");
-        final File output = File.createTempFile("sort-multiple-scrambled-test-output.", ".vcf");
+        final File output = BaseTest.createTempFile("sort-multiple-scrambled-test-output.", ".vcf");
         final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        output.deleteOnExit();
 
         final int numberOfVariantContexts = loadContigPositions(inputFile1).size() + loadContigPositions(inputFile2).size();
 
@@ -62,9 +60,8 @@ public final class SortVcfTest extends AbstractVcfMergingClpTester {
     public void testScrambledSnpsAndOrderedIndels() throws IOException {
         final File indelInputFile = new File(TEST_DATA_PATH, "CEUTrio-indels.vcf");
         final File snpInputFile = new File(TEST_DATA_PATH, "CEUTrio-snps-scrambled.1.vcf");
-        final File output = File.createTempFile("sort-scrambled-indels-snps-test-output.", ".vcf");
+        final File output = BaseTest.createTempFile("sort-scrambled-indels-snps-test-output.", ".vcf");
         final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        output.deleteOnExit();
 
         final int numberOfVariantContexts = loadContigPositions(indelInputFile).size() + loadContigPositions(snpInputFile).size();
 
@@ -76,9 +73,8 @@ public final class SortVcfTest extends AbstractVcfMergingClpTester {
     public void testScrambledSnpsAndScrambledIndels() throws IOException {
         final File indelInputFile = new File(TEST_DATA_PATH, "CEUTrio-indels-scrambled.1.vcf");
         final File snpInputFile = new File(TEST_DATA_PATH, "CEUTrio-snps-scrambled.1.vcf");
-        final File output = File.createTempFile("merge-indels-snps-test-output.", ".vcf");
-        final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("merge-indels-snps-test-output.", ".vcf");
+        final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");;
 
         final int numberOfVariantContexts = loadContigPositions(indelInputFile).size() + loadContigPositions(snpInputFile).size();
 

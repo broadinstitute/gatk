@@ -22,9 +22,8 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
 
     @Test
     public void testBasic() throws Exception {
-        final File outputDict = File.createTempFile("CreateSequenceDictionaryTest.", ".dict");
+        final File outputDict = BaseTest.createTempFile("CreateSequenceDictionaryTest.", ".dict");
         outputDict.delete();
-        outputDict.deleteOnExit();
         final String[] argv = {
                 "--REFERENCE", BASIC_FASTA.getAbsolutePath(),
                 "--OUTPUT", outputDict.getAbsolutePath()
@@ -37,9 +36,8 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
      */
     @Test(expectedExceptions = {UserException.MalformedFile.class})
     public void testNonUniqueSequenceName() throws Exception {
-        final File outputDict = File.createTempFile("CreateSequenceDictionaryTest.", ".dict");
+        final File outputDict = BaseTest.createTempFile("CreateSequenceDictionaryTest.", ".dict");
         outputDict.delete();
-        outputDict.deleteOnExit();
         final String[] argv = {
                 "--REFERENCE", DUPLICATE_FASTA.getAbsolutePath(),
                 "--OUTPUT", outputDict.getAbsolutePath(),
@@ -52,7 +50,6 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
     @Test(expectedExceptions = {UserException.CommandLineException.class})
     public void testNoReferenceSpecified() throws Exception {
         final File output = BaseTest.createTempFile("TestOutput", ".out");
-        output.deleteOnExit();
         final String[] argv = {
                 "CreateSequenceDictionary",
                 "--OUTPUT", output.getAbsolutePath()

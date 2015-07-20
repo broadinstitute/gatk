@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.text.parsers;
 
 import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -18,8 +19,7 @@ public final class TabbedTextFileWithHeaderParserTest {
                 new String[] {"foo", "bar", "splat"},
         };
 
-        final File tmp = File.createTempFile("tabbedTextTest.", ".txt");
-        tmp.deleteOnExit();
+        final File tmp = BaseTest.createTempFile("tabbedTextTest.", ".txt");
         try (final BufferedWriter out = new BufferedWriter(new FileWriter(tmp))) {
 
             for (final String[] fields : data) {
@@ -51,8 +51,7 @@ public final class TabbedTextFileWithHeaderParserTest {
 
         final String[] headers = {"STRING", "STRING2", "NUMBER"};
 
-        final File tmp = File.createTempFile("tabbedTextTest.", ".txt");
-        tmp.deleteOnExit();
+        final File tmp = BaseTest.createTempFile("tabbedTextTest.", ".txt");
 
         try (final BufferedWriter out = new BufferedWriter(new FileWriter(tmp))) {
 

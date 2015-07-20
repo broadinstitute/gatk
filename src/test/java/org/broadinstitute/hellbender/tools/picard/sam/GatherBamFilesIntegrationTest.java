@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.BamFileIoUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -29,7 +30,7 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testTheGathering() throws Exception {
-        final File outputFile = File.createTempFile("gatherBamFilesTest.samFile.", BamFileIoUtils.BAM_FILE_EXTENSION);
+        final File outputFile = BaseTest.createTempFile("gatherBamFilesTest.samFile.", BamFileIoUtils.BAM_FILE_EXTENSION);
         final List<String> args = new ArrayList<>();
         for (final File splitBam : SPLIT_BAMS) {
             args.add("--INPUT");

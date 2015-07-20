@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import htsjdk.tribble.Tribble;
+import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -8,8 +10,20 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.io.Reader;
+import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -354,14 +368,9 @@ public final class IOUtils {
         if (! maybeGzipedFile.getPath().endsWith(".gz")) {
               return maybeGzipedFile;
         }
-        try {
-            final File result = File.createTempFile("unzippedFile", "tmp");
-            result.deleteOnExit();
-            gunzip(maybeGzipedFile, result);
-            return result;
-        } catch (IOException e) {
-            throw new GATKException("cannot create a temporary file", e);
-        }
+        final File result = IOUtils.createTempFile("unzippedFile", "tmp");
+        gunzip(maybeGzipedFile, result);
+        return result;
     }
 
     /**
@@ -383,6 +392,30 @@ public final class IOUtils {
             return new PrintStream(new GZIPOutputStream(new FileOutputStream(file)));
         } else {
             return new PrintStream(file);
+        }
+    }
+
+    /**
+     * Creates a temp file that will be deleted on exit
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
+     * @param name Prefix of the file.
+     * @param extension Extension to concat to the end of the file.
+     * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
+     */
+    public static File createTempFile(String name, String extension) {
+        try {
+            final File file = File.createTempFile(name, extension);
+
+            // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
+            new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
+            new File(file.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION).deleteOnExit();
+            new File(file.getAbsolutePath() + ".bai").deleteOnExit();
+            new File(file.getAbsolutePath().replaceAll(extension + "$", ".bai")).deleteOnExit();
+
+            return file;
+        } catch (IOException ex) {
+            throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
         }
     }
 }

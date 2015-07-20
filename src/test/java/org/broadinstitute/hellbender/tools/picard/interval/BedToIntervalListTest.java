@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMException;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,8 +20,7 @@ public final class BedToIntervalListTest extends CommandLineProgramTest {
     private final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/interval/BedToIntervalListTest");
 
     private void doTest(final String inputBed, final String header) throws IOException {
-        final File outputFile  = File.createTempFile("bed_to_interval_list_test.", ".interval_list");
-        outputFile.deleteOnExit();
+        final File outputFile = BaseTest.createTempFile("bed_to_interval_list_test.", ".interval_list");
         final BedToIntervalList program = new BedToIntervalList();
         final File inputBedFile = new File(TEST_DATA_DIR, inputBed);
         program.INPUT = inputBedFile;
