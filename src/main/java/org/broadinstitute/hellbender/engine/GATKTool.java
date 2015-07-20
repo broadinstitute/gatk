@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.sun.xml.bind.v2.TODO;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
