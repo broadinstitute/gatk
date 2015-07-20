@@ -87,8 +87,8 @@ import java.util.*;
  *
  */
 @CommandLineProgramProperties(
-        usage = "Validates a VCF file with an extra strict set of criteria.",
-        usageShort = "Validate VCF",
+        summary = "Validates a VCF file with an extra strict set of criteria.",
+        oneLineSummary = "Validate VCF",
         programGroup = VariantProgramGroup.class
 )
 public final class ValidateVariants extends VariantWalker {

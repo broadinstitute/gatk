@@ -21,11 +21,11 @@ import java.util.Map;
  * @author mdepristo
  */
 @CommandLineProgramProperties(
-        usage = "Not to be confused with SortSam which sorts a SAM or BAM file with a valid sequence dictionary, " +
+        summary = "Not to be confused with SortSam which sorts a SAM or BAM file with a valid sequence dictionary, " +
                 "ReorderSam reorders reads in a SAM/BAM file to match the contig ordering in a provided reference file, " +
                 "as determined by exact name matching of contigs.  Reads mapped to contigs absent in the new " +
                 "reference are dropped. Runs substantially faster if the input is an indexed BAM file.",
-        usageShort = "Reorders reads in a SAM or BAM file to match ordering in reference",
+        oneLineSummary = "Reorders reads in a SAM or BAM file to match ordering in reference",
         programGroup = ReadProgramGroup.class
 )
 public final class ReorderSam extends PicardCommandLineProgram {

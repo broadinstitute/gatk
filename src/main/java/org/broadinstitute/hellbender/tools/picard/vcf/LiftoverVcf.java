@@ -40,11 +40,11 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Lifts a VCF over from one genome build to another using UCSC liftover. The output file will be sorted " +
+        summary = "Lifts a VCF over from one genome build to another using UCSC liftover. The output file will be sorted " +
                 "and indexed. Records may be rejected because they cannot be lifted over or because post-liftover the " +
                 "reference allele mismatches the target genome build.  Rejected records will be emitted with filters " +
                 "to the REJECT file, on the source genome.",
-        usageShort = "Lifts a VCF between genome builds.",
+        oneLineSummary = "Lifts a VCF between genome builds.",
         programGroup = VariantProgramGroup.class
 )
 public final class LiftoverVcf extends PicardCommandLineProgram {

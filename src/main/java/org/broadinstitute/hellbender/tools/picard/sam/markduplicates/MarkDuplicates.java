@@ -23,9 +23,9 @@ import java.util.Map;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules. " +
+        summary = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules. " +
                 "All records are then written to the output file with the duplicate records flagged.",
-        usageShort = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules.",
+        oneLineSummary = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules.",
         programGroup = ReadProgramGroup.class
 )
 public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {

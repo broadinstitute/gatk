@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
-import java.util.Hashtable;
 import java.util.List;
 
 /**
@@ -23,7 +22,7 @@ import java.util.List;
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
  * GATK tools should extend one of the Walker classes instead.
  */
-@CommandLineProgramProperties(usage = "Generic GATK tool", usageShort = "Generic GATK tool", omitFromCommandLine = true)
+@CommandLineProgramProperties(summary = "Generic GATK tool", oneLineSummary = "Generic GATK tool", omitFromCommandLine = true)
 public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection

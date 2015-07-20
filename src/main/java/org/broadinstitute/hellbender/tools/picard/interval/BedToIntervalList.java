@@ -16,7 +16,6 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -30,8 +29,8 @@ import java.io.IOException;
  * @author nhomer
  */
 @CommandLineProgramProperties(
-        usage = "Converts a BED file to an Picard Interval List.",
-        usageShort = "Converts a BED file to an Picard Interval List.",
+        summary = "Converts a BED file to an Picard Interval List.",
+        oneLineSummary = "Converts a BED file to an Picard Interval List.",
         programGroup = IntervalProgramGroup.class
 )
 public final class BedToIntervalList extends PicardCommandLineProgram {

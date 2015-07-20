@@ -21,10 +21,10 @@ import java.io.IOException;
  * same length, and are a reasonable length!
  */
 @CommandLineProgramProperties(
-        usage = "Takes any file that conforms to the fasta format and " +
+        summary = "Takes any file that conforms to the fasta format and " +
                 "normalizes it so that all lines of sequence except the last line per named sequence " +
                 "are of the same length.",
-        usageShort = "Normalizes lines of sequence in a fasta file to be of the same length",
+        oneLineSummary = "Normalizes lines of sequence in a fasta file to be of the same length",
         programGroup = MiscProgramGroup.class
 )
 public final class NormalizeFasta extends CommandLineProgram {

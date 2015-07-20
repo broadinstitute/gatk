@@ -22,8 +22,8 @@ import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
  * SAMRecords, and the header contains only sequence records.
  */
 @CommandLineProgramProperties(
-        usage = "Read fasta or fasta.gz containing reference sequences, and write as a SAM or BAM file with only sequence dictionary.\n",
-        usageShort = "Creates a SAM or BAM file from reference sequence in fasta format",
+        summary = "Read fasta or fasta.gz containing reference sequences, and write as a SAM or BAM file with only sequence dictionary.\n",
+        oneLineSummary = "Creates a SAM or BAM file from reference sequence in fasta format",
         programGroup = ReadProgramGroup.class
 )
 public final class CreateSequenceDictionary extends PicardCommandLineProgram {

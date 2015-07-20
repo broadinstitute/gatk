@@ -20,9 +20,9 @@ import java.util.List;
  * Input files can be in GZip format (end in .gz).
  */
 @CommandLineProgramProperties(
-        usage = "Extracts read sequences and qualities from the input fastq file and writes them into the output file in unaligned BAM format."
+        summary = "Extracts read sequences and qualities from the input fastq file and writes them into the output file in unaligned BAM format."
                 + " Input files can be in GZip format (end in .gz).\n",
-        usageShort = "Converts a fastq file to an unaligned BAM or SAM file",
+        oneLineSummary = "Converts a fastq file to an unaligned BAM or SAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class FastqToSam extends PicardCommandLineProgram {

@@ -11,10 +11,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 @CommandLineProgramProperties(
-        usage = "Creates a hash code based on identifying information in the RG (read group) " +
+        summary = "Creates a hash code based on identifying information in the RG (read group) " +
                 "records in a SAM file's header. This hash code changes any time read groups are added or removed " +
                 "comparing one file's hash code to another tells you if the read groups in the BAM files are different.",
-        usageShort = "Creates a hash code based on the read groups (RG) in the SAM or BAM header.",
+        oneLineSummary = "Creates a hash code based on the read groups (RG) in the SAM or BAM header.",
         programGroup = ReadProgramGroup.class
 )
 public final class CalculateReadGroupChecksum extends PicardCommandLineProgram {

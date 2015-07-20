@@ -22,9 +22,9 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        usage = "Outputs reads by read group, etc. " +
+        summary = "Outputs reads by read group, etc. " +
                 "Not to be confused with a tool that splits reads for RNA-Seq analysis.",
-        usageShort = "Outputs reads by read group, etc.",
+        oneLineSummary = "Outputs reads by read group, etc.",
         programGroup = ReadProgramGroup.class
 )
 public final class SplitReads extends ReadWalker {

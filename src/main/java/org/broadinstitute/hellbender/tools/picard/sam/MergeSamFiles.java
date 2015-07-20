@@ -18,8 +18,8 @@ import java.util.List;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Merges multiple SAM/BAM files into one file.",
-        usageShort = "Merges multiple SAM or BAM files into one file",
+        summary = "Merges multiple SAM/BAM files into one file.",
+        oneLineSummary = "Merges multiple SAM or BAM files into one file",
         programGroup = ReadProgramGroup.class
 )
 public final class MergeSamFiles extends PicardCommandLineProgram {

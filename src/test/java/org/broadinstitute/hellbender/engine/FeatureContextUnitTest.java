@@ -15,7 +15,7 @@ import java.util.Arrays;
 
 public final class FeatureContextUnitTest extends BaseTest {
 
-    @CommandLineProgramProperties(usage = "", usageShort = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
     private static class ArtificialFeatureContainingCommandLineProgram extends CommandLineProgram {
         @Argument(fullName = "featureArgument", shortName = "f")
         FeatureInput<Feature> featureArgument;

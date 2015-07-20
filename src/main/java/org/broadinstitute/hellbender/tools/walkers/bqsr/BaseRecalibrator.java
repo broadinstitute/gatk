@@ -86,8 +86,8 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
  */
 
 @CommandLineProgramProperties(
-        usage = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        usageShort = "Generates recalibration table",
+        summary = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
+        oneLineSummary = "Generates recalibration table",
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibrator extends ReadWalker {

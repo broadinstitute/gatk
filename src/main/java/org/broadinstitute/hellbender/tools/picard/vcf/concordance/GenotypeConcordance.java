@@ -38,11 +38,11 @@ import static htsjdk.variant.variantcontext.VariantContext.Type.SNP;
  * @author George Grant
  */
 @CommandLineProgramProperties(
-        usage = "Calculates the concordance between genotype data for two samples in two different VCFs - one being considered the truth (or reference) " +
+        summary = "Calculates the concordance between genotype data for two samples in two different VCFs - one being considered the truth (or reference) " +
                 "the other being considered the call.  The concordance is broken into separate results sections for SNPs and indels.  Summary and detailed statistics are reported\n\n" +
                 "Note that for any pair of variants to compare, only the alleles for the samples under interrogation are considered " +
                 "and MNP, Symbolic, and Mixed classes of variants are not included.",
-        usageShort = "Calculates the concordance between genotype data for two samples in two different VCFs",
+        oneLineSummary = "Calculates the concordance between genotype data for two samples in two different VCFs",
         programGroup = VariantProgramGroup.class
 )
 public final class GenotypeConcordance extends PicardCommandLineProgram {

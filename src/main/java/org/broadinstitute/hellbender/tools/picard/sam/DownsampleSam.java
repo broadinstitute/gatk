@@ -18,11 +18,11 @@ import java.util.Random;
  * of both ends of a pair or neither end of the pair!
  */
 @CommandLineProgramProperties(
-        usage = "Randomly down-sample a SAM or BAM file to retain " +
+        summary = "Randomly down-sample a SAM or BAM file to retain " +
                 "a random subset of the reads. Mate-pairs are either both kept or both discarded. Reads marked as not primary " +
                 "alignments are all discarded. Each read is given a probability P of being retained - results with the exact " +
                 "same input in the same order and with the same value for RANDOM_SEED will produce the same results.",
-        usageShort = "Down-sample a SAM or BAM file to retain a random subset of the reads",
+        oneLineSummary = "Down-sample a SAM or BAM file to retain a random subset of the reads",
         programGroup = ReadProgramGroup.class
 )
 public final class DownsampleSam extends PicardCommandLineProgram {

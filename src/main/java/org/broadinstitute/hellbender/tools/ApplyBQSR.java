@@ -19,8 +19,8 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import java.io.File;
 
 @CommandLineProgramProperties(
-        usage = "Applies the BQSR table to the input BAM.",
-        usageShort = "Applies the BQSR table to the input BAM.",
+        summary = "Applies the BQSR table to the input BAM.",
+        oneLineSummary = "Applies the BQSR table to the input BAM.",
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyBQSR extends ReadWalker{

@@ -24,9 +24,9 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Program to chart " +
+        summary = "Program to chart " +
                 "quality score distributions in a SAM or BAM file.",
-        usageShort = "Charts quality score distributions for a SAM or BAM file",
+        oneLineSummary = "Charts quality score distributions for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class QualityScoreDistribution extends SinglePassSamProgram {

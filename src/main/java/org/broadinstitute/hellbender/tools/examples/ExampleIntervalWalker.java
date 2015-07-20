@@ -21,8 +21,8 @@ import java.io.PrintStream;
  * along with overlapping reads/reference bases/variants (if present).
  */
 @CommandLineProgramProperties(
-        usage = "Prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
-        usageShort = "Print intervals with optional contextual data",
+        summary = "Prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
+        oneLineSummary = "Print intervals with optional contextual data",
         programGroup = IntervalProgramGroup.class
 )
 public final class ExampleIntervalWalker extends IntervalWalker {

@@ -17,8 +17,8 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import java.io.File;
 
 @CommandLineProgramProperties(
-	usage = "Fixes Illumina base quality scores.",
-    usageShort = "Fix Illumina base quality scores.",
+	summary = "Fixes Illumina base quality scores.",
+    oneLineSummary = "Fix Illumina base quality scores.",
     programGroup = ReadProgramGroup.class
 )
 public final class FixMisencodedBaseQualityReads extends ReadWalker {

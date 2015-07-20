@@ -33,8 +33,8 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
  * (including the Ns) is hard clipped and so on for the rest of the new reads.
  */
 @CommandLineProgramProperties(
-        usage = "Splits reads that contain Ns in their cigar string (e.g. spanning splicing events).",
-        usageShort = "Split Reads with N in Cigar",
+        summary = "Splits reads that contain Ns in their cigar string (e.g. spanning splicing events).",
+        oneLineSummary = "Split Reads with N in Cigar",
         programGroup = ReadProgramGroup.class
 )
 public final class SplitNCigarReads extends CommandLineProgram {

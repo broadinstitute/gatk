@@ -35,8 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        usage = "Runs both BQSR phases on the input BAM.",
-        usageShort = "Runs both BQSR phases on the input BAM.",
+        summary = "Runs both BQSR phases on the input BAM.",
+        oneLineSummary = "Runs both BQSR phases on the input BAM.",
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {

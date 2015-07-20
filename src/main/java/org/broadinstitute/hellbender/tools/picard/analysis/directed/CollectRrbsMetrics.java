@@ -32,8 +32,8 @@ import java.util.*;
  * @author jgentry@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = CollectRrbsMetrics.USAGE,
-        usageShort = CollectRrbsMetrics.USAGE,
+        summary = CollectRrbsMetrics.USAGE,
+        oneLineSummary = CollectRrbsMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
 public final class CollectRrbsMetrics extends PicardCommandLineProgram {

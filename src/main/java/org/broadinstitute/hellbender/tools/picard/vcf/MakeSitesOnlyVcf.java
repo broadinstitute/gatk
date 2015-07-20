@@ -30,10 +30,10 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Reads a VCF/VCF.gz/BCF and removes all genotype information from it while retaining " +
+        summary = "Reads a VCF/VCF.gz/BCF and removes all genotype information from it while retaining " +
                 "all site level information, including annotations based on genotypes (e.g. AN, AF). Output an be " +
                 "any support variant format including .vcf, .vcf.gz or .bcf.",
-        usageShort = "Creates a VCF bereft of genotype information from an input VCF or BCF",
+        oneLineSummary = "Creates a VCF bereft of genotype information from an input VCF or BCF",
         programGroup = VariantProgramGroup.class
 )
 public final class MakeSitesOnlyVcf extends PicardCommandLineProgram {

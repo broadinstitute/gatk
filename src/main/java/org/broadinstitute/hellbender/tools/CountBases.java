@@ -8,8 +8,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 @CommandLineProgramProperties(
-	usage = "Walks over the input data set, calculating the number of bases seen for diagnostic purposes.",
-	usageShort = "Count bases",
+	summary = "Walks over the input data set, calculating the number of bases seen for diagnostic purposes.",
+	oneLineSummary = "Count bases",
     programGroup = ReadProgramGroup.class
 )
 public final class CountBases extends ReadWalker {

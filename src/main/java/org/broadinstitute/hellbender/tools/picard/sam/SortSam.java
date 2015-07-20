@@ -14,9 +14,9 @@ import java.io.File;
  * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = "Sorts the input SAM or BAM.\n" +
+        summary = "Sorts the input SAM or BAM.\n" +
                 "Input and output formats are determined by file extension.",
-        usageShort = "Sorts a SAM or BAM file",
+        oneLineSummary = "Sorts a SAM or BAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class SortSam extends PicardCommandLineProgram {
