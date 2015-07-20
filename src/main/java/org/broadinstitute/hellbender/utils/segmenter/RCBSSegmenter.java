@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.segmenter;
 
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;
-import java.io.File;
 
 /**
  * Calls an R script to perform segmentation
@@ -17,13 +16,11 @@ public final class RCBSSegmenter {
      * @param tnFile Tangent-normalized targets file
      * @param outputFile Full path to the outputted segment file
      * @param minLogValue Any values under this threshold will be set to it
-     * @return File created by segmenter
      */
-    public static File segment(String sample_name, String tnFile, String outputFile, Float minLogValue) {
-        final RScriptExecutor exectutor = new RScriptExecutor();
-        exectutor.addScript(new Resource(R_SCRIPT, RCBSSegmenter.class));
-        exectutor.addArgs(sample_name, tnFile, outputFile, minLogValue);
-        exectutor.exec();
-        return new File(outputFile);
+    public static void writeSegmentFile(String sample_name, String tnFile, String outputFile, Float minLogValue) {
+        final RScriptExecutor executor = new RScriptExecutor();
+        executor.addScript(new Resource(R_SCRIPT, RCBSSegmenter.class));
+        executor.addArgs(sample_name, tnFile, outputFile, minLogValue);
+        executor.exec();
     }
 }

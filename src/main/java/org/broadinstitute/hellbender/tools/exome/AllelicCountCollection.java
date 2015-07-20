@@ -18,6 +18,11 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class AllelicCountCollection {
+    private static final String CONTIG_COLUMN_NAME = "CONTIG";
+    private static final String POSITION_COLUMN_NAME = "POS";
+    private static final String REF_COUNT_COLUMN_NAME = "REF_COUNT";
+    private static final String ALT_COUNT_COLUMN_NAME = "ALT_COUNT";
+
     private final List<AllelicCount> counts;
 
     public AllelicCountCollection() {
@@ -32,7 +37,8 @@ public class AllelicCountCollection {
         this.counts = new ArrayList<>();
         try (final TableReader<AllelicCount> reader = TableUtils.reader(inputFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.matchesExactly("SEQ", "POS", "REF_COUNT", "ALT_COUNT"))
+                    if (!columns.matchesExactly(
+                            CONTIG_COLUMN_NAME, POSITION_COLUMN_NAME, REF_COUNT_COLUMN_NAME, ALT_COUNT_COLUMN_NAME))
                         throw formatExceptionFactory.apply("Bad header");
 
                     // return the lambda to translate dataLines into AllelicCounts.
@@ -73,7 +79,8 @@ public class AllelicCountCollection {
      */
     public void write(final File outputFile) {
         try (final TableWriter<AllelicCount> writer = TableUtils.writer(outputFile,
-                new TableColumnCollection("SEQ", "POS", "REF_COUNT", "ALT_COUNT"),
+                new TableColumnCollection(
+                        CONTIG_COLUMN_NAME, POSITION_COLUMN_NAME, REF_COUNT_COLUMN_NAME, ALT_COUNT_COLUMN_NAME),
                 //lambda for filling an initially empty DataLine
                 (count, dataLine) -> {
                     final Interval interval = count.getInterval();

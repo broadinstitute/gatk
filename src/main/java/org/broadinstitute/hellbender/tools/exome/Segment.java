@@ -97,4 +97,25 @@ public final class Segment implements Locatable {
         return this.interval.overlaps(other.interval);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Segment)) {
+            return false;
+        }
+
+        Segment segment = (Segment) o;
+        return sample.equals(segment.sample) && interval.equals(segment.interval) &&
+                !(call != null ? !call.equals(segment.call) : segment.call != null);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = sample.hashCode();
+        result = 31 * result + interval.hashCode();
+        result = 31 * result + (call != null ? call.hashCode() : 0);
+        return result;
+    }
 }

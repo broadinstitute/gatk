@@ -21,8 +21,8 @@ public class SegmenterTest extends BaseTest {
         final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
-        File segmentFile = RCBSSegmenter.segment(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
-        Assert.assertTrue(segmentFile.exists(), "R library was not written to temp file: " + output);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
+        Assert.assertTrue(output.exists(), "R library was not written to temp file: " + output);
 
         assertEqualSegments(output,EXPECTED);
     }
@@ -34,8 +34,8 @@ public class SegmenterTest extends BaseTest {
         final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_short_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
-        File segmentFile = RCBSSegmenter.segment(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
-        Assert.assertTrue(segmentFile.exists(), "R library was not written to temp file: " + output);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
+        Assert.assertTrue(output.exists(), "R library was not written to temp file: " + output);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -46,8 +46,8 @@ public class SegmenterTest extends BaseTest {
         final File EXPECTED = new File("src/test/resources/segmenter/output/Simple_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "Simple";
-        File segmentFile = RCBSSegmenter.segment(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
-        Assert.assertTrue(segmentFile.exists(), "R library was not written to temp file: " + output);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
+        Assert.assertTrue(output.exists(), "R library was not written to temp file: " + output);
 
         assertEqualSegments(output,EXPECTED);
     }
