@@ -20,8 +20,6 @@ public final class Segment implements Locatable {
 
     private final SimpleInterval interval;
 
-    private final ExonCollection<TargetCoverage> targets;
-
     private String call = null;
 
     /**
@@ -32,13 +30,12 @@ public final class Segment implements Locatable {
      * @throws IllegalArgumentException if either {@code interval}
      * does not represent a valid interval
      */
-    public Segment(final String sample, final SimpleInterval interval, final ExonCollection<TargetCoverage> targets) {
+    public Segment(final String sample, final SimpleInterval interval) {
         Utils.nonNull(sample, "Segment needs a sample name.");
         Utils.nonNull(interval, "Can't construct segment with null interval.");
-        Utils.nonNull(targets, "Can't construct segment with null target list.");
         this.sample = sample;
         this.interval = interval;
-        this.targets = targets;
+
     }
 
     /**
@@ -50,8 +47,8 @@ public final class Segment implements Locatable {
      * @throws IllegalArgumentException if either {@code interval} or {@code start}
      *    and {@code end} do not represent a valid interval
      */
-    public Segment(final String sample, final SimpleInterval interval, final ExonCollection<TargetCoverage> targets, final String call) {
-        this(sample, interval, targets);
+    public Segment(final String sample, final SimpleInterval interval, final String call) {
+        this(sample, interval);
         this.call = call;
     }
 
@@ -86,7 +83,7 @@ public final class Segment implements Locatable {
      *
      * Delegates to ExonCollection's binary search.
      */
-    public List<TargetCoverage> overlappingTargets() {
+    public List<TargetCoverage> overlappingTargets(final ExonCollection<TargetCoverage> targets) {
         return targets.exons(interval);
     }
 
@@ -111,8 +108,8 @@ public final class Segment implements Locatable {
      *
      * @throws IllegalStateException if overlapping targets have not been assigned or if no overlapping targets were found.
      */
-    public double mean() {
-        final List<TargetCoverage> myTargets = overlappingTargets();
+    public double mean(final ExonCollection<TargetCoverage> targets) {
+        final List<TargetCoverage> myTargets = overlappingTargets(targets);
 
         if (myTargets.size() == 0) {
             throw new IllegalStateException("Empty segment -- no overlapping targets.");
@@ -120,8 +117,8 @@ public final class Segment implements Locatable {
         return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
     }
 
-    public int numTargets() {
-        return overlappingTargets().size();
+    public int numTargets(final ExonCollection<TargetCoverage> targets) {
+        return overlappingTargets(targets).size();
     }
 
     public boolean overlaps(final Segment other) {
