@@ -22,10 +22,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.dev.BunnyLog;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.DataflowReadFilter;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
@@ -34,6 +31,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
@@ -116,6 +114,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             BaseRecalibratorDataflowUtils.ensureReferenceIsReadable(pipeline.getOptions(), referencePath);
             baseRecalibratorWorker = BaseRecalibratorWorker.fromArgs(header, BRAC);
             baseRecalibratorWorker.checkClientArguments();
+            checkSequenceDictionaries();
 
             // 2. set up computation
             PCollection<RecalibrationTables> aggregated =
@@ -139,6 +138,15 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             throw rx;
         } catch (Exception x) {
             throw new GATKException("Unexpected: " + x.getMessage(), x);
+        }
+    }
+
+    private void checkSequenceDictionaries() {
+        try ( final ReferenceDataSource refSource = new ReferenceDataSource(new File(referencePath)) ) {
+            final SAMSequenceDictionary refDictionary = refSource.getSequenceDictionary();
+            final SAMSequenceDictionary readsDictionary = header.getSequenceDictionary();
+
+            SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary, true, null);
         }
     }
 
