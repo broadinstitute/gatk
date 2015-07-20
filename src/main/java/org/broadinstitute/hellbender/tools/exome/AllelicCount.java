@@ -39,8 +39,15 @@ public final class AllelicCount implements Locatable {
 
     public int getAltReadCount() {  return altReadCount;        }
 
-    public TargetCoverage toTargetCoverage(final String name, final double allelicFractionSkew) {
-        final double coverage = Math.abs((double) altReadCount / (refReadCount + altReadCount) - allelicFractionSkew/2);
+    /**
+     * Returns a TargetCoverage with coverage given by a shifted alternate allele fraction.
+     * @param name                  target name
+     * @param alleleFractionBias    allele-fraction bias used to calculate shifted alternate allele fraction
+     *                              (alleleFractionBias = 1 in the unbiased case)
+     * @return                      TargetCoverage with coverage given by a shifted alternate allele fraction
+     */
+    public TargetCoverage toTargetCoverage(final String name, final double alleleFractionBias) {
+        final double coverage = Math.abs((double) altReadCount / (refReadCount + altReadCount) - alleleFractionBias/2);
         final TargetCoverage target = new TargetCoverage(name, new SimpleInterval(interval), coverage);
         return target;
     }

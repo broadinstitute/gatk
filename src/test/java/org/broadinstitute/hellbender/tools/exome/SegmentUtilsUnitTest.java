@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -25,17 +23,12 @@ public class SegmentUtilsUnitTest extends BaseTest {
         final File TEST_DIR = new File("src/test/resources/org/broadinstitute/tools/exome/caller");
         final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
 
-        try {
-            List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegfile(TEST_SEGMENTS);
-            Assert.assertEquals(segments.size(), 4);
-            Assert.assertEquals(segments.get(0).getContig(), "chr");
-            Assert.assertEquals(segments.get(1).getStart(), 300);
-            Assert.assertEquals(segments.get(2).getEnd(), 550);
 
-        } catch (IOException e) {
-            Assert.fail(e.getMessage());
-        }
-
+        List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegfile(TEST_SEGMENTS);
+        Assert.assertEquals(segments.size(), 4);
+        Assert.assertEquals(segments.get(0).getContig(), "chr");
+        Assert.assertEquals(segments.get(1).getStart(), 300);
+        Assert.assertEquals(segments.get(2).getEnd(), 550);
     }
 
     @Test
@@ -43,14 +36,9 @@ public class SegmentUtilsUnitTest extends BaseTest {
         final File file = createTempFile("test",".txt");
         List<CalledInterval> calledIntervals = Arrays.asList(ci1, ci2, ci3);
 
-        try {
-            SegmentUtils.writeCalledIntervalsToSegfile(file, calledIntervals, "sample");
-            List<CalledInterval> sameIntervals = SegmentUtils.readCalledIntervalsFromSegfile(file);
-            Assert.assertEquals(calledIntervals, sameIntervals);
-        } catch (IOException e) {
-            Assert.fail(e.getMessage());
-        }
-
+        SegmentUtils.writeCalledIntervalsToSegfile(file, calledIntervals, "sample");
+        List<CalledInterval> sameIntervals = SegmentUtils.readCalledIntervalsFromSegfile(file);
+        Assert.assertEquals(calledIntervals, sameIntervals);
     }
 
     @Test
