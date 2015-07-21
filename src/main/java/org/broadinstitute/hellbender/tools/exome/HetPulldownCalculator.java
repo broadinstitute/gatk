@@ -131,8 +131,7 @@ public final class HetPulldownCalculator {
      * <p>
      *     For a normal sample:
      *     <ul>
-     *         The IntervalList snpIntervals gives common SNP sites.  This can be from an external file
-     *         in the format (seq, pos-1, pos).
+     *         The IntervalList snpIntervals gives common SNP sites in 1-based format.
      *     </ul>
      *     <ul>
      *         The skewed heterozygous allele fraction and p-value threshold for binomial test must be specified for a
@@ -144,7 +143,7 @@ public final class HetPulldownCalculator {
      *     For a tumor sample:
      *     <ul>
      *         The IntervalList snpIntervals gives heterozygous SNP sites likely to be present in the normal sample.
-     *         This should be from {@link HetPulldownCalculator#getNormal} in the format (seq, pos, pos).
+     *         This should be from {@link HetPulldownCalculator#getNormal} in 1-based format.
      *         Only these sites are output.
      *     </ul>
      * </p>
@@ -154,7 +153,7 @@ public final class HetPulldownCalculator {
      *                          (determines whether to perform binomial test)
      * @param hetAlleleFraction skewed heterozygous allele fraction (0.5 in an ideal case), used for normal sample
      * @param pvalThreshold     p-value threshold for two-sided binomial test, used for normal sample
-     * @return                  Pulldown of heterozygous SNP sites in the format (seq, pos, pos)
+     * @return                  Pulldown of heterozygous SNP sites in 1-based format
      */
     private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, SampleType sampleType,
                                            final double hetAlleleFraction, final double pvalThreshold) {
@@ -178,13 +177,6 @@ public final class HetPulldownCalculator {
             locusIterator.setQualityScoreCutoff(MIN_QUALITY);
             locusIterator.setIncludeNonPfReads(false);
 
-            //SamLocusIterator includes loci at interval starts. however, these loci are not SNP sites if interval file
-            //specifies a SNP at position pos as (seq, pos-1, pos). you could skip these loci by only looking at every
-            //other locus (which you would presume are interval ends, and hence, SNPs), except for the fact that
-            //SamLocusIterator uniquifies the interval list. this combines MNPs into a single interval, so that an MNP
-            //at posB and posA = posB - 1, denoted by (seq, posB - 2, posB - 1) and (seq, posB - 1, posB), enters the
-            //iteration as ...posSNP - 1, posSNP, posB - 2, posB - 1, posB, posOtherSNP - 1, posOtherSNP...
-            //so you cannot simply assume every other locus is a SNP/interval end.
             for (final SamLocusIterator.LocusInfo locus : locusIterator) {
                 //include N, etc. reads here
                 final int totalReadCount = locus.getRecordAndPositions().size();
@@ -205,8 +197,6 @@ public final class HetPulldownCalculator {
                 final int refReadCount = baseCounts.get(refBase);
                 final int altReadCount = totalBaseCount - refReadCount;
 
-                //intervals are output as (seq, pos, pos) rather than (seq, pos-1, pos)
-                //this avoids having to skip loci at interval starts during tumor het pulldown
                 hetPulldown.add(new Interval(locus.getSequenceName(), locus.getPosition(), locus.getPosition()),
                         refReadCount, altReadCount);
             }
