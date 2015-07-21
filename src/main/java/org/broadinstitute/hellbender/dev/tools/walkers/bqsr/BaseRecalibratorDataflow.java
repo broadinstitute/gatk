@@ -114,7 +114,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             BaseRecalibratorDataflowUtils.ensureReferenceIsReadable(pipeline.getOptions(), referencePath);
             baseRecalibratorWorker = BaseRecalibratorWorker.fromArgs(header, BRAC);
             baseRecalibratorWorker.checkClientArguments();
-            checkSequenceDictionaries();
+            //checkSequenceDictionaries();
 
             // 2. set up computation
             PCollection<RecalibrationTables> aggregated =
