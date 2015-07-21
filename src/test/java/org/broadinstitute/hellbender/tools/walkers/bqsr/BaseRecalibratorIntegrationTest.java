@@ -105,7 +105,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         SamAssertionUtils.assertSamsEqual(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated, ValidationStringency.LENIENT);
 
         final File expectedTablePost = new File(getResourceDir() + "expected.NA12878.chr17_69k_70k.postRecalibrated.txt");
-        IntegrationTestSpec.compareTextFiles(actualTablePost, expectedTablePost);
+        IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
     @Test

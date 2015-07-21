@@ -135,7 +135,7 @@ public final class CalibrationTablesBuilderIntegrationTest extends CommandLinePr
         // 5. Compare against expected report.
         final File gotTablePre = new File(outputDest);
         final File expectedTablePre = new File(params.expectedFileName);
-        IntegrationTestSpec.compareTextFiles(gotTablePre, expectedTablePre);
+        IntegrationTestSpec.assertEqualTextFiles(gotTablePre, expectedTablePre);
     }
 
     @Test

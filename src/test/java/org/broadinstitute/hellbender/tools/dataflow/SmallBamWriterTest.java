@@ -97,7 +97,7 @@ public class SmallBamWriterTest extends BaseTest {
             logger.info("Downloading the output to " + localOutput+" (for comparison).");
             downloadFromGCS(pipeline.getOptions(), outputPath, localOutput);
         }
-        IntegrationTestSpec.compareBamFiles(new File(localInput), new File(localOutput));
+        IntegrationTestSpec.assertEqualBamFiles(new File(localInput), new File(localOutput));
     }
 
     private void downloadFromGCS(PipelineOptions popts, String gcsPath, String localPath) throws IOException {
