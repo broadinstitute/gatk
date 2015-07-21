@@ -53,3 +53,8 @@ after_success:
 - gradle jacocoTestReport coveralls
 after_failure:
 - dmesg | tail -100
+after_script:
+- $GCLOUD/gcloud components -q update gsutil
+- REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER
+- $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/
+- echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/index.html"
