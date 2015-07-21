@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.tribble.Feature;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
 import htsjdk.variant.bcf2.BCF2Codec;
@@ -21,7 +20,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public final class FeatureManagerUnitTest extends BaseTest {
     private static final String FEATURE_MANAGER_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
@@ -146,6 +149,48 @@ public final class FeatureManagerUnitTest extends BaseTest {
 
         Assert.assertEquals(vcFeatures.size(), 14, "Wrong number of Features returned from VariantContext test Feature file");
         Assert.assertEquals(bedFeatures.size(), 1, "Wrong number of Features returned from BED test Feature file");
+    }
+
+    @Test
+    public void testHandleRequestForValidFeatureInputIterator() {
+        final ValidFeatureArgumentSource toolInstance = new ValidFeatureArgumentSource();
+
+        // Initialize two of the FeatureInput fields as they would be initialized by the argument-parsing
+        // system to simulate a run of the tool with two FeatureInputs.
+        toolInstance.variantContextFeatureInput = new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test.vcf");
+        toolInstance.bedListFeatureInput.add(new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bed_file.bed"));
+
+        final FeatureManager manager = new FeatureManager(toolInstance);
+        final Iterator<VariantContext> vcIterator = manager.getFeatureIterator(toolInstance.variantContextFeatureInput);
+        final Iterator<BEDFeature> bedIterator = manager.getFeatureIterator(toolInstance.bedListFeatureInput.get(0));
+
+        final List<VariantContext> variants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(vcIterator,0),false)
+                .collect(Collectors.toList());
+
+        final List<BEDFeature> beds = StreamSupport.stream(Spliterators.spliteratorUnknownSize(bedIterator,0),false)
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(variants.size(), 26);
+        Assert.assertEquals(variants.get(4).getStart(),280);
+        Assert.assertEquals(beds.size(), 1);
+    }
+
+    @Test
+    public void testHandleRequestForValidFeatureInputIteratorWithoutIndex() {
+        final ValidFeatureArgumentSource toolInstance = new ValidFeatureArgumentSource();
+
+        // Initialize a FeatureInput field as it would be initialized by the argument-parsing
+        // system to simulate a run of the tool with that FeatureInput.
+        toolInstance.variantContextFeatureInput = new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test.wo-idx.vcf");
+
+        final FeatureManager manager = new FeatureManager(toolInstance);
+        final Iterator<VariantContext> vcIterator = manager.getFeatureIterator(toolInstance.variantContextFeatureInput);
+
+        final List<VariantContext> variants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(vcIterator,0),false)
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(variants.size(), 26);
+        Assert.assertEquals(variants.get(4).getStart(),280);
     }
 
     @Test(expectedExceptions = GATKException.class)

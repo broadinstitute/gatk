@@ -1,11 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFHeader;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -250,6 +248,29 @@ public final class FeatureManager implements AutoCloseable {
         // FeatureInput will return Features of the expected type T when we first created the data source
         // in initializeFeatureSources()
         return dataSource.queryAndPrefetch(interval);
+    }
+
+    /**
+     * Given a FeatureInput argument field from our tool, returns an iterator to its features starting
+     * from the first one.
+     * <p><b>Warning!</b>: calling this method a second time on the same {@link FeatureInput}
+     * on the same FeatureManager instance will invalidate (close) the iterator returned from
+     * the first call.
+     * </p>
+     * <p>
+     * An exception will be thrown if the {@link FeatureInput} provided did not come from the tool that this
+     * manager was initialized with, or was not an &#64;Argument-annotated field in the tool
+     * (or parent classes).
+     * </p>
+     *
+     * @param featureDescriptor FeatureInput argument from our tool representing the Feature source to query
+     * @param <T> type of Feature in the source represented by featureDescriptor
+     * @return never {@code null}, a iterator to all the features in the backing data source.
+     * @throws GATKException if the feature-descriptor is not found in the manager or is {@code null}.
+     */
+    public <T extends Feature> Iterator<T> getFeatureIterator(final FeatureInput<T> featureDescriptor) {
+        final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
+        return dataSource.iterator();
     }
 
     /**
