@@ -74,7 +74,7 @@ public final class ArtificialReadUtils {
      * @return the sam header
      */
     public static SAMFileHeader createArtificialSamHeader() {
-        return createArtificialSamHeader(1, 1, 1000000);
+        return createArtificialSamHeader(22, 1, 1000000);
     }
 
     public static SAMFileHeader createArtificialSamHeaderWithReadGroup( final SAMReadGroupRecord readGroup ) {
