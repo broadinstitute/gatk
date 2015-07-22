@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Random;
 
 /**
@@ -84,13 +85,13 @@ public final class BaseUtils {
      * @param base2
      * @return
      */
-    public static BaseSubstitutionType SNPSubstitutionType(byte base1, byte base2) {
-        BaseSubstitutionType t = isTransition(base1, base2) ? BaseSubstitutionType.TRANSITION : BaseSubstitutionType.TRANSVERSION;
+    public static BaseSubstitutionType SNPSubstitutionType(final byte base1, final byte base2) {
+        final BaseSubstitutionType t = isTransition(base1, base2) ? BaseSubstitutionType.TRANSITION : BaseSubstitutionType.TRANSVERSION;
         //System.out.printf("SNPSubstitutionType( char %c, char %c ) => %s%n", base1, base2, t);
         return t;
     }
 
-    public static boolean isTransition(byte base1, byte base2) {
+    public static boolean isTransition(final byte base1, final byte base2) {
         final int b1 = simpleBaseToBaseIndex(base1);
         final int b2 = simpleBaseToBaseIndex(base2);
         return b1 == Base.A.ordinal() && b2 == Base.G.ordinal() || b1 == Base.G.ordinal() && b2 == Base.A.ordinal() ||
@@ -102,7 +103,7 @@ public final class BaseUtils {
      */
     private BaseUtils() {}
 
-    static public boolean basesAreEqual(byte base1, byte base2) {
+    static public boolean basesAreEqual(final byte base1, final byte base2) {
         return simpleBaseToBaseIndex(base1) == simpleBaseToBaseIndex(base2);
     }
 
@@ -128,8 +129,9 @@ public final class BaseUtils {
      * @return 0, 1, 2, 3, or -1 if the base can't be understood
      */
     static public int simpleBaseToBaseIndex(final byte base) {
-        if ( base < 0 || base >= 256 )
+        if ( base < 0 || base >= 256 ) {
             throw new IllegalArgumentException("Non-standard bases were encountered in either the input reference or BAM file(s)");
+        }
         return baseIndexMap[base];
     }
 
@@ -156,7 +158,7 @@ public final class BaseUtils {
      * @param baseIndex 0, 1, 2, 3
      * @return A, C, G, T, or '.' if the index can't be understood
      */
-    static public byte baseIndexToSimpleBase(int baseIndex) {
+    static public byte baseIndexToSimpleBase(final int baseIndex) {
         switch (baseIndex) {
             case 0:
                 return 'A';
@@ -177,7 +179,7 @@ public final class BaseUtils {
      * @param base the base [AaCcGgTt]
      * @return the complementary base, or the input base if it's not one of the understood ones
      */
-    static public byte simpleComplement(byte base) {
+    static public byte simpleComplement(final byte base) {
         switch (base) {
             case 'A':
             case 'a':
@@ -202,8 +204,8 @@ public final class BaseUtils {
      * @param bases the byte array of bases
      * @return the reverse complement of the base byte array
      */
-    static public byte[] simpleReverseComplement(byte[] bases) {
-        byte[] rcbases = new byte[bases.length];
+    static public byte[] simpleReverseComplement(final byte[] bases) {
+        final byte[] rcbases = new byte[bases.length];
 
         for (int i = 0; i < bases.length; i++) {
             rcbases[i] = simpleComplement(bases[bases.length - 1 - i]);
@@ -233,20 +235,25 @@ public final class BaseUtils {
      */
     public static void fillWithRandomBases(final byte[] dest, final int fromIndex, final int toIndex) {
         final Random rnd = Utils.getRandomGenerator();
-        if (dest == null)
+        if (dest == null) {
             throw new IllegalArgumentException("the dest array cannot be null");
-        if (fromIndex > toIndex)
+        }
+        if (fromIndex > toIndex) {
             throw new IllegalArgumentException("fromIndex cannot be larger than toIndex");
-        if (fromIndex < 0)
+        }
+        if (fromIndex < 0) {
             throw new IllegalArgumentException("both indexes must be positive");
-        if (toIndex > dest.length)
+        }
+        if (toIndex > dest.length) {
             throw new IllegalArgumentException("both indexes must be less or equal to the destination array length");
+        }
 
-        for (int i = fromIndex; i < toIndex; i++)
+        for (int i = fromIndex; i < toIndex; i++) {
             dest[i] = baseIndexToSimpleBase(rnd.nextInt(4));
+        }
     }
 
-    public static byte getComplement(byte base) {
+    public static byte getComplement(final byte base) {
         switch(base) {
             case 'a':
             case 'A':
@@ -267,4 +274,21 @@ public final class BaseUtils {
                 throw new IllegalArgumentException("base must be A, C, G or T. " + (char) base + " is not a valid base.");
         }
     }
+
+    /**
+     * Lexicographical sorting of base arrays {@link Comparator}.
+     */
+    public static final Comparator<byte[]> BASES_COMPARATOR = (byte[] o1, byte[] o2) ->
+    {
+            Utils.nonNull(o1, "o1");
+            Utils.nonNull(o2, "o2");
+            final int minLength = Math.min(o1.length,o2.length);
+            for (int i = 0; i < minLength; i++) {
+                final int cmp = Byte.compare(o1[i],o2[i]);
+                if (cmp != 0) {
+                    return cmp;
+                }
+            }
+            return Integer.compare(o1.length, o2.length);
+    };
 }

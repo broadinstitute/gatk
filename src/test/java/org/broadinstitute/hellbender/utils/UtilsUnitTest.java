@@ -20,11 +20,6 @@ import static java.util.Arrays.asList;
 public final class UtilsUnitTest extends BaseTest {
 
     @Test
-    public void testReverse(){
-        Assert.assertEquals(asList(2,1,0), Utils.reverse(asList(0,1,2)));
-    }
-
-    @Test
     public void testMakePermutations(){
 //        * if objects = [A, B, C]
 //        * if N = 1 => [[A], [B], [C]]
@@ -101,16 +96,25 @@ public final class UtilsUnitTest extends BaseTest {
                 "**********************************************************************")));
     }
 
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testJoinNullInts() {
+        int[] nullints = null;
+        Utils.join(",", nullints);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testJoinNullDoubles() {
+        double[] emptydbl = null;
+        Utils.join(",", emptydbl);
+    }
+
     @Test
     public void testJoin(){
         int[] ints = {1,2,3,4};
-        int[] nullints = null;
         Assert.assertEquals(Utils.join(",", ints),"1,2,3,4");
-        Assert.assertEquals(Utils.join(",", nullints), "");
 
         double[] dbls = {1.0,2.0,3.0,4.0};
-        double[] emptydbl = null;
-        Assert.assertEquals(Utils.join(",", emptydbl), "");
         Assert.assertEquals(Utils.join(",",dbls), "1.0,2.0,3.0,4.0");
 
         Assert.assertEquals(Utils.join(",", new Object[] {}),"");
@@ -332,4 +336,24 @@ public final class UtilsUnitTest extends BaseTest {
                 {0, 0}, {10, 10}, {11, 5}, {-1, 10}, {0, -10}
         };
     }
+
+    @Test(dataProvider = "equalRangeData", enabled = true)
+    public void testEqualRange(final byte[] array1, final byte[] array2, final int offset1, final int offset2, final int length, final boolean expected) {
+        Assert.assertEquals(Utils.equalRange(array1,offset1,array2,offset2,length),expected);
+        Assert.assertTrue(Utils.equalRange(array1,offset1,array1,offset1,length));
+        Assert.assertTrue(Utils.equalRange(array2,offset2,array2,offset2,length));
+
+    }
+
+    @DataProvider(name = "equalRangeData")
+    public Object[][] equalRangeData() {
+        return new Object[][] {
+                new Object[] { new byte[0] , new byte[0], 0, 0, 0, true},
+                new Object[]  {      "ABCF".getBytes(), "BC".getBytes(), 1,0,2, true },
+                new Object[]  { "ABCF".getBytes(), "".getBytes(), 1,0,0, true },
+                new Object[]  { "ABCF".getBytes(), "ACBF".getBytes(), 0,0, 4, false}
+        };
+
+    }
+
 }
