@@ -175,12 +175,30 @@ public final class ArtificialReadUtils {
      * @return an artificial GATKRead backed by a SAMRecord, with the specified UUID.
      */
     public static GATKRead createSamBackedReadWithUUID( final UUID uuid, final String name, final int start, final int length ) {
+        return createSamBackedReadWithUUID(uuid, name, "1", start, length);
+    }
+
+    /**
+     * Creates an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     *
+     * The read will consist of the specified number of Q30 'A' bases, and will be
+     * mapped to the specified contig at the specified start position.
+     *
+     * @param uuid UUID of the new read
+     * @param name name of the new read
+     * @param contig contig the new read is mapped to
+     * @param start start position of the new read
+     * @param length number of bases in the new read
+     * @return an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     */
+    public static GATKRead createSamBackedReadWithUUID( final UUID uuid, final String name, final String contig, final int start, final int length ) {
         final SAMFileHeader header = createArtificialSamHeader();
         final byte[] bases = Utils.dupBytes((byte)'A', length);
         final byte[] quals = Utils.dupBytes((byte) 30, length);
 
         final SAMRecord sam = createArtificialSAMRecord(header, bases, quals, length + "M");
         sam.setReadName(name);
+        sam.setReferenceName(contig);
         sam.setAlignmentStart(start);
         return new SAMRecordToGATKReadAdapter(sam, uuid);
     }
@@ -198,10 +216,27 @@ public final class ArtificialReadUtils {
      * @return an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
      */
     public static GATKRead createGoogleBackedReadWithUUID( final UUID uuid, final String name, final int start, final int length ) {
+        return createGoogleBackedReadWithUUID(uuid, name, "1", start, length);
+    }
+
+    /**
+     * Creates an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
+     *
+     * The read will consist of the specified number of Q30 'A' bases, and will be
+     * mapped to the specified contig at the specified start position.
+     *
+     * @param uuid UUID of the new read
+     * @param name name of the new read
+     * @param contig contig the new read is mapped to
+     * @param start start position of the new read
+     * @param length number of bases in the new read
+     * @return an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
+     */
+    public static GATKRead createGoogleBackedReadWithUUID( final UUID uuid, final String name, final String contig, final int start, final int length ) {
         final byte[] bases = Utils.dupBytes((byte)'A', length);
         final byte[] quals = Utils.dupBytes((byte) 30, length);
 
-        final Read googleRead = createArtificialGoogleGenomicsRead(name, "1", start, bases, quals, length + "M");
+        final Read googleRead = createArtificialGoogleGenomicsRead(name, contig, start, bases, quals, length + "M");
         return new GoogleGenomicsReadToGATKReadAdapter(googleRead, uuid);
     }
 
