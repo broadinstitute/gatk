@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.stream.StreamSupport;
 
 /**
@@ -31,7 +32,9 @@ public abstract class VariantWalker extends GATKTool {
     public File drivingVariantFile;
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool
+    //we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
     private FeatureDataSource<VariantContext> drivingVariants;
+    private FeatureInput<VariantContext> drivingVariantsFeatureInput;
 
     /*
      * TODO: It's awkward that this traversal type requires variants yet can't override requiresFeatures() from
@@ -39,21 +42,26 @@ public abstract class VariantWalker extends GATKTool {
      * TODO: our main FeatureManager in GATKTool. May need a way to register additional data sources with GATKTool.
      */
 
-    /**
-     * Create and initialize data sources.
-     *
-     * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
-     */
     @Override
-    @SuppressWarnings("unchecked")
-    protected final void onStartup() {
-        super.onStartup();
+    void initializeFeatures() {
+        //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
+        //This is because we have at least 1 source of features (namely the driving dataset).
+        features = new FeatureManager(this);
+        initializeDrivingVariants();
+    }
 
+    @SuppressWarnings("unchecked")
+    private void initializeDrivingVariants() {
         // Need to discover the right codec for the driving source of variants manually, since we are
         // treating it specially (separate from the other sources of Features in our FeatureManager).
-        FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile);
-        if (codec.getFeatureType() == VariantContext.class) {
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile);
+        if (VariantContext.class.equals(codec.getFeatureType())) {
             drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec);
+
+            //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
+            //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+            drivingVariantsFeatureInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingVariantFile);
+            features.addToFeatureSources(0, drivingVariantsFeatureInput, StandardArgumentDefinitions.VARIANT_LONG_NAME, StandardArgumentDefinitions.VARIANT_SHORT_NAME, codec.getFeatureType());
         } else {
             throw new UserException("File " + drivingVariantFile + " cannot be decoded as a variant file.");
         }
@@ -64,12 +72,19 @@ public abstract class VariantWalker extends GATKTool {
     }
 
     /**
+     * Returns the feature input for the driving variants file.
+     */
+    protected final FeatureInput<VariantContext> getDrivingVariantsFeatureInput() {
+        return drivingVariantsFeatureInput;
+    }
+
+    /**
      * Implementation of variant-based traversal.
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      */
     @Override
     public void traverse() {
-        VariantFilter filter = makeVariantFilter();
+        final VariantFilter filter = makeVariantFilter();
         // Process each variant in the input stream.
         StreamSupport.stream(drivingVariants.spliterator(), false)
                 .filter(filter)
@@ -83,12 +98,12 @@ public abstract class VariantWalker extends GATKTool {
     }
 
     /**
-     * Gets the header associated with our driving source of variants as a VCFHeader
+     * Gets the header associated with our driving source of variants as a VCFHeader.
      *
      * @return VCFHeader for our driving source of variants
      */
-    public VCFHeader getHeaderForVariants() {
-        Object header = drivingVariants.getHeader();
+    public final VCFHeader getHeaderForVariants() {
+        final Object header = drivingVariants.getHeader();
 
         if ( ! (header instanceof VCFHeader) ) {
             throw new GATKException("Header for " + drivingVariantFile.getAbsolutePath() + " is not in VCF header format");

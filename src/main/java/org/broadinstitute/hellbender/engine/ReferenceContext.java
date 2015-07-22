@@ -218,7 +218,7 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
-     * Determines the start of the expanded reference window, bounded if necessary by the contig.
+     * Determines the start of the expanded reference window, bounded by 1.
      *
      * @param locus The locus to expand.
      * @param windowLeadingBases number of bases to attempt to expand relative to the locus start (>= 0)

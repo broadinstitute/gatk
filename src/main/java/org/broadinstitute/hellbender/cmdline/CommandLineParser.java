@@ -603,8 +603,8 @@ public final class CommandLineParser {
                 }
             }
             if (!canBeMadeFromString(getUnderlyingType(field))) {
-                throw new GATKException.CommandLineParserInternalException("@Argument member " + field.getName() +
-                        " must have a String ctor or be an enum");
+                throw new GATKException.CommandLineParserInternalException("@Argument member \"" + field.getName() +
+                        "\" must have a String constructor or be an enum");
             }
 
             final ArgumentDefinition argumentDefinition = new ArgumentDefinition(field, argumentAnnotation, parent);

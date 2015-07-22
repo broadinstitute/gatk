@@ -92,7 +92,7 @@ import java.util.*;
         programGroup = VariantProgramGroup.class
 )
 public final class ValidateVariants extends VariantWalker {
-    final protected static Logger logger = LogManager.getLogger(ValidateVariants.class);
+    final static Logger logger = LogManager.getLogger(ValidateVariants.class);
 
     public enum ValidationType {
 
@@ -140,19 +140,19 @@ public final class ValidateVariants extends VariantWalker {
     }
 
     @ArgumentCollection
-    protected DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
+    DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
     @Argument(fullName = "validationTypeToExclude", shortName = "Xtype", doc = "which validation type to exclude from a full strict validation", optional = true)
-    protected List<ValidationType> excludeTypes = new ArrayList<>();
+    List<ValidationType> excludeTypes = new ArrayList<>();
 
     /**
      * By default, even filtered records are validated.
      */
     @Argument(fullName = "doNotValidateFilteredRecords", shortName = "doNotValidateFilteredRecords", doc = "skip validation on filtered records", optional = true)
-    protected Boolean DO_NOT_VALIDATE_FILTERED = false;
+    Boolean DO_NOT_VALIDATE_FILTERED = false;
 
     @Argument(fullName = "warnOnErrors", shortName = "warnOnErrors", doc = "just emit warnings on errors instead of terminating the run at the first instance", optional = true)
-    protected Boolean WARN_ON_ERROR = false;
+    Boolean WARN_ON_ERROR = false;
 
     /**
      * Contains final set of validation to apply.
@@ -165,9 +165,10 @@ public final class ValidateVariants extends VariantWalker {
     }
 
     @Override
-    public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
-        if ( DO_NOT_VALIDATE_FILTERED && vc.isFiltered() )
+    public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
+        if ( DO_NOT_VALIDATE_FILTERED && vc.isFiltered() ) {
             return;
+        }
 
         // get the true reference allele
         final Allele reportedRefAllele = vc.getReference();
