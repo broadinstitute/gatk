@@ -5,6 +5,7 @@ import htsjdk.samtools.util.ListMap;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -88,8 +89,7 @@ public final class FilterVcfTest extends CommandLineProgramTest {
 
     /** Utility method that takes a a VCF and a set of parameters and filters the VCF. */
     File testFiltering(final File vcf, final double minAb, final int minDp, final int minGq, final double maxFs) throws Exception {
-        final File out = File.createTempFile("filterVcfTest.", ".vcf.gz");
-        out.deleteOnExit();
+        final File out = BaseTest.createTempFile("filterVcfTest.", ".vcf.gz");
 
         final String[] args = new String[]{
                 "--CREATE_INDEX", "true",

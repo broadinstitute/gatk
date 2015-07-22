@@ -6,6 +6,7 @@ import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -51,10 +52,8 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
     public void testClipping(final String clippingAction, final String bases1_1, final String quals1_1, final String bases1_2, final String quals1_2,
                              final String bases2_1, final String quals2_1, final String bases2_2, final String quals2_2, final String testName) throws IOException {
         final File samFile = new File(TEST_DATA_DIR, CLIPPING_TEST_DATA) ;
-        final File f1 = File.createTempFile("clippingtest1", "fastq");
-        final File f2 = File.createTempFile("clippingtest2", "fastq");
-        f1.deleteOnExit();
-        f2.deleteOnExit();
+        final File f1 = BaseTest.createTempFile("clippingtest1", "fastq");
+        final File f2 = BaseTest.createTempFile("clippingtest2", "fastq");
 
         if (clippingAction != null) {
             convertFile(new String[]{
@@ -163,10 +162,8 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
     @Test (dataProvider = "badFiles", expectedExceptions= SAMFormatException.class)
     public void testBadFile(final String samFilename) throws IOException {
         final File samFile = new File(TEST_DATA_DIR,samFilename);
-        final File pair1 = File.createTempFile("tt-pair1.", ".fastq");
-        final File pair2 = File.createTempFile("tt-pair2.", ".fastq");
-        pair1.deleteOnExit();
-        pair2.deleteOnExit();
+        final File pair1 = BaseTest.createTempFile("tt-pair1.", ".fastq");
+        final File pair2 = BaseTest.createTempFile("tt-pair2.", ".fastq");
         convertFile(new String[]{
                 "--INPUT", samFile.getAbsolutePath(),
                 "--FASTQ", pair1.getAbsolutePath(),
@@ -288,8 +285,6 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final File samFile = new File(TEST_DATA_DIR, samFilename);
         final File pair1File = newTempFastqFile("pair1");
         final File pair2File = newTempFastqFile("pair2");
-        pair1File.deleteOnExit();
-        pair2File.deleteOnExit();
 
         convertFile(new String[]{
                 "--INPUT", samFile.getAbsolutePath(),
@@ -392,8 +387,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
 
     private File newTempFastqFile(final String filename) throws IOException {
         if(filename == null) return null;
-        final File file = File.createTempFile(filename,".fastq");
-        file.deleteOnExit();
+        final File file = BaseTest.createTempFile(filename, ".fastq");
         return file;
     }
 }

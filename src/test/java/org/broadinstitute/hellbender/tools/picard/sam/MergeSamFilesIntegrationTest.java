@@ -7,6 +7,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,8 +27,7 @@ public final class MergeSamFilesIntegrationTest extends CommandLineProgramTest {
         final File unsortedInputTestDataDir = new File(TEST_DATA_DIR, "unsorted_input");
         final File sam1 = new File(unsortedInputTestDataDir, "1.sam");
         final File sam2 = new File(unsortedInputTestDataDir, "2.sam");
-        final File mergedOutput = File.createTempFile("unsortedInputSortedOutputTest.", BamFileIoUtils.BAM_FILE_EXTENSION);
-        mergedOutput.deleteOnExit();
+        final File mergedOutput = BaseTest.createTempFile("unsortedInputSortedOutputTest.", BamFileIoUtils.BAM_FILE_EXTENSION);
 
         final String[] args = new String[]{
                 "--INPUT", sam1.getAbsolutePath(),

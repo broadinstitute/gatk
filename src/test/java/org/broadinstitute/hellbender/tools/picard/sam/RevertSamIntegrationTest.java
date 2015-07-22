@@ -5,6 +5,7 @@ import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -31,7 +32,7 @@ public final class RevertSamIntegrationTest extends CommandLineProgramTest {
                                    final boolean restoreOriginalQualities, final String sample, final String library,
                                    final List<String> attributesToClear) throws Exception {
 
-        final File output = File.createTempFile("reverted", ".sam");
+        final File output = BaseTest.createTempFile("reverted", ".sam");
         final RevertSam reverter = new RevertSam();
         final List<String> args = new ArrayList<>();
         args.add("--INPUT");
@@ -125,7 +126,7 @@ public final class RevertSamIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider="negativeTestData", expectedExceptions = {UserException.class, GATKException.class})
     public void basicNegativeTest(final String sample, final String library) throws Exception {
 
-        final File output = File.createTempFile("bad", ".sam");
+        final File output = BaseTest.createTempFile("bad", ".sam");
         final RevertSam reverter = new RevertSam();
         final List<String> args = new ArrayList<>();
         args.add("--INPUT");

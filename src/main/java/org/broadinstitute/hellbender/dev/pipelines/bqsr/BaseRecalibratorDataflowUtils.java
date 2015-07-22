@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -131,7 +132,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                     // Saving and loading back the report actually changes it. So we have to do it.
                     // TODO: Figure out what it changes, and just do that instead of doing the whole rigamarole.
                     try {
-                        File temp = BaseTest.createTempFile("temp-recalibrationtable-", ".tmp");
+                        File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
                         toolArgs.RAC.RECAL_TABLE = new PrintStream(temp);
                         RecalUtils.outputRecalibrationReport(toolArgs.RAC, baseRecalibratorWorker.getQuantizationInfo(rt), rt, baseRecalibratorWorker.getRequestedCovariates(), false);
                         BaseRecalOutput ret = new BaseRecalOutput(temp);

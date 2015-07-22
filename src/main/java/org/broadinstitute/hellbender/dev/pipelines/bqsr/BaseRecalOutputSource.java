@@ -5,21 +5,13 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.POutput;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
-import java.nio.channels.Channels;
 
 /**
  * Functions to oad a BaseRecalOutput.
@@ -42,7 +34,7 @@ public final class BaseRecalOutputSource implements Serializable {
                     @Override
                     public void processElement(ProcessContext c) {
                         final String fname = c.element();
-                        File dest = BaseTest.createTempFile("temp-BaseRecal-", ".gz");
+                        File dest = IOUtils.createTempFile("temp-BaseRecal-", ".gz");
                         try {
                             BucketUtils.copyFile(fname, c.getPipelineOptions(), dest.getPath());
                         } catch (IOException x) {

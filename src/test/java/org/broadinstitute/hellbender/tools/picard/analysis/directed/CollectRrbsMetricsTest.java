@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -24,7 +25,7 @@ public final class CollectRrbsMetricsTest extends CommandLineProgramTest {
 
 	@BeforeTest
 	private void setUp() throws Exception {
-		rootTestDir = File.createTempFile("crmt.", ".tmp");
+		rootTestDir = BaseTest.createTempFile("crmt.", ".tmp");
 		Assert.assertTrue(rootTestDir.delete());
 		Assert.assertTrue(rootTestDir.mkdir());
 	}

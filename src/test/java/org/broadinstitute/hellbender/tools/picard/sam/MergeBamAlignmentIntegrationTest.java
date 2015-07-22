@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.read.mergealignment.BestMapqPrimaryAlignmentSelectionStrategy;
 import org.broadinstitute.hellbender.utils.read.mergealignment.SamAlignmentMerger;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -60,7 +61,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
     @Test
     public void testMergerWithSupplemental() throws Exception {
-        final File outputWithSupplemental = File.createTempFile("mergeWithSupplementalTest", ".sam");
+        final File outputWithSupplemental = BaseTest.createTempFile("mergeWithSupplementalTest", ".sam");
         System.out.println(outputWithSupplemental.getAbsolutePath());
         // outputWithSupplemental.deleteOnExit();
 
@@ -134,8 +135,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
     @Test
     public void testMerger() throws Exception {
-        final File output = File.createTempFile("mergeTest", ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("mergeTest", ".sam");
 
         doMergeAlignment(unmappedBam, Collections.singletonList(alignedBam),
                 null, null, null, null,
@@ -226,8 +226,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
     @Test
     public void testMergerFromMultipleFiles() throws Exception {
-        final File output = File.createTempFile("mergeTest", ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("mergeTest", ".sam");
 
         doMergeAlignment(unmappedBam, Arrays.asList(oneHalfAlignedBam, otherHalfAlignedBam),
                 null, null, null, null,
@@ -282,8 +281,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
     public void testSortingOnSamAlignmentMerger(final File unmapped, final File aligned, final boolean sorted, final String testName)
             throws IOException {
 
-        final File target = File.createTempFile("target", "bam");
-        target.deleteOnExit();
+        final File target = BaseTest.createTempFile("target", "bam");
         final SamAlignmentMerger merger = new SamAlignmentMerger(unmapped,  target, fasta, null, true, false,
                 false, Arrays.asList(aligned), 1, null, null, null, null, null, null,
                 Arrays.asList(SamPairUtil.PairOrientation.FR), SAMFileHeader.SortOrder.coordinate,
@@ -316,8 +314,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
      */
     @Test(dataProvider="separateTrimmed")
     public void testMergingFromSeparatedReadTrimmedAlignments(final File unmapped, final List<File> r1Align, final List<File> r2Align, final int r1Trim, final int r2Trim, final String testName) throws Exception {
-        final File output = File.createTempFile("mergeMultipleAlignmentsTest", ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("mergeMultipleAlignmentsTest", ".sam");
 
         doMergeAlignment(unmapped, null, r1Align, r2Align, r1Trim, r2Trim,
                 false, true, false, 1,
@@ -380,8 +377,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
     @Test(expectedExceptions = {IllegalStateException.class, GATKException.class})
     public void testOldQuerynameSortFails() throws IOException {
 
-        final File merged = File.createTempFile("merged", BamFileIoUtils.BAM_FILE_EXTENSION);
-        merged.deleteOnExit();
+        final File merged = BaseTest.createTempFile("merged", BamFileIoUtils.BAM_FILE_EXTENSION);
 
         doMergeAlignment(badorderUnmappedBam, Collections.singletonList(badorderAlignedBam),
                 null, null, null, null,
@@ -396,8 +392,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
     @Test
     public void testMultiHit() throws IOException {
-        final File merged = File.createTempFile("merged", ".sam");
-        merged.deleteOnExit();
+        final File merged = BaseTest.createTempFile("merged", ".sam");
 
         doMergeAlignment(multiHitUnmappedBam, Collections.singletonList(multiHitAlignedBam),
                 null, null, null, null,
@@ -533,8 +528,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
             firstUnmappedRec = unmappedSamFileIterator.next();
             secondUnmappedRec = unmappedSamFileIterator.next();
         }
-        final File alignedSam = File.createTempFile("aligned.", ".sam");
-        alignedSam.deleteOnExit();
+        final File alignedSam = BaseTest.createTempFile("aligned.", ".sam");
         final SAMFileHeader alignedHeader = new SAMFileHeader();
         alignedHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
         alignedHeader.setSequenceDictionary(SamReaderFactory.makeDefault().getFileHeader(sequenceDict).getSequenceDictionary());
@@ -557,8 +551,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
         }
 
         // Merge aligned file with original unmapped file.
-        final File mergedSam = File.createTempFile("merged.", ".sam");
-        mergedSam.deleteOnExit();
+        final File mergedSam = BaseTest.createTempFile("merged.", ".sam");
 
         doMergeAlignment(multiHitFilterUnmappedBam, Collections.singletonList(alignedSam),
                 null, null, null, null,
@@ -802,8 +795,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
         // Create the aligned file by copying bases, quals, readname from the unmapped read, and conforming to each HitSpec.
         try (final SAMRecordIterator unmappedSamFileIterator = SamReaderFactory.makeDefault().open(multiHitFilterFragmentUnmappedBam).iterator()) {
             final SAMRecord unmappedRec = unmappedSamFileIterator.next();
-            final File alignedSam = File.createTempFile("aligned.", ".sam");
-            alignedSam.deleteOnExit();
+            final File alignedSam = BaseTest.createTempFile("aligned.", ".sam");
             final SAMFileHeader alignedHeader = new SAMFileHeader();
             alignedHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
             alignedHeader.setSequenceDictionary(SamReaderFactory.makeDefault().getFileHeader(sequenceDict).getSequenceDictionary());
@@ -817,8 +809,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                 }
             }
             // Merge aligned file with original unmapped file.
-            final File mergedSam = File.createTempFile("merged.", ".sam");
-            mergedSam.deleteOnExit();
+            final File mergedSam = BaseTest.createTempFile("merged.", ".sam");
 
             doMergeAlignment(multiHitFilterFragmentUnmappedBam, Collections.singletonList(alignedSam),
                     null, null, null, null,
@@ -894,11 +885,9 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
      */
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testEarliestFragmentStrategyPaired() throws Exception {
-        final File output = File.createTempFile("mergeTest", ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("mergeTest", ".sam");
 
-        final File unmappedSam = File.createTempFile("unmapped.", ".sam");
-        unmappedSam.deleteOnExit();
+        final File unmappedSam = BaseTest.createTempFile("unmapped.", ".sam");
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
         final SAMFileHeader header = new SAMFileHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
@@ -926,8 +915,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
             unmappedWriter.addAlignment(secondOfPair);
         }
 
-        final File alignedSam = File.createTempFile("aligned.", ".sam");
-        alignedSam.deleteOnExit();
+        final File alignedSam = BaseTest.createTempFile("aligned.", ".sam");
 
         // Populate the header with SAMSequenceRecords
         header.getSequenceDictionary().addSequence(new SAMSequenceRecord("chr1", 1000000));
@@ -985,8 +973,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
     @Test(dataProvider = "testEarliestFragmentStrategyDataProvider")
     public void testEarliestFragmentStrategy(final String testName, final MultipleAlignmentSpec[] specs) throws IOException {
 
-        final File output = File.createTempFile(testName, ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile(testName, ".sam");
         final File[] sams = createSamFilesToBeMerged(specs);
 
         doMergeAlignment(sams[0], Collections.singletonList(sams[1]),
@@ -1062,52 +1049,46 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
      * @return a 2-element array in which the first element is the unmapped SAM, and the second the mapped SAM.
      */
     private File[] createSamFilesToBeMerged(final MultipleAlignmentSpec[] specs) {
-        try {
-            final File unmappedSam = File.createTempFile("unmapped.", ".sam");
-            unmappedSam.deleteOnExit();
-            final SAMFileWriterFactory factory = new SAMFileWriterFactory();
-            final SAMFileHeader header = new SAMFileHeader();
-            header.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            final SAMRecord unmappedRecord = new SAMRecord(header);
+        final File unmappedSam = BaseTest.createTempFile("unmapped.", ".sam");
+        final SAMFileWriterFactory factory = new SAMFileWriterFactory();
+        final SAMFileHeader header = new SAMFileHeader();
+        header.setSortOrder(SAMFileHeader.SortOrder.queryname);
+        final SAMRecord unmappedRecord = new SAMRecord(header);
 
-            unmappedRecord.setReadName("theRead");
-            unmappedRecord.setReadString("ACGTACGTACGTACGT");
-            unmappedRecord.setBaseQualityString("5555555555555555");
-            unmappedRecord.setReadUnmappedFlag(true);
+        unmappedRecord.setReadName("theRead");
+        unmappedRecord.setReadString("ACGTACGTACGTACGT");
+        unmappedRecord.setBaseQualityString("5555555555555555");
+        unmappedRecord.setReadUnmappedFlag(true);
 
-            try (final SAMFileWriter unmappedWriter = factory.makeSAMWriter(header, false, unmappedSam)) {
-                unmappedWriter.addAlignment(unmappedRecord);
-            }
-
-            final File alignedSam = File.createTempFile("aligned.", ".sam");
-            alignedSam.deleteOnExit();
-
-            final String sequence = "chr1";
-            // Populate the header with SAMSequenceRecords
-            header.getSequenceDictionary().addSequence(new SAMSequenceRecord(sequence, 1000000));
-
-            try (final SAMFileWriter alignedWriter = factory.makeSAMWriter(header, false, alignedSam)){
-                for (final MultipleAlignmentSpec spec : specs) {
-                    final SAMRecord alignedRecord = new SAMRecord(header);
-                    alignedRecord.setReadName(unmappedRecord.getReadName());
-                    alignedRecord.setReadBases(unmappedRecord.getReadBases());
-                    alignedRecord.setBaseQualities(unmappedRecord.getBaseQualities());
-                    alignedRecord.setReferenceName(sequence);
-                    alignedRecord.setAlignmentStart(1);
-                    alignedRecord.setReadNegativeStrandFlag(spec.reverseStrand);
-                    alignedRecord.setCigarString(spec.cigar);
-                    alignedRecord.setMappingQuality(spec.mapQ);
-                    if (spec.oneOfTheBest) {
-                        alignedRecord.setAttribute(ONE_OF_THE_BEST_TAG, 1);
-                    }
-                    alignedWriter.addAlignment(alignedRecord);
-                }
-            }
-
-            return new File[]{unmappedSam, alignedSam};
-        } catch (IOException e) {
-            throw new GATKException(e.getMessage(), e);
+        try (final SAMFileWriter unmappedWriter = factory.makeSAMWriter(header, false, unmappedSam)) {
+            unmappedWriter.addAlignment(unmappedRecord);
         }
+
+        final File alignedSam = BaseTest.createTempFile("aligned.", ".sam");
+
+        final String sequence = "chr1";
+        // Populate the header with SAMSequenceRecords
+        header.getSequenceDictionary().addSequence(new SAMSequenceRecord(sequence, 1000000));
+
+        try (final SAMFileWriter alignedWriter = factory.makeSAMWriter(header, false, alignedSam)){
+            for (final MultipleAlignmentSpec spec : specs) {
+                final SAMRecord alignedRecord = new SAMRecord(header);
+                alignedRecord.setReadName(unmappedRecord.getReadName());
+                alignedRecord.setReadBases(unmappedRecord.getReadBases());
+                alignedRecord.setBaseQualities(unmappedRecord.getBaseQualities());
+                alignedRecord.setReferenceName(sequence);
+                alignedRecord.setAlignmentStart(1);
+                alignedRecord.setReadNegativeStrandFlag(spec.reverseStrand);
+                alignedRecord.setCigarString(spec.cigar);
+                alignedRecord.setMappingQuality(spec.mapQ);
+                if (spec.oneOfTheBest) {
+                    alignedRecord.setAttribute(ONE_OF_THE_BEST_TAG, 1);
+                }
+                alignedWriter.addAlignment(alignedRecord);
+            }
+        }
+
+        return new File[]{unmappedSam, alignedSam};
     }
 
     class MultipleAlignmentSpec {
@@ -1129,8 +1110,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
      */
     @Test
     public void testShortFragmentClipping() throws Exception {
-        final File output = File.createTempFile("testShortFragmentClipping", ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("testShortFragmentClipping", ".sam");
         doMergeAlignment(clipTestUnmappedBam,
                 Collections.singletonList(clipTestAlignedBam),
                 null, null, null, null,
@@ -1173,8 +1153,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
     private void testBestFragmentMapqStrategy(final String testName, final int[] firstMapQs, final int[] secondMapQs,
                                               final boolean includeSecondary, final int expectedFirstMapq,
                                               final int expectedSecondMapq) throws Exception {
-        final File unmappedSam = File.createTempFile("unmapped.", ".sam");
-        unmappedSam.deleteOnExit();
+        final File unmappedSam = BaseTest.createTempFile("unmapped.", ".sam");
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
         final SAMFileHeader header = new SAMFileHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
@@ -1205,8 +1184,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
             unmappedWriter.addAlignment(secondUnmappedRead);
         }
 
-        final File alignedSam = File.createTempFile("aligned.", ".sam");
-        alignedSam.deleteOnExit();
+        final File alignedSam = BaseTest.createTempFile("aligned.", ".sam");
 
         final String sequence = "chr1";
         // Populate the header with SAMSequenceRecords
@@ -1217,8 +1195,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
             addAlignmentsForBestFragmentMapqStrategy(alignedWriter, secondUnmappedRead, sequence, secondMapQs);
         }
 
-        final File output = File.createTempFile("testBestFragmentMapqStrategy." + testName, ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("testBestFragmentMapqStrategy." + testName, ".sam");
         doMergeAlignment(unmappedSam, Collections.singletonList(alignedSam),
                 null, null, null, null,
                 false, true, false, 1,
@@ -1390,8 +1367,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                                         final MostDistantStrategyAlignmentSpec[] firstEndSpecs,
                                         final MostDistantStrategyAlignmentSpec[] secondEndSpecs) throws Exception {
 
-        final File unmappedSam = File.createTempFile("unmapped.", ".sam");
-        unmappedSam.deleteOnExit();
+        final File unmappedSam = BaseTest.createTempFile("unmapped.", ".sam");
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
         final SAMFileHeader header = new SAMFileHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
@@ -1422,8 +1398,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
             unmappedWriter.addAlignment(secondUnmappedRead);
         }
 
-        final File alignedSam = File.createTempFile("aligned.", ".sam");
-        alignedSam.deleteOnExit();
+        final File alignedSam = BaseTest.createTempFile("aligned.", ".sam");
 
         header.setSequenceDictionary(SamReaderFactory.makeDefault().getFileHeader(sequenceDict).getSequenceDictionary());
 
@@ -1453,8 +1428,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                 }
             }
         }
-        final File output = File.createTempFile("testMostDistantStrategy." + testName, ".sam");
-        output.deleteOnExit();
+        final File output = BaseTest.createTempFile("testMostDistantStrategy." + testName, ".sam");
         doMergeAlignment(unmappedSam, Collections.singletonList(alignedSam),
                 null, null, null, null,
                 false, true, false, 1,

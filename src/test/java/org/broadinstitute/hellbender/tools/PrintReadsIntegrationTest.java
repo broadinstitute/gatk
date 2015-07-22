@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,8 +22,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
     @Test(dataProvider="testingData")
     public void testFileToFile(String fileIn, String extOut) throws Exception {
         String samFile= fileIn;
-        final File outFile = File.createTempFile(samFile + ".", extOut);
-        outFile.deleteOnExit();
+        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
         File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
         final String[] args = new String[]{
                 "--input" , ORIG_BAM.getAbsolutePath(),

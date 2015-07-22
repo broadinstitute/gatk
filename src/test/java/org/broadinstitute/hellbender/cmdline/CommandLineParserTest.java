@@ -349,8 +349,7 @@ public final class CommandLineParserTest {
 
     @Test
     public void testArgumentsFile() throws Exception {
-        final File argumentsFile = File.createTempFile("clp.", ".arguments");
-        argumentsFile.deleteOnExit();
+        final File argumentsFile = BaseTest.createTempFile("clp.", ".arguments");
         try (final PrintWriter writer = new PrintWriter(argumentsFile)) {
             writer.println("-T 18");
             writer.println("--TRUTHINESS");
@@ -390,8 +389,7 @@ public final class CommandLineParserTest {
      */
     @Test( expectedExceptions = UserException.CommandLineException.class)
     public void testArgumentsFileWithDisallowedOverride() throws Exception {
-        final File argumentsFile = File.createTempFile("clp.", ".arguments");
-        argumentsFile.deleteOnExit();
+        final File argumentsFile = BaseTest.createTempFile("clp.", ".arguments");
         try (final PrintWriter writer = new PrintWriter(argumentsFile)) {
             writer.println("--T 18");
         }

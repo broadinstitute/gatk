@@ -22,7 +22,11 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.dev.BunnyLog;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.DataflowReadFilter;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
@@ -35,8 +39,8 @@ import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
 import java.io.IOException;
@@ -173,7 +177,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
         if (remote) {
             return GcsPath.fromUri(stagingLocation).resolve(TEMP_RECALTABLES + ".sj").toString();
         } else {
-            File outputTables = BaseTest.createTempFile(TEMP_RECALTABLES, ".sj");
+            File outputTables = IOUtils.createTempFile(TEMP_RECALTABLES, ".sj");
             return outputTables.getPath();
         }
     }

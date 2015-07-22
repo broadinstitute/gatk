@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -22,10 +23,8 @@ public final class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
     @Test
     public void test() throws IOException {
         final File input = new File(TEST_DATA_DIR, "insert_size_metrics_test.sam");
-        final File outfile   = File.createTempFile("test", ".insert_size_metrics");
-        final File pdf   = File.createTempFile("test", ".pdf");
-        outfile.deleteOnExit();
-        pdf.deleteOnExit();
+        final File outfile   = BaseTest.createTempFile("test", ".insert_size_metrics");
+        final File pdf   = BaseTest.createTempFile("test", ".pdf");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),

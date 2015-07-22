@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,8 +27,7 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
     public void test() throws IOException {
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test.sam");
         final File reference = new File(TEST_DATA_DIR, "summary_alignment_stats_test.fasta");
-        final File outfile   = File.createTempFile("alignmentMetrics", ".txt");
-        outfile.deleteOnExit();
+        final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
@@ -85,8 +85,7 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
     public void testBisulfite() throws IOException {
         final File input = new File(TEST_DATA_DIR, "summary_alignment_bisulfite_test.sam");
         final File reference = new File(TEST_DATA_DIR, "summary_alignment_stats_test.fasta");
-        final File outfile   = File.createTempFile("alignmentMetrics", ".txt");
-        outfile.deleteOnExit();
+        final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
@@ -147,8 +146,7 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
     @Test
     public void testNoReference() throws IOException {
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test.sam");
-        final File outfile   = File.createTempFile("alignmentMetrics", ".txt");
-        outfile.deleteOnExit();
+        final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath()
@@ -204,8 +202,7 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
     @Test
     public void testZeroLengthReads() throws IOException {
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test2.sam");
-        final File outfile   = File.createTempFile("alignmentMetrics", ".txt");
-        outfile.deleteOnExit();
+        final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath()
@@ -222,8 +219,7 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
     @Test
     public void testMultipleLevelsOfMetrics() throws IOException {
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test_multiple.sam");
-        final File outfile   = File.createTempFile("alignmentMetrics", ".txt");
-        outfile.deleteOnExit();
+        final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
