@@ -4,8 +4,6 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.List;
-
 /**
  * Exome analysis segment.
  *
@@ -79,15 +77,6 @@ public final class Segment implements Locatable {
 
 
     /**
-     * Returns the overlapping targets.
-     *
-     * Delegates to ExonCollection's binary search.
-     */
-    public List<TargetCoverage> overlappingTargets(final ExonCollection<TargetCoverage> targets) {
-        return targets.exons(interval);
-    }
-
-    /**
      * Returns the call.  Returns null for uncalled segments.
      *
      * @return maybe {@code null}
@@ -101,24 +90,6 @@ public final class Segment implements Locatable {
      */
     public void setCall(final String call) {
         this.call = call;
-    }
-
-    /**
-     * the mean of all overlapping targets' coverages
-     *
-     * @throws IllegalStateException if overlapping targets have not been assigned or if no overlapping targets were found.
-     */
-    public double mean(final ExonCollection<TargetCoverage> targets) {
-        final List<TargetCoverage> myTargets = overlappingTargets(targets);
-
-        if (myTargets.size() == 0) {
-            throw new IllegalStateException("Empty segment -- no overlapping targets.");
-        }
-        return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
-    }
-
-    public int numTargets(final ExonCollection<TargetCoverage> targets) {
-        return overlappingTargets(targets).size();
     }
 
     public boolean overlaps(final Segment other) {

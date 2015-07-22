@@ -76,4 +76,31 @@ public final class SegmentUtils {
             }
         }
     }
+
+    /**
+     * Returns the overlapping targets.
+     *
+     * Delegates to ExonCollection's binary search.
+     */
+    public static List<TargetCoverage> overlappingTargets(Segment segment, final ExonCollection<TargetCoverage> targets) {
+        return targets.exons(segment.getInterval());
+    }
+
+    /**
+     * the mean of all overlapping targets' coverages
+     *
+     * @throws IllegalStateException if overlapping targets have not been assigned or if no overlapping targets were found.
+     */
+    public static double mean(final Segment segment, final ExonCollection<TargetCoverage> targets) {
+        final List<TargetCoverage> myTargets = overlappingTargets(segment, targets);
+
+        if (myTargets.size() == 0) {
+            throw new IllegalStateException("Empty segment -- no overlapping targets.");
+        }
+        return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
+    }
+
+    public static int numTargets(Segment segment, final ExonCollection<TargetCoverage> targets) {
+        return overlappingTargets(segment, targets).size();
+    }
 }

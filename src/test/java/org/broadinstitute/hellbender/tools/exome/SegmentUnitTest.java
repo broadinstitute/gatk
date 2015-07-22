@@ -79,17 +79,17 @@ public final class SegmentUnitTest extends BaseTest{
 
     @Test
     public void testSegmentMean() {
-        Assert.assertEquals(segment1.mean(targets), (1.0 + 2.0) / 2, 0.00001);
-        Assert.assertEquals(segment2.mean(targets), (3.0) / 1, 0.00001);
-        Assert.assertEquals(segment4.mean(targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
+        Assert.assertEquals(SegmentUtils.mean(segment1, targets), (1.0 + 2.0) / 2, 0.00001);
+        Assert.assertEquals(SegmentUtils.mean(segment2, targets), (3.0) / 1, 0.00001);
+        Assert.assertEquals(SegmentUtils.mean(segment4, targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
     }
 
     @Test
     public void testSegmentNumTargets() {
-        Assert.assertEquals(segment1.numTargets(targets), 2);
-        Assert.assertEquals(segment2.numTargets(targets), 1);
-        Assert.assertEquals(segment3.numTargets(targets), 0);
-        Assert.assertEquals(segment4.numTargets(targets), 3);
+        Assert.assertEquals(SegmentUtils.numTargets(segment1, targets), 2);
+        Assert.assertEquals(SegmentUtils.numTargets(segment2, targets), 1);
+        Assert.assertEquals(SegmentUtils.numTargets(segment3, targets), 0);
+        Assert.assertEquals(SegmentUtils.numTargets(segment4, targets), 3);
     }
 
     @Test
