@@ -55,8 +55,8 @@ import static java.util.Collections.singleton;
  *
  */
 @CommandLineProgramProperties(
-        usage = "Filter variant calls based on INFO and FORMAT annotations.",
-        usageShort = "Filter variants VCF",
+        summary = "Filter variant calls based on INFO and FORMAT annotations.",
+        oneLineSummary = "Filter variants VCF",
         programGroup = VariantProgramGroup.class
 )
 public final class VariantFiltration extends VariantWalker {
