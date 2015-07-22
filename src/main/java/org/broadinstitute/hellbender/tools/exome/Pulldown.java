@@ -8,7 +8,7 @@ import java.io.File;
 import java.util.stream.Collectors;
 
 /**
- * Simple data structure to pass and write pulldown results.  Should probably replace with a more generic class later.
+ * Simple data structure to pass pulldown results.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -33,7 +33,8 @@ public final class Pulldown extends AllelicCountCollection {
         this.header = header;
     }
 
-    /** Returns the IntervalList of SNP sites.   */
+    /** Returns a new instance of an IntervalList, constructed from the intervals of the internally held
+     * AllelicCounts.  This IntervalList is modifiable and does not change with the state of the Pulldown.   */
     public IntervalList getIntervals() {
         final IntervalList intervals = new IntervalList(header);
         intervals.addall(getCounts().stream().map(count -> count.getInterval()).collect(Collectors.toList()));

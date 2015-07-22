@@ -62,7 +62,7 @@ public class AllelicCountCollection {
         counts.add(count);
     }
 
-    /** Returns a list of the allelic counts.   */
+    /** Returns an unmodifiable view of the list of AllelicCounts.   */
     public List<AllelicCount> getCounts() {
         return Collections.unmodifiableList(counts);
     }
