@@ -155,9 +155,13 @@ jar {
 }
 
 test {
-    // enable TestNG support (default is JUnit)
+    String CI = "$System.env.CI"
     useTestNG{
-        excludeGroups 'cloud', 'bucket'
+        if ( "$System.env.CLOUD" =="true"){
+            includeGroups 'cloud', 'bucket'
+        } else {
+            excludeGroups 'cloud', 'bucket'
+        }
     }
 
     // ensure dataflowRunner is passed to the test VM if specified on the command line
@@ -168,8 +172,7 @@ test {
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
     maxHeapSize = "2G"
-    
-    String CI = "$System.env.CI"
+
     if (CI == "true") {
         int count = 0
         // listen to events in the test execution lifecycle
