@@ -27,7 +27,7 @@ import java.util.List;
 
 public final class DataflowReadsPipelineTest {
 
-    @CommandLineProgramProperties(usage ="runtime configurable pipeline for testing", usageShort = "for testing pipeline functionality")
+    @CommandLineProgramProperties(summary ="runtime configurable pipeline for testing", oneLineSummary = "for testing pipeline functionality")
     private static class RuntimeConfigurablePipeline extends DataflowReadsPipeline {
         private static final long serialVersionUID = 1l;
         private final PTransformSAM<?> tool;

@@ -48,8 +48,8 @@ import org.broadinstitute.hellbender.utils.variant.DbSnpBitSetUtil;
  *
  */
 @CommandLineProgramProperties(
-        usage = CollectSequencingArtifactMetrics.USAGE,
-        usageShort = CollectSequencingArtifactMetrics.USAGE,
+        summary = CollectSequencingArtifactMetrics.USAGE,
+        oneLineSummary = CollectSequencingArtifactMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
 public final class CollectSequencingArtifactMetrics extends SinglePassSamProgram {

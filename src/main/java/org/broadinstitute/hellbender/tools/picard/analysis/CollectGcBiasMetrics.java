@@ -28,12 +28,12 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Tool to collect information about GC bias in the reads in a given BAM file. Computes" +
+        summary = "Tool to collect information about GC bias in the reads in a given BAM file. Computes" +
                 " the number of windows (of size specified by WINDOW_SIZE) in the genome at each GC%" +
                 " and counts the number of read starts in each GC bin.  What is output and plotted is" +
                 " the \"normalized coverage\" in each bin - i.e. the number of reads per window normalized" +
                 " to the average number of reads per window across the whole genome..\n",
-        usageShort = "Collects information about GC bias in the reads in the provided SAM or BAM",
+        oneLineSummary = "Collects information about GC bias in the reads in the provided SAM or BAM",
         programGroup = QCProgramGroup.class
 )
 public final class CollectGcBiasMetrics extends SinglePassSamProgram {

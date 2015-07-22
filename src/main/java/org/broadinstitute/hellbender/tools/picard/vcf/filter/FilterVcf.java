@@ -25,8 +25,8 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Applies one or more hard filters to a VCF file to filter out genotypes and variants.",
-        usageShort = "Hard filters a VCF.",
+        summary = "Applies one or more hard filters to a VCF file to filter out genotypes and variants.",
+        oneLineSummary = "Hard filters a VCF.",
         programGroup = VariantProgramGroup.class
 )
 public final class FilterVcf extends PicardCommandLineProgram {

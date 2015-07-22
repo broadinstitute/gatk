@@ -17,7 +17,6 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -34,8 +33,8 @@ import java.util.*;
  * @author ktibbett@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = "Create BFQ files from a BAM file for use by the Maq aligner.",
-        usageShort = "Create BFQ files from a BAM file for use by the Maq aligner.",
+        summary = "Create BFQ files from a BAM file for use by the Maq aligner.",
+        oneLineSummary = "Create BFQ files from a BAM file for use by the Maq aligner.",
         programGroup = ReadProgramGroup.class
 )
 public final class BamToBfq extends PicardCommandLineProgram {

@@ -19,8 +19,8 @@ import java.io.File;
  */
 
 @CommandLineProgramProperties(
-        usage = "Converts a VCF or BCF file to a Picard Interval List.",
-        usageShort = "Converts a VCF or BCF file to a Picard Interval List.",
+        summary = "Converts a VCF or BCF file to a Picard Interval List.",
+        oneLineSummary = "Converts a VCF or BCF file to a Picard Interval List.",
         programGroup = VariantProgramGroup.class
 )
 public final class VcfToIntervalList extends PicardCommandLineProgram {

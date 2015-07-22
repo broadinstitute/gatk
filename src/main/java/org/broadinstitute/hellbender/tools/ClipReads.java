@@ -135,8 +135,8 @@ import java.util.regex.Pattern;
  *
  */
 @CommandLineProgramProperties(
-        usage = "Read clipping based on quality, position or sequence matching.",
-        usageShort = "Clip reads",
+        summary = "Read clipping based on quality, position or sequence matching.",
+        oneLineSummary = "Clip reads",
         programGroup = ReadProgramGroup.class
 )
 public final class ClipReads extends ReadWalker {

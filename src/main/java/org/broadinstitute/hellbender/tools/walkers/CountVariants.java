@@ -9,8 +9,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 
 @CommandLineProgramProperties(
-        usage = "Walks over the input data set, calculating the number of variants seen.",
-        usageShort = "Count variants",
+        summary = "Walks over the input data set, calculating the number of variants seen.",
+        oneLineSummary = "Count variants",
         programGroup = VariantProgramGroup.class
 )
 public final class CountVariants extends VariantWalker{

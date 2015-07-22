@@ -18,8 +18,8 @@ import java.util.Iterator;
  * @author Nils Homer
  */
 @CommandLineProgramProperties(
-        usage = "Reverts the original base qualities and adds the mate cigar tag to read-group BAMs.",
-        usageShort = "Reverts the original base qualities and adds the mate cigar tag to read-group BAMs",
+        summary = "Reverts the original base qualities and adds the mate cigar tag to read-group BAMs.",
+        oneLineSummary = "Reverts the original base qualities and adds the mate cigar tag to read-group BAMs",
         programGroup = ReadProgramGroup.class
 )
 public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardCommandLineProgram {

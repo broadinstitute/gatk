@@ -17,9 +17,9 @@ import java.io.File;
  * @author ktibbett@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = "Convert a BAM file to a SAM file, or SAM to BAM.\n" +
+        summary = "Convert a BAM file to a SAM file, or SAM to BAM.\n" +
                 "Input and output formats are determined by file extension.",
-        usageShort = "Convert a BAM file to a SAM file, or a SAM to a BAM",
+        oneLineSummary = "Convert a BAM file to a SAM file, or a SAM to a BAM",
         programGroup = ReadProgramGroup.class
 )
 public final class SamFormatConverter extends PicardCommandLineProgram {

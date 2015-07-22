@@ -19,9 +19,9 @@ import java.util.*;
  * all alignment information.
  */
 @CommandLineProgramProperties(
-        usage = "Reverts SAM or BAM files to a previous state by removing certain types of information and/or " +
+        summary = "Reverts SAM or BAM files to a previous state by removing certain types of information and/or " +
                 "substituting in the original quality scores when available.",
-        usageShort = "Reverts SAM or BAM files to a previous state",
+        oneLineSummary = "Reverts SAM or BAM files to a previous state",
         programGroup = ReadProgramGroup.class
 )
 public final class RevertSam extends PicardCommandLineProgram {

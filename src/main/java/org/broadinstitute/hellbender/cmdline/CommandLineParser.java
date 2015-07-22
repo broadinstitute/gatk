@@ -117,7 +117,7 @@ public final class CommandLineParser {
     private String getUsagePreamble() {
         String usagePreamble = "";
         if (null != programProperties) {
-            usagePreamble += programProperties.usage();
+            usagePreamble += programProperties.summary();
         } else if (positionalArguments == null) {
             usagePreamble += defaultUsagePreamble;
         } else {

@@ -52,8 +52,8 @@ import java.util.List;
  */
 
 @CommandLineProgramProperties(
-        usage = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        usageShort = "Generates recalibration table (do not run this one from the cmd line)",
+        summary = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
+        oneLineSummary = "Generates recalibration table (do not run this one from the cmd line)",
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibratorWorker {

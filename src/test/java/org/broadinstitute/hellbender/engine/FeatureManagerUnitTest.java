@@ -57,7 +57,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         FeatureManager.getCodecForFile(unsupportedFile);
     }
 
-    @CommandLineProgramProperties(usage = "", usageShort = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
     private static class ValidFeatureArgumentSource extends CommandLineProgram {
         // We should be able to detect the type parameter of a FeatureInput regardless of whether or
         // not it's wrapped within a Collection
@@ -86,7 +86,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         }
     }
 
-    @CommandLineProgramProperties(usage = "", usageShort = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
     @SuppressWarnings("rawtypes")
     private static class InvalidFeatureArgumentSource extends CommandLineProgram {
         // FeatureInputs without type parameters (ie., raw types) should be detected as errors

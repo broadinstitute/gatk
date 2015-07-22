@@ -40,8 +40,8 @@ import java.util.stream.StreamSupport;
 
 
 @CommandLineProgramProperties(
-        usage="Marks duplicates on dataflow",
-        usageShort="Mark Duplicates",
+        summary ="Marks duplicates on dataflow",
+        oneLineSummary ="Mark Duplicates",
         programGroup = DataFlowProgramGroup.class)
 public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
     private static final long serialVersionUID = 1L;

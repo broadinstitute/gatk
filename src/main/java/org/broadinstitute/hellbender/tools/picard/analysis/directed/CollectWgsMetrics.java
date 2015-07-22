@@ -31,9 +31,9 @@ import java.util.*;
  * @author tfennell
  */
 @CommandLineProgramProperties(
-        usage = "Computes a number of metrics that are useful for evaluating coverage and performance of " +
+        summary = "Computes a number of metrics that are useful for evaluating coverage and performance of " +
                 "whole genome sequencing experiments.",
-        usageShort = "Writes whole genome sequencing-related metrics for a SAM or BAM file",
+        oneLineSummary = "Writes whole genome sequencing-related metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectWgsMetrics extends PicardCommandLineProgram {

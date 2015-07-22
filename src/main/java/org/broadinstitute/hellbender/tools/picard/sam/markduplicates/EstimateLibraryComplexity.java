@@ -40,7 +40,7 @@ import static java.lang.Math.pow;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Attempts to estimate library complexity from sequence of read pairs alone. Does so by sorting all reads " +
+        summary = "Attempts to estimate library complexity from sequence of read pairs alone. Does so by sorting all reads " +
                 "by the first N bases (5 by default) of each read and then comparing reads with the first " +
                 "N bases identical to each other for duplicates.  Reads are considered to be duplicates if " +
                 "they match each other with no gaps and an overall mismatch rate less than or equal to " +
@@ -54,7 +54,7 @@ import static java.lang.Math.pow;
                 "reads one further filter is applied on the data.  After examining all reads a Histogram is built of " +
                 "[#reads in duplicate set -> #of duplicate sets] all bins that contain exactly one duplicate set are " +
                 "then removed from the Histogram as outliers before library size is estimated.",
-        usageShort = "Estimates library complexity from the sequence of read pairs",
+        oneLineSummary = "Estimates library complexity from the sequence of read pairs",
         programGroup = ReadProgramGroup.class
 )
 public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCommandLineProgram {

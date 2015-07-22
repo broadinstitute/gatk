@@ -1,17 +1,13 @@
 package org.broadinstitute.hellbender.tools.picard.interval;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.liftover.LiftOver;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 
 import java.io.File;
@@ -31,9 +27,9 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
  * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = "Lifts over an interval list from one reference build to another. Based on UCSC liftOver." +
+        summary = "Lifts over an interval list from one reference build to another. Based on UCSC liftOver." +
                 " Uses a UCSC chain file to guide the liftOver.",
-        usageShort = "Lifts over an interval list from one reference build to another",
+        oneLineSummary = "Lifts over an interval list from one reference build to another",
         programGroup = IntervalProgramGroup.class
 )
 public final class LiftOverIntervalList extends PicardCommandLineProgram {

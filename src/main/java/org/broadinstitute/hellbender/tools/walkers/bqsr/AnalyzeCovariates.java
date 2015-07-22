@@ -150,8 +150,8 @@ import java.util.Optional;
  *
  */
 @CommandLineProgramProperties(
-        usage = "TODO",
-        usageShort = "Tool to analyze and evaluate base recalibration tables.",
+        summary = "TODO",
+        oneLineSummary = "Tool to analyze and evaluate base recalibration tables.",
         programGroup = QCProgramGroup.class
 )
 public final class AnalyzeCovariates extends CommandLineProgram {

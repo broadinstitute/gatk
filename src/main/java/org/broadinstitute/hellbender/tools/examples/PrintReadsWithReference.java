@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -20,8 +19,8 @@ import java.io.PrintStream;
  * (if a reference is provided). Intended to show how to implement the ReadWalker interface.
  */
 @CommandLineProgramProperties(
-        usage = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
-        usageShort = "Print reads with reference context",
+        summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
+        oneLineSummary = "Print reads with reference context",
         programGroup = ReadProgramGroup.class
 )
 public final class PrintReadsWithReference extends ReadWalker {

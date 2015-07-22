@@ -16,8 +16,8 @@ import java.net.URL;
  * @author Martha Borkan
  */
 @CommandLineProgramProperties(
-        usage = "Generates a BAM index (.bai) file.",
-        usageShort = "Generates a BAM index (.bai) file",
+        summary = "Generates a BAM index (.bai) file.",
+        oneLineSummary = "Generates a BAM index (.bai) file",
         programGroup = ReadProgramGroup.class
 )
 public final class BuildBamIndex extends PicardCommandLineProgram {

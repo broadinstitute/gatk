@@ -37,8 +37,8 @@ import static java.lang.Math.log10;
  * Class for trying to quantify the CpCG->CpCA error rate.
  */
 @CommandLineProgramProperties(
-        usage = CollectOxoGMetrics.USAGE,
-        usageShort = CollectOxoGMetrics.USAGE,
+        summary = CollectOxoGMetrics.USAGE,
+        oneLineSummary = CollectOxoGMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
 public final class CollectOxoGMetrics extends PicardCommandLineProgram {

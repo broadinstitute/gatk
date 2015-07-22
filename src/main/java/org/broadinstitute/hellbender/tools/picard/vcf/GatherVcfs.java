@@ -34,9 +34,9 @@ import java.util.TreeSet;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Gathers multiple VCF files from a scatter operation into a single VCF file. Input files " +
+        summary = "Gathers multiple VCF files from a scatter operation into a single VCF file. Input files " +
                 "must be supplied in genomic order and must not have events at overlapping positions.",
-        usageShort = "Gathers multiple VCF files from a scatter operation into a single VCF file",
+        oneLineSummary = "Gathers multiple VCF files from a scatter operation into a single VCF file",
         programGroup = VariantProgramGroup.class
 )
 public final class GatherVcfs extends PicardCommandLineProgram {

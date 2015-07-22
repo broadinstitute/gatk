@@ -37,8 +37,8 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        usage = "Count overlapping reads exon by exon",
-        usageShort = "Count overlapping reads exon by exon",
+        summary = "Count overlapping reads exon by exon",
+        oneLineSummary = "Count overlapping reads exon by exon",
         programGroup = ExomeAnalysisProgramGroup.class
 )
 public final class ExomeReadCounts extends ReadWalker {

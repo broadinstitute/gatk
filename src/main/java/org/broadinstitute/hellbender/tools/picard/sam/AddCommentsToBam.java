@@ -18,10 +18,10 @@ import java.util.List;
  * @author jgentry
  */
 @CommandLineProgramProperties(
-        usage = "Adds one or more comments to the header of a specified BAM file. Copies the file with the " +
+        summary = "Adds one or more comments to the header of a specified BAM file. Copies the file with the " +
                 "modified header to a specified output file. Note that a block copying method is used to ensure efficient transfer to the " +
                 "output file. SAM files are not supported",
-        usageShort = "Adds comments to the header of a BAM file",
+        oneLineSummary = "Adds comments to the header of a BAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class AddCommentsToBam extends PicardCommandLineProgram {

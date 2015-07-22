@@ -24,10 +24,10 @@ import java.util.*;
  * @author Doug Voet (dvoet at broadinstitute dot org)
  */
 @CommandLineProgramProperties(
-        usage = "Reads a SAM or BAM file and writes a file containing metrics about " +
+        summary = "Reads a SAM or BAM file and writes a file containing metrics about " +
                 "the statistical distribution of insert size (excluding duplicates) " +
                 "and generates a Histogram plot.",
-        usageShort = "Writes insert size distribution metrics for a SAM or BAM file",
+        oneLineSummary = "Writes insert size distribution metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectInsertSizeMetrics extends SinglePassSamProgram {

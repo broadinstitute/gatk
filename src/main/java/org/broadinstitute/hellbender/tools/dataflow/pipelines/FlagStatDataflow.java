@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.FlagStat;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.FlagStatusDataflowTransform;
 
 
-@CommandLineProgramProperties(usage="runs FlagStat on dataflow", usageShort = "FlagStat", programGroup = DataFlowProgramGroup.class)
+@CommandLineProgramProperties(summary ="runs FlagStat on dataflow", oneLineSummary = "FlagStat", programGroup = DataFlowProgramGroup.class)
 public final class FlagStatDataflow extends DataflowReadsPipeline {
     private static final long serialVersionUID = 1l;
 

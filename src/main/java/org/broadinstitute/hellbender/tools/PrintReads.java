@@ -13,8 +13,8 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import java.io.File;
 
 @CommandLineProgramProperties(
-	usage = "Prints reads from the input to the output.",
-    usageShort = "Print reads",
+	summary = "Prints reads from the input to the output.",
+    oneLineSummary = "Print reads",
     programGroup = ReadProgramGroup.class
 )
 public final class PrintReads extends ReadWalker {

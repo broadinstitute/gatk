@@ -31,8 +31,8 @@ import java.io.IOException;
  * Such files must have an index in order to be queried by interval.
  */
 @CommandLineProgramProperties(
-        usage = "Creates indices for Feature-containing files, such as VCF, BCF, and BED files",
-        usageShort = "Creates indices for Feature-containing files",
+        summary = "Creates indices for Feature-containing files, such as VCF, BCF, and BED files",
+        oneLineSummary = "Creates indices for Feature-containing files",
         programGroup = VariantProgramGroup.class
 )
 public final class IndexFeatureFile extends CommandLineProgram {
