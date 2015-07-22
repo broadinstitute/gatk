@@ -276,7 +276,7 @@ public final class DataLine {
      * Returns the int value in a column by its index.
      *
      * @param columnName the target column name.
-     * @return never {@code null}.
+     * @return any int value.
      * @throws IllegalArgumentException if {@code columnName} is {@code null} or an unknown column name.
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into an integer.
@@ -291,7 +291,7 @@ public final class DataLine {
      * Returns the double value in a column by its index.
      *
      * @param columnName the target column name.
-     * @return never {@code null}.
+     * @return any double value.
      * @throws IllegalArgumentException if {@code columnName} is {@code null} or an unknown column name.
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a double.
@@ -300,6 +300,66 @@ public final class DataLine {
      */
     public double getDouble(final String columnName) {
         return getDouble(columnIndex(columnName));
+    }
+
+    /**
+     * Returns the string value of a column by its name.
+     * <p>
+     * The target column name is resolved as the string returned by {@link Object#toString toString} applied
+     * to the input enum.
+     * </p>
+     *
+     * @param column the enum value that provides the name of the column.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code column} is {@code null} or it does not point to a
+     *         known column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a double.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public String get(final Enum<?> column) {
+        return get(Utils.nonNull(column).toString());
+    }
+
+    /**
+     * Returns the int value of a column by its name.
+     * <p>
+     * The target column name is resolved as the string returned by {@link Object#toString toString} applied
+     * to the input enum.
+     * </p>
+     *
+     * @param column the enum value that provides the name of the column.
+     * @return any int value.
+     * @throws IllegalArgumentException if {@code column} is {@code null} or it does not point to a
+     *         known column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a double.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public int getInt(final Enum<?> column) {
+        return getInt(Utils.nonNull(column).toString());
+    }
+
+    /**
+     * Returns the double value of a column by its name.
+     * <p>
+     * The target column name is resolved as the string returned by {@link Object#toString toString} applied
+     * to the input enum.
+     * </p>
+     *
+     * @param column the enum value that provides the name of the column.
+     * @return any double value.
+     * @throws IllegalArgumentException if {@code column} is {@code null} or it does not point to a
+     *         known column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a double.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public double getDouble(final Enum<?> column) {
+        return getDouble(Utils.nonNull(column).toString());
     }
 
     /**
@@ -446,6 +506,22 @@ public final class DataLine {
      */
     public DataLine seek(final String columnName) {
         nextIndex = columnIndex(columnName);
+        return this;
+    }
+
+    /**
+     * Changes the index of the next value to set using {@link #append append} operations.
+     * <p>
+     * The input enum's string conversion using {@link Object#toString toString} determines the name
+     * of the target column.
+     * </p>
+     * @param column the enum value that makes reference to the target column.
+     * @throws IllegalArgumentException if {@code column} is {@code null} or does not make reference to
+     *    a known column.
+     *
+     */
+    public DataLine seek(final Enum<?> column) {
+        nextIndex = columnIndex(Utils.nonNull(column).toString());
         return this;
     }
 

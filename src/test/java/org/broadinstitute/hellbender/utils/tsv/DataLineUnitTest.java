@@ -62,6 +62,18 @@ public class DataLineUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
+    public void testSetIntUsingIndex(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(i, i), subject);
+        }
+        final String[] array = subject.toArray();
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(array[i], "" + i);
+        }
+    }
+
+    @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
     public void testAppendInt(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
         for (int i = 0; i < columns.columnCount(); i++) {
@@ -156,6 +168,37 @@ public class DataLineUnitTest extends BaseTest {
         Assert.assertEquals(subject.toArray(), new String[]{"a", "b", "c", "1", "2", "3", "" + 1.1, "" + 2.2});
     }
 
+    private enum TestEnum {
+        COL1_STR,
+        COL2_STR,
+        COL3_STR,
+        COL1_INT,
+        COL2_INT,
+        COL3_INT,
+        COL1_DBL,
+        COL2_DBL;
+    }
+
+    @Test(dependsOnMethods = "testToArray")
+    public void testSeekByEnum() {
+        final TableColumnCollection columns = new TableColumnCollection(TestEnum.values());
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        subject.seek(TestEnum.COL1_DBL).append(1.1, 2.2).seek(TestEnum.COL1_INT).append(1, 2, 3).seek(TestEnum.COL1_STR).append("a", "b", "c");
+        Assert.assertEquals(subject.toArray(), new String[]{"a", "b", "c", "1", "2", "3", "" + 1.1, "" + 2.2});
+    }
+
+    @Test()
+    public void testGetDoubleByEnum() {
+        final TableColumnCollection columns = new TableColumnCollection(TestEnum.values());
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(i, (double) i), subject);
+        }
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(subject.getDouble(TestEnum.values()[i]), (double) i, 0.00000001);
+        }
+    }
+
     @Test(dependsOnMethods = "testToArray")
     public void testSeekByIndex() {
         final TableColumnCollection columns = new TableColumnCollection("col1.str", "col2.str", "col3.str", "col1.int", "col2.int", "col3.int", "col1.dbl", "col2.dbl");
@@ -194,7 +237,7 @@ public class DataLineUnitTest extends BaseTest {
     @Test(dataProvider = "tableColumnsData")
     public void testColumns(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
-        Assert.assertSame(subject.columns(),columns);
+        Assert.assertSame(subject.columns(), columns);
     }
 
     @Test(dataProvider = "tableColumnsData")
@@ -301,6 +344,53 @@ public class DataLineUnitTest extends BaseTest {
         }
     }
 
+    @Test(dataProvider = "tableColumnsData")
+    public void testSetAll(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        final String[] values = new String[columns.columnCount()];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = "" + i;
+        }
+        Assert.assertSame(subject.setAll(values), subject);
+        Assert.assertEquals(subject.toArray(), values.clone());
+    }
+
+    @Test(dataProvider = "tableColumnsData", expectedExceptions = IllegalArgumentException.class)
+    public void testSetAllTooShort(final TableColumnCollection columns) {
+        // just in case.
+        if (columns.columnCount() == 0)
+            return;
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        final String[] values = new String[columns.columnCount() - 1];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = "" + i;
+        }
+        subject.setAll(values);
+    }
+
+    @Test(dataProvider = "tableColumnsData", expectedExceptions = IllegalArgumentException.class)
+    public void testSetAllTooLong(final TableColumnCollection columns) {
+        // just in case.
+        if (columns.columnCount() == 0)
+            return;
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        final String[] values = new String[columns.columnCount() + 1];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = (i == 0) ?  "#" + i : "" + i;
+        }
+        subject.setAll(values);
+    }
+
+    @Test(dataProvider = "tableColumnsData", expectedExceptions = IllegalArgumentException.class)
+    public void testSetAllStartingWithComment(final TableColumnCollection columns) {
+
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        final String[] values = new String[columns.columnCount() + 1];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = "" + i;
+        }
+        subject.setAll(values);
+    }
 
     @DataProvider(name = "tableColumnsData")
     public Object[][] tableColumnsData() {

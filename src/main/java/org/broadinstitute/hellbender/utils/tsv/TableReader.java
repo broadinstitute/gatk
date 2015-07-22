@@ -395,4 +395,13 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     public Stream<R> stream() {
         return StreamSupport.stream(spliterator(), false);
     }
+
+    /**
+     * Returns the reader source name.
+     *
+     * @return null if the source name cannot be determined.
+     */
+    public String getSource() {
+        return source;
+    }
 }

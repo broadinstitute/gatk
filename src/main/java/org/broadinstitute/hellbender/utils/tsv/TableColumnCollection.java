@@ -61,6 +61,24 @@ public final class TableColumnCollection {
     }
 
     /**
+     * Creates a new table-column names collection.
+     * <p>
+     * The new instance will have its own copy of the input name array,
+     * thus is safe to modify such an array after calling this constructor;
+     * it won't modify the state of this object.
+     * </p>
+     *
+     * @param names the column names. They will be transformed into strings using {@link Object#toString() toString}.
+     * @throws IllegalArgumentException if {@code names} is not a valid column name array
+     *                                  of names as determined by {@link #checkNames checkNames}.
+     */
+    public TableColumnCollection(final Object... names) {
+        this.names = Collections.unmodifiableList(Arrays.asList(checkNames(names, IllegalArgumentException::new)));
+        this.indexByName = IntStream.range(0, names.length).boxed()
+                .collect(Collectors.toMap(this.names::get, Function.identity()));
+    }
+
+    /**
      * Returns the column names ordered by column index.
      *
      * @return never {@code null}, a unmodifiable view to this collection column names.
@@ -143,8 +161,9 @@ public final class TableColumnCollection {
     public boolean matches(final int index, final String name) {
         if (index >= names.size()) {
             return false;
+        } else {
+            return names.get(Utils.validIndex(index, names.size())).equals(Utils.nonNull(name, "name cannot be null"));
         }
-        return names.get(Utils.validIndex(index, names.size())).equals(Utils.nonNull(name, "name cannot be null"));
     }
 
     /**
@@ -189,6 +208,43 @@ public final class TableColumnCollection {
      */
     public int columnCount() {
         return names.size();
+    }
+
+
+    /**
+     * Checks that a column name, as objects, array is valid.
+     * <p>
+     * The actual column names to test are obtained by mapping its object to its string representation using
+     * {@link Object#toString() toString}.
+     * </p>
+     *
+     * <p>
+     * Assuming that it is null-value free, a column name array is invalid if:
+     * <ul>
+     * <li>has length 0,</li>
+     * <li>the first name contains the comment prefix,</li>
+     * <li>or contains repeats</li>
+     * </ul>
+     * </p>
+     * <p>When the input array is invalid, an exception is thrown using the exception factory function provided.</p>
+     * <p>The message passed to the factory explains why the column name array is invalid</p>.
+     * <p>Notice that a {@code null} array or a {@code null} containing array is considered a illegal argument caused by
+     * a bug and a {@code IllegalArgumentException} will be thrown instead.</p>
+     *
+     * @throws IllegalArgumentException if {@code columnNames} is {@code null}, or it contains any {@code null}, or {@code exceptionFactory} is {@code null} or ir returns a {@code null}
+     *                                  when invoked.
+     * @throws RuntimeException         if {@code columnNames} does not contain a valid list of column names. The exact type will depend on the
+     *                                  input {@code exceptionFactory}.
+     * @return never {@code null}, the same reference as the input column name array {@code columnNames}.
+     */
+    public static String[] checkNames(final Object[] columnNames,
+                                      final Function<String, RuntimeException> exceptionFactory) {
+        Utils.nonNull(columnNames, "column names cannot be null");
+        final String[] stringNames = new String[columnNames.length];
+        for (int i = 0; i < columnNames.length; i++) {
+            stringNames[i] = Utils.nonNull(columnNames[i],"no column name can be null: e.g. " + i + " element").toString();
+        }
+        return checkNames(stringNames, exceptionFactory);
     }
 
     /**
