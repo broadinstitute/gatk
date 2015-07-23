@@ -406,6 +406,7 @@ public final class IOUtils {
     public static File createTempFile(String name, String extension) {
         try {
             final File file = File.createTempFile(name, extension);
+            file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
             new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
