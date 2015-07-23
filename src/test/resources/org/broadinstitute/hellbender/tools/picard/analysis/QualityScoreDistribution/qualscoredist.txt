@@ -1,0 +1,50 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.QualityScoreDistribution CHART_OUTPUT=/Users/dkling/Programs/sandbox/firstthree/expected/qualscoredist.pdf INPUT=/Users/dkling/Programs/sandbox/firstthree/input/first5000a.bam OUTPUT=/Users/dkling/Programs/sandbox/firstthree/expected/qualscoredist.bam    ALIGNED_READS_ONLY=false PF_READS_ONLY=false INCLUDE_NO_CALLS=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Wed May 13 16:33:53 EDT 2015
+
+
+## HISTOGRAM	java.lang.Byte
+QUALITY	COUNT_OF_Q
+1	6
+2	28108
+3	30
+4	128
+5	114
+6	244
+7	288
+8	344
+9	312
+10	306
+11	328
+12	350
+13	306
+14	376
+15	448
+16	568
+17	812
+18	956
+19	1068
+20	1480
+21	1846
+22	2004
+23	2206
+24	2872
+25	3516
+26	4406
+27	4736
+28	5316
+29	6692
+30	7250
+31	7552
+32	11144
+33	13172
+34	17666
+35	27594
+36	43424
+37	86162
+38	142306
+39	72048
+40	5108
+41	432
+
