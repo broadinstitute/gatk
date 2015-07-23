@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -37,10 +38,12 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -118,7 +121,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             BaseRecalibratorDataflowUtils.ensureReferenceIsReadable(pipeline.getOptions(), referencePath);
             baseRecalibratorWorker = BaseRecalibratorWorker.fromArgs(header, BRAC);
             baseRecalibratorWorker.checkClientArguments();
-            checkSequenceDictionaries();
+            checkSequenceDictionaries(pipeline.getOptions());
 
             // 2. set up computation
             PCollection<RecalibrationTables> aggregated =
@@ -145,12 +148,20 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
         }
     }
 
-    private void checkSequenceDictionaries() {
-        try ( final ReferenceDataSource refSource = new ReferenceDataSource(new File(referencePath)) ) {
-            final SAMSequenceDictionary refDictionary = refSource.getSequenceDictionary();
+    private void checkSequenceDictionaries(final PipelineOptions popts) {
+        try ( final InputStream referenceDictionaryStream = BucketUtils.openFile(ReferenceUtils.getFastaDictionaryFileName(referencePath), popts) ) {
+            final SAMSequenceDictionary refDictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
             final SAMSequenceDictionary readsDictionary = header.getSequenceDictionary();
+            Utils.nonNull(refDictionary);
+            Utils.nonNull(readsDictionary);
 
             SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary, true, null);
+
+        }
+        catch ( IOException e ) {
+            throw new UserException.CouldNotReadInputFile("Failed to open reference dictionary file " +
+                                                          ReferenceUtils.getFastaDictionaryFileName(referencePath) +
+                                                          " for reading", e);
         }
     }
 
