@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.vcf.VCFConstants;
@@ -95,6 +98,20 @@ public abstract class BaseTest {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
         }
         return value;
+    }
+
+    /**
+     * Gets a PipelineOptions object containing our API key as specified in the HELLBENDER_TEST_APIKEY
+     * environment variable. Useful for tests that need to access data in a GCS bucket via the
+     * methods in the {@link org.broadinstitute.hellbender.utils.dataflow.BucketUtils} class,
+     * but don't need to run an actual dataflow pipeline.
+     *
+     * @return a PipelineOptions object containing our API key
+     */
+    public PipelineOptions getAuthenticatedPipelineOptions() {
+        final GCSOptions popts = PipelineOptionsFactory.as(GCSOptions.class);
+        popts.setApiKey(getDataflowTestApiKey());
+        return popts;
     }
 
     @BeforeClass
