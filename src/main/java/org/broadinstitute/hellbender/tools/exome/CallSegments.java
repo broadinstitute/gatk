@@ -73,7 +73,7 @@ public final class CallSegments extends CommandLineProgram{
         final HashedListExonCollection<TargetCoverage> targets = new HashedListExonCollection<TargetCoverage>(targetList);
 
         try {
-            segments = SegmentUtils.readUncalledSegments(segmentsFile, targets);
+            segments = SegmentUtils.readUncalledSegments(segmentsFile);
         } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(segmentsFile, e);
         }

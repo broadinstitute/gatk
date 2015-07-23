@@ -38,20 +38,20 @@ public final class SegmentUnitTest extends BaseTest{
             new HashedListExonCollection<TargetCoverage>(Arrays.asList(target1, target2, target3, target4, target5, target6));
 
     //a common set of segments for Segment tests
-    private final Segment segment1 = new Segment("sample", new SimpleInterval("chr1", 1, 4), targets);
-    private final Segment segment2 = new Segment("sample", new SimpleInterval("chr1", 5, 12), targets);
-    private final Segment segment3 = new Segment("sample", new SimpleInterval("chr1", 11, 20), targets);
-    private final Segment segment4 = new Segment("sample", new SimpleInterval("chr2", 1, 10), targets);
+    private final Segment segment1 = new Segment("sample", new SimpleInterval("chr1", 1, 4));
+    private final Segment segment2 = new Segment("sample", new SimpleInterval("chr1", 5, 12));
+    private final Segment segment3 = new Segment("sample", new SimpleInterval("chr1", 11, 20));
+    private final Segment segment4 = new Segment("sample", new SimpleInterval("chr2", 1, 10));
 
     @Test
     public void testSegmentConstructor() {
         SimpleInterval interval = new SimpleInterval("chr",1,2);
         String call = "call";
 
-        Segment seg1 = new Segment("sample", interval, targets);
+        Segment seg1 = new Segment("sample", interval);
         Assert.assertEquals(seg1.getInterval(), interval);
 
-        Segment seg2 = new Segment("sample", interval, targets, call);
+        Segment seg2 = new Segment("sample", interval, call);
         Assert.assertEquals(seg2.getCall(), call);
     }
 
@@ -79,29 +79,29 @@ public final class SegmentUnitTest extends BaseTest{
 
     @Test
     public void testSegmentMean() {
-        Assert.assertEquals(segment1.mean(), (1.0 + 2.0) / 2, 0.00001);
-        Assert.assertEquals(segment2.mean(), (3.0) / 1, 0.00001);
-        Assert.assertEquals(segment4.mean(), (4.0 + 5.0 + 6.0) / 3, 0.00001);
+        Assert.assertEquals(SegmentUtils.meanTargetCoverage(segment1, targets), (1.0 + 2.0) / 2, 0.00001);
+        Assert.assertEquals(SegmentUtils.meanTargetCoverage(segment2, targets), (3.0) / 1, 0.00001);
+        Assert.assertEquals(SegmentUtils.meanTargetCoverage(segment4, targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
     }
 
     @Test
     public void testSegmentNumTargets() {
-        Assert.assertEquals(segment1.numTargets(), 2);
-        Assert.assertEquals(segment2.numTargets(), 1);
-        Assert.assertEquals(segment3.numTargets(), 0);
-        Assert.assertEquals(segment4.numTargets(), 3);
+        Assert.assertEquals(SegmentUtils.numTargets(segment1, targets), 2);
+        Assert.assertEquals(SegmentUtils.numTargets(segment2, targets), 1);
+        Assert.assertEquals(SegmentUtils.numTargets(segment3, targets), 0);
+        Assert.assertEquals(SegmentUtils.numTargets(segment4, targets), 3);
     }
 
     @Test
     public void testReadAndWriteSegments() {
         final File file = createTempFile("test",".txt");
-        Segment segment1 = new Segment("sample", new SimpleInterval("chr1", 1, 10), targets, "+");
-        Segment segment2 = new Segment("sample", new SimpleInterval("chr2", 1, 10), targets, "-");
+        Segment segment1 = new Segment("sample", new SimpleInterval("chr1", 1, 10), "+");
+        Segment segment2 = new Segment("sample", new SimpleInterval("chr2", 1, 10), "-");
         List<Segment> segments = Arrays.asList(segment1, segment2);
 
         try {
             SegmentUtils.writeCalledSegments(file, segments);
-            List<Segment> sameSegments = SegmentUtils.readCalledSegments(file, targets);
+            List<Segment> sameSegments = SegmentUtils.readCalledSegments(file);
             Assert.assertEquals(segments.size(), sameSegments.size());
             Assert.assertTrue(sameSegment(segments.get(0), sameSegments.get(0)));
             Assert.assertTrue(sameSegment(segments.get(1), sameSegments.get(1)));
@@ -118,7 +118,7 @@ public final class SegmentUnitTest extends BaseTest{
         final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
 
         try {
-            List<Segment> segments = SegmentUtils.readUncalledSegments(TEST_SEGMENTS, targets);
+            List<Segment> segments = SegmentUtils.readUncalledSegments(TEST_SEGMENTS);
             Assert.assertEquals(segments.size(), 4);
             Assert.assertEquals(segments.get(0).getInterval().getContig(), "chr");
             Assert.assertEquals(segments.get(1).getInterval().getStart(), 300);

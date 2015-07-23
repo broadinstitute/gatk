@@ -36,10 +36,10 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
         HashedListExonCollection<TargetCoverage> targets = new HashedListExonCollection<TargetCoverage>(targetList);
 
         List<Segment> segments = new ArrayList<Segment>();
-        segments.add(new Segment("sample", new SimpleInterval("chr", 100, 200), targets)); //amplification
-        segments.add(new Segment("sample", new SimpleInterval("chr", 300, 400), targets)); //deletion
-        segments.add(new Segment("sample", new SimpleInterval("chr", 450, 550), targets)); //neutral
-        segments.add(new Segment("sample", new SimpleInterval("chr", 650, 750), targets)); //neutral
+        segments.add(new Segment("sample", new SimpleInterval("chr", 100, 200))); //amplification
+        segments.add(new Segment("sample", new SimpleInterval("chr", 300, 400))); //deletion
+        segments.add(new Segment("sample", new SimpleInterval("chr", 450, 550))); //neutral
+        segments.add(new Segment("sample", new SimpleInterval("chr", 650, 750))); //neutral
 
         ReCapSegCaller.makeCalls(targets, segments);
 

@@ -20,8 +20,7 @@ public final class SegmentUtils {
     /**
      * read a list of segments without calls from a file
      */
-    public static List<Segment> readUncalledSegments(final File segmentsFile, final ExonCollection<TargetCoverage> collection) throws IOException {
-        Utils.nonNull(collection, "Segments require non-null collection of targets.");
+    public static List<Segment> readUncalledSegments(final File segmentsFile) throws IOException {
         try (final TableReader<Segment> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesAll(0, "Sample", "Chromosome", "Start", "End")) {//ignore last two columns: NTARGETS and AVERAGE
@@ -30,7 +29,7 @@ public final class SegmentUtils {
 
                     // return the lambda to translate dataLines into uncalled segments.
                     return (dataLine) -> new Segment(dataLine.get(0),
-                            new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3)), collection);
+                            new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3)));
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final UncheckedIOException e) {
@@ -41,7 +40,7 @@ public final class SegmentUtils {
     /**
      * read a list of segments with calls from a file
      */
-    public static List<Segment> readCalledSegments(final File segmentsFile, final ExonCollection<TargetCoverage> collection) throws IOException {
+    public static List<Segment> readCalledSegments(final File segmentsFile) throws IOException {
         try (final TableReader<Segment> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesExactly("Sample", "Chromosome", "Start", "End", "Call")) {
@@ -49,7 +48,7 @@ public final class SegmentUtils {
                     }
                     // return the lambda to translate dataLines into called segments.
                     return (dataLine) -> new Segment(dataLine.get(0),
-                            new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3)), collection, dataLine.get(4));
+                            new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3)), dataLine.get(4));
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final UncheckedIOException e) {
@@ -77,5 +76,37 @@ public final class SegmentUtils {
                 writer.writeRecord(segment);
             }
         }
+    }
+
+    /**
+     * Returns the overlapping targets.
+     *
+     * Delegates to ExonCollection's binary search.
+     */
+    public static List<TargetCoverage> overlappingTargets(Segment segment, final ExonCollection<TargetCoverage> targets) {
+        Utils.nonNull(segment, "Can't get overlapping targets of null segment.");
+        Utils.nonNull(targets, "Overlapping targets requires non-null targets collection.");
+        return targets.exons(segment.getInterval());
+    }
+
+    /**
+     * the mean of all overlapping targets' coverages
+     *
+     * @throws IllegalStateException if overlapping targets have not been assigned or if no overlapping targets were found.
+     */
+    public static double meanTargetCoverage(final Segment segment, final ExonCollection<TargetCoverage> targets) {
+        Utils.nonNull(segment, "Can't get mean coverage of null segment.");
+        Utils.nonNull(targets, "Mean target coverage requires non-null targets collection.");
+
+        final List<TargetCoverage> myTargets = overlappingTargets(segment, targets);
+
+        if (myTargets.size() == 0) {
+            throw new IllegalStateException("Empty segment -- no overlapping targets.");
+        }
+        return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
+    }
+
+    public static int numTargets(Segment segment, final ExonCollection<TargetCoverage> targets) {
+        return overlappingTargets(segment, targets).size();
     }
 }

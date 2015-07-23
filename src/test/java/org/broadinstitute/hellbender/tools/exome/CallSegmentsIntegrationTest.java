@@ -32,7 +32,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         HashedListExonCollection<TargetCoverage> targets =
                 new HashedListExonCollection<TargetCoverage>(TargetCoverageUtils.readTargetsWithCoverage(TEST_TARGETS));
 
-        List<Segment> segments = SegmentUtils.readCalledSegments(outputFile, targets);
+        List<Segment> segments = SegmentUtils.readCalledSegments(outputFile);
 
         Assert.assertEquals(segments.get(0).getCall(), "+");
         Assert.assertEquals(segments.get(1).getCall(), "-");
