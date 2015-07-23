@@ -79,9 +79,9 @@ public final class SegmentUnitTest extends BaseTest{
 
     @Test
     public void testSegmentMean() {
-        Assert.assertEquals(SegmentUtils.mean(segment1, targets), (1.0 + 2.0) / 2, 0.00001);
-        Assert.assertEquals(SegmentUtils.mean(segment2, targets), (3.0) / 1, 0.00001);
-        Assert.assertEquals(SegmentUtils.mean(segment4, targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
+        Assert.assertEquals(SegmentUtils.meanTargetCoverage(segment1, targets), (1.0 + 2.0) / 2, 0.00001);
+        Assert.assertEquals(SegmentUtils.meanTargetCoverage(segment2, targets), (3.0) / 1, 0.00001);
+        Assert.assertEquals(SegmentUtils.meanTargetCoverage(segment4, targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
     }
 
     @Test

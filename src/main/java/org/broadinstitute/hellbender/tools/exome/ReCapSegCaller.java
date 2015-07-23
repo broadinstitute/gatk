@@ -64,7 +64,7 @@ public final class ReCapSegCaller {
 
         // Get the standard deviation of targets belonging to high-confidence neutral segments
         final double[] nearNeutralCoverage = segments.stream()
-                .filter(s -> Math.abs(SegmentUtils.mean(s, targets) - neutralCoverage) < COPY_NEUTRAL_CUTOFF)
+                .filter(s -> Math.abs(SegmentUtils.meanTargetCoverage(s, targets) - neutralCoverage) < COPY_NEUTRAL_CUTOFF)
                 .flatMap(s -> SegmentUtils.overlappingTargets(s, targets).stream())
                 .mapToDouble(TargetCoverage::getCoverage)
                 .toArray();
@@ -78,7 +78,7 @@ public final class ReCapSegCaller {
             //removed by tangent normalization, and such a caller would be too strict.
             //Thus we just use the population standard deviation of targets, and defer a mathematically
             //principled treatment for a later caller
-            final double Z = (SegmentUtils.mean(segment, targets) - neutralCoverage)/neutralSigma;
+            final double Z = (SegmentUtils.meanTargetCoverage(segment, targets) - neutralCoverage)/neutralSigma;
 
             final String call = Z < -Z_SCORE_THRESHOLD ? DELETION_CALL: (Z > Z_SCORE_THRESHOLD ? AMPLIFICATION_CALL : NEUTRAL_CALL);
             segment.setCall(call);

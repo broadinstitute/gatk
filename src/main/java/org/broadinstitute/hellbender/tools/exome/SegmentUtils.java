@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -83,6 +84,8 @@ public final class SegmentUtils {
      * Delegates to ExonCollection's binary search.
      */
     public static List<TargetCoverage> overlappingTargets(Segment segment, final ExonCollection<TargetCoverage> targets) {
+        Utils.nonNull(segment, "Can't get overlapping targets of null segment.");
+        Utils.nonNull(targets, "Overlapping targets requires non-null targets collection.");
         return targets.exons(segment.getInterval());
     }
 
@@ -91,7 +94,10 @@ public final class SegmentUtils {
      *
      * @throws IllegalStateException if overlapping targets have not been assigned or if no overlapping targets were found.
      */
-    public static double mean(final Segment segment, final ExonCollection<TargetCoverage> targets) {
+    public static double meanTargetCoverage(final Segment segment, final ExonCollection<TargetCoverage> targets) {
+        Utils.nonNull(segment, "Can't get mean coverage of null segment.");
+        Utils.nonNull(targets, "Mean target coverage requires non-null targets collection.");
+
         final List<TargetCoverage> myTargets = overlappingTargets(segment, targets);
 
         if (myTargets.size() == 0) {
