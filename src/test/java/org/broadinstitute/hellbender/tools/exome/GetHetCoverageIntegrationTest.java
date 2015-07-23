@@ -1,15 +1,18 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException.CommandLineException;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * Integration test for {@link GetHetCoverage}.  Uses BAM and SNP files generated from hg19mini using wgsim.
@@ -24,10 +27,22 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
     private static final File SNP_FILE = new File(TEST_SUB_DIR + "common_SNP.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
+    private static SAMFileHeader normalHeader;
+    private static SAMFileHeader tumorHeader;
+
+    @BeforeClass
+    public void initHeaders() throws IOException {
+        try (final SamReader normalBamReader = SamReaderFactory.makeDefault().open(NORMAL_BAM_FILE);
+             final SamReader tumorBamReader = SamReaderFactory.makeDefault().open(TUMOR_BAM_FILE)) {
+            normalHeader = normalBamReader.getFileHeader();
+            tumorHeader = tumorBamReader.getFileHeader();
+        }
+    }
+
     @Test
     public void testGetHetCoverage() {
-        final File normalOutputFile = createTempFile("normal-test",".txt");
-        final File tumorOutputFile = createTempFile("tumor-test",".txt");
+        final File normalOutputFile = createTempFile("normal-test", ".txt");
+        final File tumorOutputFile = createTempFile("tumor-test", ".txt");
 
         final String[] arguments = {
                 "-" + GetHetCoverage.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
@@ -39,11 +54,10 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         };
         runCommandLine(arguments);
 
-        final SAMFileHeader header = IntervalList.fromFile(SNP_FILE).getHeader();
-        final Pulldown normalOutputPulldownFromCLP = new Pulldown(normalOutputFile, header);
-        final Pulldown tumorOutputPulldownFromCLP = new Pulldown(tumorOutputFile, header);
+        final Pulldown normalOutputPulldownCLP = new Pulldown(normalOutputFile, normalHeader);
+        final Pulldown tumorOutputPulldownCLP = new Pulldown(tumorOutputFile, tumorHeader);
 
-        Pulldown normalHetPulldown = new Pulldown(header);
+        Pulldown normalHetPulldown = new Pulldown(normalHeader);
         normalHetPulldown.add(new Interval("1", 10736, 10736), 9, 2);
         normalHetPulldown.add(new Interval("1", 11522, 11522), 7, 4);
         normalHetPulldown.add(new Interval("1", 12098, 12098), 8, 6);
@@ -51,15 +65,15 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         normalHetPulldown.add(new Interval("2", 14689, 14689), 6, 9);
         normalHetPulldown.add(new Interval("2", 14982, 14982), 6, 5);
 
-        Pulldown tumorHetPulldown = new Pulldown(header);
+        Pulldown tumorHetPulldown = new Pulldown(tumorHeader);
         tumorHetPulldown.add(new Interval("1", 11522, 11522), 7, 4);
         tumorHetPulldown.add(new Interval("1", 12098, 12098), 8, 6);
         tumorHetPulldown.add(new Interval("1", 14630, 14630), 9, 8);
         tumorHetPulldown.add(new Interval("2", 14689, 14689), 6, 9);
         tumorHetPulldown.add(new Interval("2", 14982, 14982), 6, 5);
 
-        Assert.assertEquals(normalHetPulldown, normalOutputPulldownFromCLP);
-        Assert.assertEquals(tumorHetPulldown, tumorOutputPulldownFromCLP);
+        Assert.assertEquals(normalHetPulldown, normalOutputPulldownCLP);
+        Assert.assertEquals(tumorHetPulldown, tumorOutputPulldownCLP);
     }
 
     @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)

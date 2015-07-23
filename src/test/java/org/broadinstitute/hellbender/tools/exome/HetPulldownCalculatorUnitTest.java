@@ -10,6 +10,7 @@ import htsjdk.samtools.util.SamLocusIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -32,10 +33,19 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     private static final File SNP_FILE = new File(TEST_SUB_DIR + "common_SNP.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
-    final SAMFileHeader NORMAL_HEADER = SamReaderFactory.makeDefault().open(NORMAL_BAM_FILE).getFileHeader();
-    final SAMFileHeader TUMOR_HEADER = SamReaderFactory.makeDefault().open(TUMOR_BAM_FILE).getFileHeader();
-
     private static final HetPulldownCalculator calculator = new HetPulldownCalculator(REF_FILE, SNP_FILE);
+
+    private static SAMFileHeader normalHeader;
+    private static SAMFileHeader tumorHeader;
+
+    @BeforeClass
+    public void initHeaders() throws IOException {
+        try (final SamReader normalBamReader = SamReaderFactory.makeDefault().open(NORMAL_BAM_FILE);
+             final SamReader tumorBamReader = SamReaderFactory.makeDefault().open(TUMOR_BAM_FILE)) {
+            normalHeader = normalBamReader.getFileHeader();
+            tumorHeader = tumorBamReader.getFileHeader();
+        }
+    }
 
     private static Map<Character, Integer> makeBaseCounts(final int aCount, final int cCount,
                                                           final int gCount, final int tCount) {
@@ -83,7 +93,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "inputGetPileupBaseCount")
-    public static void testGetPileupBaseCount(final SamLocusIterator.LocusInfo locus,
+    public void testGetPileupBaseCount(final SamLocusIterator.LocusInfo locus,
                                               final Map<Character, Integer> expected) {
         final Map<Character, Integer> result = HetPulldownCalculator.getPileupBaseCounts(locus);
         Assert.assertEquals(result, expected);
@@ -108,7 +118,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "inputIsPileupHetCompatible")
-    public static void testIsPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCounts,
+    public void testIsPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCounts,
                                                  final double hetAlleleFreq, final double pvalThreshold,
                                                  final boolean expected) {
         final boolean result = HetPulldownCalculator.isPileupHetCompatible(baseCounts, totalBaseCounts,
@@ -118,7 +128,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @DataProvider(name = "inputGetNormalHetPulldown")
     public Object[][] inputGetNormalHetPulldown() {
-        Pulldown normalHetPulldown1 = new Pulldown(NORMAL_HEADER);
+        Pulldown normalHetPulldown1 = new Pulldown(normalHeader);
         normalHetPulldown1.add(new Interval("1", 10736, 10736), 9, 2);
         normalHetPulldown1.add(new Interval("1", 11522, 11522), 7, 4);
         normalHetPulldown1.add(new Interval("1", 12098, 12098), 8, 6);
@@ -127,7 +137,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
         normalHetPulldown1.add(new Interval("2", 14982, 14982), 6, 5);
 
         //changing hetAlleleFreq from 0.5 -> 0.45 removes first het SNP
-        Pulldown normalHetPulldown2 = new Pulldown(NORMAL_HEADER);
+        Pulldown normalHetPulldown2 = new Pulldown(normalHeader);
         normalHetPulldown2.add(new Interval("1", 11522, 11522), 7, 4);
         normalHetPulldown2.add(new Interval("1", 12098, 12098), 8, 6);
         normalHetPulldown2.add(new Interval("1", 14630, 14630), 9, 8);
@@ -141,28 +151,28 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "inputGetNormalHetPulldown")
-    public static void testGetNormalHetPulldown(final double hetAlleleFreq, final double pvalThreshold,
+    public void testGetNormalHetPulldown(final double hetAlleleFreq, final double pvalThreshold,
                                                 final Pulldown expected) {
         final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, hetAlleleFreq, pvalThreshold);
         Assert.assertEquals(result, expected);
     }
 
     @Test(expectedExceptions = UserException.class)
-    public static void testGetHetPulldownWithUnsortedBAMFile() {
+    public void testGetHetPulldownWithUnsortedBAMFile() {
         final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, -1, -1);
     }
 
     @DataProvider(name = "inputGetTumorHetPulldown")
     public Object[][] inputGetTumorHetPulldown() {
         //first het SNP in normalHetPulldown1 has <= 10 reads in tumor BAM and hence does not pass read depth filter
-        Pulldown tumorHetPulldown = new Pulldown(TUMOR_HEADER);
+        Pulldown tumorHetPulldown = new Pulldown(normalHeader);
         tumorHetPulldown.add(new Interval("1", 11522, 11522), 7, 4);
         tumorHetPulldown.add(new Interval("1", 12098, 12098), 8, 6);
         tumorHetPulldown.add(new Interval("1", 14630, 14630), 9, 8);
         tumorHetPulldown.add(new Interval("2", 14689, 14689), 6, 9);
         tumorHetPulldown.add(new Interval("2", 14982, 14982), 6, 5);
 
-        final IntervalList normalHetIntervals = new IntervalList(NORMAL_HEADER);
+        final IntervalList normalHetIntervals = new IntervalList(tumorHeader);
         normalHetIntervals.add(new Interval("1", 11522, 11522));
         normalHetIntervals.add(new Interval("1", 12098, 12098));
         normalHetIntervals.add(new Interval("1", 14630, 14630));
@@ -175,7 +185,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "inputGetTumorHetPulldown")
-    public static void testGetTumorHetPulldown(final IntervalList normalHetIntervals,
+    public void testGetTumorHetPulldown(final IntervalList normalHetIntervals,
                                                final Pulldown expected) {
         final Pulldown result = calculator.getTumor(TUMOR_BAM_FILE, normalHetIntervals);
         Assert.assertEquals(result, expected);
