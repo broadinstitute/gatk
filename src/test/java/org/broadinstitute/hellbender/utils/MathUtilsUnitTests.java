@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.Random;
 
 import static java.lang.Math.log10;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
+import static org.broadinstitute.hellbender.utils.MathUtils.logToLog10;
 
 /**
  * Basic unit test for MathUtils
@@ -298,6 +300,19 @@ public final class MathUtilsUnitTests extends BaseTest {
         final double[] expected =  {1.0/6.0, 2.0/6.0, 3.0/6.0};
         for (int i = 0; i < actual.length; i++){
             Assert.assertEquals(expected[i], actual[i], error);
+        }
+    }
+
+    @Test
+    public void testLogLog10conversions(){
+        final double error = 1e-6;
+        for (final double x : new double[]{Math.E, 10.0, 0.5, 1, 1.5, 100.0}) {
+            final double logX = Math.log(x);
+            final double log10X = Math.log10(x);
+            Assert.assertEquals(log10ToLog(log10X), logX, error, "log10ToLog");
+            Assert.assertEquals(logToLog10(logX), log10X, error, "logToLog10");
+            Assert.assertEquals(logToLog10(log10ToLog(log10X)), log10X, error, "log10->log->log10");
+            Assert.assertEquals(log10ToLog(logToLog10(logX)), logX, error, "log->log10->log");
         }
     }
 }

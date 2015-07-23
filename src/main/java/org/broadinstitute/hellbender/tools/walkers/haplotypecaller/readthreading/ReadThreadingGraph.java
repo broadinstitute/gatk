@@ -382,7 +382,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     }
 
     @VisibleForTesting
-    void setIncreaseCountsThroughBranches(boolean increaseCountsThroughBranches) {
+    void setIncreaseCountsThroughBranches(final boolean increaseCountsThroughBranches) {
         this.increaseCountsThroughBranches = increaseCountsThroughBranches;
     }
 

@@ -5,9 +5,11 @@ import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -153,9 +155,7 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
 
     @Override
     public void setMatePosition( final Locatable locatable ) {
-        if ( locatable == null ) {
-            throw new IllegalArgumentException("Cannot set mate position to null");
-        }
+        Utils.nonNull( locatable,  "Cannot set mate position to null");
 
         setMatePosition(locatable.getContig(), locatable.getStart());
     }
@@ -525,5 +525,15 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
         result = 31 * result + uuid.hashCode();
 
         return result;
+    }
+
+    @Override
+    public String toString() {
+        //SAMRecord.toString blows up when there are no bases: https://github.com/samtools/htsjdk/issues/297
+        //The workaround is to not call it then
+        if (samRecord == null || samRecord.getReadBases() != null) {
+            return Objects.toString(samRecord);
+        }
+        return "SAMRecord with no bases";
     }
 }

@@ -60,7 +60,7 @@ public final class UtilsUnitTest extends BaseTest {
 
     @Test
     public void testDupBytes() {
-        Assert.assertEquals(new byte[]{(byte)'a',(byte)'a',(byte)'a'}, Utils.dupBytes((byte)'a', 3));
+        Assert.assertEquals(new byte[]{(byte)'a',(byte)'a',(byte)'a'}, Utils.dupBytes((byte) 'a', 3));
     }
 
     @Test
@@ -127,7 +127,7 @@ public final class UtilsUnitTest extends BaseTest {
         Assert.assertEquals(Utils.join(",", new Object[] { true , -12, "Blah", this.getClass() }),
                 "true,-12,Blah," + this.getClass().toString());
         Assert.assertEquals(Utils.join(",", true, -13, "Blah", this.getClass()),"true,-13,Blah," + this.getClass().toString());
-        Assert.assertEquals(Utils.join(",", Boolean.TRUE),"true");
+        Assert.assertEquals(Utils.join(",", Boolean.TRUE), "true");
     }
 
     @Test
@@ -401,4 +401,38 @@ public final class UtilsUnitTest extends BaseTest {
         Assert.assertTrue(logger.getLevel() == initialLevel);
 
     }
+
+    @Test(dataProvider = "skimArrayData")
+    public void testSkimArray(final String original, final String remove) {
+        final StringBuilder resultBuilder = new StringBuilder();
+        final boolean[] removeBoolean = new boolean[remove.length()];
+        for (int i = 0; i < original.length(); i++)
+            if (remove.charAt(i) == '1') {
+                resultBuilder.append(original.charAt(i));
+                removeBoolean[i] = false;
+            } else
+                removeBoolean[i] = true;
+
+        final String expected = resultBuilder.toString();
+        final byte[] resultBytes = Utils.skimArray(original.getBytes(),removeBoolean);
+        final String resultString = new String(resultBytes);
+        Assert.assertEquals(resultString, expected);
+    }
+
+    @DataProvider(name = "skimArrayData")
+    public Object[][] skimArrayData() {
+        return new Object[][] {
+                {"romeo+juliette" , "11111111111111" },
+                {"romeo+juliette" , "11111011111111" },
+                {"romeo+juliette" , "00000011111111" },
+                {"romeo+juliette" , "11111100000000" },
+                {"romeo+juliette" , "11111011111111" },
+                {"romeo+juliette" , "01111010000001" },
+                {"romeo+juliette" , "01100110000110" },
+                {"romeo+juliette" , "10101010101010" },
+                {"romeo+juliette" , "01010101010101" },
+                {"romeo+juliette" , "01111010111001" },
+        };
+    }
+
 }

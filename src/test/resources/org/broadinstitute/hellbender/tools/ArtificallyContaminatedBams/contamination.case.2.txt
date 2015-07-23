@@ -1,0 +1,3 @@
+NA11918	.15
+DUMMY	0.43
+Dummy with spaces	.3

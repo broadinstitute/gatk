@@ -5,6 +5,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -86,6 +89,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
      */
     public ReadPileup makeFilteredPileup(final Predicate<PileupElement> filter){
+        Utils.nonNull(filter);
         return new ReadPileup(loc, pileupElements.stream().filter(filter).collect(Collectors.toList()));
     }
 
@@ -133,14 +137,23 @@ public final class ReadPileup implements Iterable<PileupElement>{
 
     /**
      * The best way to access PileupElements where you only care about the bases and quals in the pileup.
-     * <p/>
+     * <p>
      * for (PileupElement p : this) { doSomething(p); }
-     * <p/>
+     * <p>
      * Provides efficient iteration of the data.
      */
     public Iterator<PileupElement> iterator() {
         return Collections.unmodifiableList(pileupElements).iterator();
-   }
+    }
+
+    /**
+     * Returns the element at given index.
+     * @throws IndexOutOfBoundsException if the index is out of range
+     *         (<tt>index &lt; 0 || index &gt;= size()</tt>)
+     */
+    public PileupElement get(final int index){
+        return pileupElements.get(index);
+    }
 
     /**
      * The number of elements in this pileup.

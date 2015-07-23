@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.IndexedSet;
 
 import java.util.Collection;
@@ -57,17 +58,19 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
     }
 
     @Override
-    public int alleleCount() {
+    public int numberOfAlleles() {
         return alleles.size();
     }
 
     @Override
-    public int alleleIndex(final A allele) {
+    public int indexOfAllele(final A allele) {
+        Utils.nonNull(allele);
         return alleles.indexOf(allele);
     }
 
     @Override
-    public A alleleAt(final int index) {
+    public A getAllele(final int index) {
+        Utils.validIndex(index, alleles.size());
         return alleles.get(index);
     }
 }

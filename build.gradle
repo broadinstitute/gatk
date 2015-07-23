@@ -107,6 +107,7 @@ dependencies {
     compile 'org.reflections:reflections:0.9.10'
     compile 'net.sf.jopt-simple:jopt-simple:4.9'
     compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150727'
+    compile 'it.unimi.dsi:fastutil:7.0.6'
     compile ('com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0') {
         exclude module: 'guava-jdk5'
     }

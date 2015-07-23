@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.*;
 
 /**
-* Set set where each element can be reference by a unique integer index that runs from
+* Set where each element can be reference by a unique integer index that runs from
 *     0 to the size of the set - 1.
 *
 * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
@@ -15,7 +15,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
     /**
      * Elements stored in an array-list by their index.
      */
-    private final ArrayList<E> elements;
+    private final List<E> elements;
 
     /**
      * A unmodifiable view to the element list. Initially {@code null} it is thread-unsafe lazy instantiated
@@ -134,7 +134,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
 
     /**
      * Returns number of elements in the set.
-     * @return never {@code null}.
+     * @return 0 or greater
      */
     @Override
     public int size() {
@@ -147,7 +147,6 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      * @return {@code true} iff {@code o} is in
      */
     @Override
-    @SuppressWarnings("all")
     public boolean contains(final Object o) {
         return o != null && indexByElement.containsKey(o);
     }
@@ -251,7 +250,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      */
     public boolean equals(final IndexedSet<?> other) {
         Utils.nonNull(other, "other cannot be null");
-        final ArrayList<?> otherElements = other.elements;
+        final List<?> otherElements = other.elements;
 
         final int elementCount = elements.size();
         if (otherElements.size() != elementCount) {

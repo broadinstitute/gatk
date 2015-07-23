@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.exception.NotStrictlyPositiveException;
+import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
@@ -19,10 +22,29 @@ public final class MathUtils {
      */
     public static final double LOG_P_OF_ZERO = -1000000.0;
 
+    public static final double LOG10_ONE_HALF = Math.log10(0.5);
+
+    /**
+     * Log10 of the e constant.
+     */
+    public static final double LOG10_OF_E = Math.log10(Math.E);
+
+    private static final double LN_10 = Math.log(10);
+
     /**
      * Private constructor.  No instantiating this class!
      */
     private MathUtils() {
+    }
+
+    /**
+     * Creates a new sample of k ints from [0..n-1], without duplicates.
+     * @throws NumberIsTooLargeException if {@code k > n}.
+     * @throws NotStrictlyPositiveException if {@code k <= 0}.
+     */
+    public static int[] sampleIndicesWithoutReplacement(final int n, final int k) {
+        //No error checking : RandomDataGenetator.nextPermutation does it
+        return Utils.getRandomDataGenerator().nextPermutation(n, k);
     }
 
     /**
@@ -108,6 +130,24 @@ public final class MathUtils {
     // if one is already make those checks before calling in to the rounding).
     public static int fastRound(final double d) {
         return (d > 0.0) ? (int) (d + 0.5d) : (int) (d - 0.5d);
+    }
+
+    /**
+     * Converts LOG10 to LN
+     * @param log10 log10(x)
+     * @return ln(x)
+     */
+    public static double log10ToLog(final double log10){
+        return log10 * LN_10;
+    }
+
+    /**
+     * Converts LN to LOG10
+     * @param ln log(x)
+     * @return log10(x)
+     */
+    public static double logToLog10(final double ln) {
+        return ln * LOG10_OF_E;
     }
 
     public static double approximateLogSumLog(final double[] vals) {
