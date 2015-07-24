@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/broadinstitute/hellbender.svg?branch=master)](https://travis-ci.org/broadinstitute/hellbender)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/hellbender?branch=master)
 
-**This project is in an early stage of development.  It is subject to change without warning.**  
+**This project is in an early stage of development.  It is subject to change without warning and not intended for use in any production setting.**  
 
 Hellbender
 ================
@@ -42,8 +42,6 @@ General guidelines for Hellbender developers
 * **Try to keep datafiles under 100kb in size.**
 
 * Hellbender is  BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
-
-* Hellbender is written in Java 8. Enjoy the new features in particular streams, lambdas, methods in interfaces.
 
 * Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code).
 
