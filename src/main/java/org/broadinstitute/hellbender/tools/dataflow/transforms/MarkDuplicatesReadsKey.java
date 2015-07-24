@@ -41,12 +41,13 @@ public final class MarkDuplicatesReadsKey {
     }
 
     /**
-     * Makes a unique key for the read.
+     * Makes a unique key for the pair.
      */
-    public static String keyForRead(final SAMFileHeader header, final GATKRead read) {
+    public static String keyForPair(final SAMFileHeader header, final GATKRead read) {
         return String.format(
                 "%s|%s",
                 read.getReadGroup(),
                 read.getName());
     }
 }
+
