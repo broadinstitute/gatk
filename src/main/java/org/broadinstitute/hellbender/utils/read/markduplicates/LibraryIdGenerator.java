@@ -49,7 +49,15 @@ public final class LibraryIdGenerator {
      */
     public static String getLibraryName(final SAMFileHeader header, final SAMRecord rec) {
         final String readGroupId = (String) rec.getAttribute("RG");
+        return getLibraryName(header, readGroupId);
+    }
 
+    /**
+     * Gets the library name from the header for the read group id. If the read group id is null
+     * or the library isn't denoted on the read group, a constant string is
+     * returned.
+     */
+    public static String getLibraryName(final SAMFileHeader header, String readGroupId) {
         if (readGroupId != null) {
             final SAMReadGroupRecord rg = header.getReadGroup(readGroupId);
             if (rg != null) {
@@ -57,7 +65,6 @@ public final class LibraryIdGenerator {
                 if (null != libraryName) return libraryName;
             }
         }
-
         return "Unknown Library";
     }
 

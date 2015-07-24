@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.util.Log;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,7 +15,9 @@ import java.util.regex.Pattern;
  * @author Tim Fennell
  * @author Nils Homer
  */
-public final class OpticalDuplicateFinder {
+public final class OpticalDuplicateFinder implements Serializable {
+
+    private static final long serialVersionUID = 1l;
 
     public static final String DEFAULT_READ_NAME_REGEX = "[a-zA-Z0-9]+:[0-9]:([0-9]+):([0-9]+):([0-9]+).*".intern();
 
@@ -29,6 +32,8 @@ public final class OpticalDuplicateFinder {
     private boolean warnedAboutRegexNotMatching = false;
 
     private final Log log;
+
+    private final Boolean isDefaultRegex;
 
     public OpticalDuplicateFinder() {
         this(DEFAULT_READ_NAME_REGEX, DEFAULT_OPTICAL_DUPLICATE_DISTANCE);
@@ -50,6 +55,10 @@ public final class OpticalDuplicateFinder {
         this.readNameRegex = readNameRegex;
         this.opticalDuplicatePixelDistance = opticalDuplicatePixelDistance;
         this.log = log;
+
+        // Compare the regexes once so that we don't need to do it each time. We need to use equals because
+        // this class is serialized by dataflow.
+        this.isDefaultRegex = this.readNameRegex.equals(DEFAULT_READ_NAME_REGEX);
     }
 
     /**
@@ -89,8 +98,8 @@ public final class OpticalDuplicateFinder {
      * @return true if the read name contained the information in parsable form, false otherwise
      */
     public boolean addLocationInformation(final String readName, final PhysicalLocation loc) {
-        // Optimized version if using the default read name regex (== used on purpose):
-        if (this.readNameRegex == OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX) {
+        if (this.isDefaultRegex) {
+
             final int fields = getRapidDefaultReadNameRegexSplit(readName, ':', tmpLocationFields);
             if (!(fields == 5 || fields == 7)) {
                 if (null != log && !this.warnedAboutRegexNotMatching) {
