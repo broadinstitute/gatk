@@ -10,7 +10,7 @@ import java.util.Iterator;
  * Wraps a SAMRecord iterator within an iterator of GATKReads.
  */
 public final class SAMRecordToReadIterator implements Iterator<GATKRead>, Iterable<GATKRead> {
-    private Iterator<SAMRecord> samIterator;
+    private final Iterator<SAMRecord> samIterator;
 
     public SAMRecordToReadIterator( final Iterator<SAMRecord> samIterator ) {
         this.samIterator = samIterator;

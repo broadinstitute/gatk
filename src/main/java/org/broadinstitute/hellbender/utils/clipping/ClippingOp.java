@@ -585,9 +585,9 @@ public final class ClippingOp {
     }
 
     private static class CigarShift {
-        private Cigar cigar;
-        private int shiftFromStart;
-        private int shiftFromEnd;
+        private final Cigar cigar;
+        private final int shiftFromStart;
+        private final int shiftFromEnd;
 
         private CigarShift(Cigar cigar, int shiftFromStart, int shiftFromEnd) {
             this.cigar = cigar;

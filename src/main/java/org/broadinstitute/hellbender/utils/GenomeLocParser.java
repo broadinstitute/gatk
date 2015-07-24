@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * Factory class for creating GenomeLocs
  */
 public final class GenomeLocParser {
-    private static Logger logger = LogManager.getLogger(GenomeLocParser.class);
+    private static final Logger logger = LogManager.getLogger(GenomeLocParser.class);
 
     /**
      * How much validation should we do at runtime with this parser?

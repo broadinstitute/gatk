@@ -5,7 +5,7 @@ import joptsimple.ValueConverter;
 
 /**
  * converts values case insensitively matching T, True, F, or False to true or false
- * throws {@link joptsimple.ValueConversionException} otherwise
+ * throws {@link ValueConversionException} otherwise
  */
 public final class StrictBooleanConverter implements ValueConverter<String> {
     public String convert( String value ) {

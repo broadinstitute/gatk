@@ -21,7 +21,7 @@ public final class Utils {
      *  Static random number generator and seed.
      */
     private static final long GATK_RANDOM_SEED = 47382911L;
-    private static Random randomGenerator = new Random(GATK_RANDOM_SEED);
+    private static final Random randomGenerator = new Random(GATK_RANDOM_SEED);
     public static Random getRandomGenerator() { return randomGenerator; }
     public static void resetRandomGenerator() { randomGenerator.setSeed(GATK_RANDOM_SEED); }
 
@@ -33,7 +33,7 @@ public final class Utils {
     public static final float JAVA_DEFAULT_HASH_LOAD_FACTOR = 0.75f;
 
     /** our log, which we want to capture anything from this class */
-    private static Logger logger = LogManager.getLogger(Utils.class);
+    private static final Logger logger = LogManager.getLogger(Utils.class);
 
     public static <T> List<T> cons(final T elt, final List<T> l) {
         final List<T> l2 = new ArrayList<>();

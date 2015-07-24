@@ -89,7 +89,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
      * Throws an exception if any of the files is missing.
      * (offlineauth can be null if the files are local)
      */
-    public static void ensureReferenceIsReadable(final PipelineOptions popts, String filename) throws IOException, GeneralSecurityException {
+    public static void ensureReferenceIsReadable(final PipelineOptions popts, String filename) throws IOException {
         for (String fn : getRelatedFiles(filename)) {
             if (BucketUtils.isRemoteStorageUrl(fn)) {
                 // make sure we can access those remote files.

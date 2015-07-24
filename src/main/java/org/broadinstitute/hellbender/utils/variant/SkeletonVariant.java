@@ -11,10 +11,10 @@ import java.util.UUID;
 public class SkeletonVariant implements Variant, Serializable {
     private static final long serialVersionUID = 1L;
 
-    final private SimpleInterval interval;
-    final private boolean snp;
-    final private boolean indel;
-    final private UUID uuid;
+    private final SimpleInterval interval;
+    private final boolean snp;
+    private final boolean indel;
+    private final UUID uuid;
 
     @Override
     public boolean equals(Object o) {

@@ -50,12 +50,12 @@ public final class IntervalUtils {
      * The {@code null} contig is supported and comes last.
      * </p>
      */
-    public final static Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
+    public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
             Comparator.comparing(Locatable::getContig,Comparator.nullsLast(String::compareTo))
                     .thenComparingInt(Locatable::getStart)
                     .thenComparingInt(Locatable::getEnd);
 
-    private static Logger logger = LogManager.getLogger(IntervalUtils.class);
+    private static final Logger logger = LogManager.getLogger(IntervalUtils.class);
 
 
     /**
@@ -717,7 +717,7 @@ public final class IntervalUtils {
         }
     }
 
-    private final static class SplitLocusRecursive {
+    private static final class SplitLocusRecursive {
         final List<GenomeLoc> split;
         final LinkedList<GenomeLoc> remaining;
 

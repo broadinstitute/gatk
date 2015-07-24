@@ -17,8 +17,8 @@ import java.util.List;
  * Subclasses must override getIntervalStrings and addToIntervalStrings().
  */
 public abstract class IntervalArgumentCollection implements ArgumentCollectionDefinition {
-    static private Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
-    final protected IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
+    private static final Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
+    protected final IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
     private static final long serialVersionUID = 1L;
 
     /**
@@ -31,13 +31,13 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
      *
      * @return string gathered from the command line -L argument to be parsed into intervals to include
      */
-    abstract protected List<String> getIntervalStrings();
+    protected abstract List<String> getIntervalStrings();
 
     /**
      * Add an extra interval string to the intervals to include.
      * primarily for testing
      */
-    abstract protected void addToIntervalStrings(String newInterval);
+    protected abstract void addToIntervalStrings(String newInterval);
     /**
      * Use this argument to exclude certain parts of the genome from the analysis (like -L, but the opposite).
      * This argument can be specified multiple times. You can use samtools-style intervals either explicitly on the
@@ -46,7 +46,7 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
      * @return strings gathered from the command line -XL argument to be parsed into intervals to exclude
      */
     @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing", optional = true)
-    final protected List<String> excludeIntervalStrings = new ArrayList<>();
+    protected final List<String> excludeIntervalStrings = new ArrayList<>();
 
     /**
      * By default, the program will take the UNION of all intervals specified using -L and/or -XL. However, you can

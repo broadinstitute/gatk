@@ -553,10 +553,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
         //for every edge in g2 there is an equal edge in g1
         final boolean okG2 = edges2.stream().allMatch(e2 -> edges1.stream().anyMatch(e1 -> g2.seqEquals(e2, e1, g1)));
-        if (! okG2){
-            return false;
-        }
-        return true;
+        return okG2;
     }
 
     // For use when comparing edges across graphs!

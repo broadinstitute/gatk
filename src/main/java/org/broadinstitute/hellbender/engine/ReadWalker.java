@@ -74,7 +74,7 @@ public abstract class ReadWalker extends GATKTool {
 
     /**
      * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.WellformedReadFilter} filter with all default options.
+     * The default implementation uses the {@link WellformedReadFilter} filter with all default options.
      * Default implementation of {@link #traverse()} calls this method once before iterating
      * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
      *

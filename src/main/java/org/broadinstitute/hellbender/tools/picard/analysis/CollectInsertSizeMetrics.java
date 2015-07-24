@@ -53,7 +53,7 @@ public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
     public float MINIMUM_PCT = 0.05f;
 
     @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics.  ")
-    private Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = CollectionUtil.makeSet(MetricAccumulationLevel.ALL_READS);
+    public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
     @Argument(doc = "Should an output plot be created")
     public boolean PRODUCE_PLOT = false;

@@ -55,7 +55,7 @@ public final class VariantShard {
      * @param location the range of sites determines which shards are overlapping
      * @return All overlapping VariantShards
      */
-    static public List<VariantShard> getVariantShardsFromInterval(final Locatable location) {
+    public static List<VariantShard> getVariantShardsFromInterval(final Locatable location) {
         List<VariantShard> shardList = new ArrayList<>();
         // Get all of the shard numbers that span the start and end of the interval.
         int startShard = location.getStart()/ VARIANT_SHARDSIZE;

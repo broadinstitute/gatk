@@ -82,7 +82,7 @@ public final class RecalUtils {
          * Constructs a printer redirected to an output file.
          * @param out the output file.
          * @param covs covariates to print out.
-         * @throws java.io.FileNotFoundException if the file could not be created anew.
+         * @throws FileNotFoundException if the file could not be created anew.
          */
         protected CsvPrinter(final File out, final StandardCovariateList covs)
                 throws FileNotFoundException {
@@ -137,7 +137,7 @@ public final class RecalUtils {
      * @param out the output file. It will be overridden
      * @param covs list of covariates to print out.
      *
-     * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
+     * @throws FileNotFoundException if <code>out</code> could not be created anew.
      *
      * @return never <code>null</code>
      */
@@ -159,7 +159,7 @@ public final class RecalUtils {
      * @param out the output file. It will be overridden.
      * @param reports map where keys are the unique 'mode' (ORIGINAL, RECALIBRATED, ...)
      *                of each report and the corresponding value the report itself.
-     * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
+     * @throws FileNotFoundException if <code>out</code> could not be created anew.
      */
     public static void generateCsv(final File out, final Map<String, RecalibrationReport> reports) throws FileNotFoundException {
         if (reports.isEmpty()) {
@@ -178,7 +178,7 @@ public final class RecalUtils {
      * @param reports map where keys are the unique 'mode' (ORIGINAL, RECALIBRATED, ...)
      *                of each report and the corresponding value the report itself.
      * @param covs the covariates to print out.
-     * @throws java.io.FileNotFoundException if <code>out</code> could not be created anew.
+     * @throws FileNotFoundException if <code>out</code> could not be created anew.
      */
     private static void writeCsv(final File out, final Map<String, RecalibrationReport> reports, final StandardCovariateList covs)
         throws FileNotFoundException {

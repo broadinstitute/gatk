@@ -65,7 +65,7 @@ public final class ReferenceShard implements Serializable {
      * @param location, the start of which is used to determine the shard
      * @return the shard (contig + id)
      */
-    static public ReferenceShard getShardNumberFromInterval(final Locatable location) {
+    public static ReferenceShard getShardNumberFromInterval(final Locatable location) {
         return new ReferenceShard(location.getStart()/REFERENCE_SHARD_SIZE, location.getContig());
     }
 

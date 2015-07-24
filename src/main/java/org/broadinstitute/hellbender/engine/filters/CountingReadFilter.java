@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
  */
 public class CountingReadFilter implements ReadFilter {
 
-    static private final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     // Underlying ReadFilter we delegate to if we're wrapping a simple ReadFilter.
     private final ReadFilter delegateFilter;
@@ -116,7 +116,7 @@ public class CountingReadFilter implements ReadFilter {
      */
     private abstract class CountingBinopReadFilter extends CountingReadFilter {
 
-        static private final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1L;
 
         final CountingReadFilter lhs;
         final CountingReadFilter rhs;
@@ -148,7 +148,7 @@ public class CountingReadFilter implements ReadFilter {
      */
     private class CountingAndReadFilter extends CountingBinopReadFilter {
 
-        static private final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1L;
 
         private CountingAndReadFilter(final CountingReadFilter lhs, final CountingReadFilter rhs) {
             super("(" + lhs.getName() + " AND " + rhs.getName() + ")", lhs, rhs);
@@ -169,7 +169,7 @@ public class CountingReadFilter implements ReadFilter {
      */
     private class CountingOrReadFilter extends CountingBinopReadFilter {
 
-        static private final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1L;
 
         private CountingOrReadFilter(final CountingReadFilter lhs, final CountingReadFilter rhs) {
             super("(" + lhs.getName() + " OR " + rhs.getName() + ")", lhs, rhs);

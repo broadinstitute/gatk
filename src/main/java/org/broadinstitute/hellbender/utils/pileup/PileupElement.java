@@ -9,9 +9,9 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.*;
 
 public final class PileupElement implements Comparable<PileupElement> {
-    private final static LinkedList<CigarElement> EMPTY_LINKED_LIST = new LinkedList<>();
+    private static final LinkedList<CigarElement> EMPTY_LINKED_LIST = new LinkedList<>();
 
-    private final static EnumSet<CigarOperator> ON_GENOME_OPERATORS =
+    private static final EnumSet<CigarOperator> ON_GENOME_OPERATORS =
             EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.D);
 
     public static final byte DELETION_BASE = BaseUtils.Base.D.base;

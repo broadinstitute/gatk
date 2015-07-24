@@ -92,7 +92,7 @@ import java.util.*;
         programGroup = VariantProgramGroup.class
 )
 public final class ValidateVariants extends VariantWalker {
-    final static Logger logger = LogManager.getLogger(ValidateVariants.class);
+    static final Logger logger = LogManager.getLogger(ValidateVariants.class);
 
     public enum ValidationType {
 
@@ -128,7 +128,7 @@ public final class ValidateVariants extends VariantWalker {
          *
          * <p>These are all types except {@link #ALL}.</p>
          */
-        public final static Set<ValidationType> CONCRETE_TYPES;
+        public static final Set<ValidationType> CONCRETE_TYPES;
 
         static {
             final Set<ValidationType> cts = new LinkedHashSet<>(values().length - 1);

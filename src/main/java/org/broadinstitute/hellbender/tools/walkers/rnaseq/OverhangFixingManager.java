@@ -47,8 +47,8 @@ public class OverhangFixingManager {
     private final GenomeLocParser genomeLocParser;
 
     // the read cache
-    private final static int initialCapacity = 5000;
-    private PriorityQueue<SplitRead> waitingReads;
+    private static final int initialCapacity = 5000;
+    private final PriorityQueue<SplitRead> waitingReads;
 
     // the set of current splices to use
     private final Set<Splice> splices = new TreeSet<>(new SpliceComparator());

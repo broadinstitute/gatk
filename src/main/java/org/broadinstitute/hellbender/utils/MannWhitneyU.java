@@ -12,14 +12,14 @@ import java.util.TreeSet;
 
 public final class MannWhitneyU {
 
-    private static NormalDistribution STANDARD_NORMAL = new NormalDistribution(0.0,1.0);
-    private static NormalDistribution APACHE_NORMAL = new NormalDistribution(0.0,1.0,1e-2);
-    private static double LNSQRT2PI = Math.log(Math.sqrt(2.0 * Math.PI));
+    private static final NormalDistribution STANDARD_NORMAL = new NormalDistribution(0.0,1.0);
+    private static final NormalDistribution APACHE_NORMAL = new NormalDistribution(0.0,1.0,1e-2);
+    private static final double LNSQRT2PI = Math.log(Math.sqrt(2.0 * Math.PI));
 
-    private TreeSet<Pair<Number,USet>> observations;
+    private final TreeSet<Pair<Number,USet>> observations;
     private int sizeSet1;
     private int sizeSet2;
-    private ExactMode exactMode;
+    private final ExactMode exactMode;
 
     public MannWhitneyU(ExactMode mode, boolean dither) {
         if ( dither )

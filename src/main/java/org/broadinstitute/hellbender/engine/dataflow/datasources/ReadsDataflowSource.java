@@ -45,7 +45,7 @@ public final class ReadsDataflowSource {
     private final boolean cloudStorageUrl;
     private final boolean hadoopUrl;
     private GCSOptions options;
-    private Pipeline pipeline;
+    private final Pipeline pipeline;
     private GenomicsFactory.OfflineAuth auth;
 
     /**

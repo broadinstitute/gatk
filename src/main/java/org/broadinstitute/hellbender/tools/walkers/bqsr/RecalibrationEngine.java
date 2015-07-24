@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 public final class RecalibrationEngine {
-    final protected StandardCovariateList covariates;
+    protected final StandardCovariateList covariates;
 
     /**
      * Has finalizeData() been called?

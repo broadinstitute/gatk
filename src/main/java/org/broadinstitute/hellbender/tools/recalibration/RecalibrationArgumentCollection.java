@@ -20,7 +20,7 @@ import java.util.*;
  * This set of arguments will also be passed to the constructor of every Covariate when it is instantiated.
  */
 
-public final class RecalibrationArgumentCollection implements Serializable, ArgumentCollectionDefinition {
+public final class RecalibrationArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
     /**
      * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,

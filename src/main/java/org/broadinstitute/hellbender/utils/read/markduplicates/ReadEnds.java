@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 /** Little struct-like class to hold read pair (and fragment) end data for duplicate marking. */
-abstract public class ReadEnds implements OpticalDuplicateFinder.PhysicalLocation {
+public abstract class ReadEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
     public static final byte F = 0, R = 1, FF = 2, FR = 3, RR = 4, RF = 5;
 

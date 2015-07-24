@@ -29,7 +29,7 @@ public final class RScriptExecutor {
     /**
      * our log
      */
-    private static Logger logger = LogManager.getLogger(RScriptExecutor.class);
+    private static final Logger logger = LogManager.getLogger(RScriptExecutor.class);
 
     private boolean ignoreExceptions = false;
     private final List<RScriptLibrary> libraries = new ArrayList<>();

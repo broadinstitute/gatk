@@ -74,7 +74,7 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
                 program.CHART_OUTPUT = new File(outbase + ".base_distribution_by_cycle.pdf");
                 return program;
             }
-        };
+        }
 
     }
 

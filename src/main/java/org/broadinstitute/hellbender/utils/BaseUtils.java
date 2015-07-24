@@ -27,9 +27,9 @@ public final class BaseUtils {
     }
 
     // todo -- add this to the generalized base abstraction using the Base enum.
-    public final static byte[] BASES = {'A', 'C', 'G', 'T'};
+    public static final byte[] BASES = {'A', 'C', 'G', 'T'};
 
-    static private final int[] baseIndexMap = new int[256];
+    private static final int[] baseIndexMap = new int[256];
     static {
         Arrays.fill(baseIndexMap, -1);
         baseIndexMap['A'] = Base.A.ordinal();
@@ -43,7 +43,7 @@ public final class BaseUtils {
         baseIndexMap['t'] = Base.T.ordinal();
     }
 
-    static private final int[] baseIndexWithIupacMap = Arrays.copyOf(baseIndexMap, baseIndexMap.length);
+    private static final int[] baseIndexWithIupacMap = Arrays.copyOf(baseIndexMap, baseIndexMap.length);
     static {
         baseIndexWithIupacMap['*'] = -1;    // the wildcard character is bad
         baseIndexWithIupacMap['N'] = Base.N.ordinal();
@@ -103,7 +103,7 @@ public final class BaseUtils {
      */
     private BaseUtils() {}
 
-    static public boolean basesAreEqual(final byte base1, final byte base2) {
+    public static boolean basesAreEqual(final byte base1, final byte base2) {
         return simpleBaseToBaseIndex(base1) == simpleBaseToBaseIndex(base2);
     }
 
@@ -128,7 +128,7 @@ public final class BaseUtils {
      * @param base [AaCcGgTt]
      * @return 0, 1, 2, 3, or -1 if the base can't be understood
      */
-    static public int simpleBaseToBaseIndex(final byte base) {
+    public static int simpleBaseToBaseIndex(final byte base) {
         if ( base < 0 || base >= 256 ) {
             throw new IllegalArgumentException("Non-standard bases were encountered in either the input reference or BAM file(s)");
         }
@@ -138,14 +138,14 @@ public final class BaseUtils {
     /**
      * Returns true iff the base represented by the byte is a 'regular' base (ACGT or *).
      */
-    static public boolean isRegularBase( final byte base ) {
+    public static boolean isRegularBase( final byte base ) {
         return simpleBaseToBaseIndex(base) != -1;
     }
 
     /**
      * Returns true iff all bases are 'regular' {@link #isRegularBase}.
      */
-    static public boolean isAllRegularBases( final byte[] bases ) {
+    public static boolean isAllRegularBases( final byte[] bases ) {
         for( final byte base : bases) {
             if( !isRegularBase(base) ) { return false; }
         }
@@ -158,7 +158,7 @@ public final class BaseUtils {
      * @param baseIndex 0, 1, 2, 3
      * @return A, C, G, T, or '.' if the index can't be understood
      */
-    static public byte baseIndexToSimpleBase(final int baseIndex) {
+    public static byte baseIndexToSimpleBase(final int baseIndex) {
         switch (baseIndex) {
             case 0:
                 return 'A';
@@ -179,7 +179,7 @@ public final class BaseUtils {
      * @param base the base [AaCcGgTt]
      * @return the complementary base, or the input base if it's not one of the understood ones
      */
-    static public byte simpleComplement(final byte base) {
+    public static byte simpleComplement(final byte base) {
         switch (base) {
             case 'A':
             case 'a':
@@ -204,7 +204,7 @@ public final class BaseUtils {
      * @param bases the byte array of bases
      * @return the reverse complement of the base byte array
      */
-    static public byte[] simpleReverseComplement(final byte[] bases) {
+    public static byte[] simpleReverseComplement(final byte[] bases) {
         final byte[] rcbases = new byte[bases.length];
 
         for (int i = 0; i < bases.length; i++) {

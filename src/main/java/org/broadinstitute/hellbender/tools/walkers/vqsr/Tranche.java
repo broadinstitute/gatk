@@ -24,7 +24,7 @@ final class Tranche {
 
     static final Comparator<Tranche> TRUTH_SENSITIVITY_ORDER = (tranche1, tranche2) -> Double.compare(tranche1.targetTruthSensitivity, tranche2.targetTruthSensitivity);
 
-    private final static Logger logger = LogManager.getLogger(Tranche.class);
+    private static final Logger logger = LogManager.getLogger(Tranche.class);
 
     //Note: visibility is set to package-local for testing
     final double targetTruthSensitivity;
@@ -111,7 +111,7 @@ final class Tranche {
 
     /**
      * Returns a list of tranches, sorted from most to least specific, read in from file f.
-     * @throws java.io.IOException if there are problems reading the file.
+     * @throws IOException if there are problems reading the file.
      */
     public static List<Tranche> readTranches(File f) throws IOException{
         String[] header = null;

@@ -91,7 +91,7 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibrator extends ReadWalker {
-    final protected static Logger logger = LogManager.getLogger(BaseRecalibrator.class);
+    protected static final Logger logger = LogManager.getLogger(BaseRecalibrator.class);
 
     /**
      * All the command line arguments for BQSR and its covariates.
@@ -154,7 +154,7 @@ public final class BaseRecalibrator extends ReadWalker {
 
     private BAQ baq; // BAQ the reads on the fly to generate the alignment uncertainty vector
     private ReferenceDataSource referenceDataSource; // datasource for the reference. We're using a different one from the engine itself to avoid messing with its caches.
-    private final static byte NO_BAQ_UNCERTAINTY = (byte)'@';
+    private static final byte NO_BAQ_UNCERTAINTY = (byte)'@';
 
 
     private long accumulator;

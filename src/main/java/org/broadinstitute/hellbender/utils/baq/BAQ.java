@@ -40,8 +40,8 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
    state[i] being wrong.
  */
 public final class BAQ {
-    private final static Logger logger = LogManager.getLogger(BAQ.class);
-    private final static boolean DEBUG = false;
+    private static final Logger logger = LogManager.getLogger(BAQ.class);
+    private static final boolean DEBUG = false;
 
     public enum CalculationMode {
         OFF,                        // don't apply BAQ at all, the default
@@ -58,7 +58,7 @@ public final class BAQ {
 
     public static final String BAQ_TAG = "BQ";
 
-    private static double[] qual2prob = new double[256];
+    private static final double[] qual2prob = new double[256];
     static {
         for (int i = 0; i < 256; ++i)
             qual2prob[i] = Math.pow(10, -i / 10.);
@@ -135,10 +135,10 @@ public final class BAQ {
         initializeCachedData();
 	}
 
-    private final static double EM = 0.33333333333;
-    private final static double EI = 0.25;
+    private static final double EM = 0.33333333333;
+    private static final double EI = 0.25;
 
-    private double[][][] EPSILONS = new double[256][256][SAMUtils.MAX_PHRED_SCORE+1];
+    private final double[][][] EPSILONS = new double[256][256][SAMUtils.MAX_PHRED_SCORE+1];
 
     private void initializeCachedData() {
         for ( int i = 0; i < 256; i++ )
@@ -644,9 +644,9 @@ public final class BAQ {
 
         byte[] BAQQuals = read.getBaseQualities();      // in general we are overwriting quals, so just get a pointer to them
         if ( calculationType == CalculationMode.OFF) { // we don't want to do anything
-            ; // just fall though
+            // just fall though
         } else if ( excludeReadFromBAQ(read) ) {
-            ; // just fall through
+            // just fall through
         } else {
             final boolean readHasBAQTag = hasBAQTag(read);
 

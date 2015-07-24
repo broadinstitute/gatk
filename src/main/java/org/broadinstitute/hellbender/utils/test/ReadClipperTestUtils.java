@@ -13,9 +13,9 @@ public final class ReadClipperTestUtils {
     //Should contain all the utils needed for tests to mass produce
     //reads, cigars, and other needed classes
 
-    final static byte[] BASES = {'A', 'C', 'T', 'G'};
-    final static byte[] QUALS = {2, 15, 25, 30};
-    final static CigarElement[] cigarElements = {new CigarElement(1, CigarOperator.HARD_CLIP),
+    static final byte[] BASES = {'A', 'C', 'T', 'G'};
+    static final byte[] QUALS = {2, 15, 25, 30};
+    static final CigarElement[] cigarElements = {new CigarElement(1, CigarOperator.HARD_CLIP),
             new CigarElement(1, CigarOperator.SOFT_CLIP),
             new CigarElement(1, CigarOperator.INSERTION),
             new CigarElement(1, CigarOperator.DELETION),

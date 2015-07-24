@@ -41,7 +41,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
     private final int MAPPING_QUALITY_THRESOLD = 20;
 
     //The minimum quality a base has to meet in order to be consider hq_20
-    private final static int BASE_QUALITY_THRESHOLD = 20;
+    private static final int BASE_QUALITY_THRESHOLD = 20;
 
     //The number of bases to check in order to map a read to an adapter
     private static final int ADAPTER_MATCH_LENGTH = 16;
@@ -195,7 +195,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
         private class IndividualAlignmentSummaryMetricsCollector {
             private long numPositiveStrand = 0;
             private final Histogram<Integer> readLengthHistogram = new Histogram<>();
-            private AlignmentSummaryMetrics metrics;
+            private final AlignmentSummaryMetrics metrics;
             private long chimeras;
             private long chimerasDenominator;
             private long adapterReads;

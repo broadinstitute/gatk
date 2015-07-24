@@ -460,10 +460,7 @@ public final class AssemblyRegion {
         if ( extension != other.extension ) {
             return false;
         }
-        if ( extendedLoc.compareTo(other.extendedLoc) != 0 ) {
-            return false;
-        }
-        return true;
+        return extendedLoc.compareTo(other.extendedLoc) == 0;
     }
 
     public void setFinalized(final boolean value) {

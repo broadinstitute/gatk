@@ -142,9 +142,8 @@ public final class SimpleInterval implements Locatable, Serializable {
 
         if (end != that.end) return false;
         if (start != that.start) return false;
-        if (!contig.equals(that.contig)) return false;
+        return contig.equals(that.contig);
 
-        return true;
     }
 
     @Override

@@ -13,5 +13,5 @@ public interface CommandLineProgramGroup {
     /** Gets the description of this program. **/
     public String getDescription();
     /** Compares two program groups by name. **/
-    static public Comparator<CommandLineProgramGroup> comparator = (a, b) -> a.getName().compareTo(b.getName());
+    public static Comparator<CommandLineProgramGroup> comparator = (a, b) -> a.getName().compareTo(b.getName());
 }

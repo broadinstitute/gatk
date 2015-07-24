@@ -284,7 +284,7 @@ public final class IntervalListTools extends PicardCommandLineProgram {
      * Method to scatter an interval list by locus.
      *
      * @param list The list of intervals to scatter
-     * @return The scattered intervals, represented as a {@link java.util.List} of {@link htsjdk.samtools.util.IntervalList}
+     * @return The scattered intervals, represented as a {@link List} of {@link IntervalList}
      */
     private List<IntervalList> writeScatterIntervals(final IntervalList list) {
         final IntervalListScatterer scatterer = new IntervalListScatterer(SUBDIVISION_MODE);
@@ -344,7 +344,7 @@ public final class IntervalListTools extends PicardCommandLineProgram {
             applicableExtensions = extensions;
         }
 
-        abstract protected IntervalList getIntervalListInternal(final File file, final boolean includeFiltered);
+        protected abstract IntervalList getIntervalListInternal(final File file, final boolean includeFiltered);
 
         static TYPE forFile(final File intervalListExtractable) {
             for (final TYPE type : TYPE.values()) {
@@ -357,7 +357,7 @@ public final class IntervalListTools extends PicardCommandLineProgram {
             throw new SAMException("Cannot figure out type of file " + intervalListExtractable.getAbsolutePath() + " from extension. Current implementation understands the following types: " + Arrays.toString(TYPE.values()));
         }
 
-        static public IntervalList getIntervalList(final File file, final boolean includeFiltered){
+        public static IntervalList getIntervalList(final File file, final boolean includeFiltered){
             return forFile(file).getIntervalListInternal(file, includeFiltered);
         }
 

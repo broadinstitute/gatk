@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * Handles lifting reads from a bams into a PCollection and provides hooks to apply {@link ReadFilter} and
  * a {@link PTransformSAM}.
  *
- *Subclasses must override {@link #getTool()} and optionally override {@link #getReadFilters(htsjdk.samtools.SAMFileHeader)} and {@link #getReadTransformers()}
+ *Subclasses must override {@link #getTool()} and optionally override {@link #getReadFilters(SAMFileHeader)} and {@link #getReadTransformers()}
  */
 public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
@@ -75,7 +75,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     }
 
     @Override
-    final protected void setupPipeline(Pipeline pipeline) {
+    protected final void setupPipeline(Pipeline pipeline) {
         final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
         final SAMFileHeader header = readsDataflowSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();

@@ -123,8 +123,8 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
         CANNOT_SKIP_FOUND_OQ("Cannot skip the BAM as we found a record with an OQ", false),
         CANNOT_SKIP_FOUND_NO_MC("Cannot skip the BAM as we found a mate with no mate cigar tag", false),
         FOUND_NO_EVIDENCE("Found no evidence of OQ or mate with no mate cigar in the first %d records.  Will continue...", false);
-        final private String format;
-        final private boolean skip;
+        private final String format;
+        private final boolean skip;
 
         private CanSkipSamFile(final String format, final boolean skip) {
             this.format = format;

@@ -254,7 +254,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this read is paired (ie., has a mate), otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isPaired();
 
@@ -271,7 +271,7 @@ public interface GATKRead extends Locatable {
     /**
      * @return True if this read is paired and the orientation and the distance between reads from the fragment are
      *         consistent with the sequencing protocol, otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isProperlyPaired();
 
@@ -318,7 +318,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this read is on the reverse strand as opposed to the forward strand, otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isReverseStrand();
 
@@ -332,7 +332,7 @@ public interface GATKRead extends Locatable {
     /**
      * @return True if this read's mate is on the reverse strand as opposed to the forward strand, otherwise false.
      * @throws IllegalStateException if the read is not paired (has no mate)
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean mateIsReverseStrand();
 
@@ -349,7 +349,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this read is paired and is the first read in the pair, otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isFirstOfPair();
 
@@ -363,7 +363,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this read is paired and is the second read in the pair, otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isSecondOfPair();
 
@@ -377,7 +377,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this is a secondary alignment (an alternative to the primary alignment), otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isSecondaryAlignment();
 
@@ -390,7 +390,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this is a supplementary alignment (used in the representation of a chimeric alignment), otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isSupplementaryAlignment();
 
@@ -403,7 +403,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this read fails platform/vendor quality checks, otherwise false
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean failsVendorQualityCheck();
 
@@ -416,7 +416,7 @@ public interface GATKRead extends Locatable {
 
     /**
      * @return True if this read is a PCR or optical duplicate, otherwise false.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.MissingReadField if this information is not available
+     * @throws GATKException.MissingReadField if this information is not available
      */
     boolean isDuplicate();
 
@@ -440,7 +440,7 @@ public interface GATKRead extends Locatable {
      *
      * @param attributeName name of the attribute to retrieve
      * @return integer value of the requested attribute, or {@code null} if the attribute is not present
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.ReadAttributeTypeMismatch if the attribute
+     * @throws GATKException.ReadAttributeTypeMismatch if the attribute
      *         value cannot be typed as an integer
      */
     Integer getAttributeAsInteger( final String attributeName );
@@ -450,7 +450,7 @@ public interface GATKRead extends Locatable {
      *
      * @param attributeName name of the attribute to retrieve
      * @return String value of the requested attribute, or {@code null} if the attribute is not present
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.ReadAttributeTypeMismatch if the attribute
+     * @throws GATKException.ReadAttributeTypeMismatch if the attribute
      *         value cannot be typed as a single String value.
      */
     String getAttributeAsString( final String attributeName );
@@ -463,7 +463,7 @@ public interface GATKRead extends Locatable {
      *
      * @param attributeName name of the attribute to retrieve
      * @return byte array value of the requested attribute, or {@code null} if the attribute is not present
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException.ReadAttributeTypeMismatch if the attribute
+     * @throws GATKException.ReadAttributeTypeMismatch if the attribute
      *         value cannot be typed as a byte array.
      */
     byte[] getAttributeAsByteArray( final String attributeName );

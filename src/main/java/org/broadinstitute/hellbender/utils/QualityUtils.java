@@ -10,23 +10,23 @@ public final class QualityUtils {
     /**
      * Maximum quality score that can be encoded in a SAM/BAM file
      */
-    public final static byte MAX_SAM_QUAL_SCORE = SAMUtils.MAX_PHRED_SCORE;
+    public static final byte MAX_SAM_QUAL_SCORE = SAMUtils.MAX_PHRED_SCORE;
 
 
-    private final static double RAW_MIN_PHRED_SCALED_QUAL = Math.log10(Double.MIN_VALUE);
-    protected final static double MIN_PHRED_SCALED_QUAL = -10.0 * RAW_MIN_PHRED_SCALED_QUAL;
+    private static final double RAW_MIN_PHRED_SCALED_QUAL = Math.log10(Double.MIN_VALUE);
+    protected static final double MIN_PHRED_SCALED_QUAL = -10.0 * RAW_MIN_PHRED_SCALED_QUAL;
 
     /**
      * bams containing quals above this value are extremely suspicious and we should warn the user
      */
-    public final static byte MAX_REASONABLE_Q_SCORE = 60;
+    public static final byte MAX_REASONABLE_Q_SCORE = 60;
 
     /**
      * The lowest quality score for a base that is considered reasonable for statistical analysis.  This is
      * because Q 6 => you stand a 25% of being right, which means all bases are equally likely
      */
-    public final static byte MIN_USABLE_Q_SCORE = 6;
-    public final static int MAPPING_QUALITY_UNAVAILABLE = 255;
+    public static final byte MIN_USABLE_Q_SCORE = 6;
+    public static final int MAPPING_QUALITY_UNAVAILABLE = 255;
 
     /**
      * Maximum sense quality value.
@@ -36,8 +36,8 @@ public final class QualityUtils {
     /**
      * Cached values for qual as byte calculations so they are very fast
      */
-    private static double qualToErrorProbCache[] = new double[MAX_QUAL + 1];
-    private static double qualToProbLog10Cache[] = new double[MAX_QUAL + 1];
+    private static final double[] qualToErrorProbCache = new double[MAX_QUAL + 1];
+    private static final double[] qualToProbLog10Cache = new double[MAX_QUAL + 1];
 
 
     static {

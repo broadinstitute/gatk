@@ -21,9 +21,9 @@ import java.util.*;
  *
  */
 public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
-    private static Logger logger = LogManager.getLogger(GenomeLocSortedSet.class);
+    private static final Logger logger = LogManager.getLogger(GenomeLocSortedSet.class);
 
-    private GenomeLocParser genomeLocParser;
+    private final GenomeLocParser genomeLocParser;
 
     // our private storage for the GenomeLoc's
     private final List<GenomeLoc> mArray = new ArrayList<>();

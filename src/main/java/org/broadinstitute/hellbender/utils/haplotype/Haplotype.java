@@ -198,7 +198,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
             return null;
         }
 
-        byte[] newHaplotypeBases = new byte[]{};
+        byte[] newHaplotypeBases = {};
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, 0, haplotypeInsertLocation)); // bases before the variant
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, altAllele.getBases()); // the alt allele of the variant
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, haplotypeInsertLocation + refAllele.length(), myBases.length)); // bases after the variant

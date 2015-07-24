@@ -70,8 +70,8 @@ public abstract class IntervalWalker extends GATKTool {
      * @param referenceContext Reference bases spanning the current interval. Will be an empty, but non-null, context object
      *                         if there is no backing source of reference data (in which case all queries on it will return
      *                         an empty array/iterator). Can request extra bases of context around the current interval
-     *                         by invoking {@link org.broadinstitute.hellbender.engine.ReferenceContext#setWindow}
-     *                         on this object before calling {@link org.broadinstitute.hellbender.engine.ReferenceContext#getBases}
+     *                         by invoking {@link ReferenceContext#setWindow}
+     *                         on this object before calling {@link ReferenceContext#getBases}
      * @param featureContext Features spanning the current interval. Will be an empty, but non-null, context object
      *                       if there is no backing source of Feature data (in which case all queries on it will return an
      *                       empty List).

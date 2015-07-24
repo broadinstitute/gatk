@@ -24,7 +24,7 @@ public final class GATKReportTable {
 
     private final TableSortingWay sortingWay;
 
-    private List<Object[]> underlyingData;
+    private final List<Object[]> underlyingData;
     private final List<GATKReportColumn> columnInfo;
     private final Map<Object, Integer> columnNameToIndex;
     private final HashMap<Object, Integer> rowIdToIndex;

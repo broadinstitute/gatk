@@ -12,7 +12,7 @@ import java.io.OutputStream;
 public class ReadContextDataCoder extends CustomCoder<ReadContextData> {
     private static final long serialVersionUID = 1L;
     @Override
-    public void encode(ReadContextData value, OutputStream outStream, Context context) throws CoderException, IOException {
+    public void encode(ReadContextData value, OutputStream outStream, Context context) throws IOException {
         ReferenceBases overlappingReferenceBases = value.getOverlappingReferenceBases();
         SerializableCoder.of(ReferenceBases.class).encode(overlappingReferenceBases, outStream, context);
 
@@ -21,7 +21,7 @@ public class ReadContextDataCoder extends CustomCoder<ReadContextData> {
     }
 
     @Override
-    public ReadContextData decode(InputStream inStream, Context context) throws CoderException, IOException {
+    public ReadContextData decode(InputStream inStream, Context context) throws IOException {
         ReferenceBases referenceBases = SerializableCoder.of(ReferenceBases.class).decode(inStream, context);
         Iterable<Variant> variants = IterableCoder.of(new VariantCoder()).decode(inStream, context);
 

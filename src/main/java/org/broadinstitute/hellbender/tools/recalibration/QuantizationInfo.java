@@ -15,7 +15,7 @@ import java.util.List;
 public final class QuantizationInfo implements Serializable {
     private static final long serialVersionUID = 1L;
     private List<Byte> quantizedQuals;
-    private List<Long> empiricalQualCounts;
+    private final List<Long> empiricalQualCounts;
     private int quantizationLevels;
 
     private QuantizationInfo(List<Byte> quantizedQuals, List<Long> empiricalQualCounts, int quantizationLevels) {

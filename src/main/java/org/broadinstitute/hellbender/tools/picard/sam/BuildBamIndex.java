@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 
 import java.io.File;
+import java.net.MalformedURLException;
 import java.net.URL;
 
 /**
@@ -42,7 +43,7 @@ public final class BuildBamIndex extends PicardCommandLineProgram {
     protected Object doWork() {
         try {
             inputUrl = new URL(INPUT);
-        } catch (java.net.MalformedURLException e) {
+        } catch (MalformedURLException e) {
             inputFile = new File(INPUT);
         }
 

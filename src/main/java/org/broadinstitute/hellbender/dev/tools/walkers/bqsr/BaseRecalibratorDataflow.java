@@ -66,9 +66,9 @@ import java.util.List;
 public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
     private static final long serialVersionUID = 1L;
 
-    private final static Logger logger = LogManager.getLogger(BaseRecalibratorDataflow.class);
+    private static final Logger logger = LogManager.getLogger(BaseRecalibratorDataflow.class);
     // temporary file with the serialized recalibrationTables.
-    private final static String TEMP_RECALTABLES = "temp-ds-recaltables";
+    private static final String TEMP_RECALTABLES = "temp-ds-recaltables";
 
     // ------------------------------------------
     // Command-line options
@@ -77,7 +77,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
      * all the command line arguments for BQSR and its covariates
      */
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
-    private transient final BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+    private final transient BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
 
     /**
      * Path to save the serialized tables to. Local or GCS.
@@ -94,7 +94,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
     private String referencePath = null;
 
     // Whether we run on the cloud.
-    private boolean remote = false;
+    private final boolean remote = false;
     // Whether we want to save the textual version of the output.
     private boolean saveTextualTables;
 
@@ -106,7 +106,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
     // set up with the user's arguments, kept around to save the textual report.
     private BaseRecalibratorWorker baseRecalibratorWorker;
 
-    private BunnyLog bunny = new BunnyLog(logger);
+    private final BunnyLog bunny = new BunnyLog(logger);
 
     @Override
     protected void setupPipeline(Pipeline pipeline) {

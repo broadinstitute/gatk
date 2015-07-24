@@ -435,7 +435,7 @@ public final class CountSet implements Set<Integer> {
      */
     private class MyIterator implements Iterator<Integer> {
         /** What position I am in. */
-        private int next = 0;
+        private final int next = 0;
 
         @Override
         public boolean hasNext() {

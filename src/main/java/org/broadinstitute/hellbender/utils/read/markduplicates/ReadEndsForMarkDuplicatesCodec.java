@@ -13,7 +13,7 @@ public final class ReadEndsForMarkDuplicatesCodec implements SortingCollection.C
 
     /**
      * For an explanation of why codecs must implement clone(),
-     * see the HTSJDK documentation for {@link htsjdk.samtools.util.SortingCollection.Codec}.
+     * see the HTSJDK documentation for {@link SortingCollection.Codec}.
      */
     @Override
     public ReadEndsForMarkDuplicatesCodec clone() {

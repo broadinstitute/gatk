@@ -197,7 +197,7 @@ public final class ClipReads extends ReadWalker {
     /**
      * List of sequence that should be clipped from the reads
      */
-    private List<SeqToClip> sequencesToClip = new ArrayList<>();
+    private final List<SeqToClip> sequencesToClip = new ArrayList<>();
 
     /**
      * List of cycle start / stop pairs (0-based, stop is included in the cycle to remove) to clip from the reads

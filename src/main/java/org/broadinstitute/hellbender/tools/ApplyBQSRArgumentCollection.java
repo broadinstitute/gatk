@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 
 import java.io.Serializable;
 
-public class ApplyBQSRArgumentCollection implements ArgumentCollectionDefinition, Serializable {
+public class ApplyBQSRArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
 
     /**

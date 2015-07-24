@@ -20,12 +20,12 @@ import java.util.stream.Collectors;
 
 public final class GATKVariantContextUtils {
 
-    private static Logger logger = LogManager.getLogger(GATKVariantContextUtils.class);
+    private static final Logger logger = LogManager.getLogger(GATKVariantContextUtils.class);
 
-    public final static String MERGE_FILTER_PREFIX = "filterIn";
-    public final static String MERGE_REF_IN_ALL = "ReferenceInAll";
-    public final static String MERGE_FILTER_IN_ALL = "FilteredInAll";
-    public final static String MERGE_INTERSECTION = "Intersection";
+    public static final String MERGE_FILTER_PREFIX = "filterIn";
+    public static final String MERGE_REF_IN_ALL = "ReferenceInAll";
+    public static final String MERGE_FILTER_IN_ALL = "FilteredInAll";
+    public static final String MERGE_INTERSECTION = "Intersection";
 
     /**
      * Checks whether a variant-context overlaps with a region.
@@ -50,9 +50,7 @@ public final class GATKVariantContextUtils {
             return false;
         if (variantContext.getStart() > region.getStop())
             return false;
-        if (!variantContext.getContig().equals(region.getContig()))
-            return false;
-        return true;
+        return variantContext.getContig().equals(region.getContig());
     }
 
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
@@ -712,7 +710,7 @@ public final class GATKVariantContextUtils {
         return loc == null || loc.getStart() == vc.getStart();
     }
 
-    static private AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
+    private static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
         if ( refAllele.equals(vc.getReference()) )
             return new AlleleMapper(vc);
         else {
@@ -762,7 +760,7 @@ public final class GATKVariantContextUtils {
         return map;
     }
 
-    static private boolean isUsableAlternateAllele(final Allele allele) {
+    private static boolean isUsableAlternateAllele(final Allele allele) {
         return ! (allele.isReference() || allele.isSymbolic() );
     }
 
@@ -1138,8 +1136,7 @@ public final class GATKVariantContextUtils {
         if ( vc1.getStart() != vc2.getStart() ) return false;
         if ( vc1.getEnd() != vc2.getEnd() ) return false;
         if ( !vc1.getContig().equals(vc2.getContig())) return false;
-        if ( ! vc1.getAlleles().equals(vc2.getAlleles()) ) return false;
-        return true;
+        return vc1.getAlleles().equals(vc2.getAlleles());
     }
 
     /**

@@ -19,7 +19,7 @@ public final class Log10PairHMM extends N2MemoryPairHMM {
 
 
     // we divide e by 3 because the observed base could have come from any of the non-observed alleles
-    private final static double log10_3 = log10(3.0);
+    private static final double log10_3 = log10(3.0);
 
     /**
      * Create an uninitialized PairHMM

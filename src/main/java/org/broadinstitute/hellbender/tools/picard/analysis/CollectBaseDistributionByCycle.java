@@ -84,9 +84,9 @@ public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {
 
     private class HistogramGenerator {
         private int maxLengthSoFar = 0;
-        final private long[][] firstReadTotalsByCycle = new long[5][maxLengthSoFar];
+        private final long[][] firstReadTotalsByCycle = new long[5][maxLengthSoFar];
         private long[] firstReadCountsByCycle = new long[maxLengthSoFar];
-        final private long[][] secondReadTotalsByCycle = new long[5][maxLengthSoFar];
+        private final long[][] secondReadTotalsByCycle = new long[5][maxLengthSoFar];
         private long[] secondReadCountsByCycle = new long[maxLengthSoFar];
         private boolean seenSecondEnd = false;
 

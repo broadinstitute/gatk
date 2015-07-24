@@ -113,7 +113,7 @@ public final class SWPairwiseAlignment {
      * Only for testing purposes in the SWPairwiseAlignmentMain function
      * set to true to keep SW scoring matrix after align call
      */
-    private static boolean keepScoringMatrix = false;
+    private static final boolean keepScoringMatrix = false;
 
     /**
      * Create a new SW pairwise aligner

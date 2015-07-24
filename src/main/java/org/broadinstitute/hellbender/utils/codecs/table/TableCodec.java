@@ -37,10 +37,10 @@ import java.util.List;
  * </pre>
  */
 public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
-    protected final static String DELIMITER_REGEX = "\\s+";
-    protected final static String HEADER_DELIMITER = "HEADER";
-    protected final static String IGV_HEADER_DELIMITER = "track";
-    protected final static String COMMENT_DELIMITER = "#";
+    protected static final String DELIMITER_REGEX = "\\s+";
+    protected static final String HEADER_DELIMITER = "HEADER";
+    protected static final String IGV_HEADER_DELIMITER = "track";
+    protected static final String COMMENT_DELIMITER = "#";
 
     protected List<String> header = new ArrayList<>();
 

@@ -54,13 +54,13 @@ import java.util.UUID;
  */
 public final class DataflowUtils {
 
-    private final static Logger logger = LogManager.getLogger(DataflowUtils.class);
+    private static final Logger logger = LogManager.getLogger(DataflowUtils.class);
 
     public enum SaveDestination {
         LOCAL_DISK,
         CLOUD,
         HDFS
-    };
+    }
 
     private DataflowUtils(){} //prevent instantiation
 
@@ -225,7 +225,7 @@ public final class DataflowUtils {
      */
     public static class LoadReadsFromFileFn extends DoFn<File, GATKRead> {
         private static final long serialVersionUID = 1L;
-        private final static Logger logger = LogManager.getLogger(LoadReadsFromFileFn.class);
+        private static final Logger logger = LogManager.getLogger(LoadReadsFromFileFn.class);
 
         private final List<SimpleInterval> intervals;
         private final ValidationStringency stringency;
@@ -304,7 +304,7 @@ public final class DataflowUtils {
                 .of(new DoFn<T, Void>() {
                     private static final long serialVersionUID = 1L;
                     @Override
-                    public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
+                    public void processElement(ProcessContext c) throws IOException {
                         try (ObjectOutputStream out = new ObjectOutputStream(BucketUtils.createFile(destPath, c.getPipelineOptions()))) {
                             out.writeObject(c.element());
                         }

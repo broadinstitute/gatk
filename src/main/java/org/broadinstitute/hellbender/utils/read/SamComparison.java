@@ -15,12 +15,12 @@ import java.util.Objects;
  * otherwise undefined behavior may occur.
  */
 public final class SamComparison {
-    private SamReader reader1;
-    private SamReader reader2;
+    private final SamReader reader1;
+    private final SamReader reader2;
 
     private boolean sequenceDictionariesDiffer;
-    private boolean headersAreEqual;
-    private boolean alignmentsAreEqual;
+    private final boolean headersAreEqual;
+    private final boolean alignmentsAreEqual;
 
     private int mappingsMatch = 0;
     private int unmappedBoth = 0;

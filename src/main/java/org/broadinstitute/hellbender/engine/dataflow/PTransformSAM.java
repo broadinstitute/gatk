@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
  * An abstract class representing a {@link PTransform<GATKRead,Output>}.
- * This provides a mechanism for propagating a {@link htsjdk.samtools.SAMFileHeader} to {@link DataFlowReadFn}..
+ * This provides a mechanism for propagating a {@link SAMFileHeader} to {@link DataFlowReadFn}..
  *
  * Calls to {@link #getHeader()} must be proceded by a call to {@link #setHeader(SAMFileHeader)}}
  * @param <Output> the output type of the resulting PCollection

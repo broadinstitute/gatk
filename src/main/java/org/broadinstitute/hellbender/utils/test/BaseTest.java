@@ -387,9 +387,9 @@ public abstract class BaseTest {
 
 
     /**
-     * captures {@link java.lang.System#out} while runnable is executing
+     * captures {@link System#out} while runnable is executing
      * @param runnable a code block to execute
-     * @return everything written to {@link java.lang.System#out} by runnable
+     * @return everything written to {@link System#out} by runnable
      */
     public static String captureStdout(Runnable runnable){
         return captureSystemStream(runnable, System.out, System::setOut);
@@ -397,9 +397,9 @@ public abstract class BaseTest {
 
 
     /**
-     * captures {@link java.lang.System#err} while runnable is executing
+     * captures {@link System#err} while runnable is executing
      * @param runnable a code block to execute
-     * @return everything written to {@link java.lang.System#err} by runnable
+     * @return everything written to {@link System#err} by runnable
      */
     public static String captureStderr(Runnable runnable){
         return captureSystemStream(runnable, System.err, System::setErr);

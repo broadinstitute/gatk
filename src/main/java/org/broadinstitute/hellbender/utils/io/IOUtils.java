@@ -28,7 +28,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public final class IOUtils {
-    private static Logger logger = LogManager.getLogger(IOUtils.class);
+    private static final Logger logger = LogManager.getLogger(IOUtils.class);
     private static final File DEV_DIR = new File("/dev");
 
     /**

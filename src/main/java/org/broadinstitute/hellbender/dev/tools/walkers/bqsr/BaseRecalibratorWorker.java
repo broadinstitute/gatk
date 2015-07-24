@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +58,7 @@ import java.util.List;
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibratorWorker {
-    final protected static Logger logger = LogManager.getLogger(BaseRecalibratorWorker.class);
+    protected static final Logger logger = LogManager.getLogger(BaseRecalibratorWorker.class);
 
     @ArgumentCollection(doc="all the command line arguments for BQSR and its covariates")
     private BaseRecalibrationArgumentCollection BRAC;
@@ -66,7 +67,7 @@ public final class BaseRecalibratorWorker {
     // --------------------------------------------------------------------------------------------------------------
     // Non-command line members
 
-    final protected SAMFileHeader samHeader;
+    protected final SAMFileHeader samHeader;
 
     /**
      * an object that keeps track of the information necessary for quality score quantization
@@ -86,7 +87,7 @@ public final class BaseRecalibratorWorker {
 
     private BAQ baq; // BAQ the reads on the fly to generate the alignment uncertainty vector
     private ReferenceDataSource referenceDataSource; // datasource for the reference. We're using a different one from the engine itself to avoid messing with its caches.
-    private final static byte NO_BAQ_UNCERTAINTY = (byte) '@';
+    private static final byte NO_BAQ_UNCERTAINTY = (byte) '@';
 
 
     private long accumulator;
@@ -520,7 +521,7 @@ public final class BaseRecalibratorWorker {
     /**
      * Generates the report based on a finalized recalibrationTables.
      */
-    public void saveReport(RecalibrationTables rt, StandardCovariateList finalRequestedCovariates) throws java.io.FileNotFoundException {
+    public void saveReport(RecalibrationTables rt, StandardCovariateList finalRequestedCovariates) throws FileNotFoundException {
         BRAC.RAC.RECAL_TABLE = new PrintStream(BRAC.RAC.RECAL_TABLE_FILE);
         QuantizationInfo quantizationInfo = getQuantizationInfo(rt);
         RecalUtils.outputRecalibrationReport(BRAC.RAC, quantizationInfo, rt, finalRequestedCovariates, BRAC.RAC.SORT_BY_ALL_COLUMNS);

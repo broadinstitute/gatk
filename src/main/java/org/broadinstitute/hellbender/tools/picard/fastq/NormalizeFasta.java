@@ -50,7 +50,7 @@ public final class NormalizeFasta extends CommandLineProgram {
         }
 
         try (final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(INPUT, TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE);
-             final BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);) {
+             final BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT)) {
 
             ReferenceSequence seq = null;
             while ((seq = ref.nextSequence()) != null) {

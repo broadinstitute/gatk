@@ -27,7 +27,7 @@ import java.util.*;
  * require a little bit of refactoring.
  */
 public final class ProcessController {
-    private static Logger logger = LogManager.getLogger(ProcessController.class);
+    private static final Logger logger = LogManager.getLogger(ProcessController.class);
 
     private static enum ProcessStream {Stdout, Stderr}
 

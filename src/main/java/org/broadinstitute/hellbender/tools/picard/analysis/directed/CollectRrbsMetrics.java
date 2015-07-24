@@ -37,7 +37,7 @@ import java.util.*;
         programGroup = QCProgramGroup.class
 )
 public final class CollectRrbsMetrics extends PicardCommandLineProgram {
-    final static String USAGE = "Collects metrics about bisulfite conversion for RRBS data";
+    static final String USAGE = "Collects metrics about bisulfite conversion for RRBS data";
     private static final String R_SCRIPT = "rrbsQc.R";
 
     @Argument(doc = "The BAM or SAM file containing aligned reads. Must be coordinate sorted", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
@@ -66,7 +66,7 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
     public boolean ASSUME_SORTED = false;
 
     @Argument(shortName = "LEVEL", doc = "The level(s) at which to accumulate metrics.  ")
-    public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = CollectionUtil.makeSet(MetricAccumulationLevel.ALL_READS);
+    public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
     @Argument(doc = "Should an output plot be created")
     public boolean PRODUCE_PLOT = false;

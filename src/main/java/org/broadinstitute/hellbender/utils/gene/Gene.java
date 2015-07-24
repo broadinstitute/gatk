@@ -174,9 +174,8 @@ public final class Gene extends Interval implements Iterable<Gene.Transcript> {
             if (codingStart != that.codingStart) return false;
             if (transcriptionEnd != that.transcriptionEnd) return false;
             if (transcriptionStart != that.transcriptionStart) return false;
-            if (!name.equals(that.name)) return false;
+            return name.equals(that.name);
 
-            return true;
         }
 
         @Override
