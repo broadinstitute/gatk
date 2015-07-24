@@ -67,6 +67,14 @@ General guidelines for Hellbender developers
 
 * If you push to master or mess the commit history, you owe us 1 growler or tasty snacks at happy hour. If you break the master build, you owe 3 growlers (or lots of tasty snacks). Beer may be replaced by wine (in the color and vintage of buyer's choosing) in proportions of 1 growler = 1 bottle. 
 
+Tests
+----------------
+We use [Travis-CI](https://travis-ci.org/broadinstitute/hellbender) as our continuous integration provider.
+
+* Before merging any branch make sure that all required tests pass on travis.  Currently tests in the `cloud` and `bucket` groups as well as the tests running on spark are not required to pass before merging.
+* Every travis build will upload the test results to our hellbender google bucket.  A link to the uploaded report will appear at the very bottom of the travis log.  Look for the line that says `See the test report at`.
+If TestNG itself crashes there will be no report generated.
+
 R Dependency
 ----------------
 Certain Hellbender tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convinience rather than a primary output.  
