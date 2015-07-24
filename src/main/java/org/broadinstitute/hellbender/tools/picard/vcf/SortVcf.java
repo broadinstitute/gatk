@@ -30,10 +30,10 @@ import java.util.*;
  * the same sequence dictionaries
  */
 @CommandLineProgramProperties(
-        usage = "Sorts one or more VCF files according to the order of the contigs in the header/sequence dictionary and then by coordinate. " +
+        summary = "Sorts one or more VCF files according to the order of the contigs in the header/sequence dictionary and then by coordinate. " +
         "Can accept an external sequence dictionary. If no external dictionary is supplied, multiple inputs' headers must have " +
         "the same sequence dictionaries. Multiple inputs must have the same sample names (in order)\n",
-        usageShort = "Sorts one or more VCF files",
+        oneLineSummary = "Sorts one or more VCF files",
         programGroup = VariantProgramGroup.class
 )
 public final class SortVcf extends PicardCommandLineProgram {

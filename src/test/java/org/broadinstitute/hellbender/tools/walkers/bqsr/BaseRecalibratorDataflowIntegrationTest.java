@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
+import htsjdk.samtools.ValidationStringency;
+
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.BaseRecalibratorDataflow;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -125,6 +128,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
+        final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject();
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String hg18ReferenceCloud = getCloudInputs() + "human_g1k_v37.chr17_1Mb.fasta";
         final String HiSeqBam = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
@@ -136,9 +140,9 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
         return new Object[][]{
                 // reference in cloud, computation local.
-                {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, "-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
+                {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, apiArgs +"-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 // input in cloud, computation local.
-                {new BQSRTest(hg18Reference, HiSeqBamCloud, dbSNPb37, "", getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
+                {new BQSRTest(hg18Reference, HiSeqBamCloud, dbSNPb37, apiArgs, getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
         };
     }
 
@@ -212,11 +216,10 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.bam");
 
-        //this fails, disable for now: https://github.com/broadinstitute/hellbender/issues/419
-        //IntegrationTestSpec.compareBamFiles(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated);
+        SamAssertionUtils.assertSamsEqual(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated, ValidationStringency.LENIENT);
 
         final File expectedTablePost = new File(getResourceDir() + "expected.NA12878.chr17_69k_70k.postRecalibrated.txt");
-        IntegrationTestSpec.compareTextFiles(actualTablePost, expectedTablePost);
+        IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
     @Test
@@ -236,8 +239,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
 
-    // TODO: re-enable this once sequence dictionary validation is in
-    @Test(enabled = false)
+    @Test
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
 
@@ -248,7 +250,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
-                UserException.MissingContigInSequenceDictionary.class);
+                UserException.IncompatibleSequenceDictionaries.class);
         spec.executeTest("testBQSRFailWithIncompatibleReference", this);
     }
 }

@@ -19,11 +19,11 @@ import java.util.List;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Ensure that all mate-pair information is in sync between each read " +
+        summary = "Ensure that all mate-pair information is in sync between each read " +
                 "and its mate pair.  If no OUTPUT file is supplied then the output is written to a temporary file " +
                 "and then copied over the INPUT file.  Reads marked with the secondary alignment flag are written " +
                 "to the output file unchanged.",
-        usageShort = "Ensure that all mate-pair information is in sync between each read and its mate pair",
+        oneLineSummary = "Ensure that all mate-pair information is in sync between each read and its mate pair",
         programGroup = ReadProgramGroup.class
 )
 public final class FixMateInformation extends PicardCommandLineProgram {

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -53,7 +54,7 @@ public final class SamFormatConverterIntegrationTest extends CommandLineProgramT
         final List<String> samFileConverterArgs = new ArrayList<>();
         samFileConverterArgs.add("--INPUT");
         samFileConverterArgs.add(inputFile.getAbsolutePath());
-        final File converterOutput = File.createTempFile("SamFileConverterTest." + inputFile.getName(), extension);
+        final File converterOutput = BaseTest.createTempFile("SamFileConverterTest." + inputFile.getName(), extension);
         samFileConverterArgs.add("--OUTPUT");
         samFileConverterArgs.add(converterOutput.getAbsolutePath());
         runCommandLine(samFileConverterArgs);

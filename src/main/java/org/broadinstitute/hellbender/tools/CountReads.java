@@ -8,8 +8,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 @CommandLineProgramProperties(
-	usage = "Count reads.",
-	usageShort = "Count reads",
+	summary = "Count reads.",
+	oneLineSummary = "Count reads",
     programGroup = ReadProgramGroup.class
 )
 public final class CountReads extends ReadWalker {

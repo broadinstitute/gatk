@@ -57,6 +57,14 @@
 ##INFO=<ID=dbSNPBuildID,Number=1,Type=Integer,Description="First dbSNP Build for RS">
 ##LeftAlignVariants="analysis_type=LeftAlignVariants input_file=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL reference_sequence=/humgen/gsa-hpprojects/GATK/bundle/current/b37/human_g1k_v37.fasta rodBind=[] nonDeterministicRandomSeed=false downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false variant=(RodBinding name=variant source=00-All.vcf) out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub filter_mismatching_base_and_quals=false"
 ##contig=<ID=1,length=249250621,assembly=b37>
+##contig=<ID=2,length=243199373,assembly=b37>
+##contig=<ID=3,length=198022430,assembly=b37>
+##contig=<ID=4,length=191154276,assembly=b37>
+##contig=<ID=5,length=180915260,assembly=b37>
+##contig=<ID=6,length=171115067,assembly=b37>
+##contig=<ID=7,length=159138663,assembly=b37>
+##contig=<ID=8,length=146364022,assembly=b37>
+##contig=<ID=9,length=141213431,assembly=b37>
 ##contig=<ID=10,length=135534747,assembly=b37>
 ##contig=<ID=11,length=135006516,assembly=b37>
 ##contig=<ID=12,length=133851895,assembly=b37>
@@ -67,17 +75,9 @@
 ##contig=<ID=17,length=81195210,assembly=b37>
 ##contig=<ID=18,length=78077248,assembly=b37>
 ##contig=<ID=19,length=59128983,assembly=b37>
-##contig=<ID=2,length=243199373,assembly=b37>
 ##contig=<ID=20,length=63025520,assembly=b37>
 ##contig=<ID=21,length=48129895,assembly=b37>
 ##contig=<ID=22,length=51304566,assembly=b37>
-##contig=<ID=3,length=198022430,assembly=b37>
-##contig=<ID=4,length=191154276,assembly=b37>
-##contig=<ID=5,length=180915260,assembly=b37>
-##contig=<ID=6,length=171115067,assembly=b37>
-##contig=<ID=7,length=159138663,assembly=b37>
-##contig=<ID=8,length=146364022,assembly=b37>
-##contig=<ID=9,length=141213431,assembly=b37>
 ##contig=<ID=GL000191.1,length=106433,assembly=b37>
 ##contig=<ID=GL000192.1,length=547496,assembly=b37>
 ##contig=<ID=GL000193.1,length=189789,assembly=b37>

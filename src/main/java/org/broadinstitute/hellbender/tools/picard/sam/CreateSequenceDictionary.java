@@ -22,8 +22,8 @@ import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
  * SAMRecords, and the header contains only sequence records.
  */
 @CommandLineProgramProperties(
-        usage = "Read fasta or fasta.gz containing reference sequences, and write as a SAM or BAM file with only sequence dictionary.\n",
-        usageShort = "Creates a SAM or BAM file from reference sequence in fasta format",
+        summary = "Read fasta or fasta.gz containing reference sequences, and write as a SAM or BAM file with only sequence dictionary.\n",
+        oneLineSummary = "Creates a SAM or BAM file from reference sequence in fasta format",
         programGroup = ReadProgramGroup.class
 )
 public final class CreateSequenceDictionary extends PicardCommandLineProgram {
@@ -94,7 +94,8 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
         final Set<String> sequenceNames = new HashSet<>();
         for (int numSequences = 0; numSequences < NUM_SEQUENCES && (refSeq = refSeqFile.nextSequence()) != null; ++numSequences) {
             if (sequenceNames.contains(refSeq.getName())) {
-                throw new UserException.MalformedFile(referenceFile, "Sequence name appears more than once in reference: " + refSeq.getName());
+                throw new UserException.MalformedFile(referenceFile,
+                        "Sequence name appears more than once in reference: " + refSeq.getName());
             }
             sequenceNames.add(refSeq.getName());
             ret.add(makeSequenceRecord(refSeq));

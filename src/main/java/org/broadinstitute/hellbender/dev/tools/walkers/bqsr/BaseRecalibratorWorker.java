@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -52,8 +52,8 @@ import java.util.List;
  */
 
 @CommandLineProgramProperties(
-        usage = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        usageShort = "Generates recalibration table (do not run this one from the cmd line)",
+        summary = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
+        oneLineSummary = "Generates recalibration table (do not run this one from the cmd line)",
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibratorWorker {
@@ -162,14 +162,14 @@ public final class BaseRecalibratorWorker {
         return read.getBaseQualities()[offset] < minimumQToUse;
     }
 
-    public static ReadFilter readFilter( final SAMFileHeader header ) {
-        return new WellformedReadFilter(header)
-                    .and(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO)
-                    .and(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE)
-                    .and(ReadFilterLibrary.MAPPED)
-                    .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
-                    .and(ReadFilterLibrary.NOT_DUPLICATE)
-                    .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+    public static CountingReadFilter readFilter( final SAMFileHeader header ) {
+        return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))
+                .and(new CountingReadFilter("Mapping_Quality_Not_Zero", ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO))
+                .and(new CountingReadFilter("Mapping_Quality_Available", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
+                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
+                .and(new CountingReadFilter("Primary_Alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
+                .and(new CountingReadFilter("Passes_Vendor_Quality_Check", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK));
     }
 
     private static GATKRead consolidateCigar(GATKRead read) {

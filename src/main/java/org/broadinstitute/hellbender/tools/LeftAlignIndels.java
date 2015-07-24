@@ -40,10 +40,10 @@ import java.io.File;
  *
  */
 @CommandLineProgramProperties(
-        usage = "LeftAlignIndels is a tool that takes a bam file and left-aligns any indels inside it.  The same indel can often be\n" +
+        summary = "LeftAlignIndels is a tool that takes a bam file and left-aligns any indels inside it.  The same indel can often be\n" +
                 "placed at multiple positions and still represent the same haplotype.  While a standard convention is to place an\n" +
                 "indel at the left-most position this doesn't always happen, so this tool can be used to left-align them.",
-        usageShort = "Left-aligns indels from reads in a bam file.",
+        oneLineSummary = "Left-aligns indels from reads in a bam file.",
         programGroup = ReadProgramGroup.class
 )
 public final class LeftAlignIndels extends ReadWalker {

@@ -12,7 +12,6 @@ import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -28,10 +27,10 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = " General tool for manipulating interval lists, " +
+        summary = " General tool for manipulating interval lists, " +
                 "including sorting, merging, padding, uniqueifying, and other set-theoretic operations. Default operation if given one or more inputs is to " +
                 "merge and sort them.  Other options are controlled by arguments.",
-        usageShort = "General tool for manipulating interval lists",
+        oneLineSummary = "General tool for manipulating interval lists",
         programGroup = IntervalProgramGroup.class
 )
 public final class IntervalListTools extends PicardCommandLineProgram {

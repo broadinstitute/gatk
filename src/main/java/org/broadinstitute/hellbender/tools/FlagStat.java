@@ -12,9 +12,9 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 
 @CommandLineProgramProperties(
-	usage = "Walks over all input data, accumulating statistics such as total number of read\n" +
+	summary = "Walks over all input data, accumulating statistics such as total number of read\n" +
             "reads with QC failure flag set, number of duplicates, percentage mapped, etc.",
-	usageShort = "A reimplementation of the 'samtools flagstat' subcommand.",
+	oneLineSummary = "A reimplementation of the 'samtools flagstat' subcommand.",
     programGroup = ReadProgramGroup.class
 )
 public final class FlagStat extends ReadWalker {

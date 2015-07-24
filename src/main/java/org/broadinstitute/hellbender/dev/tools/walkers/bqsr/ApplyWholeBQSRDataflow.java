@@ -17,12 +17,12 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyWholeBQSRTransform;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalibratorDataflowUtils;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.ApplyBQSRWithoutMinQScoreArgumentCollection;
@@ -35,8 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        usage = "Runs both BQSR phases on the input BAM.",
-        usageShort = "Runs both BQSR phases on the input BAM.",
+        summary = "Runs both BQSR phases on the input BAM.",
+        oneLineSummary = "Runs both BQSR phases on the input BAM.",
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
@@ -67,7 +67,7 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
         // workaround because the two collections have an argument in common and the parser doesn't want that
         ApplyBQSRArgumentCollection applyArgs = bqsrArgs.toApplyBQSRArgumentCollection(BRAC.PRESERVE_QSCORES_LESS_THAN);
         String filename = BRAC.readArguments.getReadFilesNames().get(0);
-        ReadsSource readsSource = new ReadsSource(filename, pipeline);
+        ReadsDataflowSource readsSource = new ReadsDataflowSource(filename, pipeline);
         SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
 

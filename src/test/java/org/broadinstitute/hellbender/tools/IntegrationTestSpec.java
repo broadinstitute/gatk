@@ -13,11 +13,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public final class IntegrationTestSpec {
     public static final String DEFAULT_TEMP_EXTENSION = ".tmp";
@@ -154,27 +156,42 @@ public final class IntegrationTestSpec {
         }
     }
 
-    public static void assertMatchingFiles(List<File> resultFiles, List<String> expectedFiles) throws IOException {
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
-            File resultFile = resultFiles.get(i);
-            String expectedFileName = expectedFiles.get(i);
-            File expectedFile = new File(expectedFileName);
+            final File resultFile = resultFiles.get(i);
+            final String expectedFileName = expectedFiles.get(i);
+            final File expectedFile = new File(expectedFileName);
             if (expectedFileName.endsWith(".bam")){
-                compareBamFiles(resultFile, expectedFile);
+                assertEqualBamFiles(resultFile, expectedFile);
             } else {
-                compareTextFiles(resultFile, expectedFile);
+                assertEqualTextFiles(resultFile, expectedFile);
             }
         }
     }
 
-    public static void compareTextFiles(File resultFile, File expectedFile) throws IOException {
-        List<String> actualLines = new XReadLines(resultFile).readLines();
-        List<String> expectedLines = new XReadLines(expectedFile).readLines();
+    public static void assertEqualTextFiles(final File resultFile, final File expectedFile) throws IOException {
+        assertEqualTextFiles(resultFile, expectedFile, null);
+    }
+
+    /**
+     * Compares two text files and ignores all lines that start with the comment prefix.
+     */
+    public static void assertEqualTextFiles(final File resultFile, final File expectedFile, final String commentPrefix) throws IOException {
+        final Predicate<? super String> startsWithComment;
+        if (commentPrefix == null){
+            startsWithComment = s -> false;
+        } else {
+            startsWithComment = s -> s.startsWith(commentPrefix);
+        }
+        final List<String> actualLines = new XReadLines(resultFile).readLines().stream().filter(startsWithComment.negate()).collect(Collectors.toList());
+        final List<String> expectedLines = new XReadLines(expectedFile).readLines().stream().filter(startsWithComment.negate()).collect(Collectors.toList());
+
         Assert.assertEquals(actualLines.toString(), expectedLines.toString());
     }
 
-    public static void compareBamFiles(File resultFile, File expectedFile) throws IOException {
+    public static void assertEqualBamFiles(final File resultFile, final File expectedFile) throws IOException {
         SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
     }
+
 }

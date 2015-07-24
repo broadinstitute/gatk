@@ -20,8 +20,8 @@ import java.util.List;
  * @author Doug Voet
  */
 @CommandLineProgramProperties(
-        usage = "Read a SAM or BAM file and report on its validity.",
-        usageShort = "Validates a SAM or BAM file",
+        summary = "Read a SAM or BAM file and report on its validity.",
+        oneLineSummary = "Validates a SAM or BAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class ValidateSamFile extends PicardCommandLineProgram {

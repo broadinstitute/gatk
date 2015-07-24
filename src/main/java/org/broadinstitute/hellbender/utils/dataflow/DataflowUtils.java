@@ -8,8 +8,6 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.util.GcsUtil;
-import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
@@ -20,14 +18,19 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.*;
 import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
+import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
@@ -38,7 +41,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.nio.channels.Channels;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.UUID;
@@ -54,7 +56,8 @@ public final class DataflowUtils {
 
     public enum SaveDestination {
         LOCAL_DISK,
-        CLOUD
+        CLOUD,
+        HDFS
     };
 
     private DataflowUtils(){} //prevent instantiation
@@ -74,6 +77,12 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(Variant.class, new VariantCoder());
         p.getCoderRegistry().registerCoder(VariantContextVariantAdapter.class, SerializableCoder.of(VariantContextVariantAdapter.class));
         p.getCoderRegistry().registerCoder(SkeletonVariant.class, SerializableCoder.of(SkeletonVariant.class));
+        p.getCoderRegistry().registerCoder(RefAPISource.class, SerializableCoder.of(RefAPISource.class));
+        p.getCoderRegistry().registerCoder(RefAPIMetadata.class, SerializableCoder.of(RefAPIMetadata.class));
+        p.getCoderRegistry().registerCoder(ReferenceBases.class, SerializableCoder.of(ReferenceBases.class));
+        p.getCoderRegistry().registerCoder(ReadContextData.class, new ReadContextDataCoder());
+        p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
+        p.getCoderRegistry().registerCoder(VariantShard.class, VariantShard.CODER);
     }
 
     /**
@@ -126,10 +135,8 @@ public final class DataflowUtils {
      */
     @SuppressWarnings("unchecked")
     public static PCollection<GATKRead> getReadsFromHadoopBam(final Pipeline pipeline, final List<SimpleInterval> intervals, final ValidationStringency stringency, final String bam) {
-        PCollection<KV<LongWritable, SAMRecordWritable>> input =
-            (PCollection<KV<LongWritable, SAMRecordWritable>>) pipeline.apply(
-                HadoopIO.Read.from(bam).withFormatClass(AnySAMInputFormat.class)
-                    .withKeyClass(LongWritable.class).withValueClass(SAMRecordWritable.class));
+        PCollection<KV<LongWritable, SAMRecordWritable>> input = pipeline.apply(
+                HadoopIO.Read.from(bam, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class));
         return input.apply(ParDo.of(new DoFn<KV<LongWritable, SAMRecordWritable>, GATKRead>() {
             private static final long serialVersionUID = 1L;
             @Override
@@ -227,13 +234,17 @@ public final class DataflowUtils {
      * on a cloud worker, which may not be very useful.
      *
      * @param collection A collection with a single serializable object to save.
-     * @param fname the name of the destination, starting with "gs://" to save to GCS.
-     * @returns SaveDestination.CLOUD if saved to GCS, SaveDestination.LOCAL_DISK otherwise.
+     * @param fname the name of the destination, starting with "gs://" to save to GCS, or "hdfs://" to save to HDFS.
+     * @returns SaveDestination.CLOUD if saved to GCS, SaveDestination.HDFS if saved to HDFS,
+     * SaveDestination.LOCAL_DISK otherwise.
      */
     public static <T> SaveDestination serializeSingleObject(PCollection<T> collection, String fname) {
         if (BucketUtils.isCloudStorageUrl(fname)) {
-            saveSingleResultToGCS(collection, fname);
+            saveSingleResultToRemoteStorage(collection, fname);
             return SaveDestination.CLOUD;
+        } else if (BucketUtils.isHadoopUrl(fname)) {
+            saveSingleResultToRemoteStorage(collection, fname);
+            return SaveDestination.HDFS;
         } else {
             saveSingleResultToLocalDisk(collection, fname);
             return SaveDestination.LOCAL_DISK;
@@ -265,17 +276,15 @@ public final class DataflowUtils {
      * Serializes the collection's single object to the specified file.
      *
      * @param collection A collection with a single serializable object to save.
-     * @param gcsDestPath the name of the destination (must start with "gs://").
+     * @param destPath the name of the destination (must start with "gs://" or "hdfs://").
      */
-    public static <T> void saveSingleResultToGCS(final PCollection<T> collection, String gcsDestPath) {
-        collection.apply(ParDo.named("save to " + gcsDestPath)
+    public static <T> void saveSingleResultToRemoteStorage(final PCollection<T> collection, String destPath) {
+        collection.apply(ParDo.named("save to " + destPath)
                 .of(new DoFn<T, Void>() {
                     private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(ProcessContext c) throws IOException, GeneralSecurityException {
-                        GcsPath dest = GcsPath.fromUri(gcsDestPath);
-                        GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(c.getPipelineOptions());
-                        try (ObjectOutputStream out = new ObjectOutputStream(Channels.newOutputStream(gcsUtil.create(dest, "application/octet-stream")))) {
+                        try (ObjectOutputStream out = new ObjectOutputStream(BucketUtils.createFile(destPath, c.getPipelineOptions()))) {
                             out.writeObject(c.element());
                         }
                     }

@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -37,8 +37,8 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        usage = "Count overlapping reads exon by exon",
-        usageShort = "Count overlapping reads exon by exon",
+        summary = "Count overlapping reads exon by exon",
+        oneLineSummary = "Count overlapping reads exon by exon",
         programGroup = ExomeAnalysisProgramGroup.class
 )
 public final class ExomeReadCounts extends ReadWalker {
@@ -281,11 +281,11 @@ public final class ExomeReadCounts extends ReadWalker {
     private int[][] counts;
 
     @Override
-    public ReadFilter makeReadFilter() {
+    public CountingReadFilter makeReadFilter() {
         return super.makeReadFilter()
-                .and(ReadFilterLibrary.MAPPED)
-                .and(ReadFilterLibrary.NOT_DUPLICATE)
-                .and(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
+                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
+                .and(new CountingReadFilter("Non_Zero_Reference_Length", ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
     }
 
 

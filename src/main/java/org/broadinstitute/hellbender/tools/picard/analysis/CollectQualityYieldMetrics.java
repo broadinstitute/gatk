@@ -22,9 +22,9 @@ import java.io.File;
  * @author Martha Borkan
  */
 @CommandLineProgramProperties(
-        usage = "Collects quality yield metrics, a set of metrics that quantify the quality and yield of sequence data from a " +
+        summary = "Collects quality yield metrics, a set of metrics that quantify the quality and yield of sequence data from a " +
                 "SAM/BAM input file.",
-        usageShort = "Collects a set of metrics that quantify the quality and yield of sequence data from the provided SAM/BAM",
+        oneLineSummary = "Collects a set of metrics that quantify the quality and yield of sequence data from the provided SAM/BAM",
         programGroup = QCProgramGroup.class
 )
 public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {

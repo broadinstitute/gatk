@@ -12,8 +12,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 
 @CommandLineProgramProperties(
-        usage = "This is a test program for Dataflow via the command-line to count the usages of every word in a text",
-        usageShort = "Dataflow CLI test program for counting words",
+        summary = "This is a test program for Dataflow via the command-line to count the usages of every word in a text",
+        oneLineSummary = "Dataflow CLI test program for counting words",
         programGroup = DataFlowProgramGroup.class)
 
 public final class WordCount extends DataflowCommandLineProgram {

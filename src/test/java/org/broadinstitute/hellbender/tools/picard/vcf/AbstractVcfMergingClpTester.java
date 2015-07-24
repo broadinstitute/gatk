@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -65,9 +66,8 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
 	public void testMergeIndelsSnps() throws IOException {
 		final File indelInputFile = new File(TEST_DATA_PATH, "CEUTrio-indels.vcf");
 		final File snpInputFile = new File(TEST_DATA_PATH, "CEUTrio-snps.vcf");
-		final File output = File.createTempFile("merge-indels-snps-test-output.", ".vcf");
+        final File output = BaseTest.createTempFile("merge-indels-snps-test-output.", ".vcf");
         final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        output.deleteOnExit();
 
 		final Queue<String> indelContigPositions = loadContigPositions(indelInputFile);
 		final Queue<String> snpContigPositions = loadContigPositions(snpInputFile);
@@ -123,8 +123,7 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
 		positionQueues.add(5, loadContigPositions(five));
 
         final List<String> indexing = Arrays.asList("--CREATE_INDEX", "false");
-        final File output = File.createTempFile("random-scatter-test-output.", ".vcf");
-		output.deleteOnExit();
+        final File output = BaseTest.createTempFile("random-scatter-test-output.", ".vcf");
 
         runClp(inputs, output, indexing);
         validateResultsForMultipleInputs(output, positionQueues);

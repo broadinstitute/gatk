@@ -18,9 +18,9 @@ import java.util.Arrays;
  * @author mdepristo
  */
 @CommandLineProgramProperties(
-        usage = "Replaces all read groups in the INPUT file with a single new read group and assigns " +
+        summary = "Replaces all read groups in the INPUT file with a single new read group and assigns " +
                 "all reads to this read group in the OUTPUT BAM",
-        usageShort = "Replaces read groups in a BAM or SAM file with a single new read group",
+        oneLineSummary = "Replaces read groups in a BAM or SAM file with a single new read group",
         programGroup = ReadProgramGroup.class
 )
 public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {

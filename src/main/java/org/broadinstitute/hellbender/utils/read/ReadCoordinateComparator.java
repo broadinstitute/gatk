@@ -17,7 +17,7 @@ import java.util.Comparator;
 public final class ReadCoordinateComparator implements Comparator<GATKRead>, Serializable {
     private static final long serialVersionUID = 1L;
 
-    private SAMFileHeader header;
+    private final SAMFileHeader header;
 
     public ReadCoordinateComparator( final SAMFileHeader header ) {
         if ( header == null ) {

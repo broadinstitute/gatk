@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.dataflow;
 
 import com.cloudera.dataflow.spark.EvaluationResult;
 import com.cloudera.dataflow.spark.SparkPipelineRunner;
+import com.google.api.client.util.Lists;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -59,7 +61,7 @@ public final class DataflowUtilsUnitTest extends BaseTest {
         DoFnTester<File, GATKRead> tester = DoFnTester.of(readfn);
         List<GATKRead> output = tester.processBatch(inputFile);
 
-        Assert.assertEquals(output, expected);
+        Assert.assertTrue(ReadUtils.readListsAreEqualIgnoreUUID(output, expected), "Actual reads do not match expected reads");
     }
 
     @Test
@@ -74,7 +76,7 @@ public final class DataflowUtilsUnitTest extends BaseTest {
                 new Path(inputFile.getAbsoluteFile().toURI()).toString());
         EvaluationResult result = SparkPipelineRunner.create().run(p);
 
-        Assert.assertEquals(expected, result.get(reads));
+        Assert.assertTrue(ReadUtils.readListsAreEqualIgnoreUUID(expected, Lists.newArrayList(result.get(reads))), "Actual reads do not match expected reads");
     }
 
     public List<GATKRead> getReadsFromFile(List<SimpleInterval> intervals, File inputFile, boolean useGoogleReads) {

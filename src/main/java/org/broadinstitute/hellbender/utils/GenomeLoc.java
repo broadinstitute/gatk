@@ -34,7 +34,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     public static final GenomeLoc UNMAPPED = new GenomeLoc((String)null);
     public static final GenomeLoc WHOLE_GENOME = new GenomeLoc("all");
 
-    public static final boolean isUnmapped(GenomeLoc loc) {
+    public static final boolean isUnmapped(final GenomeLoc loc) {
         return loc == UNMAPPED;
     }
 
@@ -86,33 +86,36 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     public final int getStop()     { return this.stop; }
 
     public final String toString()  {
-        if(GenomeLoc.isUnmapped(this)) return "unmapped";
-        if ( throughEndOfContigP() && atBeginningOfContigP() )
+        if(GenomeLoc.isUnmapped(this)) {
+            return "unmapped";
+        }
+        if ( throughEndOfContigP() && atBeginningOfContigP() ) {
             return getContig();
-        else if ( throughEndOfContigP() || getStart() == getStop() )
+        } else if ( throughEndOfContigP() || getStart() == getStop() ) {
             return String.format("%s:%d", getContig(), getStart());
-        else
+        } else {
             return String.format("%s:%d-%d", getContig(), getStart(), getStop());
+        }
     }
 
     private boolean throughEndOfContigP() { return this.stop == Integer.MAX_VALUE; }
 
     private boolean atBeginningOfContigP() { return this.start == 1; }
 
-    public final boolean disjointP(GenomeLoc that) {
+    public final boolean disjointP(final GenomeLoc that) {
         return this.contigIndex != that.contigIndex || this.start > that.stop || that.start > this.stop;
     }
 
-    public final boolean discontinuousP(GenomeLoc that) {
+    public final boolean discontinuousP(final GenomeLoc that) {
         return this.contigIndex != that.contigIndex || (this.start - 1) > that.stop || (that.start - 1) > this.stop;
     }
 
-    public final boolean overlapsP(GenomeLoc that) {
+    public final boolean overlapsP(final GenomeLoc that) {
         return ! disjointP( that );
     }
 
-    public final boolean contiguousP(GenomeLoc that) {
-        return ! discontinuousP( that );
+    public final boolean contiguousP(final GenomeLoc that) {
+        return ! discontinuousP(that);
     }
 
     /**
@@ -128,10 +131,11 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * Returns a new GenomeLoc that represents the entire span of this and that.  Requires that
      * this and that GenomeLoc are contiguous and both mapped
      */
-    public GenomeLoc merge( GenomeLoc that ) throws GATKException {
+    public GenomeLoc merge( final GenomeLoc that ) throws GATKException {
         if(GenomeLoc.isUnmapped(this) || GenomeLoc.isUnmapped(that)) {
-            if(! GenomeLoc.isUnmapped(this) || !GenomeLoc.isUnmapped(that))
+            if(! GenomeLoc.isUnmapped(this) || !GenomeLoc.isUnmapped(that)) {
                 throw new GATKException("Tried to merge a mapped and an unmapped genome loc");
+            }
             return UNMAPPED;
         }
 
@@ -150,17 +154,19 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * @return A two element array consisting of the genome loc before the split and the one after.
      */
     public GenomeLoc[] split(final int splitPoint) {
-        if(splitPoint < getStart() || splitPoint > getStop())
-            throw new GATKException(String.format("Unable to split contig %s at split point %d; split point is not contained in region.",this,splitPoint));
+        if(splitPoint < getStart() || splitPoint > getStop()) {
+            throw new GATKException(String.format("Unable to split contig %s at split point %d; split point is not contained in region.", this, splitPoint));
+        }
         return new GenomeLoc[] { new GenomeLoc(getContig(),contigIndex,getStart(),splitPoint-1), new GenomeLoc(getContig(),contigIndex,splitPoint,getStop()) };
     }
 
-    public GenomeLoc union( GenomeLoc that ) { return merge(that); }
+    public GenomeLoc union( final GenomeLoc that ) { return merge(that); }
 
-    public GenomeLoc intersect( GenomeLoc that ) throws GATKException {
+    public GenomeLoc intersect( final GenomeLoc that ) throws GATKException {
         if(GenomeLoc.isUnmapped(this) || GenomeLoc.isUnmapped(that)) {
-            if(! GenomeLoc.isUnmapped(this) || !GenomeLoc.isUnmapped(that))
+            if(! GenomeLoc.isUnmapped(this) || !GenomeLoc.isUnmapped(that)) {
                 throw new GATKException("Tried to intersect a mapped and an unmapped genome loc");
+            }
             return UNMAPPED;
         }
 
@@ -175,8 +181,9 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
 
     public final List<GenomeLoc> subtract( final GenomeLoc that ) {
         if(GenomeLoc.isUnmapped(this) || GenomeLoc.isUnmapped(that)) {
-            if(! GenomeLoc.isUnmapped(this) || !GenomeLoc.isUnmapped(that))
+            if(! GenomeLoc.isUnmapped(this) || !GenomeLoc.isUnmapped(that)) {
                 throw new GATKException("Tried to intersect a mapped and an unmapped genome loc");
+            }
             return Arrays.asList(UNMAPPED);
         }
 
@@ -187,7 +194,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
         if (equals(that)) {
             return Collections.emptyList();
         } else if (containsP(that)) {
-            List<GenomeLoc> l = new ArrayList<>(2);
+            final List<GenomeLoc> l = new ArrayList<>(2);
 
             /**
              * we have to create two new region, one for the before part, one for the after
@@ -199,14 +206,16 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
              * |------|  + |--------|
              *
              */
-            int afterStop = this.getStop(), afterStart = that.getStop() + 1;
-            int beforeStop = that.getStart() - 1, beforeStart = this.getStart();
+            final int afterStop = this.getStop();
+            final int afterStart = that.getStop() + 1;
+            final int beforeStop = that.getStart() - 1;
+            final int beforeStart = this.getStart();
             if (afterStop - afterStart >= 0) {
-                GenomeLoc after = new GenomeLoc(this.getContig(), getContigIndex(), afterStart, afterStop);
+                final GenomeLoc after = new GenomeLoc(this.getContig(), getContigIndex(), afterStart, afterStop);
                 l.add(after);
             }
             if (beforeStop - beforeStart >= 0) {
-                GenomeLoc before = new GenomeLoc(this.getContig(), getContigIndex(), beforeStart, beforeStop);
+                final GenomeLoc before = new GenomeLoc(this.getContig(), getContigIndex(), beforeStart, beforeStop);
                 l.add(before);
             }
 
@@ -233,7 +242,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
              *
              */
 
-            GenomeLoc n;
+            final GenomeLoc n;
             if (that.getStart() < this.getStart()) {
                 n = new GenomeLoc(this.getContig(), getContigIndex(), that.getStop() + 1, this.getStop());
             } else {
@@ -245,19 +254,20 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
         }
     }
 
-    public final boolean containsP(GenomeLoc that) {
+    public final boolean containsP(final GenomeLoc that) {
         return onSameContig(that) && getStart() <= that.getStart() && getStop() >= that.getStop();
     }
 
-    public final boolean onSameContig(GenomeLoc that) {
+    public final boolean onSameContig(final GenomeLoc that) {
         return (this.contigIndex == that.contigIndex);
     }
 
     public final int distance( final GenomeLoc that ) {
-        if ( this.onSameContig(that) )
+        if ( this.onSameContig(that) ) {
             return Math.abs(this.getStart() - that.getStart());
-        else
+        } else {
             return Integer.MAX_VALUE;
+        }
     }
 
     public final boolean isBetween( final GenomeLoc left, final GenomeLoc right ) {
@@ -269,8 +279,8 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * @param that Contig to test against.
      * @return true if this contig ends before 'that' starts; false if this is completely after or overlaps 'that'.
      */
-    public final boolean isBefore( GenomeLoc that ) {
-        int comparison = this.compareContigs(that);
+    public final boolean isBefore( final GenomeLoc that ) {
+        final int comparison = this.compareContigs(that);
         return ( comparison == -1 || ( comparison == 0 && this.getStop() < that.getStart() ));
     }
 
@@ -279,8 +289,8 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * @param that Contig to test against.
      * @return true if this contig starts after 'that' ends; false if this is completely before or overlaps 'that'.
      */
-    public final boolean isPast( GenomeLoc that ) {
-        int comparison = this.compareContigs(that);
+    public final boolean isPast( final GenomeLoc that ) {
+        final int comparison = this.compareContigs(that);
         return ( comparison == 1 || ( comparison == 0 && this.getStart() > that.getStop() ));
     }
 
@@ -288,21 +298,24 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * Return the minimum distance between any pair of bases in this and that GenomeLocs:
      */
     public final int minDistance( final GenomeLoc that ) {
-        if (!this.onSameContig(that))
+        if (!this.onSameContig(that)) {
             return Integer.MAX_VALUE;
+        }
 
-        int minDistance;
-        if (this.isBefore(that))
+        final int minDistance;
+        if (this.isBefore(that)) {
             minDistance = distanceFirstStopToSecondStart(this, that);
-        else if (that.isBefore(this))
+        } else if (that.isBefore(this)) {
             minDistance = distanceFirstStopToSecondStart(that, this);
-        else // this and that overlap [and possibly one contains the other]:
+        } else // this and that overlap [and possibly one contains the other]:
+        {
             minDistance = 0;
+        }
 
         return minDistance;
     }
 
-    private static int distanceFirstStopToSecondStart(GenomeLoc locFirst, GenomeLoc locSecond) {
+    private static int distanceFirstStopToSecondStart(final GenomeLoc locFirst, final GenomeLoc locSecond) {
         return locSecond.getStart() - locFirst.getStop();
     }
 
@@ -312,11 +325,12 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * @param other Other contig to compare.
      */
     @Override
-    public boolean equals(Object other) {
-        if(other == null)
+    public boolean equals(final Object other) {
+        if(other == null) {
             return false;
+        }
         if(other instanceof GenomeLoc) {
-            GenomeLoc otherGenomeLoc = (GenomeLoc)other;
+            final GenomeLoc otherGenomeLoc = (GenomeLoc)other;
             return this.contigIndex == otherGenomeLoc.contigIndex &&
                     this.start == otherGenomeLoc.start &&
                     this.stop == otherGenomeLoc.stop;
@@ -335,35 +349,41 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * @param that the genome loc to compare contigs with
      * @return 0 if equal, -1 if that.contig is greater, 1 if this.contig is greater
      */
-    public final int compareContigs( GenomeLoc that ) {
-        if (this.contigIndex == that.contigIndex)
+    public final int compareContigs( final GenomeLoc that ) {
+        if (this.contigIndex == that.contigIndex) {
             return 0;
-        else if (this.contigIndex > that.contigIndex)
+        } else if (this.contigIndex > that.contigIndex) {
             return 1;
+        }
         return -1;
     }
 
-    public int compareTo( GenomeLoc that ) {
+    public int compareTo( final GenomeLoc that ) {
         int result = 0;
 
         if ( this == that ) {
             result = 0;
         }
-        else if(GenomeLoc.isUnmapped(this))
+        else if(GenomeLoc.isUnmapped(this)) {
             result = 1;
-        else if(GenomeLoc.isUnmapped(that))
+        } else if(GenomeLoc.isUnmapped(that)) {
             result = -1;
-        else {
+        } else {
             final int cmpContig = compareContigs(that);
 
             if ( cmpContig != 0 ) {
                 result = cmpContig;
             } else {
-                if ( this.getStart() < that.getStart() ) result = -1;
-                else if ( this.getStart() > that.getStart() ) result = 1;
-                    // these have the same start, so check the ends
-                else if ( this.getStop() < that.getStop() ) result = -1;
-                else if ( this.getStop() > that.getStop() ) result = 1;
+                if ( this.getStart() < that.getStart() ) {
+                    result = -1;
+                } else if ( this.getStart() > that.getStart() ) {
+                    result = 1;
+                }// these have the same start, so check the ends
+                else if ( this.getStop() < that.getStop() ) {
+                    result = -1;
+                } else if ( this.getStop() > that.getStop() ) {
+                    result = 1;
+                }
             }
         }
 
@@ -395,10 +415,11 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * 25% (50% for gl1 but only 25% for gl2)
      */
     public final double reciprocialOverlapFraction(final GenomeLoc o) {
-        if ( overlapsP(o) )
+        if ( overlapsP(o) ) {
             return Math.min(overlapPercent(this, o), overlapPercent(o, this));
-        else
+        } else {
             return 0.0;
+        }
     }
 
     private static double overlapPercent(final GenomeLoc gl1, final GenomeLoc gl2) {
@@ -443,16 +464,18 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     public static <T extends GenomeLoc> GenomeLoc merge(final SortedSet<T> sortedLocs) {
         GenomeLoc result = null;
 
-        for ( GenomeLoc loc : sortedLocs ) {
-            if ( loc.isUnmapped() )
+        for ( final GenomeLoc loc : sortedLocs ) {
+            if ( loc.isUnmapped() ) {
                 throw new GATKException("Tried to merge unmapped genome locs");
+            }
 
-            if ( result == null )
+            if ( result == null ) {
                 result = loc;
-            else if ( !result.contiguousP(loc) )
+            } else if ( !result.contiguousP(loc) ) {
                 throw new GATKException("The genome locs need to be contiguous");
-            else
+            } else {
                 result = merge(result, loc);
+            }
         }
 
         return result;
@@ -469,9 +492,10 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * @param samFileHeader the contig information
      * @return the sum of all the bases in between the genomeLocs, including entire contigs
      */
-    public long distanceAcrossContigs(GenomeLoc other, SAMFileHeader samFileHeader) {
-        if (onSameContig(other))
+    public long distanceAcrossContigs(final GenomeLoc other, final SAMFileHeader samFileHeader) {
+        if (onSameContig(other)) {
             return minDistance(other);
+        }
 
         // add the distance from the first genomeLoc to the end of it's contig and the distance from the
         // second genomeLoc to the beginning of it's contig.
@@ -489,5 +513,35 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
             distance += samFileHeader.getSequence(i).getSequenceLength();
         }
         return distance;
+    }
+
+    /**
+     * create a new genome loc from an existing loc, with a new start position
+     * Note that this function will NOT explicitly check the ending offset, in case someone wants to
+     * set the start of a new GenomeLoc pertaining to a read that goes off the end of the contig.
+     *
+     * @param loc   the old location
+     * @param start a new start position
+     *
+     * @return a newly allocated GenomeLoc as loc but with start == start
+     */
+    public GenomeLoc setStart(final GenomeLoc loc, final int start) {
+        Utils.nonNull(loc);
+        return new GenomeLoc(loc.getContig(), loc.getContigIndex(), start, loc.getStop());
+    }
+
+    /**
+     * create a new genome loc from an existing loc, with a new stop position
+     * Note that this function will NOT explicitly check the ending offset, in case someone wants to
+     * set the stop of a new GenomeLoc pertaining to a read that goes off the end of the contig.
+     *
+     * @param loc  the old location
+     * @param stop a new stop position
+     *
+     * @return a newly allocated GenomeLoc as loc but with stop == stop
+     */
+    public GenomeLoc setStop(final GenomeLoc loc, final int stop) {
+        Utils.nonNull(loc);
+        return new GenomeLoc(loc.getContig(), loc.getContigIndex(), loc.start, stop);
     }
 }

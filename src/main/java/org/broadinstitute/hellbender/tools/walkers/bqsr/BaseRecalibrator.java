@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
@@ -86,8 +86,8 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
  */
 
 @CommandLineProgramProperties(
-        usage = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        usageShort = "Generates recalibration table",
+        summary = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
+        oneLineSummary = "Generates recalibration table",
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibrator extends ReadWalker {
@@ -213,14 +213,14 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     @Override
-    public ReadFilter makeReadFilter() {
+    public CountingReadFilter makeReadFilter() {
         return super.makeReadFilter()
-                .and(MAPPING_QUALITY_NOT_ZERO)
-                .and(MAPPING_QUALITY_AVAILABLE)
-                .and(MAPPED)
-                .and(PRIMARY_ALIGNMENT)
-                .and(NOT_DUPLICATE)
-                .and(PASSES_VENDOR_QUALITY_CHECK);
+                .and(new CountingReadFilter("Mapping_Quality_Not_Zero", MAPPING_QUALITY_NOT_ZERO))
+                .and(new CountingReadFilter("Mapping_Quality_Available", MAPPING_QUALITY_AVAILABLE))
+                .and(new CountingReadFilter("Mapped", MAPPED))
+                .and(new CountingReadFilter("Primary_Alignment", PRIMARY_ALIGNMENT))
+                .and(new CountingReadFilter("Not_Duplicate", NOT_DUPLICATE))
+                .and(new CountingReadFilter("Passes_Vendor_Quality_Check", PASSES_VENDOR_QUALITY_CHECK));
     }
 
     private static GATKRead consolidateCigar(GATKRead read) {

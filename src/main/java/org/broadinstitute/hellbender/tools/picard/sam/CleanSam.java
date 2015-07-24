@@ -12,8 +12,8 @@ import java.io.File;
  * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = CleanSam.USAGE,
-        usageShort = CleanSam.USAGE,
+        summary = CleanSam.USAGE,
+        oneLineSummary = CleanSam.USAGE,
         programGroup = ReadProgramGroup.class
 )
 public final class CleanSam extends PicardCommandLineProgram {

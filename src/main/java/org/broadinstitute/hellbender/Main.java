@@ -219,9 +219,9 @@ public class Main {
                     throw new RuntimeException(String.format("Unexpected error: did not find the CommandLineProgramProperties annotation for '%s'", clazz.getSimpleName()));
                 }
                 if (clazz.getSimpleName().length() >= 45) {
-                    builder.append(String.format("%s    %s    %s%s%s\n", KGRN, clazz.getSimpleName(), KCYN, property.usageShort(), KNRM));
+                    builder.append(String.format("%s    %s    %s%s%s\n", KGRN, clazz.getSimpleName(), KCYN, property.oneLineSummary(), KNRM));
                 } else {
-                    builder.append(String.format("%s    %-45s%s%s%s\n", KGRN, clazz.getSimpleName(), KCYN, property.usageShort(), KNRM));
+                    builder.append(String.format("%s    %-45s%s%s%s\n", KGRN, clazz.getSimpleName(), KCYN, property.oneLineSummary(), KNRM));
                 }
             }
             builder.append(String.format("\n"));

@@ -7,17 +7,15 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.testng.Assert;
 
 import java.io.*;
 import java.nio.channels.Channels;
-import java.nio.channels.Pipe;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.util.Random;
 import java.util.UUID;
 
 /**
@@ -41,9 +39,16 @@ public final class BucketUtils {
     }
 
     /**
-     * Open a file for reading regardless of whether it's on GCS or local disk.
+     * Returns true if the given path is a GCS or HDFS (Hadoop filesystem) URL.
+     */
+    public static boolean isRemoteStorageUrl(String path) {
+        return isCloudStorageUrl(path) || isHadoopUrl(path);
+    }
+
+    /**
+     * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
      *
-     * @param path the GCS or local path to read from. If GCS, it must start with "gs://".
+     * @param path the GCS, HDFS or local path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
      * @return an InputStream that reads from the specified file.
 
@@ -54,6 +59,10 @@ public final class BucketUtils {
             if (BucketUtils.isCloudStorageUrl(path)) {
                 Utils.nonNull(popts);
                 return Channels.newInputStream(new GcsUtil.GcsUtilFactory().create(popts).open(GcsPath.fromUri(path)));
+            } else if (isHadoopUrl(path)) {
+                Path file = new Path(path);
+                FileSystem fs = file.getFileSystem(new Configuration());
+                return fs.open(file);
             } else {
                 return new FileInputStream(path);
             }
@@ -63,10 +72,10 @@ public final class BucketUtils {
     }
 
     /**
-     * Open a binary file for writing regardless of whether it's on GCS or local disk.
+     * Open a binary file for writing regardless of whether it's on GCS, HDFS or local disk.
      * For writing to GCS it'll use the application/octet-stream MIME type.
      *
-     * @param path the GCS or local path to write to. If GCS, it must start with "gs://".
+     * @param path the GCS or local path to write to. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
      * @return an OutputStream that writes to the specified file.
      */
@@ -74,6 +83,10 @@ public final class BucketUtils {
         try {
             if (isCloudStorageUrl(path)) {
                 return Channels.newOutputStream(new GcsUtil.GcsUtilFactory().create(popts).create(GcsPath.fromUri(path), "application/octet-stream"));
+            } else if (isHadoopUrl(path)) {
+                Path file = new Path(path);
+                FileSystem fs = file.getFileSystem(new Configuration());
+                return fs.create(file);
             } else {
                 return new FileOutputStream(path);
             }
@@ -85,9 +98,9 @@ public final class BucketUtils {
     /**
      * Copies a file. Can be used to copy e.g. from GCS to local.
      *
-     * @param sourcePath the path to read from. If GCS, it must start with "gs://".
+     * @param sourcePath the path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
-     * @param destPath the path to copy to. If GCS, it must start with "gs://".
+     * @param destPath the path to copy to. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @throws IOException
      */
     public static void copyFile(String sourcePath, PipelineOptions popts, String destPath) throws IOException {
@@ -99,9 +112,9 @@ public final class BucketUtils {
     }
 
     /**
-     * Deletes a file, local or on GCS.
+     * Deletes a file: local, GCS or HDFS.
      *
-     * @param pathToDelete the path to delete. If GCS, it must start with "gs://".
+     * @param pathToDelete the path to delete. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
      */
     public static void deleteFile(String pathToDelete, PipelineOptions popts) throws IOException, GeneralSecurityException {
@@ -110,6 +123,10 @@ public final class BucketUtils {
             GcsOptions gcsOptions = popts.as(GcsOptions.class);
             Storage storage = Transport.newStorageClient(gcsOptions).build();
             storage.objects().delete(path.getBucket(), path.getObject()).execute();
+        } else if (isHadoopUrl(pathToDelete)) {
+            Path file = new Path(pathToDelete);
+            FileSystem fs = file.getFileSystem(new Configuration());
+            fs.delete(file, false);
         } else {
             boolean ok = new File(pathToDelete).delete();
             if (!ok) throw new IOException("Unable to delete '"+pathToDelete+"'");
@@ -119,18 +136,24 @@ public final class BucketUtils {
     /**
      * Picks a random name, by putting some random letters between "prefix" and "suffix".
      *
-     * @param stagingLocation The folder where you want the file to be. Must start with "gs://"
+     * @param stagingLocation The folder where you want the file to be. Must start with "gs://" or "hdfs://"
      * @param prefix The beginning of the file name
      * @param suffix The end of the file name, e.g. ".tmp"
      */
-    public static String randomGcsPath(String stagingLocation, String prefix, String suffix) {
-        return GcsPath.fromUri(stagingLocation).resolve(prefix + UUID.randomUUID().toString() + suffix).toString();
+    public static String randomRemotePath(String stagingLocation, String prefix, String suffix) {
+        if (isCloudStorageUrl(stagingLocation)) {
+            return GcsPath.fromUri(stagingLocation).resolve(prefix + UUID.randomUUID().toString() + suffix).toString();
+        } else if (isHadoopUrl(stagingLocation)) {
+            return new Path(stagingLocation, prefix + UUID.randomUUID().toString() + suffix).toString();
+        } else {
+            throw new IllegalArgumentException("Staging location is not remote: " + stagingLocation);
+        }
     }
 
     /**
      * Returns true if we can read the first byte of the file.
      *
-     * @param path The folder where you want the file to be (local or GCS).
+     * @param path The folder where you want the file to be (local, GCS or HDFS).
      * @param popts the pipeline's options, with authentication information.
      */
     public static boolean fileExists(String path, PipelineOptions popts) {

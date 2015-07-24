@@ -23,9 +23,9 @@ import java.text.DecimalFormat;
  * $Id$
  */
 @CommandLineProgramProperties(
-        usage = "Produces a new SAM or BAM file by including or excluding aligned reads " +
+        summary = "Produces a new SAM or BAM file by including or excluding aligned reads " +
                 "or a list of reads names supplied in the READ_LIST_FILE from the INPUT SAM or BAM file.\n",
-        usageShort = "Creates a new SAM or BAM file by including or excluding aligned reads",
+        oneLineSummary = "Creates a new SAM or BAM file by including or excluding aligned reads",
         programGroup = ReadProgramGroup.class
 )
 public final class FilterReads extends PicardCommandLineProgram {

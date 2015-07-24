@@ -17,8 +17,8 @@ import java.util.*;
  * Compare two metrics files.
  */
 @CommandLineProgramProperties(
-        usage = CompareMetrics.USAGE,
-        usageShort = CompareMetrics.USAGE,
+        summary = CompareMetrics.USAGE,
+        oneLineSummary = CompareMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
 public final class CompareMetrics extends PicardCommandLineProgram {

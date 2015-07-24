@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -23,8 +22,8 @@ import java.util.List;
  * (if a source of variants is provided). Intended to show how to implement the ReadWalker interface.
  */
 @CommandLineProgramProperties(
-        usage = "Prints reads from the provided file(s) along with overlapping variants (if a source of variants is provided) to the specified output file (or STDOUT if none specified)",
-        usageShort = "Print reads with overlapping variants",
+        summary = "Prints reads from the provided file(s) along with overlapping variants (if a source of variants is provided) to the specified output file (or STDOUT if none specified)",
+        oneLineSummary = "Print reads with overlapping variants",
         programGroup = VariantProgramGroup.class
 )
 public final class PrintReadsWithVariants extends ReadWalker {

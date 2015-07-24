@@ -19,11 +19,11 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        usage = "Calculates a set of Hybrid Selection specific metrics from an aligned SAM" +
+        summary = "Calculates a set of Hybrid Selection specific metrics from an aligned SAM" +
                 "or BAM file. If a reference sequence is provided, AT/GC dropout metrics will " +
                 "be calculated, and the PER_TARGET_COVERAGE option can be used to output GC and " +
                 "mean coverage information for every target.",
-        usageShort = "Calculates Hybrid Selection-specific metrics for a SAM or BAM file",
+        oneLineSummary = "Calculates Hybrid Selection-specific metrics for a SAM or BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CalculateHsMetrics extends CollectTargetedMetrics<HsMetrics, HsMetricCollector> {

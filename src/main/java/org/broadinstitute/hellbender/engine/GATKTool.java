@@ -2,14 +2,19 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.tribble.Feature;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -17,7 +22,7 @@ import java.util.List;
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
  * GATK tools should extend one of the Walker classes instead.
  */
-@CommandLineProgramProperties(usage = "Generic GATK tool", usageShort = "Generic GATK tool", omitFromCommandLine = true)
+@CommandLineProgramProperties(summary = "Generic GATK tool", oneLineSummary = "Generic GATK tool", omitFromCommandLine = true)
 public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection
@@ -79,7 +84,12 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reads data source.
      */
     void initializeReads() {
-        reads = ! readArguments.getReadFiles().isEmpty() ? new ReadsDataSource(readArguments.getReadFiles()) : null;
+        SamReaderFactory factory = null;
+        if (hasReference()){
+            // pass in reference if available, because CRAM files need it
+            factory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).referenceSequence(referenceArguments.getReferenceFile());
+        }
+        reads = ! readArguments.getReadFiles().isEmpty() ? new ReadsDataSource(readArguments.getReadFiles(), factory) : null;
     }
 
     /**
@@ -232,11 +242,66 @@ public abstract class GATKTool extends CommandLineProgram {
         super.onStartup();
 
         initializeReference();
+
         initializeReads();
+
         initializeFeatures();
+
         initializeIntervals(); // Must be initialized last, since intervals currently require a sequence dictionary from another data source
 
+        validateSequenceDictionaries();
+
         checkToolRequirements();
+    }
+
+    /**
+     * Validates all sequence dictionaries by checking them against each other.
+     *
+     * Currently, read dict is checked against
+     * ref dict, and both are checked against any variant header dicts. No interval dicts are checked at this time.
+     *
+     */
+    private void validateSequenceDictionaries() {
+        final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
+        final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
+        List<SAMSequenceDictionary> variantDicts = new ArrayList<>();
+        if (hasFeatures()){
+            List<VCFHeader> variantHeaders = features.getAllVariantHeaders();
+            for (VCFHeader header : variantHeaders) {
+                SAMSequenceDictionary headerDict = header.getSequenceDictionary();
+                if (headerDict != null) {
+                    variantDicts.add(headerDict);
+                }
+            }
+        }
+        //check reference dict against reads dict
+        if (hasReference() && hasReads()) {
+            if (hasIntervals()){
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, true, intervalsForTraversal);
+            }
+            else {
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, true, null);
+            }
+        }
+
+        //check all variants dicts against the ref and/or read dicts, as well as the
+        //TODO: pass vcf file names associated with each sequence dictionary into validateDictionaries()
+        for (int k = 0; k < variantDicts.size(); k++){
+            String name = "variants" + (k+1);
+            if (hasReference()){
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false, null);
+            }
+            if (hasReads()) {
+                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false, null);
+            }
+            if (k+1 < variantDicts.size()) {
+                String name2 = "variants" + (k+2);
+                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false, null);
+            }
+        }
+
+        // we don't currently have access to seqdicts from intervals
+        //if (hasIntervals()) {}
     }
 
     /**

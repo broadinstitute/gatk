@@ -15,10 +15,10 @@ import java.io.File;
  * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        usage = "Replace the SAMFileHeader in a SAM file with the given header. " +
+        summary = "Replace the SAMFileHeader in a SAM file with the given header. " +
                 "Validation is minimal.  It is up to the user to ensure that all the elements referred to in the SAMRecords " +
                 "are present in the new header.  Sort order of the two input files must be the same.",
-        usageShort = "Replace the SAMFileHeader in a SAM file with the given header",
+        oneLineSummary = "Replace the SAMFileHeader in a SAM file with the given header",
         programGroup = ReadProgramGroup.class
 )
 public final class ReplaceSamHeader extends PicardCommandLineProgram {

@@ -1,17 +1,18 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.tribble.Tribble;
-import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.Reporter;
 import org.testng.annotations.BeforeClass;
@@ -97,6 +98,20 @@ public abstract class BaseTest {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
         }
         return value;
+    }
+
+    /**
+     * Gets a PipelineOptions object containing our API key as specified in the HELLBENDER_TEST_APIKEY
+     * environment variable. Useful for tests that need to access data in a GCS bucket via the
+     * methods in the {@link org.broadinstitute.hellbender.utils.dataflow.BucketUtils} class,
+     * but don't need to run an actual dataflow pipeline.
+     *
+     * @return a PipelineOptions object containing our API key
+     */
+    public PipelineOptions getAuthenticatedPipelineOptions() {
+        final GCSOptions popts = PipelineOptionsFactory.as(GCSOptions.class);
+        popts.setApiKey(getDataflowTestApiKey());
+        return popts;
     }
 
     @BeforeClass
@@ -206,25 +221,14 @@ public abstract class BaseTest {
 
     /**
      * Creates a temp file that will be deleted on exit after tests are complete.
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
      * @param name Prefix of the file.
      * @param extension Extension to concat to the end of the file.
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
     public static File createTempFile(final String name, final String extension) {
-        try {
-            final File file = File.createTempFile(name, extension);
-            file.deleteOnExit();
-
-            // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
-            new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
-            new File(file.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION).deleteOnExit();
-            new File(file.getAbsolutePath() + ".bai").deleteOnExit();
-            new File(file.getAbsolutePath().replaceAll(extension + "$", ".bai")).deleteOnExit();
-
-            return file;
-        } catch (IOException ex) {
-            throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
-        }
+        return IOUtils.createTempFile(name, extension);
     }
 
     /**

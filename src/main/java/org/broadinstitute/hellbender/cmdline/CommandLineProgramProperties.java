@@ -15,8 +15,20 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Inherited
 public @interface CommandLineProgramProperties {
-    String usage();
-    String usageShort();
+    /**
+     * @return a summary of what the program does
+     */
+    String summary();
+
+    /**
+     * @return a very short summary for the main menu list of all programs
+     */
+    String oneLineSummary();
+
+    /**
+     * @return an example command line for this program
+     */
+    String usageExample() default "The author of this program hasn't included any example usage, please complain to them.";
     Class<? extends CommandLineProgramGroup> programGroup() default MiscProgramGroup.class;
     boolean omitFromCommandLine() default false;
 }

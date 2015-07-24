@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -65,8 +66,8 @@ public final class FeatureManager implements AutoCloseable {
      * in DISCOVERED_CODECS
      */
     static {
-        ClassFinder finder = new ClassFinder();
-        for ( String codecPackage : CODEC_PACKAGES ) {
+        final ClassFinder finder = new ClassFinder();
+        for ( final String codecPackage : CODEC_PACKAGES ) {
             finder.find(codecPackage, CODEC_BASE_CLASS);
         }
         // Exclude abstract classes and interfaces from the list of discovered codec classes
@@ -126,39 +127,58 @@ public final class FeatureManager implements AutoCloseable {
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
         // come back to us with a null FeatureInput.
-        List<Pair<Field, FeatureInput>> featureArgumentValues =
+        final List<Pair<Field, FeatureInput>> featureArgumentValues =
                 CommandLineParser.gatherArgumentValuesOfType(FEATURE_ARGUMENT_CLASS, toolInstance);
 
-        for ( Pair<Field, FeatureInput> featureArgument : featureArgumentValues ) {
+        for ( final Pair<Field, FeatureInput> featureArgument : featureArgumentValues ) {
             final FeatureInput<? extends Feature> featureInput = featureArgument.getValue();
+
+            final String fullName = featureArgument.getKey().getAnnotation(Argument.class).fullName();
+            final String shortName = featureArgument.getKey().getAnnotation(Argument.class).shortName();
 
             // Only create a data source for Feature arguments that were actually specified
             if ( featureInput != null ) {
-
-                // Record the expected Feature type as declared in the parameterized type of the Field declaration
-                // (eg., VariantContext if the field was a FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>).
-                // This is used for type-checking purposes.
-                featureInput.setFeatureType(getFeatureTypeForFeatureInputField(featureArgument.getKey()));
-
-                // Select the right codec for decoding the underlying file
-                final FeatureCodec<? extends Feature, ?> codec = getCodecForFile(featureInput.getFeatureFile());
-
-                // Make sure that the declared Feature type for the argument matches the actual type of Feature
-                // that we will be getting from the selected codec
-                if ( ! featureInput.getFeatureType().isAssignableFrom(codec.getFeatureType()) ) {
-                    throw new UserException(String.format("Argument --%s/-%s requires file(s) containing Features of type %s, " +
-                                                          "but file %s contains Features of type %s",
-                                                          featureArgument.getKey().getAnnotation(Argument.class).fullName(),
-                                                          featureArgument.getKey().getAnnotation(Argument.class).shortName(),
-                                                          featureInput.getFeatureType(),
-                                                          featureInput.getFeatureFile().getAbsolutePath(),
-                                                          codec.getFeatureType()));
-                }
-
-                // Create a new FeatureDataSource for this file, and add it to our query pool
-                featureSources.put(featureInput, new FeatureDataSource<>(featureInput.getFeatureFile(), codec, featureInput.getName(), featureQueryLookahead));
+                final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
+                addToFeatureSources(featureQueryLookahead, featureInput, fullName, shortName, featureType);
             }
         }
+    }
+
+
+    /**
+     * Add the feature data source to the given feature input.
+     *
+     * @param featureQueryLookahead look ahead this many bases during queries that produce cache misses
+     * @param featureInput source of features
+     * @param fullName full name of the argument (used in error message)
+     * @param shortName short name of the argument (used in error message)
+     * @param featureType class of features
+     * Note: package-visible to enable access from the core walker classes
+     * (but not actual tools, so it's not protected).
+     */
+    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final String fullName, final String shortName, final Class<? extends Feature> featureType) {
+        // Record the expected Feature type as declared in the parameterized type of the Field declaration
+        // (eg., VariantContext if the field was a FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>).
+        // This is used for type-checking purposes.
+        featureInput.setFeatureType(featureType);
+
+        // Select the right codec for decoding the underlying file
+        final FeatureCodec<? extends Feature, ?> codec = getCodecForFile(featureInput.getFeatureFile());
+
+        // Make sure that the declared Feature type for the argument matches the actual type of Feature
+        // that we will be getting from the selected codec
+        if ( ! featureType.isAssignableFrom(codec.getFeatureType()) ) {
+            throw new UserException(String.format("Argument --%s/-%s requires file(s) containing Features of type %s, " +
+                                                  "but file %s contains Features of type %s",
+                                                  fullName,
+                                                  shortName,
+                                                  featureType,
+                                                  featureInput.getFeatureFile().getAbsolutePath(),
+                                                  codec.getFeatureType()));
+        }
+
+        // Create a new FeatureDataSource for this file, and add it to our query pool
+        featureSources.put(featureInput, new FeatureDataSource<>(featureInput.getFeatureFile(), codec, featureInput.getName(), featureQueryLookahead));
     }
 
     /**
@@ -170,8 +190,8 @@ public final class FeatureManager implements AutoCloseable {
      * @return type parameter of the FeatureInput declaration represented by the given field
      */
     @SuppressWarnings("unchecked")
-    protected static Class<? extends Feature> getFeatureTypeForFeatureInputField( final Field field ) {
-        Type featureInputType = CommandLineParser.isCollectionField(field) ?
+    static Class<? extends Feature> getFeatureTypeForFeatureInputField( final Field field ) {
+        final Type featureInputType = CommandLineParser.isCollectionField(field) ?
                                 getNextTypeParameter((ParameterizedType)(field.getGenericType())) :
                                 field.getGenericType();
 
@@ -208,6 +228,23 @@ public final class FeatureManager implements AutoCloseable {
         return featureSources.isEmpty();
     }
 
+
+    /**
+     * This method finds and returns all of the variant headers from the feature sources.
+     *
+     * @return A list of all variant headers for features.
+     */
+    public List<VCFHeader> getAllVariantHeaders() {
+        List<VCFHeader> headers = new ArrayList<>();
+        for (Map.Entry<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> entry : featureSources.entrySet()) {
+            final Object header = entry.getValue().getHeader();
+            if ( header != null && header instanceof VCFHeader ) {
+                headers.add((VCFHeader)header);
+            }
+        }
+        return headers;
+    }
+
     /**
      * Given a FeatureInput argument field from our tool, queries the data source for that FeatureInput
      * over the specified interval, and returns a List of the Features overlapping that interval from
@@ -233,6 +270,29 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
+     * Given a FeatureInput argument field from our tool, returns an iterator to its features starting
+     * from the first one.
+     * <p><b>Warning!</b>: calling this method a second time on the same {@link FeatureInput}
+     * on the same FeatureManager instance will invalidate (close) the iterator returned from
+     * the first call.
+     * </p>
+     * <p>
+     * An exception will be thrown if the {@link FeatureInput} provided did not come from the tool that this
+     * manager was initialized with, or was not an &#64;Argument-annotated field in the tool
+     * (or parent classes).
+     * </p>
+     *
+     * @param featureDescriptor FeatureInput argument from our tool representing the Feature source to query
+     * @param <T> type of Feature in the source represented by featureDescriptor
+     * @return never {@code null}, a iterator to all the features in the backing data source.
+     * @throws GATKException if the feature-descriptor is not found in the manager or is {@code null}.
+     */
+    public <T extends Feature> Iterator<T> getFeatureIterator(final FeatureInput<T> featureDescriptor) {
+        final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
+        return dataSource.iterator();
+    }
+
+    /**
      * Get the header associated with a particular FeatureInput
      *
      * @param featureDescriptor the FeatureInput whose header we want to retrieve
@@ -253,8 +313,7 @@ public final class FeatureManager implements AutoCloseable {
      * @return query-able data source for the provided FeatureInput, if it was found
      */
     private <T extends Feature> FeatureDataSource<T> lookupDataSource( final FeatureInput<T> featureDescriptor ) {
-        @SuppressWarnings("unchecked")
-        FeatureDataSource<T> dataSource = (FeatureDataSource<T>)featureSources.get(featureDescriptor);
+        @SuppressWarnings("unchecked") final FeatureDataSource<T> dataSource = (FeatureDataSource<T>)featureSources.get(featureDescriptor);
 
         // Make sure the provided FeatureInput actually came from our tool as an @Argument-annotated field
         if ( dataSource == null ) {
@@ -292,22 +351,22 @@ public final class FeatureManager implements AutoCloseable {
         final List<FeatureCodec<? extends Feature, ?>> candidateCodecs = getCandidateCodecsForFile(featureFile);
 
         // If no codecs can handle the file, it's a user error (the user provided a file in an unsupported format)
-        if ( candidateCodecs.size() == 0 ) {
+        if ( candidateCodecs.isEmpty() ) {
             throw new UserException.CouldNotReadInputFile(featureFile, "no suitable codecs found");
         }
         // If multiple codecs can handle the file, it's a configuration error on the part of the codec authors
         else if ( candidateCodecs.size() > 1 ) {
-            StringBuilder multiCodecMatches = new StringBuilder();
+            final StringBuilder multiCodecMatches = new StringBuilder();
             for ( FeatureCodec<? extends Feature, ?> candidateCodec : candidateCodecs ) {
                 multiCodecMatches.append(candidateCodec.getClass().getCanonicalName());
-                multiCodecMatches.append(" ");
+                multiCodecMatches.append(' ');
             }
             throw new GATKException("Multiple codecs found able to decode file " + featureFile.getAbsolutePath() +
                                     ". This indicates a misconfiguration on the part of the codec authors. " +
                                     "Matching codecs are: " + multiCodecMatches.toString());
         }
 
-        FeatureCodec<? extends Feature, ?> selectedCodec = candidateCodecs.get(0);
+        final FeatureCodec<? extends Feature, ?> selectedCodec = candidateCodecs.get(0);
         logger.info("Using codec " + selectedCodec.getClass().getSimpleName() + " to read file " + featureFile.getAbsolutePath());
         return selectedCodec;
     }
@@ -320,9 +379,9 @@ public final class FeatureManager implements AutoCloseable {
      * @return A List of all codecs in DISCOVERED_CODECS for which {@link htsjdk.tribble.FeatureCodec#canDecode(String)} returns true on the specified file
      */
     private static List<FeatureCodec<? extends Feature, ?>> getCandidateCodecsForFile( final File featureFile )  {
-        List<FeatureCodec<? extends Feature, ?>> candidateCodecs = new ArrayList<>();
+        final List<FeatureCodec<? extends Feature, ?>> candidateCodecs = new ArrayList<>();
 
-        for ( Class<?> codecClass : DISCOVERED_CODECS ) {
+        for ( final Class<?> codecClass : DISCOVERED_CODECS ) {
             try {
                 final FeatureCodec<? extends Feature, ?> codec = (FeatureCodec<? extends Feature, ?>)codecClass.newInstance();
                 if ( codec.canDecode(featureFile.getAbsolutePath()) ) {
@@ -341,8 +400,6 @@ public final class FeatureManager implements AutoCloseable {
      * Permanently closes this manager by closing all backing data sources
      */
     public void close() {
-        for ( FeatureDataSource<? extends Feature> dataSource : featureSources.values() ) {
-            dataSource.close();
-        }
+        featureSources.values().forEach(ds -> ds.close());
     }
 }

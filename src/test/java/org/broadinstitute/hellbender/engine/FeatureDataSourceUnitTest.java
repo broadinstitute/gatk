@@ -217,8 +217,17 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
                 { new SimpleInterval("4", 1, 1000), Arrays.asList("x", "y", "z") },
                 { new SimpleInterval("4", 600, 775), Arrays.asList("x", "y") },
                 { new SimpleInterval("4", 775, 776), Arrays.asList("y", "z") },
-                { new SimpleInterval("4", 777, 780), Arrays.asList("z") }
+                { new SimpleInterval("4", 777, 780), Arrays.asList("z") },
+                { new SimpleInterval("4", 777, 300000000), Arrays.asList("z") },
         };
+    }
+
+    @Test(expectedExceptions = ArithmeticException.class)
+    public void testBlowUpOnOverflow() {
+        final SimpleInterval queryInterval = new SimpleInterval("4", 777, Integer.MAX_VALUE);
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+            Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
+        }
     }
 
     /**

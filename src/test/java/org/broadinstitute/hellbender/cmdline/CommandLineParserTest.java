@@ -20,8 +20,8 @@ public final class CommandLineParserTest {
     }
 
     @CommandLineProgramProperties(
-            usage = "Usage: frobnicate [arguments] input-file output-file\n\nRead input-file, frobnicate it, and write frobnicated results to output-file\n",
-            usageShort = "Read input-file, frobnicate it, and write frobnicated results to output-file"
+            summary = "Usage: frobnicate [arguments] input-file output-file\n\nRead input-file, frobnicate it, and write frobnicated results to output-file\n",
+            oneLineSummary = "Read input-file, frobnicate it, and write frobnicated results to output-file"
     )
     class FrobnicateArguments {
         @ArgumentCollection
@@ -44,8 +44,8 @@ public final class CommandLineParserTest {
     }
 
     @CommandLineProgramProperties(
-            usage = "Usage: framistat [arguments]\n\nCompute the plebnick of the freebozzle.\n",
-            usageShort = "ompute the plebnick of the freebozzle"
+            summary = "Usage: framistat [arguments]\n\nCompute the plebnick of the freebozzle.\n",
+            oneLineSummary = "ompute the plebnick of the freebozzle"
     )
     class ArgumentsWithoutPositional {
         public static final int DEFAULT_FROBNICATION_THRESHOLD = 20;
@@ -79,8 +79,8 @@ public final class CommandLineParserTest {
     }
 
     @CommandLineProgramProperties(
-            usage = "[oscillation_frequency]\n\nResets oscillation frequency.\n",
-            usageShort = "Reset oscillation frequency."
+            summary = "[oscillation_frequency]\n\nResets oscillation frequency.\n",
+            oneLineSummary = "Reset oscillation frequency."
     )
     public class RequiredOnlyArguments {
         @Argument(doc="Oscillation frequency.", optional = false)
@@ -98,8 +98,8 @@ public final class CommandLineParserTest {
     }
 
     @CommandLineProgramProperties(
-            usage = "[oscillation_frequency]\n\nRecalibrates overthruster oscillation. \n",
-            usageShort = "Recalibrates the overthruster."
+            summary = "[oscillation_frequency]\n\nRecalibrates overthruster oscillation. \n",
+            oneLineSummary = "Recalibrates the overthruster."
     )
     public class OptionalOnlyArguments {
         @Argument(doc="Oscillation frequency.", optional = true)
@@ -349,8 +349,7 @@ public final class CommandLineParserTest {
 
     @Test
     public void testArgumentsFile() throws Exception {
-        final File argumentsFile = File.createTempFile("clp.", ".arguments");
-        argumentsFile.deleteOnExit();
+        final File argumentsFile = BaseTest.createTempFile("clp.", ".arguments");
         try (final PrintWriter writer = new PrintWriter(argumentsFile)) {
             writer.println("-T 18");
             writer.println("--TRUTHINESS");
@@ -390,8 +389,7 @@ public final class CommandLineParserTest {
      */
     @Test( expectedExceptions = UserException.CommandLineException.class)
     public void testArgumentsFileWithDisallowedOverride() throws Exception {
-        final File argumentsFile = File.createTempFile("clp.", ".arguments");
-        argumentsFile.deleteOnExit();
+        final File argumentsFile = BaseTest.createTempFile("clp.", ".arguments");
         try (final PrintWriter writer = new PrintWriter(argumentsFile)) {
             writer.println("--T 18");
         }

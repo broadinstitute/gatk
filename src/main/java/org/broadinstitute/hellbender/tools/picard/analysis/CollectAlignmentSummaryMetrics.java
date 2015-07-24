@@ -38,8 +38,8 @@ import java.util.*;
  * @author Doug Voet (dvoet at broadinstitute dot org)
  */
 @CommandLineProgramProperties(
-        usage = CollectAlignmentSummaryMetrics.USAGE,
-        usageShort = CollectAlignmentSummaryMetrics.USAGE,
+        summary = CollectAlignmentSummaryMetrics.USAGE,
+        oneLineSummary = CollectAlignmentSummaryMetrics.USAGE,
         programGroup = QCProgramGroup.class
 )
 public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {

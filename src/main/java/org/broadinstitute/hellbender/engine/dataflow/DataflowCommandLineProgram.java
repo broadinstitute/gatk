@@ -2,18 +2,16 @@ package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.cloudera.dataflow.spark.SparkPipelineOptions;
 import com.cloudera.dataflow.spark.SparkPipelineRunner;
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
-import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -70,12 +68,12 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     @Argument(fullName = "staging", doc="dataflow staging location, this should be a google bucket of the form gs://", optional = true)
     protected String stagingLocation;
 
-    @Argument(doc = "path to the client secrets file for google cloud authentication. Ignored if apiKey is set.",
-            shortName = "secret", fullName = "client_secret", optional=true)
-    protected File clientSecret = new File("client_secret.json");
+    @Argument(doc = "path to the client secrets file for google cloud authentication",
+            shortName = "secret", fullName = "client_secret", optional=true, mutex={"apiKey"})
+    protected File clientSecret;
 
-    @Argument(doc = "API Key for Google Cloud (unnecessary if a client secrets file is provided).",
-            shortName = "apiKey", fullName = "apiKey", optional=true)
+    @Argument(doc = "API Key for google cloud authentication",
+            shortName = "apiKey", fullName = "apiKey", optional=true, mutex={"client_secret"})
     protected String apiKey = null;
 
     @Argument(doc = "Number of Dataflow workers to use (or auto if unset).",
@@ -95,8 +93,6 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         return null;
     }
 
-    // ---------------------------------------------------
-    // Classes meant for overriding
 
     @Override
     protected Object doWork() {
@@ -105,6 +101,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         setupPipeline(p);
         runPipeline(p);
         afterPipeline(p);
+
         return null;
     }
 
@@ -121,7 +118,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             }
             if (apiKey != null) {
                 options.setApiKey(apiKey);
-            } else {
+            } else if(clientSecret != null) {
                 logger.info("Loading " + clientSecret.getName());
                 options.setSecretsFile(clientSecret.getAbsolutePath());
             }
@@ -151,6 +148,10 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             }
         }
     }
+
+
+    // ---------------------------------------------------
+    // Functions meant for overriding
 
     /**
      * set up the pipeline for running by adding transforms

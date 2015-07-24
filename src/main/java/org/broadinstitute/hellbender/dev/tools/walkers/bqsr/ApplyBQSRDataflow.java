@@ -18,9 +18,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutputSource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -32,8 +32,8 @@ import java.io.IOException;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        usage = "Applies the BQSR table to the input BAM.",
-        usageShort = "Applies the BQSR table to the input BAM.",
+        summary = "Applies the BQSR table to the input BAM.",
+        oneLineSummary = "Applies the BQSR table to the input BAM.",
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
@@ -67,7 +67,7 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
     @ArgumentCollection
     public ApplyBQSRArgumentCollection bqsrOpts = new ApplyBQSRArgumentCollection();
 
-    private String intermediateGCSBam;
+    private String intermediateRemoteBam;
 
     @Override
     protected void setupPipeline(Pipeline pipeline) {
@@ -75,39 +75,39 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
             throw new UserException("Sorry, we only support a single input file for now.");
         }
         String filename = readArguments.getReadFilesNames().get(0);
-        ReadsSource readsSource = new ReadsSource(filename, pipeline);
+        ReadsDataflowSource readsSource = new ReadsDataflowSource(filename, pipeline);
         SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary) :
                 IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        PCollection<BaseRecalOutput> recalInfoSingletonCollection = BaseRecalOutputSource.loadFileOrGcs(pipeline, BQSR_RECAL_FILE_NAME);
+        PCollection<BaseRecalOutput> recalInfoSingletonCollection = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME);
         PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT)
                 .apply(new ApplyBQSRTransform(header, recalInfoSingletonCollection, bqsrOpts));
-        intermediateGCSBam = OUTPUT;
+        intermediateRemoteBam = OUTPUT;
         if (needsIntermediateCopy()) {
-            // The user specified remote execution and provided a local file name. So we're going to have to save to GCS as a go-between.
+            // The user specified remote execution and provided a local file name. So we're going to have to save to remote storage as a go-between.
             // Note that this may require more permissions
-            intermediateGCSBam = BucketUtils.randomGcsPath(stagingLocation, "temp-applyBqsr-output-", ".bam");
-            logger.info("Staging results at " + intermediateGCSBam);
+            intermediateRemoteBam = BucketUtils.randomRemotePath(stagingLocation, "temp-applyBqsr-output-", ".bam");
+            logger.info("Staging results at " + intermediateRemoteBam);
         }
-        SmallBamWriter.writeToFile(pipeline, output, header, intermediateGCSBam);
+        SmallBamWriter.writeToFile(pipeline, output, header, intermediateRemoteBam);
     }
 
     @Override
     protected void afterPipeline(Pipeline pipeline) {
         if (!needsIntermediateCopy()) return;
         try {
-            logger.info("Copying results from " + intermediateGCSBam + " to " + OUTPUT + ".");
-            BucketUtils.copyFile(intermediateGCSBam, pipeline.getOptions(), OUTPUT);
+            logger.info("Copying results from " + intermediateRemoteBam + " to " + OUTPUT + ".");
+            BucketUtils.copyFile(intermediateRemoteBam, pipeline.getOptions(), OUTPUT);
         } catch (IOException x) {
             // keep the intermediate file if anything goes wrong, so we can investigate
             throw new UserException.CouldNotCreateOutputFile("Error writing to '" + OUTPUT + "'.",x);
         }
         try {
-            BucketUtils.deleteFile(intermediateGCSBam, pipeline.getOptions());
+            BucketUtils.deleteFile(intermediateRemoteBam, pipeline.getOptions());
         } catch (Exception x) {
             // log error but continue since this error isn't fatal.
-            logger.warn("Unable to delete temporary file '" + intermediateGCSBam + "'.", x);
+            logger.warn("Unable to delete temporary file '" + intermediateRemoteBam + "'.", x);
         }
 
     }
@@ -115,7 +115,7 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
     // Specified remote execution and a local output.
     // The user probably didn't mean for the output to end up on the worker's local disk.
     private boolean needsIntermediateCopy() {
-        return isRemote() && !BucketUtils.isCloudStorageUrl(OUTPUT);
+        return isRemote() && !BucketUtils.isRemoteStorageUrl(OUTPUT);
     }
 
 }

@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
+import htsjdk.samtools.ValidationStringency;
+
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -99,11 +102,10 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.bam");
 
-        //this fails, disable for now: https://github.com/broadinstitute/hellbender/issues/419
-        //IntegrationTestSpec.compareBamFiles(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated);
+        SamAssertionUtils.assertSamsEqual(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated, ValidationStringency.LENIENT);
 
         final File expectedTablePost = new File(getResourceDir() + "expected.NA12878.chr17_69k_70k.postRecalibrated.txt");
-        IntegrationTestSpec.compareTextFiles(actualTablePost, expectedTablePost);
+        IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
     @Test
@@ -134,7 +136,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
-                UserException.MissingContigInSequenceDictionary.class);
+                UserException.IncompatibleSequenceDictionaries.class);
         spec.executeTest("testBQSRFailWithIncompatibleReference", this);
     }
 }

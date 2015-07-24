@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.CountBasesDataflowTransform;
 
 
-@CommandLineProgramProperties(usage = "Count bases in dataflow with filters and transformers", usageShort = "count bases", programGroup = DataFlowProgramGroup.class)
+@CommandLineProgramProperties(summary = "Count bases in dataflow with filters and transformers", oneLineSummary = "count bases", programGroup = DataFlowProgramGroup.class)
 public final class CountBasesDataflow extends DataflowReadsPipeline {
     private static final long serialVersionUID = 1l;
 

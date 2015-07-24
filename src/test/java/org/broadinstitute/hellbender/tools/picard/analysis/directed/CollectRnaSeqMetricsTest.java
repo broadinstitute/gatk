@@ -11,14 +11,14 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.gene.RefFlatReader.RefFlatColumns;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.PrintStream;
-
-import org.broadinstitute.hellbender.utils.gene.RefFlatReader.RefFlatColumns;
 
 public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
     public String getTestedClassName() {
@@ -45,7 +45,7 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
 
         builder.addFrag("ignoredFrag", builder.getHeader().getSequenceIndex(ignoredSequence), 1, false);
 
-        final File samFile = File.createTempFile("tmp.collectRnaSeqMetrics.", ".sam");
+        final File samFile = BaseTest.createTempFile("tmp.collectRnaSeqMetrics.", ".sam");
         try (final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(builder.getHeader(), false, samFile)) {
             for (final SAMRecord rec : builder.getRecords()) samWriter.addAlignment(rec);
         }
@@ -54,12 +54,11 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         final Interval rRnaInterval = new Interval(sequence, 300, 520, true, "rRNA");
         final IntervalList rRnaIntervalList = new IntervalList(builder.getHeader());
         rRnaIntervalList.add(rRnaInterval);
-        final File rRnaIntervalsFile = File.createTempFile("tmp.rRna.", ".interval_list");
-        rRnaIntervalsFile.deleteOnExit();
+        final File rRnaIntervalsFile = BaseTest.createTempFile("tmp.rRna.", ".interval_list");
         rRnaIntervalList.write(rRnaIntervalsFile);
 
         // Generate the metrics.
-        final File metricsFile = File.createTempFile("tmp.", ".rna_metrics");
+        final File metricsFile = BaseTest.createTempFile("tmp.", ".rna_metrics");
 
         final String[] args = new String[] {
                 "--INPUT", samFile.getAbsolutePath(),
@@ -116,7 +115,7 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
 
         builder.addFrag("ignoredFrag", builder.getHeader().getSequenceIndex(ignoredSequence), 1, false);
 
-        final File samFile = File.createTempFile("tmp.collectRnaSeqMetrics.", ".sam");
+        final File samFile = BaseTest.createTempFile("tmp.collectRnaSeqMetrics.", ".sam");
         try (final SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMWriter(builder.getHeader(), false, samFile)) {
             for (final SAMRecord rec : builder.getRecords()) samWriter.addAlignment(rec);
         }
@@ -125,12 +124,11 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         final Interval rRnaInterval = new Interval(sequence, 300, 520, true, "rRNA");
         final IntervalList rRnaIntervalList = new IntervalList(builder.getHeader());
         rRnaIntervalList.add(rRnaInterval);
-        final File rRnaIntervalsFile = File.createTempFile("tmp.rRna.", ".interval_list");
-        rRnaIntervalsFile.deleteOnExit();
+        final File rRnaIntervalsFile = BaseTest.createTempFile("tmp.rRna.", ".interval_list");
         rRnaIntervalList.write(rRnaIntervalsFile);
 
         // Generate the metrics.
-        final File metricsFile = File.createTempFile("tmp.", ".rna_metrics");
+        final File metricsFile = BaseTest.createTempFile("tmp.", ".rna_metrics");
 
         final String[] args = new String[] {
                 "--INPUT", samFile.getAbsolutePath(),
@@ -206,8 +204,7 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         refFlatFields[RefFlatColumns.EXON_STARTS.ordinal()] = "49,249";
         refFlatFields[RefFlatColumns.EXON_ENDS.ordinal()] = "200,500";
 
-        final File refFlatFile = File.createTempFile("tmp.", ".refFlat");
-        refFlatFile.deleteOnExit();
+        final File refFlatFile = BaseTest.createTempFile("tmp.", ".refFlat");
         try (final PrintStream refFlatStream = new PrintStream(refFlatFile)) {
             refFlatStream.println(StringUtil.join("\t", refFlatFields));
         }

@@ -9,11 +9,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 
 public final class FlagStatDataflowIntegrationTest extends CommandLineProgramTest {
@@ -22,7 +19,9 @@ public final class FlagStatDataflowIntegrationTest extends CommandLineProgramTes
     @Test( groups = {"bucket", "dataflow"})
     public void flagStatDataflowLocalReadFromBucket() throws IOException {
         List<String> args = new ArrayList<>();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME); args.add("gs://hellbender/test/resources/org/broadinstitute/hellbender/tools/dataflow/FlagStatDataflow/flag_stat.bam");
+        args.add("--apiKey"); args.add(getDataflowTestApiKey());
+        args.add("--project"); args.add(getDataflowTestProject());
+        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME); args.add( getDataflowTestInputPath() + "org/broadinstitute/hellbender/tools/dataflow/FlagStatDataflow/flag_stat.bam");
         args.add("-L"); args.add("chr1");
         args.add("-L"); args.add("chr2");
         args.add("-L"); args.add("chr3");

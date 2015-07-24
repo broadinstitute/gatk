@@ -19,9 +19,9 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsSource;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.MarkDuplicatesReadsKey;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
@@ -44,8 +44,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @CommandLineProgramProperties(
-        usage="Marks duplicates on dataflow",
-        usageShort="Mark Duplicates",
+        summary ="Marks duplicates on dataflow",
+        oneLineSummary ="Mark Duplicates",
         programGroup = DataFlowProgramGroup.class)
 public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
     private static final long serialVersionUID = 1L;
@@ -91,7 +91,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
 
     @Override
     protected void setupPipeline(final Pipeline pipeline) {
-        final ReadsSource readsSource = new ReadsSource(bam, pipeline);
+        final ReadsDataflowSource readsSource = new ReadsDataflowSource(bam, pipeline);
         final SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):

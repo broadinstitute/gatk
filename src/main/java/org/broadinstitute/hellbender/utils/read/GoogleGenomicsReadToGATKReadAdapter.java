@@ -33,7 +33,11 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
         this(genomicsRead, UUID.randomUUID());
     }
 
-    private GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead, final UUID uuid ) {
+    /**
+     * Constructor that allows an explicit UUID to be passed in -- only meant
+     * for internal use and test class use, which is why it's package protected.
+     */
+    GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead, final UUID uuid ) {
         this.genomicsRead = genomicsRead;
         this.uuid = uuid;
     }
@@ -631,20 +635,26 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
     }
 
     @Override
-    public boolean equals( Object o ) {
-        if ( this == o ) return true;
-        if ( o == null || getClass() != o.getClass() ) return false;
+    public boolean equalsIgnoreUUID( final Object other ) {
+        if ( this == other ) return true;
+        if ( other == null || getClass() != other.getClass() ) return false;
 
-        GoogleGenomicsReadToGATKReadAdapter that = (GoogleGenomicsReadToGATKReadAdapter) o;
+        GoogleGenomicsReadToGATKReadAdapter that = (GoogleGenomicsReadToGATKReadAdapter)other;
 
         // The Read class does have a working equals() method (inherited from AbstractMap)
-        if ( genomicsRead != null ? !genomicsRead.equals(that.genomicsRead) : that.genomicsRead != null ) return false;
+        return genomicsRead != null ? genomicsRead.equals(that.genomicsRead) : that.genomicsRead == null;
+    }
 
-        return true;
+    @Override
+    public boolean equals( Object other ) {
+        return equalsIgnoreUUID(other) && uuid.equals(((GoogleGenomicsReadToGATKReadAdapter)other).uuid);
     }
 
     @Override
     public int hashCode() {
-        return genomicsRead != null ? genomicsRead.hashCode() : 0;
+        int result = genomicsRead != null ? genomicsRead.hashCode() : 0;
+        result = 31 * result + uuid.hashCode();
+
+        return result;
     }
 }
