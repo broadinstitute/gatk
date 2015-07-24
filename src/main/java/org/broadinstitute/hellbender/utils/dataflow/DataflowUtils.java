@@ -101,6 +101,23 @@ public final class DataflowUtils {
     }
 
     /**
+     * a transform that prints the contents to standard out. This is meant for local testing.
+     */
+    public static class PrintCollection<T> extends DoFn<T, Void> {
+        private final String name;
+        public PrintCollection(String name) {
+            this.name = name;
+        }
+
+        private static final long serialVersionUID = 1L;
+        @Override
+        public void processElement(ProcessContext c) throws Exception {
+            T i = c.element();
+            System.out.println(name + ": " + i);
+        }
+    }
+
+    /**
      * ingest local bam files from the file system and loads them into a PCollection<GATKRead>
      * @param pipeline a configured Pipeline
      * @param intervals intervals to select reads from

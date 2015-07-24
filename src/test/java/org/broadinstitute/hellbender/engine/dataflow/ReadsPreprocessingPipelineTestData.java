@@ -22,9 +22,7 @@ import java.util.UUID;
 
 /**
  * ReadsPreprocessingPipelineTestData contains coordinated test data that can be used in the many transforms that
- * are a part of the ReadsPreprocessingPipeline. Right now, the tests are limited to a single contig. We should add
- * tests for several contigs, however, this blocked on issue #688. The issue tracking adding tests for several contigs
- * is issue tracked at (#689).
+ * are a part of the ReadsPreprocessingPipeline.
  */
 public class ReadsPreprocessingPipelineTestData {
     private final List<KV<Integer, Integer>> readStartLength;
@@ -53,21 +51,27 @@ public class ReadsPreprocessingPipelineTestData {
 
         // TODO Make reads construction more general (issue #687).
         reads = Lists.newArrayList(
-                makeRead(readStartLength.get(0), 1, clazz),
-                makeRead(readStartLength.get(1), 2, clazz),
-                makeRead(readStartLength.get(2), 3, clazz),
-                makeRead(readStartLength.get(3), 4, clazz));
+                makeRead("1", readStartLength.get(0), 1, clazz),
+                makeRead("1", readStartLength.get(1), 2, clazz),
+                makeRead("1", readStartLength.get(2), 3, clazz),
+                makeRead("1", readStartLength.get(3), 4, clazz),
+                makeRead("2", readStartLength.get(2), 5, clazz)
+                );
 
         kvRefShardiReads =  Arrays.asList(
                 KV.of(new ReferenceShard(0, "1"), Lists.newArrayList(reads.get(1), reads.get(0))),
                 KV.of(new ReferenceShard(10, "1"), Lists.newArrayList(reads.get(2))),
-                KV.of(new ReferenceShard(29, "1"), Lists.newArrayList(reads.get(3))));
+                KV.of(new ReferenceShard(29, "1"), Lists.newArrayList(reads.get(3))),
+                KV.of(new ReferenceShard(10, "2"), Lists.newArrayList(reads.get(4)))
+                );
 
         readIntervals = Lists.newArrayList(
-                makeInterval(readStartLength.get(0)),
-                makeInterval(readStartLength.get(1)),
-                makeInterval(readStartLength.get(2)),
-                makeInterval(readStartLength.get(3)));
+                makeInterval("1", readStartLength.get(0)),
+                makeInterval("1", readStartLength.get(1)),
+                makeInterval("1", readStartLength.get(2)),
+                makeInterval("1", readStartLength.get(3)),
+                makeInterval("2", readStartLength.get(2))
+                );
 
         // The first two reads are mapped onto the same reference shard. The ReferenceBases returned should
         // be from the start of the first read [rStartLength.get(0).getKey()] to the end
@@ -81,59 +85,70 @@ public class ReadsPreprocessingPipelineTestData {
         kvRefBasesiReads = Arrays.asList(
                 KV.of(FakeReferenceSource.bases(spannedReadInterval), Lists.newArrayList(reads.get(1), reads.get(0))),
                 KV.of(FakeReferenceSource.bases(readIntervals.get(2)), Lists.newArrayList(reads.get(2))),
-                KV.of(FakeReferenceSource.bases(readIntervals.get(3)), Lists.newArrayList(reads.get(3))));
+                KV.of(FakeReferenceSource.bases(readIntervals.get(3)), Lists.newArrayList(reads.get(3))),
+                KV.of(FakeReferenceSource.bases(readIntervals.get(4)), Lists.newArrayList(reads.get(4)))
+        );
 
         kvReadsRefBases = Arrays.asList(
-                KV.of(reads.get(0), getBases(reads.get(0).getStart(), reads.get(0).getEnd())),
-                KV.of(reads.get(1), getBases(reads.get(1).getStart(), reads.get(1).getEnd())),
-                KV.of(reads.get(2), getBases(reads.get(2).getStart(), reads.get(2).getEnd())),
-                KV.of(reads.get(3), getBases(reads.get(3).getStart(), reads.get(3).getEnd()))
+                KV.of(reads.get(0), getBases("1", reads.get(0).getStart(), reads.get(0).getEnd())),
+                KV.of(reads.get(1), getBases("1", reads.get(1).getStart(), reads.get(1).getEnd())),
+                KV.of(reads.get(2), getBases("1", reads.get(2).getStart(), reads.get(2).getEnd())),
+                KV.of(reads.get(3), getBases("1", reads.get(3).getStart(), reads.get(3).getEnd())),
+                KV.of(reads.get(4), getBases("2", reads.get(4).getStart(), reads.get(4).getEnd()))
         );
 
         variants = Lists.newArrayList(
                 new SkeletonVariant(new SimpleInterval("1", 170, 180), true, false, new UUID(1001, 1001)),
                 new SkeletonVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
                 new SkeletonVariant(new SimpleInterval("1", 1000000, 1000000), true, false, new UUID(1003, 1003)),
-                new SkeletonVariant(new SimpleInterval("1", 2999998, 3000002), false, true, new UUID(1004, 1004))
+                new SkeletonVariant(new SimpleInterval("1", 2999998, 3000002), false, true, new UUID(1004, 1004)),
+                new SkeletonVariant(new SimpleInterval("2", 1000000, 1000000), false, true, new UUID(1005, 1005))
         );
 
         kvVariantShardRead = Arrays.asList(
                 KV.of(new VariantShard(0, "1"), reads.get(0)),
                 KV.of(new VariantShard(0, "1"), reads.get(1)),
                 KV.of(new VariantShard(10, "1"), reads.get(2)),
-                KV.of(new VariantShard(29, "1"), reads.get(3)),    // The last read spans
-                KV.of(new VariantShard(30, "1"), reads.get(3)));   // two shards.
+                KV.of(new VariantShard(29, "1"), reads.get(3)),     // The second to last read spans
+                KV.of(new VariantShard(30, "1"), reads.get(3)),     // two shards.
+                KV.of(new VariantShard(10, "2"), reads.get(4))
+        );
 
         kvVariantShardVariant = Arrays.asList(
                 KV.of(new VariantShard(0, "1"), variants.get(0)),
                 KV.of(new VariantShard(0, "1"), variants.get(1)),
                 KV.of(new VariantShard(10, "1"), variants.get(2)),
-                KV.of(new VariantShard(29, "1"), variants.get(3)),    // The last variant spans
-                KV.of(new VariantShard(30, "1"), variants.get(3)));   // two shards.
-
+                KV.of(new VariantShard(29, "1"), variants.get(3)),      // The second to last variant spans
+                KV.of(new VariantShard(30, "1"), variants.get(3)),       // two shards.
+                KV.of(new VariantShard(10, "2"), variants.get(4))
+        );
         kvReadVariant = Arrays.asList(
                 KV.of(reads.get(1), variants.get(0)),
                 KV.of(reads.get(1), variants.get(1)),
                 KV.of(reads.get(2), variants.get(2)),
                 KV.of(reads.get(3), variants.get(3)),    // The read and variant span two variant shards, that's
-                KV.of(reads.get(3), variants.get(3))     // why there are two of them (2,3).
+                KV.of(reads.get(3), variants.get(3)),     // why there are two of them (2,3).
+                KV.of(reads.get(4), variants.get(4))
         );
 
         Iterable<Variant> variant10 = Lists.newArrayList(kvReadVariant.get(1).getValue(), kvReadVariant.get(0).getValue());
         Iterable<Variant> variant2 = Lists.newArrayList(kvReadVariant.get(2).getValue());
         Iterable<Variant> variant3 = Lists.newArrayList(kvReadVariant.get(3).getValue());
+        Iterable<Variant> variant4 = Lists.newArrayList(kvReadVariant.get(5).getValue());
 
         kvReadiVariant = Arrays.asList(
                 KV.of(kvReadVariant.get(0).getKey(), variant10),
                 KV.of(kvReadVariant.get(2).getKey(), variant2),
-                KV.of(kvReadVariant.get(3).getKey(), variant3)
+                KV.of(kvReadVariant.get(3).getKey(), variant3),
+                KV.of(kvReadVariant.get(5).getKey(), variant4)
         );
 
         kvReadContextData = Arrays.asList(
                 KV.of(kvReadsRefBases.get(0).getKey(), new ReadContextData(kvReadsRefBases.get(0).getValue(), Lists.newArrayList())),
                 KV.of(kvReadsRefBases.get(1).getKey(), new ReadContextData(kvReadsRefBases.get(1).getValue(), kvReadiVariant.get(0).getValue())),
                 KV.of(kvReadsRefBases.get(2).getKey(), new ReadContextData(kvReadsRefBases.get(2).getValue(), kvReadiVariant.get(1).getValue())),
-                KV.of(kvReadsRefBases.get(3).getKey(), new ReadContextData(kvReadsRefBases.get(3).getValue(), kvReadiVariant.get(2).getValue()))
+                KV.of(kvReadsRefBases.get(3).getKey(), new ReadContextData(kvReadsRefBases.get(3).getValue(), kvReadiVariant.get(2).getValue())),
+                KV.of(kvReadsRefBases.get(4).getKey(), new ReadContextData(kvReadsRefBases.get(4).getValue(), kvReadiVariant.get(3).getValue()))
         );
     }
 
@@ -144,8 +159,8 @@ public class ReadsPreprocessingPipelineTestData {
      * @param clazz either Google model Read or SAMRecord
      * @return a new GAKTRead with either a Google model backed or SAMRecord backed read.
      */
-    public static GATKRead makeRead(KV<Integer, Integer> startLength, int i, Class<?> clazz) {
-        return makeRead(startLength.getKey(), startLength.getValue(), i, clazz);
+    public static GATKRead makeRead(String contig, KV<Integer, Integer> startLength, int i, Class<?> clazz) {
+        return makeRead(contig, startLength.getKey(), startLength.getValue(),i, clazz);
     }
 
     /**
@@ -156,22 +171,22 @@ public class ReadsPreprocessingPipelineTestData {
      * @param clazz either Google model Read or SAMRecord
      * @return a new GAKTRead with either a Google model backed or SAMRecord backed read.
      */
-    public static GATKRead makeRead(int start, int length, int i, Class<?> clazz) {
+    public static GATKRead makeRead(String contig, int start, int length, int i, Class<?> clazz) {
         if (clazz == Read.class) {
-            return ArtificialReadUtils.createGoogleBackedReadWithUUID(new UUID(0, i), Integer.toString(i), start, length);
+            return ArtificialReadUtils.createGoogleBackedReadWithUUID(new UUID(0, i), Integer.toString(i), contig, start, length);
         } else if (clazz == SAMRecord.class) {
-            return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, i), Integer.toString(i), start, length);
+            return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, i), Integer.toString(i), contig, start, length);
         } else {
             throw new GATKException("invalid GATKRead type");
         }
     }
 
-    private SimpleInterval makeInterval(KV<Integer, Integer> startLength) {
-        return new SimpleInterval("1", startLength.getKey(), startLength.getKey() + startLength.getValue() - 1);
+    private SimpleInterval makeInterval(String contig, KV<Integer, Integer> startLength) {
+        return new SimpleInterval(contig, startLength.getKey(), startLength.getKey() + startLength.getValue() - 1);
     }
 
-    private ReferenceBases getBases(int start, int end) {
-        return FakeReferenceSource.bases(new SimpleInterval("1", start, end));
+    private ReferenceBases getBases(String contig, int start, int end) {
+        return FakeReferenceSource.bases(new SimpleInterval(contig, start, end));
     }
 
     public final List<KV<Integer, Integer>> getReadStartLength() {
