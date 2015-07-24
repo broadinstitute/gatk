@@ -7,6 +7,7 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -54,7 +55,7 @@ public class GATKReadCoderUnitTest extends BaseTest implements Serializable {
     public void testGATKReadCoding( final List<GATKRead> reads ) {
         // The simplest way to figure out if a class is coded correctly is to create a PCollection
         // of that type and see if it matches the List version.
-        final Pipeline p = TestPipeline.create();
+        final Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
         // Need to explicitly set the coder to GATKReadCoder, otherwise Create fails to infer

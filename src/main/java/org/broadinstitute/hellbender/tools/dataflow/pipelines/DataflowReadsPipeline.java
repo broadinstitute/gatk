@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.*;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
@@ -75,13 +76,13 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
 
     @Override
     final protected void setupPipeline(Pipeline pipeline) {
-        final ReadsSource readsSource = new ReadsSource(bam, pipeline);
-        final SAMFileHeader header = readsSource.getHeader();
+        final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
+        final SAMFileHeader header = readsDataflowSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
-        final PCollection<GATKRead> preads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        final PCollection<GATKRead> preads = readsDataflowSource.getReadPCollection(intervals, ValidationStringency.SILENT);
 
         final PCollection<?> presult = applyTransformsToPipeline(header, preads);
 

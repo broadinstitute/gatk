@@ -173,11 +173,21 @@ public final class SimpleInterval implements Locatable, Serializable {
     }
 
     /**
+    * @return the 0-based start position (from the GA4GH spec).
+    */
+    public final int getGA4GHStart() {return start - 1; }
+
+    /**
      * @return the 1-based closed-ended end position of the interval on the contig.
      */
     public final int getEnd(){
         return end;
     }
+
+    /**
+    * @return the typical end spans are [zero-start,end) (from the GA4GH spec).
+    */
+    public final int getGA4GHEnd() { return end; }
 
     /**
      * @return number of bases covered by this interval (will always be > 0)
@@ -212,5 +222,35 @@ public final class SimpleInterval implements Locatable, Serializable {
         }
 
         return this.contig.equals(other.getContig()) && this.start <= other.getStart() && this.end >= other.getEnd();
+    }
+
+    /**
+    * getSpanningInterval returns interval that covers all of the locations passd in.
+    * @param locations the locations to be spanned (on a single contig)
+    * @return the minimal span that covers all locations (could be null if no locations are passed in).
+    */
+    public static SimpleInterval getSpanningInterval(Iterable<? extends Locatable> locations) {
+        int min = Integer.MAX_VALUE;
+        int max = 1;
+        String contig = null;
+        for (Locatable l : locations) {
+            if (contig == null) {
+                contig = l.getContig();
+            } else if (!l.getContig().equals(contig)) {
+                throw new IllegalArgumentException("found different contigs from inputs: " + contig + ","
+                     + l.getContig());
+            }
+
+            if (l.getStart() < min) {
+                min = l.getStart();
+            }
+            if (l.getEnd() > max) {
+                max = l.getEnd();
+            }
+        }
+        if (contig == null) {
+            return null;
+        }
+        return new SimpleInterval(contig, min, max);
     }
 }

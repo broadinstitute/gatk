@@ -7,6 +7,7 @@ import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
@@ -18,7 +19,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.List;
 
-public final class ReadsSourceTest extends BaseTest {
+public final class ReadsDataflowSourceTest extends BaseTest {
+    // We also need GCS bucket and Spark tests (#666).
 
     private final File bam = new File(this.getToolTestDataDir(), "count_reads_sorted.bam");
     final String hiSeqBam = "src/test/resources/org/broadinstitute/hellbender/engine/dataflow/ReadsSource/HiSeq.1mb.1RG.2k_lines.bam";
@@ -26,7 +28,7 @@ public final class ReadsSourceTest extends BaseTest {
     @Test
     public void testGetHeaderFromLocalBAM(){
         final SAMFileHeader expectedHeader = SamReaderFactory.makeDefault().open(bam).getFileHeader();
-        ReadsSource source = new ReadsSource(bam.getAbsolutePath(), null);
+        ReadsDataflowSource source = new ReadsDataflowSource(bam.getAbsolutePath(), null);
         SAMFileHeader header = source.getHeader();
         Assert.assertEquals(header, expectedHeader);
     }
@@ -34,7 +36,7 @@ public final class ReadsSourceTest extends BaseTest {
     @Test
     public void testGetReadPCollectionLocal(){
         Pipeline p = GATKTestPipeline.create();
-        ReadsSource source = new ReadsSource(bam.getAbsolutePath(), p);
+        ReadsDataflowSource source = new ReadsDataflowSource(bam.getAbsolutePath(), p);
         DataflowUtils.registerGATKCoders(p);
         PCollection<GATKRead> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)), ValidationStringency.DEFAULT_STRINGENCY);
         PCollection<Long> count = reads.apply(Count.globally());
@@ -46,9 +48,9 @@ public final class ReadsSourceTest extends BaseTest {
     @Test(enabled = false)
     public void testLocalFile() {
         final String bam2 = "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/HiSeq.1mb.1RG.2k_lines.alternate.bam";
-        Pipeline pipeline = TestPipeline.create();
+        Pipeline pipeline = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(pipeline);
-        ReadsSource readsSource = new ReadsSource(bam2, pipeline);
+        ReadsDataflowSource readsSource = new ReadsDataflowSource(bam2, pipeline);
         SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
@@ -64,7 +66,7 @@ public final class ReadsSourceTest extends BaseTest {
     public void testGetInvalidPCollectionLocal() {
         // ValidationStringency.SILENT should prevent any read error even though the input has what looks like invalid reads.
         Pipeline p = GATKTestPipeline.create();
-        ReadsSource source = new ReadsSource(hiSeqBam, p);
+        ReadsDataflowSource source = new ReadsDataflowSource(hiSeqBam, p);
         SAMFileHeader header = source.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         DataflowUtils.registerGATKCoders(p);

@@ -1,9 +1,13 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
+import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
@@ -34,7 +38,7 @@ import java.util.stream.Collectors;
 /**
  * Class to load reads into a PCollection from a cloud storage bucket, a Hadoop filesystem, or a local bam file.
  */
-public final class ReadsSource {
+public final class ReadsDataflowSource {
     private final String bam;
     private final boolean cloudStorageUrl;
     private final boolean hadoopUrl;
@@ -47,7 +51,7 @@ public final class ReadsSource {
      * @param p the pipeline object for the job. This is needed to read a bam from a bucket.
      *          The options inside of the pipeline MUST BE GCSOptions (to get the secret file).
      */
-    public ReadsSource(String bam, Pipeline p){
+    public ReadsDataflowSource(String bam, Pipeline p){
         this.bam = Utils.nonNull(bam);
         this.pipeline = p;
 
@@ -128,5 +132,9 @@ public final class ReadsSource {
             preads = DataflowUtils.getReadsFromLocalBams(pipeline, intervals, stringency, ImmutableList.of(new File(bam)));
         }
         return preads;
+    }
+
+    public static PCollectionView<SAMFileHeader> getHeaderView(Pipeline p, SAMFileHeader readsHeader) {
+        return p.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<SAMFileHeader>asSingleton());
     }
 }

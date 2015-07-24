@@ -38,6 +38,7 @@ task downloadGsaLibFile(type: Download) {
 
 repositories {
     mavenCentral()
+    jcenter()
     maven {
         url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
     }
@@ -113,6 +114,7 @@ dependencies {
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
     testCompile 'org.apache.hadoop:hadoop-minicluster:2.2.0'
+    testCompile "org.mockito:mockito-core:1.10.19"
     testCompile('org.apache.spark:spark-core_2.10:1.4.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
