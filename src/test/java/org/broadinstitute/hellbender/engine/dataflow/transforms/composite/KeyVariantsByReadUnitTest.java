@@ -53,7 +53,6 @@ public final class KeyVariantsByReadUnitTest extends BaseTest {
         PCollection<Variant> pVariant = DataflowTestUtils.pCollectionCreateAndVerify(p, variantList, new VariantCoder());
 
         PCollection<KV<GATKRead, Iterable<Variant>>> result = KeyVariantsByRead.key(pVariant, pReads);
-        //DataflowAssert.that(result).containsInAnyOrder(kvReadiVariant);
         PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(kvReadiVariant)).setCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder())));
         DataflowTestUtils.keyIterableValueMatcher(result, pFinalExpected);
 

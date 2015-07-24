@@ -35,7 +35,8 @@ public final class KeyReadsByUUIDUnitTest extends BaseTest {
                     KV.of(reads.get(0).getUUID(), reads.get(0)),
                     KV.of(reads.get(1).getUUID(), reads.get(1)),
                     KV.of(reads.get(2).getUUID(), reads.get(2)),
-                    KV.of(reads.get(3).getUUID(), reads.get(3))
+                    KV.of(reads.get(3).getUUID(), reads.get(3)),
+                    KV.of(reads.get(4).getUUID(), reads.get(4))
             );
             data[i] = new Object[]{reads, expected};
         }
