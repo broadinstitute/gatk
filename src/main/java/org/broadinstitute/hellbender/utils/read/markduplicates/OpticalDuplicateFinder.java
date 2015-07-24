@@ -33,7 +33,7 @@ public final class OpticalDuplicateFinder implements Serializable {
 
     private final Log log;
 
-    private Boolean isDefaultRegex = false;
+    private final Boolean isDefaultRegex;
 
     public OpticalDuplicateFinder() {
         this(DEFAULT_READ_NAME_REGEX, DEFAULT_OPTICAL_DUPLICATE_DISTANCE);
