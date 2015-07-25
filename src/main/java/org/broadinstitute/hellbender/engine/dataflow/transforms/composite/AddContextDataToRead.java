@@ -6,6 +6,7 @@ import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.*;
 import com.google.common.collect.Lists;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
@@ -47,7 +48,7 @@ public class AddContextDataToRead {
             assertSameReads(pReads, kvReadRefBases, kvReadVariants);
         }
         // We could add a check that all of the reads in kvReadRefBases, pVariants, and pReads are the same.
-        PCollection<KV<UUID, Iterable<Variant>>> UUIDVariants = kvReadVariants.apply(ParDo.of(new DoFn<KV<GATKRead, Iterable<Variant>>, KV<UUID, Iterable<Variant>>>() {
+        PCollection<KV<UUID, Iterable<Variant>>> UUIDVariants = kvReadVariants.apply(ParDo.named("UUIDVariants").of(new DoFnWLog<KV<GATKRead, Iterable<Variant>>, KV<UUID, Iterable<Variant>>>("UUIDVariants") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {
@@ -57,7 +58,7 @@ public class AddContextDataToRead {
             }
         })).setName("KvUUIDiVariants");
 
-        PCollection<KV<UUID, ReferenceBases>> UUIDRefBases = kvReadRefBases.apply(ParDo.of(new DoFn<KV<GATKRead, ReferenceBases>, KV<UUID, ReferenceBases>>() {
+        PCollection<KV<UUID, ReferenceBases>> UUIDRefBases = kvReadRefBases.apply(ParDo.named("UUIDRefBases").of(new DoFnWLog<KV<GATKRead, ReferenceBases>, KV<UUID, ReferenceBases>>("UUIDRefBases") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {
@@ -73,7 +74,7 @@ public class AddContextDataToRead {
                 .of(variantTag, UUIDVariants)
                 .and(referenceTag, UUIDRefBases).apply(CoGroupByKey.<UUID>create());
 
-        PCollection<KV<UUID, ReadContextData>> UUIDcontext = coGbkInput.apply(ParDo.of(new DoFn<KV<UUID, CoGbkResult>, KV<UUID, ReadContextData>>() {
+        PCollection<KV<UUID, ReadContextData>> UUIDcontext = coGbkInput.apply(ParDo.named("UUIDcontext").of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<UUID, ReadContextData>>("UUIDcontext") {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -105,8 +106,9 @@ public class AddContextDataToRead {
                 .of(readTag, UUIDRead)
                 .and(contextDataTag, UUIDcontext).apply(CoGroupByKey.<UUID>create());
 
-        return coGbkfull.apply(ParDo.of(new DoFn<KV<UUID, CoGbkResult>, KV<GATKRead, ReadContextData>>() {
+        return coGbkfull.apply(ParDo.named("coGbkfull").of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<GATKRead, ReadContextData>>("coGbkfull") {
             private static final long serialVersionUID = 1L;
+
             @Override
             public void processElement(ProcessContext c) throws Exception {
                 Iterable<GATKRead> reads = c.element().getValue().getAll(readTag);
@@ -149,8 +151,9 @@ public class AddContextDataToRead {
         PCollection<UUID> uniqueUUIDs = flatUUIDs.apply(RemoveDuplicates.<UUID>create());
         PCollection<Long> uniqueUUIDCount = uniqueUUIDs.apply(Count.<UUID>globally());
 
-        uniqueUUIDCount.apply(ParDo.withSideInputs(
-                readCount, readRefBasesCount, readVariantsCount).of(new DoFn<Long, Long>() {
+        uniqueUUIDCount.apply(ParDo.named("assertSameReads")
+            .withSideInputs(readCount, readRefBasesCount, readVariantsCount)
+            .of(new DoFnWLog<Long, Long>("assertSameReads") {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -170,7 +173,7 @@ public class AddContextDataToRead {
 
         @Override
         public PCollection<UUID> apply(PCollection<GATKRead> input) {
-            return input.apply(ParDo.of(new DoFn<GATKRead, UUID>() {
+            return input.apply(ParDo.named("StripToUUID").of(new DoFnWLog<GATKRead, UUID>("StripToUUID") {
                 private static final long serialVersionUID = 1L;
 
                 @Override

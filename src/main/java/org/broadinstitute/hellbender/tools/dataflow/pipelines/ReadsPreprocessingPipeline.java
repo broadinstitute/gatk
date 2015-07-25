@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
@@ -111,7 +112,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         @Override
         public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
             return input.apply(ParDo.named("MarkDuplicates").
-                    of(new DoFn<GATKRead, GATKRead>() {
+                    of(new DoFnWLog<GATKRead, GATKRead>("MarkDuplicatesStub") {
                         private static final long serialVersionUID = 1L;
                         @Override
                         public void processElement( ProcessContext c ) throws Exception {
@@ -132,7 +133,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         @Override
         public PCollection<RecalibrationTables> apply( PCollection<KV<GATKRead, ReadContextData>> input ) {
             return input.apply(ParDo.named("BaseRecalibrator").
-                    of(new DoFn<KV<GATKRead, ReadContextData>, RecalibrationTables>() {
+                    of(new DoFnWLog<KV<GATKRead, ReadContextData>, RecalibrationTables>("BaseRecalibratorStub") {
                         private static final long serialVersionUID = 1L;
 
                         @Override
@@ -156,7 +157,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         @Override
         public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
             return input.apply(ParDo.named("ApplyBQSR").
-                    of(new DoFn<GATKRead, GATKRead>() {
+                    of(new DoFnWLog<GATKRead, GATKRead>("ApplyBQSRStub") {
                         private static final long serialVersionUID = 1L;
 
                         @Override
