@@ -76,9 +76,16 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-        final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
-        final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
+        final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
+
+        // this is the normal approach.
+        //final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+
+        // trying something different
+        final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, 1_000_000, pipeline);
+
+        /*
         // Apply MarkDuplicates to produce updated GATKReads.
         final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
 
@@ -96,6 +103,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
         final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
         SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
+        */
     }
 
     // NOTE: need a way to ensure that certain tools are guaranteed to have a header -- one option is
