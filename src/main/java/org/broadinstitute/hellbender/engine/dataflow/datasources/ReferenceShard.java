@@ -18,7 +18,7 @@ public final class ReferenceShard implements Serializable {
     private final int shardNumber; // shardNumber is zero-based.
     private final String contig;
 
-    public static final int REFERENCE_SHARD_SIZE = 100000; // This value is subject to change (by humans).
+    public static final int REFERENCE_SHARD_SIZE = 1000000; // This value is subject to change (by humans).
 
     public ReferenceShard(int shardNumber, String contig) {
         this.shardNumber = shardNumber;
