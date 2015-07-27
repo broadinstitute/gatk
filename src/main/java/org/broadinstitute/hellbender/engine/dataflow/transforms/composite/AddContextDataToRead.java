@@ -48,7 +48,7 @@ public class AddContextDataToRead {
             assertSameReads(pReads, kvReadRefBases, kvReadVariants);
         }
         // We could add a check that all of the reads in kvReadRefBases, pVariants, and pReads are the same.
-        PCollection<KV<UUID, Iterable<Variant>>> UUIDVariants = kvReadVariants.apply(ParDo.named("UUIDVariants").of(new DoFnWLog<KV<GATKRead, Iterable<Variant>>, KV<UUID, Iterable<Variant>>>("UUIDVariants") {
+        PCollection<KV<UUID, Iterable<Variant>>> UUIDVariants = kvReadVariants.apply(ParDo.named("KvUUIDVariants").of(new DoFnWLog<KV<GATKRead, Iterable<Variant>>, KV<UUID, Iterable<Variant>>>("KvUUIDVariants") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {
@@ -58,7 +58,7 @@ public class AddContextDataToRead {
             }
         })).setName("KvUUIDiVariants");
 
-        PCollection<KV<UUID, ReferenceBases>> UUIDRefBases = kvReadRefBases.apply(ParDo.named("UUIDRefBases").of(new DoFnWLog<KV<GATKRead, ReferenceBases>, KV<UUID, ReferenceBases>>("UUIDRefBases") {
+        PCollection<KV<UUID, ReferenceBases>> UUIDRefBases = kvReadRefBases.apply(ParDo.named("KvUUIDRefBases").of(new DoFnWLog<KV<GATKRead, ReferenceBases>, KV<UUID, ReferenceBases>>("KvUUIDRefBases") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {
@@ -74,7 +74,7 @@ public class AddContextDataToRead {
                 .of(variantTag, UUIDVariants)
                 .and(referenceTag, UUIDRefBases).apply(CoGroupByKey.<UUID>create());
 
-        PCollection<KV<UUID, ReadContextData>> UUIDcontext = coGbkInput.apply(ParDo.named("UUIDcontext").of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<UUID, ReadContextData>>("UUIDcontext") {
+        PCollection<KV<UUID, ReadContextData>> UUIDcontext = coGbkInput.apply(ParDo.named("kVUUIDReadContextData").of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<UUID, ReadContextData>>("kVUUIDReadContextData") {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -106,7 +106,7 @@ public class AddContextDataToRead {
                 .of(readTag, UUIDRead)
                 .and(contextDataTag, UUIDcontext).apply(CoGroupByKey.<UUID>create());
 
-        return coGbkfull.apply(ParDo.named("coGbkfull").of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<GATKRead, ReadContextData>>("coGbkfull") {
+        return coGbkfull.apply(ParDo.named("joinReadwithContextData").of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<GATKRead, ReadContextData>>("joinReadwithContextData") {
             private static final long serialVersionUID = 1L;
 
             @Override
