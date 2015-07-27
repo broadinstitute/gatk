@@ -5,6 +5,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
@@ -27,7 +28,7 @@ public class KeyVariantByOverlappingVariantShard extends PTransform<PCollection<
 
     @Override
     public PCollection<KV<VariantShard, Variant>> apply( PCollection<Variant> input ) {
-        return input.apply(ParDo.of(new DoFn<Variant, KV<VariantShard, Variant>>() {
+        return input.apply(ParDo.of(new DoFnWLog<Variant, KV<VariantShard, Variant>>("KeyVariantByOverlappingVariantShard") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement( ProcessContext c ) throws Exception {

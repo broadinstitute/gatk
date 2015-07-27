@@ -8,6 +8,7 @@ import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.Variant;
@@ -67,7 +68,7 @@ public class RemoveDuplicateReadVariantPairs extends PTransform<PCollection<KV<G
             // Now join the stuff we care about back in.
             // Start by making KV<ReadUUID, KV<VariantUUID, Variant>> and joining that to KV<ReadUUID, Iterable<VariantUUID>>
             PCollection<KV<UUID, KV<UUID, Variant>>> variantToBeJoined =
-                    readVariants.apply(ParDo.of(new DoFn<KV<GATKRead, Variant>, KV<UUID, KV<UUID, Variant>>>() {
+                    readVariants.apply(ParDo.of(new DoFnWLog<KV<GATKRead, Variant>, KV<UUID, KV<UUID, Variant>>>("RemoveReadVariantDupesUtility") {
                         private static final long serialVersionUID = 1L;
                         @Override
                         public void processElement(ProcessContext c) throws Exception {
@@ -133,7 +134,7 @@ public class RemoveDuplicateReadVariantPairs extends PTransform<PCollection<KV<G
                     .of(justReadTag, kReads)
                     .and(iterableVariant, matchedVariants).apply(CoGroupByKey.<UUID>create());
 
-            return coGbkLast.apply(ParDo.of(new DoFn<KV<UUID, CoGbkResult>, KV<GATKRead, Iterable<Variant>>>() {
+            return coGbkLast.apply(ParDo.of(new DoFnWLog<KV<UUID, CoGbkResult>, KV<GATKRead, Iterable<Variant>>>("addBackReads") {
                 private static final long serialVersionUID = 1L;
                 @Override
                 public void processElement(ProcessContext c) throws Exception {

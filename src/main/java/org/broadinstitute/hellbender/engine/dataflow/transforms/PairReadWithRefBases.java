@@ -5,6 +5,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -41,7 +42,7 @@ public class PairReadWithRefBases extends PTransform<PCollection<KV<ReferenceBas
 
     @Override
     public PCollection<KV<GATKRead, ReferenceBases>> apply(PCollection<KV<ReferenceBases, Iterable<GATKRead>>> input) {
-        return input.apply(ParDo.of(new DoFn<KV<ReferenceBases, Iterable<GATKRead>>, KV<GATKRead, ReferenceBases>>() {
+        return input.apply(ParDo.of(new DoFnWLog<KV<ReferenceBases, Iterable<GATKRead>>, KV<GATKRead, ReferenceBases>>("PairReadWithRefBases") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {

@@ -5,6 +5,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.UUID;
@@ -18,7 +19,7 @@ public class KeyReadsByUUID extends PTransform<PCollection<GATKRead>, PCollectio
 
     @Override
     public PCollection<KV<UUID, GATKRead>> apply(PCollection<GATKRead> input) {
-        return input.apply(ParDo.of(new DoFn<GATKRead, KV<UUID, GATKRead>>() {
+        return input.apply(ParDo.of(new DoFnWLog<GATKRead, KV<UUID, GATKRead>>("KeyReadsByUUID") {
             private static final long serialVersionUID = 1L;
             @Override
             public void processElement(ProcessContext c) throws Exception {

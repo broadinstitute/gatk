@@ -5,6 +5,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -39,7 +40,7 @@ public final class DataflowReadFilter extends PTransform<PCollection<GATKRead>, 
     public PCollection<GATKRead> apply(PCollection<GATKRead> in) {
         return in.apply(ParDo
                 .named(readFilter.getClass().getSimpleName())
-                .of(new DoFn<GATKRead, GATKRead>() {
+                .of(new DoFnWLog<GATKRead, GATKRead>("readFilter") {
                     private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(DoFn<GATKRead,GATKRead>.ProcessContext c) throws Exception {

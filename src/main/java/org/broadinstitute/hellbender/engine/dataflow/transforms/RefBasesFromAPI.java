@@ -7,6 +7,7 @@ import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
@@ -32,7 +33,7 @@ public class RefBasesFromAPI {
                                                                                        RefAPIMetadata refAPIMetadata) {
         PCollectionView<RefAPIMetadata> dataView = reads.getPipeline().apply(Create.of(refAPIMetadata)).apply(View.<RefAPIMetadata>asSingleton());
         return reads.apply(ParDo.withSideInputs(dataView).of(
-                new DoFn<KV<ReferenceShard, Iterable<GATKRead>>, KV<ReferenceBases, Iterable<GATKRead>>>() {
+                new DoFnWLog<KV<ReferenceShard, Iterable<GATKRead>>, KV<ReferenceBases, Iterable<GATKRead>>>("RefBasesFromAPI") {
                     private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(ProcessContext c) throws Exception {
