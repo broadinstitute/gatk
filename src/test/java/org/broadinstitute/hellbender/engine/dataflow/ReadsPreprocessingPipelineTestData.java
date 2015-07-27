@@ -15,6 +15,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,9 +49,11 @@ public class ReadsPreprocessingPipelineTestData {
      * @param clazz The class to be used to back the GATKRead, either Read.class, or SAMRecord.class.
      */
     public ReadsPreprocessingPipelineTestData(Class<?> clazz) {
-        readStartLength = Arrays.asList(KV.of(100, 50), KV.of(140, 100), KV.of(1000000, 10), KV.of(2999999, 10));
+        final int shardRatio = ReferenceShard.REFERENCE_SHARD_SIZE / VariantShard.VARIANT_SHARDSIZE;
+        readStartLength = Arrays.asList(KV.of(100, 50), KV.of(140, 100),
+                KV.of(ReferenceShard.REFERENCE_SHARD_SIZE, 10),
+                KV.of(3*ReferenceShard.REFERENCE_SHARD_SIZE - 1, 10));
 
-        // TODO Make reads construction more general (issue #687).
         reads = Lists.newArrayList(
                 makeRead("1", readStartLength.get(0), 1, clazz),
                 makeRead("1", readStartLength.get(1), 2, clazz),
@@ -60,9 +64,9 @@ public class ReadsPreprocessingPipelineTestData {
 
         kvRefShardiReads =  Arrays.asList(
                 KV.of(new ReferenceShard(0, "1"), Lists.newArrayList(reads.get(1), reads.get(0))),
-                KV.of(new ReferenceShard(10, "1"), Lists.newArrayList(reads.get(2))),
-                KV.of(new ReferenceShard(29, "1"), Lists.newArrayList(reads.get(3))),
-                KV.of(new ReferenceShard(10, "2"), Lists.newArrayList(reads.get(4)))
+                KV.of(new ReferenceShard(1, "1"), Lists.newArrayList(reads.get(2))),
+                KV.of(new ReferenceShard(2, "1"), Lists.newArrayList(reads.get(3))),
+                KV.of(new ReferenceShard(1, "2"), Lists.newArrayList(reads.get(4)))
                 );
 
         readIntervals = Lists.newArrayList(
@@ -100,27 +104,30 @@ public class ReadsPreprocessingPipelineTestData {
         variants = Lists.newArrayList(
                 new SkeletonVariant(new SimpleInterval("1", 170, 180), true, false, new UUID(1001, 1001)),
                 new SkeletonVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
-                new SkeletonVariant(new SimpleInterval("1", 1000000, 1000000), true, false, new UUID(1003, 1003)),
-                new SkeletonVariant(new SimpleInterval("1", 2999998, 3000002), false, true, new UUID(1004, 1004)),
-                new SkeletonVariant(new SimpleInterval("2", 1000000, 1000000), false, true, new UUID(1005, 1005))
+                new SkeletonVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
+                        ReferenceShard.REFERENCE_SHARD_SIZE), true, false, new UUID(1003, 1003)),
+                new SkeletonVariant(new SimpleInterval("1", 3*ReferenceShard.REFERENCE_SHARD_SIZE - 2,
+                        3*ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true, new UUID(1004, 1004)),
+                new SkeletonVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
+                        ReferenceShard.REFERENCE_SHARD_SIZE), false, true, new UUID(1005, 1005))
         );
 
         kvVariantShardRead = Arrays.asList(
                 KV.of(new VariantShard(0, "1"), reads.get(0)),
                 KV.of(new VariantShard(0, "1"), reads.get(1)),
-                KV.of(new VariantShard(10, "1"), reads.get(2)),
-                KV.of(new VariantShard(29, "1"), reads.get(3)),     // The second to last read spans
-                KV.of(new VariantShard(30, "1"), reads.get(3)),     // two shards.
-                KV.of(new VariantShard(10, "2"), reads.get(4))
+                KV.of(new VariantShard(shardRatio, "1"), reads.get(2)),
+                KV.of(new VariantShard(3*shardRatio - 1, "1"), reads.get(3)),     // The second to last read spans
+                KV.of(new VariantShard(3*shardRatio, "1"), reads.get(3)),     // two shards.
+                KV.of(new VariantShard(shardRatio, "2"), reads.get(4))
         );
 
         kvVariantShardVariant = Arrays.asList(
                 KV.of(new VariantShard(0, "1"), variants.get(0)),
                 KV.of(new VariantShard(0, "1"), variants.get(1)),
-                KV.of(new VariantShard(10, "1"), variants.get(2)),
-                KV.of(new VariantShard(29, "1"), variants.get(3)),      // The second to last variant spans
-                KV.of(new VariantShard(30, "1"), variants.get(3)),       // two shards.
-                KV.of(new VariantShard(10, "2"), variants.get(4))
+                KV.of(new VariantShard(shardRatio, "1"), variants.get(2)),
+                KV.of(new VariantShard(3*shardRatio - 1, "1"), variants.get(3)),      // The second to last variant spans
+                KV.of(new VariantShard(3*shardRatio, "1"), variants.get(3)),       // two shards.
+                KV.of(new VariantShard(shardRatio, "2"), variants.get(4))
         );
         kvReadVariant = Arrays.asList(
                 KV.of(reads.get(1), variants.get(0)),
@@ -239,5 +246,12 @@ public class ReadsPreprocessingPipelineTestData {
 
     public List<KV<VariantShard, Variant>> getKvVariantShardVariant() {
         return kvVariantShardVariant;
+    }
+
+
+    @Test
+    public static void verifyDivisibilityWithRefShard() {
+        // We want the ratio between the two shard types to be an int so we can use them more easily for testing.
+        Assert.assertEquals(Math.floorMod(ReferenceShard.REFERENCE_SHARD_SIZE, VariantShard.VARIANT_SHARDSIZE), 0);
     }
 }
