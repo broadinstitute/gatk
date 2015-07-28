@@ -1,20 +1,20 @@
-package org.broadinstitute.hellbender.tools.dataflow.transforms;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 
-import com.google.cloud.dataflow.sdk.coders.*;
-import com.google.cloud.dataflow.sdk.transforms.*;
+import com.google.cloud.dataflow.sdk.coders.KvCoder;
+import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
+import com.google.cloud.dataflow.sdk.transforms.PTransform;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.PairedEndsCoder;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.List;
@@ -23,54 +23,11 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * The main transform for MarkDuplicates. Takes reads, returns reads with some reads marked as duplicates.
+ * Utility classes and functions for Mark Duplicates.
  */
-public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
-    private static final long serialVersionUID = 1l;
-
+final class MarkDuplicatesUtils {
     //Bases below this quality will not be included in picking the best read from a set of duplicates.
-    private static final int MIN_BASE_QUAL = 15;
-
-    //private vs non-primary alignments
-    private enum ReadsPartition {
-        PRIMARY, NOT_PRIMARY
-    }
-
-    /**
-     * The header for all reads processed.
-     */
-    private final PCollectionView<SAMFileHeader> header;
-
-    public MarkDuplicates(final PCollectionView<SAMFileHeader> header) {
-        this.header = header;
-    }
-
-    @Override
-    public PCollection<GATKRead> apply(final PCollection<GATKRead> preads) {
-        final PCollectionList<GATKRead> readsPartitioned = partitionReadsByPrimaryNonPrimaryAlignment(preads);
-
-        final PCollection<GATKRead> fragments = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
-        final PCollection<GATKRead> fragmentsTransformed = transformFragments(header, fragments);
-
-        final PCollection<GATKRead> pairs = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
-        final PCollection<GATKRead> pairsTransformed = transformReads(header, pairs);
-
-        //no work on those
-        final PCollection<GATKRead> not_primary = readsPartitioned.get(ReadsPartition.NOT_PRIMARY.ordinal());
-
-        return PCollectionList.of(fragmentsTransformed).and(pairsTransformed).and(not_primary).apply(Flatten.<GATKRead>pCollections());
-    }
-
-    private static PCollectionList<GATKRead> partitionReadsByPrimaryNonPrimaryAlignment(PCollection<GATKRead> preads) {
-        return preads.apply(Partition.of(2, new Partition.PartitionFn<GATKRead>() {
-            private static final long serialVersionUID = 1l;
-
-            @Override
-            public int partitionFor(final GATKRead read, final int n) {
-                return read.isSecondaryAlignment() || read.isSupplementaryAlignment() || read.isUnmapped() ? ReadsPartition.NOT_PRIMARY.ordinal() : ReadsPartition.PRIMARY.ordinal();
-            }
-        }));
-    }
+    public static final int MIN_BASE_QUAL = 15;
 
     /**
      * (1) Reads are grouped by read group and read name.
@@ -83,7 +40,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
      * (5) The remained paired ends are scored and all but the highest scoring are marked as
      *     duplicates. Both reads in the pair are emitted.
      */
-    private PCollection<GATKRead> transformReads(final PCollectionView<SAMFileHeader> headerPcolView, final PCollection<GATKRead> pairs) {
+    static PCollection<GATKRead> transformReads(final PCollectionView<SAMFileHeader> headerPcolView, final PCollection<GATKRead> pairs) {
         final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForPairs = makeKeysForPairs(headerPcolView);
         final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> markGroupedDuplicatePairs = markGroupedDuplicatePairs(headerPcolView);
         final PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markPairedEnds = markPairedEnds();
@@ -100,7 +57,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
     /**
      * Makes keys for read pairs. To be grouped by in the next step.
      */
-    private PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForPairs(final PCollectionView<SAMFileHeader> headerPcolView) {
+    static PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForPairs(final PCollectionView<SAMFileHeader> headerPcolView) {
         return ParDo
                 .named("make keys for pairs")
                 .withSideInputs(headerPcolView)
@@ -112,7 +69,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
                         final GATKRead record = context.element();
                         if (ReadUtils.readHasMappedMate(record)) {
                             final SAMFileHeader h = context.sideInput(headerPcolView);
-                            final String key = MarkDuplicatesReadsKey.keyForPair(h, record);
+                            final String key = ReadsKey.keyForPair(h, record);
                             final KV<String, GATKRead> kv = KV.of(key, record);
                             context.output(kv);
                         }
@@ -120,7 +77,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
                 });
     }
 
-    private PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> markGroupedDuplicatePairs(final PCollectionView<SAMFileHeader> headerPcolView) {
+    static PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> markGroupedDuplicatePairs(final PCollectionView<SAMFileHeader> headerPcolView) {
         return ParDo
                 .named("pair ends")
                 .withSideInputs(headerPcolView)
@@ -130,7 +87,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
                     public void processElement(final ProcessContext context) throws Exception {
                         final SAMFileHeader header = context.sideInput(headerPcolView);
                         final List<GATKRead> sorted = Lists.newArrayList(context.element().getValue());
-                        sorted.sort(new CoordinateOrder(header));
+                        sorted.sort(new GATKOrder(header));
                         PairedEnds pair = null;
                         //Records are sorted, we iterate over them and pair them up.
                         for (final GATKRead record : sorted) {
@@ -150,7 +107,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
     }
 
 
-    private PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markPairedEnds() {
+    static PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markPairedEnds() {
         return ParDo
                 .named("mark paired ends")
                 .of(new DoFn<KV<String, Iterable<PairedEnds>>, GATKRead>() {
@@ -195,7 +152,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
      *   (b) if at least one is marked as paired, mark all fragments as duplicates.
      *  Note: Emit only the fragments, as the paired reads are handled separately.
      */
-    PCollection<GATKRead> transformFragments(final PCollectionView<SAMFileHeader> headerPcolView, final PCollection<GATKRead> fragments) {
+    static PCollection<GATKRead> transformFragments(final PCollectionView<SAMFileHeader> headerPcolView, final PCollection<GATKRead> fragments) {
         final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForFragments =  makeKeysForFragments(headerPcolView);
         final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<GATKRead>> markGroupedDuplicateFragments = markGroupedDuplicateFragments();
         return fragments
@@ -204,7 +161,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
                 .apply(markGroupedDuplicateFragments);//no need to set up coder for Read (uses GenericJsonCoder)
     }
 
-    private PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<GATKRead>> markGroupedDuplicateFragments() {
+    static PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<GATKRead>> markGroupedDuplicateFragments() {
         return ParDo.named("mark dups")
                 .of(new DoFn<KV<String, Iterable<GATKRead>>, GATKRead>() {
                     private static final long serialVersionUID = 1l;
@@ -219,7 +176,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
                         // Note the we emit only fragments from this mapper.
                         if (byPairing.get(true).isEmpty()) {
                             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> score(read)).immutableSortedCopy(byPairing.get(false));
+                            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.score(read)).immutableSortedCopy(byPairing.get(false));
                             if (!frags.isEmpty()) {
                                 context.output(frags.get(0));                         //highest score - just emit
                                 for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
@@ -241,7 +198,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
     /**
      * Groups reads by keys - keys are tuples of (library, contig, position, orientation).
      */
-    PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForFragments(final PCollectionView<SAMFileHeader> headerPcolView) {
+    static PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForFragments(final PCollectionView<SAMFileHeader> headerPcolView) {
         return ParDo
                 .named("make keys for reads")
                 .withSideInputs(headerPcolView)
@@ -252,7 +209,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
                         final GATKRead record = context.element();
                         record.setIsDuplicate(false);
                         final SAMFileHeader h = context.sideInput(headerPcolView);
-                        final String key = MarkDuplicatesReadsKey.keyForFragment(h, record);
+                        final String key = ReadsKey.keyForFragment(h, record);
                         final KV<String, GATKRead> kv = KV.of(key, record);
                         context.output(kv);
                     }
@@ -263,7 +220,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
      * How to assign a score to the read in MarkDuplicates (so that we pick the best one to be the non-duplicate).
      */
     //Note: copied from htsjdk.samtools.DuplicateScoringStrategy
-    private static int score(final GATKRead record) {
+    static int score(final GATKRead record) {
         if (record == null) {
             return 0;
         } else {
@@ -279,88 +236,14 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
     }
 
     /**
-     * Struct-like class to store information about the paired reads for mark duplicates.
+     * GATKRead comparator that compares based on mapping position followed by SAM flags.
      */
-    private static final class PairedEnds {
-        private GATKRead first, second;
-
-        PairedEnds(final GATKRead first) {
-            this.first = first;
-        }
-
-        public static PairedEnds of(final GATKRead first) {
-            return new PairedEnds(first);
-        }
-
-        public PairedEnds and(final GATKRead second) {
-            if (second != null &&
-                    ReadUtils.getStrandedUnclippedStart(first) > ReadUtils.getStrandedUnclippedStart(second)) {
-
-                this.second = this.first;
-                this.first = second;
-            } else {
-                this.second = second;
-            }
-            return this;
-        }
-
-        public String key(final SAMFileHeader header) {
-            return MarkDuplicatesReadsKey.keyForPairedEnds(header, first, second);
-        }
-
-        public GATKRead first() {
-            return first;
-        }
-
-        public GATKRead second() {
-            return second;
-        }
-
-        public int score() {
-            return MarkDuplicates.score(first) + MarkDuplicates.score(second);
-        }
-    }
-
-    /**
-     * Special coder for the PairedEnds class.
-     */
-    private static final class PairedEndsCoder extends CustomCoder<PairedEnds> {
-        private static final long serialVersionUID = 1L;
-
-        private static final CustomCoder<GATKRead> readCoder = new GATKReadCoder();
-
-        @Override
-        public void encode( PairedEnds value, OutputStream outStream, Context context ) throws CoderException, IOException {
-            if ( value == null || value.first() == null ) {
-                throw new IOException("nothing to encode");
-            }
-            final boolean isCompletePair = value.second() != null ;
-            SerializableCoder.of(Boolean.class).encode(isCompletePair, outStream, context);
-
-            readCoder.encode(value.first, outStream, context);
-            if ( isCompletePair ) {
-                readCoder.encode(value.second, outStream, context);
-            }
-        }
-
-        @Override
-        public PairedEnds decode( InputStream inStream, Context context ) throws CoderException, IOException {
-            final boolean isCompletePair = SerializableCoder.of(Boolean.class).decode(inStream, context);
-
-            final PairedEnds pairedEnds = PairedEnds.of(readCoder.decode(inStream, context));
-            if ( isCompletePair ) {
-                pairedEnds.and(readCoder.decode(inStream, context));
-            }
-            return pairedEnds;
-        }
-    }
-
-    // TODO: extract this into an independent class, and unify with other comparators in the codebase
-    private static final class CoordinateOrder implements Comparator<GATKRead>, Serializable {
+    final static class GATKOrder implements Comparator<GATKRead>, Serializable {
         private static final long serialVersionUID = 1l;
         private final SAMFileHeader header;
+        // TODO: Unify with other comparators in the codebase
 
-        public CoordinateOrder(final SAMFileHeader header) {
+        public GATKOrder(final SAMFileHeader header) {
             this.header = header;
         }
 
@@ -405,5 +288,4 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
             return res12;
         }
     }
-
 }
