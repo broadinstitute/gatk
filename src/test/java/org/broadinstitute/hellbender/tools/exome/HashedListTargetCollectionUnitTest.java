@@ -15,39 +15,39 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Unit tests for {@link HashedListExonCollection}.
+ * Unit tests for {@link HashedListTargetCollection}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HashedListExonCollectionUnitTest extends BaseTest {
+public final class HashedListTargetCollectionUnitTest extends BaseTest {
 
     /**
-     * Average exon size for randomly generated test data.
+     * Average target size for randomly generated test data.
      */
     private static final int averageExonSize = 100;
 
     /**
-     * Std. dev. for exon size for randomly generated test data.
+     * Std. dev. for target size for randomly generated test data.
      */
     private static final float sdExonSize = 20;
 
     /**
-     * Average inter-exon gap in bp for randomly generated test data.
+     * Average inter-target gap in bp for randomly generated test data.
      */
     private static final int averageExonIntergapSize = 100;
 
     /**
-     * Std. dev. for inter-exon gap in bp for randomly generated test data.
+     * Std. dev. for inter-target gap in bp for randomly generated test data.
      */
     private static final float sdExonIntergapSize = 20;
 
     /**
-     * Minimum inter-exon gap size for randomly generated test data.
+     * Minimum inter-target gap size for randomly generated test data.
      */
     private static final int minimumExonIntergapSize = 20;
 
     /**
-     * Minimum exon size for randomly generated test data.
+     * Minimum target size for randomly generated test data.
      */
     private static final int minimumExonSize = 1;
 
@@ -59,10 +59,18 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
      */
     private List<SimpleInterval> nonOverlappingExomeIntervals;
 
+    /**
+     * A HashedListTargetCollection of the test intervals.
+     * <p>
+     *     Initialized before all tests in {@link #setUp}.
+     * </p>
+     */
+    private HashedListTargetCollection<SimpleInterval> exonDB;
+
     @BeforeClass
     public void setUp() {
         nonOverlappingExomeIntervals = new ArrayList<>(100);
-        final Random rdn = new Random(13);// some "random" but fix seed to make sure errors are deterministic.
+        final Random rdn = new Random(13);// some "random" but fixed seed to make sure errors are deterministic.
         for (int i = 0; i < ExomeToolsTestUtils.REFERENCE_DICTIONARY.size(); i++) {
             int current = 0;
             final SAMSequenceRecord sequence = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(i);
@@ -85,21 +93,22 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
             }
         }
         Collections.sort(nonOverlappingExomeIntervals, IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
+        exonDB = new HashedListTargetCollection<>(nonOverlappingExomeIntervals);
     }
 
     @Test
     public void testCorrectInitialization() {
-        new HashedListExonCollection<>(nonOverlappingExomeIntervals);
+        new HashedListTargetCollection<>(nonOverlappingExomeIntervals);
     }
 
     @Test
     public void testCorrectInitializationSortingContigsByName() {
         final List<SimpleInterval> sortedLexicographically = nonOverlappingExomeIntervals.stream()
                 .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList());
-        final HashedListExonCollection<SimpleInterval> exonCollection = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        Assert.assertEquals(exonCollection.exonCount(),nonOverlappingExomeIntervals.size());
+        final HashedListTargetCollection<SimpleInterval> exonCollection = new HashedListTargetCollection<>(nonOverlappingExomeIntervals);
+        Assert.assertEquals(exonCollection.targetCount(),nonOverlappingExomeIntervals.size());
         for (int i = 0; i < nonOverlappingExomeIntervals.size(); i++) {
-            Assert.assertEquals(exonCollection.exon(i),sortedLexicographically.get(i));
+            Assert.assertEquals(exonCollection.target(i),sortedLexicographically.get(i));
         }
     }
 
@@ -133,10 +142,10 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
             }
         }
         Assert.assertTrue(foundOutOfOrder,"the order randomization step is not working");
-        final HashedListExonCollection<SimpleInterval> exonCollection = new HashedListExonCollection<>(unsortedIntervals);
-        Assert.assertEquals(exonCollection.exonCount(),nonOverlappingExomeIntervals.size());
+        final HashedListTargetCollection<SimpleInterval> exonCollection = new HashedListTargetCollection<>(unsortedIntervals);
+        Assert.assertEquals(exonCollection.targetCount(),nonOverlappingExomeIntervals.size());
         for (int i = 0; i < nonOverlappingExomeIntervals.size(); i++) {
-            Assert.assertEquals(exonCollection.exon(i),nonOverlappingExomeIntervals.get(i));
+            Assert.assertEquals(exonCollection.target(i),nonOverlappingExomeIntervals.get(i));
         }
     }
 
@@ -147,26 +156,26 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
 
     @Test
     public void testCorrectEmptyInitialization() {
-        new HashedListExonCollection<>(Collections.emptyList());
+        new HashedListTargetCollection<>(Collections.emptyList());
     }
 
     @Test(expectedExceptions = {IllegalArgumentException.class})
     public void testIncorrectInitialization1() {
-        new HashedListExonCollection<>(null);
+        new HashedListTargetCollection<>(null);
     }
 
     @Test(expectedExceptions = {IllegalArgumentException.class})
     public void testIncorrectInitialization2() {
         final List<SimpleInterval> intervals = new ArrayList<>(nonOverlappingExomeIntervals);
         intervals.add(nonOverlappingExomeIntervals.size() >> 1,null);
-        new HashedListExonCollection<>(intervals);
+        new HashedListTargetCollection<>(intervals);
     }
 
     @Test(expectedExceptions = {IllegalArgumentException.class})
     public void testIncorrectInitialization5() {
         final List<SimpleInterval> intervals = new ArrayList<>(nonOverlappingExomeIntervals);
         intervals.add(1,intervals.get(0));
-        new HashedListExonCollection<>(intervals);
+        new HashedListTargetCollection<>(intervals);
     }
 
     @Test(expectedExceptions = {IllegalArgumentException.class})
@@ -174,13 +183,12 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
         final List<SimpleInterval> intervals = new ArrayList<>(nonOverlappingExomeIntervals);
         final SimpleInterval interval = intervals.get(0);
         intervals.add(1, new SimpleInterval(interval));
-        new HashedListExonCollection<>(intervals);
+        new HashedListTargetCollection<>(intervals);
     }
 
     @Test(dependsOnMethods={"testCorrectInitialization"})
     public void testExonCount() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        Assert.assertEquals(exonDB.exonCount(),nonOverlappingExomeIntervals.size());
+        Assert.assertEquals(exonDB.targetCount(),nonOverlappingExomeIntervals.size());
     }
 
     @Test(dependsOnMethods={"testCorrectInitialization"})
@@ -189,14 +197,12 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
         for (final SimpleInterval loc : nonOverlappingExomeIntervals) {
             size += loc.size();
         }
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         Assert.assertEquals(exonDB.exomeSize(),size);
     }
 
     @Test(dependsOnMethods = {"testCorrectInitialization"})
     public void testExons() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final List<SimpleInterval> exons = exonDB.exons();
+        final List<SimpleInterval> exons = exonDB.targets();
         Assert.assertNotNull(exons);
         Assert.assertEquals(exons.size(),nonOverlappingExomeIntervals.size());
         for (int i = 0; i < exons.size(); i++) {
@@ -206,8 +212,7 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
 
     @Test(dependsOnMethods = {"testCorrectInitialization"})
     public void testExonsFullRange() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final List<SimpleInterval> exons = exonDB.exons(0,exonDB.exonCount());
+        final List<SimpleInterval> exons = exonDB.targets(0, exonDB.targetCount());
         Assert.assertNotNull(exons);
         Assert.assertEquals(exons.size(),nonOverlappingExomeIntervals.size());
         for (int i = 0; i < exons.size(); i++) {
@@ -217,9 +222,8 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
 
     @Test(dependsOnMethods = {"testCorrectInitialization","testCorrectRangeObjectInitialization"})
     public void testExonFullRangeObject() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final IndexRange range = new IndexRange(0,exonDB.exonCount());
-        final List<SimpleInterval> exons = exonDB.exons(range);
+        final IndexRange range = new IndexRange(0,exonDB.targetCount());
+        final List<SimpleInterval> exons = exonDB.targets(range);
         Assert.assertNotNull(exons);
         Assert.assertEquals(exons.size(),nonOverlappingExomeIntervals.size());
         for (int i = 0; i < exons.size(); i++) {
@@ -229,17 +233,15 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
 
     @Test(dependsOnMethods = {"testCorrectInitialization"})
     public void testEmptyRange() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final List<SimpleInterval> exons = exonDB.exons(0,0);
+        final List<SimpleInterval> exons = exonDB.targets(0, 0);
         Assert.assertNotNull(exons);
         Assert.assertEquals(exons.size(),0);
     }
 
     @Test(dependsOnMethods = {"testCorrectInitialization","testCorrectRangeObjectInitialization"})
     public void testEmptyRangeObject() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         final IndexRange range = new IndexRange(0,0);
-        final List<SimpleInterval> exons = exonDB.exons(range);
+        final List<SimpleInterval> exons = exonDB.targets(range);
         Assert.assertNotNull(exons);
         Assert.assertEquals(exons.size(),0);
     }
@@ -247,8 +249,7 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
     @Test(dependsOnMethods = {"testCorrectInitialization"},
           dataProvider = "arbitraryExonRageData")
     public void testArbitraryExonRange(final int from, final int to) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final List<SimpleInterval> exons = exonDB.exons(from,to);
+        final List<SimpleInterval> exons = exonDB.targets(from, to);
         Assert.assertNotNull(exons);
         final int expectedSize = to - from;
         Assert.assertEquals(exons.size(), expectedSize);
@@ -260,9 +261,8 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
     @Test(dependsOnMethods = {"testCorrectInitialization","testCorrectRangeObjectInitialization"},
             dataProvider = "arbitraryExonRageData")
     public void testArbitraryExonRangeObject(final int from, final int to) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         final IndexRange range = new IndexRange(from,to);
-        final List<SimpleInterval> exons = exonDB.exons(range);
+        final List<SimpleInterval> exons = exonDB.targets(range);
         Assert.assertNotNull(exons);
         final int expectedSize = to - from;
         Assert.assertEquals(exons.size(), expectedSize);
@@ -273,7 +273,6 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
 
     @Test(dependsOnMethods = "testCorrectInitialization")
     public void testLocation() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         for (final SimpleInterval loc : nonOverlappingExomeIntervals) {
             Assert.assertEquals(exonDB.location(loc), loc);
         }
@@ -282,13 +281,11 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
     @Test(dependsOnMethods = "testCorrectInitialization",
         expectedExceptions = IllegalArgumentException.class )
     public void testWrongLocation() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         exonDB.location(null);
     }
 
     @Test(dependsOnMethods = "testCorrectInitialization")
     public void testLocationFromIndex() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         for (int i = 0; i < nonOverlappingExomeIntervals.size(); i++) {
             Assert.assertEquals(exonDB.location(i), nonOverlappingExomeIntervals.get(i));
         }
@@ -298,25 +295,22 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
           expectedExceptions = {IndexOutOfBoundsException.class, IllegalArgumentException.class},
           dataProvider = "invalidRangeData")
     public void testInvalidRange(final int from, final int to) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        exonDB.exons(from, to);
+        exonDB.targets(from, to);
     }
 
     @Test(dependsOnMethods = {"testCorrectInitialization","testCorrectRangeObjectInitialization"},
             expectedExceptions = {IndexOutOfBoundsException.class, IllegalArgumentException.class},
             dataProvider = "invalidRangeData")
     public void testInvalidRangeUsingObject(final int from, final int to) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         final IndexRange range = new IndexRange(from,to);
-        exonDB.exons(range);
+        exonDB.targets(range);
     }
 
     @Test(dependsOnMethods = "testCorrectInitialization",
           dataProvider = "exonLookUpData")
     public void testExonByLocation(final SimpleInterval location, final SimpleInterval expected,
                                    @SuppressWarnings("unused") final int index) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final SimpleInterval actual = exonDB.exon(location);
+        final SimpleInterval actual = exonDB.target(location);
         if (expected == null) {
             Assert.assertNull(actual);
         } else {
@@ -329,65 +323,55 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
               dataProvider = "exonLookUpData")
     public void testExonIndexByLocation(final SimpleInterval location, @SuppressWarnings("unused")  final SimpleInterval expected,
                                    final int index) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         final int actual = exonDB.index(location);
         Assert.assertEquals(actual, index);
     }
 
     @Test(dependsOnMethods = "testCorrectInitialization",
               dataProvider = "wrongExonLookUpData",
-            expectedExceptions = {ExonCollection.AmbiguousExonException.class, IllegalArgumentException.class})
+            expectedExceptions = {TargetCollection.AmbiguousTargetException.class, IllegalArgumentException.class})
     public void testWrongExonIndexByLocation(final SimpleInterval location) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         exonDB.index(location);
     }
 
     @Test(dependsOnMethods = "testCorrectInitialization",
             dataProvider = "wrongExonLookUpData",
-            expectedExceptions = {ExonCollection.AmbiguousExonException.class, IllegalArgumentException.class})
+            expectedExceptions = {TargetCollection.AmbiguousTargetException.class, IllegalArgumentException.class})
     public void testWrongExonByLocation(final SimpleInterval location) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        exonDB.exon(location);
+        exonDB.target(location);
     }
 
     @Test(dependsOnMethods = "testCorrectInitialization")
     public void testExonByName() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-
         for (final SimpleInterval loc : nonOverlappingExomeIntervals) {
-            Assert.assertEquals(exonDB.exon(loc.toString()), loc);
+            Assert.assertEquals(exonDB.target(loc.toString()), loc);
         }
-
-        Assert.assertNull(exonDB.exon("no-id"));
+        Assert.assertNull(exonDB.target("no-id"));
     }
 
     @Test(dependsOnMethods = "testCorrectInitialization")
     public void testExonIndexByName() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-
         for (int i = 0; i < nonOverlappingExomeIntervals.size(); i++) {
             Assert.assertEquals(exonDB.index(nonOverlappingExomeIntervals.get(i)),i);
         }
-
         Assert.assertEquals(exonDB.index("no-id"), -1);
     }
 
     @Test(dependsOnMethods = {"testCorrectInitialization"},
         dataProvider="indexRangeData")
     public void testIndexRange(final SimpleInterval region, final IndexRange expected) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         final IndexRange range = exonDB.indexRange(region);
         Assert.assertEquals(range, expected);
+        Assert.assertEquals(exonDB.targetCount(region), range.size());
     }
 
     @Test(dependsOnMethods = {"testCorrectInitialization"},
             dataProvider="indexRangeData")
     public void testForEachExon(final SimpleInterval region, final IndexRange expected) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final List<SimpleInterval> exons = exonDB.exons(region);
+        final List<SimpleInterval> exons = exonDB.targets(region);
         final List<Integer> exonIndices = new ArrayList<>(exons.size());
         final List<SimpleInterval> exonObjects = new ArrayList<>(exons.size());
-        exonDB.forEachExon(region,(index,exon) -> {
+        exonDB.forEachTarget(region, (index, exon) -> {
             exonIndices.add(index);
             exonObjects.add(exon);
         });
@@ -401,23 +385,21 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
     @Test(dependsOnMethods = {"testCorrectInitialization"},
        dataProvider = "indexRangeData")
     public void testExons(final SimpleInterval region, final IndexRange expected) {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        final List<SimpleInterval> exons = exonDB.exons(region);
+        final List<SimpleInterval> exons = exonDB.targets(region);
         final List<SimpleInterval> expectedExons =  nonOverlappingExomeIntervals.subList(expected.from,expected.to);
         Assert.assertEquals(exons,expectedExons);
     }
 
     @Test(dependsOnMethods={"testCorrectInitialization","testExonCount"})
     public void testExonName() {
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
-        for (int i = 0; i < exonDB.exonCount(); i++) {
-            final SimpleInterval loc = exonDB.exon(i);
+        for (int i = 0; i < exonDB.targetCount(); i++) {
+            final SimpleInterval loc = exonDB.target(i);
             final String name = exonDB.name(loc);
-            final SimpleInterval observed = exonDB.exon(name);
+            final SimpleInterval observed = exonDB.target(name);
             Assert.assertEquals(observed,loc);
             Assert.assertEquals(exonDB.index(name),i);
         }
-        Assert.assertNull(exonDB.exon("no-interval"));
+        Assert.assertNull(exonDB.target("no-interval"));
         Assert.assertEquals(exonDB.index("no-interval"),-1);
     }
 
@@ -437,7 +419,7 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
                     break;
                 }
             }
-            result.add(new Object[] {
+            result.add(new Object[]{
                     ExomeToolsTestUtils.createInterval(nonOverlappingExomeIntervals.get(i).getContig(),
                             nonOverlappingExomeIntervals.get(i).getStart(),
                             nonOverlappingExomeIntervals.get(j - 1).getEnd()),
@@ -479,7 +461,7 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
         final int exonCount = nonOverlappingExomeIntervals.size();
         final Random rdn = new Random(1313); // feeling very lucky.
         final Object[][] result = new Object[100][];
-        // make sure there is at least a one element exon range request.
+        // make sure there is at least a one element target range request.
         result[0] = new Object[] { exonCount - 4, exonCount - 3 };
         for (int i = 1; i < result.length; i++) {
             final int from = rdn.nextInt(exonCount);
@@ -493,14 +475,13 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
     public void testRandomLookupExonByLocation() {
         final Object[][] lookups = exonLookUpData();
         final Random rdn = new Random(11132331);
-        final HashedListExonCollection<SimpleInterval> exonDB = new HashedListExonCollection<>(nonOverlappingExomeIntervals);
         for (int i = 0; i < 1000; i++) {
             final Object[] params = lookups[rdn.nextInt(lookups.length)];
             @SuppressWarnings("unchecked")
             final SimpleInterval query = (SimpleInterval) params[0];
             @SuppressWarnings("unchecked")
             final SimpleInterval expected = (SimpleInterval) params[1];
-            final SimpleInterval observed = exonDB.exon(query);
+            final SimpleInterval observed = exonDB.target(query);
             Assert.assertEquals(observed,expected);
         }
 
@@ -526,7 +507,7 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
             final SimpleInterval query = previous.getContig().equals(next.getContig())
                     ? ExomeToolsTestUtils.createInterval(previous.getContig(), previous.getEnd() + 1, next.getStart() - 1)
                     : ExomeToolsTestUtils.createInterval(next.getContig(), 1, next.getStart() - 1);
-            result.add(new Object[] { query , null, -i-1});
+            result.add(new Object[]{query, null, -i - 1});
         }
         return result.toArray(new Object[result.size()][]);
     }
@@ -540,5 +521,44 @@ public final class HashedListExonCollectionUnitTest extends BaseTest {
                         nonOverlappingExomeIntervals.get(0).getEnd(),
                         nonOverlappingExomeIntervals.get(1).getStart())}
         };
+    }
+
+    @DataProvider(name="trimmedIntervalData")
+    public Object[][] trimmedIntervalData() {
+
+        final List<SimpleInterval> intervals = nonOverlappingExomeIntervals;    //alias to reduce clutter
+
+        final String contig = intervals.get(0).getContig();
+        //find the last index of the first contig
+        int j = 0;
+        while (j < intervals.size() && intervals.get(j).getContig().equals(contig)) {
+            j++;
+        }
+        j--;
+
+        //shift of untrimmed interval ends
+        final int offset = minimumExonIntergapSize/2;
+
+         // Each data row is {untrimmed interval, epected trimmed interval
+        final int firstTargetStart = intervals.get(0).getStart();
+        final int firstTargetEnd = intervals.get(0).getEnd();
+        final int lastTargetEnd = intervals.get(j).getEnd();
+        return new Object[][] {
+                //bracket a single target
+                {new SimpleInterval(contig, firstTargetStart - offset, firstTargetEnd + offset), new SimpleInterval(contig, firstTargetStart, firstTargetEnd)},
+                //within a single target
+                {new SimpleInterval(contig, firstTargetEnd -1 , firstTargetEnd + offset), new SimpleInterval(contig, firstTargetStart, firstTargetEnd)},
+                //a lot of targets
+                {new SimpleInterval(contig, firstTargetStart - offset, lastTargetEnd + offset), new SimpleInterval(contig, firstTargetStart, lastTargetEnd)},
+                //past the last target
+                {new SimpleInterval(contig, lastTargetEnd + 1, lastTargetEnd + 2), new SimpleInterval(contig, lastTargetEnd + 1, lastTargetEnd + 1)},
+                //a non-existant contig
+                {new SimpleInterval("non-existant contig", 1, 10), new SimpleInterval("non-existant contig", 1, 1)}
+        };
+    }
+
+    @Test(dataProvider = "trimmedIntervalData")
+    public void testTrimmedInterval(final SimpleInterval untrimmed, final SimpleInterval trimmed) {
+        Assert.assertEquals(exonDB.trimmedInterval(untrimmed), trimmed);
     }
 }

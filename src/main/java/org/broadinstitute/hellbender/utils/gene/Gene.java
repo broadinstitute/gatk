@@ -75,7 +75,7 @@ public final class Gene extends Interval implements Iterable<Gene.Transcript> {
                 }
             }
 
-            throw new IllegalStateException("Attempting to add more exons that exist for transcript.");
+            throw new IllegalStateException("Attempting to add more targets that exist for transcript.");
         }
 
         public int start() {

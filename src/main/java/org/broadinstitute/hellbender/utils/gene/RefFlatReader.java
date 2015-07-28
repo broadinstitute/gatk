@@ -133,10 +133,10 @@ public final class RefFlatReader {
         final String[] exonEnds = row.getField(RefFlatColumns.EXON_ENDS.name()).split(",");
 
         if (exonCount != exonStarts.length) {
-            throw new GeneAnnotationException("Number of exon starts does not agree with number of exons for " + transcriptDescription);
+            throw new GeneAnnotationException("Number of target starts does not agree with number of targets for " + transcriptDescription);
         }
         if (exonCount != exonEnds.length) {
-            throw new GeneAnnotationException("Number of exon ends does not agree with number of exons for " + transcriptDescription);
+            throw new GeneAnnotationException("Number of target ends does not agree with number of targets for " + transcriptDescription);
         }
 
         final int transcriptionStart = row.getIntegerField(RefFlatColumns.TX_START.name()) + 1;

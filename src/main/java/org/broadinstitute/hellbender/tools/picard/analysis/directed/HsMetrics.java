@@ -17,7 +17,7 @@ public final class HsMetrics extends MultiLevelMetrics {
     /** The number of bases which have one or more baits on top of them. */
     public long BAIT_TERRITORY;
 
-    /** The unique number of target bases in the experiment where target is usually exons etc. */
+    /** The unique number of target bases in the experiment where target is usually targets etc. */
     public long TARGET_TERRITORY;
 
     /** Target terrirtoy / bait territory.  1 == perfectly efficient, 0.5 = half of baited bases are not target. */
