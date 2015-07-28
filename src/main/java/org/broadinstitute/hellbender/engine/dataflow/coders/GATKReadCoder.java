@@ -32,7 +32,7 @@ public final class GATKReadCoder extends CustomCoder<GATKRead> {
         SerializableCoder.of(Class.class).encode(value.getClass(), outStream, context);
 
         if ( value.getClass() == GoogleGenomicsReadToGATKReadAdapter.class ) {
-            GoogleGenomicsReadToGATKReadAdapter.CODER.encode(value, outStream, context);
+            GoogleGenomicsReadToGATKReadAdapter.CODER.encode((GoogleGenomicsReadToGATKReadAdapter)value, outStream, context);
         }
         else if ( value.getClass() == SAMRecordToGATKReadAdapter.class ) {
             SerializableCoder.of(SAMRecordToGATKReadAdapter.class).encode(((SAMRecordToGATKReadAdapter)value), outStream, context);

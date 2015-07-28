@@ -28,7 +28,7 @@ public final class BaseRecalOutputSource implements Serializable {
      * @param GCSFileName the path to the recalibration report. Must start with "gs://"
      */
     static public PCollection<BaseRecalOutput> of(final Pipeline pipeline, String GCSFileName) {
-        return pipeline.apply(Create.of(GCSFileName).setName("calibration report name"))
+        return pipeline.apply("calibration report name", Create.of(GCSFileName))
                 .apply(ParDo.of(new DoFn<String, BaseRecalOutput>() {
                     private static final long serialVersionUID = 1L;
                     @Override
@@ -60,7 +60,7 @@ public final class BaseRecalOutputSource implements Serializable {
             return BaseRecalOutputSource.of(pipeline, path);
         } else{
             final BaseRecalOutput recalInfo = new BaseRecalOutput(new File(path));
-            return pipeline.apply(Create.of(recalInfo).setName("recal_file ingest"));
+            return pipeline.apply("recal_file ingest", Create.of(recalInfo));
         }
     }
 

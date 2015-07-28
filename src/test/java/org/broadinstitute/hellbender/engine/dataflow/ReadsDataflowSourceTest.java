@@ -2,11 +2,13 @@ package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.ImmutableList;
-import htsjdk.samtools.*;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -62,7 +64,8 @@ public final class ReadsDataflowSourceTest extends BaseTest {
     }
 
 
-    @Test
+    //TODO renable this test issue #774
+    @Test( enabled = false)
     public void testGetInvalidPCollectionLocal() {
         // ValidationStringency.SILENT should prevent any read error even though the input has what looks like invalid reads.
         Pipeline p = GATKTestPipeline.create();

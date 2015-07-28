@@ -45,8 +45,8 @@ public final class PairReadsWithRefBasesUnitTest extends BaseTest {
         DataflowUtils.registerGATKCoders(p);
 
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> pInput =
-                p.apply(Create.of(kvRefBasesiReads)).setCoder(
-                        KvCoder.of(SerializableCoder.of(ReferenceBases.class), IterableCoder.of(new GATKReadCoder())));
+                p.apply(Create.of(kvRefBasesiReads).withCoder(
+                        KvCoder.of(SerializableCoder.of(ReferenceBases.class), IterableCoder.of(new GATKReadCoder()))));
 
         PCollection<KV<GATKRead, ReferenceBases>> result = pInput.apply(new PairReadWithRefBases());
         DataflowAssert.that(result).containsInAnyOrder(kvReadsRefBases);

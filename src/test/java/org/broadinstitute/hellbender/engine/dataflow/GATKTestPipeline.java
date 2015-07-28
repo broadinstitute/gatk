@@ -35,7 +35,9 @@ public class GATKTestPipeline {
                 new String[] { "--runner=" + dataflowRunner }).create();
             return Pipeline.create(options);
         } else {
-            return com.google.cloud.dataflow.sdk.testing.TestPipeline.create();
+            Pipeline p = com.google.cloud.dataflow.sdk.testing.TestPipeline.create();
+            p.getOptions().setStableUniqueNames(PipelineOptions.CheckEnabled.WARNING);
+            return p;
         }
     }
 

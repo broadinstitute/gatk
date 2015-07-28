@@ -10,6 +10,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
+import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
@@ -32,6 +33,7 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -72,7 +74,7 @@ public final class ReadsDataflowSource {
     private static GenomicsFactory.OfflineAuth getAuth(GCSOptions options){
         try {
             return GCSOptions.Methods.createGCSAuth(options);
-        } catch (IOException e) {
+        } catch (IOException | GeneralSecurityException e) {
             throw new GATKException("Couldn't create a dataflow auth object.", e);
         }
     }
@@ -124,7 +126,7 @@ public final class ReadsDataflowSource {
                     .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                     .collect(Collectors.toList());
 
-            PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, stringency, ImmutableList.of(bam));
+            PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, new ReaderOptions(stringency, false), ImmutableList.of(bam));
             preads = rawReads.apply(new GoogleGenomicsReadToGATKRead());
         } else if (hadoopUrl) {
             preads = DataflowUtils.getReadsFromHadoopBam(pipeline, intervals, stringency, bam);
@@ -135,6 +137,6 @@ public final class ReadsDataflowSource {
     }
 
     public static PCollectionView<SAMFileHeader> getHeaderView(Pipeline p, SAMFileHeader readsHeader) {
-        return p.apply(Create.of(readsHeader)).setCoder(SerializableCoder.of(SAMFileHeader.class)).apply(View.<SAMFileHeader>asSingleton());
+        return p.apply(Create.of(readsHeader).withCoder(SerializableCoder.of(SAMFileHeader.class))).apply(View.<SAMFileHeader>asSingleton());
     }
 }
