@@ -6,10 +6,14 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -24,6 +28,13 @@ import java.util.stream.Collectors;
  * can appear in GATK-based applications.
  */
 public final class IntervalUtils {
+
+    /**
+     * Recognized extensions for interval files
+     */
+    public static final List<String> INTERVAL_FILE_EXTENSIONS = Collections.unmodifiableList(Arrays.asList(
+        ".list", ".interval_list", ".intervals", ".picard"
+    ));
 
     /**
      * Lexicographical (contig) order comparator.
@@ -122,11 +133,16 @@ public final class IntervalUtils {
                     "interval or an interval file instead.");
         }
 
-        if (isUnmapped(arg)) {
+        if ( isUnmapped(arg) ) {
             throw new UserException.BadArgumentValue("-L/-XL", arg, "Currently the only way to view unmapped intervals " +
                     "is to perform a traversal of the entire file without specifying any intervals");
-        }// if it's a file, add items to raw interval list
-        else if (isIntervalFile(arg)) {
+        }
+        // If it's a Feature-containing file, convert it to a list of intervals
+        else if ( FeatureManager.isFeatureFile(new File(arg)) ) {
+            rawIntervals.addAll(featureFileToIntervals(parser, arg));
+        }
+        // If it's an interval file, add its contents to the raw interval list
+        else if ( isIntervalFile(arg) ) {
             try {
                 rawIntervals.addAll(intervalFileToList(parser, arg));
             }
@@ -137,7 +153,20 @@ public final class IntervalUtils {
                 throw new UserException.MalformedFile(new File(arg), "Interval file could not be parsed in any supported format.", e);
             }
         }
-        // otherwise treat as an interval -> parse and add to raw interval list
+        // If it's neither a Feature-containing file nor an interval file, but is an existing file, throw an error
+        else if ( new File(arg).exists() ) {
+            throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s exists, but does not contain Features " +
+                    "(ie., is not in a supported Feature file format such as vcf, bcf, or bed), " +
+                    "and does not have one of the supported interval file extensions (" + INTERVAL_FILE_EXTENSIONS + "). " +
+                    "Please rename your file with the appropriate extension. If %s is NOT supposed to be a file, " +
+                    "please move or rename the file at location %s", arg, arg, new File(arg).getAbsolutePath()));
+        }
+        // If it's not an existing file, but looks like it was supposed to be a file (ie., it has an extension), throw an error.
+        // This works because '.' is not an allowable character in interval strings.
+        else if ( arg.indexOf('.') != -1 ) {
+            throw new UserException.CouldNotReadInputFile("The file " + arg + " does not exist");
+        }
+        // Otherwise treat as an interval -> parse and add to raw interval list
         else {
             rawIntervals.add(parser.parseGenomeLoc(arg));
         }
@@ -146,7 +175,29 @@ public final class IntervalUtils {
     }
 
     /**
-     * Read a file of genome locations to process. The file may be in BED, Picard,
+     * Converts a Feature-containing file to a list of intervals
+     *
+     * @param parser GenomeLocParser for creating intervals
+     * @param featureFileName file containing Features to convert to intervals
+     * @return a List of intervals corresponding to the locations of the Features in the provided file
+     * @throws UserException.CouldNotReadInputFile if the provided file is not in a supported Feature file format
+     */
+    public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFileName ) {
+        final File featureFile = new File(featureFileName);
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(featureFileName));
+
+        try ( final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile, codec) ) {
+            final List<GenomeLoc> featureIntervals = new ArrayList<>();
+
+            for ( final Feature feature : dataSource ) {
+                featureIntervals.add(parser.createGenomeLoc(feature));
+            }
+            return featureIntervals;
+        }
+    }
+
+    /**
+     * Read a file of genome locations to process. The file may be in Picard
      * or GATK interval format.
      *
      * @param glParser   GenomeLocParser
@@ -156,56 +207,47 @@ public final class IntervalUtils {
     public static List<GenomeLoc> intervalFileToList(final GenomeLocParser glParser, final String fileName) {
         Utils.nonNull(glParser, "glParser is null");
         Utils.nonNull(fileName, "file name is null");
-        // try to open file
+
         final File inputFile = new File(fileName);
         final List<GenomeLoc> ret = new ArrayList<>();
 
-        // case: BED file
-        if ( fileName.toUpperCase().endsWith(".BED") ) {
-            // this is now supported in Tribble
-            throw new UserException("BED files must be parsed through Tribble; parsing them as intervals through the GATK engine is no longer supported");
-        }
-        else {
-            /**
-             * IF not a BED file:
-             * first try to read it as a Picard interval file since that's well structured
-             * we'll fail quickly if it's not a valid file.
-             */
-            boolean isPicardInterval = false;
-            try {
-                // Note: Picard will skip over intervals with contigs not in the sequence dictionary
-                final IntervalList il = IntervalList.fromFile(inputFile);
-                isPicardInterval = true;
+        /**
+         * First try to read the file as a Picard interval file since that's well structured --
+         * we'll fail quickly if it's not a valid file.
+         */
+        boolean isPicardInterval = false;
+        try {
+            // Note: Picard will skip over intervals with contigs not in the sequence dictionary
+            final IntervalList il = IntervalList.fromFile(inputFile);
+            isPicardInterval = true;
 
-                int nInvalidIntervals = 0;
-                for (final Interval interval : il.getIntervals()) {
-                    if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
-                        ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
-                    } else {
-                        nInvalidIntervals++;
-                    }
-                }
-                if ( nInvalidIntervals > 0 ) {
-                    logger.warn("Ignoring " + nInvalidIntervals + " invalid intervals from " + inputFile);
+            int nInvalidIntervals = 0;
+            for (final Interval interval : il.getIntervals()) {
+                if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
+                    ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
+                } else {
+                    nInvalidIntervals++;
                 }
             }
-
-            // if that didn't work, try parsing file as a GATK interval file
-            catch (final Exception e) {
-                if ( isPicardInterval ) // definitely a picard file, but we failed to parse
-                {
-                    throw new UserException.CouldNotReadInputFile(inputFile, e);
-                } else {
-                    try (XReadLines reader = new XReadLines(new File(fileName))) {
-                        for (final String line : reader) {
-                            if (line.trim().length() > 0) {
-                                ret.add(glParser.parseGenomeLoc(line));
-                            }
+            if ( nInvalidIntervals > 0 ) {
+                logger.warn("Ignoring " + nInvalidIntervals + " invalid intervals from " + inputFile);
+            }
+        }
+        // if that didn't work, try parsing file as a GATK interval file
+        catch (final Exception e) {
+            if ( isPicardInterval ) // definitely a picard file, but we failed to parse
+            {
+                throw new UserException.CouldNotReadInputFile(inputFile, e);
+            } else {
+                try (XReadLines reader = new XReadLines(new File(fileName))) {
+                    for (final String line : reader) {
+                        if (line.trim().length() > 0) {
+                            ret.add(glParser.parseGenomeLoc(line));
                         }
                     }
-                    catch (final IOException e2) {
-                        throw new UserException.CouldNotReadInputFile(inputFile, e2);
-                    }
+                }
+                catch (final IOException e2) {
+                    throw new UserException.CouldNotReadInputFile(inputFile, e2);
                 }
             }
         }
@@ -360,34 +402,30 @@ public final class IntervalUtils {
 
     /**
      * Check if string argument was intented as a file
-     * Accepted file extensions: .bed .list, .picard, .interval_list, .intervals.
+     * Accepted file extensions are defined in {@link #INTERVAL_FILE_EXTENSIONS}
      * @param str token to identify as a filename.
-     * @param checkExists if true throws an exception if the file doesn't exist.
-     * @return true if the token looks like a filename, or false otherwise.
+     * @param checkExists if true throws an exception if the file doesn't exist and has an interval file extension
+     * @return true if the token looks like an interval file name, or false otherwise.
      */
     public static boolean isIntervalFile(final String str, final boolean checkExists) {
         Utils.nonNull(str);
-        // should we define list of file extensions as a public array somewhere?
-        // is regex or endsiwth better?
         final File file = new File(str);
-        if (str.toUpperCase().endsWith(".BED") || str.toUpperCase().endsWith(".LIST") ||
-                str.toUpperCase().endsWith(".PICARD") || str.toUpperCase().endsWith(".INTERVAL_LIST")
-                || str.toUpperCase().endsWith(".INTERVALS")) {
-            if (!checkExists) {
-                return true;
-            } else if (file.exists()) {
+
+        boolean hasIntervalFileExtension = false;
+        for ( final String extension : INTERVAL_FILE_EXTENSIONS ) {
+            if ( str.toLowerCase().endsWith(extension) ) {
+                hasIntervalFileExtension = true;
+            }
+        }
+
+        if ( hasIntervalFileExtension ) {
+            if ( ! checkExists || file.exists() ) {
                 return true;
             } else {
                 throw new UserException.CouldNotReadInputFile(file, "The interval file does not exist.");
             }
         }
-
-        if(file.exists()) {
-            throw new UserException.CouldNotReadInputFile(file, String.format("The interval file %s does not have one of " +
-                    "the supported extensions (.bed, .list, .picard, .interval_list, or .intervals). " +
-                    "Please rename your file with the appropriate extension. If %s is NOT supposed to be a file, " +
-                    "please move or rename the file at location %s", str, str, file.getAbsolutePath()));
-        } else {
+        else {
             return false;
         }
     }

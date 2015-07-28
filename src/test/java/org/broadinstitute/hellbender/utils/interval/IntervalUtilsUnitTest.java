@@ -27,6 +27,7 @@ import java.util.stream.Stream;
  * test out the interval utility methods
  */
 public final class IntervalUtilsUnitTest extends BaseTest {
+    public static final String INTERVAL_TEST_DATA = publicTestDir + "org/broadinstitute/hellbender/utils/interval/";
     public static final String emptyIntervals = BaseTest.publicTestDir + "empty_intervals.list";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;
@@ -326,7 +327,10 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertTrue(IntervalUtils.isIntervalFile(emptyIntervals));
         Assert.assertTrue(IntervalUtils.isIntervalFile(emptyIntervals, true));
 
-        List<String> extensions = Arrays.asList("bed", "interval_list", "intervals", "list", "picard");
+        Assert.assertFalse(IntervalUtils.isIntervalFile(INTERVAL_TEST_DATA + "intervals_from_features_test.vcf"));
+        Assert.assertFalse(IntervalUtils.isIntervalFile(INTERVAL_TEST_DATA + "intervals_from_features_test.bed"));
+
+        List<String> extensions = Arrays.asList("interval_list", "intervals", "list", "picard");
         for (String extension: extensions) {
             Assert.assertTrue(IntervalUtils.isIntervalFile("test_intervals." + extension, false), "Tested interval file extension: " + extension);
         }
@@ -1045,6 +1049,32 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void loadIntervalsTest(List<String> intervals, IntervalSetRule setRule, int padding, List<GenomeLoc> results){
         GenomeLocSortedSet loadedIntervals = IntervalUtils.loadIntervals(intervals, setRule, IntervalMergingRule.ALL, padding, hg19GenomeLocParser);
         Assert.assertEquals(loadedIntervals, results);
+    }
+
+    @DataProvider(name = "loadIntervalsFromFeatureFileData")
+    public Object[][] loadIntervalsFromFeatureFileData() {
+        final List<GenomeLoc> expectedIntervals = intervalStringsToGenomeLocs("1:100-100", "1:203-206", "1:1000-1003", "2:200-200", "2:548-550", "4:776-779");
+
+        return new Object[][] {
+                { new File(INTERVAL_TEST_DATA + "intervals_from_features_test.vcf"), expectedIntervals },
+                { new File(INTERVAL_TEST_DATA + "intervals_from_features_test.bed"), expectedIntervals }
+        };
+    }
+
+    @Test(dataProvider = "loadIntervalsFromFeatureFileData")
+    public void testLoadIntervalsFromFeatureFile( final File featureFile, final List<GenomeLoc> expectedIntervals ) {
+        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Arrays.asList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + featureFile.getAbsolutePath());
+    }
+
+    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
+    public void testLoadIntervalsFromNonExistentFile() {
+        IntervalUtils.loadIntervals(Arrays.asList(publicTestDir + "non_existent_file.vcf"), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+    }
+
+    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
+    public void testLoadIntervalsFromUnrecognizedFormatFile() {
+        IntervalUtils.loadIntervals(Arrays.asList(INTERVAL_TEST_DATA + "unrecognized_format_file.xyz"), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
 
     @Test(expectedExceptions = UserException.MalformedFile.class)

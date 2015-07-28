@@ -57,6 +57,25 @@ public final class FeatureManagerUnitTest extends BaseTest {
         FeatureManager.getCodecForFile(unsupportedFile);
     }
 
+    @DataProvider(name = "IsFeatureFileTestData")
+    public Object[][] getIsFeatureFileTestData() {
+        return new Object[][] {
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_vcf4_file.vcf"), true },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_vcf3_file.vcf"), true },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bcf_file.bcf"), true },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bed_file.bed"), true },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_table_file.table"), true },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "unsupported_format_file"), false },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "reads_data_source_test1.bam"), false },
+                { new File(FEATURE_MANAGER_TEST_DIRECTORY + "non_existent_file.bed"), false }
+        };
+    }
+
+    @Test(dataProvider = "IsFeatureFileTestData")
+    public void testIsFeatureFile( final File file, final boolean expectedIsFeatureFile ) {
+        Assert.assertEquals(FeatureManager.isFeatureFile(file), expectedIsFeatureFile, "isFeatureFile() returned incorrect result for file " + file.getAbsolutePath());
+    }
+
     @CommandLineProgramProperties(summary = "", oneLineSummary = "")
     private static class ValidFeatureArgumentSource extends CommandLineProgram {
         // We should be able to detect the type parameter of a FeatureInput regardless of whether or
