@@ -157,6 +157,31 @@ jar {
     }
 }
 
+
+task testAll(type: Test){
+    useTestNG{}
+
+    // ensure dataflowRunner is passed to the test VM if specified on the command line
+    systemProperty "dataflowRunner", System.getProperty("dataflowRunner")
+    // increase max buffer size for Spark serialization
+    systemProperty "spark.kryoserializer.buffer.max", "256m"
+
+    // set heap size for the test JVM(s)
+    minHeapSize = "1G"
+    maxHeapSize = "2G"
+
+    // show standard out and standard error of the test JVM(s) on the console
+    testLogging.showStandardStreams = true
+    beforeTest { descriptor ->
+        logger.lifecycle("Running Test: " + descriptor)
+    }
+
+    // listen to standard out and standard error of the test JVM(s)
+    onOutput { descriptor, event ->
+        logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+    }
+}
+
 test {
     String CI = "$System.env.CI"
     useTestNG{
