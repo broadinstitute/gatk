@@ -19,6 +19,8 @@ import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.MarkDuplicatesDataflowTransform;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.MarkDuplicatesFromShardsDataflowTransform;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
@@ -76,19 +78,19 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-
         final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
 
         // this is the normal approach.
-        //final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+        // final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+        // // Apply MarkDuplicates to produce updated GATKReads.
+        // final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicatesDataflowTransform(headerSingleton));
 
         // trying something different
         final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, 1_000_000, pipeline);
+        readsByShard.apply(new MarkDuplicatesFromShardsDataflowTransform(headerSingleton));
+
 
         /*
-        // Apply MarkDuplicates to produce updated GATKReads.
-        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
-
         // Load the Variants and the Reference and join them to reads.
         final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
 
