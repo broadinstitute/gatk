@@ -94,7 +94,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputGetPileupBaseCount")
     public void testGetPileupBaseCount(final SamLocusIterator.LocusInfo locus,
-                                              final Map<Character, Integer> expected) {
+                                       final Map<Character, Integer> expected) {
         final Map<Character, Integer> result = HetPulldownCalculator.getPileupBaseCounts(locus);
         Assert.assertEquals(result, expected);
     }
@@ -119,8 +119,8 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputIsPileupHetCompatible")
     public void testIsPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCounts,
-                                                 final double hetAlleleFreq, final double pvalThreshold,
-                                                 final boolean expected) {
+                                          final double hetAlleleFreq, final double pvalThreshold,
+                                          final boolean expected) {
         final boolean result = HetPulldownCalculator.isPileupHetCompatible(baseCounts, totalBaseCounts,
                 hetAlleleFreq, pvalThreshold);
         Assert.assertEquals(result, expected);
@@ -152,7 +152,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputGetNormalHetPulldown")
     public void testGetNormalHetPulldown(final double hetAlleleFreq, final double pvalThreshold,
-                                                final Pulldown expected) {
+                                         final Pulldown expected) {
         final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, hetAlleleFreq, pvalThreshold);
         Assert.assertEquals(result, expected);
     }
@@ -186,7 +186,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputGetTumorHetPulldown")
     public void testGetTumorHetPulldown(final IntervalList normalHetIntervals,
-                                               final Pulldown expected) {
+                                        final Pulldown expected) {
         final Pulldown result = calculator.getTumor(TUMOR_BAM_FILE, normalHetIntervals);
         Assert.assertEquals(result, expected);
     }
