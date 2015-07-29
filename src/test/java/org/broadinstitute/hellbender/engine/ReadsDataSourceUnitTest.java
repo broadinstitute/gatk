@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFormatException;
+import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -49,14 +50,18 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.class)
     public void testHandleUnindexedFileWithIntervals() {
         // Cannot initialize a reads source with intervals unless all files are indexed
-        ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
+        final File unindexed = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
+        Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file. " + unindexed.getAbsolutePath());
+        ReadsDataSource readsSource = new ReadsDataSource(unindexed);
         readsSource.setIntervalsForTraversal(Arrays.asList(new SimpleInterval("1", 1, 5)));
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testHandleUnindexedFileQuery() {
         // Construction should succeed, since we don't pass in any intervals, but the query should throw.
-        ReadsDataSource readsSource = new ReadsDataSource(new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam"));
+        final File unindexed = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
+        Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file" + unindexed.getAbsolutePath());
+        ReadsDataSource readsSource = new ReadsDataSource(unindexed);
         readsSource.query(new SimpleInterval("1", 1, 5));
     }
 
