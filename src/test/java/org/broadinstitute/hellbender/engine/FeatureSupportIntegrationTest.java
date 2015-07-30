@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
@@ -26,5 +28,56 @@ public final class FeatureSupportIntegrationTest extends CommandLineProgramTest 
                 Arrays.asList(FEATURE_INTEGRATION_TEST_DIRECTORY + "expected_testFeatureSupportUsingVCF_output.txt")
         );
         testSpec.executeTest("testFeatureSupportUsingVCF", this);
+    }
+
+    @Test
+    public void testFeaturesAsIntervals() throws IOException {
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " -R " + hg19MiniReference +
+                " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
+                " -L " + publicTestDir + "org/broadinstitute/hellbender/utils/interval/intervals_from_features_test.vcf" +
+                " -O %s",
+                Arrays.asList(FEATURE_INTEGRATION_TEST_DIRECTORY + "expected_testFeaturesAsIntervals_output.txt")
+        );
+        testSpec.executeTest("testFeaturesAsIntervals", this);
+    }
+
+    @Test
+    public void testFeaturesAsIntervalsWithExclusion() throws IOException {
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " -R " + hg19MiniReference +
+                " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
+                " -L " + publicTestDir + "org/broadinstitute/hellbender/utils/interval/intervals_from_features_test.vcf" +
+                " -XL " + publicTestDir + "org/broadinstitute/hellbender/utils/interval/intervals_from_features_test_exclude.vcf" +
+                " -O %s",
+                Arrays.asList(FEATURE_INTEGRATION_TEST_DIRECTORY + "expected_testFeaturesAsIntervalsWithExclusion_output.txt")
+        );
+        testSpec.executeTest("testFeaturesAsIntervals", this);
+    }
+
+    @Test
+    public void testFeaturesAsIntervalsNonExistentFile() throws IOException {
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " -R " + hg19MiniReference +
+                " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
+                " -L " + publicTestDir + "non_existent_file.vcf" +
+                " -O %s",
+                1,
+                UserException.CouldNotReadInputFile.class
+        );
+        testSpec.executeTest("testFeaturesAsIntervals", this);
+    }
+
+    @Test
+    public void testFeaturesAsIntervalsUnrecognizedFormatFile() throws IOException {
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " -R " + hg19MiniReference +
+                " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
+                " -L " + publicTestDir + "org/broadinstitute/hellbender/utils/interval/unrecognized_format_file.xyz" +
+                " -O %s",
+                1,
+                UserException.CouldNotReadInputFile.class
+        );
+        testSpec.executeTest("testFeaturesAsIntervals", this);
     }
 }
