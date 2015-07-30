@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.dataflow.transforms;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 /**
  * Encodes a unique key for read, read pairs and fragments. Used to identify duplicates for MarkDuplicates.
  */
-public final class MarkDuplicatesReadsKey {
+final class ReadsKey {
 
     /**
      * Makes a unique key for the fragment.
