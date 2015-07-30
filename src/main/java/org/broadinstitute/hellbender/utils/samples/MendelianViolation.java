@@ -21,7 +21,7 @@ public final class MendelianViolation {
 
     private int violations_total=0;
 
-    private final boolean allCalledOnly = false;
+    private final boolean allCalledOnly;
     private final double minGenotypeQuality;
     private final boolean abortOnSampleNotFound;
 
@@ -29,17 +29,19 @@ public final class MendelianViolation {
      * @param minGenotypeQualityP - the minimum phred scaled genotype quality score necessary to asses mendelian violation
      */
     public MendelianViolation(final double minGenotypeQualityP) {
-        this(minGenotypeQualityP, true);
+        this(minGenotypeQualityP, true, false);
     }
 
     /**
      * @param minGenotypeQualityP - the minimum phred scaled genotype quality score necessary to asses mendelian violation
      * @param abortOnSampleNotFound - Whether to stop execution if a family is passed but no relevant genotypes are found. If false, then the family is ignored.
+     * @param completeTriosOnly true if only complete trios are considered, false to include parent/child pairs are
      */
-    public MendelianViolation(final double minGenotypeQualityP, final boolean abortOnSampleNotFound) {
+    public MendelianViolation(final double minGenotypeQualityP, final boolean abortOnSampleNotFound, boolean completeTriosOnly) {
         minGenotypeQuality = minGenotypeQualityP;
         this.abortOnSampleNotFound = abortOnSampleNotFound;
         createInheritanceMap();
+        allCalledOnly = completeTriosOnly;
     }
 
     //Count of violations of the type HOM_REF/HOM_REF -> HET
@@ -62,8 +64,10 @@ public final class MendelianViolation {
         if (gMom == null || gDad == null || gChild == null){
             if(abortOnSampleNotFound) {
                 throw new IllegalArgumentException(String.format("Variant %s:%d: Missing genotypes for family %s: mom=%s dad=%s family=%s", vc.getContig(), vc.getStart(), familyId, motherId, fatherId, childId));
-            } else
+            }
+            else {
                 return;
+            }
         }
         //Count No calls
         if(allCalledOnly && (!gMom.isCalled() || !gDad.isCalled() || !gChild.isCalled())){
@@ -78,13 +82,38 @@ public final class MendelianViolation {
             gDad.getGQ()   < minGenotypeQuality ||
             gChild.getGQ() < minGenotypeQuality )) {
             //no call
-        } else{
+        }
+        else {
             if(isViolation(gMom, gDad, gChild)){
                 violations_total++;
             }
             final int count = inheritance.get(gMom.getType()).get(gDad.getType()).get(gChild.getType());
             inheritance.get(gMom.getType()).get(gDad.getType()).put(gChild.getType(),count+1);
         }
+    }
+
+    /**
+     * @param sampleDB contains the database of samples containing samples for families to be checked for Mendelian violations
+     * @param sampleIDs ids of the subset of the samples contained in <code>sampleDB</code> who's family's violations will be checked
+     * @param vc the variant context to extract the genotypes and alleles for mom, dad and child.
+     * @return whether or not there is a mendelian violation at the site.
+     */
+    public int countFamilyViolations(SampleDB sampleDB, Set<String> sampleIDs, VariantContext vc) {
+        violations_total =0 ;
+        Map<String, Set<Sample>> families = sampleDB.getFamilies(sampleIDs);
+        clearInheritanceMap();
+
+        for (final Set<Sample> family : families.values()) {
+            final Iterator<Sample> sampleIterator = family.iterator();
+            Sample sample;
+            while (sampleIterator.hasNext()) {
+                sample = sampleIterator.next();
+                if (sampleDB.getParents(sample).size() > 0) {
+                    updateViolations(sample.getFamilyID(), sample.getMaternalID(), sample.getPaternalID(), sample.getID(), vc);
+                }
+            }
+        }
+        return violations_total;
     }
 
     /**

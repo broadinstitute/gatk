@@ -230,6 +230,14 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
+     * Returns the reference sequence dictionary if there is a reference (hasReference() == true), otherwise null.
+     * @return reference sequence dictionary if any, or null
+     */
+    public SAMSequenceDictionary getReferenceDictionary() {
+        return reference != null ? reference.getSequenceDictionary() : null;
+    }
+
+    /**
      * Returns the "best available" sequence dictionary. This will be the reference sequence dictionary if
      * there is a reference, otherwise it will be the sequence dictionary constructed from the reads if
      * there are reads, otherwise it will be null.

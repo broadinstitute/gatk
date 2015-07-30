@@ -1,0 +1,14 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled likelihoods for AA,AB,BB genotypes where A=ref and B=alt">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AC_Orig,Number=A,Type=Integer,Description="Original AC">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF_Orig,Number=A,Type=Float,Description="Original AF">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AN_Orig,Number=1,Type=Integer,Description="Original AN">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12892
+20	10000000	.	T	G	.	PASS	AC=1;AC_Orig=2;AF=0.500;AN=2;AN_Orig=4	GT:PL	0/1:10,0,12
+20	10000211	.	C	T	.	PASS	AC=2;AC_Orig=2;AF=1.00;AN=2;AN_Orig=4	GT	1/1

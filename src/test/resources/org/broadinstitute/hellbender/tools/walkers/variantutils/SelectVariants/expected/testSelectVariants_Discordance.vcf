@@ -1,0 +1,24 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AFrange,Number=2,Type=String,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AlleleBalance,Number=1,Type=Float,Description="Allele balance">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DoC,Number=1,Type=Integer,Description="Filtered Depth">
+##INFO=<ID=FisherStrand,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HomopolymerRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">
+##INFO=<ID=MAPQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=NS,Number=1,Type=Float,Description="Number of samples">
+##INFO=<ID=OnOffGenotype,Number=1,Type=Float,Description="No idea">
+##INFO=<ID=RMSMAPQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=SB,Number=1,Type=Float,Description="Strand bias">
+##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="No spanning deletions">
+##reference=human_b36_both.fasta
+##source=SelectVariants
+##source=UnifiedGenotyper
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11992
+1	10020452	.	T	C	32.71	.	AC=1;AF=0.500;AFrange=0.01-0.12,95%;AN=2;AlleleBalance=0.70;DoC=138;FisherStrand=9.0;HomopolymerRun=0;MAPQ0=0;NS=60;OnOffGenotype=1.00;RMSMAPQ=167.20;SB=-0.03;SpanningDeletions=0	GT:GQ:RD	1/0:1:3
