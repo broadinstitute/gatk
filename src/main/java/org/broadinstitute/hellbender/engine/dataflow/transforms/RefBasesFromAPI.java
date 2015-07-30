@@ -14,6 +14,10 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 /**
  * RefBasesFromAPI queries the Google Genomics API for reference bases that span all of the reads on each shard.
  *
@@ -26,6 +30,10 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
  *
  * KV<ref bases 1, [read a, read b]>
  * KV<ref bases 2, [read c]>
+ *
+ * If a custom reference window function is being used to map each read to arbitrary reference bases
+ * (and not just the bases that overlap each read), that function should be passed in via the
+ * {@link RefAPIMetadata} parameter to {@link #getBasesForShard}.
  */
 public class RefBasesFromAPI {
     public static PCollection<KV<ReferenceBases, Iterable<GATKRead>>> getBasesForShard(PCollection<KV<ReferenceShard, Iterable<GATKRead>>> reads,
@@ -37,9 +45,15 @@ public class RefBasesFromAPI {
                     @Override
                     public void processElement(ProcessContext c) throws Exception {
                         final Iterable<GATKRead> reads = c.element().getValue();
-                        SimpleInterval interval = SimpleInterval.getSpanningInterval(reads);
-                        RefAPISource refAPISource = RefAPISource.getRefAPISource();
 
+                        // Apply the reference window function to each read to produce a set of intervals representing
+                        // the desired reference bases for each read.
+                        final List<SimpleInterval> readWindows = StreamSupport.stream(reads.spliterator(), false).map(read -> refAPIMetadata.getReferenceWindowFunction().apply(read)).collect(Collectors.toList());
+
+                        // Get a single interval spanning all the per-read reference windows.
+                        SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);
+
+                        RefAPISource refAPISource = RefAPISource.getRefAPISource();
                         ReferenceBases bases = refAPISource.getReferenceBases(c.getPipelineOptions(), c.sideInput(dataView), interval);
                         c.output(KV.of(bases, reads));
                     }
