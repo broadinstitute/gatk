@@ -41,7 +41,7 @@ public class SmallBamWriter implements Serializable {
         PCollectionView<Iterable<GATKRead>> iterableView =
                 reads.apply(View.<GATKRead>asIterable());
 
-        PCollection<String> dummy = pipeline.apply(Create.<String>of(destPath).setName("output file name"));
+        PCollection<String> dummy = pipeline.apply("output file name", Create.<String>of(destPath));
 
         dummy.apply(ParDo.named("save to BAM file")
                         .withSideInputs(iterableView)

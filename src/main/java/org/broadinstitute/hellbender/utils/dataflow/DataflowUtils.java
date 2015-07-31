@@ -11,25 +11,27 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import com.google.cloud.genomics.dataflow.utils.DataflowWorkarounds;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.coders.*;
+import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.ReadContextDataCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
-import org.broadinstitute.hellbender.utils.variant.Variant;
-import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
@@ -161,7 +163,7 @@ public final class DataflowUtils {
                 SAMRecord sam = c.element().getValue().get();
                 if ( samRecordOverlaps(sam, intervals) ) {
                     try {
-                        Read read = ReadConverter.makeRead(sam);
+                        Read read = com.google.cloud.genomics.utils.ReadUtils.makeRead(sam);
                         c.output(new GoogleGenomicsReadToGATKReadAdapter(read));
                     }
                     catch ( SAMException e ) {
@@ -235,7 +237,9 @@ public final class DataflowUtils {
 
         @Override
         public void processElement(ProcessContext c) {
-            ReadsDataSource bam = new ReadsDataSource(c.element());
+            final SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(stringency);
+
+            ReadsDataSource bam = new ReadsDataSource(c.element(),samReaderFactory);
             bam.setIntervalsForTraversal(intervals);
             for ( GATKRead read : bam ) {
                 c.output(read);

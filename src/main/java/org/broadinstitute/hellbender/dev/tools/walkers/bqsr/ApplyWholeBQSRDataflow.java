@@ -101,7 +101,6 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
                 knownSitesLst.add(new SimpleInterval(f));
             }
         }
-        return pipeline.apply(Create.of(knownSitesLst).setName("known intervals ingest"))
-                .setCoder(SerializableCoder.of(SimpleInterval.class));
+        return pipeline.apply("known intervals ingest", Create.of(knownSitesLst).withCoder(SerializableCoder.of(SimpleInterval.class)));
     }
 }

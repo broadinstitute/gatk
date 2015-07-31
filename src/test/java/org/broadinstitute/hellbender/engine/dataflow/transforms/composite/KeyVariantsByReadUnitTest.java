@@ -1,17 +1,16 @@
 package org.broadinstitute.hellbender.engine.dataflow.transforms.composite;
 
+import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.IterableCoder;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;
-import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
@@ -53,7 +52,7 @@ public final class KeyVariantsByReadUnitTest extends BaseTest {
         PCollection<Variant> pVariant = DataflowTestUtils.pCollectionCreateAndVerify(p, variantList, new VariantCoder());
 
         PCollection<KV<GATKRead, Iterable<Variant>>> result = KeyVariantsByRead.key(pVariant, pReads);
-        PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(kvReadiVariant)).setCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder())));
+        PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(kvReadiVariant).withCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(result, pFinalExpected);
 
         p.run();

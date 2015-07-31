@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine.dataflow.coders;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
-import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
@@ -16,7 +15,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 
 public class GATKReadCoderUnitTest extends BaseTest implements Serializable {
@@ -60,7 +62,7 @@ public class GATKReadCoderUnitTest extends BaseTest implements Serializable {
 
         // Need to explicitly set the coder to GATKReadCoder, otherwise Create fails to infer
         // a coder properly in the case where the List contains a mix of different GATKRead implementations.
-        final PCollection<GATKRead> dataflowReads = p.apply(Create.of(reads)).setCoder(new GATKReadCoder());
+        final PCollection<GATKRead> dataflowReads = p.apply(Create.of(reads).withCoder(new GATKReadCoder()));
         DataflowAssert.that(dataflowReads).containsInAnyOrder(reads);
 
         final PCollection<GATKRead> dataflowReadsAfterTransform = dataflowReads.apply(ParDo.of(new DoFn<GATKRead, GATKRead>() {

@@ -86,18 +86,18 @@ public final class RemoveDuplicateReadVariantPairsUnitTest extends BaseTest {
         DataflowAssert.that(uuids).containsInAnyOrder(kvUUIDUUID);
 
         PCollection<KV<UUID, Iterable<UUID>>> readsIterableVariants = uuids.apply(RemoveDuplicates.<KV<UUID, UUID>>create()).apply(GroupByKey.<UUID, UUID>create());
-        PCollection<KV<UUID, Iterable<UUID>>> tempExpected = p.apply(Create.of(kvUUIDiUUID)).setCoder(KvCoder.of(UUIDCoder.CODER, IterableCoder.of(UUIDCoder.CODER)));
+        PCollection<KV<UUID, Iterable<UUID>>> tempExpected = p.apply(Create.of(kvUUIDiUUID).withCoder(KvCoder.of(UUIDCoder.CODER, IterableCoder.of(UUIDCoder.CODER))));
         DataflowTestUtils.keyIterableValueMatcher(readsIterableVariants, tempExpected);
 
         // Now add the variants back in.
         // Now join the stuff we care about back in.
         // Start by making KV<UUID, KV<UUID, Variant>> and joining that to KV<UUID, Iterable<UUID>>
         PCollection<KV<UUID, Iterable<Variant>>> matchedVariants = RemoveDuplicateReadVariantPairs.RemoveReadVariantDupesUtility.addBackVariants(pKVs, readsIterableVariants);
-        PCollection<KV<UUID, Iterable<Variant>>> pkvUUIDiVariant = p.apply(Create.of(kvUUIDiVariant)).setCoder(KvCoder.of(UUIDCoder.CODER, IterableCoder.of(new VariantCoder())));
+        PCollection<KV<UUID, Iterable<Variant>>> pkvUUIDiVariant = p.apply(Create.of(kvUUIDiVariant).withCoder(KvCoder.of(UUIDCoder.CODER, IterableCoder.of(new VariantCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(matchedVariants, pkvUUIDiVariant);
 
         PCollection<KV<GATKRead, Iterable<Variant>>> finalResult = RemoveDuplicateReadVariantPairs.RemoveReadVariantDupesUtility.addBackReads(pKVs, matchedVariants);
-        PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(finalExpected)).setCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder())));
+        PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(finalExpected).withCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(finalResult, pFinalExpected);
         p.run();
     }
@@ -113,7 +113,7 @@ public final class RemoveDuplicateReadVariantPairsUnitTest extends BaseTest {
                 KvCoder.of(new GATKReadCoder(), new VariantCoder()));
 
         PCollection<KV<GATKRead, Iterable<Variant>>> result = pKVs.apply(new RemoveDuplicateReadVariantPairs());
-        PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(finalExpected)).setCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder())));
+        PCollection<KV<GATKRead, Iterable<Variant>>> pFinalExpected = p.apply(Create.of(finalExpected).withCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(result, pFinalExpected);
 
         p.run();

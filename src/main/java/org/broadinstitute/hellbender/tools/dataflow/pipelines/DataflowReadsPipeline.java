@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.Filter;
@@ -8,7 +7,6 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.readers.bam.ReadConverter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
@@ -19,7 +17,9 @@ import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.engine.dataflow.*;
+import org.broadinstitute.hellbender.engine.dataflow.DataFlowReadFn;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Handles lifting reads from a bams into a PCollection and provides hooks to apply {@link ReadFilter}, {@link ReadConverter}, and
+ * Handles lifting reads from a bams into a PCollection and provides hooks to apply {@link ReadFilter} and
  * a {@link PTransformSAM}.
  *
  *Subclasses must override {@link #getTool()} and optionally override {@link #getReadFilters(htsjdk.samtools.SAMFileHeader)} and {@link #getReadTransformers()}

@@ -1,29 +1,26 @@
 package org.broadinstitute.hellbender.engine.dataflow.transforms;
 
+import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.IterableCoder;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;
-import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
 public final class KeyReadsByRefShardUnitTest extends BaseTest {
 
@@ -51,7 +48,7 @@ public final class KeyReadsByRefShardUnitTest extends BaseTest {
         PCollection<GATKRead> pReads = DataflowTestUtils.pCollectionCreateAndVerify(p, reads, new GATKReadCoder());
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> grouped = pReads.apply(new KeyReadsByRefShard());
 
-        PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pFinalExpected = p.apply(Create.of(expectedResult)).setCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder())));
+        PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pFinalExpected = p.apply(Create.of(expectedResult).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(grouped, pFinalExpected);
 
         p.run();
