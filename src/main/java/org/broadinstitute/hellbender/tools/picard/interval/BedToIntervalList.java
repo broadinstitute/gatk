@@ -7,20 +7,21 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,8 +45,6 @@ public final class BedToIntervalList extends PicardCommandLineProgram {
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output Picard Interval List")
     public File OUTPUT;
 
-    final Log LOG = Log.getInstance(getClass());
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -61,7 +60,7 @@ public final class BedToIntervalList extends PicardCommandLineProgram {
              */
             final FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(INPUT.getAbsolutePath(), new BEDCodec(BEDCodec.StartOffset.ZERO), false);
             final CloseableTribbleIterator<BEDFeature> iterator = bedReader.iterator();
-            final ProgressLogger progressLogger = new ProgressLogger(LOG, (int) 1e6);
+            final ProgressLogger progressLogger = new ProgressLogger(logger, (int) 1e6);
 
             while (iterator.hasNext()) {
                 final BEDFeature bedFeature = iterator.next();

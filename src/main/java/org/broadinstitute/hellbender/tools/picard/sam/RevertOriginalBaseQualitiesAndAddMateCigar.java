@@ -2,10 +2,12 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.mergealignment.AbstractAlignmentMerger;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.Iterator;
@@ -43,8 +45,6 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
             + " Set to 0 to never skip the file.")
     public int MAX_RECORDS_TO_EXAMINE = 10000;
 
-    private final static Log log = Log.getInstance(RevertOriginalBaseQualitiesAndAddMateCigar.class);
-
     public RevertOriginalBaseQualitiesAndAddMateCigar() {
         this.CREATE_INDEX = true;
         this.CREATE_MD5_FILE = true;
@@ -59,7 +59,7 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
         // Check if we can skip this file since it does not have OQ tags and the mate cigar tag is already there.
         final CanSkipSamFile skipSamFile = RevertOriginalBaseQualitiesAndAddMateCigar.canSkipSAMFile(INPUT, MAX_RECORDS_TO_EXAMINE,
                 RESTORE_ORIGINAL_QUALITIES, REFERENCE_SEQUENCE);
-        log.info(skipSamFile.getMessage(MAX_RECORDS_TO_EXAMINE));
+        logger.info(skipSamFile.getMessage(MAX_RECORDS_TO_EXAMINE));
         if (skipSamFile.canSkip()) return null;
 
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).enable(SamReaderFactory.Option.EAGERLY_DECODE).open(INPUT);
@@ -76,7 +76,7 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
         // Iterate over the records, revert original base qualities, and push them into a SortingCollection by queryname
         final SortingCollection<SAMRecord> sorter = SortingCollection.newInstance(SAMRecord.class, new BAMRecordCodec(outHeader),
                 new SAMRecordQueryNameComparator(), MAX_RECORDS_IN_RAM);
-        final ProgressLogger revertingProgress = new ProgressLogger(log, 1000000, " reverted OQs");
+        final ProgressLogger revertingProgress = new ProgressLogger(logger, 1000000, " reverted OQs");
         int numOriginalQualitiesRestored = 0;
         for (final SAMRecord record : in) {
             // Clean up reads that map off the end of the reference
@@ -93,7 +93,7 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
             sorter.add(record);
         }
         CloserUtil.close(in);
-        log.info("Reverted the original base qualities for " + numOriginalQualitiesRestored + " records");
+        logger.info("Reverted the original base qualities for " + numOriginalQualitiesRestored + " records");
 
         /**
          * Iterator through sorting collection output
@@ -101,15 +101,15 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
          * 2. push record into SAMFileWriter to the output
          */
         try (final SamPairUtil.SetMateInfoIterator sorterIterator = new SamPairUtil.SetMateInfoIterator(sorter.iterator(), true)) {
-            final ProgressLogger sorterProgress = new ProgressLogger(log, 1000000, " mate cigars added");
+            final ProgressLogger sorterProgress = new ProgressLogger(logger, 1000000, " mate cigars added");
             while (sorterIterator.hasNext()) {
                 final SAMRecord record = sorterIterator.next();
                 out.addAlignment(record);
                 sorterProgress.record(record);
             }
             CloserUtil.close(out);
-            log.info("Updated " + sorterIterator.getNumMateCigarsAdded() + " records with mate cigar");
-            if (!foundPairedMappedReads) log.info("Did not find any paired mapped reads.");
+            logger.info("Updated " + sorterIterator.getNumMateCigarsAdded() + " records with mate cigar");
+            if (!foundPairedMappedReads) logger.info("Did not find any paired mapped reads.");
         }
 
         return null;

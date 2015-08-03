@@ -5,9 +5,12 @@ import htsjdk.samtools.filter.FilteringIterator;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,8 +43,8 @@ public abstract class AbstractAlignmentMerger {
 
     private static final char[] RESERVED_ATTRIBUTE_STARTS = {'X', 'Y', 'Z'};
 
-    private final Log log = Log.getInstance(AbstractAlignmentMerger.class);
-    private final ProgressLogger progress = new ProgressLogger(this.log, 1000000, "Written to sorting collection in queryname order", "records");
+    private final Logger logger = LogManager.getLogger(AbstractAlignmentMerger.class);
+    private final ProgressLogger progress = new ProgressLogger(this.logger, 1000000, "Written to sorting collection in queryname order", "records");
 
     private final File unmappedBamFile;
     private final File targetBamFile;
@@ -155,7 +158,7 @@ public abstract class AbstractAlignmentMerger {
             if (!this.attributesToRetain.isEmpty()) {
                 for (String attribute : this.attributesToRemove) {
                     if (this.attributesToRetain.contains(attribute)) {
-                        log.info("Overriding retaining the " + attribute + " tag since remove overrides retain.");
+                        logger.info("Overriding retaining the " + attribute + " tag since remove overrides retain.");
                         this.attributesToRetain.remove(attribute);
                     }
                 }
@@ -353,8 +356,8 @@ public abstract class AbstractAlignmentMerger {
         final boolean presorted = this.sortOrder == SAMFileHeader.SortOrder.coordinate;
         final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(header, presorted, this.targetBamFile);
         writer.setProgressLogger(
-                new ProgressLogger(log, (int) 1e7, "Wrote", "records from a sorting collection"));
-        final ProgressLogger finalProgress = new ProgressLogger(log, 10000000, "Written in coordinate order to output", "records");
+                new ProgressLogger(logger, (int) 1e7, "Wrote", "records from a sorting collection"));
+        final ProgressLogger finalProgress = new ProgressLogger(logger, 10000000, "Written in coordinate order to output", "records");
 
         for (final SAMRecord rec : sorted) {
             if (!rec.getReadUnmappedFlag()) {
@@ -374,7 +377,7 @@ public abstract class AbstractAlignmentMerger {
         sorted.cleanup();
 
         CloserUtil.close(unmappedSam);
-        log.info("Wrote " + aligned + " alignment records and " + (alignedReadsOnly ? 0 : unmapped) + " unmapped reads.");
+        logger.info("Wrote " + aligned + " alignment records and " + (alignedReadsOnly ? 0 : unmapped) + " unmapped reads.");
     }
 
     /**
@@ -409,7 +412,7 @@ public abstract class AbstractAlignmentMerger {
         if (SAMUtils.cigarMapsNoBasesToRef(unaligned.getCigar())) {
             SAMUtils.makeReadUnmapped(unaligned);
         } else if (SAMUtils.recordMapsEntirelyBeyondEndOfReference(aligned)) {
-            log.warn("Record mapped off end of reference; making unmapped: " + aligned);
+            logger.warn("Record mapped off end of reference; making unmapped: " + aligned);
             SAMUtils.makeReadUnmapped(unaligned);
         }
     }

@@ -2,7 +2,15 @@ package org.broadinstitute.hellbender.tools.picard.vcf;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.BlockCompressedStreamConstants;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.CollectionUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
@@ -11,12 +19,16 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -47,7 +59,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file.")
 	public File OUTPUT;
 
-    private static final Log log = Log.getInstance(GatherVcfs.class);
+    private static final Logger log = LogManager.getLogger();
 
     public GatherVcfs() {
         CREATE_INDEX = true;

@@ -11,14 +11,15 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.*;
@@ -33,8 +34,6 @@ import java.util.*;
  * collects metric information for all reads in the INPUT sam file.
  */
 public abstract class CollectTargetedMetrics<METRIC extends MultiLevelMetrics, COLLECTOR extends TargetMetricsCollector<METRIC>> extends PicardCommandLineProgram {
-
-    private static final Log log = Log.getInstance(CalculateHsMetrics.class);
 
     protected abstract IntervalList getProbeIntervals();
 
@@ -111,7 +110,7 @@ public abstract class CollectTargetedMetrics<METRIC extends MultiLevelMetrics, C
                 getProbeSetName()
         );
 
-        final ProgressLogger progress = new ProgressLogger(log);
+        final ProgressLogger progress = new ProgressLogger(logger);
         for (final SAMRecord record : reader) {
             collector.acceptRecord(record, null);
             progress.record(record);

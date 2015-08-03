@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,7 +28,7 @@ public final class OpticalDuplicateFinder {
 
     private boolean warnedAboutRegexNotMatching = false;
 
-    private final Log log;
+    private final Logger log;
 
     public OpticalDuplicateFinder() {
         this(DEFAULT_READ_NAME_REGEX, DEFAULT_OPTICAL_DUPLICATE_DISTANCE);
@@ -46,7 +46,7 @@ public final class OpticalDuplicateFinder {
         this(readNameRegex, opticalDuplicatePixelDistance, null);
     }
 
-    public OpticalDuplicateFinder(final String readNameRegex, final int opticalDuplicatePixelDistance, final Log log) {
+    public OpticalDuplicateFinder(final String readNameRegex, final int opticalDuplicatePixelDistance, final Logger log) {
         this.readNameRegex = readNameRegex;
         this.opticalDuplicatePixelDistance = opticalDuplicatePixelDistance;
         this.log = log;

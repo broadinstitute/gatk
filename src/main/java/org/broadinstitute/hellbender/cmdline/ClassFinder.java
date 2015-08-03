@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
-
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +26,7 @@ public final class ClassFinder {
     // If not null, only look for classes in this jar
     private String jarPath = null;
 
-    private static final Log log = Log.getInstance(ClassFinder.class);
+    private static final Logger log = LogManager.getLogger();
 
     public ClassFinder() {
         loader = Thread.currentThread().getContextClassLoader();

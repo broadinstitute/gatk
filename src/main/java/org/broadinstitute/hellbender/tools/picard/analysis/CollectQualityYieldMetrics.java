@@ -6,13 +6,14 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 
@@ -48,14 +49,13 @@ public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
      * all the records accumulating metrics.  Finally writes metrics file
      */
     protected Object doWork() {
-        final Log log = Log.getInstance(getClass());
-        final ProgressLogger progress = new ProgressLogger(log);
+        final ProgressLogger progress = new ProgressLogger(logger);
 
         // Some quick parameter checking
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
-        log.info("Reading input file and calculating metrics.");
+        logger.info("Reading input file and calculating metrics.");
 
         final SamReader sam = SamReaderFactory.makeDefault().open(INPUT);
 

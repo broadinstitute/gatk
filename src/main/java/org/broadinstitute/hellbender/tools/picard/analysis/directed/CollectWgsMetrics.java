@@ -12,15 +12,15 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SamLocusIterator;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.*;
@@ -58,8 +58,6 @@ public final class CollectWgsMetrics extends PicardCommandLineProgram {
 
     @Argument(doc = "Determines whether to include the base quality histogram in the metrics file.")
     public boolean INCLUDE_BQ_HISTOGRAM = false;
-
-    private final Log log = Log.getInstance(CollectWgsMetrics.class);
 
     /** Metrics for evaluating the performance of whole genome sequencing experiments. */
     public static class WgsMetrics extends MetricBase {
@@ -124,7 +122,7 @@ public final class CollectWgsMetrics extends PicardCommandLineProgram {
         IOUtil.assertFileIsReadable(REFERENCE_SEQUENCE);
 
         // Setup all the inputs
-        final ProgressLogger progress = new ProgressLogger(log, 10000000, "Processed", "loci");
+        final ProgressLogger progress = new ProgressLogger(logger, 10000000, "Processed", "loci");
         final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
 

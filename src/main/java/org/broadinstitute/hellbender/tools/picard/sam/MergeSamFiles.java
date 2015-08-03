@@ -3,11 +3,10 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-
+import org.broadinstitute. hellbender.utils.runtime.ProgressLogger;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +22,6 @@ import java.util.List;
         programGroup = ReadProgramGroup.class
 )
 public final class MergeSamFiles extends PicardCommandLineProgram {
-    private static final Log log = Log.getInstance(MergeSamFiles.class);
 
     @Argument(shortName = "I", doc = "SAM or BAM input file", optional=false)
     public List<File> INPUT = new ArrayList<>();
@@ -89,12 +87,12 @@ public final class MergeSamFiles extends PicardCommandLineProgram {
         final boolean mergingSamRecordIteratorAssumeSorted;
 
         if (matchedSortOrders || SORT_ORDER == SAMFileHeader.SortOrder.unsorted || ASSUME_SORTED) {
-            log.info("Input files are in same order as output so sorting to temp directory is not needed.");
+            logger.info("Input files are in same order as output so sorting to temp directory is not needed.");
             headerMergerSortOrder = SORT_ORDER;
             mergingSamRecordIteratorAssumeSorted = ASSUME_SORTED;
             presorted = true;
         } else {
-            log.info("Sorting input files using temp directory " + TMP_DIR);
+            logger.info("Sorting input files using temp directory " + TMP_DIR);
             headerMergerSortOrder = SAMFileHeader.SortOrder.unsorted;
             mergingSamRecordIteratorAssumeSorted = false;
             presorted = false;
@@ -113,14 +111,14 @@ public final class MergeSamFiles extends PicardCommandLineProgram {
         try (final SAMFileWriter out = samFileWriterFactory.makeSAMOrBAMWriter(header, presorted, OUTPUT)) {
 
             // Lastly loop through and write out the records
-            final ProgressLogger progress = new ProgressLogger(log, PROGRESS_INTERVAL);
+            final ProgressLogger progress = new ProgressLogger(logger, PROGRESS_INTERVAL);
             while (iterator.hasNext()) {
                 final SAMRecord record = iterator.next();
                 out.addAlignment(record);
                 progress.record(record);
             }
 
-            log.info("Finished reading inputs.");
+            logger.info("Finished reading inputs.");
             CloserUtil.close(readers);
         }
         return null;

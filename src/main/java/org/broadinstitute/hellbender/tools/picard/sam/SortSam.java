@@ -3,10 +3,11 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 
@@ -30,8 +31,6 @@ public final class SortSam extends PicardCommandLineProgram {
     @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, doc = "Sort order of output file")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
-    private final Log log = Log.getInstance(SortSam.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -41,15 +40,15 @@ public final class SortSam extends PicardCommandLineProgram {
         reader.getFileHeader().setSortOrder(SORT_ORDER);
         try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, OUTPUT)) {
             writer.setProgressLogger(
-                    new ProgressLogger(log, (int) 1e7, "Wrote", "records from a sorting collection"));
+                    new ProgressLogger(logger, (int) 1e7, "Wrote", "records from a sorting collection"));
 
-            final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Read");
+            final ProgressLogger progress = new ProgressLogger(logger, (int) 1e7, "Read");
             for (final SAMRecord rec : reader) {
                 writer.addAlignment(rec);
                 progress.record(rec);
             }
 
-            log.info("Finished reading inputs, merging and writing to output now.");
+            logger.info("Finished reading inputs, merging and writing to output now.");
 
         }
         CloserUtil.close(reader);

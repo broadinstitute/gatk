@@ -4,10 +4,13 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.filter.FilteringIterator;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -74,8 +77,6 @@ public final class RevertSam extends PicardCommandLineProgram {
             "sample alias in the file and is used only if all the read groups in the input file have the " +
             "same sample alias ", shortName = StandardArgumentDefinitions.LIBRARY_NAME_SHORT_NAME, optional = true)
     public String LIBRARY_NAME;
-
-    private final static Log log = Log.getInstance(RevertSam.class);
 
     /**
      * Enforce that output ordering is queryname when sanitization is turned on since it requires a queryname sort.
@@ -154,7 +155,7 @@ public final class RevertSam extends PicardCommandLineProgram {
             sorter = null;
         }
 
-        final ProgressLogger progress = new ProgressLogger(log, 1000000, "Reverted");
+        final ProgressLogger progress = new ProgressLogger(logger, 1000000, "Reverted");
         for (final SAMRecord rec : in) {
             // Weed out non-primary and supplemental read as we don't want duplicates in the reverted file!
             if (rec.isSecondaryOrSupplementary()) continue;
@@ -194,15 +195,15 @@ public final class RevertSam extends PicardCommandLineProgram {
                 CloserUtil.close(reader);
             }
             for (final SAMReadGroupRecord r : readGroupToFormat.keySet()) {
-                log.info("Detected quality format for " + r.getReadGroupId() + ": " + readGroupToFormat.get(r));
+                logger.info("Detected quality format for " + r.getReadGroupId() + ": " + readGroupToFormat.get(r));
             }
             if (readGroupToFormat.values().contains(FastqQualityFormat.Solexa)) {
-                log.error("No quality score encoding conversion implemented for " + FastqQualityFormat.Solexa);
+                logger.error("No quality score encoding conversion implemented for " + FastqQualityFormat.Solexa);
                 return -1;
             }
 
 
-            final ProgressLogger sanitizerProgress = new ProgressLogger(log, 1000000, "Sanitized");
+            final ProgressLogger sanitizerProgress = new ProgressLogger(logger, 1000000, "Sanitized");
 
             readNameLoop:
             while (iterator.hasNext()) {
@@ -212,7 +213,7 @@ public final class RevertSam extends PicardCommandLineProgram {
                 // Check that all the reads have bases and qualities of the same length
                 for (final SAMRecord rec : recs) {
                     if (rec.getReadBases().length != rec.getBaseQualities().length) {
-                        log.debug("Discarding " + recs.size() + " reads with name " + rec.getReadName() + " for mismatching bases and quals length.");
+                        logger.debug("Discarding " + recs.size() + " reads with name " + rec.getReadName() + " for mismatching bases and quals length.");
                         discarded += recs.size();
                         continue readNameLoop;
                     }
@@ -220,7 +221,7 @@ public final class RevertSam extends PicardCommandLineProgram {
 
                 // Check that if the first read is marked as unpaired that there is in fact only one read
                 if (!recs.get(0).getReadPairedFlag() && recs.size() > 1) {
-                    log.debug("Discarding " + recs.size() + " reads with name " + recs.get(0).getReadName() + " because they claim to be unpaired.");
+                    logger.debug("Discarding " + recs.size() + " reads with name " + recs.get(0).getReadName() + " because they claim to be unpaired.");
                     discarded += recs.size();
                     continue readNameLoop;
                 }
@@ -235,7 +236,7 @@ public final class RevertSam extends PicardCommandLineProgram {
                     }
 
                     if (unpaired > 0 || firsts != 1 || seconds != 1) {
-                        log.debug("Discarding " + recs.size() + " reads with name " + recs.get(0).getReadName() + " because pairing information in corrupt.");
+                        logger.debug("Discarding " + recs.size() + " reads with name " + recs.get(0).getReadName() + " because pairing information in corrupt.");
                         discarded += recs.size();
                         continue readNameLoop;
                     }
@@ -261,7 +262,7 @@ public final class RevertSam extends PicardCommandLineProgram {
 
             final double discardRate = discarded / (double) total;
             final NumberFormat fmt = new DecimalFormat("0.000%");
-            log.info("Discarded " + discarded + " out of " + total + " (" + fmt.format(discardRate) + ") reads in order to sanitize output.");
+            logger.info("Discarded " + discarded + " out of " + total + " (" + fmt.format(discardRate) + ") reads in order to sanitize output.");
 
             if (discarded / (double) total > MAX_DISCARD_FRACTION) {
                 throw new GATKException("Discarded " + fmt.format(discardRate) + " which is above MAX_DISCARD_FRACTION of " + fmt.format(MAX_DISCARD_FRACTION));

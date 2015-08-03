@@ -6,8 +6,9 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.StringUtil;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -39,7 +40,7 @@ public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {
 
     private HistogramGenerator hist;
     private String plotSubtitle = "";
-    private final Log log = Log.getInstance(CollectBaseDistributionByCycle.class);
+    private final Logger log = LogManager.getLogger(CollectBaseDistributionByCycle.class);
 
     @Override
     protected void setup(final SAMFileHeader header, final File samFile) {

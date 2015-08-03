@@ -3,10 +3,9 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.HashMap;
@@ -40,8 +39,6 @@ public final class DownsampleSam extends PicardCommandLineProgram {
     @Argument(shortName = "P", doc = "The probability of keeping any individual read, between 0 and 1.")
     public double PROBABILITY = 1;
 
-    private final Log log = Log.getInstance(DownsampleSam.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -56,7 +53,7 @@ public final class DownsampleSam extends PicardCommandLineProgram {
         try(final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT)) {
             final Map<String, Boolean> decisions = new HashMap<>();
 
-            final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Read");
+            final ProgressLogger progress = new ProgressLogger(logger, (int) 1e7, "Read");
 
             for (final SAMRecord rec : in) {
                 if (rec.isSecondaryOrSupplementary()) continue;
@@ -84,7 +81,7 @@ public final class DownsampleSam extends PicardCommandLineProgram {
         finally {
             CloserUtil.close(in);
         }
-        log.info("Finished! Kept " + kept + " out of " + total + " reads.");
+        logger.info("Finished! Kept " + kept + " out of " + total + " reads.");
 
         return null;
     }

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 
@@ -11,7 +12,7 @@ import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
  * @author Tim Fennell
  */
 public abstract class AbstractOpticalDuplicateFinderCommandLineProgram extends PicardCommandLineProgram {
-    protected static Log LOG = Log.getInstance(AbstractOpticalDuplicateFinderCommandLineProgram.class);
+    protected static Logger LOG = LogManager.getLogger(AbstractOpticalDuplicateFinderCommandLineProgram.class);
 
 
     @Argument(doc = "Regular expression that can be used to parse read names in the incoming SAM file. Read names are " +
@@ -37,7 +38,7 @@ public abstract class AbstractOpticalDuplicateFinderCommandLineProgram extends P
 
     // Needed for testing
     public void setupOpticalDuplicateFinder() {
-        this.opticalDuplicateFinder = new OpticalDuplicateFinder(READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE, LOG);
+        this.opticalDuplicateFinder = new OpticalDuplicateFinder(READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE, logger);
     }
 
     @Override

@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.utils.gene;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.utils.text.parsers.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
@@ -13,7 +14,7 @@ import java.util.*;
  * internally consistent, e.g. transcripts on different chromosomes or different strands.
  */
 public final class RefFlatReader {
-    private static final Log LOG = Log.getInstance(RefFlatReader.class);
+    private static final Logger LOG = LogManager.getLogger();
     // These are in the order that columns appear in refFlat format.
     public enum RefFlatColumns{GENE_NAME, TRANSCRIPT_NAME, CHROMOSOME, STRAND, TX_START, TX_END, CDS_START, CDS_END,
         EXON_COUNT, EXON_STARTS, EXON_ENDS}

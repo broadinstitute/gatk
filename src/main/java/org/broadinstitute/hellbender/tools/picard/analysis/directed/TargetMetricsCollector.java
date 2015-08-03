@@ -13,11 +13,12 @@ import htsjdk.samtools.util.CoordMath;
 import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.StringUtil;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
@@ -53,7 +54,7 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
     //The name of the set of probes used
     private final String probeSetName;
 
-    private static final Log log = Log.getInstance(TargetMetricsCollector.class);
+    private static final Logger log = LogManager.getLogger();
 
     //The interval list indicating the regions targeted by all probes
     private final IntervalList allProbes;

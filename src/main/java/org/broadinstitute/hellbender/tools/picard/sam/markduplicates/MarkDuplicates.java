@@ -3,11 +3,14 @@ package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
+
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.io.Serializable;
@@ -29,8 +32,6 @@ import java.util.Map;
         programGroup = ReadProgramGroup.class
 )
 public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {
-    private final Log log = Log.getInstance(MarkDuplicates.class);
-
     /**
      * If more than this many sequences in SAM file, don't spill to disk because there will not
      * be enough file handles.
@@ -77,17 +78,17 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         IOUtil.assertFileIsWritable(METRICS_FILE);
 
         reportMemoryStats("Start of doWork");
-        log.info("Reading input file and constructing read end information.");
+        logger.info("Reading input file and constructing read end information.");
         buildSortedReadEndLists();
         reportMemoryStats("After buildSortedReadEndLists");
         generateDuplicateIndexes();
         reportMemoryStats("After generateDuplicateIndexes");
-        log.info("Marking " + this.numDuplicateIndices + " records as duplicates.");
+        logger.info("Marking " + this.numDuplicateIndices + " records as duplicates.");
 
         if (this.READ_NAME_REGEX == null) {
-            log.warn("Skipped optical duplicate cluster discovery; library size estimation may be inaccurate!");
+            logger.warn("Skipped optical duplicate cluster discovery; library size estimation may be inaccurate!");
         } else {
-            log.info("Found " + (this.libraryIdGenerator.getNumberOfOpticalDuplicateClusters()) + " optical duplicate clusters.");
+            logger.info("Found " + (this.libraryIdGenerator.getNumberOfOpticalDuplicateClusters()) + " optical duplicate clusters.");
         }
 
         final SamHeaderAndIterator headerAndIterator = openInputs();
@@ -108,7 +109,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
             long recordInFileIndex = 0;
             long nextDuplicateIndex = (this.duplicateIndexes.hasNext() ? this.duplicateIndexes.next() : -1);
 
-            final ProgressLogger progress = new ProgressLogger(log, (int) 1e7, "Written");
+            final ProgressLogger progress = new ProgressLogger(logger, (int) 1e7, "Written");
             try (final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator) {
                 while (iterator.hasNext()) {
                     final SAMRecord rec = iterator.next();
@@ -183,7 +184,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         if(reportMemoryStats) {
             System.gc();
             final Runtime runtime = Runtime.getRuntime();
-            log.info(stage + " freeMemory: " + runtime.freeMemory() + "; totalMemory: " + runtime.totalMemory() +
+            logger.info(stage + " freeMemory: " + runtime.freeMemory() + "; totalMemory: " + runtime.totalMemory() +
                     "; maxMemory: " + runtime.maxMemory());
         }
     }
@@ -195,7 +196,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
      */
     private void buildSortedReadEndLists() {
         final int maxInMemory = (int) ((Runtime.getRuntime().maxMemory() * SORTING_COLLECTION_SIZE_RATIO) / ReadEndsForMarkDuplicates.SIZE_OF);
-        log.info("Will retain up to " + maxInMemory + " data points before spilling to disk.");
+        logger.info("Will retain up to " + maxInMemory + " data points before spilling to disk.");
 
         this.pairSort = SortingCollection.newInstance(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
@@ -213,7 +214,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         final SAMFileHeader header = headerAndIterator.header;
         final ReadEndsForMarkDuplicatesMap tmp = new DiskBasedReadEndsForMarkDuplicatesMap(MAX_FILE_HANDLES_FOR_READ_ENDS_MAP);
         long index = 0;
-        final ProgressLogger progress = new ProgressLogger(log, (int) 1e6, "Read");
+        final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");
         final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator;
 
         if (null == this.libraryIdGenerator) {
@@ -292,11 +293,11 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
             // Print out some stats every 1m reads
             ++index;
             if (progress.record(rec)) {
-                log.info("Tracking " + tmp.size() + " as yet unmatched pairs. " + tmp.sizeInRam() + " records in RAM.");
+                logger.info("Tracking " + tmp.size() + " as yet unmatched pairs. " + tmp.sizeInRam() + " records in RAM.");
             }
         }
 
-        log.info("Read " + index + " records. " + tmp.size() + " pairs never matched.");
+        logger.info("Read " + index + " records. " + tmp.size() + " pairs never matched.");
         iterator.close();
 
         // Tell these collections to free up memory if possible.
@@ -349,14 +350,14 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         // Keep this number from getting too large even if there is a huge heap.
         final int maxInMemory = (int) Math.min((Runtime.getRuntime().maxMemory() * 0.25) / SortingLongCollection.SIZEOF,
                 (double) (Integer.MAX_VALUE - 5));
-        log.info("Will retain up to " + maxInMemory + " duplicate indices before spilling to disk.");
+        logger.info("Will retain up to " + maxInMemory + " duplicate indices before spilling to disk.");
         this.duplicateIndexes = new SortingLongCollection(maxInMemory, TMP_DIR.toArray(new File[TMP_DIR.size()]));
 
         ReadEndsForMarkDuplicates firstOfNextChunk = null;
         final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<>(200);
 
         // First just do the pairs
-        log.info("Traversing read pair information and detecting duplicates.");
+        logger.info("Traversing read pair information and detecting duplicates.");
         for (final ReadEndsForMarkDuplicates next : this.pairSort) {
             if (firstOfNextChunk == null) {
                 firstOfNextChunk = next;
@@ -378,7 +379,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         this.pairSort = null;
 
         // Now deal with the fragments
-        log.info("Traversing fragment information and detecting duplicates.");
+        logger.info("Traversing fragment information and detecting duplicates.");
         boolean containsPairs = false;
         boolean containsFrags = false;
 
@@ -403,7 +404,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         this.fragSort.cleanup();
         this.fragSort = null;
 
-        log.info("Sorting list of duplicate records.");
+        logger.info("Sorting list of duplicate records.");
         this.duplicateIndexes.doneAddingStartIteration();
     }
 

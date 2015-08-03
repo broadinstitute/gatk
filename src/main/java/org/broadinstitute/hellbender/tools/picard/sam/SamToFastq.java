@@ -5,10 +5,13 @@ import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.*;
@@ -100,8 +103,6 @@ public final class SamToFastq extends PicardCommandLineProgram {
             "is not comprehensive, so there may be exceptions if this is set to true and there are paired reads with non-primary alignments.")
     public boolean INCLUDE_NON_PRIMARY_ALIGNMENTS = false;
 
-    private final Log log = Log.getInstance(SamToFastq.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -111,7 +112,7 @@ public final class SamToFastq extends PicardCommandLineProgram {
         factory.setCreateMd5(CREATE_MD5_FILE);
         final Map<SAMReadGroupRecord, FastqWriters> writers = generateWriters(reader.getFileHeader().getReadGroups(), factory);
 
-        final ProgressLogger progress = new ProgressLogger(log);
+        final ProgressLogger progress = new ProgressLogger(logger);
         for (final SAMRecord currentRecord : reader) {
             if (currentRecord.isSecondaryOrSupplementary() && !INCLUDE_NON_PRIMARY_ALIGNMENTS)
                 continue;

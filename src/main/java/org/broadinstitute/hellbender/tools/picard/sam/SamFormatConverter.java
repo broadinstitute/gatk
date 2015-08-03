@@ -3,11 +3,11 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 
@@ -39,7 +39,7 @@ public final class SamFormatConverter extends PicardCommandLineProgram {
                 throw new UserException("Can't CREATE_INDEX unless sort order is coordinate");
             }
 
-            final ProgressLogger progress = new ProgressLogger(Log.getInstance(SamFormatConverter.class));
+            final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord rec : reader) {
                 writer.addAlignment(rec);
                 progress.record(rec);

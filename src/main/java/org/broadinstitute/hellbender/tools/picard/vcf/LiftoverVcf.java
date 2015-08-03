@@ -7,8 +7,6 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.StringUtil;
@@ -22,11 +20,13 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFRecordCodec;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -73,8 +73,6 @@ public final class LiftoverVcf extends PicardCommandLineProgram {
             new VCFFilterHeaderLine(FILTER_MISMATCHING_REF_ALLELE, "Reference allele does not match reference genome sequence after liftover.")
     );
 
-    private final Log log = Log.getInstance(LiftoverVcf.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -89,7 +87,7 @@ public final class LiftoverVcf extends PicardCommandLineProgram {
         final LiftOver liftOver = new LiftOver(CHAIN);
         final VCFFileReader in = new VCFFileReader(INPUT, false);
 
-        log.info("Loading up the target reference genome.");
+        logger.info("Loading up the target reference genome.");
         final ReferenceSequenceFileWalker walker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
         final Map<String,byte[]> refSeqs = new HashMap<>();
         for (final SAMSequenceRecord rec: walker.getSequenceDictionary().getSequences()) {
@@ -119,7 +117,7 @@ public final class LiftoverVcf extends PicardCommandLineProgram {
         // collection.
         ////////////////////////////////////////////////////////////////////////
         long failedLiftover = 0, failedAlleleCheck = 0, total = 0;
-        log.info("Lifting variants over and sorting.");
+        logger.info("Lifting variants over and sorting.");
 
         final SortingCollection<VariantContext> sorter = SortingCollection.newInstance(VariantContext.class,
                 new VCFRecordCodec(outHeader),
@@ -127,7 +125,7 @@ public final class LiftoverVcf extends PicardCommandLineProgram {
                 MAX_RECORDS_IN_RAM,
                 TMP_DIR);
 
-        ProgressLogger progress = new ProgressLogger(log, 1000000, "read");
+        ProgressLogger progress = new ProgressLogger(logger, 1000000, "read");
 
         for (final VariantContext ctx : in) {
             ++total;
@@ -193,10 +191,10 @@ public final class LiftoverVcf extends PicardCommandLineProgram {
 
         final NumberFormat pfmt = new DecimalFormat("0.0000%");
         final String pct = pfmt.format((failedLiftover + failedAlleleCheck) / (double) total);
-        log.info("Processed ", total, " variants.");
-        log.info(failedLiftover, " variants failed to liftover.");
-        log.info(failedAlleleCheck, " variants lifted over but had mismatching reference alleles after lift over.");
-        log.info(pct, " of variants were not successfully lifted over and written to the output.");
+        logger.info("Processed ", total, " variants.");
+        logger.info(Long.toString(failedLiftover), " variants failed to liftover.");
+        logger.info(Long.toString(failedAlleleCheck), " variants lifted over but had mismatching reference alleles after lift over.");
+        logger.info(pct, " of variants were not successfully lifted over and written to the output.");
 
         rejects.close();
         in.close();
@@ -205,8 +203,8 @@ public final class LiftoverVcf extends PicardCommandLineProgram {
         // Write the sorted outputs to the final output file
         ////////////////////////////////////////////////////////////////////////
         sorter.doneAdding();
-        progress = new ProgressLogger(log, 1000000, "written");
-        log.info("Writing out sorted records to final VCF.");
+        progress = new ProgressLogger(logger, 1000000, "written");
+        logger.info("Writing out sorted records to final VCF.");
 
         for (final VariantContext ctx : sorter) {
             out.add(ctx);

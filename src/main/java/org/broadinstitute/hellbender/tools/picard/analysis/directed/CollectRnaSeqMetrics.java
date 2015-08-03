@@ -9,8 +9,9 @@ import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -32,7 +33,7 @@ import java.util.*;
 )
 public final class CollectRnaSeqMetrics extends SinglePassSamProgram {
     private static final String R_SCRIPT = "rnaSeqCoverage.R";
-    private static final Log LOG = Log.getInstance(CollectRnaSeqMetrics.class);
+    private static final Logger LOG = LogManager.getLogger();
 
     @Argument(doc="Gene annotations in refFlat form.  Format described here: http://genome.ucsc.edu/goldenPath/gbdDescriptionsOld.html#RefFlat")
     public File REF_FLAT;

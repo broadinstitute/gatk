@@ -15,10 +15,10 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.ListMap;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.SamLocusIterator;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.StringUtil;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -88,7 +88,6 @@ public final class CollectOxoGMetrics extends PicardCommandLineProgram {
     @Argument(doc = "For debugging purposes: stop after visiting this many sites with at least 1X coverage.")
     public int STOP_AFTER = Integer.MAX_VALUE;
 
-    private final Log log = Log.getInstance(CollectOxoGMetrics.class);
     private static final String UNKNOWN_LIBRARY = "UnknownLibrary";
     private static final String UNKNOWN_SAMPLE = "UnknownSample";
 
@@ -205,7 +204,7 @@ public final class CollectOxoGMetrics extends PicardCommandLineProgram {
         }
 
         // Load up dbSNP if available
-        log.info("Loading dbSNP File: " + DB_SNP);
+        logger.info("Loading dbSNP File: " + DB_SNP);
         final DbSnpBitSetUtil dbSnp;
         if (DB_SNP != null) dbSnp = new DbSnpBitSetUtil(DB_SNP, in.getFileHeader().getSequenceDictionary());
         else dbSnp = null;
@@ -229,7 +228,7 @@ public final class CollectOxoGMetrics extends PicardCommandLineProgram {
         }
         iterator.setSamFilters(filters);
 
-        log.info("Starting iteration.");
+        logger.info("Starting iteration.");
         long nextLogTime = 0;
         int sites = 0;
 
@@ -264,7 +263,7 @@ public final class CollectOxoGMetrics extends PicardCommandLineProgram {
             if (++sites % 100 == 0) {
                 final long now = System.currentTimeMillis();
                 if (now > nextLogTime) {
-                    log.info("Visited " + sites + " sites of interest. Last site: " + chrom + ":" + pos);
+                    logger.info("Visited " + sites + " sites of interest. Last site: " + chrom + ":" + pos);
                     nextLogTime = now + 60000;
                 }
             }
@@ -294,7 +293,7 @@ public final class CollectOxoGMetrics extends PicardCommandLineProgram {
             }
         }
 
-        log.info("Generated " + contexts.size() + " context strings.");
+        logger.info("Generated " + contexts.size() + " context strings.");
         return contexts;
     }
 

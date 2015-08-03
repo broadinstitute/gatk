@@ -7,9 +7,10 @@ import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -79,7 +80,7 @@ public final class IntervalListTools extends PicardCommandLineProgram {
     @Argument(doc = "Produce the inverse list", optional = true)
     public boolean INVERT = false;
 
-    private static final Log LOG = Log.getInstance(IntervalListTools.class);
+    private static final Logger LOG = LogManager.getLogger();
 
     public enum Action implements CommandLineParser.ClpEnum {
 
