@@ -3,9 +3,13 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  * Simple caller that
@@ -44,18 +48,16 @@ public final class ReCapSegCaller {
      * @param targets the collection representing all targets
      * @param segments segments, each of which holds a reference to these same targets
      */
-    public static void makeCalls(ExonCollection<TargetCoverage> targets, final List<Segment> segments) {
+    public static List<CalledInterval> makeCalls(TargetCollection<TargetCoverage> targets, final List<SimpleInterval> segments) {
         Utils.nonNull(segments, "Can't make calls on a null list of segments.");
-        if (segments.size() == 0) {
-            return;
-        }
+        List<CalledInterval> calls = new ArrayList<>();
 
         /**
          * estimate the copy-number neutral log_2 coverage as the median over all targets.
          * As a precaution we take the median after filtering extreme coverages that are definitely not neutral
          * i.e. those below -NON_NEUTRAL_COVERAGE or above +NON_NEUTRAL_COVERAGE
          */
-        final double []  nonExtremeCoverage = targets.exons()
+        final double []  nonExtremeCoverage = targets.targets()
                 .stream()
                 .mapToDouble(TargetCoverage::getCoverage)
                 .filter(c -> Math.abs(c) < NON_NEUTRAL_THRESHOLD)
@@ -65,13 +67,13 @@ public final class ReCapSegCaller {
         // Get the standard deviation of targets belonging to high-confidence neutral segments
         final double[] nearNeutralCoverage = segments.stream()
                 .filter(s -> Math.abs(SegmentUtils.meanTargetCoverage(s, targets) - neutralCoverage) < COPY_NEUTRAL_CUTOFF)
-                .flatMap(s -> SegmentUtils.overlappingTargets(s, targets).stream())
+                .flatMap(s -> targets.targets(s).stream())
                 .mapToDouble(TargetCoverage::getCoverage)
                 .toArray();
         final double neutralSigma = new StandardDeviation().evaluate(nearNeutralCoverage);
 
 
-        for (final Segment segment : segments) {
+        for (final SimpleInterval segment : segments) {
             //Get the number of standard deviations the mean falls from the copy neutral value
             //we should really use the standard deviation of the mean of segment.numTargets() targets
             //which is sigma/ sqrt(numTargets).  However, the underlying segment means vary due to noise not
@@ -81,7 +83,8 @@ public final class ReCapSegCaller {
             final double Z = (SegmentUtils.meanTargetCoverage(segment, targets) - neutralCoverage)/neutralSigma;
 
             final String call = Z < -Z_SCORE_THRESHOLD ? DELETION_CALL: (Z > Z_SCORE_THRESHOLD ? AMPLIFICATION_CALL : NEUTRAL_CALL);
-            segment.setCall(call);
+            calls.add(new CalledInterval(segment, call));
         }
+        return calls;
     }
 }

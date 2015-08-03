@@ -45,8 +45,8 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        usage = "Normalizes PCOV read counts using a panel of normals",
-        usageShort = "Normalizes proportional coverage (PCOV) read counts using a panel of normals",
+        summary = "Normalizes PCOV read counts using a panel of normals",
+        oneLineSummary = "Normalizes proportional coverage (PCOV) read counts using a panel of normals",
         programGroup = ExomeAnalysisProgramGroup.class
 )
 public final class NormalizeSomaticReadCounts extends CommandLineProgram {
@@ -153,7 +153,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         Utils.regularReadableUserFile(ponFile);
         try (final HDF5Reader ponReader = new HDF5Reader(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
-            final ExonCollection<? extends BEDFeature> exonCollection = readExonCollection(targetFile);
+            final TargetCollection<? extends BEDFeature> exonCollection = readTargetCollection(targetFile);
             final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, exonCollection);
             final ReadCountCollection targetFactorNormalized = applyTargetFactorNormalization(pon, readCountCollection);
             applyTangentNormalization(pon, readCountCollection, targetFactorNormalized);
@@ -330,7 +330,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * @param targetFile the input target file.
      * @return never {@code null}.
      */
-    private ExonCollection<? extends BEDFeature> readExonCollection(final File targetFile) {
+    private TargetCollection<? extends BEDFeature> readTargetCollection(final File targetFile) {
         if (targetFile == null) {
             return null;
         } else {
@@ -341,8 +341,8 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
             if (BEDFeature.class.isAssignableFrom(featureType)) {
                 @SuppressWarnings("unchecked")
                 final FeatureCodec<? extends BEDFeature, ?> bedCodec = (FeatureCodec<? extends BEDFeature, ?>) codec;
-                final ExonCollection<? extends BEDFeature> result = ExonCollections.fromBEDFeatureFile(targetFile, bedCodec);
-                logger.log(Level.INFO, String.format("Found %d targets to analyze.", result.exonCount()));
+                final TargetCollection<? extends BEDFeature> result = TargetCollections.fromBEDFeatureFile(targetFile, bedCodec);
+                logger.log(Level.INFO, String.format("Found %d targets to analyze.", result.targetCount()));
                 return result;
             } else {
                 throw new UserException.BadInput(String.format("currently only BED formatted target file are supported. '%s' does not seem to be a BED file",
@@ -356,7 +356,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * are missing.
      *
      * @param readCountsFile the read-counts file.
-     * @param exonCollection the input exon collection. {@code null} indicates that no collection was provided by the user.
+     * @param targetCollection the input exon collection. {@code null} indicates that no collection was provided by the user.
      * @param <E>            the element type of {@code exonCollection}, it must be a {@link BEDFeature}.
      * @return never {@code null}.
      * @throws UserException.CouldNotReadInputFile if there was some problem
@@ -365,9 +365,9 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      *                                             or it does not contain target names and {@code exonCollection} is {@code null}.
      */
     private <E extends BEDFeature> ReadCountCollection readInputReadCounts(final File readCountsFile,
-                                                                           final ExonCollection<E> exonCollection) {
+                                                                           final TargetCollection<E> targetCollection) {
         try {
-            return ReadCountCollectionUtils.parse(readCountsFile, exonCollection);
+            return ReadCountCollectionUtils.parse(readCountsFile, targetCollection);
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(readCountsFile, ex.getMessage(), ex);
         }

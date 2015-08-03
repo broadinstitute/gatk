@@ -7,6 +7,7 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
 
 public final class ReCapSegCallerUnitTest extends BaseTest{
     @Test
@@ -33,19 +34,19 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
             targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 700 + 2 * i, 701 + 2 * i), 0.1 * i));
         }
 
-        HashedListExonCollection<TargetCoverage> targets = new HashedListExonCollection<TargetCoverage>(targetList);
+        HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<TargetCoverage>(targetList);
 
-        List<Segment> segments = new ArrayList<Segment>();
-        segments.add(new Segment("sample", new SimpleInterval("chr", 100, 200))); //amplification
-        segments.add(new Segment("sample", new SimpleInterval("chr", 300, 400))); //deletion
-        segments.add(new Segment("sample", new SimpleInterval("chr", 450, 550))); //neutral
-        segments.add(new Segment("sample", new SimpleInterval("chr", 650, 750))); //neutral
+        List<SimpleInterval> segments = new ArrayList<>();
+        segments.add(new SimpleInterval("chr", 100, 200)); //amplification
+        segments.add(new SimpleInterval("chr", 300, 400)); //deletion
+        segments.add(new SimpleInterval("chr", 450, 550)); //neutral
+        segments.add(new SimpleInterval("chr", 650, 750)); //neutral
 
-        ReCapSegCaller.makeCalls(targets, segments);
+        List<CalledInterval> calls = ReCapSegCaller.makeCalls(targets, segments);
 
-        Assert.assertEquals(segments.get(0).getCall(), ReCapSegCaller.AMPLIFICATION_CALL);
-        Assert.assertEquals(segments.get(1).getCall(), ReCapSegCaller.DELETION_CALL);
-        Assert.assertEquals(segments.get(2).getCall(), ReCapSegCaller.NEUTRAL_CALL);
-        Assert.assertEquals(segments.get(3).getCall(), ReCapSegCaller.NEUTRAL_CALL);
+        Assert.assertEquals(calls.get(0).getCall(), ReCapSegCaller.AMPLIFICATION_CALL);
+        Assert.assertEquals(calls.get(1).getCall(), ReCapSegCaller.DELETION_CALL);
+        Assert.assertEquals(calls.get(2).getCall(), ReCapSegCaller.NEUTRAL_CALL);
+        Assert.assertEquals(calls.get(3).getCall(), ReCapSegCaller.NEUTRAL_CALL);
     }
 }

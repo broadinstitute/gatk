@@ -28,6 +28,9 @@ repositories {
     maven {
       url "https://oss.sonatype.org/content/groups/public"
     }
+    maven {
+        url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
+    }
 }
 
 jacocoTestReport {
@@ -62,7 +65,7 @@ dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.hdfgroup:hdf-java:2.6.1'
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:hellbender:GATK.4.alpha-331-g6919598-SNAPSHOT'
+    compile 'org.broadinstitute:hellbender:GATK.4.alpha-499-g319fb10-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
 
     testCompile 'org.testng:testng:6.8.8'
