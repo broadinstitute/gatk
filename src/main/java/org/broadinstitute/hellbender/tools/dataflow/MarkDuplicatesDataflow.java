@@ -40,6 +40,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -102,7 +103,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         final PCollection<GATKRead> preads = readsSource.getReadPCollection(intervals);
 
         final OpticalDuplicateFinder finder = READ_NAME_REGEX != null ?
-            new OpticalDuplicateFinder(OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+            new OpticalDuplicateFinder(READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
 
         final PCollection<GATKRead> results = preads.apply(new MarkDuplicatesDataflowTransform(headerPcolView, finder));
 
@@ -145,7 +146,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         }
 
         @Override
-        public PCollection<GATKRead> apply( final PCollection<GATKRead> preads ) {  
+        public PCollection<GATKRead> apply( final PCollection<GATKRead> preads ) {
             final PCollectionList<GATKRead> readsPartitioned = partitionReadsByPrimaryNonPrimaryAlignment(preads);
 
             final PCollection<GATKRead> fragments = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
@@ -172,9 +173,9 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         }
 
         /**
-         * (1) labelReadsByName: label each read with its read group and read name.
+         * (1) keyReadsByName: label each read with its read group and read name.
          * (2) GroupByKey: group together reads with the same group and name.
-         * (3) labelPairedEndsWithAlignmentInfo:
+         * (3) keyPairedEndsWithAlignmentInfo:
          *   (a) Sort each group of reads (see LexicographicSort below).
          *   (b) Pair consecutive reads into PairedEnds. In most cases there will only be two reads
          *       with the same name. TODO: explain why there might be more.
@@ -189,23 +190,23 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
          *   (b) Determine which duplicates are optical duplicates and increase the overall count.
          */
         private PCollection<GATKRead> transformReads(final PCollectionView<SAMFileHeader> headerPcolView, final PCollection<GATKRead> pairs) {
-            final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> labelReadsByName = labelReadsByName(headerPcolView);
-            final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> labelPairedEndsWithAlignmentInfo =
-                labelPairedEndsWithAlignmentInfo(headerPcolView);
+            final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName = keyReadsByName(headerPcolView);
+            final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo =
+                keyPairedEndsWithAlignmentInfo(headerPcolView);
             final PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds = markDuplicatePairedEnds();
 
             return pairs
-                    .apply(labelReadsByName)
+                    .apply(keyReadsByName)
                     .apply(GroupByKey.<String, GATKRead>create())
-                    .apply(labelPairedEndsWithAlignmentInfo)
+                    .apply(keyPairedEndsWithAlignmentInfo)
                     .setCoder(KvCoder.of(StringUtf8Coder.of(), new PairedEndsCoder()))
                     .apply(GroupByKey.<String, PairedEnds>create())
                     .apply(markDuplicatePairedEnds);
         }
 
-        private PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> labelReadsByName(final PCollectionView<SAMFileHeader> headerPcolView) {
+        private PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName(final PCollectionView<SAMFileHeader> headerPcolView) {
             return ParDo
-                    .named("label reads by name")
+                    .named("key reads by name")
                     .withSideInputs(headerPcolView)
                     .of(new DoFn<GATKRead, KV<String, GATKRead>>() {
                         private static final long serialVersionUID = 1l;
@@ -223,9 +224,9 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                     });
         }
 
-        private PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> labelPairedEndsWithAlignmentInfo(final PCollectionView<SAMFileHeader> headerPcolView) {
+        private PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo(final PCollectionView<SAMFileHeader> headerPcolView) {
             return ParDo
-                    .named("label paired ends with alignment info")
+                    .named("key paired ends with alignment info")
                     .withSideInputs(headerPcolView)
                     .of(new DoFn<KV<String, Iterable<GATKRead>>, KV<String, PairedEnds>>() {
                         private static final long serialVersionUID = 1L;
@@ -268,26 +269,26 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                                 context.output(pair.first());
                             }
 
+                            final List<PairedEnds> pairList = paired.get(true);
                             //order by score
-                            List<PairedEnds> scored = Ordering.natural().reverse().onResultOf((PairedEnds pair) -> pair.score()).sortedCopy(paired.get(true));
-                            final PairedEnds best = Iterables.getFirst(scored, null);
-                            if (best == null) {
+                            Optional<PairedEnds> best = pairList.stream().max(Comparator.comparing(PairedEnds::score));
+                            if (!best.isPresent()) {
                                 return;
                             }
-                            final String bestName = best.first().getName();
-                            for (PairedEnds pair : scored) {
+                            final String bestName = best.get().first().getName();
+                            for (PairedEnds pair : pairList) {
                                 opticalDuplicateFinder.addLocationInformation(pair.first().getName(), pair);
                             }
 
                             // We do not need to split the list by orientation as the keys for the pairs already
                             // include directionality information and a FR pair would not be grouped with an RF pair.
-                            // This function sorts the scored list, so we keep track of the name of the best one,
+                            // This function sorts the list, so we keep track of the name of the best one,
                             // so that it is not marked as a duplicate.
-                            final boolean[] opticalDuplicateFlags = opticalDuplicateFinder.findOpticalDuplicates(scored);
+                            final boolean[] opticalDuplicateFlags = opticalDuplicateFinder.findOpticalDuplicates(pairList);
 
                             //Mark everyone who's not best as a duplicate
-                            for (int i = 0; i < scored.size(); ++i) {
-                                PairedEnds pair = scored.get(i);
+                            for (int i = 0; i < pairList.size(); ++i) {
+                                PairedEnds pair = pairList.get(i);
                                 String pairName = pair.first().getName();
 
                                 GATKRead record = pair.first();
@@ -433,10 +434,8 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                             // These need to be initialized so that the DuplicationMetrics can be serialized safely.
                             metrics.PERCENT_DUPLICATION = 0.0;
                             metrics.ESTIMATED_LIBRARY_SIZE = 0L;
-                            // We have already filtered out secondary and supplementary reads in the partition transform.
-                            if (record.isUnmapped()) {
-                                ++metrics.UNMAPPED_READS;
-                            } else if (!record.isPaired() || record.mateIsUnmapped()) {
+                            // We have already filtered out secondary, supplementary and unmapped reads in the partition transform.
+                            if (!record.isPaired() || record.mateIsUnmapped()) {
                                 ++metrics.UNPAIRED_READS_EXAMINED;
                             } else {
                                 ++metrics.READ_PAIRS_EXAMINED;
@@ -497,6 +496,8 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
                         @Override
                         public void processElement(final ProcessContext context) throws Exception {
                             DuplicationMetrics metrics = context.element().getValue();
+                            // Divide these by 2 because they are counted for each read
+                            // when they should be counted by pair.
                             metrics.READ_PAIRS_EXAMINED = metrics.READ_PAIRS_EXAMINED / 2;
                             metrics.READ_PAIR_DUPLICATES = metrics.READ_PAIR_DUPLICATES / 2;
                             metrics.READ_PAIR_OPTICAL_DUPLICATES = metrics.READ_PAIR_OPTICAL_DUPLICATES / 2;

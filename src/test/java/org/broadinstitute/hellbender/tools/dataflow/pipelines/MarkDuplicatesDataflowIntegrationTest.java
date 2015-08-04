@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -20,6 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTest {
     protected static String TEST_BASE_NAME = null;
@@ -35,23 +37,23 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
             // The first two values are total reads and duplicate reads. The list is an encoding of the metrics
             // file output by this bam file. These metrics files all match the outputs of picard mark duplicates.
             {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"), 20, 0,
-             ImmutableList.of(ImmutableList.of("Solexa-16419", 0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16416", 0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16404", 0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16406", 0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16412", 0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L))},
+             ImmutableMap.of("Solexa-16419", ImmutableList.of(0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16416", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16404", ImmutableList.of(0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16406", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16412", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L))},
             {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.bam"), 90, 6,
-             ImmutableList.of(ImmutableList.of("Solexa-16419", 4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16416", 2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16404", 3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L),
-                              ImmutableList.of("Solexa-16406", 1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16412", 3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L))},
+             ImmutableMap.of("Solexa-16419", ImmutableList.of(4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16416", ImmutableList.of(2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L),
+                             "Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L))},
             {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.markedDups.bam"), 90, 6,
-             ImmutableList.of(ImmutableList.of("Solexa-16419", 4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16416", 2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16404", 3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L),
-                              ImmutableList.of("Solexa-16406", 1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L),
-                              ImmutableList.of("Solexa-16412", 3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L))},
+             ImmutableMap.of("Solexa-16419", ImmutableList.of(4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16416", ImmutableList.of(2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L),
+                             "Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L),
+                             "Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L))},
             {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes.bam"), 4, 2,
              ImmutableList.of(ImmutableList.of("mylib", 0L, 2L, 0L, 0L, 1L, 1L, 0.5, 0L))},
             {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes_casava.bam"), 4, 2,
@@ -62,12 +64,12 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
     @Test(groups = "dataflow", dataProvider = "md")
     public void testMarkDuplicatesDataflowIntegrationTestLocal(
         final File input, final long totalExpected, final long dupsExpected,
-        List<List<String>> metricsExpected) throws IOException {
+        Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
+        args.add("--"+StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(input.getPath());
-        args.add("--output");
+        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
         File outputFile = createTempFile("markdups", ".bam");
         args.add(outputFile.getAbsolutePath());
         args.add("--METRICS_FILE");
@@ -103,7 +105,8 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
                             "Wrong number of metrics with non-zero fields.");
         for (int i = 0; i < metricsOutput.getMetrics().size(); i++ ){
             final DuplicationMetrics observedMetrics = metricsOutput.getMetrics().get(i);
-            List<String> expectedList = metricsExpected.get(i);
+            List<String> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
+            Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
             Assert.assertEquals(observedMetrics.LIBRARY, expectedList.get(0));
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(1));
             Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedList.get(2));
@@ -114,5 +117,21 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
             Assert.assertEquals(observedMetrics.PERCENT_DUPLICATION, expectedList.get(7));
             Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(8));
         }
+    }
+
+    public void testMarkDuplicatesDataflowReadNameRegexNull() throws IOException {
+      ArgumentsBuilder args = new ArgumentsBuilder();
+      args.add("--"+StandardArgumentDefinitions.INPUT_LONG_NAME);
+      File input = new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR, "optical_dupes.bam");
+      args.add(input.getPath());
+      args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+      File outputFile = createTempFile("markdups", ".bam");
+      args.add(outputFile.getAbsolutePath());
+      args.add("--METRICS_FILE");
+      File metricsFile = createTempFile("markdups_metrics", ".txt");
+      args.add(metricsFile.getAbsolutePath());
+      args.add("--READ_NAME_REGEX");
+      args.add(null);
+      runCommandLine(args.getArgsArray());
     }
 }
