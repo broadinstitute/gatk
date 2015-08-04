@@ -301,7 +301,7 @@ final class MarkDuplicatesUtils {
                         @Override
                         public void processElement(final ProcessContext context) throws Exception {
                             final GATKRead record = context.element();
-                            if (record.isSecondaryOrSupplementary()) {
+                            if (record.isSecondaryAlignment() || record.isSupplementaryAlignment()) {
                               return;
                             }
                             final SAMFileHeader h = context.sideInput(header);
