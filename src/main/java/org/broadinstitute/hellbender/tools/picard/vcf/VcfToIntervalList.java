@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.picard.vcf;
 
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -25,7 +24,6 @@ import java.io.File;
 )
 public final class VcfToIntervalList extends PicardCommandLineProgram {
     // The following attributes define the command-line arguments
-    public static final Log LOG = Log.getInstance(VcfToIntervalList.class);
 
     @Argument(doc = "The BCF or VCF input file. The file format is determined by file extension.", shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;

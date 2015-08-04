@@ -6,7 +6,8 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -45,7 +46,7 @@ import java.util.*;
 public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
     static final String USAGE = "Produces from a SAM or BAM a file containing summary alignment metrics";
     
-    private static final Log log = Log.getInstance(CollectAlignmentSummaryMetrics.class);
+    private static final Logger log = LogManager.getLogger();
 
     // Usage and parameters
 

@@ -61,7 +61,7 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
     protected IntervalSetRule intervalSetRule = IntervalSetRule.UNION;
     /**
      * Use this to add padding to the intervals specified using -L and/or -XL. For example, '-L 1:100' with a
-     * padding value of 20 would turn into '-L 1:80-120'. This is typically used to add padding around exons when
+     * padding value of 20 would turn into '-L 1:80-120'. This is typically used to add padding around targets when
      * analyzing exomes.
      */
     @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval")

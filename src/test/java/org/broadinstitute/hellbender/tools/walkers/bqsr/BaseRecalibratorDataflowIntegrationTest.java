@@ -140,7 +140,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
         return new Object[][]{
                 // reference in cloud, computation local.
-                {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, apiArgs +"-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
+                {new BQSRTest(hg18ReferenceCloud, HiSeqBam, dbSNPb37, apiArgs +" -knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 // input in cloud, computation local.
                 {new BQSRTest(hg18Reference, HiSeqBamCloud, dbSNPb37, apiArgs, getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
         };

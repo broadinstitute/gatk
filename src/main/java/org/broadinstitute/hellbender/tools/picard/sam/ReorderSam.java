@@ -5,7 +5,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -46,8 +46,6 @@ public final class ReorderSam extends PicardCommandLineProgram {
             "are doing.")
     public boolean ALLOW_CONTIG_LENGTH_DISCORDANCE = false;
 
-    private final Log log = Log.getInstance(ReorderSam.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -73,7 +71,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
         SAMFileHeader outHeader = ReadUtils.cloneSAMFileHeader(in.getFileHeader());
         outHeader.setSequenceDictionary(refDict);
 
-        log.info("Writing reads...");
+        logger.info("Writing reads...");
         if (in.hasIndex()) {
             try (final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, true, OUTPUT)) {
 
@@ -120,7 +118,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
                             final Map<Integer, Integer> newOrder,
                             final String name) {
         long counter = 0;
-        log.info("  Processing " + name);
+        logger.info("  Processing " + name);
 
         while (it.hasNext()) {
             counter++;
@@ -144,7 +142,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
         }
 
         it.close();
-        log.info("Wrote " + counter + " reads");
+        logger.info("Wrote " + counter + " reads");
     }
 
     /**
@@ -155,7 +153,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
                                                              final SAMSequenceDictionary readsDict) {
         Map<Integer, Integer> newOrder = new HashMap<>();
 
-        log.info("Reordering SAM/BAM file:");
+        logger.info("Reordering SAM/BAM file:");
         for (final SAMSequenceRecord refRec : refDict.getSequences()) {
             final SAMSequenceRecord readsRec = readsDict.getSequence(refRec.getSequenceName());
 
@@ -165,13 +163,13 @@ public final class ReorderSam extends PicardCommandLineProgram {
                             readsRec.getSequenceName(), readsRec.getSequenceLength(),
                             refRec.getSequenceName(), refRec.getSequenceLength());
                     if (ALLOW_CONTIG_LENGTH_DISCORDANCE) {
-                        log.warn(msg);
+                        logger.warn(msg);
                     } else {
                         throw new UserException(msg);
                     }
                 }
 
-                log.info(String.format("  Reordering read contig %s [index=%d] to => ref contig %s [index=%d]%n",
+                logger.info(String.format("  Reordering read contig %s [index=%d] to => ref contig %s [index=%d]%n",
                         readsRec.getSequenceName(), readsRec.getSequenceIndex(),
                         refRec.getSequenceName(), refRec.getSequenceIndex()));
                 newOrder.put(readsRec.getSequenceIndex(), refRec.getSequenceIndex());
@@ -194,9 +192,9 @@ public final class ReorderSam extends PicardCommandLineProgram {
      * Helper function to print out a sequence dictionary
      */
     private void printDictionary(String name, SAMSequenceDictionary dict) {
-        log.info(name);
+        logger.info(name);
         for (final SAMSequenceRecord contig : dict.getSequences()) {
-            log.info("  SN=%s LN=%d%n", contig.getSequenceName(), contig.getSequenceLength());
+            logger.info("  SN=%s LN=%d%n", contig.getSequenceName(), contig.getSequenceLength());
         }
     }
 }

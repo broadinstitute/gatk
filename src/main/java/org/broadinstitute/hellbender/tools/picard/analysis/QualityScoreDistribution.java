@@ -7,8 +7,9 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -55,7 +56,7 @@ public final class QualityScoreDistribution extends SinglePassSamProgram {
      */
     private String plotSubtitle = "";
 
-    private final Log log = Log.getInstance(QualityScoreDistribution.class);
+    private final Logger log = LogManager.getLogger(QualityScoreDistribution.class);
 
     @Override
     protected void setup(final SAMFileHeader header, final File samFile) {

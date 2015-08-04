@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.read.mergealignment;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +21,7 @@ import java.util.List;
  */
 public final class SamAlignmentMerger extends AbstractAlignmentMerger {
 
-    private final Log log = Log.getInstance(SamAlignmentMerger.class);
+    private final Logger log = LogManager.getLogger(SamAlignmentMerger.class);
     private final List<File> alignedSamFile;
     private final List<File> read1AlignedSamFile;
     private final List<File> read2AlignedSamFile;

@@ -4,8 +4,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -14,12 +12,14 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.*;
@@ -64,7 +64,7 @@ public final class MakeSitesOnlyVcf extends PicardCommandLineProgram {
 		    throw new UserException("A sequence dictionary must be available (either through the input file or by setting it explicitly) when creating indexed output.");
 	    }
 
-        final ProgressLogger progress = new ProgressLogger(Log.getInstance(MakeSitesOnlyVcf.class), 10000);
+        final ProgressLogger progress = new ProgressLogger(logger, 10000);
 
         // Setup the site-only file writer
         final VariantContextWriterBuilder builder = new VariantContextWriterBuilder()

@@ -15,9 +15,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
+import org.broadinstitute.hellbender.dev.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.MarkDuplicates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
@@ -79,7 +81,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
         // Apply MarkDuplicates to produce updated GATKReads.
-        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicatesStub(headerSingleton));
+        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton));
 
         // Load the Variants and the Reference and join them to reads.
         final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
@@ -97,30 +99,6 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
     }
 
-    // NOTE: need a way to ensure that certain tools are guaranteed to have a header -- one option is
-    // an interface with a factory method
-    private static class MarkDuplicatesStub extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
-        private static final long serialVersionUID = 1L;
-
-        private PCollectionView<SAMFileHeader> header;
-
-        public MarkDuplicatesStub( final PCollectionView<SAMFileHeader> header ) {
-            this.header = header;
-        }
-
-        @Override
-        public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
-            return input.apply(ParDo.named("MarkDuplicates").
-                    of(new DoFn<GATKRead, GATKRead>() {
-                        private static final long serialVersionUID = 1L;
-                        @Override
-                        public void processElement( ProcessContext c ) throws Exception {
-                            c.output(c.element());
-                        }
-                    }).withSideInputs(header));
-        }
-    }
-
     private static class BaseRecalibratorStub extends PTransform<PCollection<KV<GATKRead, ReadContextData>>, PCollection<RecalibrationTables>> {
         private static final long serialVersionUID = 1L;
         private PCollectionView<SAMFileHeader> header;
@@ -132,7 +110,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         @Override
         public PCollection<RecalibrationTables> apply( PCollection<KV<GATKRead, ReadContextData>> input ) {
             return input.apply(ParDo.named("BaseRecalibrator").
-                    of(new DoFn<KV<GATKRead, ReadContextData>, RecalibrationTables>() {
+                    of(new DoFnWLog<KV<GATKRead, ReadContextData>, RecalibrationTables>("BaseRecalibratorStub") {
                         private static final long serialVersionUID = 1L;
 
                         @Override
@@ -156,7 +134,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         @Override
         public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
             return input.apply(ParDo.named("ApplyBQSR").
-                    of(new DoFn<GATKRead, GATKRead>() {
+                    of(new DoFnWLog<GATKRead, GATKRead>("ApplyBQSRStub") {
                         private static final long serialVersionUID = 1L;
 
                         @Override

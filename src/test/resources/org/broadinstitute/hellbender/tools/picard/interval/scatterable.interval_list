@@ -1,4 +1,4 @@
-@HD	VN:1.4	SO:coordinate
+@HD	VN:1.5	SO:coordinate
 @SQ	SN:1	LN:249250621	AS:GRCh37	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	M5:1b22b98cdeb4a9304cb5d48026a85128	SP:Homo Sapiens
 @SQ	SN:2	LN:243199373	AS:GRCh37	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	M5:a0d9851da00400dec1098a9255ac712e	SP:Homo Sapiens
 @SQ	SN:3	LN:198022430	AS:GRCh37	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	M5:fdfd811849cc2fadebc929bb925902e5	SP:Homo Sapiens

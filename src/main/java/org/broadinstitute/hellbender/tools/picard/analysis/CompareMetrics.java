@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.PositionalArguments;
@@ -28,8 +28,6 @@ public final class CompareMetrics extends PicardCommandLineProgram {
     @PositionalArguments(minElements = 2, maxElements = 2)
     public List<File> metricsFiles;
 
-    private static final Log log = Log.getInstance(CompareMetrics.class);
-
     @Override
     protected Object doWork() {
         IOUtil.assertFilesAreReadable(metricsFiles);
@@ -40,7 +38,7 @@ public final class CompareMetrics extends PicardCommandLineProgram {
             metricsB.read(new FileReader(metricsFiles.get(1)));
             final boolean areEqual = metricsA.areMetricsEqual(metricsB) && metricsA.areHistogramsEqual(metricsB);
             final String status = areEqual ? "EQUAL" : "NOT EQUAL";
-            log.info("Files " + metricsFiles.get(0) + " and " + metricsFiles.get(1) + "are " + status);
+            logger.info("Files " + metricsFiles.get(0) + " and " + metricsFiles.get(1) + "are " + status);
         } catch (final Exception e) {
             throw new GATKException(e.getMessage());
         }

@@ -189,7 +189,7 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
     }
 
     public File getRefFlatFile(String sequence) throws Exception {
-        // Create a refFlat file with a single gene containing two exons, one of which is overlapped by the
+        // Create a refFlat file with a single gene containing two targets, one of which is overlapped by the
         // ribosomal interval.
         final String[] refFlatFields = new String[RefFlatColumns.values().length];
         refFlatFields[RefFlatColumns.GENE_NAME.ordinal()] = "myGene";

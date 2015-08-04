@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.utils.gene;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.utils.text.parsers.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
@@ -13,7 +14,7 @@ import java.util.*;
  * internally consistent, e.g. transcripts on different chromosomes or different strands.
  */
 public final class RefFlatReader {
-    private static final Log LOG = Log.getInstance(RefFlatReader.class);
+    private static final Logger LOG = LogManager.getLogger();
     // These are in the order that columns appear in refFlat format.
     public enum RefFlatColumns{GENE_NAME, TRANSCRIPT_NAME, CHROMOSOME, STRAND, TX_START, TX_END, CDS_START, CDS_END,
         EXON_COUNT, EXON_STARTS, EXON_ENDS}
@@ -133,10 +134,10 @@ public final class RefFlatReader {
         final String[] exonEnds = row.getField(RefFlatColumns.EXON_ENDS.name()).split(",");
 
         if (exonCount != exonStarts.length) {
-            throw new GeneAnnotationException("Number of exon starts does not agree with number of exons for " + transcriptDescription);
+            throw new GeneAnnotationException("Number of target starts does not agree with number of targets for " + transcriptDescription);
         }
         if (exonCount != exonEnds.length) {
-            throw new GeneAnnotationException("Number of exon ends does not agree with number of exons for " + transcriptDescription);
+            throw new GeneAnnotationException("Number of target ends does not agree with number of targets for " + transcriptDescription);
         }
 
         final int transcriptionStart = row.getIntegerField(RefFlatColumns.TX_START.name()) + 1;

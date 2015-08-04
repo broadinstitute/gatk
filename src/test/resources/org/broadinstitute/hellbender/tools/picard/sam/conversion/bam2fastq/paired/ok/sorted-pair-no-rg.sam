@@ -1,4 +1,4 @@
-@HD	VN:1.0	SO:queryname
+@HD	VN:1.5	SO:queryname
 bar:record:1	77	*	0	0	*	*	0	0	AAAAAAAAAAAAA	1111111111111
 bar:record:1	141	*	0	0	*	*	0	0	CCCCCCCCCCCCC	2222222222222
 bar:record:2	77	*	0	0	*	*	0	0	AAAAAAAAAAAAA	1111111111111

@@ -30,7 +30,7 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 public class RefBasesFromAPI {
     public static PCollection<KV<ReferenceBases, Iterable<GATKRead>>> getBasesForShard(PCollection<KV<ReferenceShard, Iterable<GATKRead>>> reads,
                                                                                        RefAPIMetadata refAPIMetadata) {
-        PCollectionView<RefAPIMetadata> dataView = reads.getPipeline().apply(Create.of(refAPIMetadata)).apply(View.<RefAPIMetadata>asSingleton());
+        PCollectionView<RefAPIMetadata> dataView = reads.getPipeline().apply("apply create of refAPIMetadata",Create.of(refAPIMetadata)).apply("View RefAPIMetadata as singleton",View.<RefAPIMetadata>asSingleton());
         return reads.apply(ParDo.withSideInputs(dataView).of(
                 new DoFn<KV<ReferenceShard, Iterable<GATKRead>>, KV<ReferenceBases, Iterable<GATKRead>>>() {
                     private static final long serialVersionUID = 1L;

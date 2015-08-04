@@ -7,8 +7,9 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.StringUtil;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -55,7 +56,7 @@ public final class MeanQualityByCycle extends SinglePassSamProgram {
      */
     private String plotSubtitle = "";
 
-    private final Log log = Log.getInstance(MeanQualityByCycle.class);
+    private final Logger logger = LogManager.getLogger(this.getClass());
 
     private static class HistogramGenerator {
         final boolean useOriginalQualities;
@@ -160,7 +161,7 @@ public final class MeanQualityByCycle extends SinglePassSamProgram {
         metrics.write(OUTPUT);
 
         if (q.isEmpty() && oq.isEmpty()) {
-            log.warn("No valid bases found in input file. No plot will be produced.");
+            logger.warn("No valid bases found in input file. No plot will be produced.");
         }
         else if (PRODUCE_PLOT){
             // Now run R to generate a chart

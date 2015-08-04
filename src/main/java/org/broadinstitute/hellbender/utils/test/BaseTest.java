@@ -101,6 +101,18 @@ public abstract class BaseTest {
     }
 
     /**
+     * @return an arguments List containing the apiKey, project, and staging arguments
+     *         populated from environment variables as defined in {@link #getDataflowTestApiKey},
+     *         {@link #getDataflowTestProject}, and {@link #getDataflowTestStaging}, suitable
+     *         for use in a hellbender command line.
+     */
+    public List<String> getStandardDataflowArgumentsFromEnvironment() {
+        return Arrays.asList("--apiKey", getDataflowTestApiKey(),
+                             "--project", getDataflowTestProject(),
+                             "--staging", getDataflowTestStaging());
+    }
+
+    /**
      * Gets a PipelineOptions object containing our API key as specified in the HELLBENDER_TEST_APIKEY
      * environment variable. Useful for tests that need to access data in a GCS bucket via the
      * methods in the {@link org.broadinstitute.hellbender.utils.dataflow.BucketUtils} class,

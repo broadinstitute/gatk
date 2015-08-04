@@ -153,7 +153,7 @@ public class SmallBamWriterTest extends BaseTest {
                 for ( GATKRead read : readsSource ) {
                     reads.add(read);
                 }
-                return pipeline.apply(Create.of(reads).setName("input ingest"));
+                return pipeline.apply("input ingest",Create.of(reads));
             }
         }
     }

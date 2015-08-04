@@ -6,7 +6,8 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -31,7 +32,8 @@ import java.util.*;
         programGroup = QCProgramGroup.class
 )
 public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
-    private static final Log log = Log.getInstance(CollectInsertSizeMetrics.class);
+    private static final Logger log = LogManager.getLogger(CollectInsertSizeMetrics.class);
+
     private static final String R_SCRIPT = "insertSizeHistogram.R";
 
     @Argument(shortName="H", doc="File to write insert size Histogram chart to.")

@@ -138,9 +138,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                 }
             }
             bunny.stepEnd("setup");
-        } catch (UserException rx) {
-            throw rx;
-        } catch (GATKException rx) {
+        } catch (UserException | GATKException rx) {
             throw rx;
         } catch (Exception x) {
             throw new GATKException("Unexpected: " + x.getMessage(), x);
@@ -229,7 +227,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                         readLst.add(read);
                     }
                 }
-                return pipeline.apply(Create.of(readLst).setName("input ingest")).setCoder(new GATKReadCoder());
+                return pipeline.apply("input ingest", Create.of(readLst).withCoder(new GATKReadCoder()));
             }
         }
     }
@@ -246,8 +244,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
                 knownSitesLst.add(new SimpleInterval(f));
             }
         }
-        return pipeline.apply(Create.of(knownSitesLst).setName("known intervals ingest"))
-                .setCoder(SerializableCoder.of(SimpleInterval.class)); // Dataflow boilerplate
+        return pipeline.apply("known intervals ingest", Create.of(knownSitesLst).withCoder(SerializableCoder.of(SimpleInterval.class)));
     }
 
 }

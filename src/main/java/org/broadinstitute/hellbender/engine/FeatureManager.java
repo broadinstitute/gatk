@@ -397,6 +397,14 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
+     * @param file file to check
+     * @return True if the file exists and contains Features (ie., we have a FeatureCodec that can decode it), otherwise false
+     */
+    public static boolean isFeatureFile( final File file ) {
+        return file.exists() && ! getCandidateCodecsForFile(file).isEmpty();
+    }
+
+    /**
      * Permanently closes this manager by closing all backing data sources
      */
     public void close() {

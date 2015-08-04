@@ -67,10 +67,10 @@ public final class AddContextDataToReadUnitTest extends BaseTest {
                 KvCoder.of(new GATKReadCoder(), SerializableCoder.of(ReferenceBases.class)));
 
         PCollection<KV<GATKRead, Iterable<Variant>>> pReadVariants =
-                p.apply(Create.of(kvReadiVariant)).setCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder())));
+                p.apply(Create.of(kvReadiVariant).withCoder(KvCoder.of(new GATKReadCoder(), IterableCoder.of(new VariantCoder()))));
 
         PCollection<KV<GATKRead, ReadContextData>> joinedResults = AddContextDataToRead.join(pReads, pReadRef, pReadVariants);
-        PCollection<KV<GATKRead, ReadContextData>> pkvReadContextData = p.apply(Create.of(kvReadContextData)).setCoder(KvCoder.of(new GATKReadCoder(), new ReadContextDataCoder()));
+        PCollection<KV<GATKRead, ReadContextData>> pkvReadContextData = p.apply(Create.of(kvReadContextData).withCoder(KvCoder.of(new GATKReadCoder(), new ReadContextDataCoder())));
         DataflowTestUtils.keyReadContextDataMatcher(joinedResults, pkvReadContextData);
         p.run();
     }
@@ -101,7 +101,7 @@ public final class AddContextDataToReadUnitTest extends BaseTest {
         RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
         RefAPISource.setRefAPISource(mockSource);
         PCollection<KV<GATKRead, ReadContextData>> result = AddContextDataToRead.add(pReads, /*mockSource,*/ refAPIMetadata, mockVariantsSource);
-        PCollection<KV<GATKRead, ReadContextData>> pkvReadContextData = p.apply(Create.of(kvReadContextData)).setCoder(KvCoder.of(new GATKReadCoder(), new ReadContextDataCoder()));
+        PCollection<KV<GATKRead, ReadContextData>> pkvReadContextData = p.apply(Create.of(kvReadContextData).withCoder(KvCoder.of(new GATKReadCoder(), new ReadContextDataCoder())));
         DataflowTestUtils.keyReadContextDataMatcher(result, pkvReadContextData);
         p.run();
     }

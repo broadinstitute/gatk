@@ -5,20 +5,20 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 
@@ -53,8 +53,6 @@ public final class SplitVcfs extends PicardCommandLineProgram {
     @Argument(doc = "If true an exception will be thrown if an event type other than SNP or indel is encountered")
     public Boolean STRICT = true;
 
-    private final Log log = Log.getInstance(SplitVcfs.class);
-
     public SplitVcfs() {
         this.CREATE_INDEX = true;
     }
@@ -62,7 +60,7 @@ public final class SplitVcfs extends PicardCommandLineProgram {
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
-        final ProgressLogger progress = new ProgressLogger(log, 10000);
+        final ProgressLogger progress = new ProgressLogger(logger, 10000);
 
         final VCFFileReader fileReader = new VCFFileReader(INPUT);
         final VCFHeader fileHeader = fileReader.getFileHeader();
@@ -102,7 +100,7 @@ public final class SplitVcfs extends PicardCommandLineProgram {
             }
 
             if (incorrectVariantCount > 0) {
-                log.debug("Found " + incorrectVariantCount + " records that didn't match SNP or INDEL");
+                logger.debug("Found " + incorrectVariantCount + " records that didn't match SNP or INDEL");
             }
 
             CloserUtil.close(iterator);

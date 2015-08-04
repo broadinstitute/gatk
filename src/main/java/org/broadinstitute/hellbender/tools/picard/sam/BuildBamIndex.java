@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 
@@ -21,8 +21,6 @@ import java.net.URL;
         programGroup = ReadProgramGroup.class
 )
 public final class BuildBamIndex extends PicardCommandLineProgram {
-
-    private static final Log log = Log.getInstance(BuildBamIndex.class);
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "A BAM file or URL to process. Must be sorted in coordinate order.")
@@ -97,7 +95,7 @@ public final class BuildBamIndex extends PicardCommandLineProgram {
 
         BAMIndexer.createIndex(bam, OUTPUT);
 
-        log.info("Successfully wrote bam index file " + OUTPUT);
+        logger.info("Successfully wrote bam index file " + OUTPUT);
         CloserUtil.close(bam);
         return null;
     }

@@ -35,7 +35,7 @@ public class DataflowTestUtils {
                 throw new GATKException("DecodeEncodeEqual are not equal for: " + value.getClass().getSimpleName());
             }
         }
-        PCollection<T> pCollection = p.apply(Create.of(list)).setCoder(coder);
+        PCollection<T> pCollection = p.apply(Create.of(list).withCoder(coder));
         DataflowAssert.that(pCollection).containsInAnyOrder(list); // Remove me when DavidR's fix is in.
         return pCollection;
     }
@@ -72,8 +72,8 @@ public class DataflowTestUtils {
         PCollectionView<List<KV<T, Iterable<U>>>> p2View = p2.apply(View.asList());
         p1.apply(ParDo.withSideInputs(p2View).of(new BInA<>(p2View)));
 
-        PCollectionView<List<KV<T, Iterable<U>>>> p1View = p2.apply(View.asList());
-        p2.apply(ParDo.withSideInputs(p1View).of(new BInA<>(p1View)));
+        PCollectionView<List<KV<T, Iterable<U>>>> p1View = p2.apply("p1View.View",View.asList());
+        p2.apply("p2.ParDo.BInA",ParDo.withSideInputs(p1View).of(new BInA<>(p1View)));
     }
 
     static class BInAwReadContextData<T> extends DoFn<KV<T, ReadContextData>, Void> {

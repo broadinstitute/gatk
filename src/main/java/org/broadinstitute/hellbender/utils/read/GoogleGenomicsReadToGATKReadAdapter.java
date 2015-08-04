@@ -4,18 +4,29 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
+import com.google.cloud.dataflow.sdk.coders.CustomCoder;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import com.google.cloud.genomics.gatk.common.GenomicsConverter;
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Implementation of the {@link GATKRead} interface for the Google Genomics {@link Read} class.
@@ -45,26 +56,22 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
     /**
      * Dataflow coder for this adapter class
      */
-    public static final DelegateCoder<GATKRead, KV<UUID, Read>> CODER =
-        DelegateCoder.of(
-            KvCoder.of(UUIDCoder.CODER, GenericJsonCoder.of(Read.class)),
-                    new DelegateCoder.CodingFunction<GATKRead, KV<UUID, Read>>() {
-                        private static final long serialVersionUID = 1l;
+    public static final CustomCoder<GoogleGenomicsReadToGATKReadAdapter> CODER = new CustomCoder<GoogleGenomicsReadToGATKReadAdapter>() {
+        private static final long serialVersionUID = 1l;
 
-                        @Override
-                        public KV<UUID, Read> apply( GATKRead gatkRead ) throws Exception {
-                            return KV.of(gatkRead.getUUID(), gatkRead.convertToGoogleGenomicsRead());
-                        }
-                    },
-                    new DelegateCoder.CodingFunction<KV<UUID, Read>, GATKRead>() {
-                        private static final long serialVersionUID = 1l;
+        @Override
+        public void encode(GoogleGenomicsReadToGATKReadAdapter value, OutputStream outStream, Context context) throws IOException {
+            KvCoder.of(UUIDCoder.CODER,GenericJsonCoder.of(Read.class)).encode(KV.of(value.getUUID(), value.genomicsRead), outStream, context);
+        }
 
-                        @Override
-                        public GATKRead apply( KV<UUID, Read> read ) throws Exception {
-                            return new GoogleGenomicsReadToGATKReadAdapter(read.getValue(), read.getKey());
-                        }
-                    }
-            );
+        @Override
+        public GoogleGenomicsReadToGATKReadAdapter decode(InputStream inStream, Context context) throws IOException {
+            final KV<UUID, Read> decode = KvCoder.of(UUIDCoder.CODER, GenericJsonCoder.of(Read.class)).decode(inStream, context);
+            final UUID uuid = decode.getKey();
+            final Read read = decode.getValue();
+            return new GoogleGenomicsReadToGATKReadAdapter(read, uuid);
+        }
+    };
 
     private static <T> T assertFieldValueNotNull( final T fieldValue, final String fieldName ) {
         if ( fieldValue == null ) {

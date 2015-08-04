@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 
@@ -35,7 +36,7 @@ public final class GatherBamFiles extends PicardCommandLineProgram {
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file to write.")
     public File OUTPUT;
 
-    private static final Log log = Log.getInstance(GatherBamFiles.class);
+    private static final Logger log = LogManager.getLogger();
 
     @Override
     protected Object doWork() {

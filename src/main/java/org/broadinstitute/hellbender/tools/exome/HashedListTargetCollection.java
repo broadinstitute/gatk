@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class HashedListExonCollection<T extends Locatable> implements ExonCollection<T> {
+public class HashedListTargetCollection<T extends Locatable> implements TargetCollection<T> {
 
     /**
      * Map from interval name to interval object.
@@ -33,7 +33,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
 
     /**
      * Cached index of the last overlapping interval found by
-     * {@link #cachedBinarySearch(SimpleInterval)}.
+     * {@link #cachedBinarySearch(Locatable)}.
      *
      * <p>
      *     This results in a noticeable performance gain when processing data in
@@ -43,7 +43,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
     private int lastBinarySearchResult = -1;
 
     /**
-     * Creates a exon data-base give a sorted list of intervals.
+     * Creates a target data-base give a sorted list of intervals.
      *
      * <p>
      *     Intervals will be sorted by their contig id lexicographical order.
@@ -52,7 +52,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      * @param intervals the input interval list. Is assumed to be sorted
      * @throws IllegalArgumentException if {@code intervals} is {@code null}.
      */
-    public HashedListExonCollection(final List<T> intervals) {
+    public HashedListTargetCollection(final List<T> intervals) {
         if (intervals == null) {
             throw new IllegalArgumentException("the input intervals cannot be null");
         }
@@ -112,7 +112,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
 
     @Override
     public String name(final T exon) {
-        Utils.nonNull(exon,"null exon not allowed");
+        Utils.nonNull(exon,"null target not allowed");
         final String contig = exon.getContig();
         if (contig == null) {
             return null;
@@ -122,23 +122,23 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
     }
 
     @Override
-    public List<T> exons() {
+    public List<T> targets() {
         return sortedIntervals;
     }
 
     @Override
-    public int exonCount() {
+    public int targetCount() {
         return sortedIntervals.size();
     }
 
     @Override
-    public T exon(final int index) {
+    public T target(final int index) {
         Utils.validIndex(index, sortedIntervals.size());
         return sortedIntervals.get(index);
     }
 
     @Override
-    public T exon(final String name) {
+    public T target(final String name) {
         Utils.nonNull(name,"the input name cannot be null");
         return intervalsByName.get(name);
     }
@@ -158,7 +158,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
     }
 
     @Override
-    public IndexRange indexRange(final SimpleInterval location) {
+    public IndexRange indexRange(final Locatable location) {
         Utils.nonNull(location, "the input location cannot be null");
         final int searchIndex = cachedBinarySearch(location);
         if (searchIndex < 0) {
@@ -172,7 +172,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
 
     @Override
     public SimpleInterval location(final T exon) {
-        return new SimpleInterval(Utils.nonNull(exon,"the exon cannot be null"));
+        return new SimpleInterval(Utils.nonNull(exon, "the target cannot be null"));
     }
 
     @Override
@@ -182,13 +182,13 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
     }
 
     @Override
-    public T exon(final SimpleInterval overlapRegion) {
+    public T target(final Locatable overlapRegion) {
         final int searchIndex = index(overlapRegion);
         return searchIndex < 0 ? null : sortedIntervals.get(searchIndex);
     }
 
     @Override
-    public int index(final SimpleInterval location) {
+    public int index(final Locatable location) {
         final IndexRange range = indexRange(location);
         switch (range.size()) {
             case 1:
@@ -196,16 +196,33 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
             case 0:
                 return - (range.from + 1);
             default:
-                throw new AmbiguousExonException(
-                        String.format("location '%s' overlaps with %d exons: from '%s' to '%s'.",
-                  location,range.size(),exon(range.from),exon(range.to - 1)));
+                throw new AmbiguousTargetException(
+                        String.format("location '%s' overlaps with %d targets: from '%s' to '%s'.",
+                  location,range.size(), target(range.from), target(range.to - 1)));
         }
     }
 
     @Override
-    public List<T> exons(final SimpleInterval overlapRegion) {
+    public List<T> targets(final Locatable overlapRegion) {
         final IndexRange range = indexRange(overlapRegion);
         return sortedIntervals.subList(range.from, range.to);
+    }
+
+    /**
+     * The smallest interval containing all the same targets as a given Locatable region
+     *
+     * @param overlapRegion the untrimmed region
+     * @return the smallest interval containing the same targets as overlapRegion.  IF overlap region contains no targets
+     * return an empty interval with start and end equal to the original start
+     */
+    public SimpleInterval trimmedInterval(final Locatable overlapRegion) {
+        final IndexRange range = indexRange(overlapRegion);
+        if (range.size() == 0) {
+            return new SimpleInterval(overlapRegion.getContig(), overlapRegion.getStart(), overlapRegion.getStart());
+        } else {
+            return new SimpleInterval(overlapRegion.getContig(), target(range.from).getStart(), target(range.to - 1).getEnd());
+        }
+
     }
 
     /**
@@ -231,8 +248,8 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      *     is guaranteed to overlap the query {@code location}. There might be more intervals that
      *     overlap this location and they must all be contiguous to the returned index.
      * <p>
-     *     One can use {@link #extendSearchIndexBackwards(SimpleInterval, int)}
-     *     and {@link #extendSearchIndexForward(SimpleInterval, int)}
+     *     One can use {@link #extendSearchIndexBackwards(Locatable, int)}
+     *     and {@link #extendSearchIndexForward(Locatable, int)}
      *     to find the actual overlapping index range.
      * </p>
      *
@@ -246,9 +263,9 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      * </p>
      *
      * @param location the query location.
-     * @return any integer between <code>-{@link #exonCount()}-1</code> and <code>{@link #exonCount()} - 1</code>.
+     * @return any integer between <code>-{@link #targetCount()}-1</code> and <code>{@link #targetCount()} - 1</code>.
      */
-    private int cachedBinarySearch(final SimpleInterval location) {
+    private int cachedBinarySearch(final Locatable location) {
 
         if (lastBinarySearchResult < 0) {
             final int candidate = -(lastBinarySearchResult + 1);
@@ -283,8 +300,8 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      *     is guaranteed to overlap the query {@code location}. There might be more intervals that
      *     overlap this location and they must all be contiguous to the returned index.
      * <p>
-     *     One can use {@link #extendSearchIndexBackwards(SimpleInterval, int)}
-     *     and {@link #extendSearchIndexForward(SimpleInterval, int)}
+     *     One can use {@link #extendSearchIndexBackwards(Locatable, int)}
+     *     and {@link #extendSearchIndexForward(Locatable, int)}
      *     to find the actual overlapping index range.
      * </p>
      *
@@ -298,9 +315,9 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      * </p>
      *
      * @param location the query location.
-     * @return any integer between <code>-{@link #exonCount()}-1</code> and <code>{@link #exonCount()} - 1</code>.
+     * @return any integer between <code>-{@link #targetCount()}-1</code> and <code>{@link #targetCount()} - 1</code>.
      */
-    private int uncachedBinarySearch(final SimpleInterval location) {
+    private int uncachedBinarySearch(final Locatable location) {
         if (sortedIntervals.size() == 0) {
             return -1;
         }
@@ -325,7 +342,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      * starting at {@code startIndex} and assuming that the element at that index has an
      * overlap with {@code location}.
      */
-    private int extendSearchIndexForward(final SimpleInterval location, final int startIndex) {
+    private int extendSearchIndexForward(final Locatable location, final int startIndex) {
         final ListIterator<T> it = sortedIntervals.listIterator(startIndex + 1);
         while (it.hasNext()) {
             final T next = it.next();
@@ -340,7 +357,7 @@ public class HashedListExonCollection<T extends Locatable> implements ExonCollec
      * Looks for the first index in {@link #sortedIntervals} that has an overlap with the input {@code location}
      * starting at {@code startIndex} and assuming that the element at that index has an overlap with {@code location}.
      */
-    private int extendSearchIndexBackwards(final SimpleInterval location, final int startIndex) {
+    private int extendSearchIndexBackwards(final Locatable location, final int startIndex) {
         final ListIterator<T> it = sortedIntervals.listIterator(startIndex);
         while (it.hasPrevious()) {
             final T previous = it.previous();

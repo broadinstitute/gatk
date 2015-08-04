@@ -4,19 +4,19 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import org.broadinstitute.hellbender.tools.picard.vcf.concordance.GenotypeConcordanceStates.*;
@@ -80,8 +80,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
     @Argument(doc="If true, use the VCF index, else iterate over the entire VCF.", optional = true)
     public boolean USE_VCF_INDEX = false;
 
-    private final Log log = Log.getInstance(GenotypeConcordance.class);
-    private final ProgressLogger progress = new ProgressLogger(log, 10000, "checked", "variants");
+    private final ProgressLogger progress = new ProgressLogger(logger, 10000, "checked", "variants");
 
     public static final String SUMMARY_METRICS_FILE_EXTENSION = ".genotype_concordance_summary_metrics";
     public static final String DETAILED_METRICS_FILE_EXTENSION = ".genotype_concordance_detail_metrics";
@@ -111,7 +110,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         IntervalList intervals = null;
         SAMSequenceDictionary intervalsSamSequenceDictionary = null;
         if (usingIntervals) {
-            log.info("Loading up region lists.");
+            logger.info("Loading up region lists.");
             long genomeBaseCount = 0;
             for (final File f : INTERVALS) {
                 IOUtil.assertFileIsReadable(f);
@@ -128,7 +127,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
             if (intervals != null) {
                 intervals = intervals.uniqued();
             }
-            log.info("Finished loading up region lists.");
+            logger.info("Finished loading up region lists.");
         }
 
         final VCFFileReader truthReader = new VCFFileReader(TRUTH_VCF, USE_VCF_INDEX);
@@ -169,7 +168,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         // A map to keep track of the count of Truth/Call States which we could not successfully classify
         final Map<String, Integer> unClassifiedStatesMap = new HashMap<>();
 
-        log.info("Starting iteration over variants.");
+        logger.info("Starting iteration over variants.");
         while (pairedIterator.hasNext()) {
             final VcTuple tuple = pairedIterator.next();
 
@@ -250,7 +249,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         genotypeConcordanceContingencyMetricsFile.write(contingencyMetricsFile);
 
         for (final String condition : unClassifiedStatesMap.keySet()) {
-            log.info("Uncovered truth/call Variant Context Type Counts: " + condition + " " + unClassifiedStatesMap.get(condition));
+            logger.info("Uncovered truth/call Variant Context Type Counts: " + condition + " " + unClassifiedStatesMap.get(condition));
         }
 
         return null;

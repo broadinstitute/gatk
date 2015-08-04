@@ -2,12 +2,14 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
 import java.util.Arrays;
@@ -68,8 +70,6 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
     @Argument(shortName = "PM", doc = "Read Group platform model", optional = true)
     public String RGPM;
 
-    private final Log log = Log.getInstance(AddOrReplaceReadGroups.class);
-
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
@@ -89,7 +89,7 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
         if (RGPG != null) rg.setProgramGroup(RGPG);
         if (RGPM != null) rg.setPlatformModel(RGPM);
 
-        log.info(String.format("Created read group ID=%s PL=%s LB=%s SM=%s%n", rg.getId(), rg.getPlatform(), rg.getLibrary(), rg.getSample()));
+        logger.info(String.format("Created read group ID=%s PL=%s LB=%s SM=%s%n", rg.getId(), rg.getPlatform(), rg.getLibrary(), rg.getSample()));
 
         // create the new header and output file
         final SAMFileHeader inHeader = in.getFileHeader();
@@ -101,7 +101,7 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
                 outHeader.getSortOrder() == inHeader.getSortOrder(),
                 OUTPUT)) {
 
-            final ProgressLogger progress = new ProgressLogger(log);
+            final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord read : in) {
                 read.setAttribute(SAMTag.RG.name(), RGID);
                 outWriter.addAlignment(read);
