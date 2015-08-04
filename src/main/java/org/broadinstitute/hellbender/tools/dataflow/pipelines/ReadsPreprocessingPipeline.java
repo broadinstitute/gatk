@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
 import java.sql.Ref;
 import java.util.Collections;
@@ -66,6 +67,14 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
     @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
     protected List<String> baseRecalibrationKnownVariants;
 
+
+    @Argument(doc = "See MarkDuplicatesDataflow",
+             optional = true)
+    public String READ_NAME_REGEX = OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX;
+
+    @Argument(doc = "See MarkDuplicatesDataflow.")
+    public int OPTICAL_DUPLICATE_PIXEL_DISTANCE = OpticalDuplicateFinder.DEFAULT_OPTICAL_DUPLICATE_DISTANCE;
+
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
@@ -80,8 +89,12 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
         final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
+        final OpticalDuplicateFinder finder = READ_NAME_REGEX != null ?
+            new OpticalDuplicateFinder(READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
+
         // Apply MarkDuplicates to produce updated GATKReads.
-        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton));
+        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
 
         // Load the Variants and the Reference and join them to reads.
         final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
