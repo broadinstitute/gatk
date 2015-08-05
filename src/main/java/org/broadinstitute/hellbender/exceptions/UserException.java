@@ -74,6 +74,12 @@ public class UserException extends RuntimeException {
         }
     }
 
+    public static class MissingReference extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public MissingReference(String message) { super(message); }
+    }
+
     public static class CommandLineException extends UserException {
         private static final long serialVersionUID = 0L;
 
