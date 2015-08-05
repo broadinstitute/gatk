@@ -74,7 +74,7 @@ public final class SegmentUtils {
                     })) {
             for (final CalledInterval ci : segments) {
                 if (ci == null) {
-                    throw new IOException("Segment at " + ci.getInterval().toString() + " has no call.");
+                    throw new IOException("Segments list contains a null.");
                 }
                 writer.writeRecord(ci);
             }

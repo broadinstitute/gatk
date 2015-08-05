@@ -48,9 +48,9 @@ public final class ReCapSegCaller {
      * @param targets the collection representing all targets
      * @param segments segments, each of which holds a reference to these same targets
      */
-    public static List<CalledInterval> makeCalls(TargetCollection<TargetCoverage> targets, final List<SimpleInterval> segments) {
+    public static List<CalledInterval> makeCalls(final TargetCollection<TargetCoverage> targets, final List<SimpleInterval> segments) {
         Utils.nonNull(segments, "Can't make calls on a null list of segments.");
-        List<CalledInterval> calls = new ArrayList<>();
+        final List<CalledInterval> calls = new ArrayList<>();
 
         /**
          * estimate the copy-number neutral log_2 coverage as the median over all targets.

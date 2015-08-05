@@ -221,10 +221,10 @@ public final class ReadCountCollectionUtils {
                 return recordExtractor.apply(dataLine);
             }
 
-            protected Function<DataLine, Target> targetExtractor(final TargetCollection<E> exons, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, SimpleInterval> intervalExtractor) {
+            protected Function<DataLine, Target> targetExtractor(final TargetCollection<E> targets, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, SimpleInterval> intervalExtractor) {
                 return (values) -> {
                     final SimpleInterval interval = intervalExtractor == null ? null : intervalExtractor.apply(values);
-                    final String name = targetNameExtractor == null ? exons.name(exons.target(interval)) : targetNameExtractor.apply(values);
+                    final String name = targetNameExtractor == null ? targets.name(targets.target(interval)) : targetNameExtractor.apply(values);
                     if (name == null) {
                         throw formatException("cannot resolve the target name for interval " + interval);
                     }
