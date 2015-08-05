@@ -10,6 +10,7 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.Filter;
 import com.google.cloud.dataflow.sdk.transforms.GroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
@@ -190,7 +191,7 @@ final class MarkDuplicatesUtils {
                           context.output(pair.second());
                         }
                     }
-                    });
+               });
     }
 
 
@@ -282,8 +283,16 @@ final class MarkDuplicatesUtils {
         @Override
         public PCollection<KV<String, DuplicationMetrics>> apply(final PCollection<GATKRead> preads) {
             return preads
+                .apply(Filter.by(
+                    new SerializableFunction<GATKRead, Boolean>() {
+                      private static final long serialVersionUID = 0;
+
+                      public Boolean apply(GATKRead element) {
+                        return !element.isSecondaryAlignment() && !element.isSupplementaryAlignment();
+                      }
+                    }))
                 .apply(generateMetricsByLibrary())
-                .setCoder(KvCoder.of(StringUtf8Coder.of(), new DuplicationMetricsCoder()))
+                .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(DuplicationMetrics.class)))
                 // Combine metrics for reads from the same library.
                 .apply(Combine.<String, DuplicationMetrics>perKey(new CombineMetricsFn()))
                 // For each library, finalize the metrics by computing derived metrics and dividing paired counters
@@ -308,9 +317,6 @@ final class MarkDuplicatesUtils {
                             final String library = LibraryIdGenerator.getLibraryName(h, record.getReadGroup());
                             DuplicationMetrics metrics = new DuplicationMetrics();
                             metrics.LIBRARY = library;
-                            // These need to be initialized so that the DuplicationMetrics can be serialized safely.
-                            metrics.PERCENT_DUPLICATION = 0.0;
-                            metrics.ESTIMATED_LIBRARY_SIZE = 0L;
                             if (record.isUnmapped()) {
                               ++metrics.UNMAPPED_READS;
                             } else if (!record.isPaired() || record.mateIsUnmapped()) {
@@ -343,7 +349,6 @@ final class MarkDuplicatesUtils {
             @Override
             public DuplicationMetrics apply(Iterable<DuplicationMetrics> input) {
                 DuplicationMetrics metricsSum = new DuplicationMetrics();
-                int num = 0;
                 for (final DuplicationMetrics metrics : input) {
                     if (metricsSum.LIBRARY == null) {
                         metricsSum.LIBRARY = metrics.LIBRARY;
@@ -360,8 +365,6 @@ final class MarkDuplicatesUtils {
                     metricsSum.READ_PAIR_DUPLICATES += metrics.READ_PAIR_DUPLICATES;
                     metricsSum.READ_PAIR_OPTICAL_DUPLICATES += metrics.READ_PAIR_OPTICAL_DUPLICATES;
                 }
-                metricsSum.PERCENT_DUPLICATION = 0.0;
-                metricsSum.ESTIMATED_LIBRARY_SIZE = 0L;
                 return metricsSum;
             }
         }
@@ -391,44 +394,6 @@ final class MarkDuplicatesUtils {
         }
     }
 
-
-    /**
-     * Special coder for the DuplicationMetrics class.
-     */
-    private static final class DuplicationMetricsCoder extends CustomCoder<DuplicationMetrics> {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public void encode( DuplicationMetrics value, OutputStream outStream, Context context ) throws CoderException, IOException {
-            if ( value == null ) {
-                throw new IOException("nothing to encode");
-            }
-            SerializableCoder.of(String.class).encode(value.LIBRARY, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.UNMAPPED_READS, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.UNPAIRED_READS_EXAMINED, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.READ_PAIRS_EXAMINED, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.UNPAIRED_READ_DUPLICATES, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.READ_PAIR_DUPLICATES, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.READ_PAIR_OPTICAL_DUPLICATES, outStream, context);
-            SerializableCoder.of(Double.class).encode(value.PERCENT_DUPLICATION, outStream, context);
-            SerializableCoder.of(Long.class).encode(value.ESTIMATED_LIBRARY_SIZE, outStream, context);
-        }
-
-        @Override
-        public DuplicationMetrics decode( InputStream inStream, Context context ) throws CoderException, IOException {
-            DuplicationMetrics metrics = new DuplicationMetrics();
-            metrics.LIBRARY = SerializableCoder.of(String.class).decode(inStream, context);
-            metrics.UNMAPPED_READS = SerializableCoder.of(Long.class).decode(inStream, context);
-            metrics.UNPAIRED_READS_EXAMINED = SerializableCoder.of(Long.class).decode(inStream, context);
-            metrics.READ_PAIRS_EXAMINED = SerializableCoder.of(Long.class).decode(inStream, context);
-            metrics.UNPAIRED_READ_DUPLICATES = SerializableCoder.of(Long.class).decode(inStream, context);
-            metrics.READ_PAIR_DUPLICATES = SerializableCoder.of(Long.class).decode(inStream, context);
-            metrics.READ_PAIR_OPTICAL_DUPLICATES = SerializableCoder.of(Long.class).decode(inStream, context);
-            metrics.PERCENT_DUPLICATION = SerializableCoder.of(Double.class).decode(inStream, context);
-            metrics.ESTIMATED_LIBRARY_SIZE = SerializableCoder.of(Long.class).decode(inStream, context);
-            return metrics;
-        }
-    }
 
     public static void writeMetricsToFile(Pipeline pipeline, final PCollection<KV<String,DuplicationMetrics>> metrics,
         final SAMFileHeader header, final File dest) {

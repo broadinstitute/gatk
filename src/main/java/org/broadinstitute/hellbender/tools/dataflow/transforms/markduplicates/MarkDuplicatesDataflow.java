@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
@@ -52,23 +53,8 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
               shortName = "M", fullName = "METRICS_FILE")
     protected File metricsFile;
 
-    @Argument(doc = "Regular expression that can be used to parse read names in the incoming SAM file. Read names are " +
-             "parsed to extract three variables: tile/region, x coordinate and y coordinate. These values are used " +
-             "to estimate the rate of optical duplication in order to give a more accurate estimated library size. " +
-             "Set this option to null to disable optical duplicate detection. " +
-             "The regular expression should contain three capture groups for the three variables, in order. " +
-             "It must match the entire read name. " +
-             "Note that if the default regex is specified, a regex match is not actually done, but instead the read name " +
-             " is split on colon character. " +
-             "For 5 element names, the 3rd, 4th and 5th elements are assumed to be tile, x and y values. " +
-             "For 7 element names (CASAVA 1.8), the 5th, 6th, and 7th elements are assumed to be tile, x and y values.",
-             optional = true)
-    public String READ_NAME_REGEX = OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX;
-
-    @Argument(doc = "The maximum offset between two duplicate clusters in order to consider them optical duplicates. This " +
-             "should usually be set to some fairly small number (e.g. 5-10 pixels) unless using later versions of the " +
-             "Illumina pipeline that multiply pixel values by 10, in which case 50-100 is more normal.")
-    public int OPTICAL_DUPLICATE_PIXEL_DISTANCE = OpticalDuplicateFinder.DEFAULT_OPTICAL_DUPLICATE_DISTANCE;
+    @ArgumentCollection
+    protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
@@ -85,8 +71,8 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
 
         final PCollection<GATKRead> preads = readsSource.getReadPCollection(intervals);
 
-        final OpticalDuplicateFinder finder = READ_NAME_REGEX != null ?
-            new OpticalDuplicateFinder(READ_NAME_REGEX, OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
+            new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
 
         final PCollection<GATKRead> results = preads.apply(new MarkDuplicates(headerPcolView, finderPcolView));

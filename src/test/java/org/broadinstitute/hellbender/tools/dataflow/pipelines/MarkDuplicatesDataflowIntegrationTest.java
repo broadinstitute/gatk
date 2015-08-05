@@ -104,7 +104,7 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
             List<String> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(0));
-            //Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedList.get(1));
+            Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedList.get(1));
             Assert.assertEquals(observedMetrics.UNMAPPED_READS, expectedList.get(2));
             Assert.assertEquals(observedMetrics.UNPAIRED_READ_DUPLICATES, expectedList.get(3));
             Assert.assertEquals(observedMetrics.READ_PAIR_DUPLICATES, expectedList.get(4));

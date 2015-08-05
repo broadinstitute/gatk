@@ -3,11 +3,14 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.util.Histogram;
 
+import java.io.Serializable;
+
 /**
  * Metrics that are calculated during the process of marking duplicates
  * within a stream of SAMRecords.
  */
-public final class DuplicationMetrics extends MetricBase {
+@SuppressWarnings("serial")
+public final class DuplicationMetrics extends MetricBase implements Serializable {
     /** The library on which the duplicate marking was performed. */
     public String LIBRARY;
 
