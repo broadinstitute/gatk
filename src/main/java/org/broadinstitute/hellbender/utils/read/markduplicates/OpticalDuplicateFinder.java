@@ -57,26 +57,26 @@ public final class OpticalDuplicateFinder {
      * All values should be defaulted to -1 if unavailable.  ReadGroup and Tile should only allow
      * non-zero positive integers, x and y coordinates may be negative.
      */
-    public static interface PhysicalLocation {
-        public short getReadGroup();
+    public interface PhysicalLocation {
+        short getReadGroup();
 
-        public void setReadGroup(short rg);
+        void setReadGroup(short rg);
 
-        public short getTile();
+        short getTile();
 
-        public void setTile(short tile);
+        void setTile(short tile);
 
-        public short getX();
+        short getX();
 
-        public void setX(short x);
+        void setX(short x);
 
-        public short getY();
+        short getY();
 
-        public void setY(short y);
+        void setY(short y);
 
-        public short getLibraryId();
+        short getLibraryId();
 
-        public void setLibraryId(short libraryId);
+        void setLibraryId(short libraryId);
     }
 
     private final int[] tmpLocationFields = new int[10]; // for optimization of addLocationInformation
