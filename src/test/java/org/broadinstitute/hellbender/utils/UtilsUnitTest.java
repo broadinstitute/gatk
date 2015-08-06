@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.util.Log.LogLevel;
+
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.Level;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -356,4 +360,43 @@ public final class UtilsUnitTest extends BaseTest {
 
     }
 
+    /**
+     * Test setting the global logging level for both the Picard and Log4j.
+     *
+     * Note that there are two very similar, but not identical, logging level enums from different namespaces
+     * being used here. The one used by Picard (and Hellbender VERBOSITY) of type "Log.LogLevel", and the parallel
+     * one used by log4j of type "Level".
+     *
+     */
+    @Test
+    public void testSetLoggingLevel() {
+        // Query and cache the initial  Log4j level in place at the start of the tests so we can restore it at the
+        // end of the tests. Also, since we're QUERYING the Log4j level, but we're SETTING the level using the
+        // LoggingUtils API, we also need to verify here that the initial level is one of the narrower set of levels
+        // that is supported by Loggingutils, since those are theonly ones we can restore through the LoggingUtils API.
+        Level initialLevel = logger.getLevel();
+        boolean goodInitialLevel =
+                initialLevel == Level.DEBUG ||
+                initialLevel == Level.WARN ||
+                initialLevel == Level.ERROR ||
+                initialLevel == Level.INFO;
+        Assert.assertTrue(goodInitialLevel);
+
+        // Set and test each supported logging level in turn
+        LoggingUtils.setLoggingLevel(LogLevel.DEBUG);
+        Assert.assertTrue(logger.getLevel() == Level.DEBUG);
+
+        LoggingUtils.setLoggingLevel(LogLevel.WARNING);
+        Assert.assertTrue(logger.getLevel() == Level.WARN);
+
+        LoggingUtils.setLoggingLevel(LogLevel.ERROR);
+        Assert.assertTrue(logger.getLevel() == Level.ERROR);
+
+        LoggingUtils.setLoggingLevel(LogLevel.INFO);
+        Assert.assertTrue(logger.getLevel() == Level.INFO);
+
+        // Restore the logging level back to the original level in place at the beginning of the test
+        LoggingUtils.setLoggingLevel(LoggingUtils.levelFromLog4jLevel(initialLevel));
+        Assert.assertTrue(logger.getLevel() == initialLevel);
+    }
 }
