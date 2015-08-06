@@ -1,14 +1,16 @@
 package org.broadinstitute.hellbender.cmdline;
 
+import htsjdk.samtools.util.Log;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
+
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.zip.DeflaterFactory;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -46,14 +48,8 @@ public abstract class CommandLineProgram {
             "It is unlikely these will ever need to be accessed by the command line program")
     public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
 
-    public enum VERBOSITY_LEVEL {
-        ERROR,
-        WARNING,
-        INFO,
-        DEBUG;
-    }
     @Argument(doc = "Control verbosity of logging.", common=true)
-    public VERBOSITY_LEVEL VERBOSITY = VERBOSITY_LEVEL.INFO;
+    public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
@@ -122,6 +118,8 @@ public abstract class CommandLineProgram {
         this.defaultHeaders.add(new StringHeader(commandLine));
         this.defaultHeaders.add(new StringHeader("Started on: " +
                                 startDateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG))));
+
+        LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
         for (final File f : TMP_DIR) {
             // Intentionally not checking the return values, because it may be that the program does not
