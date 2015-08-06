@@ -5,7 +5,6 @@ import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.common.collect.Iterables;
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.engine.dataflow.PTransformSAM;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceFileSource;
@@ -39,7 +38,7 @@ public class JoinReferencesDataflowTransform extends PTransformSAM<Long> {
             throw new IllegalStateException(e);
         }
         log.info("Creating refView...");
-        final PCollectionView<Map<String, Iterable<ReferenceBases>>> refView = refCollection.apply(View.asMap());
+        final PCollectionView<Map<String, ReferenceBases>> refView = refCollection.apply(View.asMap());
         log.info("... done");
         return reads.apply(ParDo.of(new AddBasesFn(refView)).withSideInputs(refView))
                 .apply(Count.globally());
@@ -48,16 +47,16 @@ public class JoinReferencesDataflowTransform extends PTransformSAM<Long> {
     private static class AddBasesFn extends DoFn<GATKRead, KV<GATKRead, ReferenceBases>> {
         private static final long serialVersionUID = 1L;
 
-        private final PCollectionView<Map<String, Iterable<ReferenceBases>>> refView;
+        private final PCollectionView<Map<String, ReferenceBases>> refView;
 
-        public AddBasesFn(PCollectionView<Map<String, Iterable<ReferenceBases>>> refView) {
+        public AddBasesFn(PCollectionView<Map<String, ReferenceBases>> refView) {
             this.refView = refView;
         }
 
         @Override
         public void processElement(ProcessContext c) throws Exception {
             GATKRead read = c.element();
-            Map<String, Iterable<ReferenceBases>> ref = c.sideInput(refView);
+            Map<String, ReferenceBases> ref = c.sideInput(refView);
             String refName = read.getContig();
             if (refName.startsWith("chr")) {
                 refName = refName.substring(3);
@@ -72,7 +71,7 @@ public class JoinReferencesDataflowTransform extends PTransformSAM<Long> {
                 log.info("End is less than start. Skipping.");
                 return;
             }
-            ReferenceBases bases = Iterables.getOnlyElement(ref.get(refName));
+            ReferenceBases bases = ref.get(refName);
             ReferenceBases subset = bases.getSubset(new SimpleInterval(refName, start, end));
             c.output(KV.of(read, subset));
         }
