@@ -103,7 +103,7 @@ dependencies {
     compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.jgrapht:jgrapht-core:0.9.1'
     compile 'org.testng:testng:6.9.6' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.3.0'
+    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.4.0'
     compile('org.seqdoop:hadoop-bam:7.1.0') {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
