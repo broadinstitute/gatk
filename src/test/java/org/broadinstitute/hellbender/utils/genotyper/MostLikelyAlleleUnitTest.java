@@ -9,6 +9,22 @@ public final class MostLikelyAlleleUnitTest extends BaseTest {
     final Allele a = Allele.create("A");
     final Allele b = Allele.create("C");
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorMostLikely() throws Exception {
+        final double second = -1 - MostLikelyAllele.INFORMATIVE_LIKELIHOOD_THRESHOLD - 1;
+        new MostLikelyAllele(a, b, 0.5, second);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorSecondMostLikely() throws Exception {
+        new MostLikelyAllele(a, b, -1.0, 0.5);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorMostLikelyLessLikelyThanSecondMostLikely() throws Exception {
+        new MostLikelyAllele(a, b, -2.0, -1.0);
+    }
+
     @Test
     public void testBasicCreation() {
         final double second = -1 - MostLikelyAllele.INFORMATIVE_LIKELIHOOD_THRESHOLD - 1;

@@ -94,6 +94,105 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     * Diploid NO_CALL allele list...
+     *
+     * @deprecated you should use {@link #noCallAlleles(int)} instead. It indicates the presence of a hardcoded diploid assumption which is bad.
+     */
+    @Deprecated
+    public final static List<Allele> NO_CALL_ALLELES = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
+
+
+    /**
+     * subset the Variant Context to the specific set of alleles passed in (pruning the PLs appropriately)
+     *
+     * @param vc                 variant context with genotype likelihoods
+     * @param allelesToUse       which alleles from the vc are okay to use; *** must be in the same relative order as those in the original VC ***
+     * @param assignGenotypes    assignment strategy for the (subsetted) PLs
+     * @return a new non-null GenotypesContext
+     */
+    public static GenotypesContext subsetDiploidAlleles(final VariantContext vc,
+                                                        final List<Allele> allelesToUse,
+                                                        final GenotypeAssignmentMethod assignGenotypes) {
+        Utils.nonNull(allelesToUse, "allelesToUse is null");
+        if ( allelesToUse.get(0).isNonReference() ) throw new IllegalArgumentException("First allele must be the reference allele");
+        if ( allelesToUse.size() == 1 ) throw new IllegalArgumentException("Cannot subset to only 1 alt allele");
+
+        // optimization: if no input genotypes, just exit
+        if (vc.getGenotypes().isEmpty()) return GenotypesContext.create();
+
+        // we need to determine which of the alternate alleles (and hence the likelihoods) to use and carry forward
+        final List<Integer> likelihoodIndexesToUse = determineLikelihoodIndexesToUse(vc, allelesToUse);
+
+        // create the new genotypes
+        return createGenotypesWithSubsettedLikelihoods(vc.getGenotypes(), vc, allelesToUse, likelihoodIndexesToUse, assignGenotypes);
+    }
+
+    /**
+     * Create the new GenotypesContext with the subsetted PLs and ADs
+     *
+     * @param originalGs               the original GenotypesContext
+     * @param vc                       the original VariantContext
+     * @param allelesToUse             the actual alleles to use with the new Genotypes
+     * @param likelihoodIndexesToUse   the indexes in the PL to use given the allelesToUse (@see #determineLikelihoodIndexesToUse())
+     * @param assignGenotypes          assignment strategy for the (subsetted) PLs
+     * @return a new non-null GenotypesContext
+     */
+    private static GenotypesContext createGenotypesWithSubsettedLikelihoods(final GenotypesContext originalGs,
+                                                                            final VariantContext vc,
+                                                                            final List<Allele> allelesToUse,
+                                                                            final List<Integer> likelihoodIndexesToUse,
+                                                                            final GenotypeAssignmentMethod assignGenotypes) {
+        // the new genotypes to create
+        final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
+
+        // make sure we are seeing the expected number of likelihoods per sample
+        final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(vc.getNAlleles(), 2);
+
+        // the samples
+        final List<String> sampleIndices = originalGs.getSampleNamesOrderedByName();
+
+        // create the new genotypes
+        for ( int k = 0; k < originalGs.size(); k++ ) {
+            final Genotype g = originalGs.get(sampleIndices.get(k));
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
+
+            // create the new likelihoods array from the alleles we are allowed to use
+            double[] newLikelihoods;
+            if ( !g.hasLikelihoods() ) {
+                // we don't have any likelihoods, so we null out PLs and make G ./.
+                newLikelihoods = null;
+                gb.noPL();
+            } else {
+                final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
+                if ( likelihoodIndexesToUse == null ) {
+                    newLikelihoods = originalLikelihoods;
+                } else if ( originalLikelihoods.length != expectedNumLikelihoods ) {
+                    logger.debug("Wrong number of likelihoods in sample " + g.getSampleName() + " at " + vc + " got " + g.getLikelihoodsString() + " but expected " + expectedNumLikelihoods);
+                    newLikelihoods = null;
+                } else {
+                    newLikelihoods = new double[likelihoodIndexesToUse.size()];
+                    int newIndex = 0;
+                    for ( final int oldIndex : likelihoodIndexesToUse )
+                        newLikelihoods[newIndex++] = originalLikelihoods[oldIndex];
+
+                    // might need to re-normalize
+                    newLikelihoods = MathUtils.normalizeFromLog10(newLikelihoods, false, true);
+                }
+
+                if ( newLikelihoods == null || likelihoodsAreUninformative(newLikelihoods) )
+                    gb.noPL();
+                else
+                    gb.PL(newLikelihoods);
+            }
+
+            updateGenotypeAfterSubsetting(g.getAlleles(), gb, assignGenotypes, newLikelihoods, allelesToUse);
+            newGTs.add(gb.make());
+        }
+
+        return fixADFromSubsettedAlleles(newGTs, vc, allelesToUse);
+    }
+
+    /**
      * Checks whether a variant-context overlaps with a region.
      *
      * <p>
@@ -862,71 +961,6 @@ public final class GATKVariantContextUtils {
         }
 
         return result;
-    }
-
-    /**
-     * Create the new GenotypesContext with the subsetted PLs and ADs
-     *
-     * @param originalGs               the original GenotypesContext
-     * @param vc                       the original VariantContext
-     * @param allelesToUse             the actual alleles to use with the new Genotypes
-     * @param likelihoodIndexesToUse   the indexes in the PL to use given the allelesToUse (@see #determineLikelihoodIndexesToUse())
-     * @param assignGenotypes          assignment strategy for the (subsetted) PLs
-     * @return a new non-null GenotypesContext
-     */
-    private static GenotypesContext createGenotypesWithSubsettedLikelihoods(final GenotypesContext originalGs,
-                                                                            final VariantContext vc,
-                                                                            final List<Allele> allelesToUse,
-                                                                            final List<Integer> likelihoodIndexesToUse,
-                                                                            final GenotypeAssignmentMethod assignGenotypes) {
-        // the new genotypes to create
-        final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
-
-        // make sure we are seeing the expected number of likelihoods per sample
-        final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(vc.getNAlleles(), 2);
-
-        // the samples
-        final List<String> sampleIndices = originalGs.getSampleNamesOrderedByName();
-
-        // create the new genotypes
-        for ( int k = 0; k < originalGs.size(); k++ ) {
-            final Genotype g = originalGs.get(sampleIndices.get(k));
-            final GenotypeBuilder gb = new GenotypeBuilder(g);
-
-            // create the new likelihoods array from the alleles we are allowed to use
-            double[] newLikelihoods;
-            if ( !g.hasLikelihoods() ) {
-                // we don't have any likelihoods, so we null out PLs and make G ./.
-                newLikelihoods = null;
-                gb.noPL();
-            } else {
-                final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
-                if ( likelihoodIndexesToUse == null ) {
-                    newLikelihoods = originalLikelihoods;
-                } else if ( originalLikelihoods.length != expectedNumLikelihoods ) {
-                    logger.debug("Wrong number of likelihoods in sample " + g.getSampleName() + " at " + vc + " got " + g.getLikelihoodsString() + " but expected " + expectedNumLikelihoods);
-                    newLikelihoods = null;
-                } else {
-                    newLikelihoods = new double[likelihoodIndexesToUse.size()];
-                    int newIndex = 0;
-                    for ( final int oldIndex : likelihoodIndexesToUse )
-                        newLikelihoods[newIndex++] = originalLikelihoods[oldIndex];
-
-                    // might need to re-normalize
-                    newLikelihoods = MathUtils.normalizeFromLog(newLikelihoods, false, true);
-                }
-
-                if ( newLikelihoods == null || likelihoodsAreUninformative(newLikelihoods) )
-                    gb.noPL();
-                else
-                    gb.PL(newLikelihoods);
-            }
-
-            updateGenotypeAfterSubsetting(g.getAlleles(), gb, assignGenotypes, newLikelihoods, allelesToUse);
-            newGTs.add(gb.make());
-        }
-
-        return fixADFromSubsettedAlleles(newGTs, vc, allelesToUse);
     }
 
     /**

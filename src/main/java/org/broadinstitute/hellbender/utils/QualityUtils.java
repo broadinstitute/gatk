@@ -22,8 +22,8 @@ public final class QualityUtils {
     public static final double LOG_PROB_TO_PHRED_MULTIPLIER = 1/PHRED_TO_LOG_PROB_MULTIPLIER;
 
 
-    private static final double RAW_MIN_PHRED_SCALED_QUAL = Math.log(Double.MIN_VALUE);
-    protected static final double MIN_PHRED_SCALED_QUAL = LOG_PROB_TO_PHRED_MULTIPLIER * RAW_MIN_PHRED_SCALED_QUAL;
+    private static final double MIN_LOG10_SCALED_QUAL = Math.log10(Double.MIN_VALUE);
+    protected static final double MIN_PHRED_SCALED_QUAL = -10.0 * MIN_LOG10_SCALED_QUAL;
 
     /**
      * bams containing quals above this value are extremely suspicious and we should warn the user
@@ -46,13 +46,13 @@ public final class QualityUtils {
      * Cached values for qual as byte calculations so they are very fast
      */
     private static final double[] qualToErrorProbCache = new double[MAX_QUAL + 1];
-    private static final double[] qualToLogProbCache = new double[MAX_QUAL + 1];
+    private static final double[] qualToProbLog10Cache = new double[MAX_QUAL + 1];
 
 
     static {
         for (int i = 0; i <= MAX_QUAL; i++) {
             qualToErrorProbCache[i] = qualToErrorProb((double) i);
-            qualToLogProbCache[i] = Math.log(1.0 - qualToErrorProbCache[i]);
+            qualToProbLog10Cache[i] = Math.log10(1.0 - qualToErrorProbCache[i]);
         }
     }
 
@@ -100,7 +100,7 @@ public final class QualityUtils {
     }
 
     /**
-     * Convert a phred-scaled quality score to its log probability of being true (Q30 => log(0.999))
+     * Convert a phred-scaled quality score to its log10 probability of being true (Q30 => log10(0.999))
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.
      *
@@ -112,10 +112,10 @@ public final class QualityUtils {
      * @param qual a phred-scaled quality score encoded as a double.  Can be non-integer values (30.5)
      * @return a probability (0.0-1.0)
      */
-    public static double qualToLogProb(final byte qual) {
-        return qualToLogProbCache[(int)qual & 0xff]; // Map: 127 -> 127; -128 -> 128; -1 -> 255; etc.
-    }
 
+    public static double qualToProbLog10(final byte qual) {
+        return qualToProbLog10Cache[(int) qual & 0xff]; // Map: 127 -> 127; -128 -> 128; -1 -> 255; etc.
+    }
 
     /**
      * Convert a log-probability to a phred-scaled value  ( log(0.001) => 30 )
@@ -161,7 +161,7 @@ public final class QualityUtils {
 
 
     /**
-     * Convert a phred-scaled quality score to its log probability of being wrong (Q30 => log(0.001))
+     * Convert a phred-scaled quality score to its log10 probability of being wrong (Q30 => log10(0.001))
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.
      *
@@ -173,12 +173,12 @@ public final class QualityUtils {
      * @param qual a phred-scaled quality score encoded as a byte
      * @return a probability (0.0-1.0)
      */
-    public static double qualToLogErrorProb(final byte qual) {
-        return qualToLogErrorProb((double) (qual & 0xFF));
+    public static double qualToErrorProbLog10(final byte qual){
+        return qualToErrorProbLog10((double)(qual & 0xFF));
     }
 
     /**
-     * Convert a phred-scaled quality score to its log probability of being wrong (Q30 => log(0.001))
+     * Convert a phred-scaled quality score to its log10 probability of being wrong (Q30 => log10(0.001))
      *
      * This is the Phred-style conversion, *not* the Illumina-style conversion.
      *
@@ -187,9 +187,10 @@ public final class QualityUtils {
      * @param qual a phred-scaled quality score encoded as a double
      * @return log of probability (0.0-1.0)
      */
-    public static double qualToLogErrorProb(final double qual) {
+    public static double qualToErrorProbLog10(final double qual) {
         if ( qual < 0.0 ) throw new IllegalArgumentException("qual must be >= 0.0 but got " + qual);
-        return qual * PHRED_TO_LOG_PROB_MULTIPLIER;
+        if ( qual < 0.0 ) throw new IllegalArgumentException("qual must be >= 0.0 but got " + qual);
+        return qual / -10.0;
     }
 
     // ----------------------------------------------------------------------
@@ -269,7 +270,7 @@ public final class QualityUtils {
      */
     public static byte trueProbToQual(final double trueProb, final byte maxQual) {
         if ( ! MathUtils.goodProbability(trueProb) ) throw new IllegalArgumentException("trueProb must be good probability but got " + trueProb);
-        final double lp = Math.round(logProbToPhred(MathUtils.logOneMinusX(trueProb)));
+        final double lp = Math.round(-10.0*MathUtils.log10OneMinusX(trueProb));
         return boundQual((int)lp, maxQual);
     }
 
@@ -291,7 +292,7 @@ public final class QualityUtils {
      * @return a phred-scaled version of the error rate implied by trueRate
      */
     public static double phredScaleCorrectRate(final double trueRate) {
-        return phredScaleLogErrorRate(MathUtils.logOneMinusX(trueRate));
+        return phredScaleLog10ErrorRate(MathUtils.log10OneMinusX(trueRate));
     }
 
     /**
@@ -304,23 +305,24 @@ public final class QualityUtils {
      * @return a phred-scaled version of the error rate
      */
     public static double phredScaleErrorRate(final double errorRate) {
-        return phredScaleLogErrorRate(Math.log(errorRate));
+        return phredScaleLog10ErrorRate(Math.log10(errorRate));
     }
 
     /**
-     * Convert a log probability of being wrong to a phred-scaled quality score as a double
+     * Convert a log10 probability of being wrong to a phred-scaled quality score as a double
      *
      * This is a very generic method, that simply computes a phred-scaled double quality
      * score given an error rate.  It has the same precision as a normal double operation
      *
-     * @param logErrorRate the log probability of being wrong (0.0-1.0).  Can be -Infinity, in which case
+     * @param errorRateLog10 the log10 probability of being wrong (0.0-1.0).  Can be -Infinity, in which case
      *                       the result is MIN_PHRED_SCALED_QUAL
      * @return a phred-scaled version of the error rate
      */
-    public static double phredScaleLogErrorRate(final double logErrorRate) {
-        if ( ! MathUtils.goodLogProbability(logErrorRate) ) throw new IllegalArgumentException("logErrorRate must be good log probability but got " + logErrorRate);
-        // abs is necessary for edge base with logErrorRate = 0 producing -0.0 doubles
-        return Math.abs(logProbToPhred(Math.max(logErrorRate, RAW_MIN_PHRED_SCALED_QUAL)));
+    public static double phredScaleLog10ErrorRate(final double errorRateLog10) {
+        if ( ! MathUtils.goodLog10Probability(errorRateLog10) ) throw new
+                IllegalArgumentException("errorRateLog10 must be good probability but got " + errorRateLog10);
+        // abs is necessary for edge base with errorRateLog10 = 0 producing -0.0 doubles
+        return Math.abs(-10.0 * Math.max(errorRateLog10, MIN_LOG10_SCALED_QUAL));
     }
 
     // ----------------------------------------------------------------------

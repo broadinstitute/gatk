@@ -162,36 +162,36 @@ public final class SimpleInterval implements Locatable, Serializable {
     /**
      * @return name of the contig this is mapped to
      */
-    public final String getContig(){
+    public String getContig(){
         return contig;
     }
 
     /** Gets the 1-based start position of the interval on the contig. */
-    public final int getStart(){
+    public int getStart(){
         return start;
     }
 
     /**
     * @return the 0-based start position (from the GA4GH spec).
     */
-    public final long getGA4GHStart() {return start - 1; }
+    public long getGA4GHStart() {return start - 1; }
 
     /**
      * @return the 1-based closed-ended end position of the interval on the contig.
      */
-    public final int getEnd(){
+    public int getEnd(){
         return end;
     }
 
     /**
     * @return the typical end spans are [zero-start,end) (from the GA4GH spec).
     */
-    public final long getGA4GHEnd() { return end; }
+    public long getGA4GHEnd() { return end; }
 
     /**
      * @return number of bases covered by this interval (will always be > 0)
      */
-    public final int size() {
+    public int size() {
         return end - start + 1;
     }
 
@@ -201,12 +201,8 @@ public final class SimpleInterval implements Locatable, Serializable {
      * @param other interval to check
      * @return true if this interval overlaps other, otherwise false
      */
-    public final boolean overlaps( final Locatable other ) {
-        if ( other == null || other.getContig() == null ) {
-            return false;
-        }
-
-        return this.contig.equals(other.getContig()) && this.start <= other.getEnd() && other.getStart() <= this.end;
+    public boolean overlaps( final Locatable other ) {
+        return overlapsWithMargin(other, 0);
     }
 
      /**
@@ -217,7 +213,7 @@ public final class SimpleInterval implements Locatable, Serializable {
       * @param margin how many bases may be between the two interval for us to still consider them overlapping.
       * @return true if this interval overlaps other, otherwise false
       */
-     public final boolean overlapsWithMargin(final Locatable other, int margin) {
+     public boolean overlapsWithMargin(final Locatable other, final int margin) {
          if ( other == null || other.getContig() == null ) {
              return false;
          }
@@ -233,7 +229,7 @@ public final class SimpleInterval implements Locatable, Serializable {
      * @param other interval to check
      * @return true if this interval contains all of the bases spanned by other, otherwise false
      */
-    public final boolean contains( final Locatable other ) {
+    public boolean contains( final Locatable other ) {
         if ( other == null || other.getContig() == null ) {
             return false;
         }

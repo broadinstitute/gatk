@@ -137,6 +137,14 @@ public final class PerReadAlleleLikelihoodMap {
         likelihoodReadMap.clear();
     }
 
+    public Map<Allele,Double> getLikelihoodsAssociatedWithPileupElement(final PileupElement p) {
+        if (!likelihoodReadMap.containsKey(p.getRead())) {
+            return null;
+        }
+
+        return likelihoodReadMap.get(p.getRead());
+    }
+
     /**
      * Returns the set of reads stores in the map.
      */
@@ -150,6 +158,63 @@ public final class PerReadAlleleLikelihoodMap {
     public Map<Allele, Double> getLikelihoods(final PileupElement p) {
         Utils.nonNull(p);
         return likelihoodReadMap.get(p.getRead()); //this will return null if the read is not in the map already.
+    }
+
+    /**
+     * Get the most likely alleles estimated across all reads in this object
+     *
+     * Takes the most likely two alleles according to their diploid genotype likelihoods.  That is, for
+     * each allele i and j we compute p(D | i,j) where D is the read likelihoods.  We track the maximum
+     * i,j likelihood and return an object that contains the alleles i and j as well as the max likelihood.
+     *
+     * Note that the second most likely diploid genotype is not tracked so the resulting MostLikelyAllele
+     * doesn't have a meaningful get best likelihood.
+     *
+     * @return a MostLikelyAllele object, or null if this map is empty
+     */
+    public MostLikelyAllele getMostLikelyDiploidAlleles() {
+        if ( isEmpty() ) {
+            return null;
+        }
+
+        Allele bestAllele1= null;
+        Allele bestAllele2= null;
+        double maxElement = Double.NEGATIVE_INFINITY;
+        for( int i = 0; i < alleles.size(); i++ ) {
+            final Allele allele_i = alleles.get(i);
+            for( int j = 0; j <= i; j++ ) {
+                final Allele allele_j = alleles.get(j);
+
+                double haplotypeLikelihood = 0.0;
+                for( final Map.Entry<GATKRead, Map<Allele,Double>> entry : likelihoodReadMap.entrySet() ) {
+                    // Compute log10(10^x1/2 + 10^x2/2) = log10(10^x1+10^x2)-log10(2)
+                    final double likelihood_i = entry.getValue().get(allele_i);
+                    final double likelihood_j = entry.getValue().get(allele_j);
+                    haplotypeLikelihood += MathUtils.approximateLog10SumLog10(likelihood_i, likelihood_j) + MathUtils.LOG10_ONE_HALF;
+
+                    // fast exit.  If this diploid pair is already worse than the max, just stop and look at the next pair
+                    if ( haplotypeLikelihood < maxElement ) {
+                        break;
+                    }
+                }
+
+                // keep track of the max element and associated alleles
+                if ( haplotypeLikelihood > maxElement ) {
+                    bestAllele1 = allele_i;
+                    bestAllele2 = allele_j;
+                    maxElement = haplotypeLikelihood;
+                }
+            }
+        }
+
+        if ( maxElement == Double.NEGATIVE_INFINITY ) {
+            throw new IllegalStateException("max likelihood is " + maxElement + " indicating something has gone wrong");
+        }
+        if (bestAllele1 == null || bestAllele2 == null){
+            throw new IllegalStateException("best alleles are null, indicating something has gone wrong");
+        }
+
+        return new MostLikelyAllele(bestAllele1, bestAllele2, maxElement, maxElement);
     }
 
     /**
@@ -192,11 +257,32 @@ public final class PerReadAlleleLikelihoodMap {
     }
 
     /**
+     * Debug method to dump contents of object into string for display
+     */
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append("Alelles in map:");
+        for (final Allele a:alleles) {
+            sb.append(a.getDisplayString()+",");
+        }
+        sb.append("\n");
+        for (final Map.Entry <GATKRead, Map<Allele, Double>> el : getLikelihoodReadMap().entrySet() ) {
+            for (final Map.Entry<Allele,Double> eli : el.getValue().entrySet()) {
+                sb.append("Read "+el.getKey().getName()+". Allele:"+eli.getKey().getDisplayString()+" has likelihood="+ Double.toString(eli.getValue())+"\n");
+            }
+
+        }
+        return sb.toString();
+    }
+
+    /**
      * Remove reads from this map that are poorly modelled w.r.t. their per allele likelihoods
      *
      * Goes through each read in this map, and if it is poorly modelled removes it from the map.
      *
-     * @see #readIsPoorlyModelled(org.broadinstitute.gatk.utils.sam.GATKRead, java.util.Collection, double)
+     * @see #readIsPoorlyModelled
      * for more information about the poorly modelled test.
      *
      * @param maxErrorRatePerBase see equivalent parameter in #readIsPoorlyModelled
@@ -272,7 +358,8 @@ public final class PerReadAlleleLikelihoodMap {
         final Map<Allele, List<GATKRead>> alleleReadMap = getAlleleStratifiedReadMap();
 
         // compute the reads to remove and actually remove them
-        final List<GATKRead> readsToRemove = AlleleBiasedDownsamplingUtils.selectAlleleBiasedReads(alleleReadMap, downsamplingFraction);
+        final int totalReads= AlleleBiasedDownsamplingUtils.totalReads(alleleReadMap);
+        final List<GATKRead> readsToRemove = AlleleBiasedDownsamplingUtils.selectAlleleBiasedReads(alleleReadMap, totalReads, downsamplingFraction);
         for ( final GATKRead read : readsToRemove ) {
             likelihoodReadMap.remove(read);
         }

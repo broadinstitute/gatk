@@ -8,6 +8,8 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -974,6 +976,44 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     public int sampleReadCount(final int sampleIndex) {
         Utils.validIndex(sampleIndex, samples.numberOfSamples());
         return readsBySampleIndex[sampleIndex].length;
+    }
+
+    /**
+     * Remove those reads that do not overlap certain genomic location.
+     *
+     * <p>
+     *     This method modifies the current read-likelihoods collection.
+     * </p>
+     *
+     * @param location the target location.
+     *
+     * @throws IllegalArgumentException the location cannot be {@code null} nor unmapped.
+     */
+    public void filterToOnlyOverlappingUnclippedReads(final GenomeLoc location) {
+        Utils.nonNull(location, "the location cannot be null");
+        if (location.isUnmapped()) {
+            throw new IllegalArgumentException("the location cannot be unmapped");
+        }
+
+        final int sampleCount = samples.numberOfSamples();
+
+        final String locContig = location.getContig();
+        final int locStart = location.getStart();
+        final int locEnd = location.getStop();
+
+        final int alleleCount = alleles.numberOfAlleles();
+        final IntArrayList removeIndices = new IntArrayList(10);
+        for (int s = 0; s < sampleCount; s++) {
+            final GATKRead[] sampleReads = readsBySampleIndex[s];
+            final int sampleReadCount = sampleReads.length;
+            for (int r = 0; r < sampleReadCount; r++) {
+                if (!unclippedReadOverlapsRegion(sampleReads[r], locContig, locStart, locEnd)) {
+                    removeIndices.add(r);
+                }
+            }
+            removeSampleReads(s,removeIndices,alleleCount);
+            removeIndices.clear();
+        }
     }
 
     /**

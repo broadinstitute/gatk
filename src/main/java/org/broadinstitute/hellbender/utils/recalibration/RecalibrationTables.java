@@ -124,9 +124,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
 
     /**
      * Allocate a new quality score table, based on requested parameters
-     * in this set of tables, without any data in it.  The return result
-     * of this table is suitable for acting as a thread-local cache
-     * for quality score values
+     * in this set of tables, without any data in it.
      * @return a newly allocated, empty read group x quality score table
      */
     public NestedIntegerArray<RecalDatum> makeQualityScoreTable() {

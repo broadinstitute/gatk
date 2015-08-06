@@ -7,6 +7,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -82,18 +83,15 @@ public final class Haplotype extends Allele {
      * @return a new Haplotype within only the bases spanning the provided location, or null for some reason the haplotype would be malformed if
      */
     public Haplotype trim(final Locatable loc) {
-        if ( loc == null ) {
-            throw new IllegalArgumentException("Loc cannot be null");
-        }
+        Utils.nonNull( loc, "Loc cannot be null");
+
         if ( genomeLocation == null ) {
             throw new IllegalStateException("Cannot trim a Haplotype without containing GenomeLoc");
         }
         if ( ! new SimpleInterval(genomeLocation).contains(loc) ) {
             throw new IllegalArgumentException("Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
         }
-        if ( getCigar() == null ) {
-            throw new IllegalArgumentException("Cannot trim haplotype without a cigar " + this);
-        }
+        Utils.nonNull( getCigar(), "Cannot trim haplotype without a cigar " + this);
 
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
         final int newStop = newStart + loc.getEnd() - loc.getStart();
@@ -245,4 +243,6 @@ public final class Haplotype extends Allele {
     public Locatable getGenomeLocation() {
         return genomeLocation;
     }
+
+
 }

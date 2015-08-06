@@ -31,9 +31,9 @@ public abstract class PairHMM implements Closeable{
 
     public enum Implementation {
         /* Very slow implementation which uses very accurate log10 sum functions. Only meant to be used as a reference test implementation */
-        EXACT(() -> new LogPairHMM(true)),
+        EXACT(() -> new Log10PairHMM(true)),
         /* PairHMM as implemented for the UnifiedGenotyper. Uses log10 sum functions accurate to only 1E-4 */
-        ORIGINAL(() -> new LogPairHMM(false)),
+        ORIGINAL(() -> new Log10PairHMM(false)),
         /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
         LOGLESS_CACHING(() -> new LoglessPairHMM());
 
@@ -136,7 +136,7 @@ public abstract class PairHMM implements Closeable{
      * @param gcp penalty for gap continuations base array map for processed reads.
      *
      */
-    public void computeLogLikelihoods(final LikelihoodMatrix<Haplotype> logLikelihoods,
+    public void computeLog10Likelihoods(final LikelihoodMatrix<Haplotype> logLikelihoods,
                                       final List<GATKRead> processedReads,
                                       final Map<GATKRead, byte[]> gcp) {
         if (processedReads.isEmpty()) {
@@ -171,7 +171,7 @@ public abstract class PairHMM implements Closeable{
                 final Allele allele = alleles.get(a);
                 final byte[] alleleBases = allele.getBases();
                 final byte[] nextAlleleBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
-                final double lk = computeReadLogLikelihoodGivenHaplotype(alleleBases,
+                final double lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases,
                         readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases);
                 logLikelihoods.set(a, readIndex, lk);
                 mLogLikelihoodArray[idx++] = lk;
@@ -208,10 +208,10 @@ public abstract class PairHMM implements Closeable{
      * @throws IllegalArgumentException haplotypeBases is null or greater than maxHaplotypeLength
      * @throws IllegalArgumentException readBases is null or greater than maxReadLength
      * @throws IllegalArgumentException readBases, readQuals, insertionGOP, deletionGOP and overallGCP are not the same size
-     * @return the log probability of read coming from the haplotype under the provided error model
+     * @return the log10 probability of read coming from the haplotype under the provided error model
      */
     @VisibleForTesting
-    double computeReadLogLikelihoodGivenHaplotype( final byte[] haplotypeBases,
+    double computeReadLikelihoodGivenHaplotypeLog10( final byte[] haplotypeBases,
                                                                   final byte[] readBases,
                                                                   final byte[] readQuals,
                                                                   final byte[] insertionGOP,
@@ -220,7 +220,7 @@ public abstract class PairHMM implements Closeable{
                                                                   final boolean recacheReadValues,
                                                                   final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
 
-        if ( ! initialized ) throw new IllegalStateException("Must call initialize before calling computeReadLogLikelihoodGivenHaplotype");
+        if ( ! initialized ) throw new IllegalStateException("Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
         if ( haplotypeBases == null ) throw new IllegalArgumentException("haplotypeBases cannot be null");
         if ( haplotypeBases.length > maxHaplotypeLength ) throw new IllegalArgumentException("Haplotype bases is too long, got " + haplotypeBases.length + " but max is " + maxHaplotypeLength);
         if ( readBases == null ) throw new IllegalArgumentException("readBases cannot be null");
@@ -239,11 +239,11 @@ public abstract class PairHMM implements Closeable{
         // Looking ahead is necessary for the ArrayLoglessPairHMM implementation
         final int nextHapStartIndex =  (nextHaplotypeBases == null || haplotypeBases.length != nextHaplotypeBases.length) ? 0 : findFirstPositionWhereHaplotypesDiffer(haplotypeBases, nextHaplotypeBases);
 
-        final double result = subComputeReadLogLikelihoodGivenHaplotype(haplotypeBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
+        final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
 
         if ( result > 0.0) {
             throw new IllegalStateException("PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));
-        } else if (!MathUtils.goodLogProbability(result)) {
+        } else if (!MathUtils.goodLog10Probability(result)) {
             throw new IllegalStateException("Invalid Log Probability: " + result);
         }
 
@@ -258,9 +258,9 @@ public abstract class PairHMM implements Closeable{
     }
 
     /**
-     * To be implemented by subclasses to do calculation for #computeReadLogLikelihoodGivenHaplotype
+     * To be implemented by subclasses to do calculation for #computeReadLikelihoodGivenHaplotypeLog10
      */
-    protected abstract double subComputeReadLogLikelihoodGivenHaplotype( final byte[] haplotypeBases,
+    protected abstract double subComputeReadLikelihoodGivenHaplotypeLog10( final byte[] haplotypeBases,
                                                                            final byte[] readBases,
                                                                            final byte[] readQuals,
                                                                            final byte[] insertionGOP,

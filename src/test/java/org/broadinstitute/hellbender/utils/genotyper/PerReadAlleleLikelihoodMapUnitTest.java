@@ -1,29 +1,43 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
+import com.google.common.base.Strings;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
-import joptsimple.internal.Strings;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.*;
 
 public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
 
+    // example fasta index file, can be deleted if you don't use the reference
+    private IndexedFastaSequenceFile seq;
+
+    @BeforeClass
+    public void setup() throws FileNotFoundException {
+        // sequence
+        seq = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
+    }
+
     @Test()
-    public void testMultiAlleleWithHomLiks() {
+    public void testMultiAlleleWithHomLiks_2() {
         final ReadPileup pileup = makeArtificialPileup("first");
 
         Allele base_A = Allele.create(BaseUtils.Base.A.base);
@@ -68,6 +82,128 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         Assert.assertNotNull(perReadAlleleLikelihoodMap.toString()); //checking blowup
     }
 
+    @Test()
+    public void testMultiAlleleWithHomLiks() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final Locatable myLocation = new SimpleInterval("1", 10, 10);
+
+        final int pileupSize = 100;
+        final int readLength = 10;
+        final List<GATKRead> reads = new LinkedList<>();
+        for ( int i = 0; i < pileupSize; i++ ) {
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead" + i, 0, 1, readLength);
+            final byte[] bases = Utils.dupBytes((byte) 'A', readLength);
+            bases[0] = (byte)(i % 2 == 0 ? 'A' : 'C'); // every other read the first base is a C
+
+            // set the read's bases and quals
+            read.setBases(bases);
+            read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+            reads.add(read);
+        }
+
+        // create a pileup with all reads having offset 0
+        final ReadPileup pileup = new ReadPileup(myLocation, reads, 0);
+        Allele base_A = Allele.create(BaseUtils.Base.A.base);
+        Allele base_C = Allele.create(BaseUtils.Base.C.base);
+        Allele base_T = Allele.create(BaseUtils.Base.T.base);
+
+        final List<Allele> allAlleles = Arrays.asList(base_A, base_C, base_T);
+        final double likA = -0.04;
+        final double likNotA = -3.0;
+        PerReadAlleleLikelihoodMap perReadAlleleLikelihoodMap = new PerReadAlleleLikelihoodMap();
+        for ( final PileupElement e : pileup ) {
+            for ( final Allele allele : allAlleles ) {
+                Double likelihood = allele == base_A ? likA : likNotA;
+                perReadAlleleLikelihoodMap.add(e, allele, likelihood);
+            }
+        }
+
+        Assert.assertEquals(perReadAlleleLikelihoodMap.getAllelesSet(), new HashSet<>(allAlleles));
+        Assert.assertEquals(perReadAlleleLikelihoodMap.size(), pileup.size());
+        Assert.assertEquals(perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap().keySet().size(), 3);
+        Map<Allele,List<GATKRead>> shouldBeAllA = perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap();
+        Assert.assertEquals(shouldBeAllA.get(base_A).size(), pileup.size());
+        Assert.assertEquals(shouldBeAllA.get(base_C).size(), 0);
+        Assert.assertEquals(shouldBeAllA.get(base_T).size(), 0);
+
+        //getLikelihoodReadMap
+        final Map<GATKRead, Map<Allele, Double>> likelihoodReadMap = perReadAlleleLikelihoodMap.getLikelihoodReadMap();
+        Assert.assertEquals(likelihoodReadMap.size(), pileupSize);
+
+        Assert.assertNotNull(perReadAlleleLikelihoodMap.toString());//just checking non-null results. The contents are only human readible.
+
+        final Set<Allele> allelesSet = perReadAlleleLikelihoodMap.getAllelesSet();
+        Assert.assertEquals(allelesSet, new HashSet<>(Arrays.asList(base_A, base_C, base_T)));
+
+        final int oldSize = perReadAlleleLikelihoodMap.size();
+        perReadAlleleLikelihoodMap.performPerAlleleDownsampling(-0.5); //no-op
+        final int newSize = perReadAlleleLikelihoodMap.size();
+        Assert.assertEquals(oldSize, newSize);
+
+        final MostLikelyAllele mla = PerReadAlleleLikelihoodMap.getMostLikelyAllele(Collections.emptyMap());
+        Assert.assertTrue(mla.getMostLikelyAllele().isNoCall());
+        Assert.assertNull(mla.getSecondMostLikelyAllele());
+        Assert.assertEquals(mla.getLog10LikelihoodOfMostLikely(), Double.NEGATIVE_INFINITY);
+        Assert.assertEquals(mla.getLog10LikelihoodOfSecondBest(), Double.NEGATIVE_INFINITY);
+
+        final MostLikelyAllele mla2 = PerReadAlleleLikelihoodMap.getMostLikelyAllele(Collections.singletonMap(base_A, -0.04));
+        Assert.assertFalse(mla2.getMostLikelyAllele().isNoCall());
+        Assert.assertNull(mla2.getSecondMostLikelyAllele());
+        Assert.assertEquals(mla2.getLog10LikelihoodOfMostLikely(), -0.04);
+        Assert.assertEquals(mla2.getLog10LikelihoodOfSecondBest(), Double.NEGATIVE_INFINITY);
+
+        //clear makes it empty
+        perReadAlleleLikelihoodMap.clear();
+        Assert.assertTrue(perReadAlleleLikelihoodMap.isEmpty());
+        Assert.assertNull(perReadAlleleLikelihoodMap.getMostLikelyDiploidAlleles());
+        Assert.assertEquals(perReadAlleleLikelihoodMap.size(), 0);
+        Assert.assertEquals(perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap().keySet().size(), 0);
+
+        final PileupElement pu = pileup.iterator().next();
+        final Map<Allele, Double> ll1 = perReadAlleleLikelihoodMap.getLikelihoodsAssociatedWithPileupElement(pu);
+        Assert.assertNull(ll1);
+
+        final Map<Allele, Double> ll2 = perReadAlleleLikelihoodMap.getLikelihoods(pu);
+        Assert.assertNull(ll2);
+
+        Assert.assertNotNull(perReadAlleleLikelihoodMap.toString());//just checking non-null results. The contents are only human readible.
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testNoGoodLikelihood() throws Exception {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final Locatable myLocation = new SimpleInterval("1", 10, 10);
+
+        final int pileupSize = 100;
+        final int readLength = 10;
+        final List<GATKRead> reads = new LinkedList<>();
+        for ( int i = 0; i < pileupSize; i++ ) {
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead" + i, 0, 1, readLength);
+            final byte[] bases = Utils.dupBytes((byte) 'A', readLength);
+            bases[0] = (byte)(i % 2 == 0 ? 'A' : 'C'); // every other read the first base is a C
+
+            // set the read's bases and quals
+            read.setBases(bases);
+            read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+            reads.add(read);
+        }
+
+        // create a pileup with all reads having offset 0
+        final ReadPileup pileup = new ReadPileup(myLocation, reads, 0);
+        Allele base_A = Allele.create(BaseUtils.Base.A.base);
+        Allele base_C = Allele.create(BaseUtils.Base.C.base);
+        Allele base_T = Allele.create(BaseUtils.Base.T.base);
+
+        PerReadAlleleLikelihoodMap perReadAlleleLikelihoodMap = new PerReadAlleleLikelihoodMap();
+        for ( final PileupElement e : pileup ) {
+            for ( final Allele allele : Arrays.asList(base_A, base_C, base_T) ) {
+                double likelihood = Double.NEGATIVE_INFINITY;
+                perReadAlleleLikelihoodMap.add(e,allele,likelihood);
+            }
+        }
+        perReadAlleleLikelihoodMap.getMostLikelyDiploidAlleles(); //this should blow up because all likelihoods are infinities
+    }
+
     private ReadPileup makeArtificialPileup(final String prefix) {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         final Locatable myLocation = new SimpleInterval("1", 10, 10);
@@ -102,7 +238,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
 
     @Test()
     public void testMultiAlleleWithHetLiks() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
         final Locatable myLocation = new SimpleInterval("1", 10, 10);
 
         final int pileupSize = 100;
@@ -151,7 +287,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         idx = 0;
         for ( final PileupElement e : pileup ) {
             Assert.assertTrue(perReadAlleleLikelihoodMap.containsPileupElement(e));
-            Map<Allele,Double> likelihoods = perReadAlleleLikelihoodMap.getLikelihoods(e);
+            Map<Allele,Double> likelihoods = perReadAlleleLikelihoodMap.getLikelihoodsAssociatedWithPileupElement(e);
             for ( final Allele allele : Arrays.asList(base_A, base_C, base_T) ) {
                 Double expLik;
                 if ( idx % 2 == 0 )
@@ -191,6 +327,9 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         Assert.assertEquals(downsampledStrat.get(base_A).size(), (pileup.size() / 2) - 1);
         Assert.assertEquals(downsampledStrat.get(base_C).size(), (pileup.size() / 2));
         Assert.assertEquals(downsampledStrat.get(base_T).size(), 0);
+
+        perReadAlleleLikelihoodMap.performPerAlleleDownsampling(1.2);   //effectively clear
+        Assert.assertTrue(perReadAlleleLikelihoodMap.isEmpty());
     }
 
     @DataProvider(name = "PoorlyModelledReadData")
@@ -220,7 +359,6 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, quals, readLen + "M");
 
-        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
         final boolean actual = PerReadAlleleLikelihoodMap.readIsPoorlyModelled(read, log10likelihoods, maxErrorRatePerBase);
         Assert.assertEquals(actual, expected);
     }
@@ -254,7 +392,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
             final byte[] bases = Utils.dupBytes((byte)'A', readLen);
             final byte[] quals = Utils.dupBytes((byte) 40, readLen);
 
-            final Allele allele = Allele.create(Strings.repeat('A', readI + 1));
+            final Allele allele = Allele.create(Strings.repeat("A", readI + 1));
 
             final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, quals, readLen + "M");
             read.setName("readName" + readI);
@@ -349,9 +487,9 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
                 double haplotypeLikelihood = 0.0;
                 for( final Map<Allele,Double> alleleMap : map.getAlleleToLikelihoodMaps() ) {
                     // Compute log10(10^x1/2 + 10^x2/2) = log10(10^x1+10^x2)-log10(2)
-                    final double log_likelihood_i = MathUtils.log10ToLog(alleleMap.get(allele_i));
-                    final double log_likelihood_j = MathUtils.log10ToLog(alleleMap.get(allele_j));
-                    haplotypeLikelihood += MathUtils.logToLog10(MathUtils.approximateLogSumLog(log_likelihood_i, log_likelihood_j) + MathUtils.LOG10_ONE_HALF);
+                    final double log10_likelihood_i = alleleMap.get(allele_i);
+                    final double log10_likelihood_j = alleleMap.get(allele_j);
+                    haplotypeLikelihood += MathUtils.approximateLog10SumLog10(log10_likelihood_i, log10_likelihood_j) + MathUtils.LOG10_ONE_HALF;
 
                     // fast exit.  If this diploid pair is already worse than the max, just stop and look at the next pair
                     if ( haplotypeLikelihood < maxElement ) {
@@ -376,6 +514,19 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         }
 
         return Pair.of(bestAllele1, bestAllele2);
+    }
+
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIllegalLikelihood() throws Exception {
+        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
+        final byte[] bases = Utils.dupBytes((byte)'A', 10);
+        final byte[] quals = Utils.dupBytes((byte) 30, 10);
+        final int readLen = 100;
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, quals, readLen + "M");
+
+        final Allele allele = Allele.create("A");
+        map.add(read, allele, 3.0);
     }
 
 }

@@ -9,7 +9,7 @@ import java.util.*;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class SampleListUnitTester {
+public final class SampleListUnitTester {
 
     /**
      * Test that the contents of a sample-list are the ones expected.
@@ -59,7 +59,7 @@ public class SampleListUnitTester {
      * @param sampleCount the required sample count.
      * @return never {@code null}.
      */
-    static SampleList sampleList(final int sampleCount) {
+    public static SampleList sampleList(final int sampleCount) {
         if (sampleCount < 0)
             throw new IllegalArgumentException("the number of sample cannot be negative");
         final List<String> result = new ArrayList<>(sampleCount);

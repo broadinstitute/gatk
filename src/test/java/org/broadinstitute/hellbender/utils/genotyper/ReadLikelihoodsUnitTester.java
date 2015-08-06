@@ -13,12 +13,11 @@ import java.util.Map;
 /**
  * Constains utilities for tests that need to create read-likelihoods.
  */
-public class ReadLikelihoodsUnitTester {
+public final class ReadLikelihoodsUnitTester {
 
-
-    static ReadLikelihoods<Allele> readLikelihoods(final int alleleCount, final int[] readCount) {
+    public static ReadLikelihoods<Allele> readLikelihoods(final int alleleCount, final int[] readCount) {
         final int sampleCount = readCount.length;
-        final AlleleList<Allele> alleleList = AlleleListUnitTester.alleleList(alleleCount,100,true);
+        final AlleleList<Allele> alleleList = AlleleListUnitTester.alleleList(alleleCount, 100, true);
         final SampleList sampleList = SampleListUnitTester.sampleList(sampleCount);
         final Map<String,List<GATKRead>> sampleToReads = new HashMap<>(sampleCount);
         for (int i = 0; i < sampleCount; i++) {

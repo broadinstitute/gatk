@@ -44,10 +44,10 @@ public final class MostLikelyAllele {
         if ( mostLikely.equals(secondMostLikely)){
             throw new IllegalArgumentException("most likely allele and second most likely allele should be different");
         };
-        if ( log10LikelihoodOfMostLikely != Double.NEGATIVE_INFINITY && ! MathUtils.goodLogProbability(log10LikelihoodOfMostLikely) ) {
+        if ( log10LikelihoodOfMostLikely != Double.NEGATIVE_INFINITY && ! MathUtils.goodLog10Probability(log10LikelihoodOfMostLikely) ) {
             throw new IllegalArgumentException("log10LikelihoodOfMostLikely must be either -Infinity or a good log10 prob but got " + log10LikelihoodOfMostLikely);
         }
-        if ( log10LikelihoodOfSecondBest != Double.NEGATIVE_INFINITY && ! MathUtils.goodLogProbability(log10LikelihoodOfSecondBest) ) {
+        if ( log10LikelihoodOfSecondBest != Double.NEGATIVE_INFINITY && ! MathUtils.goodLog10Probability(log10LikelihoodOfSecondBest) ) {
             throw new IllegalArgumentException("log10LikelihoodOfSecondBest must be either -Infinity or a good log10 prob but got " + log10LikelihoodOfSecondBest);
         }
         if ( log10LikelihoodOfMostLikely < log10LikelihoodOfSecondBest ) {

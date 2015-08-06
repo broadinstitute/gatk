@@ -49,12 +49,20 @@ public final class AlleleListUnitTest {
     public void testEmptyListIndexOfNull(){
         final AlleleList<Allele> al = AlleleList.emptyAlleleList();
         al.indexOfAllele(null);
+        Assert.assertEquals(al.indexOfAllele(null), -1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testEmptyListAdd(){
         final AlleleList<Allele> al = AlleleList.emptyAlleleList();
         al.getAllele(0);
+    }
+
+    @Test
+    public void testEmptyIndexedList() throws Exception {
+        final AlleleList<Allele> al = new IndexedAlleleList<>();
+        Assert.assertEquals(al.numberOfAlleles(), 0);
+        Assert.assertEquals(al.indexOfReference(), -1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "singleAlleleListData")
@@ -213,10 +221,4 @@ public final class AlleleListUnitTest {
                 result[index++] = new Object[] { alleleLists[i], alleleLists[j]};
         return result;
     }
-
-
-
-
-
-
 }
