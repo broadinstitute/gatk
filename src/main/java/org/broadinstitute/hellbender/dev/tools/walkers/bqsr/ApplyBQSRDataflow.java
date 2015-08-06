@@ -39,7 +39,7 @@ import java.util.List;
 public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
     private static final long serialVersionUID = 1L;
 
-    private final static Logger logger = LogManager.getLogger(ApplyBQSRDataflow.class);
+    private static final Logger logger = LogManager.getLogger(ApplyBQSRDataflow.class);
 
     @ArgumentCollection
     public final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();

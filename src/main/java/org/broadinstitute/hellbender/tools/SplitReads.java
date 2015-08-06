@@ -46,7 +46,7 @@ public final class SplitReads extends ReadWalker {
             doc = "Split file by read group.")
     public boolean READ_GROUP;
 
-    private List<ReaderSplitter<?>> splitters = new ArrayList<>();
+    private final List<ReaderSplitter<?>> splitters = new ArrayList<>();
     private Map<String, SAMFileGATKReadWriter> outs = null;
 
     @Override

@@ -165,7 +165,7 @@ public final class VariantFiltration extends VariantWalker {
      * If this argument is provided, set filtered genotypes to no-call (./.).
      */
     @Argument(fullName="setFilteredGtToNocall", optional=true, doc="Set filtered genotypes to no-call")
-    private boolean setFilteredGenotypesToNocall = false;
+    public boolean setFilteredGenotypesToNocall = false;
 
     // JEXL expressions for the filters
     private List<JexlVCMatchExp> filterExps;

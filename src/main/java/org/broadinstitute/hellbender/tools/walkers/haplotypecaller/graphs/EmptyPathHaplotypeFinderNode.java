@@ -102,7 +102,7 @@ final class EmptyPathHaplotypeFinderNode implements KBestSubHaplotypeFinder {
         /**
          * Whether the vertex is a reference vertex.
          */
-        private boolean isReference;
+        private final boolean isReference;
 
         /**
          * Constructs a new empty k-best haplotype solution.

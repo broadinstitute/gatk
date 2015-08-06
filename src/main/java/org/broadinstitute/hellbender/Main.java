@@ -24,17 +24,17 @@ public class Main {
     /**
      * Provides ANSI colors for the terminal output *
      */
-    private final static String KNRM = "\u001B[0m"; // reset
-    private final static String KRED = "\u001B[31m";
-    private final static String KGRN = "\u001B[32m";
-    private final static String KCYN = "\u001B[36m";
-    private final static String KWHT = "\u001B[37m";
-    private final static String KBLDRED = "\u001B[1m\u001B[31m";
+    private static final String KNRM = "\u001B[0m"; // reset
+    private static final String KRED = "\u001B[31m";
+    private static final String KGRN = "\u001B[32m";
+    private static final String KCYN = "\u001B[36m";
+    private static final String KWHT = "\u001B[37m";
+    private static final String KBLDRED = "\u001B[1m\u001B[31m";
 
     /**
      * The name of this unified command line program *
      */
-    private final static String COMMAND_LINE_NAME = Main.class.getSimpleName();
+    private static final String COMMAND_LINE_NAME = Main.class.getSimpleName();
 
     /**
      * exit value when an unrecoverable {@link UserException} occurs
@@ -233,8 +233,8 @@ public class Main {
     /**
      * similarity floor for matching in getUnknownCommandMessage *
      */
-    private final static int HELP_SIMILARITY_FLOOR = 7;
-    private final static int MINIMUM_SUBSTRING_LENGTH = 5;
+    private static final int HELP_SIMILARITY_FLOOR = 7;
+    private static final int MINIMUM_SUBSTRING_LENGTH = 5;
 
     /**
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *

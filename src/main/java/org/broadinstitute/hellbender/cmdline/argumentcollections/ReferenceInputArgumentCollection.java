@@ -12,10 +12,10 @@ public abstract class ReferenceInputArgumentCollection implements ArgumentCollec
     /**
      * Get the reference file specified at the command line, creating the File object first if necessary.
      */
-    abstract public File getReferenceFile();
+    public abstract File getReferenceFile();
 
     /**
      * Get the name of the reference file specified at the command line.
      */
-    abstract public String getReferenceFileName();
+    public abstract String getReferenceFileName();
 }

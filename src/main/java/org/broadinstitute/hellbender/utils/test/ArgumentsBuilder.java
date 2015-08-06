@@ -12,7 +12,7 @@ import java.util.List;
  * Use this only in test code.
  */
 public final class ArgumentsBuilder {
-    final private List<String> args= new ArrayList<>();
+    private final List<String> args= new ArrayList<>();
 
     public ArgumentsBuilder(){
     }

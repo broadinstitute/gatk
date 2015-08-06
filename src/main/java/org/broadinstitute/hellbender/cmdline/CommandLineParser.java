@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import htsjdk.samtools.util.StringUtil;
+import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -60,7 +61,7 @@ public final class CommandLineParser {
     public static final String POSITIONAL_ARGUMENTS_NAME = "Positional Argument";
 
 
-    private Set<String> argumentsFilesLoadedAlready = new HashSet<>();
+    private final Set<String> argumentsFilesLoadedAlready = new HashSet<>();
 
     /**
      * A typical command line program will call this to get the beginning of the usage message,
@@ -206,7 +207,7 @@ public final class CommandLineParser {
      * @param messageStream Where to write error messages.
      * @param args          Command line tokens.
      * @return true if command line is valid and the program should run, false if help or version was requested
-     * @throws org.broadinstitute.hellbender.exceptions.UserException.CommandLineException if there is an invalid command line
+     * @throws UserException.CommandLineException if there is an invalid command line
      */
     @SuppressWarnings("unchecked")
     public boolean parseArguments(final PrintStream messageStream, final String[] args) {
@@ -229,7 +230,7 @@ public final class CommandLineParser {
         OptionSet parsedArguments;
         try {
             parsedArguments = parser.parse(args);
-        } catch (final joptsimple.OptionException e) {
+        } catch (final OptionException e) {
             throw new UserException.CommandLineException(e.getMessage());
         }
         //Check for the special arguments file flag
@@ -283,7 +284,7 @@ public final class CommandLineParser {
     private boolean isSpecialFlagSet(OptionSet parsedArguments, String flagName){
         if (parsedArguments.has(flagName)){
             Object value = parsedArguments.valueOf(flagName);
-            return  (value == null || !((String)value).equals("false"));
+            return  (value == null || !value.equals("false"));
         } else{
             return false;
         }
@@ -294,7 +295,7 @@ public final class CommandLineParser {
      * After command line has been parsed, make sure that all required arguments have values, and that
      * lists with minimum # of elements have sufficient.
      *
-     * @throws org.broadinstitute.hellbender.exceptions.UserException.CommandLineException if arguments requirements are not satisfied.
+     * @throws UserException.CommandLineException if arguments requirements are not satisfied.
      */
     private void assertArgumentsAreValid() {
         try {

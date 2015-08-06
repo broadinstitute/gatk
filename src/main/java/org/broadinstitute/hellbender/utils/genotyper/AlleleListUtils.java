@@ -91,7 +91,7 @@ public final class AlleleListUtils {
 
 
     /**
-     * Returns a {@link java.util.List} unmodifiable view of a allele-list
+     * Returns a {@link List} unmodifiable view of a allele-list
      * @param list the sample-list to wrap.
      *
      * @throws IllegalArgumentException if {@code list} is {@code null}.
@@ -203,7 +203,7 @@ public final class AlleleListUtils {
         }
 
         @Override
-        public java.util.List<A> toList() {
+        public List<A> toList() {
             return asList(list);
         }
 

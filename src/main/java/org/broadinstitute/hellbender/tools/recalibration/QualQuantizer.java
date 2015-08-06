@@ -28,9 +28,9 @@ import java.util.*;
  * quals for each read as it comes in.
  */
 public final class QualQuantizer {
-    final private static Set<QualInterval> MY_EMPTY_SET = Collections.emptySet();
+    private static final Set<QualInterval> MY_EMPTY_SET = Collections.emptySet();
 
-    private static Logger logger = LogManager.getLogger(QualQuantizer.class);
+    private static final Logger logger = LogManager.getLogger(QualQuantizer.class);
 
     /**
      * Inputs to the QualQuantizer

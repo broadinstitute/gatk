@@ -33,12 +33,12 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * in htsjdk). Iterator is set to null for a reader if no iteration is currently
      * active on that reader.
      */
-    private Map<SamReader, CloseableIterator<SAMRecord>> readers;
+    private final Map<SamReader, CloseableIterator<SAMRecord>> readers;
 
     /**
      * Hang onto the input files so that we can print useful errors about them
      */
-    final private Map<SamReader, File> backingFiles;
+    private final Map<SamReader, File> backingFiles;
 
     /**
      * Interval set to bound iteration over this data source. Null if iteration is unbounded.
@@ -58,7 +58,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     /**
      * Used to create a merged Sam header when we're dealing with multiple readers. Null if we only have a single reader.
      */
-    private SamFileHeaderMerger headerMerger;
+    private final SamFileHeaderMerger headerMerger;
 
     /**
      * Are indices available for all files?

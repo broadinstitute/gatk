@@ -11,7 +11,7 @@ import java.util.List;
 public final class NestedIntegerArray<T extends Serializable> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private static Logger logger = LogManager.getLogger(NestedIntegerArray.class);
+    private static final Logger logger = LogManager.getLogger(NestedIntegerArray.class);
 
     protected final Object[] data;
 

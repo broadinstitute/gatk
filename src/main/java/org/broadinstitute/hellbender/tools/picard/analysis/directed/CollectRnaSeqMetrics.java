@@ -60,7 +60,7 @@ public final class CollectRnaSeqMetrics extends SinglePassSamProgram {
     public double RRNA_FRAGMENT_PERCENTAGE = 0.8;
 
     @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics.")
-    private Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = CollectionUtil.makeSet(MetricAccumulationLevel.ALL_READS);
+    public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
     private RnaSeqMetricsCollector collector;
 

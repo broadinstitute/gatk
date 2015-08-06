@@ -9,7 +9,7 @@ import java.util.Map;
 public final class LRUCache<K,V> extends LinkedHashMap<K,V> {
 
     private static final long serialVersionUID = 1L;
-    private int capacity; // Maximum number of items in the cache.
+    private final int capacity; // Maximum number of items in the cache.
 
     public LRUCache(int capacity) {
         super(capacity+1, 1.0f, true); // Pass 'true' for accessOrder.

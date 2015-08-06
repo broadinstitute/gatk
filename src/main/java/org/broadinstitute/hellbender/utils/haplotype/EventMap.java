@@ -21,11 +21,11 @@ import java.util.*;
 public final class EventMap extends TreeMap<Integer, VariantContext> {
     private static final long serialVersionUID = 1L;
 
-    private final static Logger logger = LogManager.getLogger(EventMap.class);
-    protected final static int MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION = 3;
+    private static final Logger logger = LogManager.getLogger(EventMap.class);
+    protected static final int MIN_NUMBER_OF_EVENTS_TO_COMBINE_INTO_BLOCK_SUBSTITUTION = 3;
     private static final int MAX_EVENTS_PER_HAPLOTYPE = 3;
     private static final int MAX_INDELS_PER_HAPLOTYPE = 2;
-    public final static Allele SYMBOLIC_UNASSEMBLED_EVENT_ALLELE = Allele.create("<UNASSEMBLED_EVENT>", false);
+    public static final Allele SYMBOLIC_UNASSEMBLED_EVENT_ALLELE = Allele.create("<UNASSEMBLED_EVENT>", false);
 
     private final Haplotype haplotype;
     private final byte[] ref;
@@ -85,7 +85,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
                             // if the insertion isn't completely resolved in the haplotype, skip it
                             // note this used to emit SYMBOLIC_UNASSEMBLED_EVENT_ALLELE but that seems dangerous
                         } else {
-                            byte[] insertionBases = new byte[]{};
+                            byte[] insertionBases = {};
                             insertionBases = ArrayUtils.add(insertionBases, ref[refPos - 1]); // add the padding base
                             insertionBases = ArrayUtils.addAll(insertionBases, Arrays.copyOfRange(alignment, alignmentPos, alignmentPos + elementLength));
                             if( BaseUtils.isAllRegularBases(insertionBases) ) {

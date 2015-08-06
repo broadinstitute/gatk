@@ -8,7 +8,7 @@ enum Transition {
     GtoA('G','A'), GtoC('G','C'), GtoG('G','G'), GtoT('G','T'),
     TtoA('T','A'), TtoC('T','C'), TtoG('T','G'), TtoT('T','T');
 
-    private static final Transition[] ALT_VALUES = new Transition[]{
+    private static final Transition[] ALT_VALUES = {
         AtoC, AtoG, AtoT, CtoA, CtoG, CtoT, GtoA, GtoC, GtoT, TtoA, TtoC, TtoG
     };
 

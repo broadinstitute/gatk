@@ -16,7 +16,7 @@ public final class CigarUtils {
     // these values were chosen via optimization against the NA12878 knowledge base
     public static final Parameters NEW_SW_PARAMETERS = new Parameters(200, -150, -260, -11);
 
-    private final static String SW_PAD = "NNNNNNNNNN";
+    private static final String SW_PAD = "NNNNNNNNNN";
 
     private CigarUtils(){}
 

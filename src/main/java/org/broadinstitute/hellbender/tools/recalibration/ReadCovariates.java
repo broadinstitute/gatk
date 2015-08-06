@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.recalibration.EventType;
  * In essence, this is an array of CovariateValues, but it also has some functionality to deal with the optimizations of the NestedHashMap
  */
 public final class ReadCovariates {
-    private final static Logger logger = LogManager.getLogger(ReadCovariates.class);
+    private static final Logger logger = LogManager.getLogger(ReadCovariates.class);
 
     /**
      * How big should we let the LRU cache grow
@@ -24,7 +24,7 @@ public final class ReadCovariates {
      * keeps the total number of cached arrays to less than LRU_CACHE_SIZE.
      *
      */
-    private final static LRUCache<Integer, int[][][]> keysCache = new LRUCache<>(LRU_CACHE_SIZE);
+    private static final LRUCache<Integer, int[][][]> keysCache = new LRUCache<>(LRU_CACHE_SIZE);
 
     /**
      * The keys cache is only valid for a single covariate count.  Normally this will remain constant for the analysis.

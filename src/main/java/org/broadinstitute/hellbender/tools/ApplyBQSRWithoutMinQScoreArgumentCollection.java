@@ -11,7 +11,7 @@ import java.io.Serializable;
  * The command-line parser errors out if a single class contains two different AgumentCollection classes with the same member.
  * Thus I couldn't use the existing ApplyBQSRArgumentCollection and had to make a variant.
  */
-public class ApplyBQSRWithoutMinQScoreArgumentCollection implements ArgumentCollectionDefinition, Serializable {
+public class ApplyBQSRWithoutMinQScoreArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
 
     /**

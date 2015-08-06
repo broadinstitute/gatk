@@ -55,7 +55,7 @@ public final class BaseRecalOutputSource implements Serializable {
      * @param pipeline the pipeline, with authentication information.
      * @param path the Recalibration report
      */
-    static public PCollection<BaseRecalOutput> loadFileOrRemote(final Pipeline pipeline, String path) {
+    public static PCollection<BaseRecalOutput> loadFileOrRemote(final Pipeline pipeline, String path) {
         if (BucketUtils.isRemoteStorageUrl(path)) {
             return BaseRecalOutputSource.of(pipeline, path);
         } else{

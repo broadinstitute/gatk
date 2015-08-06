@@ -78,12 +78,12 @@ public final class FeatureManager implements AutoCloseable {
      * The tool instance containing the FeatureInput argument values that will form the basis of our
      * pool of FeatureDataSources
      */
-    private CommandLineProgram toolInstance;
+    private final CommandLineProgram toolInstance;
 
     /**
      * Mapping from FeatureInput argument to query-able FeatureDataSource for that source of Features
      */
-    private Map<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> featureSources;
+    private final Map<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> featureSources;
 
     /**
      * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
@@ -330,7 +330,7 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * Utility method that determines the correct codec to use to read Features from the provided file.
      *
-     * Codecs MUST correctly implement the {@link htsjdk.tribble.FeatureCodec#canDecode(String)} method
+     * Codecs MUST correctly implement the {@link FeatureCodec#canDecode(String)} method
      * in order to be considered as candidates for decoding the file.
      *
      * Throws an exception if no suitable codecs are found (this is a user error, since the file is of
@@ -373,10 +373,10 @@ public final class FeatureManager implements AutoCloseable {
 
     /**
      * Returns a List of all codecs in DISCOVERED_CODECS that claim to be able to decode the specified file
-     * according to their {@link htsjdk.tribble.FeatureCodec#canDecode(String)} methods.
+     * according to their {@link FeatureCodec#canDecode(String)} methods.
      *
      * @param featureFile file for which to find potential codecs
-     * @return A List of all codecs in DISCOVERED_CODECS for which {@link htsjdk.tribble.FeatureCodec#canDecode(String)} returns true on the specified file
+     * @return A List of all codecs in DISCOVERED_CODECS for which {@link FeatureCodec#canDecode(String)} returns true on the specified file
      */
     private static List<FeatureCodec<? extends Feature, ?>> getCandidateCodecsForFile( final File featureFile )  {
         final List<FeatureCodec<? extends Feature, ?>> candidateCodecs = new ArrayList<>();

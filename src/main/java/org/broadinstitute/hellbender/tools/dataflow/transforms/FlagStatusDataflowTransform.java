@@ -32,7 +32,7 @@ public final class FlagStatusDataflowTransform extends PTransformSAM<FlagStatus>
 
     private static class StatCounter implements Accumulator<GATKRead, StatCounter, FlagStatus>, Serializable {
         private static final long serialVersionUID = 1l;
-        private FlagStatus stats = new FlagStatus();
+        private final FlagStatus stats = new FlagStatus();
 
         @Override
         public void addInput(final GATKRead read) {

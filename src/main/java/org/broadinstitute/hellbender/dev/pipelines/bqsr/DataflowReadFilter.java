@@ -14,7 +14,7 @@ import java.io.Serializable;
 /**
  * A simple filter for reads on dataflow
  */
-public final class DataflowReadFilter extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> implements Serializable {
+public final class DataflowReadFilter extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
     private static final long serialVersionUID = 1L;
     
     private final ReadFilter readFilter;

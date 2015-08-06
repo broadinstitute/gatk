@@ -168,10 +168,7 @@ public final class ArtificialReadQueryIterator extends ArtificialReadIterator {
         if (!seeked) {
             return res;
         }
-        if (res && matches(this.next)) {
-            return true;
-        }
-        return false;
+        return res && matches(this.next);
     }
 
     /** make sure we haven't been used as an iterator yet; this is to miror the MergingSamIterator2 action. */

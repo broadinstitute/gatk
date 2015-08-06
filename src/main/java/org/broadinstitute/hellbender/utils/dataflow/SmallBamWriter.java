@@ -50,7 +50,7 @@ public class SmallBamWriter implements Serializable {
 
     }
 
-    private static class SaveToBAMFile extends DoFn<String,Void> implements Serializable {
+    private static class SaveToBAMFile extends DoFn<String,Void> {
         private static final Logger logger = LogManager.getLogger(SaveToBAMFile.class);
         private static final long serialVersionUID = 1L;
         private final SAMFileHeader header;

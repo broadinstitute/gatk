@@ -24,7 +24,7 @@ public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoClos
      * so that repeated queries over nearby locations will be efficient (this
      * is the primary reference access pattern in most traversals).
      */
-    private CachingIndexedFastaSequenceFile reference;
+    private final CachingIndexedFastaSequenceFile reference;
 
     /**
      * Initialize this data source using a fasta file.

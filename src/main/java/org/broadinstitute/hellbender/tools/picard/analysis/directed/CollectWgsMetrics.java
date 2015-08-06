@@ -271,7 +271,7 @@ abstract class CountingFilter implements SamRecordFilter {
         return filteredOut;
     }
 
-    abstract public boolean reallyFilterOut(final SAMRecord record);
+    public abstract boolean reallyFilterOut(final SAMRecord record);
 
     @Override
     public boolean filterOut(final SAMRecord first, final SAMRecord second) {

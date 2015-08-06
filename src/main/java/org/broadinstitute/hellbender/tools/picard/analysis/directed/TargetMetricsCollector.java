@@ -82,8 +82,8 @@ public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetri
     //so that we can calculate overlap for a read once and the resulting coverage is
     //than added to the cumulative coverage of every collector that collects
     //information on that read
-    private Map<Interval, Coverage> coverageByTargetForRead;
-    private Coverage [] cov;
+    private final Map<Interval, Coverage> coverageByTargetForRead;
+    private final Coverage [] cov;
 
     //Converts a targetMetric into a more specific metric of METRIC_TYPE
     public abstract METRIC_TYPE convertMetric(final TargetMetrics targetMetrics);

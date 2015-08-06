@@ -15,7 +15,7 @@ import java.util.stream.StreamSupport;
  * for the Dataflow spec this follows. I've copied their javadoc here.
  */
 @DefaultCoder(SerializableCoder.class)
-public final class RecalibrationTablesMerger extends Combine.CombineFn<RecalibrationTables, RecalibrationTables, RecalibrationTables> implements Serializable {
+public final class RecalibrationTablesMerger extends Combine.CombineFn<RecalibrationTables, RecalibrationTables, RecalibrationTables> {
     private static final long serialVersionUID = 1L;
 
     public RecalibrationTablesMerger() {

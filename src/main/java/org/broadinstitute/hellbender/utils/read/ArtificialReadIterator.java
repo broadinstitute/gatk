@@ -93,10 +93,7 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
             initialized = true;
             createNextRead();
         }
-        if (this.next != null) {
-            return true;
-        }
-        return false;
+        return this.next != null;
     }
 
     protected boolean createNextRead() {

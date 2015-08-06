@@ -569,7 +569,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * sorted in increasing order of start position.
      */
     private class FeatureIntervalIterator implements CloseableTribbleIterator<T> {
-        private Iterator<SimpleInterval> intervalIterator;
+        private final Iterator<SimpleInterval> intervalIterator;
         private CloseableTribbleIterator<T> featuresInCurrentInterval;
         private T nextFeature;
         private SimpleInterval currentInterval;

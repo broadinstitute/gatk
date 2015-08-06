@@ -26,7 +26,7 @@ implements Iterable<String[]>, CloseableIterator<String[]> {
     private int wordCount = 0;      /* The number of delimiter-separated "words" per line of the file.
                                        We can save a little caclulation, or handle files with varying numbers of
                                        words per line, by specifying this if known in advance */
-    private boolean skipBlankLines = true;
+    private final boolean skipBlankLines = true;
 
     /**
      * Closes this stream and releases any system resources associated with it.

@@ -12,7 +12,7 @@ import java.io.Serializable;
  * of reference mismatches seen for that combination of covariates.
  */
 public final class RecalDatum implements Serializable {
-    public final static byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
+    public static final byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
     private static final double UNINITIALIZED = -1.0;
     private static final long serialVersionUID = 1L;
 
@@ -245,9 +245,9 @@ public final class RecalDatum implements Serializable {
     }
 
     //static final boolean DEBUG = false;
-    static private final double RESOLUTION_BINS_PER_QUAL = 1.0;
+    private static final double RESOLUTION_BINS_PER_QUAL = 1.0;
 
-    static public double bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double QReported) {
+    public static double bayesianEstimateOfEmpiricalQuality(final long nObservations, final long nErrors, final double QReported) {
 
         final int numBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1) * (int)RESOLUTION_BINS_PER_QUAL;
 
@@ -277,8 +277,8 @@ public final class RecalDatum implements Serializable {
      * Quals above this value should be capped down to this value (because they are too high)
      * in the base quality score recalibrator
      */
-    public final static byte MAX_GATK_USABLE_Q_SCORE = 40;
-    static private final double[] log10QempPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
+    public static final byte MAX_GATK_USABLE_Q_SCORE = 40;
+    private static final double[] log10QempPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
     static {
         // f(x) = a*exp(-((x - b)^2 / (2*c^2)))
         // Note that a is the height of the curve's peak, b is the position of the center of the peak, and c controls the width of the "bell".
@@ -295,16 +295,16 @@ public final class RecalDatum implements Serializable {
         }
     }
 
-    static protected double log10QempPrior(final double Qempirical, final double Qreported) {
+    protected static double log10QempPrior(final double Qempirical, final double Qreported) {
         final int difference = Math.min(Math.abs((int) (Qempirical - Qreported)), MAX_GATK_USABLE_Q_SCORE);
         //if ( DEBUG )
         //    System.out.println(String.format("Qemp = %f, log10Priors = %f", Qempirical, log10QempPriorCache[difference]));
         return log10QempPriorCache[difference];
     }
 
-    static private final long MAX_NUMBER_OF_OBSERVATIONS = Integer.MAX_VALUE - 1;
+    private static final long MAX_NUMBER_OF_OBSERVATIONS = Integer.MAX_VALUE - 1;
 
-    static protected double log10QempLikelihood(final double Qempirical, long nObservations, long nErrors) {
+    protected static double log10QempLikelihood(final double Qempirical, long nObservations, long nErrors) {
         if ( nObservations == 0 )
             return 0.0;
 

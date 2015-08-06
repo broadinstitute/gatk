@@ -12,8 +12,8 @@ import java.util.UUID;
 public class VariantContextVariantAdapter implements Variant, Serializable {
     private static final long serialVersionUID = 1L;
 
-    final private VariantContext variantContext;
-    final private UUID uuid;
+    private final VariantContext variantContext;
+    private final UUID uuid;
 
     public VariantContextVariantAdapter(VariantContext vc) {
         this.variantContext = vc;

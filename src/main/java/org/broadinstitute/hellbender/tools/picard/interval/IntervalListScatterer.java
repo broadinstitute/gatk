@@ -20,7 +20,7 @@ public final class IntervalListScatterer {
          * A scatter approach that differs from {@link Mode#INTERVAL_SUBDIVISION} in a few ways.
          * <ol>
          * <li>No interval will be subdivided, and consequently, the requested scatter count is an upper bound of scatter count, not a
-         * guarantee as to how many {@link htsjdk.samtools.util.IntervalList}s will be produced (e.g., if scatterCount = 10 but there is only one input interval,
+         * guarantee as to how many {@link IntervalList}s will be produced (e.g., if scatterCount = 10 but there is only one input interval,
          * only 1 interval list will be emitted).</li>
          * <li>When an interval would otherwise be split, it is instead deferred to the next scatter list.</li>
          * <li>The "target width" of each scatter list may be wider than what is computed for {@link Mode#INTERVAL_SUBDIVISION}.

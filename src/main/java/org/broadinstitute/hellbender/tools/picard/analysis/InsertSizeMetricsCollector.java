@@ -136,11 +136,11 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
                     double high = median;
 
                     while (low >= Histogram.getMin() || high <= Histogram.getMax()) {
-                        final htsjdk.samtools.util.Histogram<Integer>.Bin lowBin = Histogram.get((int) low);
+                        final Histogram<Integer>.Bin lowBin = Histogram.get((int) low);
                         if (lowBin != null) covered += lowBin.getValue();
 
                         if (low != high) {
-                            final htsjdk.samtools.util.Histogram<Integer>.Bin highBin = Histogram.get((int) high);
+                            final Histogram<Integer>.Bin highBin = Histogram.get((int) high);
                             if (highBin != null) covered += highBin.getValue();
                         }
 
@@ -162,7 +162,7 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
                     }
 
                     // Trim the Histogram down to get rid of outliers that would make the chart useless.
-                    final htsjdk.samtools.util.Histogram<Integer> trimmedHisto = Histogram; //alias it
+                    final Histogram<Integer> trimmedHisto = Histogram; //alias it
                     if (HistogramWidth == null) {
                         HistogramWidth = (int) (metrics.MEDIAN_INSERT_SIZE + (deviations * metrics.MEDIAN_ABSOLUTE_DEVIATION));
                     }

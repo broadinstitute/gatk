@@ -53,7 +53,7 @@ import org.broadinstitute.hellbender.utils.variant.Variant;
  *
  */
 public class GetOverlappingReadsAndVariants {
-    static public PCollection<KV<GATKRead, Variant>> pair(PCollection<GATKRead> pRead, PCollection<Variant> pVariant) {
+    public static PCollection<KV<GATKRead, Variant>> pair(PCollection<GATKRead> pRead, PCollection<Variant> pVariant) {
 
         PCollection<KV<VariantShard, GATKRead>> vkReads = pRead.apply(new KeyReadsByOverlappingVariantShard());
         PCollection<KV<VariantShard, Variant>> vkVariants =

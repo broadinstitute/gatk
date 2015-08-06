@@ -9,9 +9,9 @@ import java.util.Collection;
  * column information within a GATK report table
  */
 public final class GATKReportColumn {
-    final private String columnName;
-    final private String format;
-    final private GATKReportDataType dataType;
+    private final String columnName;
+    private final String format;
+    private final GATKReportDataType dataType;
 
     private GATKReportColumnFormat columnFormat;
     private GATKReportColumnFormat.Alignment alignment = GATKReportColumnFormat.Alignment.RIGHT;  // default alignment is to the right unless values added ask for a left alignment

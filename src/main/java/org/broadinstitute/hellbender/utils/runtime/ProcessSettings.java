@@ -9,9 +9,9 @@ public final class ProcessSettings {
     private Map<String, String> environment;
     private File directory;
     private boolean redirectErrorStream;
-    private InputStreamSettings stdinSettings;
-    private OutputStreamSettings stdoutSettings;
-    private OutputStreamSettings stderrSettings;
+    private final InputStreamSettings stdinSettings;
+    private final OutputStreamSettings stdoutSettings;
+    private final OutputStreamSettings stderrSettings;
 
     /**
      * @param command Command line to run.

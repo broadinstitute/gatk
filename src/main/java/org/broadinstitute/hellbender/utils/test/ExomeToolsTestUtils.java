@@ -15,7 +15,7 @@ import java.io.File;
  */
 public final class ExomeToolsTestUtils {
 
-    private ExomeToolsTestUtils(){}; //don't instantiate this
+    private ExomeToolsTestUtils(){} //don't instantiate this
 
     /**
      * Returns a {@link File} pointing to the directory that contains the test data.
@@ -28,12 +28,12 @@ public final class ExomeToolsTestUtils {
     /**
      * {@link File} pointing to the test toy reference used in exome analysis tool tests.
      */
-    public final static File REFERENCE_FILE = new File(getTestDataDir(),"test_reference.fasta");
+    public static final File REFERENCE_FILE = new File(getTestDataDir(),"test_reference.fasta");
 
     /**
      * Sequence dictionary extracted from {@link #REFERENCE_FILE}.
      */
-    public final static SAMSequenceDictionary REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);
+    public static final SAMSequenceDictionary REFERENCE_DICTIONARY = SAMSequenceDictionaryExtractor.extractDictionary(REFERENCE_FILE);
 
     /**
      * Creates a {@link SimpleInterval} instance given its contig and base range.

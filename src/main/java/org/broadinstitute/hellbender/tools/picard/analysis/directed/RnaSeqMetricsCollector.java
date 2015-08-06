@@ -31,7 +31,7 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
     private final double rrnaFragmentPercentage;
     private final Long ribosomalInitialValue;
 
-    final private Set<Integer> ignoredSequenceIndices;
+    private final Set<Integer> ignoredSequenceIndices;
 
     private final OverlapDetector<Gene> geneOverlapDetector;
     private final OverlapDetector<Interval> ribosomalSequenceOverlapDetector;

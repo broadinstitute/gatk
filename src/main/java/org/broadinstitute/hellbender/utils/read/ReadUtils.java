@@ -626,7 +626,7 @@ public final class ReadUtils {
     }
 
     /**
-     * @see #readStartsWithInsertion(htsjdk.samtools.Cigar, boolean) with ignoreClipOps set to true
+     * @see #readStartsWithInsertion(Cigar, boolean) with ignoreClipOps set to true
      */
     public static CigarElement readStartsWithInsertion(final Cigar cigarForRead) {
         return readStartsWithInsertion(cigarForRead, true);
@@ -847,10 +847,7 @@ public final class ReadUtils {
         }
         final SAMSequenceRecord contigHeader = header.getSequence(referenceIndex);
         // Read is aligned to a point after the end of the contig
-        if( ! read.isUnmapped() && read.getStart() > contigHeader.getSequenceLength() ) {
-            return false;
-        }
-        return true;
+        return read.isUnmapped() || read.getStart() <= contigHeader.getSequenceLength();
     }
 
     /**

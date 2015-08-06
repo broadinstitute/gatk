@@ -119,7 +119,7 @@ public abstract class VariantWalker extends GATKTool {
      * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
      *
      * Subclasses can extend to provide own filters (ie override and call super).
-     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.VariantFilter} composition methods.
+     * Multiple filters can be composed by using {@link VariantFilter} composition methods.
      */
     protected VariantFilter makeVariantFilter() {
         return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
@@ -137,8 +137,8 @@ public abstract class VariantWalker extends GATKTool {
      * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
      *                         if there is no backing source of reference data (in which case all queries on it will return
      *                         an empty array/iterator). Can request extra bases of context around the current read's interval
-     *                         by invoking {@link org.broadinstitute.hellbender.engine.ReferenceContext#setWindow}
-     *                         on this object before calling {@link org.broadinstitute.hellbender.engine.ReferenceContext#getBases}
+     *                         by invoking {@link ReferenceContext#setWindow}
+     *                         on this object before calling {@link ReferenceContext#getBases}
      * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
      *                       if there is no backing source of Feature data (in which case all queries on it will return an
      *                       empty List).

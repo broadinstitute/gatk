@@ -61,7 +61,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
         ReferenceSequence seq = null;
     }
 
-    private Cache cache = new Cache();
+    private final Cache cache = new Cache();
 
     /**
      * Same as general constructor but allows one to override the default cacheSize

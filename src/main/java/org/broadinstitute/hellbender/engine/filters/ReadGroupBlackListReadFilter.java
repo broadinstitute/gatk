@@ -24,7 +24,7 @@ public final class ReadGroupBlackListReadFilter implements ReadFilter {
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 
-    private Set<Entry<String, Collection<String>>> blacklistEntries;
+    private final Set<Entry<String, Collection<String>>> blacklistEntries;
     private final SAMFileHeader header;
 
     /**

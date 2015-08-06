@@ -71,7 +71,7 @@ public final class MathUtils {
         }
 
         //initialize with the special case: log10(0) = NEGATIVE_INFINITY
-        private static double[] cache = new double[] { Double.NEGATIVE_INFINITY };
+        private static double[] cache = { Double.NEGATIVE_INFINITY };
     }
 
     /**

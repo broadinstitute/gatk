@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.read.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.function.UnaryOperator;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;

@@ -12,8 +12,8 @@ import java.util.*;
 
 
 public final class AlignmentUtils {
-    private final static EnumSet<CigarOperator> ALIGNED_TO_GENOME_OPERATORS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X);
-    private final static EnumSet<CigarOperator> ALIGNED_TO_GENOME_PLUS_SOFTCLIPS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.S);
+    private static final EnumSet<CigarOperator> ALIGNED_TO_GENOME_OPERATORS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X);
+    private static final EnumSet<CigarOperator> ALIGNED_TO_GENOME_PLUS_SOFTCLIPS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.S);
 
     // cannot be instantiated
     private AlignmentUtils() { }
@@ -1111,7 +1111,7 @@ public final class AlignmentUtils {
     }
 
 
-    private final static List<CigarPairTransform> cigarPairTransformers = Arrays.asList(
+    private static final List<CigarPairTransform> cigarPairTransformers = Arrays.asList(
             //
             // op12 is a match
             //

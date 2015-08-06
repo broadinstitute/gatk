@@ -117,7 +117,7 @@ public final class BucketUtils {
      * @param pathToDelete the path to delete. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
      */
-    public static void deleteFile(String pathToDelete, PipelineOptions popts) throws IOException, GeneralSecurityException {
+    public static void deleteFile(String pathToDelete, PipelineOptions popts) throws IOException {
         if (BucketUtils.isCloudStorageUrl(pathToDelete)) {
             GcsPath path = GcsPath.fromUri(pathToDelete);
             GcsOptions gcsOptions = popts.as(GcsOptions.class);

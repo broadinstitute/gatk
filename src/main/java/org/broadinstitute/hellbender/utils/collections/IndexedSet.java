@@ -10,7 +10,7 @@ import java.util.*;
 *
 * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
 */
-public final class IndexedSet<E> extends AbstractSet<E> implements Set<E> {
+public final class IndexedSet<E> extends AbstractSet<E> {
 
     /**
      * Elements stored in an array-list by their index.
@@ -244,7 +244,7 @@ public final class IndexedSet<E> extends AbstractSet<E> implements Set<E> {
      *
      * @param other the target indexed set.
      *
-     * @throws java.lang.IllegalArgumentException if {@code other} is {@code null}.
+     * @throws IllegalArgumentException if {@code other} is {@code null}.
      *
      * @return {@code true} iff {@other} is not {@code null}, and contains exactly the same elements
      * (as compared using {@link Object#equals} a this set with matching indices.

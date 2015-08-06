@@ -19,7 +19,7 @@ import java.text.NumberFormat;
 )
 public final class FlagStat extends ReadWalker {
 
-    private FlagStatus sum = new FlagStatus();
+    private final FlagStatus sum = new FlagStatus();
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
@@ -32,7 +32,7 @@ public final class FlagStat extends ReadWalker {
     }
 
     // what comes out of the flagstat
-    public final static class FlagStatus implements Serializable {
+    public static final class FlagStatus implements Serializable {
         private static final long serialVersionUID = 1L;
 
         long readCount = 0L;
@@ -149,10 +149,8 @@ public final class FlagStat extends ReadWalker {
             if (singletons != that.singletons) return false;
             if (with_itself_and_mate_mapped != that.with_itself_and_mate_mapped) return false;
             if (with_mate_mapped_to_a_different_chr != that.with_mate_mapped_to_a_different_chr) return false;
-            if (with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 != that.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5)
-                return false;
+            return with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 == that.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5;
 
-            return true;
         }
 
         @Override

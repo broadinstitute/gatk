@@ -115,7 +115,7 @@ public final class GenotypeConcordanceScheme {
 
     /**
      * Check that all cells in the scheme exist.
-     * @throws org.broadinstitute.hellbender.exceptions.GATKException if a missing tuple was found.
+     * @throws GATKException if a missing tuple was found.
      */
     public void validateScheme() throws GATKException {
         if (!isValidated) {

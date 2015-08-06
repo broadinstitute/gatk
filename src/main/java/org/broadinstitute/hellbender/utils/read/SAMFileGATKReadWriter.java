@@ -10,7 +10,7 @@ import htsjdk.samtools.SAMFileWriter;
  */
 public final class SAMFileGATKReadWriter implements GATKReadWriter {
 
-    private SAMFileWriter samWriter;
+    private final SAMFileWriter samWriter;
 
     public SAMFileGATKReadWriter( final SAMFileWriter samWriter ) {
         this.samWriter = samWriter;
