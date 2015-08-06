@@ -4,6 +4,7 @@ import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.Arrays;
@@ -19,10 +20,161 @@ public final class MathUtils {
      */
     public static final double LOG_P_OF_ZERO = -1000000.0;
 
+    private static final double LN_10 = Math.log(10);
+
+    public static final double LOG_ONE_HALF = -Math.log10(2.0);
+
+    private static final double LOG1MEXP_THRESHOLD = Math.log(0.5);
+
     /**
      * Private constructor.  No instantiating this class!
      */
     private MathUtils() {
+    }
+
+
+    /**
+     * Creates a new sample of k ints from [0..n-1], without duplicates.
+     * @throws NumberIsTooLargeException if {@code k > n}.
+     * @throws NotStrictlyPositiveException if {@code k <= 0}.
+     */
+    public static int[] sampleIndicesWithoutReplacement(final int n, final int k) {
+        //No error checking : RandomDataGenetator.nextPermutation does it
+        return Utils.getRandomDataGenerator().nextPermutation(n, k);
+    }
+
+    /**
+     * Calculates {@code log10(1-10^a)} without loosing precision.
+     *
+     * <p>
+     *     This is based on the approach described in:
+     *
+     * </p>
+     * <p>
+     *     Maechler M, Accurately Computing log(1-exp(-|a|)) Assessed by the Rmpfr package, 2012 <br/>
+     *     <a ref="http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf">Online document</a>.
+     * </p>
+     *
+     * @param a the input exponent.
+     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
+     */
+    public static double log10OneMinusPow10(final double a) {
+        if (a > 0) return Double.NaN;
+        if (a == 0) return Double.NEGATIVE_INFINITY;
+        final double b = a * LN_10;
+        return log1mexp(b) / LN_10;
+    }
+
+    /**
+     * Calculates {@code log(1-exp(a))} without loosing precision.
+     *
+     * <p>
+     *     This is based on the approach described in:
+     *
+     * </p>
+     * <p>
+     *     Maechler M, Accurately Computing log(1-exp(-|a|)) Assessed by the Rmpfr package, 2012 <br/>
+     *     <a ref="http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf">Online document</a>.
+     *
+     * </p>
+     *
+     * @param a the input exponent.
+     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
+     */
+    public static double log1mexp(final double a) {
+        if (a > 0) return Double.NaN;
+        if (a == 0) return Double.NEGATIVE_INFINITY;
+
+        return (a < LOG1MEXP_THRESHOLD) ? Math.log1p(-Math.exp(a)) : Math.log(-Math.expm1(a));
+    }
+
+    /**
+     * Check that the log10 prob vector vector is well formed
+     *
+     * @param vector
+     * @param expectedSize
+     * @param shouldSumToOne
+     *
+     * @return true if vector is well-formed, false otherwise
+     */
+    public static boolean goodLog10ProbVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
+        if ( vector.length != expectedSize ) return false;
+
+        for ( final double pr : vector ) {
+            if ( ! goodLog10Probability(pr) )
+                return false;
+        }
+
+        if ( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 )
+            return false;
+
+        return true; // everything is good
+    }
+
+    public static double sumLog10(final double[] log10values) {
+        return Math.pow(10.0, log10sumLog10(log10values));
+    }
+
+    /** Compute Z=X-Y for two numeric vectors X and Y
+     *
+     * @param x                 First vector
+     * @param y                 Second vector
+     * @return Vector of same length as x and y so that z[k] = x[k]-y[k]
+     */
+    public static int[] vectorDiff(final int[]x, final int[] y) {
+        Utils.nonNull(x, "x is null");
+        Utils.nonNull(y, "y is null");
+        if (x.length != y.length)
+            throw new IllegalArgumentException("BUG: Lengths of x and y must be the same");
+
+        int[] result = new int[x.length];
+        for (int k=0; k <x.length; k++)
+            result[k] = x[k]-y[k];
+
+        return result;
+    }
+
+    public static double[] vectorSum(double[] x, double[] y) {
+        return MathArrays.ebeAdd(x, y);
+    }
+
+
+    /**
+     * Calculates the log10 of the multinomial coefficient. Designed to prevent
+     * overflows even with very large numbers.
+     *
+     * @param n total number of trials
+     * @param k array of any size with the number of successes for each grouping (k1, k2, k3, ..., km)
+     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
+     */
+    public static double log10MultinomialCoefficient(final int n, final int[] k) {
+        if ( n < 0 )
+            throw new IllegalArgumentException("n: Must have non-negative number of trials");
+        double denominator = 0.0;
+        int sum = 0;
+        for (int x : k) {
+            if ( x < 0 )
+                throw new IllegalArgumentException("x element of k: Must have non-negative observations of group");
+            if ( x > n )
+                throw new IllegalArgumentException("x element of k, n: Group observations must be bounded by k");
+            denominator += log10Factorial(x);
+            sum += x;
+        }
+        if ( sum != n )
+            throw new IllegalArgumentException("k and n: Sum of observations in multinomial must sum to total number of trials");
+        return log10Factorial(n) - denominator;
+    }
+
+    public static boolean wellFormedDouble(final double val) {
+        return !Double.isInfinite(val) && !Double.isNaN(val);
+    }
+
+    public static boolean isNegativeOrZero(final double val) {
+        return isBounded(val, Double.NEGATIVE_INFINITY, 0.0);
+    }
+
+    public static boolean isBounded(final double val, final double lower, final double upper) {
+        return val >= lower && val <= upper;
     }
 
     /**
@@ -158,6 +310,32 @@ public final class MathUtils {
         // we compute the second term as a table lookup with integer quantization
         // we have pre-stored correction for 0,0.1,0.2,... 10.0
         return b + JacobianLogTable.get(diff);
+    }
+
+    /**
+     * Calculate the approximate log10 sum of an array range.
+     * @param vals the input values.
+     * @param fromIndex the first inclusive index in the input array.
+     * @param toIndex index following the last element to sum in the input array (exclusive).
+     * @return the approximate sum.
+     * @throws IllegalArgumentException if {@code vals} is {@code null} or  {@code fromIndex} is out of bounds
+     * or if {@code toIndex} is larger than
+     * the length of the input array or {@code fromIndex} is larger than {@code toIndex}.
+     */
+    public static double approximateLog10SumLog10(final double[] vals, final int fromIndex, final int toIndex) {
+        if (fromIndex == toIndex) return Double.NEGATIVE_INFINITY;
+        final int maxElementIndex = MathUtils.maxElementIndex(vals,fromIndex,toIndex);
+        double approxSum = vals[maxElementIndex];
+
+        for (int i = fromIndex; i < toIndex; i++) {
+            final double val;
+            if (i == maxElementIndex || (val = vals[i]) == Double.NEGATIVE_INFINITY)
+                continue;
+            final double diff = approxSum - val;
+            if (diff < JacobianLogTable.MAX_TOLERANCE)
+                approxSum += JacobianLogTable.get(diff);
+        }
+        return approxSum;
     }
 
     public static double sum(final double[] values) {
@@ -385,6 +563,37 @@ public final class MathUtils {
         return normalized;
     }
 
+    public static int minElementIndex(final double[] array) {
+        if (array == null || array.length == 0) {
+            throw new IllegalArgumentException("Array cannot be null!");
+        }
+
+        int minI = 0;
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < array[minI]) {
+                minI = i;
+            }
+        }
+        return minI;
+    }
+
+    public static int minElementIndex(final int[] array) {
+        if (array == null || array.length == 0)
+            throw new IllegalArgumentException("Array cannot be null!");
+
+        int minI = 0;
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < array[minI])
+                minI = i;
+        }
+
+        return minI;
+    }
+
+    public static int arrayMin(final int[] array) {
+        return array[minElementIndex(array)];
+    }
+
     public static int maxElementIndex(final double[] array) {
         return maxElementIndex(array, array.length);
     }
@@ -454,6 +663,20 @@ public final class MathUtils {
             return Gamma.logGamma(x + 1);
         else
             return LogFactorialCache.get(x);
+    }
+
+    /**
+     * Converts a real space array of numbers (typically probabilities) into a log10 array
+     *
+     * @param prRealSpace
+     * @return
+     */
+    public static double[] toLog10(final double[] prRealSpace) {
+        final double[] log10s = new double[prRealSpace.length];
+        for (int i = 0; i < prRealSpace.length; i++) {
+            log10s[i] = Math.log10(prRealSpace[i]);
+        }
+        return log10s;
     }
 
     /**
@@ -661,5 +884,15 @@ public final class MathUtils {
         final double[] ds = new double[is.length];
         for (int i = 0; i < is.length; ++i) ds[i] = is[i];
         return ds;
+    }
+
+    public static int countOccurrences(final boolean element, final boolean[] array) {
+        int count = 0;
+        for (final boolean b : array) {
+            if (element == b)
+                count++;
+        }
+
+        return count;
     }
 }

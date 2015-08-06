@@ -57,7 +57,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @throws IllegalArgumentException if {@code allele} is {@code null}.
      * @return -1 if such allele does not exist, otherwise its index which 0 or greater.
      */
-    public int alleleIndex(final A allele);
+    public int indexOfAllele(final A allele);
 
     /**
      * Queries the index of a read in the matrix.
@@ -69,19 +69,19 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @return -1 if there is not such a read in the matrix, otherwise its index
      *    which is 0 or greater.
      */
-    public int readIndex(final GATKRead read);
+    public int indexOfRead(final GATKRead read);
 
     /**
      * Number of allele in the matrix.
      * @return never negative.
      */
-    public int alleleCount();
+    public int numberOfAlleles();
 
     /**
      * Number of reads in the matrix.
      * @return never negative.
      */
-    public int readCount();
+    public int numberOfReads();
 
     /**
      * Returns the allele given its index.
@@ -91,7 +91,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @throws IllegalArgumentException if {@code alleleIndex} is not a valid allele index.
      * @return never {@code null}.
      */
-    public A alleleAt(final int alleleIndex);
+    public A getAllele(final int alleleIndex);
 
     /**
      * Returns the allele given its index.
@@ -101,7 +101,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @throws IllegalArgumentException if {@code readIndex} is not a valid read index.
      * @return never {@code null}.
      */
-    public GATKRead readAt(final int readIndex);
+    public GATKRead getRead(final int readIndex);
 
 
     /**

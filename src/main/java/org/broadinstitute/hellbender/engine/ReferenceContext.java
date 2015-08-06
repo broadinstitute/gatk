@@ -136,6 +136,16 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * Get the bases in this context, from the beginning of the interval to the end of the window.
+     */
+    public byte[] getForwardBases() {
+        final byte[] bases = getBases();
+        final int mid = interval.getStart() - window.getStart();
+        return new String(bases).substring(mid).getBytes();
+    }
+
+
+    /**
      * Get the location on the reference represented by this context, without including
      * any extra bases of requested context around this interval.
      *
@@ -238,5 +248,13 @@ public final class ReferenceContext implements Iterable<Byte> {
     private int calculateWindowStop( final SimpleInterval locus, final int windowTrailingBases ) {
         final int sequenceLength = dataSource.getSequenceDictionary().getSequence(locus.getContig()).getSequenceLength();
         return Math.min(locus.getEnd() + windowTrailingBases, sequenceLength);
+    }
+
+    /**
+     * Get the base at the given locus.
+     * @return The base at the given locus from the reference.
+     */
+    public byte getBase() {
+        return getBases()[(interval.getStart() - window.getStart())];
     }
 }

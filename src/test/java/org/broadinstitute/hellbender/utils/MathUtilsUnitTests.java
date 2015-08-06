@@ -7,10 +7,12 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.Random;
+import java.util.Iterator;
 
 import static java.lang.Math.log10;
 
@@ -23,6 +25,80 @@ public final class MathUtilsUnitTests extends BaseTest {
 
     @BeforeClass
     public void init() {
+    }
+
+    @Test(dataProvider = "log10OneMinusPow10Data")
+    public void testLog10OneMinusPow10(final double x, final double expected) {
+        final double actual = MathUtils.log10OneMinusPow10(x);
+        if (Double.isNaN(expected))
+            Assert.assertTrue(Double.isNaN(actual));
+        else
+            Assert.assertEquals(actual,expected,1E-9);
+    }
+
+    @Test(dataProvider = "log1mexpData")
+    public void testLog1mexp(final double x, final double expected) {
+        final double actual = MathUtils.log1mexp(x);
+        if (Double.isNaN(expected))
+            Assert.assertTrue(Double.isNaN(actual));
+        else
+            Assert.assertEquals(actual,expected,1E-9);
+    }
+
+    @DataProvider(name = "log10OneMinusPow10Data")
+    public Iterator<Object[]> log10OneMinusPow10Data() {
+
+        final double[] inValues = new double[] { Double.NaN, 10, 1, 0, -1, -3, -10, -30, -100, -300, -1000, -3000 };
+        return new Iterator<Object[]>() {
+
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < inValues.length;
+
+            }
+
+            @Override
+            public Object[] next() {
+                final double input = inValues[i++];
+                final double output = Math.log10( 1 - Math.pow(10,input));
+                return new Object[] { input, output };
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
+    @DataProvider(name = "log1mexpData")
+    public Iterator<Object[]> log1mexpData() {
+
+        final double[] inValues = new double[] { Double.NaN, 10, 1, 0, -1, -3, -10, -30, -100, -300, -1000, -3000 };
+        return new Iterator<Object[]>() {
+
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < inValues.length;
+
+            }
+
+            @Override
+            public Object[] next() {
+                final double input = inValues[i++];
+                final double output = Math.log( 1 - Math.exp(input));
+                return new Object[] { input, output };
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     @Test

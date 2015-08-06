@@ -57,17 +57,17 @@ public final class IndexedAlleleList<A extends Allele> implements AlleleList<A> 
     }
 
     @Override
-    public int alleleCount() {
+    public int numberOfAlleles() {
         return alleles.size();
     }
 
     @Override
-    public int alleleIndex(final A allele) {
+    public int indexOfAllele(final A allele) {
         return alleles.indexOf(allele);
     }
 
     @Override
-    public A alleleAt(final int index) {
+    public A getAllele(final int index) {
         return alleles.get(index);
     }
 }

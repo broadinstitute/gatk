@@ -1,0 +1,95 @@
+package org.broadinstitute.hellbender.tools.walkers.genotyper;
+
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * TODO document this.
+ *
+ * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ */
+public class AFPriorProviderUnitTest extends BaseTest {
+
+    private static final double TOLERANCE = 0.0001;
+
+    @Test(dataProvider="HeterozygosityProviderData")
+    public void testHeterozygosityProvider(final double h, final int useCount, final int minPloidy, final int maxPloidy) {
+        final double het = h / maxPloidy;
+        final Random rdn = Utils.getRandomGenerator();
+        final int[] plodies = new int[useCount];
+        for (int i = 0; i < useCount; i++)
+            plodies[i] = rdn.nextInt(maxPloidy - minPloidy + 1) + minPloidy;
+
+        final AFPriorProvider provider = new HeterozygosityAFPriorProvider(het);
+        for (int i = 0; i < useCount; i++) {
+            final int ploidy = plodies[i];
+            double[] priors = provider.forTotalPloidy(ploidy);
+            Assert.assertNotNull(priors);
+            Assert.assertEquals(priors.length, ploidy + 1);
+            Assert.assertEquals(MathUtils.approximateLog10SumLog10(priors), 0, TOLERANCE);
+            for (int j = 0; j < priors.length; j++) {
+                Assert.assertTrue(!Double.isNaN(priors[j]));
+                Assert.assertTrue(priors[j] < 0);
+                if (j > 0) Assert.assertEquals(priors[j], Math.log10(het) - Math.log10(j));
+            }
+        }
+    }
+
+    @Test(dataProvider="CustomProviderData")
+    public void testCustomProvider(final int ploidy) {
+        final double[] priors = new double[ploidy];
+        final Random rdn = Utils.getRandomGenerator();
+        double remaining = 1;
+        final List<Double> priorsList = new ArrayList<>();
+        for (int i = 0; i < priors.length; i++) {
+            priors[i] = remaining * rdn.nextDouble() * (.1 / ploidy );
+            remaining -= priors[i];
+            priorsList.add(priors[i]);
+        }
+
+        final AFPriorProvider provider = new CustomAFPriorProvider(priorsList);
+
+        final double[] providedPriors = provider.forTotalPloidy(ploidy);
+        Assert.assertNotNull(providedPriors);
+        Assert.assertEquals(providedPriors.length, priors.length + 1);
+        for (int i = 0; i < priors.length; i++)
+            Assert.assertEquals(providedPriors[i + 1], Math.log10(priors[i]), TOLERANCE);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(providedPriors), 0, TOLERANCE);
+    }
+
+
+    private double[] hets = new double[] { 0.00001, 0.001, 0.1, 0.5, 0.99, 0.999 };
+    private int[] useCounts = new int[] { 10, 100, 1000 };
+
+    private int[] ploidy = new int[] { 1 , 2, 3, 10, 100, 200, 500};
+
+    @DataProvider(name="CustomProviderData")
+    public Object[][] customProviderData() {
+        final Object[][] result = new Object[ploidy.length][];
+        for (int i = 0; i < result.length; i++)
+            result[i] = new Object[] { ploidy[i] };
+        return result;
+    }
+
+    @DataProvider(name="HeterozygosityProviderData")
+    public Object[][] heterozygosityProviderData() {
+        final Object[][] result = new Object[hets.length * useCounts.length * ((ploidy.length + 1) * (ploidy.length) / 2)][];
+        int idx = 0;
+        for (double h : hets)
+            for (int sc : useCounts)
+                for (int i = 0; i < ploidy.length; i++)
+                    for (int j = i; j < ploidy.length; j++)
+                        result[idx++] = new Object[] { h, sc, ploidy[i], ploidy[j]};
+        return result;
+    }
+
+
+}

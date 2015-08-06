@@ -526,32 +526,32 @@ public final class PairHMMUnitTest extends BaseTest {
             }
 
             @Override
-            public int alleleIndex(Haplotype allele) {
+            public int indexOfAllele(Haplotype allele) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public int readIndex(GATKRead read) {
+            public int indexOfRead(GATKRead read) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public int alleleCount() {
+            public int numberOfAlleles() {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public int readCount() {
+            public int numberOfReads() {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public Haplotype alleleAt(int alleleIndex) {
+            public Haplotype getAllele(int alleleIndex) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public GATKRead readAt(int readIndex) {
+            public GATKRead getRead(int readIndex) {
                 throw new UnsupportedOperationException();
             }
 

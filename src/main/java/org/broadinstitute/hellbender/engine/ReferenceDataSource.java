@@ -10,10 +10,9 @@ import java.io.File;
 import java.util.Iterator;
 
 /**
- * Manages traversals and queries over reference data (for now, fasta files only)
+ * Manages traversals and queries over reference data.
  *
- * Supports targeted queries over the reference by interval, but does not
- * yet support complete iteration over the entire reference.
+ * Supports targeted queries over the reference by interval and over the entire reference.
  */
 public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable {
 
@@ -28,6 +27,7 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
         return new ReferenceFileSource(fastaFile);
     }
 
+
     /**
      * Initialize this data source using ReferenceBases and corresponding sequence dictionary.
      */
@@ -39,6 +39,8 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
      * Query a specific interval on this reference, and get back all bases spanning that interval at once.
      * Call getBases() on the returned ReferenceSequence to get the actual reference bases. See the BaseUtils
      * class for guidance on how to work with bases in this format.
+     *
+     * The default implementation calls #queryAndPrefetch(contig, start, stop).
      *
      * @param interval query interval
      * @return a ReferenceSequence containing all bases spanning the query interval, prefetched
@@ -80,6 +82,11 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
      */
     public SAMSequenceDictionary getSequenceDictionary();
 
+    /**
+     * Permanently close this data source. The default implementation does nothing.
+     */
     @Override
-    public void close();
+    default public void close(){
+        //do nothing
+    }
 }

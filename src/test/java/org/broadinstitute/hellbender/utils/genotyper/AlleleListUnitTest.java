@@ -11,11 +11,11 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 /**
- * Test {@link org.broadinstitute.hellbender.utils.genotyper.AlleleListUtils}.
+ * Test {@link org.broadinstitute.hellbender.utils.genotyper.AlleleList}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class AlleleListUtilsUnitTest {
+public final class AlleleListUnitTest {
 
     private final Random rnd = Utils.getRandomGenerator();
 
@@ -41,46 +41,36 @@ public final class AlleleListUtilsUnitTest {
 
     @Test
     public void testEmptyList(){
-        final AlleleList<Allele> al = AlleleListUtils.emptyList();
-        Assert.assertEquals(al.alleleCount(), 0);
-        Assert.assertEquals(al.alleleIndex(null), -1);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testIndexOfReferenceNull(){
-        AlleleListUtils.indexOfReference(null);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testasListNull(){
-        AlleleListUtils.asList(null);
+        final AlleleList<Allele> al = AlleleList.emptyAlleleList();
+        Assert.assertEquals(al.numberOfAlleles(), 0);
+        Assert.assertEquals(al.indexOfAllele(null), -1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testEmptyListAdd(){
-        final AlleleList<Allele> al = AlleleListUtils.emptyList();
-        al.alleleAt(0);
+        final AlleleList<Allele> al = AlleleList.emptyAlleleList();
+        al.getAllele(0);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "singleAlleleListData")
     public void testEqualToNull(final List<Allele> alleles1){
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles1);
-        AlleleListUtils.equals(alleleList, null);
+        AlleleList.equals(alleleList, null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "singleAlleleListData")
     public void testEqualToNull1(final List<Allele> alleles1){
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles1);
-        AlleleListUtils.equals(null, alleleList);
+        AlleleList.equals(null, alleleList);
     }
 
     @Test(dataProvider = "singleAlleleListData")
     public void testAsList(final List<Allele> alleles1) {
-         final Allele[] uniqueAlleles = new LinkedHashSet<>(alleles1).toArray(new Allele[0]);
-         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles1);
-         final List<Allele> asList = AlleleListUtils.asList(alleleList);
-         final Allele[] asListArray = asList.toArray(new Allele[asList.size()]);
-         Assert.assertTrue(Arrays.equals(uniqueAlleles, asListArray));
+        final Allele[] uniqueAlleles = new LinkedHashSet<>(alleles1).toArray(new Allele[0]);
+        final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles1);
+        final List<Allele> asList = alleleList.asListOfAlleles();
+        final Allele[] asListArray = asList.toArray(new Allele[asList.size()]);
+        Assert.assertTrue(Arrays.equals(uniqueAlleles, asListArray));
     }
 
     @Test(dataProvider = "singleAlleleListData")
@@ -90,43 +80,43 @@ public final class AlleleListUtilsUnitTest {
             final Allele[] actualAlleles = uniqueAlleles.clone();
             actualAlleles[i] = Allele.create(actualAlleles[i].getBases(), true);
             final AlleleList<Allele> alleleList = new IndexedAlleleList<>(actualAlleles);
-            Assert.assertEquals(AlleleListUtils.indexOfReference(alleleList), i);
+            Assert.assertEquals(alleleList.indexOfReference(), i);
         }
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(uniqueAlleles);
-        Assert.assertEquals(AlleleListUtils.indexOfReference(alleleList), -1);
+        Assert.assertEquals(alleleList.indexOfReference(), -1);
     }
 
     @Test(dataProvider = "twoAlleleListData", dependsOnMethods={"testAsList"})
     public void testEquals(final List<Allele> alleles1, final List<Allele> alleles2) {
         final AlleleList<Allele> alleleList1 = new IndexedAlleleList<>(alleles1);
         final AlleleList<Allele> alleleList2 = new IndexedAlleleList<>(alleles2);
-        Assert.assertTrue(AlleleListUtils.equals(alleleList1, alleleList1));
-        Assert.assertTrue(AlleleListUtils.equals(alleleList2, alleleList2));
-        Assert.assertEquals(AlleleListUtils.equals(alleleList1, alleleList2),
-                Arrays.equals(AlleleListUtils.asList(alleleList1).toArray(new Allele[alleleList1.alleleCount()]),
-                        AlleleListUtils.asList(alleleList2).toArray(new Allele[alleleList2.alleleCount()]))
+        Assert.assertTrue(AlleleList.equals(alleleList1, alleleList1));
+        Assert.assertTrue(AlleleList.equals(alleleList2, alleleList2));
+        Assert.assertEquals(AlleleList.equals(alleleList1, alleleList2),
+                Arrays.equals(alleleList1.asListOfAlleles().toArray(new Allele[alleleList1.numberOfAlleles()]),
+                        alleleList2.asListOfAlleles().toArray(new Allele[alleleList2.numberOfAlleles()]))
         );
-        Assert.assertEquals(AlleleListUtils.equals(alleleList1, alleleList2),
-                AlleleListUtils.equals(alleleList2, alleleList1));
+        Assert.assertEquals(AlleleList.equals(alleleList1, alleleList2),
+                AlleleList.equals(alleleList2, alleleList1));
     }
 
     @Test(dataProvider = "singleAlleleListData", dependsOnMethods= "testEquals" )
     public void testSelfPermutation(final List<Allele> alleles1) {
         final AlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(alleles1);
-        final AlleleListPermutation<Allele> selfPermutation = AlleleListUtils.permutation(originalAlleleList,originalAlleleList);
-        Assert.assertEquals(selfPermutation.fromSize(), originalAlleleList.alleleCount());
-        Assert.assertEquals(selfPermutation.toSize(), originalAlleleList.alleleCount());
+        final AlleleListPermutation<Allele> selfPermutation = originalAlleleList.permutation(originalAlleleList);
+        Assert.assertEquals(selfPermutation.fromSize(), originalAlleleList.numberOfAlleles());
+        Assert.assertEquals(selfPermutation.toSize(), originalAlleleList.numberOfAlleles());
         Assert.assertTrue(selfPermutation.isNonPermuted());
         Assert.assertFalse(selfPermutation.isPartial());
-        for (int i = 0; i < originalAlleleList.alleleCount(); i++) {
-            Assert.assertEquals(selfPermutation.alleleAt(i), originalAlleleList.alleleAt(i));
+        for (int i = 0; i < originalAlleleList.numberOfAlleles(); i++) {
+            Assert.assertEquals(selfPermutation.getAllele(i), originalAlleleList.getAllele(i));
 
             Assert.assertEquals(selfPermutation.fromIndex(i), i);
             Assert.assertEquals(selfPermutation.toIndex(i), i);
             Assert.assertEquals(selfPermutation.fromList(), selfPermutation.toList());
             AlleleListUnitTester.assertAlleleList(originalAlleleList, selfPermutation.fromList());
         }
-        Assert.assertTrue(AlleleListUtils.equals(selfPermutation, originalAlleleList));
+        Assert.assertTrue(AlleleList.equals(selfPermutation, originalAlleleList));
     }
 
     @Test(dataProvider = "singleAlleleListData", dependsOnMethods = "testEquals")
@@ -139,36 +129,37 @@ public final class AlleleListUtilsUnitTest {
         }
         final AlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(alleles1);
         final AlleleList<Allele> targetRandomAlleleList = new IndexedAlleleList<>(randomSubsetAlleles);
-        final AlleleListPermutation<Allele> subset = AlleleListUtils.permutation(originalAlleleList,targetRandomAlleleList);
-        if (originalAlleleList.alleleCount() == targetRandomAlleleList.alleleCount()) {
+        final AlleleListPermutation<Allele> subset = originalAlleleList.permutation(targetRandomAlleleList);
+        if (originalAlleleList.numberOfAlleles() == targetRandomAlleleList.numberOfAlleles()) {
             return;//return because this input is invalid for this test
         }
         Assert.assertTrue(subset.isPartial());
         Assert.assertFalse(subset.isNonPermuted());
-        Assert.assertEquals(subset.fromSize(), originalAlleleList.alleleCount());
-        Assert.assertEquals(subset.toSize(), targetRandomAlleleList.alleleCount());
+        Assert.assertEquals(subset.fromSize(), originalAlleleList.numberOfAlleles());
+        Assert.assertEquals(subset.toSize(), targetRandomAlleleList.numberOfAlleles());
         AlleleListUnitTester.assertAlleleList(originalAlleleList, subset.fromList());
         AlleleListUnitTester.assertAlleleList(targetRandomAlleleList, subset.toList());
 
-        for (int i = 0; i < targetRandomAlleleList.alleleCount(); i++)
-            Assert.assertEquals(subset.fromIndex(i), originalAlleleList.alleleIndex(targetRandomAlleleList.alleleAt(i)));
-
-        for (int j = 0; j < originalAlleleList.alleleCount(); j++) {
-            final Allele allele = originalAlleleList.alleleAt(j);
-            Assert.assertEquals(subset.toIndex(j), targetRandomAlleleList.alleleIndex(allele));
+        for (int i = 0; i < targetRandomAlleleList.numberOfAlleles(); i++){
+            Assert.assertEquals(subset.fromIndex(i), originalAlleleList.indexOfAllele(targetRandomAlleleList.getAllele(i)));
         }
 
-        Assert.assertTrue(AlleleListUtils.equals(subset, targetRandomAlleleList));
+        for (int j = 0; j < originalAlleleList.numberOfAlleles(); j++) {
+            final Allele allele = originalAlleleList.getAllele(j);
+            Assert.assertEquals(subset.toIndex(j), targetRandomAlleleList.indexOfAllele(allele));
+        }
+
+        Assert.assertTrue(AlleleList.equals(subset, targetRandomAlleleList));
     }
 
     @Test(dataProvider = "singleAlleleListData", dependsOnMethods = {"testAsList","testEquals"})
     public void testShufflePermutation(final List<Allele> alleles1) {
         final AlleleList<Allele> originalAlleleList = new IndexedAlleleList<>(alleles1);
-        if (originalAlleleList.alleleCount() <= 1) {
+        if (originalAlleleList.numberOfAlleles() <= 1) {
             return; //return because this input is invalid for this test
         }
 
-        final Allele[] targetAlleleArray = AlleleListUtils.asList(originalAlleleList).toArray(new Allele[originalAlleleList.alleleCount()]);
+        final Allele[] targetAlleleArray = originalAlleleList.asListOfAlleles().toArray(new Allele[originalAlleleList.numberOfAlleles()]);
         final int[] fromIndex = new int[targetAlleleArray.length];
         for (int i = 0; i < fromIndex.length; i++)
             fromIndex[i] = i;
@@ -184,19 +175,19 @@ public final class AlleleListUtilsUnitTest {
         }
         final AlleleList<Allele> targetAlleleList = new IndexedAlleleList<>(targetAlleleArray);
 
-        final AlleleListPermutation<Allele> permutation = AlleleListUtils.permutation(originalAlleleList,targetAlleleList);
+        final AlleleListPermutation<Allele> permutation = originalAlleleList.permutation(targetAlleleList);
         Assert.assertFalse(permutation.isNonPermuted());
         AlleleListUnitTester.assertAlleleList(originalAlleleList, permutation.fromList());
         AlleleListUnitTester.assertAlleleList(targetAlleleList, permutation.toList());
         Assert.assertFalse(permutation.isPartial());
-        Assert.assertEquals(permutation.fromSize(), originalAlleleList.alleleCount());
-        Assert.assertEquals(permutation.toSize(), targetAlleleList.alleleCount());
+        Assert.assertEquals(permutation.fromSize(), originalAlleleList.numberOfAlleles());
+        Assert.assertEquals(permutation.toSize(), targetAlleleList.numberOfAlleles());
         for (int i = 0; i < permutation.fromSize(); i++) {
-            Assert.assertEquals(permutation.toIndex(i), targetAlleleList.alleleIndex(originalAlleleList.alleleAt(i)));
-            Assert.assertEquals(permutation.fromIndex(i), originalAlleleList.alleleIndex(targetAlleleList.alleleAt(i)));
+            Assert.assertEquals(permutation.toIndex(i), targetAlleleList.indexOfAllele(originalAlleleList.getAllele(i)));
+            Assert.assertEquals(permutation.fromIndex(i), originalAlleleList.indexOfAllele(targetAlleleList.getAllele(i)));
             Assert.assertEquals(permutation.fromIndex(i), fromIndex[i]);
         }
-        Assert.assertTrue(AlleleListUtils.equals(permutation, targetAlleleList));
+        Assert.assertTrue(AlleleList.equals(permutation, targetAlleleList));
 
     }
 

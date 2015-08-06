@@ -226,6 +226,46 @@ public final class ReadUtils {
     }
 
     /**
+     * Creates a new GATKRead with the source read's header, read group and mate
+     * information, but with the following fields set to user-supplied values:
+     *  - Read Bases
+     *  - Base Qualities
+     *  - Base Insertion Qualities
+     *  - Base Deletion Qualities
+     *
+     *  Cigar string is empty (not-null)
+     *
+     * Use this method if you want to create a new GATKRead based on
+     * another GATKRead, but with modified bases and qualities
+     *
+     * @param read a read to copy the header from
+     * @param readBases an array containing the new bases you wish use in place of the originals
+     * @param baseQualities an array containing the new base qualities you wish use in place of the originals
+     * @param baseInsertionQualities an array containing the new base insertion qaulities
+     * @param baseDeletionQualities an array containing the new base deletion qualities
+     * @return a read with modified bases and qualities, safe for the GATK
+     */
+    public static GATKRead createQualityModifiedRead(final GATKRead read,
+                                                      final byte[] readBases,
+                                                      final byte[] baseQualities,
+                                                      final byte[] baseInsertionQualities,
+                                                      final byte[] baseDeletionQualities) {
+        if ( baseQualities.length != readBases.length || baseInsertionQualities.length != readBases.length || baseDeletionQualities.length != readBases.length ) {
+            throw new IllegalArgumentException("Read bases and read quality arrays aren't the same size: Bases:" + readBases.length
+                    + " vs Base Q's:" + baseQualities.length
+                    + " vs Insert Q's:" + baseInsertionQualities.length
+                    + " vs Delete Q's:" + baseDeletionQualities.length);
+        }
+
+        final GATKRead processedRead = ReadUtils.emptyRead(read);
+        processedRead.setBases(readBases);
+        processedRead.setBaseQualities(baseQualities);
+        ReadUtils.setInsertionBaseQualities(processedRead, baseInsertionQualities);
+        ReadUtils.setDeletionBaseQualities(processedRead, baseDeletionQualities);
+        return processedRead;
+    }
+
+    /**
      * A marker to tell which end of the read has been clipped
      */
     public enum ClippingTail {

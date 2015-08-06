@@ -3,18 +3,20 @@ package org.broadinstitute.hellbender.utils.haplotype;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.HasGenomeLocation;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.*;
 
-public final class Haplotype extends Allele implements HasGenomeLocation {
+public final class Haplotype extends Allele {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -24,7 +26,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
             Comparator.comparingInt((Haplotype hap) -> hap.getBases().length)
                       .thenComparing(hap -> hap.getBaseString());
 
-    private GenomeLoc genomeLocation = null;
+    private Locatable genomeLocation = null;
     private EventMap eventMap = null;
     private Cigar cigar;
     private int alignmentStartHapwrtRef;
@@ -65,7 +67,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
         setCigar(cigar);
     }
 
-    public Haplotype( final byte[] bases, final GenomeLoc loc ) {
+    public Haplotype( final byte[] bases, final Locatable loc ) {
         this(bases, false);
         this.genomeLocation = loc;
     }
@@ -85,7 +87,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
     public Haplotype trim(final GenomeLoc loc) {
         if ( loc == null ) throw new IllegalArgumentException("Loc cannot be null");
         if ( genomeLocation == null ) throw new IllegalStateException("Cannot trim a Haplotype without containing GenomeLoc");
-        if ( ! genomeLocation.containsP(loc) ) throw new IllegalArgumentException("Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
+        if ( ! new SimpleInterval(genomeLocation).contains(loc) ) throw new IllegalArgumentException("Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
         if ( getCigar() == null ) throw new IllegalArgumentException("Cannot trim haplotype without a cigar " + this);
 
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
@@ -131,7 +133,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      * Get the span of this haplotype (may be null)
      * @return a potentially null genome loc
      */
-    public GenomeLoc getLocation() {
+    public Locatable getLocation() {
         return this.genomeLocation;
     }
 
@@ -144,7 +146,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
     }
 
     public long getStopPosition() {
-        return genomeLocation.getStop();
+        return genomeLocation.getEnd();
     }
 
     public int getAlignmentStartHapwrtRef() {
@@ -228,7 +230,55 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      * Get the span of this haplotype (may be null)
      * @return a potentially null genome loc
      */
-    public GenomeLoc getGenomeLocation() {
+    public Locatable getGenomeLocation() {
         return genomeLocation;
+    }
+
+    public static Map<Allele,Haplotype> makeHaplotypeListFromAlleles(final List<Allele> alleleList,
+                                                                               final int startPos,
+                                                                               final ReferenceContext ref,
+                                                                               final int haplotypeSize,
+                                                                               final int numPrefBases) {
+
+        LinkedHashMap<Allele,Haplotype> haplotypeMap = new LinkedHashMap<>();
+
+        Allele refAllele = null;
+
+        for (Allele a:alleleList) {
+            if (a.isReference()) {
+                refAllele = a;
+                break;
+            }
+        }
+
+        if (refAllele == null)
+            throw new GATKException("BUG: no ref alleles in input to makeHaplotypeListfrom Alleles at loc: "+ startPos);
+
+        final byte[] refBases = ref.getBases();
+
+        final int startIdxInReference = 1 + startPos - numPrefBases - ref.getWindow().getStart();
+        final String basesBeforeVariant = new String(Arrays.copyOfRange(refBases, startIdxInReference, startIdxInReference + numPrefBases));
+
+        // protect against long events that overrun available reference context
+        final int startAfter = Math.min(startIdxInReference + numPrefBases + refAllele.getBases().length - 1, refBases.length);
+        final String basesAfterVariant = new String(Arrays.copyOfRange(refBases, startAfter, refBases.length));
+
+        // Create location for all haplotypes
+        final int startLoc = ref.getWindow().getStart() + startIdxInReference;
+        final int stopLoc = startLoc + haplotypeSize-1;
+
+        final Locatable locus = new SimpleInterval(ref.getInterval().getContig(),startLoc,stopLoc);
+
+        for (final Allele a : alleleList) {
+
+            final byte[] alleleBases = a.getBases();
+            // use string concatenation
+            String haplotypeString = basesBeforeVariant + new String(Arrays.copyOfRange(alleleBases, 1, alleleBases.length)) + basesAfterVariant;
+            haplotypeString = haplotypeString.substring(0,haplotypeSize);
+
+            haplotypeMap.put(a,new Haplotype(haplotypeString.getBytes(), locus));
+        }
+
+        return haplotypeMap;
     }
 }

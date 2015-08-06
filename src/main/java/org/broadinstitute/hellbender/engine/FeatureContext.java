@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
@@ -136,7 +137,26 @@ public final class FeatureContext {
         return getValues(featureDescriptor, getQueryInterval(windowLeadingBases, windowTrailingBases));
     }
 
-    private <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final SimpleInterval queryInterval) {
+    /**
+     * Gets all Features from the source represented by the provided FeatureInput argument that overlap the given interval.
+     * Returns an empty List if this FeatureContext has no backing source of Features and/or interval.
+     *
+     * Returned Features are not guaranteed to be in any particular order.
+     *
+     * Note: if query lookahead caching is enabled for the underlying FeatureDataSource,
+     * there will be a cache miss on almost every call, since the current caching scheme prefetches Features after
+     * the current query interval but not before it (on the assumption that
+     * the common access pattern involves gradually increasing query intervals).
+     *
+     * @param featureDescriptor FeatureInput argument for which to fetch Features
+     * @param <T> type of Feature in the data source backing the provided FeatureInput
+     * @param windowLeadingBases Number of extra reference bases to include before the start of our interval. Must be >= 0.
+     * @param windowTrailingBases Number of extra reference bases to include after the end of our interval. Must be >= 0.
+     * @return All Features in the data source backing the provided FeatureInput that overlap
+     *         this FeatureContext's query interval as expanded by the specified number of leading/trailing bases.
+     *         Empty List if there is no backing data source and/or interval.
+     */
+    public <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final SimpleInterval queryInterval) {
         if (featureManager == null || queryInterval == null || featureDescriptor == null) {
             return Collections.<T>emptyList();
         }

@@ -1,14 +1,15 @@
 package org.broadinstitute.hellbender.utils;
 
-import com.google.common.base.Strings;
-import com.google.common.primitives.Bytes;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.random.RandomDataGenerator;
+import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
+import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -22,8 +23,15 @@ public final class Utils {
      */
     private static final long GATK_RANDOM_SEED = 47382911L;
     private static final Random randomGenerator = new Random(GATK_RANDOM_SEED);
+    private static final RandomDataGenerator randomDataGenerator = new RandomDataGenerator(new Well19937c(GATK_RANDOM_SEED));
+
     public static Random getRandomGenerator() { return randomGenerator; }
-    public static void resetRandomGenerator() { randomGenerator.setSeed(GATK_RANDOM_SEED); }
+    public static RandomDataGenerator getRandomDataGenerator() { return randomDataGenerator; }
+
+    public static void resetRandomGenerator() {
+        randomGenerator.setSeed(GATK_RANDOM_SEED);
+        randomDataGenerator.reSeed(GATK_RANDOM_SEED);
+    }
 
     private static final int TEXT_WARNING_WIDTH = 68;
     private static final String TEXT_WARNING_PREFIX = "* ";
@@ -538,4 +546,209 @@ public final class Utils {
         }
     }
 
+    /**
+     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
+     * @param original the original array to splice.
+     * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
+     *               or retained ({@code false})
+     *
+     * @param <T> the array type.
+     *
+     * @throws IllegalArgumentException if either {@code original} or {@code remove} is {@code null},
+     *    or {@code remove length is different to {@code original}'s}, or {@code original} is not in
+     *    fact an array.
+     *
+     * @return never {@code null}.
+     */
+    public static <T> T skimArray(final T original, final boolean[] remove) {
+        return skimArray(original,0,null,0,remove,0);
+    }
+
+    /**
+     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
+     *
+     * <p>
+     *     If the {@code dest} array provide is not long enough a new one will be created and returned with the
+     *     same component type. All elements before {@code destOffset} will be copied from the input to the
+     *     result array. If {@code dest} is {@code null}, a brand-new array large enough will be created where
+     *     the position preceding {@code destOffset} will be left with the default value. The component type
+     *     Will match the one of the {@code source} array.
+     * </p>
+     *
+     * @param source the original array to splice.
+     * @param sourceOffset the first position to skim.
+     * @param dest the destination array.
+     * @param destOffset the first position where to copy the skimed array values.
+     * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
+     *               or retained ({@code false})
+     * @param removeOffset the first position in the remove index array to consider.
+     *
+     * @param <T> the array type.
+     *
+     * @throws IllegalArgumentException if either {@code original} or {@code remove} is {@code null},
+     *    or {@code remove length is different to {@code original}'s}, or {@code original} is not in
+     *    fact an array.
+     *
+     * @return never {@code null}.
+     */
+    public static <T> T skimArray(final T source, final int sourceOffset, final T dest, final int destOffset, final boolean[] remove, final int removeOffset) {
+        Utils.nonNull(source, "the source array cannot be null");
+
+        @SuppressWarnings("unchecked")
+        final Class<T> sourceClazz = (Class<T>) source.getClass();
+
+        if (!sourceClazz.isArray()) {
+            throw new IllegalArgumentException("the source array is not in fact an array instance");
+        }
+        final int length = Array.getLength(source) - sourceOffset;
+        if (length < 0) {
+            throw new IllegalArgumentException("the source offset goes beyond the source array length");
+        }
+        return skimArray(source,sourceOffset,dest,destOffset,remove,removeOffset,length);
+    }
+
+    /**
+     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
+     *
+     * <p>
+     *     If the {@code dest} array provide is not long enough a new one will be created and returned with the
+     *     same component type. All elements before {@code destOffset} will be copied from the input to the
+     *     result array. If {@code dest} is {@code null}, a brand-new array large enough will be created where
+     *     the position preceding {@code destOffset} will be left with the default value. The component type
+     *     Will match the one of the {@code source} array.
+     * </p>
+     *
+     * @param source the original array to splice.
+     * @param sourceOffset the first position to skim.
+     * @param dest the destination array.
+     * @param destOffset the first position where to copy the skimed array values.
+     * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
+     *               or retained ({@code false})
+     * @param removeOffset the first position in the remove index array to consider.
+     * @param length the total number of position in {@code source} to consider. Thus only the {@code sourceOffset} to
+     *               {@code sourceOffset + length - 1} region will be skimmed.
+     *
+     * @param <T> the array type.
+     *
+     * @throws IllegalArgumentException if either {@code original} or {@code remove} is {@code null},
+     *    or {@code remove length is different to {@code original}'s}, or {@code original} is not in
+     *    fact an array.
+     *
+     * @return never {@code null}.
+     */
+    public static <T> T skimArray(final T source, final int sourceOffset, final T dest, final int destOffset,
+                                  final boolean[] remove, final int removeOffset, final int length) {
+        Utils.nonNull(source, "the source array cannot be null");
+        Utils.nonNull(remove, "the remove array cannot be null");
+        if (sourceOffset < 0) {
+            throw new IllegalArgumentException("the source array offset cannot be negative");
+        }
+        if (destOffset < 0) {
+            throw new IllegalArgumentException("the destination array offset cannot be negative");
+        }
+        if (removeOffset < 0) {
+            throw new IllegalArgumentException("the remove array offset cannot be negative");
+        }
+        if (length < 0) {
+            throw new IllegalArgumentException("the length provided cannot be negative");
+        }
+
+        final int removeLength = Math.min(remove.length - removeOffset,length);
+
+        if (removeLength < 0) {
+            throw new IllegalArgumentException("the remove offset provided falls beyond the remove array end");
+        }
+
+
+        @SuppressWarnings("unchecked")
+        final Class<T> sourceClazz = (Class<T>) source.getClass();
+
+        if (!sourceClazz.isArray()) {
+            throw new IllegalArgumentException("the source array is not in fact an array instance");
+        }
+
+        final Class<T> destClazz = skimArrayDetermineDestArrayClass(dest, sourceClazz);
+
+        final int sourceLength = Array.getLength(source);
+
+        if (sourceLength < length + sourceOffset) {
+            throw new IllegalArgumentException("the source array is too small considering length and offset");
+        }
+
+        // count how many positions are to be removed.
+
+        int removeCount = 0;
+
+        final int removeEnd = removeLength + removeOffset;
+        for (int i = removeOffset; i < removeEnd; i++) {
+            if (remove[i]) {
+                removeCount++;
+            }
+        }
+
+
+        final int newLength = length - removeCount;
+
+
+        @SuppressWarnings("unchecked")
+        final T result = skimArrayBuildResultArray(dest, destOffset, destClazz, newLength);
+        // No removals, just copy the whole thing.
+
+        if (removeCount == 0) {
+            System.arraycopy(source, sourceOffset, result, destOffset, length);
+        } else if (length > 0) {  // if length == 0 nothing to do.
+            int nextOriginalIndex = 0;
+            int nextNewIndex = 0;
+            int nextRemoveIndex = removeOffset;
+            while (nextOriginalIndex < length && nextNewIndex < newLength) {
+                while (nextRemoveIndex < removeEnd && remove[nextRemoveIndex++]) { nextOriginalIndex++; } // skip positions to be spliced.
+                // Since we make the nextNewIndex < newLength check in the while condition
+                // there is no need to include the following break, as is guaranteed not to be true:
+                // if (nextOriginalIndex >= length) break; // we reach the final (last positions are to be spliced.
+                final int copyStart = nextOriginalIndex;
+                while (++nextOriginalIndex < length && (nextRemoveIndex >= removeEnd || !remove[nextRemoveIndex])) { nextRemoveIndex++; }
+                final int copyEnd = nextOriginalIndex;
+                final int copyLength = copyEnd - copyStart;
+                System.arraycopy(source, sourceOffset + copyStart, result, destOffset + nextNewIndex, copyLength);
+                nextNewIndex += copyLength;
+            }
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T skimArrayBuildResultArray(final T dest, final int destOffset, final Class<T> destClazz, final int newLength) {
+        final T result;
+
+        if (dest == null) {
+            result = (T) Array.newInstance(destClazz.getComponentType(), newLength + destOffset);
+        } else if (Array.getLength(dest) < newLength + destOffset) {
+            result = (T) Array.newInstance(destClazz.getComponentType(),newLength + destOffset);
+            if (destOffset > 0) {
+                System.arraycopy(dest, 0, result, 0, destOffset);
+            }
+        } else {
+            result = dest;
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> Class<T> skimArrayDetermineDestArrayClass(final T dest, final Class<T> sourceClazz) {
+        final Class<T> destClazz;
+        if (dest == null) {
+            destClazz = sourceClazz;
+        } else {
+            destClazz = (Class<T>) dest.getClass();
+            if (destClazz != sourceClazz) {
+                if (!destClazz.isArray()) {
+                    throw new IllegalArgumentException("the destination array class must be an array");
+                }
+                if (sourceClazz.getComponentType().isAssignableFrom(destClazz.getComponentType())) {
+                    throw new IllegalArgumentException("the provided destination array class cannot contain values from the source due to type incompatibility");
+                }
+            }
+        }
+        return destClazz;
+    }
 }
