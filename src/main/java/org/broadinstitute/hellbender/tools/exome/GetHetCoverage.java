@@ -18,8 +18,8 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        usage = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample",
-        usageShort = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample"
+        summary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample",
+        oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample"
 )
 public final class GetHetCoverage extends CommandLineProgram {
     protected static final String NORMAL_BAM_FILE_FULL_NAME = "normal";

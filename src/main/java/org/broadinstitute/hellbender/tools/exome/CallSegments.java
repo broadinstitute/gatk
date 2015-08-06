@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,9 +19,9 @@ import java.util.List;
  * @author David Benjamin
  */
 @CommandLineProgramProperties(
-        usage = "Call segments as amplified, deleted, or copy number neutral given files containing tangent-normalized" +
+        summary = "Call segments as amplified, deleted, or copy number neutral given files containing tangent-normalized" +
                 " read counts by target and a list of segments",
-        usageShort = "Call segments as amplified, deleted, or copy number neutral",
+        oneLineSummary = "Call segments as amplified, deleted, or copy number neutral",
         programGroup = ExomeAnalysisProgramGroup.class
 )
 public final class CallSegments extends CommandLineProgram{
@@ -33,6 +34,8 @@ public final class CallSegments extends CommandLineProgram{
 
     protected final static String OUTPUT_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
     protected final static String OUTPUT_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
+
+    protected final static String SAMPLE_LONG_NAME = "sample";
 
     @Argument(
             doc = "normalized read counts input file.",
@@ -58,10 +61,17 @@ public final class CallSegments extends CommandLineProgram{
     )
     protected File outFile;
 
+    @Argument(
+            doc = "Sample",
+            fullName = SAMPLE_LONG_NAME,
+            optional = false
+    )
+    protected String sample;
+
     @Override
     protected Object doWork() {
 
-        final List<Segment> segments;
+        final List<SimpleInterval> segments;
         final List<TargetCoverage> targetList;
 
         try {
@@ -70,10 +80,10 @@ public final class CallSegments extends CommandLineProgram{
             throw new UserException.CouldNotReadInputFile(targetsFile, e);
         }
 
-        final HashedListExonCollection<TargetCoverage> targets = new HashedListExonCollection<TargetCoverage>(targetList);
+        final HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<TargetCoverage>(targetList);
 
         try {
-            segments = SegmentUtils.readUncalledSegments(segmentsFile);
+            segments = SegmentUtils.readIntervalsFromSegfile(segmentsFile);
         } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(segmentsFile, e);
         }
@@ -81,10 +91,10 @@ public final class CallSegments extends CommandLineProgram{
 
 
         //add calls to segments in-place
-        ReCapSegCaller.makeCalls(targets, segments);
+        List<CalledInterval> calledSegments = ReCapSegCaller.makeCalls(targets, segments);
 
         try {
-            SegmentUtils.writeCalledSegments(outFile, segments);
+            SegmentUtils.writeCalledIntervalsToSegfile(outFile, calledSegments, sample);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }

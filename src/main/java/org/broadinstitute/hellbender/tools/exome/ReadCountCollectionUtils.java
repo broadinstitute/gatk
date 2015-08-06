@@ -53,7 +53,7 @@ import java.util.stream.IntStream;
  * </p>
  * <p>
  * If the source omits the target name, a exonCollection should be provided in order to resolve the name given its coordinates
- * using {@link #parse(File, ExonCollection)}.
+ * using {@link #parse(File, TargetCollection)}.
  * </p>
  * <p>
  * This class will check whether the content of the input file is well formatted and consistent
@@ -188,7 +188,7 @@ public final class ReadCountCollectionUtils {
      * @throws UserException.BadInput   if there is some formatting issue with the file. This includes inability to
      *                                  resolve a target name based on the input file content and the exon collection provided.
      */
-    public static <E extends BEDFeature> ReadCountCollection parse(final File file, final ExonCollection<E> exons) throws IOException {
+    public static <E extends BEDFeature> ReadCountCollection parse(final File file, final TargetCollection<E> exons) throws IOException {
         Utils.nonNull(file, "the input file cannot be null");
 
         final List<String> countColumnNames = new ArrayList<>();
@@ -221,10 +221,10 @@ public final class ReadCountCollectionUtils {
                 return recordExtractor.apply(dataLine);
             }
 
-            protected Function<DataLine, Target> targetExtractor(final ExonCollection<E> exons, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, SimpleInterval> intervalExtractor) {
+            protected Function<DataLine, Target> targetExtractor(final TargetCollection<E> targets, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, SimpleInterval> intervalExtractor) {
                 return (values) -> {
                     final SimpleInterval interval = intervalExtractor == null ? null : intervalExtractor.apply(values);
-                    final String name = targetNameExtractor == null ? exons.name(exons.exon(interval)) : targetNameExtractor.apply(values);
+                    final String name = targetNameExtractor == null ? targets.name(targets.target(interval)) : targetNameExtractor.apply(values);
                     if (name == null) {
                         throw formatException("cannot resolve the target name for interval " + interval);
                     }

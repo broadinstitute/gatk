@@ -37,8 +37,8 @@ public final class SNPSegmenterUnitTest extends BaseTest {
 
         Assert.assertTrue(resultFile.exists(), "SNPSegmenterTest output was not written to temp file: " + resultFile);
 
-        final List<Segment> result = SegmentUtils.readUncalledSegments(resultFile);
-        final List<Segment> expected = SegmentUtils.readUncalledSegments(expectedFile);
+        final List<SimpleInterval> result = SegmentUtils.readIntervalsFromSegfile(resultFile);
+        final List<SimpleInterval> expected = SegmentUtils.readIntervalsFromSegfile(expectedFile);
 
         Assert.assertEquals(result, expected);
     }
