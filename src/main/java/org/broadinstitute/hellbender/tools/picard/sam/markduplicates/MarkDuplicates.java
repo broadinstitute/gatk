@@ -85,7 +85,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         reportMemoryStats("After generateDuplicateIndexes");
         logger.info("Marking " + this.numDuplicateIndices + " records as duplicates.");
 
-        if (this.READ_NAME_REGEX == null) {
+        if (this.opticalDuplicatesArgumentCollection.READ_NAME_REGEX == null) {
             logger.warn("Skipped optical duplicate cluster discovery; library size estimation may be inaccurate!");
         } else {
             logger.info("Found " + (this.libraryIdGenerator.getNumberOfOpticalDuplicateClusters()) + " optical duplicate clusters.");
@@ -452,7 +452,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
             }
         }
 
-        if (this.READ_NAME_REGEX != null) {
+        if (this.opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null) {
             AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(list, opticalDuplicateFinder, libraryIdGenerator);
         }
     }

@@ -41,13 +41,12 @@ final class ReadsKey {
     }
 
     /**
-     * Makes a unique key for the pair.
+     * Makes a unique key for the read.
      */
-    public static String keyForPair(final SAMFileHeader header, final GATKRead read) {
+    public static String keyForRead(final SAMFileHeader header, final GATKRead read) {
         return String.format(
                 "%s|%s",
                 read.getReadGroup(),
                 read.getName());
     }
 }
-
