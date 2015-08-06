@@ -46,7 +46,7 @@ public final class CRAMReferenceIntegrationTest extends CommandLineProgramTest{
         runCommandLine(args);
     }
 
-    /*@Test(dataProvider="testingDataWrongRef", expectedExceptions = UserException.class)
+    @Test(dataProvider="testingDataWrongRef", expectedExceptions = UserException.class)
     public void testWrongRef(String fileIn, String extOut, String referenceFile) throws Exception {
         final File outFile = File.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
@@ -58,7 +58,7 @@ public final class CRAMReferenceIntegrationTest extends CommandLineProgramTest{
                 "-R", reference.getAbsolutePath()
         };
         runCommandLine(args);
-    }*/
+    }
 
     @DataProvider(name="testingDataNoRef")
     public Object[][] testingDataNoRef() {
