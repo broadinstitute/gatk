@@ -34,6 +34,7 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -126,7 +127,8 @@ public final class ReadsDataflowSource {
                     .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                     .collect(Collectors.toList());
 
-            PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, new ReaderOptions(stringency, false), ImmutableList.of(bam));
+            PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, new ReaderOptions(stringency, false), Collections.singletonList(bam));
+            //PCollection<Read> rawReads = doesNotTriggerBug(pipeline, auth, contigs, new ReaderOptions(stringency, false), Collections.singletonList(bam));
             preads = rawReads.apply(new GoogleGenomicsReadToGATKRead());
         } else if (hadoopUrl) {
             preads = DataflowUtils.getReadsFromHadoopBam(pipeline, intervals, stringency, bam);
@@ -139,4 +141,13 @@ public final class ReadsDataflowSource {
     public static PCollectionView<SAMFileHeader> getHeaderView(Pipeline p, SAMFileHeader readsHeader) {
         return p.apply(Create.of(readsHeader).withCoder(SerializableCoder.of(SAMFileHeader.class))).apply(View.<SAMFileHeader>asSingleton());
     }
+
+  public static PCollection<Read> doesNotTriggerBug(
+      Pipeline p,
+      GenomicsFactory.OfflineAuth auth,
+      Iterable<Contig> contigs,
+      ReaderOptions options,
+      List<String> BAMFiles) {
+    return null;
+  }
 }
