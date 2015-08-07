@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -67,6 +68,10 @@ public final class BAQ {
     // Phred scaled now (changed 1/10/2011)
     public static final double DEFAULT_GOP = 40;
 
+    public static final int DEFAULT_BANDWIDTH = 7;
+
+    public static final boolean DEFAULT_INCLUDE_CLIPPED_BASES = false;
+
     /*  Takes a Phred Scale quality score and returns the error probability.
      *
      *  Quick conversion function to maintain internal structure of BAQ calculation on
@@ -79,8 +84,8 @@ public final class BAQ {
 
     public double cd = -1;      // gap open probability [1e-3]
     private double ce = 0.1;    // gap extension probability [0.1]
-	private int cb = 7;         // band width [7]
-    private boolean includeClippedBases = false;
+    private int cb = DEFAULT_BANDWIDTH;   // band width [7]
+    private boolean includeClippedBases = DEFAULT_INCLUDE_CLIPPED_BASES;
 
     public byte getMinBaseQual() {
         return minBaseQual;
@@ -498,19 +503,33 @@ public final class BAQ {
         }
     }
 
-     public BAQCalculationResult calcBAQFromHMM(GATKRead read, ReferenceDataSource refDS) {
+    /**
+     * Given a read, get an interval representing the span of reference bases required by BAQ for that read
+     *
+     * @param read read that is going to be input to BAQ
+     * @param bandWidth band width being used by the BAQ algorithm
+     * @param includeClippedBases true if the BAQ algorithm is configured to include clipped bases, otherwise false
+     * @return an interval representing the span of reference bases required by BAQ for the given read
+     */
+    public static SimpleInterval getReferenceWindowForRead( final GATKRead read, final int bandWidth, final boolean includeClippedBases ) {
         // start is alignment start - band width / 2 - size of first I element, if there is one.  Stop is similar
-        int offset = getBandWidth() / 2;
-        long readStart = includeClippedBases ? read.getUnclippedStart() : read.getStart();
-        long start = Math.max(readStart - offset - ReadUtils.getFirstInsertionOffset(read), 0);
-        long stop = (includeClippedBases ? read.getUnclippedEnd() : read.getEnd()) + offset + ReadUtils.getLastInsertionOffset(read);
+        final int offset = bandWidth / 2;
+        final int readStart = includeClippedBases ? read.getUnclippedStart() : read.getStart();
+        final int start = Math.max(readStart - offset - ReadUtils.getFirstInsertionOffset(read), 0);
+        final int stop = (includeClippedBases ? read.getUnclippedEnd() : read.getEnd()) + offset + ReadUtils.getLastInsertionOffset(read);
 
-        if ( stop > refDS.getSequenceDictionary().getSequence(read.getContig()).getSequenceLength() ) {
+        return new SimpleInterval(read.getContig(), start, stop);
+    }
+
+    public BAQCalculationResult calcBAQFromHMM(GATKRead read, ReferenceDataSource refDS) {
+        final SimpleInterval referenceWindow = getReferenceWindowForRead(read, getBandWidth(), includeClippedBases);
+
+        if ( referenceWindow.getEnd() > refDS.getSequenceDictionary().getSequence(read.getContig()).getSequenceLength() ) {
             return null;
         } else {
             // now that we have the start and stop, get the reference sequence covering it
-            ReferenceSequence refSeq = refDS.queryAndPrefetch(read.getContig(), start, stop);
-            return calcBAQFromHMM(read, refSeq.getBases(), (int)(start - readStart));
+            ReferenceSequence refSeq = refDS.queryAndPrefetch(referenceWindow.getContig(), referenceWindow.getStart(), referenceWindow.getEnd());
+            return calcBAQFromHMM(read, refSeq.getBases(), (referenceWindow.getStart() - (includeClippedBases ? read.getUnclippedStart() : read.getStart())));
         }
     }
 

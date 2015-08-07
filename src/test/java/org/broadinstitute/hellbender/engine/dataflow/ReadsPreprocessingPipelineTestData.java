@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.api.services.genomics.model.Read;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -18,9 +18,7 @@ import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * ReadsPreprocessingPipelineTestData contains coordinated test data that can be used in the many transforms that
@@ -186,6 +184,58 @@ public class ReadsPreprocessingPipelineTestData {
         } else {
             throw new GATKException("invalid GATKRead type");
         }
+    }
+
+    /**
+     * Generates a List of artificial reads located in significant positions relative to reference shard
+     * boundaries. For each reference shard, places a read at the start of the shard, 1 base after the
+     * start, at the middle of the shard, 1 base before the end, and at the end. Each read has a length of 100,
+     * with consecutive UUIDs starting at 1.
+     *
+     * @param numContigs Generate reads for this many contigs (starting at "1" and increasing numerically)
+     * @param numShardsPerContig Generate reads for this many reference shards within each contig. Each shard will have 5 reads, as described above.
+     * @param readImplementation Backing GATKRead implementation to use (SAMRecord.class or Read.class)
+     * @return a List of artificial reads located in significant positions relative to reference shard boundaries
+     */
+    public static List<GATKRead> makeReferenceShardBoundaryReads( final int numContigs, final int numShardsPerContig, final Class<?> readImplementation ) {
+        final List<GATKRead> reads = new ArrayList<>();
+        int uuid = 0;
+
+        for ( int contig = 1; contig <= numContigs; ++contig ) {
+            for ( int shardNum = 0; shardNum < numShardsPerContig; ++shardNum ) {
+                // All shards except the first start on a multiple of REFERENCE_SHARD_SIZE (since we can't have a mapped read with an alignment start of 0, the first shard starts at 1)
+                final int shardStart = ReferenceShard.REFERENCE_SHARD_SIZE * shardNum + (shardNum == 0 ? 1 : 0);
+                final int shardEnd = ReferenceShard.REFERENCE_SHARD_SIZE * (shardNum + 1) - 1;
+                final int shardMiddle = shardEnd - (ReferenceShard.REFERENCE_SHARD_SIZE / 2);
+
+                for ( int readStart : Arrays.asList(shardStart, shardStart + 1, shardMiddle, shardEnd - 1, shardEnd) ) {
+                    reads.add(makeRead(Integer.toString(contig), readStart, 100, ++uuid, readImplementation));
+                }
+            }
+        }
+
+        return reads;
+    }
+
+    /**
+     * @return an artificial RefAPIMetadata object with the reference window function set to the identity function
+     */
+    public static RefAPIMetadata createRefAPIMetadata() {
+        return createRefAPIMetadata(RefWindowFunctions.IDENTITY_FUNCTION);
+    }
+
+    /**
+     * Creates an artificial RefAPIMetadata object with a custom reference window function
+     *
+     * @param referenceWindowFunction function mapping reads to reference intervals
+     * @return an artificial RefAPIMetadata object with a custom reference window function
+     */
+    public static RefAPIMetadata createRefAPIMetadata( final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction ) {
+        final String referenceName = "refName";
+        final String refId = "0xbjfjd23f";
+        Map<String, String> referenceNameToIdTable = Maps.newHashMap();
+        referenceNameToIdTable.put(referenceName, refId);
+        return new RefAPIMetadata(referenceName, referenceNameToIdTable, referenceWindowFunction);
     }
 
     private SimpleInterval makeInterval(String contig, KV<Integer, Integer> startLength) {
