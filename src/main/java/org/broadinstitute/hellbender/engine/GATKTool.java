@@ -6,6 +6,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -88,8 +90,22 @@ public abstract class GATKTool extends CommandLineProgram {
         if (hasReference()){
             // pass in reference if available, because CRAM files need it
             factory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).referenceSequence(referenceArguments.getReferenceFile());
+        } else if (hasCramInput()) {
+            throw new UserException.MissingReference("A reference file is required when using CRAM files.");
         }
         reads = ! readArguments.getReadFiles().isEmpty() ? new ReadsDataSource(readArguments.getReadFiles(), factory) : null;
+    }
+
+    /**
+     * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
+     */
+    private boolean hasCramInput() {
+        for (File inputFile : readArguments.getReadFiles()) {
+            if (FilenameUtils.getExtension(inputFile.getName()).equalsIgnoreCase("cram")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -243,7 +259,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeReference();
 
-        initializeReads();
+        initializeReads(); // Must be initialized after reference, in case we are dealing with CRAM and a reference is required
 
         initializeFeatures();
 
