@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 
-import com.google.cloud.dataflow.sdk.coders.Coder.Context;
-import com.google.cloud.dataflow.sdk.coders.CoderException;
-import com.google.cloud.dataflow.sdk.coders.CustomCoder;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
@@ -104,7 +101,7 @@ final class MarkDuplicatesUtils {
                             context.output(kv);
                         }
                     }
-                    });
+                });
     }
 
     static PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo(final PCollectionView<SAMFileHeader> headerPcolView) {
@@ -146,8 +143,12 @@ final class MarkDuplicatesUtils {
 
                     @Override
                     public void processElement(final ProcessContext context) throws Exception {
+                        // We need to copy the PairedEnds because we mutate it (and Dataflow assumes that elements
+                        // are never mutated).
+                        Iterable<PairedEnds> pairedEndsCopy = Iterables.transform(context.element().getValue(), PairedEnds::copy);
+
                         final OpticalDuplicateFinder finder = context.sideInput(finderPcolView);
-                        final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(context.element().getValue(), pair -> pair.second() != null);
+                        final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEndsCopy, pair -> pair.second() != null);
 
                         // As in Picard, unpaired ends left alone.
                         for (final PairedEnds pair : paired.get(false)) {
@@ -167,7 +168,6 @@ final class MarkDuplicatesUtils {
                           pair.first().setIsDuplicate(true);
                           pair.second().setIsDuplicate(true);
                         }
-
                         // Now, add location information to the paired ends
                         for (final PairedEnds pair : scored) {
                           // Both elements in the pair have the same name
@@ -191,7 +191,7 @@ final class MarkDuplicatesUtils {
                           context.output(pair.second());
                         }
                     }
-               });
+                });
     }
 
 
@@ -220,7 +220,8 @@ final class MarkDuplicatesUtils {
                     @Override
                     public void processElement(final ProcessContext context) throws Exception {
                         //split reads by paired vs unpaired
-                        final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(context.element().getValue().spliterator(), false).collect(Collectors.partitioningBy(
+                        Iterable<GATKRead> readsCopy = Iterables.transform(context.element().getValue(), GATKRead::copy);
+                        final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
                                 read -> ReadUtils.readHasMappedMate(read)
                         ));
 
@@ -229,7 +230,7 @@ final class MarkDuplicatesUtils {
                             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
                             final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.score(read)).immutableSortedCopy(byPairing.get(false));
                             if (!frags.isEmpty()) {
-                                context.output(frags.get(0));                         //highest score - just emit
+                                context.output(frags.get(0));                        //highest score - just emit
                                 for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
                                     record.setIsDuplicate(true);
                                     context.output(record);
@@ -257,7 +258,7 @@ final class MarkDuplicatesUtils {
                     private static final long serialVersionUID = 1L;
                     @Override
                     public void processElement(final ProcessContext context) throws Exception {
-                        final GATKRead record = context.element();
+                        final GATKRead record = context.element().copy();
                         record.setIsDuplicate(false);
                         final SAMFileHeader h = context.sideInput(headerPcolView);
                         final String key = ReadsKey.keyForFragment(h, record);

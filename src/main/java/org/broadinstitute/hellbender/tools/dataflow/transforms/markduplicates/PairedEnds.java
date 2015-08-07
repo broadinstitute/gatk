@@ -81,4 +81,16 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
 
   @Override
   public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
+  /**
+   * returns a deep(ish) copy of the GATK reads in the PairedEnds.
+   * TODO: This is only deep for the Google Model read, GATKRead copy() isn't deep for
+   * TODO: for the SAMRecord backed read.
+   * @return a new deep copy
+   */
+  public PairedEnds copy() {
+    if (second == null) {
+      return new PairedEnds(first.copy());
+    }
+    return new PairedEnds(first.copy()).and(second.copy());
+  }
 }
