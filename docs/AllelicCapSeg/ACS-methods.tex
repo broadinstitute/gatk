@@ -1,0 +1,169 @@
+\documentclass[nofootinbib,amssymb,amsmath]{revtex4}
+\usepackage{mathtools}
+\usepackage{lmodern}
+\usepackage{color}
+
+\newcommand{\RCS}{\texttt{ReCapSeg}}
+\newcommand{\ACS}{\texttt{AllelicCapSeg}}
+
+\def\SL#1{{\color [rgb]{0,0,0.8} [SL: #1]}}
+
+\begin{document}
+
+\title{Notes on $\ACS$}
+\author{Samuel K. Lee}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+\email{slee@broadinstitute.org}
+\date{\today}
+
+\begin{abstract}
+Some notes on the methods used in the current \texttt{python} implementation and proposed methods for the \texttt{hellbender}
+port.
+\end{abstract}
+
+\maketitle
+
+
+
+\section{Introduction}\label{introduction}
+
+\SL{A brief intro here would be nice.}
+
+\section{$\RCS$ Overview} \label{recapseg-overview}
+
+We first summarize the portions of the $\RCS$ workflow that are generate the input for $\ACS$.  The below is copied/paraphrased from the documentation at \url{http://gatkforums.broadinstitute.org/discussion/5640/recapseg-overview}.
+
+$\RCS$ is a copy-number--variant detector that runs on user-defined target regions, which can correspond to exomes, gene panels, or arbitrary windows. $\RCS$ uses a Panel of Normal (PoN) samples to model noise and normalize the coverage calls of the target sample. These methods were designed for copy-number calling (amplification and deletion) of somatic events with a resolution of two or more targets. $\RCS$ does not need a matched normal, but operates on a panel of normal samples representing similar library preparation to agnostically remove noise. $\RCS$ is the production version of the \texttt{CapSeg} algorithm.
+
+Given an DNA-Seq alignment BAM file and a BED file of target genomic intervals, the $\RCS$ algorithms estimate copy ratio by performing the following steps:
+
+\begin{enumerate}
+\item
+Generate proportional coverage: First, the per sample normalized coverage is calculated by normalizing the read coverage spanning a
+target segment with the total number of aligned reads (for every read group: number of reads over segment/total number of aligned reads).  The proportional coverage is then calculated by normalizing every segment with the median normalized coverage across the PoN for the given segment.
+\item
+Tangent normalization: This normalization procedure projects the sample proportional coverage to a hyperplane defined by the PoN. This normalization procedure results in a copy-ratio estimate with reduced noise.
+\item
+Segment: The target regions are then merged into continuous segments that represent the same copy-number event. The segmentation is performed by a circular-binary-segmentation (CBS) algorithm described by Olshen et al. 2004 that was originally developed to segment noisy array copy-number data.\footnote{Specifically, the CBS implementation provided by the \texttt{R} package \texttt{DNACopy} is used. Note that even though the \texttt{DNACopy} parameter \texttt{data.type} is set to \texttt{logratio}, the tangent-normalized \emph{linear} copy ratios are used instead.  \SL{Check this?  If true, it is unclear to me how this affects the resulting segmentation, if at all.}} Currently, $\RCS$ considers only segments that include two or more targets (a target usually represents a single exon).
+\end{enumerate}
+
+To summarize, given coverage data for a set of targets, $\RCS$ produces 1) $\log_2$ copy-ratio estimates for each target, and 2) corresponding segments, which are specified by a set of genomic intervals.  The segment files produced by $\RCS$ also contain segment ``means,'' which are given by $\log_2$ of the mean linear copy ratio of all targets contained within each segment.
+
+\section{Current $\ACS$ Workflow} \label{current-alleliccapseg-workflow}
+
+\subsection{Segmented model} \label{segmented-model}
+
+$\ACS$ uses allele-count data from heterozygous SNP sites to improve upon the segmented copy-number model given by $\RCS$. The $\ACS$ model is characterized by a set of segment intervals and a set of model parameters; a model with $N$ segments is taken to have $2N + 2$ parameters
+\begin{equation}
+\{\tau_1, f_1, \dots \tau_N, f_N, \sigma_g, \gamma\}\,.
+\end{equation}
+Each individual segment labeled by $i$ is specified by its true copy ratio $\tau_i$ and its true minor allele fraction $f_i$ (referred to as the ``minor homologous chromosome fraction'' in the \texttt{python} code), yielding $2N$ parameters. Two additional global parameters $\sigma_g$ and $\gamma$ determine the variance of the copy ratio and the allele-fraction bias (referred to as the ``skew''), respectively, for all segments.
+
+Specifically, the variance of the copy ratio for targets in the $i$th segment is assumed to be given by $\sigma_i = \sigma_g \tau_i$. Furthermore, the allele-fraction bias $\gamma$ attempts to correct for a global discrepancy between the measured and true allele fractions, which may be induced by effects such as reference bias during alignment.  It is defined such that a balanced true allele fraction of $f = 1/2$ will yield, on average, an observed minor allele fraction of $\gamma/2$; we shall expand on this definition below.
+
+\subsection{Identifying normal heterozygous SNP sites (het pulldown)} \label{identifying-normal-heterozygous-snp-sites}
+
+The main idea behind $\ACS$ is to use allele-count data at heterozygous SNP sites to infer copy number; these sites should exhibit balanced reference/alternate read counts in the normal sample, but unbalanced copy-number events could measurably alter this balance in the tumor sample. Thus, the first step in the $\ACS$ workflow is to identify the heterozygous SNP sites that will be leveraged in the rest of the analysis.  
+
+We first start with a list of common SNP sites, and consider all reads passing a quality-score filter (taking a default minimum quality of 0).  We examine the allele counts at these sites in the normal sample, and discard those sites that appear to be homozygous by performing a two-tailed binomial test on the counts at each site.
+
+Specifically, for a SNP site labeled by $k$, let the reference and alternate counts be $A_k$ and $B_k$, respectively; also, let the major and minor allele counts be $M_k$ and $m_k$, respectively.  The total counts are denoted by $N_k = A_k + B_k = M_k + m_k$.\footnote{Note that the ``alternate'' and  ``minor'' counts are simply found by subtracting the reference and major counts from the total count, respectively; this lumps stray reads that do not actually match the alternate or minor alleles into both of these categories.  In principle, we could easily take only the largest and second-largest counts and discard the rest, but this is not what is currently implemented.}
+
+For sites above a read-count threshold $N_k \geq 10$, the compatibility of the major allele count $M_k$ and the total count $N_k$ with the null hypothesis of a allele fraction $f$ (assumed to be the same across all sites, with a default value of $f = 1/2$ used) is checked with a two-tailed binomial test; a $p$-value threshold of 0.05 is assumed.  Sites with counts below the threshold or incompatible with the allele fraction $f$ (i.e., likely to be homozygous SNPs) are filtered out.
+
+The remaining sites are assumed to be heterozygous SNPs.  The allele counts $\{A_k, B_k\}$ at these sites are pulled from the tumor sample and stored.
+
+\subsection{Initializing the model} \label{initializing-the-model}
+
+The initial state of the model is based on the result from $\RCS$.  The set of segment intervals is set to those found by $\RCS$, and the $\tau_i$ are set to the median copy ratio of all targets contained within each $i$th segment (note that these differ from the aforementioned segment ``means'' returned by $\RCS$, which are not used by $\ACS$).  Initial values of $\sigma_g = 0.15$ and $\gamma = 2 \times 0.48 = 0.96$ are used for the global parameters.
+
+Initialization of the minor homologous chromosome fractions $f_i$ for each segment is more involved.  This is accomplished on a per segment basis by taking $f_i$ to be the single parameter in a beta-binomial mixture model and selecting the value that maximizes the corresponding likelihood function.  Recall that the beta-binomial distribution gives the probability for the number of successes $k$ out of a number of trials $n$, where the probability of success for each trial is a random variable that follows a beta distribution with parameters $\alpha$ and $\beta$.  The probability distribution is
+\begin{equation}
+p_{\beta\text{-bin}}(k | n, \alpha, \beta) = {n \choose k} \frac{B(k+\alpha, n-k+\beta)}{B(\alpha, \beta)}\,,
+\end{equation}
+where $B(\alpha, \beta)$ is the Euler beta function.
+
+Consider a segment labeled by $i$, and let $D_i = \{A_{k_i}, B_{k_i}, \dots , A_{k_i+K_i}, B_{k_i+K_i}\}$ be the data set of tumor-sample allele counts for the $K_i$ heterozygous SNP sites (i.e., those identified in the het pulldown step) contained within this segment.  The likelihood function for the allele fraction $f_i$ of this segment, given the data set $D_i$, is taken to be
+\begin{equation} \label{allele-frac-ll}
+\mathcal{L}(f_i | D_i) = p(D_i | f_i) = 
+\begin{dcases}
+1\,, & D_i = \{\}\,, \\
+\prod_{k = k_i}^{k_i + K_i} \left\{\frac{1}{2}(1-w)\left[\mathcal{L}_\text{ref}(f_i | A_k, B_k) + \mathcal{L}_\text{alt}(f_i | A_k, B_k)\right] + w\mathcal{L}_\text{out}\right\}\,, & \text{otherwise}\,.
+\end{dcases}
+\end{equation}
+Here, $w$ is a weight parameter that will be later be used to account for outliers via the addition of a uniform-distribution component to the mixture model, which is represented in the likelihood by the $\mathcal{L}_\text{out}$ term; for this initialization stage, $w = 0$ is chosen.\footnote{\SL{Although, strictly speaking, $w=0$ should be used for initialization, the same value of $w = 0.0005$ used in the beta-binomial--uniform mixture model is used instead.  However, this does not have any effect on the resulting initial values of $f_i$, since the weight factor just contributes to an overall multiplicative constant in the likelihood.  Unfortunately, a further complication is that I think the likelihood for the beta-binomial--uniform mixture model is also incorrectly constructed in code; schematically, the quantity appearing under the product is coded as $1/2 (1-w)(\mathcal{L}_\textrm{ref} + \mathcal{L}_\textrm{alt}) + w' \mathcal{L}_\text{out}$, with $w' = 0.005 \neq w$.  Finally, the implementation essentially sets $\mathcal{L}_\text{out} = 1$ (albeit in a very roundabout manner).  I'm not sure if this is the desired behavior, and it also might not be consistent with how targets that are outliers in copy ratio are treated.}}
+
+Furthermore, $\mathcal{L}_\text{ref}(f_i | A_k, B_k)$ is the likelihood of the minor allele fraction $f_i$, given allele counts $\{A_k, B_k\}$ at SNP site $k$, for the case of a reference minor allele (i.e., $A_k \leq B_k$).  It is given by
+\begin{equation}
+\mathcal{L}_\text{ref}(f_i | A_k, B_k) =
+\begin{dcases}
+1\,, & f_i = 0~\text{and}~A_i = 0\,, \\
+p_{\beta\text{-bin}}(B_k | A_k+B_k, \alpha_\text{ref}(f_i), \beta_\text{ref}(f_i))\,, & \text{otherwise}\,.
+\end{dcases}
+\end{equation}
+Here,
+\begin{equation}
+\alpha_\text{ref}(f_i) = \left(1 - \frac{f_i}{\gamma}\right) \Sigma\,, \qquad
+\beta_\text{ref}(f_i) = \frac{f_i\Sigma}{\gamma}\,,
+\end{equation}
+where the parameter $\Sigma$ accounts for overdispersion and is fit to a panel of normal samples, yielding
+\begin{equation}
+\Sigma = \exp(s_0 + s_1\gamma/2)\,, \qquad
+s_0 = -33.67232\,,\quad
+s_1 = 82.77464\,.
+\end{equation}
+
+Similarly, $\mathcal{L}_\text{alt}(f_i | A_k, B_k)$ is the likelihood of $f_i$, given allele counts $\{A_k, B_k\}$ at SNP site $k$, for the case of an alternate minor allele (i.e., $B_k \leq A_k$).  It is given by
+\begin{equation}
+\mathcal{L}_\text{alt}(f_i | A_k, B_k) =
+p_{\beta\text{-bin}}(B_k | A_k+B_k, \alpha_\text{alt}(f_i), \beta_\text{alt}(f_i))\,,
+\end{equation}
+with
+\begin{equation}
+\alpha_\text{alt}(f_i) = f_i\gamma\Sigma\,, \qquad
+\beta_\text{alt}(f_i) = \left(1 - f_i\gamma\right) \Sigma\,.
+\end{equation}
+
+\SL{I'm not sure I fully understand the forms of $\alpha_\text{ref}$, $\beta_\text{ref}$, $\alpha_\text{alt}$, and $\beta_\text{alt}$ yet, but I probably just need to sit down with these equations for a bit.  Will add explanations of these terms and $\gamma$ here once I do.  Also, it would be nice to double check that the overdispersion fit is reasonable for the relevant PoNs; would be even better if we can get rid of this fit!}
+
+In practice, the maximum-likelihood estimate for $f_i$ is found by using the \texttt{scipy} implementation of the L-BFGS-B optimization algorithm to minimize the negative log-likelihood function, requiring convergence to machine precision.  An initial guess of $f_i = 0.25$ is used, with the allowed range taken to be $10^{-10} \leq f_i \leq 0.5$.  \SL{It's not clear to me what value of $f_i$ is actually returned for the case where the segment does not contain any SNPs, $D_i= \{\}$.  It might just be the initial guess of $f_i = 0.25$, but we can check this.  If this is the case, we should check if initialization of meaningless values of $f_i$ for such segments affects things downstream.}
+
+\subsection{Initial optimization of allelic-fraction bias} \label{initial-optimization-of-allelic-fraction-bias}
+
+\subsection{SNP segmentation} \label{snp-segmentation}
+
+Using the initial value of $\gamma$ found in the previous step, SNPs and their corresponding reference/alternate read counts are transformed to targets with corresponding effective ``copy ratios,'' which are then segmented using the \texttt{DNACopy} CBS implementation.  However, these effective copy ratios will not scale with the copy number as would a true copy ratio, and hence should not be thought of as such.
+
+In particular, for a SNP site indexed by $k$ with allele counts $\{A_k, B_k\}$, the effective copy ratio $\tilde\tau_k $ is taken to be 
+\begin{equation}
+\tilde\tau_k =\left |\frac{B_k}{A_k + B_k} - \frac{\gamma}{2}\right|\,.
+\end{equation}
+The idea here is that the quantity $B_k / (A_k + B_k) - \gamma / 2$ will be clustered around zero for sites $k$ contained in segments $i$ where the true minor allele fraction is $f_i = 1/2$, but will generally form two clusters centered at $\pm$ \SL{fill in once I understand what is going on with $\gamma$}, with the positive and negative signs corresponding to sites with reference and alternate minor alleles, respectively.  By taking the effective copy ratio passed to CBS to be the absolute value of this quantity, we are simply folding the data vertically before segmenting.  \SL{Does this somehow screw up the statistics of the balanced segments by artificially reducing their variance?  Could this have an effect on CBS?}  As with the segmentation of targets in $\RCS$, the \texttt{DNACopy} parameter \texttt{data.type} is set to \texttt{logratio}.  \SL{Actually, I think that $2^{\tilde\tau_k}$ is being passed to \texttt{DNACopy}, not just $\tilde\tau_k$. Again, I'm not sure if this actually affects the segmentation, but it doesn't seem consistent with how we treat targets.  I think we should try segmenting a quantity that is proportional to copy ratio in either linear or log space for both targets and SNPs.}
+
+\subsection{Target/SNP segment union} \label{targetsnp-segment-union}
+
+\SL{DB can fill this in.}
+
+\subsection{Small-segment merging} \label{small-segment-merging}
+
+Using CBS to segment the targets in $\RCS$ results in segments that are \SL{always?} larger than $\sim$2--3 targets.  However, after taking the union of target and SNP segments, small segments with less than $\sim$2--3 targets may be introduced.  To be consistent with CBS and $\RCS$, $\ACS$ treats these small segments as spurious, and removes them by merging them with adjacent segments.
+
+A segment is considered to be small if the number of targets it contains is strictly less than a threshold number of targets $n_t$; we take $n_t = 3$.  The small-segment merging algorithm checks each $i$th segment in turn, starting with the first, leftmost segment.  If the segment is small, it is repeatedly merged with the adjacent segment that is closer in the $L_1$ distance $|\tau_i - \tau_{i \pm 1}| + |f_i - f_{i \pm 1}|$ in copy-ratio--allele-fraction space until it is no longer small.\footnote{To be explicit, segments are reindexed after each merge, so that the new segment formed by merging segment $i$ and segment $i \pm 1$ retains the index $i$.}  Exceptions occur for adjacent segments on different chromosomes, which are never merged; in practice, this is enforced by setting the $L_1$ distance between segments on different chromosomes to be infinite.  After all segments have been checked and merged, any remaining small segments (which will be present if any chromosome contains less than $n_t$ targets) are dropped.
+
+\subsection{Parameter optimization}\label{parameter-optimization}
+
+\subsection{Similar-segment merging} \label{similar-segment-merging}
+
+\subsection{Final parameter optimization} \label{final-parameter-optimization}
+
+\section{Proposed Methods for $\texttt{hellbender}$} \label{proposed-methods-for-texttthellbender}
+
+\subsection{Bayesian het pulldown} \label{bayesian-het-pulldown}
+
+\SL{DB can fill this in.}
+
+\subsection{Model-comparison test for segment merging} \label{likelihood-based-segment-merging}
+
+\SL{I'll fill this in once it's worked out.}
+
+\end{document}
