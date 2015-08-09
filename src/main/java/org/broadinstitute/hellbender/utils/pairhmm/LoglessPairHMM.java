@@ -6,7 +6,7 @@ import static org.broadinstitute.hellbender.utils.pairhmm.PairHMMModel.*;
 
 public final class LoglessPairHMM extends N2MemoryPairHMM {
     static final double INITIAL_CONDITION = Math.pow(2, 1020);
-    static final double INITIAL_CONDITION_LOG10 = Math.log10(INITIAL_CONDITION);
+    static final double LOG_INITIAL_CONDITION = Math.log(INITIAL_CONDITION);
 
     // we divide e by 3 because the observed base could have come from any of the non-observed alleles
     static final double TRISTATE_CORRECTION = 3.0;
@@ -17,7 +17,7 @@ public final class LoglessPairHMM extends N2MemoryPairHMM {
      * {@inheritDoc}
      */
     @Override
-    public double subComputeReadLikelihoodGivenHaplotypeLog10( final byte[] haplotypeBases,
+    public double subComputeReadLogLikelihoodGivenHaplotype( final byte[] haplotypeBases,
                                                                final byte[] readBases,
                                                                final byte[] readQuals,
                                                                final byte[] insertionGOP,
@@ -56,7 +56,7 @@ public final class LoglessPairHMM extends N2MemoryPairHMM {
             }
         }
 
-        // final probability is the log10 sum of the last element in the Match and Insertion state arrays
+        // final log probability is the log sum of the last element in the Match and Insertion state arrays
         // this way we ignore all paths that ended in deletions! (huge)
         // but we have to sum all the paths ending in the M and I matrices, because they're no longer extended.
         final int endI = paddedReadLength - 1;
@@ -64,7 +64,7 @@ public final class LoglessPairHMM extends N2MemoryPairHMM {
         for (int j = 1; j < paddedHaplotypeLength; j++) {
             finalSumProbabilities += matchMatrix[endI][j] + insertionMatrix[endI][j];
         }
-        return Math.log10(finalSumProbabilities) - INITIAL_CONDITION_LOG10;
+        return Math.log(finalSumProbabilities) - LOG_INITIAL_CONDITION;
     }
 
     /**
@@ -78,7 +78,7 @@ public final class LoglessPairHMM extends N2MemoryPairHMM {
      */
     void initializePriors(final byte[] haplotypeBases, final byte[] readBases, final byte[] readQuals, final int startIndex) {
 
-        // initialize the pBaseReadLog10 matrix for all combinations of read x haplotype bases
+        // initialize the prior matrix for all combinations of read x haplotype bases
         // Abusing the fact that java initializes arrays with 0.0, so no need to fill in rows and columns below 2.
 
         for (int i = 0; i < readBases.length; i++) {

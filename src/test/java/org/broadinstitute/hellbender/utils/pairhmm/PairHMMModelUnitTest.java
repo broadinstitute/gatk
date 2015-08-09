@@ -28,11 +28,11 @@ public final class PairHMMModelUnitTest extends BaseTest {
     }
 
     @Test(dataProvider="qualToProbsDataProvider")
-    public void testQualToProbsLog10(final int insQuals, final int delQual, final int gcp, final double[] expected) {
+    public void testQualToLogProbs(final int insQuals, final int delQual, final int gcp, final double[] expected) {
         final double[] logExpected = new double[expected.length];
         for (int i = 0; i < logExpected.length; i++)
-            logExpected[i] = Math.log10(expected[i]);
-        final double[] actual = PairHMMModel.qualToTransProbsLog10((byte)insQuals,(byte)delQual,(byte)gcp);
+            logExpected[i] = Math.log(expected[i]);
+        final double[] actual = PairHMMModel.qualToLogTransProbs((byte) insQuals, (byte) delQual, (byte) gcp);
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.length, PairHMMModel.TRANS_PROB_ARRAY_LENGTH);
         assertEqualsDoubleArray(actual,logExpected,TOLERANCE);
@@ -57,12 +57,12 @@ public final class PairHMMModelUnitTest extends BaseTest {
     }
 
     @Test(dataProvider="qualToTransDataProvider")
-    public void testQualsToTransProbsLog10(final byte[] insQuals, final byte[] delQuals, final byte[] gapQuals, final double[][] expected) {
-        final double[][] actual = PairHMMModel.qualToTransProbsLog10(insQuals,delQuals,gapQuals);
+    public void testQualsToLogTransProbs(final byte[] insQuals, final byte[] delQuals, final byte[] gapQuals, final double[][] expected) {
+        final double[][] actual = PairHMMModel.qualToLogTransProbs(insQuals, delQuals, gapQuals);
         final double[][] logExpected = new double[expected.length][expected[0].length];
         for (int i = 1; i < expected.length; i++)
             for (int j = 0; j < expected[0].length; j++)
-                logExpected[i][j] = Math.log10(expected[i][j]);
+                logExpected[i][j] = Math.log(expected[i][j]);
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.length, logExpected.length);
         Assert.assertNotNull(actual[0]);
@@ -72,13 +72,13 @@ public final class PairHMMModelUnitTest extends BaseTest {
     }
 
     @Test(dataProvider="qualToTransDataProvider")
-    public void testQualsToTransProbsLog10Fill(final byte[] insQuals, final byte[] delQuals, final byte[] gapQuals, final double[][] expected) {
+    public void testQualsToLogTransProbsFill(final byte[] insQuals, final byte[] delQuals, final byte[] gapQuals, final double[][] expected) {
         final double[][] actual = PairHMMModel.createTransitionMatrix(insQuals.length);
-        PairHMMModel.qualToTransProbsLog10(actual,insQuals,delQuals,gapQuals);
+        PairHMMModel.qualToLogTransProbs(actual, insQuals, delQuals, gapQuals);
         final double[][] logExpected = new double[expected.length][expected[0].length];
         for (int i = 1; i < expected.length; i++)
             for (int j = 0; j < expected[0].length; j++)
-                logExpected[i][j] = Math.log10(expected[i][j]);
+                logExpected[i][j] = Math.log(expected[i][j]);
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.length, logExpected.length);
         Assert.assertNotNull(actual[0]);
@@ -99,12 +99,12 @@ public final class PairHMMModelUnitTest extends BaseTest {
             assertEqualsDoubleArray(actual[i],expected[i],TOLERANCE);
     }
     @Test(dataProvider="qualToProbsDataProvider")
-    public void testQualToProbsLog10Fill(final int insQuals, final int delQual, final int gcp, final double[] expected) {
+    public void testQualToLogProbsFill(final int insQuals, final int delQual, final int gcp, final double[] expected) {
         final double[] logExpected = new double[expected.length];
         for (int i = 0; i < logExpected.length; i++)
-            logExpected[i] = Math.log10(expected[i]);
+            logExpected[i] = Math.log(expected[i]);
         final double[] actual = new double[PairHMMModel.TRANS_PROB_ARRAY_LENGTH];
-        PairHMMModel.qualToTransProbsLog10(actual, (byte) insQuals, (byte) delQual, (byte) gcp);
+        PairHMMModel.qualToLogTransProbs(actual, (byte) insQuals, (byte) delQual, (byte) gcp);
         assertEqualsDoubleArray(actual,logExpected,TOLERANCE);
     }
 
@@ -235,13 +235,13 @@ public final class PairHMMModelUnitTest extends BaseTest {
 
 
     @Test(dataProvider = "dualTestDataProvider")
-    public void testDoubleQualToProb(final int insQual, final int delQual, final double log10Expected, final double expected) {
+    public void testDoubleQualToProb(final int insQual, final int delQual, final double logExpected, final double expected) {
         Assert.assertEquals(PairHMMModel.matchToMatchProb(insQual, delQual), expected, TOLERANCE);
         Assert.assertEquals(PairHMMModel.matchToMatchProb(delQual, insQual), expected, TOLERANCE);
-        Assert.assertEquals(PairHMMModel.matchToMatchProbLog10(insQual, delQual), log10Expected, TOLERANCE);
-        Assert.assertEquals(PairHMMModel.matchToMatchProbLog10(delQual, insQual), log10Expected, TOLERANCE);
+        Assert.assertEquals(PairHMMModel.matchToMatchLogProb(insQual, delQual), logExpected, TOLERANCE);
+        Assert.assertEquals(PairHMMModel.matchToMatchLogProb(delQual, insQual), logExpected, TOLERANCE);
         Assert.assertEquals(PairHMMModel.matchToMatchProb((byte) insQual, (byte) delQual), expected, TOLERANCE);
-        Assert.assertEquals(PairHMMModel.matchToMatchProbLog10((byte) insQual, (byte) delQual), log10Expected, TOLERANCE);
+        Assert.assertEquals(PairHMMModel.matchToMatchLogProb((byte) insQual, (byte) delQual), logExpected, TOLERANCE);
     }
 
     @DataProvider(name = "dualTestDataProvider")
@@ -260,8 +260,11 @@ public final class PairHMMModelUnitTest extends BaseTest {
 
                 final double errorProb1 = Math.pow(10, -0.1 * qual1);
                 final double errorProb2 = Math.pow(10, -0.1 * qual2);
+
+                //Note: matchToMatchProb assumes that insertion and deletion never coincide, so the probability that neither occurs
+                // is 1 - errorProb1 - errorProb2, without the correction + errorProb1*errorProb2
                 final double expected = Math.max(0, (1 - (errorProb1 + errorProb2)));
-                final Object[] result = new Object[] { qual1, qual2, Math.log10(Math.min(1, expected)), Math.min(1, expected)};
+                final Object[] result = new Object[] { qual1, qual2, Math.log(Math.min(1, expected)), Math.min(1, expected)};
 
                 if (++j >= testQuals.length) {
                     i++;
