@@ -14,7 +14,7 @@ import java.io.IOException;
 public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/MeanQualityByCycle");
 
-    @Test
+    @Test(groups = {"R"})
     public void test() throws IOException {
         final File input = new File(TEST_DATA_DIR, "first5000a.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
