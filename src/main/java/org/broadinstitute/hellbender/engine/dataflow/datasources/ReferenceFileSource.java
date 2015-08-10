@@ -12,7 +12,7 @@ import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class ReferenceFileSource implements Serializable {
+public class ReferenceFileSource implements ReferenceSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String referencePath;

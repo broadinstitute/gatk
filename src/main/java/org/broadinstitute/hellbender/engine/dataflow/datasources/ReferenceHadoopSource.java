@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
-public class ReferenceHadoopSource implements Serializable {
+public class ReferenceHadoopSource implements ReferenceSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String referencePath;
