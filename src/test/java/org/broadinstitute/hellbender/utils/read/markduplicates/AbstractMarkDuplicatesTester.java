@@ -38,9 +38,14 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
         addArg("--DUPLICATE_SCORING_STRATEGY", duplicateScoringStrategy.name());
     }
 
-
     public AbstractMarkDuplicatesTester() {
-        this(SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+        super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, true);
+
+        expectedMetrics = new DuplicationMetrics();
+        expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;
+
+        metricsFile = new File(getOutputDir(), "metrics.txt");
+        addArg("--METRICS_FILE", metricsFile.getAbsolutePath());
     }
 
     @Override
@@ -93,7 +98,6 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
     public void test() {
         try {
             updateExpectedDuplicationMetrics();
-
             // Read the output and check the duplicate flag
             int outputRecords = 0;
             final SamReader reader = SamReaderFactory.makeDefault().open(getOutput());
@@ -134,6 +138,14 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
             Assert.assertEquals(observedMetrics.READ_PAIR_DUPLICATES, expectedMetrics.READ_PAIR_DUPLICATES, "READ_PAIR_DUPLICATES does not match expected");
             Assert.assertEquals(observedMetrics.READ_PAIR_OPTICAL_DUPLICATES, expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES, "READ_PAIR_OPTICAL_DUPLICATES does not match expected");
             Assert.assertEquals(observedMetrics.PERCENT_DUPLICATION, expectedMetrics.PERCENT_DUPLICATION, "PERCENT_DUPLICATION does not match expected");
+            // The dataflow version outputs 0 instead of null because it is
+            // coded and needs to have real values for each field.
+            if (observedMetrics.ESTIMATED_LIBRARY_SIZE == null) {
+              observedMetrics.ESTIMATED_LIBRARY_SIZE = 0L;
+            }
+            if (expectedMetrics.ESTIMATED_LIBRARY_SIZE == null) {
+              expectedMetrics.ESTIMATED_LIBRARY_SIZE = 0L;
+            }
             Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedMetrics.ESTIMATED_LIBRARY_SIZE, "ESTIMATED_LIBRARY_SIZE does not match expected");
         } finally {
             TestUtil.recursiveDelete(getOutputDir());
@@ -142,4 +154,3 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
 
     abstract protected CommandLineProgram getProgram();
 }
-
