@@ -59,6 +59,8 @@ General guidelines for Hellbender developers
 
 * Don't use `toString()` for anything other than human consumption (ie. don't base the logic of your code on results of `toString()`.)
 
+* For logging, use [org.apache.logging.log4j.Logger](https://logging.apache.org/log4j/2.0/log4j-api/apidocs/org/apache/logging/log4j/Logger.html)
+
 * We mostly follow the Google Java Style guide: http://google-styleguide.googlecode.com/svn/trunk/javaguide.html
 
 * Git: Don't push directly to master - make a pull request instead. 
