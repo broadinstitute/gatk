@@ -6,8 +6,6 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-
 
 /**
  * Tests for Segment and SegmentUtils classes

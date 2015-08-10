@@ -8,8 +8,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 /**
  * Simple caller that

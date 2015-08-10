@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Locatable;
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -13,7 +12,6 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.AbstractMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,7 +22,7 @@ public final class SegmentUtils {
     /**
      * read a list of intervals without calls from a segfile
      */
-    public static List<SimpleInterval> readIntervalsFromSegfile(final File segmentsFile) throws IOException {
+    public static List<SimpleInterval> readIntervalsFromSegfile(final File segmentsFile) {
         try (final TableReader<SimpleInterval> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesAll(0, "Sample", "Chromosome", "Start", "End")) {//ignore last two columns: NTARGETS and AVERAGE
@@ -36,15 +34,15 @@ public final class SegmentUtils {
                             new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3));
                 })) {
             return reader.stream().collect(Collectors.toList());
-        } catch (final UncheckedIOException e) {
-            throw e.getCause();
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
         }
     }
 
     /**
      * read a list of intervals with calls from a file
      */
-    public static List<CalledInterval> readCalledIntervalsFromSegfile(final File segmentsFile) throws IOException {
+    public static List<CalledInterval> readCalledIntervalsFromSegfile(final File segmentsFile) {
         try (final TableReader<CalledInterval> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesExactly("Sample", "Chromosome", "Start", "End", "Call")) {
@@ -55,15 +53,15 @@ public final class SegmentUtils {
                             new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3)), dataLine.get(4));
                 })) {
             return reader.stream().collect(Collectors.toList());
-        } catch (final UncheckedIOException e) {
-            throw e.getCause();
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
         }
     }
 
     /**
      * write a list of intervals with calls to file
      */
-    public static void writeCalledIntervalsToSegfile(final File outFile, List<CalledInterval> segments, final String sample) throws IOException {
+    public static void writeCalledIntervalsToSegfile(final File outFile, List<CalledInterval> segments, final String sample) {
         try (final TableWriter<CalledInterval> writer = TableUtils.writer(outFile,
                     new TableColumnCollection("Sample", "Chromosome", "Start", "End", "Call"),
 
@@ -74,10 +72,12 @@ public final class SegmentUtils {
                     })) {
             for (final CalledInterval ci : segments) {
                 if (ci == null) {
-                    throw new IOException("Segments list contains a null.");
+                    throw new IllegalArgumentException("Segments list contains a null.");
                 }
                 writer.writeRecord(ci);
             }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
     }
 
@@ -97,5 +97,4 @@ public final class SegmentUtils {
         }
         return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
     }
-
 }

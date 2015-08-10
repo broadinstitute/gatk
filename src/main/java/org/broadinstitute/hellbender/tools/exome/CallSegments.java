@@ -5,11 +5,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -74,30 +72,15 @@ public final class CallSegments extends CommandLineProgram{
         final List<SimpleInterval> segments;
         final List<TargetCoverage> targetList;
 
-        try {
-            targetList = TargetCoverageUtils.readTargetsWithCoverage(targetsFile);
-        } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(targetsFile, e);
-        }
-
+        targetList = TargetCoverageUtils.readTargetsWithCoverage(targetsFile);
         final HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<TargetCoverage>(targetList);
 
-        try {
-            segments = SegmentUtils.readIntervalsFromSegfile(segmentsFile);
-        } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
-        }
-
-
+        segments = SegmentUtils.readIntervalsFromSegfile(segmentsFile);
 
         //add calls to segments in-place
         List<CalledInterval> calledSegments = ReCapSegCaller.makeCalls(targets, segments);
 
-        try {
-            SegmentUtils.writeCalledIntervalsToSegfile(outFile, calledSegments, sample);
-        } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outFile, e);
-        }
+        SegmentUtils.writeCalledIntervalsToSegfile(outFile, calledSegments, sample);
 
         return "SUCCESS";
     }

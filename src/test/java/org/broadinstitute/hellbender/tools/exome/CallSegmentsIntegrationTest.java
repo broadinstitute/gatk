@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -22,7 +19,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
     private static final String SAMPLE_NAME = "sample";
 
     @Test
-    public void testCallSegments() throws IOException {
+    public void testCallSegments() {
         final File outputFile = createTempFile("test",".txt");
 
         final String[] arguments = {

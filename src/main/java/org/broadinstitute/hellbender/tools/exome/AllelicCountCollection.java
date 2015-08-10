@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,8 +54,8 @@ public class AllelicCountCollection {
             for (final AllelicCount count : reader) {
                 this.counts.add(count);
             }
-        } catch (final Exception e) {
-            throw new UserException.CouldNotReadInputFile(inputFile, e.getMessage());
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(inputFile, e);
         }
     }
 
@@ -91,8 +93,8 @@ public class AllelicCountCollection {
             for (final AllelicCount count : counts) {
                 writer.writeRecord(count);
             }
-        } catch (final Exception e) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile, e.getMessage());
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
     }
 
