@@ -17,6 +17,7 @@ import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;

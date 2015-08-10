@@ -7,6 +7,7 @@ import com.google.api.services.genomics.model.Reference;
 import com.google.api.services.genomics.model.SearchReferencesRequest;
 import com.google.api.services.genomics.model.SearchReferencesResponse;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
@@ -64,11 +65,20 @@ public class RefAPISource implements ReferenceSource, Serializable {
 
     private Map<String, Reference> referenceMap;
     private Map<String, String> referenceNameToIdTable;
+    private String apiKey;
 
     public RefAPISource(final PipelineOptions pipelineOptions, final String referenceURL) {
         String referenceName = getReferenceSetID(referenceURL);
         this.referenceMap = getReferenceNameToReferenceTable(pipelineOptions, referenceName);
         this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
+
+        // For Spark, we keep around the apiKey from the PipelineOptions since we don't have
+        // a "context" with PipelineOptions available on each worker.
+        // If we go with Spark, we'll end up refactoring this to store all of the secrets
+        // directly in this class and get rid of PipelineOptions as an argument to
+        // getReferenceBases.
+        Utils.nonNull(pipelineOptions);
+        this.apiKey = pipelineOptions.as(GCSOptions.class).getApiKey();
     }
 
     @VisibleForTesting
@@ -99,11 +109,17 @@ public class RefAPISource implements ReferenceSource, Serializable {
      */
     @Override
     public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) {
-        Utils.nonNull(pipelineOptions);
         Utils.nonNull(interval);
 
         if (genomicsService == null) {
-            genomicsService = createGenomicsService(pipelineOptions);
+            if (pipelineOptions == null) {
+                // Fall back on the saved apiKey for Spark.
+                GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+                options.setApiKey(apiKey);
+                genomicsService = createGenomicsService(options);
+            } else {
+                genomicsService = createGenomicsService(pipelineOptions);
+            }
         }
         if ( !referenceNameToIdTable.containsKey(interval.getContig()) ) {
             throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
@@ -277,6 +293,8 @@ public class RefAPISource implements ReferenceSource, Serializable {
         }
     }
 
+    // TODO: Move these to a CustomCoder. That will allow us to do something else (possibly better) for Spark.
+    // TODO: See Issue #849.
     // implement methods for Java serialization, since Reference does not implement Serializable
     private void writeObject(ObjectOutputStream stream) throws IOException {
         JsonFactory jsonFactory = com.google.api.client.googleapis.util.Utils.getDefaultJsonFactory();
@@ -286,6 +304,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
             stream.writeUTF(jsonFactory.toString(e.getValue()));
         }
         stream.writeObject(referenceNameToIdTable);
+        stream.writeObject(apiKey);
     }
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         JsonFactory jsonFactory = com.google.api.client.googleapis.util.Utils.getDefaultJsonFactory();
@@ -296,7 +315,9 @@ public class RefAPISource implements ReferenceSource, Serializable {
         }
         @SuppressWarnings("unchecked")
         final Map<String, String> refTable = (Map<String, String>) stream.readObject();
+        final String apiKey = (String) stream.readObject();
         this.referenceMap = refs;
         this.referenceNameToIdTable = refTable;
+        this.apiKey = apiKey;
     }
 }

@@ -39,11 +39,23 @@ import java.util.UUID;
  */
 public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
 
-    private final Read genomicsRead;
-    private final UUID uuid;
+    private Read genomicsRead;
+    private UUID uuid;
 
     public GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead ) {
         this(genomicsRead, UUID.randomUUID());
+    }
+
+    private GoogleGenomicsReadToGATKReadAdapter() {}
+
+    /**
+     * Produces a GoogleGenomicsReadToGATKReadAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
+     * and loading the reads twice (which can happen when caching is missing) prevents joining.
+     * @param genomicsRead Read to adapt
+     * @return adapted Read
+     */
+    public static GoogleGenomicsReadToGATKReadAdapter sparkReadAdapter(final Read genomicsRead) {
+        return new GoogleGenomicsReadToGATKReadAdapter(genomicsRead, new UUID(0L, 0L));
     }
 
     /**
@@ -203,7 +215,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
     public int getUnclippedEnd() {
         final int end = getEnd();
         return end == ReadConstants.UNSET_POSITION ? ReadConstants.UNSET_POSITION :
-                                                     SAMUtils.getUnclippedEnd(getEnd(), getCigar());
+                SAMUtils.getUnclippedEnd(getEnd(), getCigar());
     }
 
     @Override
@@ -692,5 +704,10 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
         if (null!=alignment) {
             alignment.setCigar(new ArrayList<>(alignment.getCigar()));
         }
+    }
+
+    @Override
+    public String toString() {
+        return uuid.toString() + ":" + genomicsRead.toString();
     }
 }

@@ -35,7 +35,8 @@ public class ReadsPreprocessingPipelineTestData {
     private final List<KV<VariantShard, Variant>> kvVariantShardVariant;
     private final List<KV<GATKRead, ReferenceBases>> kvReadsRefBases;
     private final List<KV<GATKRead, Variant>> kvReadVariant;
-    private final List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant;
+    private final List<KV<GATKRead, Iterable<Variant>>> kvReadiVariantBroken; // The dataflow version is currently broken (Issue #795).
+    private final List<KV<GATKRead, Iterable<Variant>>> kvReadiVariantFixed;
     private final List<KV<GATKRead, ReadContextData>> kvReadContextData;
 
 
@@ -102,8 +103,8 @@ public class ReadsPreprocessingPipelineTestData {
                 new SkeletonVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
                 new SkeletonVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
                         ReferenceShard.REFERENCE_SHARD_SIZE), true, false, new UUID(1003, 1003)),
-                new SkeletonVariant(new SimpleInterval("1", 3*ReferenceShard.REFERENCE_SHARD_SIZE - 2,
-                        3*ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true, new UUID(1004, 1004)),
+                new SkeletonVariant(new SimpleInterval("1", 3 * ReferenceShard.REFERENCE_SHARD_SIZE - 2,
+                        3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true, new UUID(1004, 1004)),
                 new SkeletonVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
                         ReferenceShard.REFERENCE_SHARD_SIZE), false, true, new UUID(1005, 1005))
         );
@@ -112,8 +113,8 @@ public class ReadsPreprocessingPipelineTestData {
                 KV.of(new VariantShard(0, "1"), reads.get(0)),
                 KV.of(new VariantShard(0, "1"), reads.get(1)),
                 KV.of(new VariantShard(shardRatio, "1"), reads.get(2)),
-                KV.of(new VariantShard(3*shardRatio - 1, "1"), reads.get(3)),     // The second to last read spans
-                KV.of(new VariantShard(3*shardRatio, "1"), reads.get(3)),     // two shards.
+                KV.of(new VariantShard(3 * shardRatio - 1, "1"), reads.get(3)),     // The second to last read spans
+                KV.of(new VariantShard(3 * shardRatio, "1"), reads.get(3)),     // two shards.
                 KV.of(new VariantShard(shardRatio, "2"), reads.get(4))
         );
 
@@ -125,6 +126,7 @@ public class ReadsPreprocessingPipelineTestData {
                 KV.of(new VariantShard(3*shardRatio, "1"), variants.get(3)),       // two shards.
                 KV.of(new VariantShard(shardRatio, "2"), variants.get(4))
         );
+
         kvReadVariant = Arrays.asList(
                 KV.of(reads.get(1), variants.get(0)),
                 KV.of(reads.get(1), variants.get(1)),
@@ -133,25 +135,34 @@ public class ReadsPreprocessingPipelineTestData {
                 KV.of(reads.get(3), variants.get(3)),     // why there are two of them (2,3).
                 KV.of(reads.get(4), variants.get(4))
         );
+        final KV<GATKRead, Variant> readNullVariant = KV.of(reads.get(0), null);
 
         Iterable<Variant> variant10 = Lists.newArrayList(kvReadVariant.get(1).getValue(), kvReadVariant.get(0).getValue());
         Iterable<Variant> variant2 = Lists.newArrayList(kvReadVariant.get(2).getValue());
         Iterable<Variant> variant3 = Lists.newArrayList(kvReadVariant.get(3).getValue());
         Iterable<Variant> variant4 = Lists.newArrayList(kvReadVariant.get(5).getValue());
+        Iterable<Variant> nullVariant = Lists.newArrayList(readNullVariant.getValue());
 
-        kvReadiVariant = Arrays.asList(
+        kvReadiVariantBroken = Arrays.asList(
                 KV.of(kvReadVariant.get(0).getKey(), variant10),
                 KV.of(kvReadVariant.get(2).getKey(), variant2),
                 KV.of(kvReadVariant.get(3).getKey(), variant3),
                 KV.of(kvReadVariant.get(5).getKey(), variant4)
         );
 
+        kvReadiVariantFixed = Arrays.asList(
+                KV.of(kvReadVariant.get(0).getKey(), variant10),
+                KV.of(kvReadVariant.get(2).getKey(), variant2),
+                KV.of(kvReadVariant.get(3).getKey(), variant3),
+                KV.of(kvReadVariant.get(5).getKey(), variant4),
+                KV.of(reads.get(0), nullVariant)
+        );
         kvReadContextData = Arrays.asList(
                 KV.of(kvReadsRefBases.get(0).getKey(), new ReadContextData(kvReadsRefBases.get(0).getValue(), Lists.newArrayList())),
-                KV.of(kvReadsRefBases.get(1).getKey(), new ReadContextData(kvReadsRefBases.get(1).getValue(), kvReadiVariant.get(0).getValue())),
-                KV.of(kvReadsRefBases.get(2).getKey(), new ReadContextData(kvReadsRefBases.get(2).getValue(), kvReadiVariant.get(1).getValue())),
-                KV.of(kvReadsRefBases.get(3).getKey(), new ReadContextData(kvReadsRefBases.get(3).getValue(), kvReadiVariant.get(2).getValue())),
-                KV.of(kvReadsRefBases.get(4).getKey(), new ReadContextData(kvReadsRefBases.get(4).getValue(), kvReadiVariant.get(3).getValue()))
+                KV.of(kvReadsRefBases.get(1).getKey(), new ReadContextData(kvReadsRefBases.get(1).getValue(), kvReadiVariantBroken.get(0).getValue())),
+                KV.of(kvReadsRefBases.get(2).getKey(), new ReadContextData(kvReadsRefBases.get(2).getValue(), kvReadiVariantBroken.get(1).getValue())),
+                KV.of(kvReadsRefBases.get(3).getKey(), new ReadContextData(kvReadsRefBases.get(3).getValue(), kvReadiVariantBroken.get(2).getValue())),
+                KV.of(kvReadsRefBases.get(4).getKey(), new ReadContextData(kvReadsRefBases.get(4).getValue(), kvReadiVariantBroken.get(3).getValue()))
         );
     }
 
@@ -251,8 +262,8 @@ public class ReadsPreprocessingPipelineTestData {
         return kvReadsRefBases;
     }
 
-    public List<KV<GATKRead, Iterable<Variant>>> getKvReadiVariant() {
-        return kvReadiVariant;
+    public List<KV<GATKRead, Iterable<Variant>>> getKvReadiVariantBroken() {
+        return kvReadiVariantBroken;
     }
 
     public List<KV<GATKRead, Variant>> getKvReadVariant() {
@@ -280,5 +291,9 @@ public class ReadsPreprocessingPipelineTestData {
     public static void verifyDivisibilityWithRefShard() {
         // We want the ratio between the two shard types to be an int so we can use them more easily for testing.
         Assert.assertEquals(Math.floorMod(ReferenceShard.REFERENCE_SHARD_SIZE, VariantShard.VARIANT_SHARDSIZE), 0);
+    }
+
+    public List<KV<GATKRead, Iterable<Variant>>> getKvReadiVariantFixed() {
+        return kvReadiVariantFixed;
     }
 }

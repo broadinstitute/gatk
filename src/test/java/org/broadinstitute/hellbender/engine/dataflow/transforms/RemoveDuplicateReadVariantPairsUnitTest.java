@@ -66,7 +66,7 @@ public final class RemoveDuplicateReadVariantPairsUnitTest extends BaseTest {
                     KV.of(dupes.get(5).getKey().getUUID(), variant5)
             );
 
-            List<KV<GATKRead, Iterable<Variant>>> finalExpected = testData.getKvReadiVariant();
+            List<KV<GATKRead, Iterable<Variant>>> finalExpected = testData.getKvReadiVariantBroken();
             data[i] = new Object[]{dupes, kvUUIDUUID, kvUUIDiUUID, kvUUIDiVariant, finalExpected};
         }
         return data;
