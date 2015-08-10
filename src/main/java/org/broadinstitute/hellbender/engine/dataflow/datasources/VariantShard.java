@@ -18,7 +18,7 @@ import java.util.List;
 public final class VariantShard {
     private final int shardNumber;
     private final String contig;
-    public static final int VARIANT_SHARDSIZE = 100000; // This value is subject to change (by humans)
+    public static final int VARIANT_SHARDSIZE = 1000; // This value is subject to change (by humans)
 
     public VariantShard(int shardNumber, String contig) {
         this.shardNumber = shardNumber;
