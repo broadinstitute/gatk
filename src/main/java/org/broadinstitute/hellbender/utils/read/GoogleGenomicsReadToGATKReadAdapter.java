@@ -22,11 +22,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Implementation of the {@link GATKRead} interface for the Google Genomics {@link Read} class.
@@ -626,6 +622,15 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
 
     @Override
     public GATKRead copy() {
+        // workaround until https://github.com/google/google-http-java-client/issues/293 is released
+        genomicsRead.setAlignedQuality(new ArrayList<>(genomicsRead.getAlignedQuality()));
+        Map<String, List<String>> infoCopy = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : genomicsRead.getInfo().entrySet()) {
+            infoCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        genomicsRead.setInfo(infoCopy);
+        genomicsRead.getAlignment().setCigar(new ArrayList<>(genomicsRead.getAlignment().getCigar()));
+        // end workaround
         // clone() actually makes a deep copy of all fields here (via GenericData.clone())
         return new GoogleGenomicsReadToGATKReadAdapter(genomicsRead.clone());
     }
