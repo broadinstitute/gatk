@@ -22,8 +22,6 @@ public class SegmenterTest extends BaseTest {
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
-        Assert.assertTrue(output.exists(), "R library was not written to temp file: " + output);
-
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -35,7 +33,6 @@ public class SegmenterTest extends BaseTest {
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
-        Assert.assertTrue(output.exists(), "R library was not written to temp file: " + output);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -47,8 +44,6 @@ public class SegmenterTest extends BaseTest {
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "Simple";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
-        Assert.assertTrue(output.exists(), "R library was not written to temp file: " + output);
-
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -60,7 +55,7 @@ public class SegmenterTest extends BaseTest {
      * @throws IOException if any was thrown when reading the input files.
      * @throws AssertionError if there are significant between both files.
      */
-    private void assertEqualSegments(final File actualOutput, final File expectedOutput) throws IOException {
+    public static void assertEqualSegments(final File actualOutput, final File expectedOutput) throws IOException {
         try (final SegmentReader actual = new SegmentReader(actualOutput);
              final SegmentReader expected = new SegmentReader(expectedOutput)) {
             final List<SegmentMean> actualSegmentMeans = actual.stream().collect(Collectors.toList());
