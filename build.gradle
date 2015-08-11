@@ -108,7 +108,7 @@ dependencies {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
-    compile('org.apache.hadoop:hadoop-client:2.7.1')
+    compile('org.apache.hadoop:hadoop-client:2.2.0') // should be a 'provided' dependency
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
@@ -258,6 +258,7 @@ shadowJar {
     zip64 true
     dependencies {
         // exclude Hadoop dependencies, since they are provided when running with Spark
+        // TODO: improve this, since it doesn't take transitive dependencies into account
         exclude(dependency('org.apache.hadoop:.*:.*'))
         exclude(dependency('org.xerial.snappy:snappy-java:.*'))
     }
