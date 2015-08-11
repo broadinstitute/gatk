@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,15 +19,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Unit test that cover {@link HDF5Library}, {@link HDF5Reader} and {@link HDF5PoN}.
+ * Unit test that cover {@link HDF5Library}, {@link HDF5File} and {@link HDF5PoN}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class HDF5LibraryUnitTests {
 
-
     private static File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/utils/hdf5");
-    public static File TEST_PON = new File(TEST_RESOURCE_DIR,"test_creation_of_panel.pon");
     private static File TEST_PON_TARGETS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-targets.txt");
     private static File TEST_PON_SAMPLES = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-samples.txt");
     private static File TEST_PON_TARGET_FACTORS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-target_factors.txt");
@@ -34,6 +35,7 @@ public final class HDF5LibraryUnitTests {
     private static File TEST_PON_LOG_NORMALS_PINV = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-log_normal_pinv.txt");
     private static File TEST_PON_REDUCED_PON = TEST_PON_LOG_NORMALS;
     private static File TEST_PON_REDUCED_PON_PINV = TEST_PON_LOG_NORMALS_PINV;
+    public static File TEST_PON = new File(TEST_RESOURCE_DIR,"test_creation_of_panel.pon");
 
     @SuppressWarnings("FieldCanBeLocal")
     private static double TEST_PON_MAXIMUM_RATIO_CUTOFF = 0.0;
@@ -55,19 +57,19 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnGroups = "supported")
     public void testOpenReadOnly() {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         reader.close();
     }
 
     @Test(dependsOnGroups = "supported",expectedExceptions = GATKException.class)
     public void testOpenReadOnlyOnBadFile() {
-        final HDF5Reader reader = new HDF5Reader(new File("/tmp/no-file"));
+        final HDF5File reader = new HDF5File(new File("/tmp/no-file"));
         reader.close();
     }
 
     @Test(dependsOnGroups = "supported")
     public void testTargetNameReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targetNames = pon.targetNames();
         final List<String> expected = readLines(TEST_PON_TARGETS);
@@ -78,7 +80,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnGroups = "supported")
     public void testSampleNameReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> sampleNames = pon.sampleNames();
         final List<String> expected = readLines(TEST_PON_SAMPLES);
@@ -89,7 +91,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnMethods = "testSampleNameReading")
     public void testLogNormalSampleNameReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
 
         final List<String> expected = readLines(TEST_PON_LOG_NORMAL_SAMPLES);
@@ -100,7 +102,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnGroups = "supported", dependsOnMethods = "testTargetNameReading")
     public void testTargetFactorsReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.targetNames();
         final RealMatrix factors = pon.targetFactors();
@@ -118,7 +120,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnGroups = "supported")
     public void testMaximumRatioCutoffReading() {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         Assert.assertEquals(pon.maximumRatioCutoff(),TEST_PON_MAXIMUM_RATIO_CUTOFF,0.0001);
         reader.close();
@@ -126,7 +128,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnGroups = "supported")
     public void testVersionReading() {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         Assert.assertEquals(pon.version(),TEST_PON_VERSION);
         reader.close();
@@ -134,7 +136,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnGroups = "supported", dependsOnMethods = {"testTargetNameReading","testSampleNameReading"})
     public void testNormalizedPcovReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.targetNames();
         final List<String> samples = pon.sampleNames();
@@ -148,7 +150,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
     public void testLogNormalMatrixReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.targetNames();
         final List<String> samples = pon.logNormalSampleNames();
@@ -162,7 +164,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
     public void testLogNormalPInvMatrixReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.targetNames();
         final List<String> samples = pon.logNormalSampleNames();
@@ -176,7 +178,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
     public void testReducedPoNMatrixReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.targetNames();
         final List<String> samples = pon.logNormalSampleNames();
@@ -190,7 +192,7 @@ public final class HDF5LibraryUnitTests {
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
     public void testReducedPoNPInvMatrixReading() throws IOException {
-        final HDF5Reader reader = new HDF5Reader(TEST_PON);
+        final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.targetNames();
         final List<String> samples = pon.logNormalSampleNames();
@@ -201,6 +203,144 @@ public final class HDF5LibraryUnitTests {
         final RealMatrix expected = readDoubleMatrix(TEST_PON_REDUCED_PON_PINV);
         assertEqualMatrix(actual, expected);
     }
+
+    @Test()
+    public void testCreateHDF5File() throws IOException {
+        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        testFile.delete();
+        final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.close();
+    }
+
+    @Test()
+    public void testCreateGroup() throws IOException {
+        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        Assert.assertTrue(file.makeGroup("test-group/lola-run"));
+
+        Assert.assertFalse(file.makeGroup("test-group"));
+        Assert.assertFalse(file.makeGroup("test-group/lola-run"));
+        Assert.assertTrue(file.makeGroup("test-group/peter-pan"));
+        file.close();
+    }
+
+    @Test()
+    public void testMakeDouble() throws IOException {
+        final File testFile = File.createTempFile("hdf5", ".hd5");
+        HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.makeGroup("test-group/double-group");
+        Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", 1.1));
+        System.err.println(testFile);
+        file.close();
+        final long time = System.currentTimeMillis();
+        Assert.assertTrue(testFile.length() > 0);
+        Assert.assertTrue(testFile.lastModified() <= time);
+        file = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
+        final double theDouble = file.readDouble("test-group/double-group/my-double");
+        Assert.assertEquals(theDouble, 1.1);
+        file.close();
+    }
+
+    @Test()
+    public void testMakeNaNDouble() throws IOException {
+        final File testFile = File.createTempFile("hdf5", ".hd5");
+        HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.makeGroup("test-group/double-group");
+        Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", Double.NaN));
+        System.err.println(testFile);
+        file.close();
+        final long time = System.currentTimeMillis();
+        Assert.assertTrue(testFile.length() > 0);
+        Assert.assertTrue(testFile.lastModified() <= time);
+        file = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
+        final double theDouble = file.readDouble("test-group/double-group/my-double");
+        Assert.assertTrue(Double.isNaN(theDouble));
+        file.close();
+    }
+
+    @Test()
+    public void testMakeDoubleArray() throws IOException {
+        final File testFile = File.createTempFile("hdf5", ".hd5");
+        HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.makeGroup("test-group/double-group");
+        final double[] testValues = new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 };
+        Assert.assertTrue(file.makeDoubleArray("test-group/double-group/my-double", testValues));
+        System.err.println(testFile);
+        file.close();
+        final long time = System.currentTimeMillis();
+        Assert.assertTrue(testFile.length() > 0);
+        Assert.assertTrue(testFile.lastModified() <= time);
+        file = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
+        final double[] theDoubles = file.readDoubleArray("test-group/double-group/my-double");
+        Assert.assertEquals(theDoubles, testValues.clone());
+        file.close();
+    }
+
+    @Test()
+    public void testReMakeDoubleArray() throws IOException {
+        final File testFile = File.createTempFile("hdf5", ".hd5");
+        HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.makeGroup("test-group/double-group");
+        final double[] testValues1 = new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 };
+        final double[] testValues2 = new double[] { 11.1 , -22.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 1.0111e10-10 };
+
+        Assert.assertTrue(file.makeDoubleArray("test-group/double-group/my-double", testValues1));
+        System.err.println(testFile);
+        file.close();
+        final long time = System.currentTimeMillis();
+        Assert.assertTrue(testFile.length() > 0);
+        Assert.assertTrue(testFile.lastModified() <= time);
+        file = new HDF5File(testFile, HDF5File.OpenMode.READ_WRITE);
+        final double[] theDoubles1 = file.readDoubleArray("test-group/double-group/my-double");
+        Assert.assertEquals(theDoubles1, testValues1.clone());
+        Assert.assertFalse(file.makeDoubleArray("test-group/double-group/my-double", testValues2));
+        final double[] theDoubles2 = file.readDoubleArray("test-group/double-group/my-double");
+        Assert.assertEquals(theDoubles2, testValues2.clone());
+
+        file.close();
+    }
+
+    @Test()
+    public void testMakeDoubleMatrix() throws IOException {
+        final File testFile = File.createTempFile("hdf5", ".hd5");
+        HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.makeGroup("test-group/double-group");
+        final double[][] testValues = new double[][] {
+                new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 },
+                new double[] { -1.1, 2.2, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -0.01111e10-10 }};
+        Assert.assertTrue(file.makeDoubleMatrix("test-group/double-group/my-double", testValues));
+        System.err.println(testFile);
+        file.close();
+        final long time = System.currentTimeMillis();
+        Assert.assertTrue(testFile.length() > 0);
+        Assert.assertTrue(testFile.lastModified() <= time);
+        file = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
+
+        final double[][] theDoubles = file.readDoubleMatrix("test-group/double-group/my-double");
+        Assert.assertEquals(theDoubles, testValues.clone());
+        file.close();
+    }
+
+    @Test()
+    public void testMakeStringArray() throws IOException {
+        final File testFile = File.createTempFile("hdf5", ".hd5");
+        HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        file.makeGroup("test-group/double-group");
+        final String[] testValues = new String[] { "0", "1", "absdsd12 sdsad121 sdasadsad 1212sdasdas",
+                StringUtils.repeat("x", 2000) };
+        Assert.assertTrue(file.makeStringArray("test-group/double-group/my-double", testValues));
+        System.err.println(testFile);
+        file.close();
+        FileUtils.copyFile(testFile, new File("/tmp/3.hd5"));
+        final long time = System.currentTimeMillis();
+        Assert.assertTrue(testFile.length() > 0);
+        Assert.assertTrue(testFile.lastModified() <= time);
+        file = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
+        final String[] theStrings = file.readStringArray("test-group/double-group/my-double");
+        Assert.assertEquals(theStrings, testValues.clone());
+        file.close();
+    }
+
 
     private void assertEqualMatrix(RealMatrix actual, RealMatrix expected) {
         Assert.assertEquals(actual.getRowDimension(), expected.getRowDimension());

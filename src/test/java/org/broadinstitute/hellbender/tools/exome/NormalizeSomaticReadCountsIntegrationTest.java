@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTests;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5Reader;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -285,7 +285,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     }
 
     private void assertFactorNormalizedValues(final ReadCountCollection input, final ReadCountCollection factorNormalized) {
-        try (final HDF5Reader ponReader = new HDF5Reader(TEST_PON)) {
+        try (final HDF5File ponReader = new HDF5File(TEST_PON)) {
             final PoN pon = new HDF5PoN(ponReader);
             final RealMatrix targetFactors = pon.targetFactors();
             final List<String> ponTargets = pon.targetNames();
@@ -364,7 +364,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         Assert.assertEquals(actual.getColumnDimension(), preTangentNormalized.columnNames().size());
         final double epsilon = NormalizeSomaticReadCounts.EPSILON;
 
-        try (final HDF5Reader ponReader = new HDF5Reader(ponFile)) {
+        try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
             final List<String> ponTargets = pon.reducedPoNTargetNames();
             final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, ponTargets);
@@ -397,7 +397,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
     private void assertTangentNormalized(final ReadCountCollection actualReadCounts, final ReadCountCollection preTangentNormalized, final RealMatrix betaHats, final File ponFile) {
 
-        try (final HDF5Reader ponReader = new HDF5Reader(ponFile)) {
+        try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
             final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized,pon.reducedPoNTargetNames());
             final RealMatrix actual = reorderTargetsToPoNOrder(actualReadCounts,pon.reducedPoNTargetNames());

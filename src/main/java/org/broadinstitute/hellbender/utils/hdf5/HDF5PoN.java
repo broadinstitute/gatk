@@ -57,7 +57,7 @@ public final class HDF5PoN implements PoN {
 
     private final static String VERSION_PATH = VERSION_GROUP_NAME + "/values";
 
-    private final HDF5Reader reader;
+    private final HDF5File reader;
 
     private final List<String> targetNames;
 
@@ -67,7 +67,7 @@ public final class HDF5PoN implements PoN {
 
     private List<String> logNormalSampleNames;
 
-    public HDF5PoN(final HDF5Reader reader) {
+    public HDF5PoN(final HDF5File reader) {
         if (reader == null) {
             throw new IllegalArgumentException("reader is null");
         }
@@ -105,7 +105,7 @@ public final class HDF5PoN implements PoN {
      * @return never {@code null}.
      * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
      */
-    private static List<String> readLogNormalSampleNames(final HDF5Reader reader) {
+    private static List<String> readLogNormalSampleNames(final HDF5File reader) {
         final String[] values = reader.readStringArray(LOG_NORMALS_SAMPLE_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
@@ -116,7 +116,7 @@ public final class HDF5PoN implements PoN {
      * @return never {@code null}.
      * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
      */
-    private static List<String> readTargetNames(final HDF5Reader reader) {
+    private static List<String> readTargetNames(final HDF5File reader) {
         final String[] values = reader.readStringArray(TARGET_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
@@ -127,7 +127,7 @@ public final class HDF5PoN implements PoN {
      * @return never {@code null}.
      * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
      */
-    private List<String> readSampleNames(final HDF5Reader reader) {
+    private List<String> readSampleNames(final HDF5File reader) {
         final String[] values = reader.readStringArray(SAMPLE_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
