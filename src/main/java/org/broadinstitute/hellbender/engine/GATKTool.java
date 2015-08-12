@@ -292,27 +292,22 @@ public abstract class GATKTool extends CommandLineProgram {
         }
         //check reference dict against reads dict
         if (hasReference() && hasReads()) {
-            if (hasIntervals()){
-                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, true, intervalsForTraversal);
-            }
-            else {
-                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, true, null);
-            }
+            SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, true);
         }
 
         //check all variants dicts against the ref and/or read dicts, as well as the
-        //TODO: pass vcf file names associated with each sequence dictionary into validateDictionaries()
+        //TODO: pass vcf file names associated with each sequence dictionary into validateDictionaries(); issue #660
         for (int k = 0; k < variantDicts.size(); k++){
             String name = "variants" + (k+1);
             if (hasReference()){
-                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false, null);
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false);
             }
             if (hasReads()) {
-                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false, null);
+                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false);
             }
             if (k+1 < variantDicts.size()) {
                 String name2 = "variants" + (k+2);
-                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false, null);
+                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false);
             }
         }
 

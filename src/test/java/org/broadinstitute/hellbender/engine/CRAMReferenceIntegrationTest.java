@@ -58,8 +58,8 @@ public final class CRAMReferenceIntegrationTest extends CommandLineProgramTest{
                 {"cramtest.sam", "cramtest.cram", ".bam"}
         };
     }
-// TODO: re-enable this test once wrong ref situation is fixed #793
-    /*@Test(dataProvider="testingDataWrongRef", expectedExceptions = UserException.class)
+
+    @Test(dataProvider="testingDataWrongRef", expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
     public void testWrongRef(String fileIn, String extOut, String referenceFile) throws Exception {
         final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
         File readInput = new File(TEST_DATA_DIR, fileIn);
@@ -70,12 +70,12 @@ public final class CRAMReferenceIntegrationTest extends CommandLineProgramTest{
                 "-R", reference.getAbsolutePath()
         };
         runCommandLine(args);
-    }*/
+    }
 
     @DataProvider(name="testingDataWrongRef")
     public Object[][] testingDataWrongRef() {
         return new String[][]{
-                {"cramtest.cram", ".sam", "cramtest.fasta"},
+                {"cramtest.cram", ".sam", "cramtestWrongRef.fasta"},
         };
     }
 

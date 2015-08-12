@@ -1,10 +1,10 @@
 ##fileformat=VCFv4.1
 ##ALT=<ID=DEL,Description="Deletion">
 ##INFO=<ID=AC,Number=.,Type=Integer,Description="Alternate Allele Count">
-##contig=<ID=1,length=16000,assembly=b37>
-##contig=<ID=2,length=16000,assembly=b37>
-##contig=<ID=3,length=16000,assembly=b37>
-##contig=<ID=4,length=16000,assembly=b37>
+##contig=<ID=chr1,length=16000,assembly=b37>
+##contig=<ID=chr2,length=16000,assembly=b37>
+##contig=<ID=chr3,length=16000,assembly=b37>
+##contig=<ID=chr4,length=16000,assembly=b37>
 ##contig=<ID=chr5,length=101,assembly=b37>
 ##contig=<ID=chr6,length=101,assembly=b37>
 ##contig=<ID=chr7,length=404,assembly=b37>
