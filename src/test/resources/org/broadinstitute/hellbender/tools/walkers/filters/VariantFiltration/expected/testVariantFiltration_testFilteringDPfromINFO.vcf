@@ -1,4 +1,4 @@
-##fileformat=VCFv4.1
+##fileformat=VCFv4.2
 ##FILTER=<ID=lowDP,Description="DP < 8">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="read depth">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">

@@ -1,4 +1,4 @@
-##fileformat=VCFv4.1
+##fileformat=VCFv4.2
 ##FILTER=<ID=ABF,Description="AlleleBalance < 0.7">
 ##FILTER=<ID=FSF,Description="FisherStrand == 1.4">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
