@@ -52,7 +52,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
      * This test is currently disabled because indexed CRAMs do not currently work.
      * TODO: Reenable this test once indexing with CRAM is fixed
      */
-    /*@Test(dataProvider="testingDataIntervals")
+    @Test(dataProvider="testingDataIntervals")
     public void testFileToFileIntervals(String fileIn, String extOut, String reference, String intervals) throws Exception {
         String samFile= fileIn;
         final File outFile = File.createTempFile(samFile + ".", extOut);
@@ -68,7 +68,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(args);
         SamAssertionUtils.assertSamsEqual(ORIG_BAM, outFile, refFile);
-    }*/
+    }
 
     @DataProvider(name="testingData")
     public Object[][] testingData() {
