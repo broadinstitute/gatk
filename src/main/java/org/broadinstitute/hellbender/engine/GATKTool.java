@@ -108,6 +108,34 @@ public abstract class GATKTool extends CommandLineProgram {
         return false;
     }
 
+    /* void initializeReads() {
+        SamReaderFactory factory = null;
+        if (hasReference()){
+            // pass in reference if available, because CRAM files need it
+            //String refMD5 = reference.getMD5();
+            factory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).referenceSequence(referenceArguments.getReferenceFile());
+            for (File cramFile : cramInputFiles()) {
+                if (! cramFile.getMD5().equals(refMD5)) {
+                    throw new UserException.WrongReference("The reference file given is incorrect for the CRAM file(s) given.");
+                    }
+            }
+        } else if (cramInputFiles().size() > 0) {
+
+            throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+        }
+        reads = ! readArguments.getReadFiles().isEmpty() ? new ReadsDataSource(readArguments.getReadFiles(), factory) : null;
+    }
+
+    private List<File> cramInputFiles() {
+        ArrayList<File> cramFiles = new ArrayList<>();
+        for (File inputFile : readArguments.getReadFiles()) {
+            if (FilenameUtils.getExtension(inputFile.getName()).equalsIgnoreCase("cram")) {
+                cramFiles.add(inputFile);
+            }
+        }
+        return cramFiles;
+    } */
+
     /**
      * Initialize our source of Feature data (or set it to null if no Feature argument(s) were provided).
      *
