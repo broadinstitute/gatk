@@ -8,7 +8,6 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -26,7 +25,7 @@ import java.util.Map;
  * RefAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works
  * at workers.
  */
-public class RefAPISource implements Serializable {
+public class RefAPISource implements ReferenceSource, Serializable {
     private static final long serialVersionUID = 1L;
     private static final int pageSize = 1000000; // The number results per request (the default is 200k).
 
@@ -39,27 +38,11 @@ public class RefAPISource implements Serializable {
     // genomicsService is created on each worker.
     private transient Genomics genomicsService;
 
-    // We use the singleton pattern here because Dataflow probably isn't smart enough to prevent multiple instantiations
-    // of this object (when it's not needed).
-    private static RefAPISource singletonSource = null;
+    private final Map<String, String> referenceNameToIdTable;
 
-    /**
-     * Sets the singleton source for the reference API. This is intended for testing use only. This will not work
-     * using the Dataflow or Spark runners as the static values will be cleared when the class is reconstituted on
-     * each worker.
-     * @param source the (mock) Ref API source to use.
-     */
-    public static void setRefAPISource(RefAPISource source) {
-        singletonSource = source;
+    public RefAPISource(final String referenceName, final PipelineOptions pipelineOptions) {
+        this.referenceNameToIdTable = buildReferenceNameToIdTable(pipelineOptions, referenceName);
     }
-
-    public static RefAPISource getRefAPISource() {
-        if (singletonSource == null) {
-            singletonSource = new RefAPISource();
-        }
-        return singletonSource;
-    }
-    private RefAPISource() { /* To prevent instantiation */ }
 
     /**
      * buildReferenceNameToIdTable produces a table from reference name (sadly not standard names like GRCh37),
@@ -70,7 +53,7 @@ public class RefAPISource implements Serializable {
      * @param referenceName the "name of the reference, e.g., EOSt9JOVhp3jkwE.
      * @return returns a mapping from reference name to String id.
      */
-    public static Map<String, String> buildReferenceNameToIdTable(final PipelineOptions pipelineOptions, final String referenceName) {
+    private static Map<String, String> buildReferenceNameToIdTable(final PipelineOptions pipelineOptions, final String referenceName) {
         Genomics genomicsService = createGenomicsService(pipelineOptions);
         final ReferenceSet referenceSet;
         try {
@@ -102,24 +85,22 @@ public class RefAPISource implements Serializable {
      * Footnote: queries larger than pageSize will be truncated.
      *
      * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
-     * @param apiData - contains the hashmap that maps from reference name to Id needed for the API call.
      * @param interval - the range of bases to retrieve.
      * @return the reference bases specified by interval and apiData (using the Google Genomics API).
      */
-    public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final RefAPIMetadata apiData, final SimpleInterval interval) {
+    public ReferenceBases getReferenceBases(final SimpleInterval interval, final PipelineOptions pipelineOptions) {
         Utils.nonNull(pipelineOptions);
-        Utils.nonNull(apiData);
         Utils.nonNull(interval);
         
         if (genomicsService == null) {
             genomicsService = createGenomicsService(pipelineOptions);
         }
-        if ( !apiData.getReferenceNameToIdTable().containsKey(interval.getContig()) ) {
+        if ( !referenceNameToIdTable.containsKey(interval.getContig()) ) {
             throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
         }
 
         try {
-            final Genomics.References.Bases.List listRequest = genomicsService.references().bases().list(apiData.getReferenceNameToIdTable().get(interval.getContig())).setPageSize(pageSize);
+            final Genomics.References.Bases.List listRequest = genomicsService.references().bases().list(referenceNameToIdTable.get(interval.getContig())).setPageSize(pageSize);
             // We're subtracting 1 with the start but not the end because GA4GH is zero-based (inclusive,exclusive)
             // for its intervals.
             listRequest.setStart((long) interval.getGA4GHStart());

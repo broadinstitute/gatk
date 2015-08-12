@@ -6,7 +6,6 @@ import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -14,8 +13,6 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.util.Map;
 
 public class RefAPISourceUnitTest extends BaseTest {
 
@@ -26,11 +23,8 @@ public class RefAPISourceUnitTest extends BaseTest {
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
 
-        Map<String, String> referenceNameToIdTable = RefAPISource.buildReferenceNameToIdTable(p.getOptions(), referenceName);
-        RefAPISource refAPISource = RefAPISource.getRefAPISource();
-        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-
-        return refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
+        RefAPISource refAPISource = new RefAPISource(referenceName, p.getOptions());
+        return refAPISource.getReferenceBases(interval, p.getOptions());
     }
 
     @Test(groups = "cloud")
@@ -45,14 +39,10 @@ public class RefAPISourceUnitTest extends BaseTest {
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
         logger.info("a");
-        Map<String, String> referenceNameToIdTable = RefAPISource.buildReferenceNameToIdTable(p.getOptions(), referenceName);
+        RefAPISource refAPISource = new RefAPISource(referenceName, p.getOptions());
         logger.info("b");
-        RefAPISource refAPISource = RefAPISource.getRefAPISource();
+        ReferenceBases bases = refAPISource.getReferenceBases(interval, p.getOptions());
         logger.info("c");
-        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-        logger.info("d");
-        ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
-        logger.info("e");
 
         Assert.assertEquals(new String(bases.getBases()), "AAACAGGTTA", "Wrong bases returned");
         p.run();

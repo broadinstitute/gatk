@@ -76,7 +76,6 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(VariantContextVariantAdapter.class, SerializableCoder.of(VariantContextVariantAdapter.class));
         p.getCoderRegistry().registerCoder(SkeletonVariant.class, SerializableCoder.of(SkeletonVariant.class));
         p.getCoderRegistry().registerCoder(RefAPISource.class, SerializableCoder.of(RefAPISource.class));
-        p.getCoderRegistry().registerCoder(RefAPIMetadata.class, SerializableCoder.of(RefAPIMetadata.class));
         p.getCoderRegistry().registerCoder(ReferenceDataflowSource.class, SerializableCoder.of(ReferenceDataflowSource.class));
         p.getCoderRegistry().registerCoder(ReferenceBases.class, SerializableCoder.of(ReferenceBases.class));
         p.getCoderRegistry().registerCoder(ReadContextData.class, new ReadContextDataCoder());
