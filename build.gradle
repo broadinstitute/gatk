@@ -250,6 +250,7 @@ task fatJar(type: Jar) {
           'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
     baseName = project.name + '-all'
+    zip64 true
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
