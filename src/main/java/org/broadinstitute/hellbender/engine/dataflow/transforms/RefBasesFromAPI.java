@@ -50,7 +50,7 @@ public class RefBasesFromAPI {
 
                         // Apply the reference window function to each read to produce a set of intervals representing
                         // the desired reference bases for each read.
-                        final List<SimpleInterval> readWindows = StreamSupport.stream(reads.spliterator(), false).map(read -> referenceDataflowSource.getReferenceWindowFunction().apply(read)).collect(Collectors.toList());
+                        final List<SimpleInterval> readWindows = StreamSupport.stream(reads.spliterator(), false).map(read -> c.sideInput(refView).getReferenceWindowFunction().apply(read)).collect(Collectors.toList());
 
                         // Get a single interval spanning all the per-read reference windows.
                         SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);

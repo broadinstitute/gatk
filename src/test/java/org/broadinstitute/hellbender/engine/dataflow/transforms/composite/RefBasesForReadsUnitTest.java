@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -51,24 +52,18 @@ public final class RefBasesForReadsUnitTest extends BaseTest {
 
     @Test(dataProvider = "bases")
     public void refBasesTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
-                             List<SimpleInterval> intervals) {
+                             List<SimpleInterval> intervals) throws IOException {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
         PCollection<GATKRead> pReads = DataflowTestUtils.pCollectionCreateAndVerify(p, reads, new GATKReadCoder());
 
-        RefAPISource mockSource = mock(RefAPISource.class, withSettings().serializable());
+        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), any(RefAPIMetadata.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+            when(mockSource.getReferenceBases(eq(i), any(PipelineOptions.class))).thenReturn(FakeReferenceSource.bases(i));
         }
-
-        String referenceName = "refName";
-        String crazyName = "0xbjfjd23f";
-        Map<String, String> referenceNameToIdTable = Maps.newHashMap();
-        referenceNameToIdTable.put(referenceName, crazyName);
-        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-        RefAPISource.setRefAPISource(mockSource);
-        PCollection<KV<GATKRead, ReferenceBases>> result = RefBasesForReads.addBases(pReads, new ReferenceDataflowSource(refAPIMetadata));
+        when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
+        PCollection<KV<GATKRead, ReferenceBases>> result = RefBasesForReads.addBases(pReads, mockSource);
         DataflowAssert.that(result).containsInAnyOrder(kvReadRefBases);
         p.run();
     }
