@@ -1,4 +1,4 @@
-##fileformat=VCFv4.1
+##fileformat=VCFv4.2
 ##FILTER=<ID=foo,Description="DoC < 20 || FisherStrand > 20.0">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">

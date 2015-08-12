@@ -75,7 +75,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
-    compile 'com.github.samtools:htsjdk:1.137'
+    compile 'com.github.samtools:htsjdk:1.138'
     compile ('com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.14') {
         // an upstream dependency includes guava-jdk5, but we want the newer version instead.
         exclude module: 'guava-jdk5'

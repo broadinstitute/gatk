@@ -1,4 +1,4 @@
-##fileformat=VCFv4.1
+##fileformat=VCFv4.2
 ##FILTER=<ID=foo,Description="GQ == 0.60">
 ##FORMAT=<ID=FT,Number=1,Type=String,Description="Genotype-level filter">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
