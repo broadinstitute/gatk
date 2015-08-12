@@ -151,7 +151,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> actualResult = RefBasesFromAPI.getBasesForShard(pInput, new ReferenceDataflowSource(refAPIMetadata));
 
         DataflowAssert.that(actualResult).satisfies((Iterable<KV<ReferenceBases, Iterable<GATKRead>>> input) -> {
-            for ( KV<ReferenceBases, Iterable<GATKRead>> kvPair : input ) {
+            for (KV<ReferenceBases, Iterable<GATKRead>> kvPair : input) {
                 Assert.assertNotNull(kvPair.getKey(), "Null ReferenceBases in KV pair indicates that reference query in RefBaseFromAPI used an unexpected/incorrect interval (mock RefAPISource returned null)");
                 Assert.assertEquals(kvPair.getKey().getInterval(), expectedReferenceInterval, "Wrong interval for ReferenceBases object after applying RefBasesFromAPI");
             }

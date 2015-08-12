@@ -12,12 +12,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
-public class ReferenceDataflowSource implements Serializable {
+public class ReferenceDataflowSource implements ReferenceSource, Serializable {
     private static final long serialVersionUID = 1L;
 
-    private SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction;
-    private RefAPIMetadata refAPIMetadata;
     private ReferenceSource referenceSource;
+    private SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction;
 
     public ReferenceDataflowSource(String referenceName, SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction,
                                    PipelineOptions pipelineOptions) {
@@ -29,14 +28,15 @@ public class ReferenceDataflowSource implements Serializable {
             }
         } else { // use GCS
             Map<String, String> referenceNameToIdTable = RefAPISource.buildReferenceNameToIdTable(pipelineOptions, referenceName);
-            refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable, referenceWindowFunction);
+            RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable, referenceWindowFunction);
+            referenceSource = new ReferenceAPISource(refAPIMetadata);
         }
         this.referenceWindowFunction = referenceWindowFunction;
     }
 
     @VisibleForTesting
     public ReferenceDataflowSource(RefAPIMetadata refAPIMetadata) {
-        this.refAPIMetadata = refAPIMetadata;
+        this.referenceSource = new ReferenceAPISource(refAPIMetadata);
         this.referenceWindowFunction = refAPIMetadata.getReferenceWindowFunction();
     }
 
@@ -45,11 +45,6 @@ public class ReferenceDataflowSource implements Serializable {
     }
 
     public ReferenceBases getReferenceBases(final SimpleInterval interval, PipelineOptions pipelineOptions) throws IOException {
-        if (referenceSource != null) {
-            return referenceSource.getReferenceBases(interval);
-        } else {
-            RefAPISource refAPISource = RefAPISource.getRefAPISource();
-            return refAPISource.getReferenceBases(pipelineOptions, refAPIMetadata, interval);
-        }
+        return referenceSource.getReferenceBases(interval, pipelineOptions);
     }
 }

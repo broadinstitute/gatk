@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,7 +22,8 @@ public class ReferenceFileSourceUnitTest extends BaseTest {
         final Pipeline p = TestPipeline.create();
 
         final ReferenceFileSource refSource = new ReferenceFileSource(referencePath);
-        final ReferenceBases bases = refSource.getReferenceBases(new SimpleInterval("2", 10001, 10010));
+        final ReferenceBases bases = refSource.getReferenceBases(new SimpleInterval("2", 10001, 10010),
+                PipelineOptionsFactory.create());
 
         Assert.assertNotNull(bases);
         Assert.assertEquals(bases.getBases().length, 10, "Wrong number of bases returned");
