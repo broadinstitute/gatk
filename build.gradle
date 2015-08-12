@@ -42,6 +42,15 @@ repositories {
     maven {
         url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
     }
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots/"
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'com.google.http-client:google-http-client:1.21.0-SNAPSHOT'
+    }
 }
 
 jacocoTestReport {
