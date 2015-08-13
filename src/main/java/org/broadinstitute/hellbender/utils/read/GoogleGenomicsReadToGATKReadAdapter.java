@@ -60,6 +60,11 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
         private static final long serialVersionUID = 1l;
 
         @Override
+        public String getEncodingId() {
+            return "GoogleGenomicsReadToGATKReadAdapterCoder";
+        }
+
+        @Override
         public void encode(GoogleGenomicsReadToGATKReadAdapter value, OutputStream outStream, Context context) throws IOException {
             KvCoder.of(UUIDCoder.CODER,GenericJsonCoder.of(Read.class)).encode(KV.of(value.getUUID(), value.genomicsRead), outStream, context);
         }

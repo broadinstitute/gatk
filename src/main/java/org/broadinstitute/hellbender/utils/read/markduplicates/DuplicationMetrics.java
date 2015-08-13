@@ -140,4 +140,20 @@ public final class DuplicationMetrics extends MetricBase implements Serializable
 
         return histo;
     }
+
+    public DuplicationMetrics copy() {
+        final DuplicationMetrics copy = new DuplicationMetrics();
+        copy.LIBRARY = this.LIBRARY;
+        copy.UNPAIRED_READS_EXAMINED = this.UNPAIRED_READS_EXAMINED;
+        copy.READ_PAIRS_EXAMINED = this.READ_PAIRS_EXAMINED;
+        copy.UNMAPPED_READS = this.UNMAPPED_READS;
+        copy.UNPAIRED_READ_DUPLICATES = this.UNPAIRED_READ_DUPLICATES;
+        copy.READ_PAIR_DUPLICATES = this.READ_PAIR_DUPLICATES;
+        copy.READ_PAIR_OPTICAL_DUPLICATES = this.READ_PAIR_OPTICAL_DUPLICATES;
+        copy.PERCENT_DUPLICATION = this.PERCENT_DUPLICATION;
+        copy.ESTIMATED_LIBRARY_SIZE = this.ESTIMATED_LIBRARY_SIZE;
+
+        return copy;
+    }
+
 }

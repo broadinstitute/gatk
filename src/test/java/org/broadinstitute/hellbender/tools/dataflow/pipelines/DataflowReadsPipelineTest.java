@@ -62,8 +62,9 @@ public final class DataflowReadsPipelineTest {
         ReadFilter all = r -> true;
         ReadFilter none = r -> false;
         ReadTransformer replaceBasesWithA = r -> {
-                r.setBases(new byte[]{(byte) 'A'});
-                return r;
+                final GATKRead copy = r.copy();
+                copy.setBases(new byte[]{(byte) 'A'});
+                return copy;
         };
 
         return new Object[][] {
