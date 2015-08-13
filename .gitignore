@@ -17,3 +17,6 @@ gradlew.bat
 #Please don't commit me
 client_secret.json
 servicekey.json
+
+#Test Generated File
+I_SHOULD_HAVE_BEEN_DELETED
