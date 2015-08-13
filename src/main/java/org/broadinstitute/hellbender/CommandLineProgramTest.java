@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender;
 
 import com.google.common.base.Strings;
+import org.broadinstitute.hellbender.dev.BunnyLog;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -49,12 +50,16 @@ public abstract class CommandLineProgramTest extends BaseTest {
      * Look for VERBOSITY argument; if not found, supply a default value that minimizes the amount of logging output.
      */
     private List<String> injectDefaultVerbosity(final List<String> args) {
+
+        // global toggle for BunnyLog output.
+        BunnyLog.setEnabled(false);
+
         for (String arg : args) {
             if (arg.equalsIgnoreCase("--VERBOSITY")) return args;
         }
         List<String> argsWithVerbosity = new ArrayList<>(args);
         argsWithVerbosity.add("--VERBOSITY");
-        argsWithVerbosity.add("ERROR");
+        argsWithVerbosity.add("INFO");
         return argsWithVerbosity;
     }
 

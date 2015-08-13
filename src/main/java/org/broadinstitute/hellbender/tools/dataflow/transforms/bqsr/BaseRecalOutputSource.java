@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.dev.pipelines.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 /**
- * Functions to oad a BaseRecalOutput.
+ * Functions to load a BaseRecalOutput.
  * Either from GCS on the worker, or from local on the client.
  */
 public final class BaseRecalOutputSource implements Serializable {

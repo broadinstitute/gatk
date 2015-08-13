@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.dev.pipelines.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;

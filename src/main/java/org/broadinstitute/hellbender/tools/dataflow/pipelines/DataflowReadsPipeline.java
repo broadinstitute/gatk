@@ -82,7 +82,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary):
                 getAllIntervalsForReference(sequenceDictionary);
 
-        final PCollection<GATKRead> preads = readsDataflowSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        final PCollection<GATKRead> preads = readsDataflowSource.getReadPCollection(intervals, ValidationStringency.SILENT, false);
 
         final PCollection<?> presult = applyTransformsToPipeline(header, preads);
 

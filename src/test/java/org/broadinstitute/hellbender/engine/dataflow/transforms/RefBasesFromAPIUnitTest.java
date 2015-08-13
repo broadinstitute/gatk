@@ -18,10 +18,7 @@ import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -77,7 +74,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply("pInput.Create",Create.of(kvRefShardiReads).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
 
-        RefAPISource.setRefAPISource(mockSource);
+        RefAPISource.setInstance(mockSource);
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> kvpCollection = RefBasesFromAPI.getBasesForShard(pInput, refAPIMetadata);
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> pkvRefBasesiReads = p.apply("pkvRefBasesiReads.Create", Create.of(kvRefBasesiReads).withCoder(KvCoder.of(SerializableCoder.of(ReferenceBases.class), IterableCoder.of(new GATKReadCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(kvpCollection, pkvRefBasesiReads);
@@ -99,7 +96,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply(Create.of(noReads).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
 
-        RefAPISource.setRefAPISource(mockSource);
+        RefAPISource.setInstance(mockSource);
         // We expect an exception to be thrown if there is a problem. If no error is thrown, it's fine.
         RefBasesFromAPI.getBasesForShard(pInput, refAPIMetadata);
 
@@ -148,7 +145,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
         // unexpected interval, we'll detect it via an Assert.
         final RefAPISource mockSource = createMockRefAPISource(Arrays.asList(expectedReferenceInterval));
         final RefAPIMetadata refAPIMetadata = ReadsPreprocessingPipelineTestData.createRefAPIMetadata(referenceWindowFunction);
-        RefAPISource.setRefAPISource(mockSource);
+        RefAPISource.setInstance(mockSource);
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply("pInput.Create", Create.of(inputShard).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> actualResult = RefBasesFromAPI.getBasesForShard(pInput, refAPIMetadata);

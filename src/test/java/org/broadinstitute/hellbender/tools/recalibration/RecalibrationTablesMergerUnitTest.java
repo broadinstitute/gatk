@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.recalibration;
 
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.RecalibrationTablesMerger;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.RecalibrationTablesMerger;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;

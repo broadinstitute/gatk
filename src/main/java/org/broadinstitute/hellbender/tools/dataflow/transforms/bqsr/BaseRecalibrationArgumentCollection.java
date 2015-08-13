@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
@@ -29,7 +29,7 @@ public final class BaseRecalibrationArgumentCollection implements ArgumentCollec
     public final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
 
     @ArgumentCollection
-    protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
+    public final IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
 
     @ArgumentCollection

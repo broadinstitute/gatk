@@ -67,7 +67,7 @@ public class SmallBamWriter implements Serializable {
             logger.info("Saving to " + dest);
             Iterable<GATKRead> reads = c.sideInput(iterableView);
             OutputStream outputStream = BucketUtils.createFile(dest, c.getPipelineOptions());
-            try (SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, false, outputStream)) {
+            try (SAMFileWriter writer = new SAMFileWriterFactory().setCreateIndex(true).makeBAMWriter(header, false, outputStream)) {
                 for (GATKRead r : reads) {
                     final SAMRecord sr = r.convertToSAMRecord(header);
                     writer.addAlignment(sr);

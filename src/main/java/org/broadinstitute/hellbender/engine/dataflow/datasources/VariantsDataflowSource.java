@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.annotations.VisibleForTesting;
@@ -52,6 +53,10 @@ public class VariantsDataflowSource {
      */
     public PCollection<Variant> getAllVariants() {
         final List<Variant> aggregatedResults = getVariantsList(variantSources);
+        if (aggregatedResults.size()==0) {
+            // empty list of interval type is something that Dataflow isn't happy with.
+            System.err.println("Warning: variant source is empty, you may see a coder failure.");
+        }
         return pipeline.apply(Create.of(aggregatedResults)).setName("creatingVariants");
     }
 

@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.dev;
 
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 
 /**
  * A DoFn that automatically logs its start and end.
@@ -16,6 +15,7 @@ public abstract class DoFnWLog<T,U> extends DoFn<T,U> {
     protected String className;
     protected String opName;
     protected transient BunnyLog bunny;
+    protected transient Logger log = null;
 
     public DoFnWLog(String name) {
         this.opName = this.className = name;
@@ -28,7 +28,8 @@ public abstract class DoFnWLog<T,U> extends DoFn<T,U> {
 
     @Override
     public void startBundle(DoFn<T, U>.Context c) throws Exception {
-        bunny = new BunnyLog(LogManager.getLogger(className));
+        log = LogManager.getLogger(className);
+        bunny = new BunnyLog(log);
         bunny.start(opName);
     }
     

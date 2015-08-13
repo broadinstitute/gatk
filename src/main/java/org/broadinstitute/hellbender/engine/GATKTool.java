@@ -76,7 +76,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reference data source.
      */
     void initializeReference() {
-        reference = referenceArguments.getReferenceFile() != null ? new ReferenceDataSource(referenceArguments.getReferenceFile()) : null;
+        reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
     }
 
     /**

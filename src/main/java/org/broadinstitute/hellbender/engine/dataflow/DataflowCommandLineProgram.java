@@ -4,6 +4,7 @@ import com.cloudera.dataflow.spark.SparkPipelineOptions;
 import com.cloudera.dataflow.spark.SparkPipelineRunner;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
+import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.runners.BlockingDataflowPipelineRunner;
@@ -24,6 +25,8 @@ import java.io.Serializable;
 
 public abstract class DataflowCommandLineProgram extends CommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1l;
+
+    public interface HellbenderDataflowOptions extends GCSOptions, DataflowPipelineOptions {}
 
     protected enum PipelineRunnerType implements CommandLineParser.ClpEnum {
         LOCAL(DirectPipelineRunner.class, "run the pipeline locally"),
@@ -109,7 +112,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         if (sparkMaster == null) {
             // We create GCSOptions instead of DataflowPipelineOptions to keep track of the secrets so we can read
             // data from buckets.
-            final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+            final HellbenderDataflowOptions options = PipelineOptionsFactory.as(HellbenderDataflowOptions.class);
             options.setProject(projectID);
             options.setStagingLocation(stagingLocation);
             options.setRunner(this.runnerType.runner);

@@ -1,11 +1,10 @@
-package org.broadinstitute.hellbender.dev.pipelines.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
 import com.google.cloud.dataflow.sdk.coders.DefaultCoder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 
-import java.io.Serializable;
 import java.util.stream.StreamSupport;
 
 /**

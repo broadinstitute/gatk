@@ -67,7 +67,7 @@ public final class RefBasesForReadsUnitTest extends BaseTest {
         Map<String, String> referenceNameToIdTable = Maps.newHashMap();
         referenceNameToIdTable.put(referenceName, crazyName);
         RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-        RefAPISource.setRefAPISource(mockSource);
+        RefAPISource.setInstance(mockSource);
         PCollection<KV<GATKRead, ReferenceBases>> result = RefBasesForReads.addBases(pReads, refAPIMetadata);
         DataflowAssert.that(result).containsInAnyOrder(kvReadRefBases);
         p.run();

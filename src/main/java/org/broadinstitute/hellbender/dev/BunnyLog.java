@@ -18,6 +18,8 @@ public final class BunnyLog {
     public static final String bunny = "=[**]=";
     private Logger optLogger = null;
     private final String id;
+    // if false, then we don't print any message.
+    private static boolean enabled = true;
 
     public BunnyLog() {
         this.id = "" + new Random().nextLong();
@@ -28,21 +30,29 @@ public final class BunnyLog {
         optLogger = l;
     }
 
+    /**
+     * Pass false to disable all logging via bunnylog
+     * (it's enabled by default).
+     */
+    public static void setEnabled(boolean enabled) {
+        BunnyLog.enabled = enabled;
+    }
+
     public String start(String name) {
         String ret = bunny + " START " + id + " " + name;
-        if (null!=optLogger) optLogger.info(ret);
+        if (enabled && null!=optLogger) optLogger.info(ret);
         return ret;
     }
 
     public String stepEnd(String stepName) {
         String ret = bunny + " STEPEND " + id + " " + stepName;
-        if (null!=optLogger) optLogger.info(ret);
+        if (enabled && null!=optLogger) optLogger.info(ret);
         return ret;
     }
 
     public String end() {
         String ret = bunny + " END " + id;
-        if (null!=optLogger) optLogger.info(ret);
+        if (enabled && null!=optLogger) optLogger.info(ret);
         return ret;
     }
 }

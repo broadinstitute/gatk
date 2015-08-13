@@ -97,7 +97,7 @@ public final class AddContextDataToReadUnitTest extends BaseTest {
         }
 
         final RefAPIMetadata refAPIMetadata = ReadsPreprocessingPipelineTestData.createRefAPIMetadata();
-        RefAPISource.setRefAPISource(mockSource);
+        RefAPISource.setInstance(mockSource);
         PCollection<KV<GATKRead, ReadContextData>> result = AddContextDataToRead.add(pReads, /*mockSource,*/ refAPIMetadata, mockVariantsSource);
         PCollection<KV<GATKRead, ReadContextData>> pkvReadContextData = p.apply(Create.of(kvReadContextData).withCoder(KvCoder.of(new GATKReadCoder(), new ReadContextDataCoder())));
         DataflowTestUtils.keyReadContextDataMatcher(result, pkvReadContextData);
@@ -150,7 +150,7 @@ public final class AddContextDataToReadUnitTest extends BaseTest {
         when(mockVariantsSource.getAllVariants()).thenReturn(pVariant);
 
         final RefAPIMetadata refAPIMetadata = ReadsPreprocessingPipelineTestData.createRefAPIMetadata(referenceWindowFunction);
-        RefAPISource.setRefAPISource(mockRefSource);
+        RefAPISource.setInstance(mockRefSource);
 
         PCollection<KV<GATKRead, ReadContextData>> result = AddContextDataToRead.add(pReads, refAPIMetadata, mockVariantsSource);
 

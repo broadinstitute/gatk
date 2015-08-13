@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.dev.pipelines.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
 import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;

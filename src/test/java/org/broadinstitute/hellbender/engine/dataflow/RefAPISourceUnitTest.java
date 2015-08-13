@@ -26,8 +26,8 @@ public class RefAPISourceUnitTest extends BaseTest {
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
 
-        Map<String, String> referenceNameToIdTable = RefAPISource.buildReferenceNameToIdTable(p.getOptions(), referenceName);
-        RefAPISource refAPISource = RefAPISource.getRefAPISource();
+        Map<String, String> referenceNameToIdTable = RefAPISource.getInstance().buildReferenceNameToIdTable(p.getOptions(), referenceName);
+        RefAPISource refAPISource = RefAPISource.getInstance();
         RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
 
         return refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
@@ -45,9 +45,9 @@ public class RefAPISourceUnitTest extends BaseTest {
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
         logger.info("a");
-        Map<String, String> referenceNameToIdTable = RefAPISource.buildReferenceNameToIdTable(p.getOptions(), referenceName);
+        Map<String, String> referenceNameToIdTable = RefAPISource.getInstance().buildReferenceNameToIdTable(p.getOptions(), referenceName);
         logger.info("b");
-        RefAPISource refAPISource = RefAPISource.getRefAPISource();
+        RefAPISource refAPISource = RefAPISource.getInstance();
         logger.info("c");
         RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
         logger.info("d");

@@ -16,6 +16,7 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
@@ -113,7 +114,7 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     private Pipeline setupPipeline(boolean enableGcs, boolean enableCloudExec) {
-        final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+        final DataflowCommandLineProgram.HellbenderDataflowOptions options = PipelineOptionsFactory.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class);
         if (enableCloudExec) {
             options.setStagingLocation(getDataflowTestStaging());
             options.setProject(getDataflowTestProject());
@@ -144,7 +145,7 @@ public class SmallBamWriterTest extends BaseTest {
 
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-            return new ReadsDataflowSource(filename, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT);
+            return new ReadsDataflowSource(filename, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT, false);
         } else {
             // ingestion from local file
             try( ReadsDataSource readsSource = new ReadsDataSource(new File(filename)) ) {

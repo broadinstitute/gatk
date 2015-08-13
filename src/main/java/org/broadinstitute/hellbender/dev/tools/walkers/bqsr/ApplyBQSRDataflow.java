@@ -16,8 +16,8 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalInterva
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyBQSRTransform;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutputSource;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutputSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
@@ -81,7 +81,7 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary) :
                 IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         PCollection<BaseRecalOutput> recalInfoSingletonCollection = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME);
-        PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT)
+        PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false)
                 .apply(new ApplyBQSRTransform(header, recalInfoSingletonCollection, bqsrOpts));
         intermediateRemoteBam = OUTPUT;
         if (needsIntermediateCopy()) {
