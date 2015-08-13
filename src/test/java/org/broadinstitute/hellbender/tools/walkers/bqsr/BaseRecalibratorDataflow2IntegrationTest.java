@@ -1,12 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
+import htsjdk.samtools.BAMIndexer;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.dev.tools.walkers.bqsr.ApplyBQSRDataflow;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow2;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -178,8 +183,7 @@ public final class BaseRecalibratorDataflow2IntegrationTest extends CommandLineP
         spec.executeTest("testBQSR-" + params.args, this);
     }
 
-    // TODO: enable this once we figure out how to read bams without requiring them to be indexed.
-    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"}, enabled = false)
+    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"})
     public void testPlottingWorkflow() throws IOException {
         final String cloudArgs = "--apiKey " + getDataflowTestApiKey() + " ";
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
@@ -187,7 +191,7 @@ public final class BaseRecalibratorDataflow2IntegrationTest extends CommandLineP
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String HiSeqBam = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
 
-        final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
+        final File actualHiSeqBam_recalibrated = createTempFile("actual.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
         final String argPre = cloudArgs
@@ -196,24 +200,24 @@ public final class BaseRecalibratorDataflow2IntegrationTest extends CommandLineP
         new BaseRecalibratorDataflow2().instanceMain(Utils.escapeExpressions(argPre));
 
         final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre+ "  -O " + actualHiSeqBam_recalibrated.getAbsolutePath();
-        new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
+        new ApplyBQSRDataflow().instanceMain(Utils.escapeExpressions(argApply));
+
+        // create the index
+        final SamReader reader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS).open(actualHiSeqBam_recalibrated);
+        String indexFileName = actualHiSeqBam_recalibrated.getAbsolutePath()+".bai";
+        BAMIndexer.createIndex(reader, new File(indexFileName));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
         final String argsPost = cloudArgs
                 + " -apiref gg://reference/" + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
                 + " -RECAL_TABLE_FILE " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
-        // currently fails with:
-        // org.broadinstitute.hellbender.exceptions.UserException: A USER ERROR has occurred: Traversal by intervals was requested but some input files are not indexed.
-        // Please index all input files:
-        // samtools index /tmp/actual.NA12878.chr17_69k_70k.dictFix.recalibrated360293023111112542.bam
         new BaseRecalibratorDataflow2().instanceMain(Utils.escapeExpressions(argsPost));
 
-        final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.bam");
+        final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.bam");
 
         SamAssertionUtils.assertSamsEqual(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated, ValidationStringency.LENIENT);
 
-        final File expectedTablePost = new File(getResourceDir() + "expected.NA12878.chr17_69k_70k.postRecalibrated.txt");
-        // this fails because "Cannot compare coordinate-sorted SAM files because sequence dictionaries differ."
+        final File expectedTablePost = new File(getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.postRecalibrated.txt");
         IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
