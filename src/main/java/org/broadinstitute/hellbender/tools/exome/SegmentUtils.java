@@ -4,6 +4,9 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections4.ListUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.apache.avro.generic.GenericData;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -61,6 +64,27 @@ public final class SegmentUtils {
     }
 
     /**
+     * read a list of segments (with calls, if possible) from a file.  Creates a list of modeled segments
+     */
+    public static List<ModeledSegment> readModeledSegmentsFromSegfile(final File segmentsFile) throws IOException {
+        try (final TableReader<ModeledSegment> reader = TableUtils.reader(segmentsFile,
+                (columns, formatExceptionFactory) -> {
+                    // Note that Segment_Call is optional
+                    if (!columns.containsAll("Sample", "Chromosome", "Start", "End", "Segment_Mean")) {
+                        throw formatExceptionFactory.apply("Bad header");
+                    }
+                    // return the lambda to translate dataLines into called segments.
+                    return (dataLine) -> new ModeledSegment(
+                            new SimpleInterval(dataLine.get("Chromosome"), dataLine.getInt("Start"), dataLine.getInt("End")), dataLine.get("Segment_Call", ""),
+                            dataLine.getDouble("Segment_Mean"));
+                })) {
+            return reader.stream().collect(Collectors.toList());
+        } catch (final UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
+    /**
      * write a list of intervals with calls to file
      */
     public static void writeCalledIntervalsToSegfile(final File outFile, List<CalledInterval> segments, final String sample) {
@@ -99,7 +123,8 @@ public final class SegmentUtils {
         }
         return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
     }
-
+    
+    
     /**
      *
      * @param interval some genomic region
@@ -240,5 +265,22 @@ public final class SegmentUtils {
         }
 
         return breakpoints;
+    }
+
+    /** Get difference between a segment mean and the overlapping targets.
+     *
+     * This will select the overlapping targets from the input collection, for your convenience.
+     *
+     * @param segment -- segment to use in calculating all difference of target CRs from the mean
+     * @param targets -- targets.  Note that this method will use only the targets overlapping the given segment.
+     * @return never {@code null}.  List of doubles of the difference, possibly empty.  Modifiable.
+     */
+    public static List<Double> segmentMeanTargetDifference(final ModeledSegment segment, final TargetCollection<TargetCoverage> targets) {
+        Utils.nonNull(segment, "Can't count targets of null segment.");
+        Utils.nonNull(targets, "Counting targets requires non-null targets collection.");
+
+        final double segMean = segment.getSegmentMeanInCRSpace();
+        final List<TargetCoverage> myTargets = targets.targets(segment);
+        return myTargets.stream().map(t -> ( Math.pow(2, t.getCoverage()) - segMean)).collect(Collectors.toList());
     }
 }
