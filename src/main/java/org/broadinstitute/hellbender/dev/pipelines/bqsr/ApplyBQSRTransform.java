@@ -58,7 +58,7 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<GATKRead>, 
                 transformer = new BQSRReadTransformer(header, info, args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
                 // it's OK if this same object is used for multiple bundles
             }
-            GATKRead r = c.element();
+            GATKRead r = c.element().copy();
             final GATKRead transformed = transformer.apply(r);
             c.output(transformed);
         }

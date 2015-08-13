@@ -242,8 +242,9 @@ public final class BaseRecalibratorWorker {
      * The "knownLocations" list doesn't need to be complete but it must includes all those that overlap with the read.
      */
     public void apply(GATKRead originalRead, final ReferenceContext ref, List<? extends Locatable> knownLocations) {
+        final GATKRead copy = originalRead.copy();
         ReadTransformer transform = makeReadTransform();
-        final GATKRead read = transform.apply(originalRead);
+        final GATKRead read = transform.apply(copy);
 
         if (read.isEmpty()) {
             return;
@@ -255,7 +256,7 @@ public final class BaseRecalibratorWorker {
         }
 
         // We've checked in onTraversalStart() that we have a reference, so ref.get() is safe
-        final int[] isSNP = calculateIsSNP(read, ref, originalRead);
+        final int[] isSNP = calculateIsSNP(read, ref, copy);
         final int[] isInsertion = calculateIsIndel(read, EventType.BASE_INSERTION);
         final int[] isDeletion = calculateIsIndel(read, EventType.BASE_DELETION);
         final int nErrors = nEvents(isSNP, isInsertion, isDeletion);

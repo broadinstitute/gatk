@@ -378,7 +378,7 @@ final class MarkDuplicatesUtils {
 
                         @Override
                         public void processElement(final ProcessContext context) throws Exception {
-                            DuplicationMetrics metrics = context.element().getValue();
+                            DuplicationMetrics metrics = context.element().getValue().copy();
                             // Divide these by 2 because they are counted for each read
                             // when they should be counted by pair.
                             metrics.READ_PAIRS_EXAMINED = metrics.READ_PAIRS_EXAMINED / 2;
