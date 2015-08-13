@@ -25,7 +25,7 @@ public final class ReadsDataflowSourceTest extends BaseTest {
     // We also need GCS bucket and Spark tests (#666).
 
     private final File bam = new File(this.getToolTestDataDir(), "count_reads_sorted.bam");
-    final String hiSeqBam = "src/test/resources/org/broadinstitute/hellbender/engine/dataflow/ReadsSource/HiSeq.1mb.1RG.2k_lines.bam";
+    final String hiSeqBam = "src/test/resources/org/broadinstitute/hellbender/engine/dataflow/ReadsSource/HiSeq.1mb.1RG.2k_lines_invalid_sam_format.bam";
 
     @Test
     public void testGetHeaderFromLocalBAM(){

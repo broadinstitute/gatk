@@ -24,7 +24,7 @@ public final class CompareSAMsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="testDataValidFormats")
     public Object[][] testDataValid() {
         return new Object[][]{
-                {"NA12878.chr17_69k_70k.dictFix.bam", "NA12878.chr17_69k_70k.dictFix.bam", ValidationStringency.SILENT, true},
+                {"NA12878.chr17_69k_70k_invalid_sam_format.dictFix.bam", "NA12878.chr17_69k_70k_invalid_sam_format.dictFix.bam", ValidationStringency.SILENT, true},
                 {"unmapped_first.sam", "unmapped_second.sam", ValidationStringency.SILENT, false},
         };
     }
@@ -32,7 +32,7 @@ public final class CompareSAMsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="testDataInvalidFormats")
     public Object[][] testingDataInvalid() {
         return new Object[][]{
-                {"NA12878.chr17_69k_70k.dictFix.bam", "NA12878.chr17_69k_70k.dictFix.bam", ValidationStringency.STRICT, false},
+                {"NA12878.chr17_69k_70k_invalid_sam_format.dictFix.bam", "NA12878.chr17_69k_70k_invalid_sam_format.dictFix.bam", ValidationStringency.STRICT, false},
         };
     }
 
