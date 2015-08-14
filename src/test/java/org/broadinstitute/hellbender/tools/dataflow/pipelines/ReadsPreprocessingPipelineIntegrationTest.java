@@ -26,7 +26,7 @@ public class ReadsPreprocessingPipelineIntegrationTest extends CommandLineProgra
         };
     }
 
-    @Test(dataProvider = "EndToEndTestData", groups = {"cloud"})
+    @Test(dataProvider = "EndToEndTestData", groups = {"cloud_todo"})
     public void testPipelineEndToEnd( final String inputBam, final String reference, final String knownSites, final File expectedOutput ) throws IOException {
         final File output = createTempFile("testPipelineEndToEnd_output", ".bam");
         List<String> argv = new ArrayList<>();
