@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
@@ -215,27 +213,6 @@ public class ReadsPreprocessingPipelineTestData {
         }
 
         return reads;
-    }
-
-    /**
-     * @return an artificial RefAPIMetadata object with the reference window function set to the identity function
-     */
-    public static RefAPIMetadata createRefAPIMetadata() {
-        return createRefAPIMetadata(RefWindowFunctions.IDENTITY_FUNCTION);
-    }
-
-    /**
-     * Creates an artificial RefAPIMetadata object with a custom reference window function
-     *
-     * @param referenceWindowFunction function mapping reads to reference intervals
-     * @return an artificial RefAPIMetadata object with a custom reference window function
-     */
-    public static RefAPIMetadata createRefAPIMetadata( final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction ) {
-        final String referenceName = "refName";
-        final String refId = "0xbjfjd23f";
-        Map<String, String> referenceNameToIdTable = Maps.newHashMap();
-        referenceNameToIdTable.put(referenceName, refId);
-        return new RefAPIMetadata(referenceName, referenceNameToIdTable, referenceWindowFunction);
     }
 
     private SimpleInterval makeInterval(String contig, KV<Integer, Integer> startLength) {

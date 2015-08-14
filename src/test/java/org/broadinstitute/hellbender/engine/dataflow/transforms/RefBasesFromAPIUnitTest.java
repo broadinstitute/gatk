@@ -12,16 +12,12 @@ import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -32,10 +28,10 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -43,11 +39,13 @@ import static org.mockito.Mockito.*;
 
 public final class RefBasesFromAPIUnitTest extends BaseTest {
 
-    private RefAPISource createMockRefAPISource( final List<SimpleInterval> intervals ) {
-        RefAPISource mockSource = mock(RefAPISource.class, withSettings().serializable());
+    private ReferenceDataflowSource createMockReferenceDataflowSource(final List<SimpleInterval> intervals,
+                                                                      final SerializableFunction<GATKRead, SimpleInterval> referenceWindowingFunction) throws IOException {
+        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
         for (SimpleInterval interval : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), any(RefAPIMetadata.class), eq(interval))).thenReturn(FakeReferenceSource.bases(interval));
+            when(mockSource.getReferenceBases(eq(interval), any(PipelineOptions.class))).thenReturn(FakeReferenceSource.bases(interval));
         }
+        when(mockSource.getReferenceWindowFunction()).thenReturn(referenceWindowingFunction);
         return mockSource;
     }
 
@@ -68,17 +66,15 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
 
     @Test(dataProvider = "bases")
     public void refBasesTest(List<KV<ReferenceShard, Iterable<GATKRead>>> kvRefShardiReads,
-                             List<SimpleInterval> intervals, List<KV<ReferenceBases, Iterable<GATKRead>>> kvRefBasesiReads) {
+                             List<SimpleInterval> intervals, List<KV<ReferenceBases, Iterable<GATKRead>>> kvRefBasesiReads) throws IOException {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
-        final RefAPISource mockSource = createMockRefAPISource(intervals);
-        final RefAPIMetadata refAPIMetadata = ReadsPreprocessingPipelineTestData.createRefAPIMetadata();
+        final ReferenceDataflowSource mockSource = createMockReferenceDataflowSource(intervals, RefWindowFunctions.IDENTITY_FUNCTION);
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply("pInput.Create",Create.of(kvRefShardiReads).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
 
-        RefAPISource.setRefAPISource(mockSource);
-        PCollection<KV<ReferenceBases, Iterable<GATKRead>>> kvpCollection = RefBasesFromAPI.getBasesForShard(pInput, refAPIMetadata);
+        PCollection<KV<ReferenceBases, Iterable<GATKRead>>> kvpCollection = RefBasesFromAPI.getBasesForShard(pInput, mockSource);
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> pkvRefBasesiReads = p.apply("pkvRefBasesiReads.Create", Create.of(kvRefBasesiReads).withCoder(KvCoder.of(SerializableCoder.of(ReferenceBases.class), IterableCoder.of(new GATKReadCoder()))));
         DataflowTestUtils.keyIterableValueMatcher(kvpCollection, pkvRefBasesiReads);
 
@@ -87,21 +83,19 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
 
     @Test(dataProvider = "bases")
     public void noReadsTest(List<KV<ReferenceShard, Iterable<GATKRead>>> kvRefShardiReads,
-                             List<SimpleInterval> intervals, List<KV<ReferenceBases, Iterable<GATKRead>>> kvRefBasesiReads) {
+                             List<SimpleInterval> intervals, List<KV<ReferenceBases, Iterable<GATKRead>>> kvRefBasesiReads) throws IOException {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
-        final RefAPISource mockSource = createMockRefAPISource(intervals);
-        final RefAPIMetadata refAPIMetadata = ReadsPreprocessingPipelineTestData.createRefAPIMetadata();
+        final ReferenceDataflowSource mockSource = createMockReferenceDataflowSource(intervals, RefWindowFunctions.IDENTITY_FUNCTION);
 
         List<KV<ReferenceShard, Iterable<GATKRead>>> noReads = Arrays.asList(
                 KV.of(new ReferenceShard(0, "1"), Lists.newArrayList()));
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply(Create.of(noReads).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
 
-        RefAPISource.setRefAPISource(mockSource);
         // We expect an exception to be thrown if there is a problem. If no error is thrown, it's fine.
-        RefBasesFromAPI.getBasesForShard(pInput, refAPIMetadata);
+        RefBasesFromAPI.getBasesForShard(pInput, mockSource);
 
         p.run();
     }
@@ -139,23 +133,21 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "RefBasesFromAPIWithCustomWindowFunctionTestData")
-    public void testRefBasesFromAPIWithCustomWindowFunction( final KV<ReferenceShard, Iterable<GATKRead>> inputShard, final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction, final SimpleInterval expectedReferenceInterval ) {
+    public void testRefBasesFromAPIWithCustomWindowFunction( final KV<ReferenceShard, Iterable<GATKRead>> inputShard, final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction, final SimpleInterval expectedReferenceInterval ) throws IOException {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
         // Assuming everything works properly, we only need a mock response to the expected reference interval,
-        // since that is what should end up being queried in RefBasesFromAPI. If we later try to query an
+        // since that is what should end up being queried in ReferenceDataflowSource. If we later try to query an
         // unexpected interval, we'll detect it via an Assert.
-        final RefAPISource mockSource = createMockRefAPISource(Arrays.asList(expectedReferenceInterval));
-        final RefAPIMetadata refAPIMetadata = ReadsPreprocessingPipelineTestData.createRefAPIMetadata(referenceWindowFunction);
-        RefAPISource.setRefAPISource(mockSource);
+        final ReferenceDataflowSource mockSource = createMockReferenceDataflowSource(Arrays.asList(expectedReferenceInterval), referenceWindowFunction);
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply("pInput.Create", Create.of(inputShard).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
-        PCollection<KV<ReferenceBases, Iterable<GATKRead>>> actualResult = RefBasesFromAPI.getBasesForShard(pInput, refAPIMetadata);
+        PCollection<KV<ReferenceBases, Iterable<GATKRead>>> actualResult = RefBasesFromAPI.getBasesForShard(pInput, mockSource);
 
         DataflowAssert.that(actualResult).satisfies((Iterable<KV<ReferenceBases, Iterable<GATKRead>>> input) -> {
-            for ( KV<ReferenceBases, Iterable<GATKRead>> kvPair : input ) {
-                Assert.assertNotNull(kvPair.getKey(), "Null ReferenceBases in KV pair indicates that reference query in RefBaseFromAPI used an unexpected/incorrect interval (mock RefAPISource returned null)");
+            for (KV<ReferenceBases, Iterable<GATKRead>> kvPair : input) {
+                Assert.assertNotNull(kvPair.getKey(), "Null ReferenceBases in KV pair indicates that reference query in ReferenceDataflowSource used an unexpected/incorrect interval (mock ReferenceDataflowSource returned null)");
                 Assert.assertEquals(kvPair.getKey().getInterval(), expectedReferenceInterval, "Wrong interval for ReferenceBases object after applying RefBasesFromAPI");
             }
             return null;

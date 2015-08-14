@@ -7,8 +7,7 @@ import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -33,13 +32,14 @@ import java.util.stream.StreamSupport;
  *
  * If a custom reference window function is being used to map each read to arbitrary reference bases
  * (and not just the bases that overlap each read), that function should be passed in via the
- * {@link RefAPIMetadata} parameter to {@link #getBasesForShard}.
+ * {@link ReferenceDataflowSource} parameter to {@link #getBasesForShard}.
  */
 public class RefBasesFromAPI {
     public static PCollection<KV<ReferenceBases, Iterable<GATKRead>>> getBasesForShard(PCollection<KV<ReferenceShard, Iterable<GATKRead>>> reads,
-                                                                                       RefAPIMetadata refAPIMetadata) {
-        PCollectionView<RefAPIMetadata> dataView = reads.getPipeline().apply("apply create of refAPIMetadata",Create.of(refAPIMetadata)).apply("View RefAPIMetadata as singleton",View.<RefAPIMetadata>asSingleton());
-        return reads.apply(ParDo.withSideInputs(dataView).of(
+                                                                                       ReferenceDataflowSource referenceDataflowSource) {
+        PCollectionView<ReferenceDataflowSource> refView = reads.getPipeline().apply("apply create of referenceDataflowSource",
+                Create.of(referenceDataflowSource)).apply("View ReferenceDataflowSource as singleton",View.<ReferenceDataflowSource>asSingleton());
+        return reads.apply(ParDo.withSideInputs(refView).of(
                 new DoFn<KV<ReferenceShard, Iterable<GATKRead>>, KV<ReferenceBases, Iterable<GATKRead>>>() {
                     private static final long serialVersionUID = 1L;
                     @Override
@@ -48,13 +48,11 @@ public class RefBasesFromAPI {
 
                         // Apply the reference window function to each read to produce a set of intervals representing
                         // the desired reference bases for each read.
-                        final List<SimpleInterval> readWindows = StreamSupport.stream(reads.spliterator(), false).map(read -> refAPIMetadata.getReferenceWindowFunction().apply(read)).collect(Collectors.toList());
+                        final List<SimpleInterval> readWindows = StreamSupport.stream(reads.spliterator(), false).map(read -> c.sideInput(refView).getReferenceWindowFunction().apply(read)).collect(Collectors.toList());
 
                         // Get a single interval spanning all the per-read reference windows.
                         SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);
-
-                        RefAPISource refAPISource = RefAPISource.getRefAPISource();
-                        ReferenceBases bases = refAPISource.getReferenceBases(c.getPipelineOptions(), c.sideInput(dataView), interval);
+                        ReferenceBases bases = c.sideInput(refView).getReferenceBases(interval, c.getPipelineOptions());
                         c.output(KV.of(bases, reads));
                     }
                 })).setName("RefBasesFromAPI_getBasesForShard");

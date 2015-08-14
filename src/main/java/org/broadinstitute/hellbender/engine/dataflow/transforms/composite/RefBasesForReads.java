@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.engine.dataflow.transforms.composite;
 
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.KeyReadsByRefShard;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.RefBasesFromAPI;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.PairReadWithRefBases;
@@ -45,13 +45,13 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
  *  KV<read c, ref bases 2c>
  *
  * The reference bases paired with each read can be customized by passing in a reference window function
- * inside the {@link RefAPIMetadata} argument to {@link #addBases}. See {@link RefWindowFunctions} for examples.
+ * inside the {@link ReferenceDataflowSource} argument to {@link #addBases}. See {@link RefWindowFunctions} for examples.
  */
 public class RefBasesForReads {
-    public static PCollection<KV<GATKRead, ReferenceBases>> addBases(PCollection<GATKRead> pReads, RefAPIMetadata refAPIMetadata) {
-        PCollection<KV<ReferenceShard, Iterable<GATKRead>>> shardAndRead = pReads.apply(new KeyReadsByRefShard(refAPIMetadata.getReferenceWindowFunction()));
+    public static PCollection<KV<GATKRead, ReferenceBases>> addBases(PCollection<GATKRead> pReads, ReferenceDataflowSource referenceDataflowSource) {
+        PCollection<KV<ReferenceShard, Iterable<GATKRead>>> shardAndRead = pReads.apply(new KeyReadsByRefShard(referenceDataflowSource.getReferenceWindowFunction()));
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> groupedReads =
-                RefBasesFromAPI.getBasesForShard(shardAndRead, refAPIMetadata);
-        return groupedReads.apply(new PairReadWithRefBases(refAPIMetadata.getReferenceWindowFunction()));
+                RefBasesFromAPI.getBasesForShard(shardAndRead, referenceDataflowSource);
+        return groupedReads.apply(new PairReadWithRefBases(referenceDataflowSource.getReferenceWindowFunction()));
     }
 }

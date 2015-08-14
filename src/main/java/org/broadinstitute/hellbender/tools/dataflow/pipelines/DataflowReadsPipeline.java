@@ -75,7 +75,7 @@ public abstract class DataflowReadsPipeline extends DataflowCommandLineProgram {
     }
 
     @Override
-    protected final void setupPipeline(Pipeline pipeline) {
+    protected void setupPipeline(Pipeline pipeline) {
         final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
         final SAMFileHeader header = readsDataflowSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
