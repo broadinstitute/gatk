@@ -53,7 +53,7 @@ public class SmallBamWriterTest extends BaseTest {
         testReadAndWrite(LOCAL_INPUT, outputFile, false, false);
     }
 
-    @Test(groups = {"bucket"})
+    @Test(groups = {"bucket_todo"})
     public void checkGCSInput() throws Exception {
         File out = createTempFile("temp",".bam");
         String outputFile = out.getPath();
@@ -61,7 +61,7 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     // this leaves output files around, for now.
-    @Test(groups = {"bucket"})
+    @Test(groups = {"bucket_todo"})
     public void checkGCSOutput() throws Exception {
         File out = createTempFile("temp",".bam");
         String tempName = out.getName();
@@ -70,7 +70,7 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     // this leaves output files around, for now.
-    @Test(groups = {"cloud"})
+    @Test(groups = {"cloud_todo"})
     public void checkCloud() throws Exception {
         File out = createTempFile("temp",".bam");
         String tempName = out.getName();

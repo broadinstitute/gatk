@@ -195,9 +195,12 @@ test {
     String CI = "$System.env.CI"
     useTestNG{
         if ( "$System.env.CLOUD" =="true"){
-            includeGroups 'cloud', 'bucket'
+            // run everything
+            includeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
         } else {
-            excludeGroups 'cloud', 'bucket'
+            // run everything except the "todo" tests
+            excludeGroups 'cloud_todo', 'bucket_todo'
+            includeGroups 'cloud', 'bucket'
         }
     }
 
