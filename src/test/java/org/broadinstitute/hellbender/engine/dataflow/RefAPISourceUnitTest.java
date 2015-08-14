@@ -33,7 +33,7 @@ public class RefAPISourceUnitTest extends BaseTest {
         return refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "cloud_todo")
     public void testDummy() {
         String referenceName = "EOSt9JOVhp3jkwE";
         SimpleInterval interval = new SimpleInterval("1", 50001, 10050000);
@@ -59,7 +59,7 @@ public class RefAPISourceUnitTest extends BaseTest {
 
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "cloud_todo")
     public void testReferenceSourceQuery() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("1", 50000, 50009));
 
@@ -69,17 +69,17 @@ public class RefAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(new String(bases.getBases()), "TAAACAGGTT", "Wrong bases returned");
     }
 
-    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    @Test(groups = "cloud_todo", expectedExceptions = UserException.class)
     public void testReferenceSourceQueryWithInvalidContig() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("FOOCONTIG", 1, 2));
     }
 
-    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    @Test(groups = "cloud_todo", expectedExceptions = UserException.class)
     public void testReferenceSourceQueryWithInvalidPosition() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("1", 1000000000, 2000000000));
     }
 
-    @Test(groups = "cloud", expectedExceptions = IllegalArgumentException.class)
+    @Test(groups = "cloud_todo", expectedExceptions = IllegalArgumentException.class)
     public void testReferenceSourceQueryWithNullInterval() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", null);
     }
