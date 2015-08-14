@@ -52,7 +52,7 @@ public class ReferenceUtilsUnitTest extends BaseTest {
         }
     }
 
-    @Test(groups = {"bucket_todo"})
+    @Test(groups = {"bucket"})
     public void testLoadFastaDictionaryFromGCSBucket() throws IOException {
         final String bucketDictionary = getDataflowTestInputPath() + "org/broadinstitute/hellbender/utils/ReferenceUtilsTest.dict";
         final PipelineOptions popts = getAuthenticatedPipelineOptions();

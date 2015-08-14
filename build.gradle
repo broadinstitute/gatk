@@ -196,7 +196,6 @@ test {
     useTestNG{
         if ( "$System.env.CLOUD" =="true"){
             // run everything
-            includeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
         } else {
             // run everything except the "todo" tests
             excludeGroups 'cloud_todo', 'bucket_todo'
