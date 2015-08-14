@@ -153,7 +153,8 @@ public final class BaseRecalibratorDataflow2IntegrationTest extends CommandLineP
         };
     }
 
-    @Test(dataProvider = "BQSRTest")
+    // "local", but we're still getting the reference from the cloud.
+    @Test(dataProvider = "BQSRTest", groups = {"cloud"})
     public void testBQSRLocal(BQSRTest params) throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
@@ -217,7 +218,7 @@ public final class BaseRecalibratorDataflow2IntegrationTest extends CommandLineP
         IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
-    @Test
+    @Test(groups = {"cloud"})
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " ";
@@ -235,7 +236,7 @@ public final class BaseRecalibratorDataflow2IntegrationTest extends CommandLineP
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
 
-    @Test
+    @Test(groups = {"cloud"})
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " ";
