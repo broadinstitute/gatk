@@ -59,7 +59,7 @@ public final class BucketUtilsTest extends BaseTest {
         }
     }
 
-    @Test(groups={"bucket"})
+    @Test(groups={"bucket_todo"})
     public void testCopyAndDeleteGCS() throws IOException, GeneralSecurityException {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
