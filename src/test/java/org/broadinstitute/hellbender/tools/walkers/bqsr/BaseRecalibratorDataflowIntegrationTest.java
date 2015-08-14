@@ -174,7 +174,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     }
 
 
-    @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"})
+    @Test(dataProvider = "BQSRTestBucket", groups = {"bucket_todo"})
     public void testBQSRBucket(BQSRTest params) throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
@@ -182,7 +182,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         spec.executeTest("testBQSR-" + params.args, this);
     }
 
-    @Test(dataProvider = "BQSRTestCloud", groups = {"cloud"})
+    @Test(dataProvider = "BQSRTestCloud", groups = {"cloud_todo"})
     public void testBQSRCloud(BQSRTest params) throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
@@ -191,7 +191,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     }
 
 
-    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"})
+    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud_todo"})
     public void testPlottingWorkflow() throws IOException {
         final String cloudArgs = "--apiKey " + getDataflowTestApiKey() + " ";
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
