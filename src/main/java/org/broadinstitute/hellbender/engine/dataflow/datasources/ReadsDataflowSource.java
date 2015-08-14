@@ -11,6 +11,7 @@ import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.cloud.genomics.dataflow.readers.bam.ReadBAMTransform;
 import com.google.cloud.genomics.dataflow.readers.bam.ReaderOptions;
+import com.google.cloud.genomics.dataflow.readers.bam.ShardingPolicy;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
@@ -24,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.GoogleGenomicsReadToGATKRead;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
@@ -109,7 +111,7 @@ public final class ReadsDataflowSource {
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
     public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals) {
-        return getReadPCollection(intervals, ValidationStringency.SILENT);
+        return getReadPCollection(intervals, ValidationStringency.SILENT, false);
     }
 
     /**
@@ -119,15 +121,18 @@ public final class ReadsDataflowSource {
      * @param stringency how to react to malformed reads.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
-    public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals, ValidationStringency stringency) {
+    public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals, ValidationStringency stringency, boolean includeUnmappedReads) {
         PCollection<GATKRead> preads;
         if(cloudStorageUrl){
             Iterable<Contig> contigs = intervals.stream()
                     .map(i -> new Contig(i.getContig(), i.getStart(), i.getEnd()))
                     .collect(Collectors.toList());
-
-            PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth, contigs, new ReaderOptions(stringency, false), ImmutableList.of(bam));
-            preads = rawReads.apply(new GoogleGenomicsReadToGATKRead());
+            try {
+                PCollection<Read> rawReads = ReadBAMTransform.getReadsFromBAMFilesSharded(pipeline, auth,contigs, new ReaderOptions(stringency, includeUnmappedReads), bam, ShardingPolicy.LOCI_SIZE_POLICY);
+                preads = rawReads.apply(new GoogleGenomicsReadToGATKRead());
+            } catch (IOException ex) {
+                throw new UserException.CouldNotReadInputFile("Unable to read "+bam, ex);
+            }
         } else if (hadoopUrl) {
             preads = DataflowUtils.getReadsFromHadoopBam(pipeline, intervals, stringency, bam);
         } else {

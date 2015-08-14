@@ -225,7 +225,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram {
             final ReadFilter readFilter = BaseRecalibratorWorker.readFilter(header);
             final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(sequenceDictionary) :
                     IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-            return new ReadsDataflowSource(beforePath, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT)
+            return new ReadsDataflowSource(beforePath, pipeline).getReadPCollection(intervals, ValidationStringency.SILENT, false)
                     // keep only the ones BQSR's interested in.
                     .apply(new DataflowReadFilter(readFilter, header));
         } else {

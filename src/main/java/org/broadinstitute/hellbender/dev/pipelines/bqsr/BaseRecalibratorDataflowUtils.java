@@ -11,7 +11,6 @@ import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.TupleTag;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Iterables;
 import htsjdk.samtools.SAMFileHeader;
@@ -221,14 +220,12 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
             .of(new DoFnWLog<KV<String, CoGbkResult>, RecalibrationTables>("computeBlockStatistics") {
                 private static final long serialVersionUID = 1L;
                 CalibrationTablesBuilder ct;
-                Stopwatch timer;
                 int nBlocks = 0;
                 int nReads = 0;
 
                 @Override
                 public void startBundle(DoFn<KV<String, CoGbkResult>, RecalibrationTables>.Context c) throws Exception {
                     super.startBundle(c);
-                    timer = Stopwatch.createStarted();
                     SAMFileHeader header = readsHeader;
 
                     String localReference = referenceFileName;
@@ -258,7 +255,6 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                             }
                             first = false;
                         }
-                        logger.info(String.format("Done downloading reference files (%s ms)\n", timer.elapsed(TimeUnit.MILLISECONDS)));
                         bunny.stepEnd("Download reference files");
                     }
 
@@ -297,8 +293,7 @@ public final class BaseRecalibratorDataflowUtils implements Serializable {
                     super.finishBundle(c);
                     ct.done();
                     c.output(ct.getRecalibrationTables());
-                    logger.info("Finishing a block statistics bundle. It took " + timer.elapsed(TimeUnit.MILLISECONDS) + " ms to process " + nBlocks + " blocks, " + nReads + " reads.");
-                    timer = null;
+                    logger.info("Finishing a block statistics bundle. " + nBlocks + " blocks, " + nReads + " reads.");
                 }
             }));
 

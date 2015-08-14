@@ -74,7 +74,7 @@ public final class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram {
         final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(sequenceDictionary) :
                 IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
 
-        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false);
         PCollection<SimpleInterval> knownIntervals = ingestKnownIntervals(pipeline, BRAC.RAC.knownSites);
 
         PCollectionTuple inputs =
