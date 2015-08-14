@@ -33,10 +33,12 @@ public class RefAPISourceUnitTest extends BaseTest {
         return refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
     }
 
-    @Test(groups = "cloud_todo")
+    @Test(groups = "cloud")
     public void testDummy() {
         String referenceName = "EOSt9JOVhp3jkwE";
-        SimpleInterval interval = new SimpleInterval("1", 50001, 10050000);
+        final String expected = "AAACAGGTTA";
+        // -1 because we're using closed intervals
+        SimpleInterval interval = new SimpleInterval("1", 50001, 50001 + expected.length() - 1);
         Logger logger = LogManager.getLogger(RefAPISourceUnitTest.class);
 
         GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
@@ -54,12 +56,13 @@ public class RefAPISourceUnitTest extends BaseTest {
         ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
         logger.info("e");
 
-        Assert.assertEquals(new String(bases.getBases()), "AAACAGGTTA", "Wrong bases returned");
+        final String actual = new String(bases.getBases());
+        Assert.assertEquals(actual, expected, "Wrong bases returned");
         p.run();
 
     }
 
-    @Test(groups = "cloud_todo")
+    @Test(groups = "cloud")
     public void testReferenceSourceQuery() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("1", 50000, 50009));
 
@@ -69,12 +72,12 @@ public class RefAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(new String(bases.getBases()), "TAAACAGGTT", "Wrong bases returned");
     }
 
-    @Test(groups = "cloud_todo", expectedExceptions = UserException.class)
+    @Test(groups = "cloud", expectedExceptions = UserException.class)
     public void testReferenceSourceQueryWithInvalidContig() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("FOOCONTIG", 1, 2));
     }
 
-    @Test(groups = "cloud_todo", expectedExceptions = UserException.class)
+    @Test(groups = "cloud", expectedExceptions = UserException.class)
     public void testReferenceSourceQueryWithInvalidPosition() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("1", 1000000000, 2000000000));
     }

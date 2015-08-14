@@ -4,6 +4,8 @@ import com.google.api.services.genomics.Genomics;
 import com.google.api.services.genomics.model.ListBasesResponse;
 import com.google.api.services.genomics.model.Reference;
 import com.google.api.services.genomics.model.ReferenceSet;
+import com.google.api.services.genomics.model.SearchReferencesRequest;
+import com.google.api.services.genomics.model.SearchReferencesResponse;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
@@ -67,29 +69,22 @@ public class RefAPISource implements Serializable {
      * currently takes ~10 seconds, so this table should be cached and no produced per query to get the reference bases.
      * This is clumsy and should be refactored with better Genomics API use (issue 643).
      * @param pipelineOptions options needed for credentials to produce a Genomics class for the API call.
-     * @param referenceName the "name of the reference, e.g., EOSt9JOVhp3jkwE.
+     * @param referenceSetID the ID of the reference set, e.g., EOSt9JOVhp3jkwE.
      * @return returns a mapping from reference name to String id.
      */
-    public static Map<String, String> buildReferenceNameToIdTable(final PipelineOptions pipelineOptions, final String referenceName) {
+    public static Map<String, String> buildReferenceNameToIdTable(final PipelineOptions pipelineOptions, final String referenceSetID) {
         Genomics genomicsService = createGenomicsService(pipelineOptions);
-        final ReferenceSet referenceSet;
-        try {
-            referenceSet = genomicsService.referencesets().get(referenceName).execute();
-        }
-        catch ( IOException e ) {
-            throw new UserException("Could not load reference set for reference name " + referenceName, e);
-        }
+
         final Map<String, String> referenceNameToIdTable = new HashMap<>();
-
         try {
-            for ( final String referenceID : referenceSet.getReferenceIds() ) {
-                final Reference reference = genomicsService.references().get(referenceID).execute();
-                referenceNameToIdTable.put(reference.getName(), reference.getId());
+            final SearchReferencesRequest content = new SearchReferencesRequest();
+            content.setReferenceSetId(referenceSetID);
+            final SearchReferencesResponse found = genomicsService.references().search(content).execute();
+            for (Reference r : found.getReferences()) {
+                referenceNameToIdTable.put(r.getName(), r.getId());
             }
-        }
-
-        catch ( IOException e ) {
-            throw new UserException("Error while looking up references for reference set " + referenceSet.getId(), e);
+        } catch ( IOException e ) {
+            throw new UserException("Error while looking up reference set " + referenceSetID, e);
         }
 
         return referenceNameToIdTable;
