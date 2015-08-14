@@ -110,7 +110,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"bucket"})
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"bucket_todo"})
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
@@ -125,7 +125,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"cloud"})
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"cloud_todo"})
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
