@@ -419,4 +419,21 @@ public final class IOUtils {
             throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
         }
     }
+
+    /**
+     * Schedule a file or directory to be deleted on jvm exit.
+     *
+     * This will silently delete the directory as well as it's contents.
+     * It improves upon {@link FileUtils#forceDeleteOnExit} by deleting directories and files that did not exist at call time.
+     * @param dir to be deleted
+     */
+    public static void deleteRecursivelyOnExit(File dir){
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+
+            @Override
+            public void run() {
+                FileUtils.deleteQuietly(dir);
+            }
+        });
+    }
 }

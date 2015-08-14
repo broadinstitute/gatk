@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -10,6 +11,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -131,4 +133,23 @@ public final class IOUtilsUnitTest extends BaseTest {
 
         return randomData;
     }
+
+    @Test
+    public void testDeleteDirOnExit() throws IOException {
+        //This just tests that the code runs without crashing.
+        //It runs at jvm shutdown so there isn't a good way to test it properly.
+        //If you see a directory in the hellbender main folder called
+
+        final File dir = new File(BaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
+        IOUtils.deleteRecursivelyOnExit(dir);
+
+        FileUtils.mkdir(dir, true);
+        final File subdir = new File(dir, "subdir");
+        FileUtils.mkdir(subdir, true);
+        File someFile = new File(dir, "someFile");
+        someFile.createNewFile();
+        File anotherFile = new File(subdir, "anotherFile");
+        anotherFile.createNewFile();
+    }
+
 }
