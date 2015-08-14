@@ -36,7 +36,9 @@ public class RefAPISourceUnitTest extends BaseTest {
     @Test(groups = "cloud_todo")
     public void testDummy() {
         String referenceName = "EOSt9JOVhp3jkwE";
-        SimpleInterval interval = new SimpleInterval("1", 50001, 10050000);
+        final String expected = "AAACAGGTTA";
+        // -1 because we're using closed intervals
+        SimpleInterval interval = new SimpleInterval("1", 50001, 50001 + expected.length() - 1);
         Logger logger = LogManager.getLogger(RefAPISourceUnitTest.class);
 
         GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
@@ -54,7 +56,8 @@ public class RefAPISourceUnitTest extends BaseTest {
         ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
         logger.info("e");
 
-        Assert.assertEquals(new String(bases.getBases()), "AAACAGGTTA", "Wrong bases returned");
+        final String actual = new String(bases.getBases());
+        Assert.assertEquals(actual, expected, "Wrong bases returned");
         p.run();
 
     }
