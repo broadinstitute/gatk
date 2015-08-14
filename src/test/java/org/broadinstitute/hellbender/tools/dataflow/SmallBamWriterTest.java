@@ -9,22 +9,21 @@ import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
@@ -53,7 +52,7 @@ public class SmallBamWriterTest extends BaseTest {
         testReadAndWrite(LOCAL_INPUT, outputFile, false, false);
     }
 
-    @Test(groups = {"bucket"})
+    @Test(groups = {"bucket_todo"})
     public void checkGCSInput() throws Exception {
         File out = createTempFile("temp",".bam");
         String outputFile = out.getPath();
@@ -70,7 +69,7 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     // this leaves output files around, for now.
-    @Test(groups = {"cloud"})
+    @Test(groups = {"cloud_todo"})
     public void checkCloud() throws Exception {
         File out = createTempFile("temp",".bam");
         String tempName = out.getName();

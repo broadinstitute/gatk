@@ -9,9 +9,10 @@ jdk:
 - oraclejdk8
 env:
   matrix:
-  - CLOUD=true
+  - CLOUD=mandatory
+  - CLOUD=todo
   - CLOUD=false
-  - DATAFLOW_RUNNER=SparkPipelineRunner CLOUD=true
+  - DATAFLOW_RUNNER=SparkPipelineRunner CLOUD=mandatory
   - DATAFLOW_RUNNER=SparkPipelineRunner CLOUD=false
   global:
   #gradle needs this
@@ -33,8 +34,8 @@ matrix:
   fast_finish: true
   allow_failures:
     - env: DATAFLOW_RUNNER=SparkPipelineRunner CLOUD=false
-    - env: DATAFLOW_RUNNER=SparkPipelineRunner CLOUD=true
-    - env: CLOUD=true
+    - env: DATAFLOW_RUNNER=SparkPipelineRunner CLOUD=mandatory
+    - env: CLOUD=todo
 cache:
   directories:
   - ~/.gradle

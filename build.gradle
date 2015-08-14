@@ -193,11 +193,14 @@ task testAll(type: Test){
 
 test {
     String CI = "$System.env.CI"
+    String CLOUD = "$System.env.CLOUD"
     useTestNG{
-        if ( "$System.env.CLOUD" =="true"){
+        if ( CLOUD =="mandatory"){
             includeGroups 'cloud', 'bucket'
+        } else if( CLOUD == "todo"){
+            includeGroups 'cloud_todo', 'bucket_todo'
         } else {
-            excludeGroups 'cloud', 'bucket'
+            excludeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
         }
     }
 

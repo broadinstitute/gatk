@@ -16,7 +16,7 @@ import java.util.List;
 public final class FlagStatDataflowIntegrationTest extends CommandLineProgramTest {
 
 
-    @Test( groups = {"bucket", "dataflow"})
+    @Test( groups = {"bucket_todo", "dataflow_todo"})
     public void flagStatDataflowLocalReadFromBucket() throws IOException {
         List<String> args = new ArrayList<>();
         args.add("--apiKey"); args.add(getDataflowTestApiKey());
