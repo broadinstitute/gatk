@@ -174,7 +174,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     }
 
 
-    @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"})
+    @Test(dataProvider = "BQSRTestBucket", groups = {"bucket_todo"})
     public void testBQSRBucket(BQSRTest params) throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),

@@ -33,7 +33,7 @@ public class RefAPISourceUnitTest extends BaseTest {
         return refAPISource.getReferenceBases(p.getOptions(), refAPIMetadata, interval);
     }
 
-    @Test(groups = "cloud")
+    @Test(groups = "cloud_todo")
     public void testDummy() {
         String referenceName = "EOSt9JOVhp3jkwE";
         SimpleInterval interval = new SimpleInterval("1", 50001, 10050000);
