@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.ValidationStringency;
@@ -77,12 +80,14 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
         String filename = readArguments.getReadFilesNames().get(0);
         ReadsDataflowSource readsSource = new ReadsDataflowSource(filename, pipeline);
         SAMFileHeader header = readsSource.getHeader();
+        PCollectionView<SAMFileHeader> headerView = pipeline.apply(Create.of(header)).apply(View.asSingleton());
+
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary) :
                 IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        PCollection<BaseRecalOutput> recalInfoSingletonCollection = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME);
+        PCollectionView<BaseRecalOutput> recalInfoSingletonView = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME).apply(View.asSingleton());
         PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false)
-                .apply(new ApplyBQSRTransform(header, recalInfoSingletonCollection, bqsrOpts));
+                .apply(new ApplyBQSRTransform(headerView, recalInfoSingletonView, bqsrOpts));
         intermediateRemoteBam = OUTPUT;
         if (needsIntermediateCopy()) {
             // The user specified remote execution and provided a local file name. So we're going to have to save to remote storage as a go-between.

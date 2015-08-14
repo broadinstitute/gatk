@@ -114,6 +114,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
+                " --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() +
                 " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
                 params.args +
                 " -O %s";

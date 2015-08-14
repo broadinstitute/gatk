@@ -16,10 +16,12 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicat
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.dev.DoFnWLog;
+import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
@@ -107,21 +109,28 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
         final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, refAPIMetadata, variantsDataflowSource);
 
-        // Apply BQSR.
+        // Apply BQSR (phase 1)
         // default arguments are best practice.
-        //BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
-        //final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
-        //SAMSequenceDictionary refDictionary = RefAPISource.getInstance().getReferenceSequenceDictionary(pipeline.getOptions(), referenceName, readsDictionary);
-        //checkSequenceDictionaries(refDictionary, readsDictionary);
-        //PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
-        //final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
+        BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+        final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
+        SAMSequenceDictionary refDictionary = RefAPISource.getInstance().getReferenceSequenceDictionary(pipeline.getOptions(), referenceName, readsDictionary);
+        checkSequenceDictionaries(refDictionary, readsDictionary);
+        PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
 
-        // pretend to apply BQSR
-        final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
+        final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = readsWithContext
+            .apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC))
+            .apply(View.asSingleton());
 
-        final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
+        // Pretend to apply BQSR (phase 1)
+        //final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorStub(headerSingleton));
 
-        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
+        // Apply BQSR (phase 2)
+        // default arguments are best practice.
+        ApplyBQSRArgumentCollection bqsrOpts = new ApplyBQSRArgumentCollection();
+        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRTransform(headerSingleton, mergedRecalibrationReport, bqsrOpts));
+
+        // Pretend to apply BQSR (phase 2)
+        //final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
         SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
     }
 
