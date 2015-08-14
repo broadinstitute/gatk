@@ -40,7 +40,7 @@ public final class ReadsDataflowSourceTest extends BaseTest {
         Pipeline p = GATKTestPipeline.create();
         ReadsDataflowSource source = new ReadsDataflowSource(bam.getAbsolutePath(), p);
         DataflowUtils.registerGATKCoders(p);
-        PCollection<GATKRead> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)), ValidationStringency.DEFAULT_STRINGENCY);
+        PCollection<GATKRead> reads = source.getReadPCollection(ImmutableList.of(new SimpleInterval("chr7", 1, 404)), ValidationStringency.DEFAULT_STRINGENCY, false);
         PCollection<Long> count = reads.apply(Count.globally());
         DataflowAssert.thatSingleton(count).isEqualTo(7L);
         p.run();
@@ -56,7 +56,7 @@ public final class ReadsDataflowSourceTest extends BaseTest {
         SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT);
+        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false);
         PCollection<Long> count = reads.apply(Count.globally());
         // for now we only get 1649, because it removes unmapped reads.
         DataflowAssert.thatSingleton(count).isEqualTo(1674L);
@@ -73,7 +73,7 @@ public final class ReadsDataflowSourceTest extends BaseTest {
         SAMFileHeader header = source.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         DataflowUtils.registerGATKCoders(p);
-        PCollection<GATKRead> reads = source.getReadPCollection(IntervalUtils.getAllIntervalsForReference(sequenceDictionary), ValidationStringency.SILENT);
+        PCollection<GATKRead> reads = source.getReadPCollection(IntervalUtils.getAllIntervalsForReference(sequenceDictionary), ValidationStringency.SILENT, false);
         PCollection<Long> count = reads.apply(Count.globally());
         // There are 1677 total reads in this file
         DataflowAssert.thatSingleton(count).isEqualTo(1677L);
