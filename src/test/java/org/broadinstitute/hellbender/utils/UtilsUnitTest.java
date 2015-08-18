@@ -1,21 +1,22 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.Log.LogLevel;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
+import org.broadinstitute.hellbender.Main;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 
@@ -291,6 +292,31 @@ public final class UtilsUnitTest extends BaseTest {
         final Object testObject = new Object();
         Assert.assertSame(Utils.nonNull(testObject, "some message"), testObject);
     }
+
+    @Test
+    public void testNonEmpty(){
+        final Collection<String> notEmpty = Collections.singletonList("string1");
+        Assert.assertSame(Utils.nonEmpty(notEmpty), notEmpty);
+    }
+
+    @DataProvider(name= "emptyAndNull")
+    public Object[][] emptyAndNull(){
+        return new Object[][] {
+                {Collections.emptyList()},
+                {null}
+        };
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "emptyAndNull")
+    public void testNonEmptyThrows(Collection<?> collection) {
+        Utils.nonEmpty(collection);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "emptyAndNull")
+    public void testNonEmptyThrowsWithMessage(Collection<?> collection) {
+        Utils.nonEmpty(collection, "some message");
+    }
+
 
     @Test
     public void testSuccessfulRegularReadableFileCheck() {

@@ -6,16 +6,19 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-import static org.broadinstitute.hellbender.utils.MathUtils.*;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
+import static org.broadinstitute.hellbender.utils.MathUtils.logToLog10;
+import static org.broadinstitute.hellbender.utils.MathUtils.roundToNDecimalPlaces;
 
 /**
  * Basic unit test for MathUtils
@@ -23,10 +26,6 @@ import static org.broadinstitute.hellbender.utils.MathUtils.*;
 public final class MathUtilsUnitTest extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(MathUtilsUnitTest.class);
-
-    @BeforeClass
-    public void init() {
-    }
 
     @Test
     public void testGoodProbability(){
@@ -436,6 +435,35 @@ public final class MathUtilsUnitTest extends BaseTest {
         Assert.assertEquals(sumNoMult, sumNoMult_reordered, sumNoMult + " vs " + sumNoMult_reordered);
         Assert.assertEquals(sumMult100000_reordered, sumMult100000);
         Assert.assertNotEquals(sumNoMult, sumMult100000);
+    }
+
+
+    @DataProvider(name="numbersForMedian")
+    public Object[][] getNumbersForMedian(){
+        return new Object[][] {
+                {Arrays.asList(0), 0},
+                {Arrays.asList(0,1, 2), 1},
+                {Arrays.asList(1, 0, 2), 1},
+                {Arrays.asList(0, 1), .5},
+                {Arrays.asList(-10.0, 0, 10.5), 0},
+                {Arrays.asList(1, 1, 5, 2, 1, 5, 1, 9),1.5},
+        };
+    }
+
+    @Test(dataProvider = "numbersForMedian")
+    public <T extends Number & Comparable<T>> void testMedian(List<T> values, double expected){
+        Assert.assertEquals(MathUtils.median(values), expected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testMedianOfEmptyList(){
+        Collection<Integer> empty = Collections.emptyList();
+        MathUtils.median(empty);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testMedianOfNullList(){
+        MathUtils.median(null);
     }
 
 }

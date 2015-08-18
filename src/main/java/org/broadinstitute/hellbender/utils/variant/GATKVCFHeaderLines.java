@@ -1,6 +1,12 @@
 package org.broadinstitute.hellbender.utils.variant;
 
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFFilterHeaderLine;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.HashMap;
@@ -9,8 +15,8 @@ import java.util.Map;
 import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
 
 /**
- * This class contains the VCFHeaderLine definitions for the annotation keys in GATKVCFConstants.
- * VCF-standard header lines are in VCFStandardHeaderLines, in htsjdk
+ * This class contains the {@link VCFHeaderLine} definitions for the annotation keys in {@link GATKVCFConstants}.
+ * VCF-standard header lines are in {@link VCFStandardHeaderLines}, in htsjdk
  */
 public class GATKVCFHeaderLines {
 
@@ -18,9 +24,9 @@ public class GATKVCFHeaderLines {
     public static VCFFormatHeaderLine getFormatLine(final String id) { return formatLines.get(id); }
     public static VCFFilterHeaderLine getFilterLine(final String id) { return filterLines.get(id); }
 
-    private static Map<String, VCFInfoHeaderLine> infoLines = new HashMap<>(60);
-    private static Map<String, VCFFormatHeaderLine> formatLines = new HashMap<>(25);
-    private static Map<String, VCFFilterHeaderLine> filterLines = new HashMap<>(2);
+    private static final Map<String, VCFInfoHeaderLine> infoLines = new HashMap<>(60);
+    private static final Map<String, VCFFormatHeaderLine> formatLines = new HashMap<>(25);
+    private static final Map<String, VCFFilterHeaderLine> filterLines = new HashMap<>(2);
 
     private static void addFormatLine(final VCFFormatHeaderLine line) {
         Utils.nonNull(line);

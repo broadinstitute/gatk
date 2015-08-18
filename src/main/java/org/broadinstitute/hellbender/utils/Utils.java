@@ -16,7 +16,16 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 
 public final class Utils {
 
@@ -503,15 +512,43 @@ public final class Utils {
     }
 
     /**
+     * Checks that a {@link Collection} is not {@code null} and that it is not empty.
+     * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
+     * @param collection any Collection
+     * @param message a message to include in the output
+     * @return the original collection
+     * @throws IllegalArgumentException if collection is null or empty
+     */
+    public static <I, T extends Collection<I>> T nonEmpty(T collection, String message){
+        nonNull(collection, "The collection is null: " + message);
+        if(collection.isEmpty()){
+            throw new IllegalArgumentException("The collection is empty: " + message);
+        } else {
+            return collection;
+        }
+    }
+
+    /**
+     * Checks that a {@link Collection} is not {@code null} and that it is not empty.
+     * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
+     * @param collection any Collection
+     * @return the original collection
+     * @throws IllegalArgumentException if collection is null or empty
+     */
+    public static  <I, T extends Collection<I>> T nonEmpty(T collection){
+        return nonEmpty(collection, "collection must not be null or empty.");
+    }
+
+    /**
      * Checks that the collection does not contain a {@code null} value (throws an {@link IllegalArgumentException} if it does).
      * The implementation calls {@code c.contains(null)} to determine the presence of null.
      * @param c collection
      * @param s the text message that would be pass to the exception thrown when c contains a null.
      * @throws IllegalArgumentException if a {@code o == null}
      */
-    public static <T> void containsNoNull(final Collection<?> c, final String s) {
+    public static void containsNoNull(final Collection<?> c, final String message) {
         if (c.contains(null)){
-            throw new IllegalArgumentException(s);
+            throw new IllegalArgumentException(message);
         }
     }
 

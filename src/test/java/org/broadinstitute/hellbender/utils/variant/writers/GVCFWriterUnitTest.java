@@ -1,32 +1,52 @@
-/*package org.broadinstitute.hellbender.engine.writers;
+package org.broadinstitute.hellbender.utils.variant.writers;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeMap;
+import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.function.BiPredicate;
 
 public class GVCFWriterUnitTest extends BaseTest {
-    private static class MockWriter implements VariantContextWriter {
+
+    private static final String CHR1 = "1";
+    private static final String CHR2 = "2";
+
+    private static final class MockWriter implements VariantContextWriter {
         final List<VariantContext> emitted = new ArrayList<>();
         boolean headerWritten = false;
         boolean closed = false;
+        boolean error = false;
 
         @Override
         public void writeHeader(VCFHeader header) {
@@ -39,25 +59,26 @@ public class GVCFWriterUnitTest extends BaseTest {
         }
 
         @Override
+        public boolean checkError() {
+            return error;
+        }
+
+        @Override
         public void add(VariantContext vc) {
             emitted.add(vc);
         }
     }
 
-    private MockWriter mockWriter;
-    private List<Integer> standardPartition = Arrays.asList(1, 10, 20);
-    private Allele REF = Allele.create("N", true);
-    private Allele ALT = Allele.create("A");
-    private List<Allele> ALLELES = Arrays.asList(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
-    private final String SAMPLE_NAME = "XXYYZZ";
+    private static final List<Integer> standardPartition = ImmutableList.of(1, 10, 20);
+    private static final Allele REF = Allele.create("G", true);
+    private static final Allele ALT = Allele.create("A");
+    private static final List<Allele> ALLELES = ImmutableList.of(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+    private static final String SAMPLE_NAME = "XXYYZZ";
 
-    @BeforeMethod
-    public void setUp() throws Exception {
-        mockWriter = new MockWriter();
-    }
 
     @Test
     public void testHeaderWriting() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
         writer.writeHeader(new VCFHeader());
         Assert.assertTrue(mockWriter.headerWritten);
@@ -65,66 +86,58 @@ public class GVCFWriterUnitTest extends BaseTest {
 
     @Test
     public void testClose() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
         writer.close();
         Assert.assertTrue(mockWriter.closed);
     }
 
-    @Test
-    public void testCloseWithoutClosingUnderlyingWriter() {
-        final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
-        writer.close(false);
-        Assert.assertFalse(mockWriter.closed);
+    public static VariantContext makeHomRef(int start) {
+        return makeHomRef(start, 0);
     }
 
-    private VariantContext makeHomRef(final String contig, final int start, final int GQ) {
+    public static VariantContext makeHomRef(int start, int GQ) {
+        return makeHomRef(CHR1, start, GQ);
+    }
+
+    private static VariantContext makeHomRef(final String contig, final int start, final int GQ) {
         final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, start, ALLELES);
-        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
-        gb.GQ(GQ);
-        gb.DP(10);
-        gb.AD(new int[]{1, 2});
-        gb.PL(new int[]{0, 10, 100});
-        return vcb.genotypes(gb.make()).make();
+        return makeVariantContext(vcb, Arrays.asList(REF, REF), GQ);
     }
 
-    private VariantContext makeHomRefAlt(final String contig, final int start, final int GQ) {
+    private static VariantContext makeHomRefAlt(final int start) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", CHR1, start, start, Arrays.asList(REF, ALT));
+        return makeVariantContext(vcb, Arrays.asList(REF, REF), 0);
+    }
+
+    private static VariantContext makeNonRef(final String contig, final int start) {
         final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, start, Arrays.asList(REF, ALT));
-        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
-        gb.GQ(GQ);
-        gb.DP(10);
-        gb.AD(new int[]{1, 2});
-        gb.PL(new int[]{0, 10, 100});
-        return vcb.genotypes(gb.make()).make();
+        return makeVariantContext(vcb, Arrays.asList(REF, ALT), 30);
     }
 
-    private VariantContext makeNonRef(final String contig, final int start, final int GQ) {
-        final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, start, Arrays.asList(REF, ALT));
-        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, ALT));
-        gb.GQ(GQ);
-        gb.DP(10);
-        gb.AD(new int[]{1, 2});
-        gb.PL(new int[]{0, 10, 100});
-        return vcb.genotypes(gb.make()).make();
-    }
-
-    private VariantContext makeDeletion(final String contig, final int start, final int size) {
-        final String del = Utils.dupString("A", size);
+    private static VariantContext makeDeletion(final int start, final int size) {
+        final String del = Utils.dupChar('A', size);
         final String alt = del.substring(0, 1);
-        final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", contig, start, Arrays.asList(del, alt));
+        final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", CHR1, start, Arrays.asList(del, alt));
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
-        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(vc.getReference(), vc.getAlternateAllele(0)));
-        gb.GQ(50);
+        return makeVariantContext(vcb, Arrays.asList(vc.getReference(), vc.getAlternateAllele(0)), 50);
+    }
+
+    private static VariantContext makeVariantContext(VariantContextBuilder vcb, List<Allele> alleles, int gq) {
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, alleles);
+        gb.GQ(gq);
         gb.DP(10);
         gb.AD(new int[]{1, 2});
-        gb.PL(new int[]{0, 10, 100});
-        return vcb.genotypes(gb.make()).make();
+        gb.PL(new int[]{0, gq, 20+gq});
+        return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
     }
 
     @Test
     public void testCloseEmitsLastVariant() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 30));
+        writer.add(makeHomRef(1));
         Assert.assertEquals(mockWriter.emitted.size(), 0);
 
         writer.close();
@@ -134,9 +147,10 @@ public class GVCFWriterUnitTest extends BaseTest {
 
     @Test
     public void testCloseDoesntEmitsLastVariantWhenNonRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeNonRef("20", 1, 30));
+        writer.add(makeNonRef(CHR1, 1));
         Assert.assertEquals(mockWriter.emitted.size(), 1);
 
         writer.close();
@@ -146,78 +160,83 @@ public class GVCFWriterUnitTest extends BaseTest {
 
     @Test
     public void testCrossingContigBoundaryRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 30));
-        writer.add(makeHomRef("20", 2, 30));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
         Assert.assertEquals(mockWriter.emitted.size(), 0);
-        writer.add(makeHomRef("21", 3, 30));
+        writer.add(makeHomRef(CHR2, 3, 0));
         Assert.assertEquals(mockWriter.emitted.size(), 1);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
 
         writer.close();
         Assert.assertEquals(mockWriter.emitted.size(), 2);
-        assertGoodVC(mockWriter.emitted.get(1), "21", 3, 3, false);
+        assertGoodVC(mockWriter.emitted.get(1), CHR2, 3, 3, false);
     }
 
     @Test
     public void testCrossingContigBoundaryToLowerPositionsRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 30, 30));
-        writer.add(makeHomRef("20", 31, 30));
+        writer.add(makeHomRef(30));
+        writer.add(makeHomRef(31));
         Assert.assertEquals(mockWriter.emitted.size(), 0);
-        writer.add(makeHomRef("21", 10, 30));
+        writer.add(makeHomRef(CHR2, 10, 0));
         Assert.assertEquals(mockWriter.emitted.size(), 1);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 30, 31, false);
-        writer.add(makeNonRef("21", 11, 30));
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 30, 31, false);
+        writer.add(makeNonRef(CHR2, 11));
         Assert.assertEquals(mockWriter.emitted.size(), 3);
-        assertGoodVC(mockWriter.emitted.get(1), "21", 10, 10, false);
-        assertGoodVC(mockWriter.emitted.get(2), "21", 11, 11, true);
+        assertGoodVC(mockWriter.emitted.get(1), CHR2, 10, 10, false);
+        assertGoodVC(mockWriter.emitted.get(2), CHR2, 11, 11, true);
     }
 
     @Test
     public void testCrossingContigBoundaryFromNonRefToLowerPositionsRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeNonRef("20", 20, 30));
+        writer.add(makeNonRef(CHR1, 20));
         Assert.assertEquals(mockWriter.emitted.size(), 1);
-        writer.add(makeHomRef("21", 10, 30));
+        writer.add(makeHomRef(CHR2, 10, 30));
         Assert.assertEquals(mockWriter.emitted.size(), 1);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 20, 20, true);
-        writer.add(makeNonRef("21", 11, 30));
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 20, 20, true);
+        writer.add(makeNonRef(CHR2, 11));
         Assert.assertEquals(mockWriter.emitted.size(), 3);
-        assertGoodVC(mockWriter.emitted.get(1), "21", 10, 10, false);
-        assertGoodVC(mockWriter.emitted.get(2), "21", 11, 11, true);
+        assertGoodVC(mockWriter.emitted.get(1), CHR2, 10, 10, false);
+        assertGoodVC(mockWriter.emitted.get(2), CHR2, 11, 11, true);
     }
 
     @Test
     public void testCrossingContigBoundaryNonRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 30));
-        writer.add(makeHomRef("20", 2, 30));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
         Assert.assertEquals(mockWriter.emitted.size(), 0);
-        writer.add(makeNonRef("21", 3, 30));
+        writer.add(makeNonRef(CHR2, 3));
         Assert.assertEquals(mockWriter.emitted.size(), 2);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
-        assertGoodVC(mockWriter.emitted.get(1), "21", 3, 3, true);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(1), CHR2, 3, 3, true);
     }
 
     @Test
     public void testCrossingContigBoundaryNonRefThenNonRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeNonRef("20", 1, 30));
+        writer.add(makeNonRef(CHR1, 1));
         Assert.assertEquals(mockWriter.emitted.size(), 1);
-        writer.add(makeNonRef("21", 1, 30));
+        writer.add(makeNonRef(CHR2, 1));
         Assert.assertEquals(mockWriter.emitted.size(), 2);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 1, true);
-        assertGoodVC(mockWriter.emitted.get(1), "21", 1, 1, true);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 1, true);
+        assertGoodVC(mockWriter.emitted.get(1), CHR2, 1, 1, true);
     }
 
-    private void assertGoodVC(final VariantContext vc, final String contig, final int start, final int stop, final boolean nonRef) {
-        Assert.assertEquals(vc.getChr(), contig);
+    private static void assertGoodVC(final VariantContext vc, final String contig, final int start, final int stop, final boolean nonRef) {
+        Assert.assertEquals(vc.getContig(), contig);
         Assert.assertEquals(vc.getStart(), start);
         Assert.assertEquals(vc.getEnd(), stop);
         if ( nonRef ) {
@@ -230,122 +249,233 @@ public class GVCFWriterUnitTest extends BaseTest {
             Assert.assertTrue(vc.hasGenotype(SAMPLE_NAME));
             Assert.assertEquals(vc.getGenotypes().size(), 1);
             final Genotype g = vc.getGenotype(SAMPLE_NAME);
-            Assert.assertEquals(g.hasAD(), false);
-            Assert.assertEquals(g.hasLikelihoods(), true);
-            Assert.assertEquals(g.hasPL(), true);
-            Assert.assertEquals(g.getPL().length == 3, true);
-            Assert.assertEquals(g.hasDP(), true);
-            Assert.assertEquals(g.hasGQ(), true);
+            Assert.assertFalse(g.hasAD());
+            Assert.assertTrue(g.hasLikelihoods());
+            Assert.assertTrue(g.hasPL());
+            Assert.assertEquals(g.getPL().length, 3);
+            Assert.assertTrue(g.hasDP());
+            Assert.assertTrue(g.hasGQ());
         }
     }
 
     @Test
     public void testVariantForcesNonRef() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 30));
-        writer.add(makeHomRef("20", 2, 30));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
         Assert.assertEquals(mockWriter.emitted.size(), 0);
-        writer.add(makeNonRef("20", 3, 30));
-        writer.add(makeHomRef("20", 4, 30));
-        writer.add(makeHomRef("20", 5, 30));
+        writer.add(makeNonRef(CHR1, 3));
+        writer.add(makeHomRef(4));
+        writer.add(makeHomRef(5));
         Assert.assertEquals(mockWriter.emitted.size(), 2);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
-        assertGoodVC(mockWriter.emitted.get(1), "20", 3, 3, true);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(1), CHR1, 3, 3, true);
         writer.close();
-        assertGoodVC(mockWriter.emitted.get(2), "20", 4, 5, false);
+        assertGoodVC(mockWriter.emitted.get(2), CHR1, 4, 5, false);
     }
 
     @Test
     public void testEmittingTwoBands() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 0));
-        writer.add(makeHomRef("20", 2, 0));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
         Assert.assertEquals(mockWriter.emitted.size(), 0);
-        writer.add(makeHomRef("20", 3, 50));
-        writer.add(makeHomRef("20", 4, 50));
+        writer.add(makeHomRef(3, 50));
+        writer.add(makeHomRef(4, 50));
         writer.close();
         Assert.assertEquals(mockWriter.emitted.size(), 2);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
-        assertGoodVC(mockWriter.emitted.get(1), "20", 3, 4, false);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(1), CHR1, 3, 4, false);
     }
+
+
+
+
 
     @Test
     public void testNonContiguousBlocks() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 0));
-        writer.add(makeHomRef("20", 2, 0));
-        writer.add(makeHomRef("20", 10, 0));
-        writer.add(makeHomRef("20", 11, 0));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
+        writer.add(makeHomRef(10));
+        writer.add(makeHomRef(11));
         writer.close();
         Assert.assertEquals(mockWriter.emitted.size(), 2);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
-        assertGoodVC(mockWriter.emitted.get(1), "20", 10, 11, false);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(1), CHR1, 10, 11, false);
     }
 
     @Test
     public void testDeletion() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 0));
-        writer.add(makeHomRef("20", 2, 0));
-        writer.add(makeDeletion("20", 3, 3));
-        writer.add(makeHomRef("20", 4, 0));
-        writer.add(makeHomRef("20", 5, 0));
-        writer.add(makeHomRef("20", 6, 0));
-        writer.add(makeHomRef("20", 7, 0));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
+        writer.add(makeDeletion(3, 3));
+        writer.add(makeHomRef(4));
+        writer.add(makeHomRef(5));
+        writer.add(makeHomRef(6));
+        writer.add(makeHomRef(7));
         writer.close();
         Assert.assertEquals(mockWriter.emitted.size(), 3);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
-        assertGoodVC(mockWriter.emitted.get(1), "20", 3, 5, true);
-        assertGoodVC(mockWriter.emitted.get(2), "20", 6, 7, false);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(1), CHR1, 3, 5, true);
+        assertGoodVC(mockWriter.emitted.get(2), CHR1, 6, 7, false);
     }
 
     @Test
     public void testHomRefAlt() {
+        final MockWriter mockWriter = new MockWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
 
-        writer.add(makeHomRef("20", 1, 0));
-        writer.add(makeHomRef("20", 2, 0));
-        writer.add(makeHomRefAlt("20", 3, 0));
-        writer.add(makeHomRef("20", 4, 0));
-        writer.add(makeHomRef("20", 5, 0));
-        writer.add(makeHomRef("20", 6, 0));
-        writer.add(makeHomRef("20", 7, 0));
+        writer.add(makeHomRef(1));
+        writer.add(makeHomRef(2));
+        writer.add(makeHomRefAlt(3));
+        writer.add(makeHomRef(4));
+        writer.add(makeHomRef(5));
+        writer.add(makeHomRef(6));
+        writer.add(makeHomRef(7));
         writer.close();
         Assert.assertEquals(mockWriter.emitted.size(), 3);
-        assertGoodVC(mockWriter.emitted.get(0), "20", 1, 2, false);
+        assertGoodVC(mockWriter.emitted.get(0), CHR1, 1, 2, false);
         Assert.assertFalse(mockWriter.emitted.get(1).hasAttribute("END"));
         Assert.assertFalse(mockWriter.emitted.get(1).hasAttribute("BLOCK_SIZE"));
-        assertGoodVC(mockWriter.emitted.get(2), "20", 4, 7, false);
+        assertGoodVC(mockWriter.emitted.get(2), CHR1, 4, 7, false);
     }
 
-    @DataProvider(name = "BandPartitionData")
+    @DataProvider(name = "GoodBandPartitionData")
     public Object[][] makeBandPartitionData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        tests.add(new Object[]{null, false});
-        tests.add(new Object[]{Collections.emptyList(), false});
-        tests.add(new Object[]{Arrays.asList(1), true});
-        tests.add(new Object[]{Arrays.asList(1, 10), true});
-        tests.add(new Object[]{Arrays.asList(1, 10, 30), true});
-        tests.add(new Object[]{Arrays.asList(10, 1, 30), false});
-        tests.add(new Object[]{Arrays.asList(-1, 1), false});
-        tests.add(new Object[]{Arrays.asList(1, null, 10), false});
-
-        return tests.toArray(new Object[][]{});
+        return new Object[][]{
+                {Collections.singletonList(1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,Integer.MAX_VALUE))},
+                {Arrays.asList(1, 2, 3), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,2), Range.closedOpen(2,3),Range.closedOpen(3,Integer.MAX_VALUE))},
+                {Arrays.asList(1, 10), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, Integer.MAX_VALUE))},
+                {Arrays.asList(1, 10, 30), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, 30),Range.closedOpen(30,Integer.MAX_VALUE))},
+        };
     }
 
-    @Test(dataProvider = "BandPartitionData")
-    public void testMyData(final List<Integer> partitions, final boolean expectedGood) {
-        try {
-            GVCFWriter.parsePartitions(partitions,2);
-            Assert.assertTrue(expectedGood, "Expected to fail but didn't");
-        } catch ( Exception e ) {
-            Assert.assertTrue(! expectedGood, "Expected to succeed but failed with message " + e.getMessage());
+    @Test(dataProvider = "GoodBandPartitionData")
+    public void testGoodPartitions(final List<Integer> partitions, List<Range<Integer>> expected) {
+        final RangeMap<Integer, Range<Integer>> ranges = GVCFWriter.parsePartitions(partitions);
+        Assert.assertEquals(new ArrayList<>(ranges.asMapOfRanges().keySet()), expected);
+
+    }
+
+    @DataProvider(name = "BadBandPartitionData")
+    public Object[][] makeBadBandPartitionData() {
+        return new Object[][]{
+                {null},
+                {Collections.emptyList()},
+                {Arrays.asList(10, 1, 30)},
+                {Arrays.asList(-1, 1)},
+                {Arrays.asList(1, null, 10)}
+        };
+    }
+
+    @Test(dataProvider = "BadBandPartitionData", expectedExceptions = IllegalArgumentException.class)
+    public void testBadPartitionsThrowException(final List<Integer> partitions){
+        GVCFWriter.parsePartitions(partitions); // we should explode here
+    }
+
+    @Test
+    public void testCheckError(){
+        final MockWriter mockWriter = new MockWriter();
+        final GVCFWriter gvcfWriter = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
+        mockWriter.error = false;
+        Assert.assertEquals(gvcfWriter.checkError(), mockWriter.checkError());
+        mockWriter.error = true;
+        Assert.assertEquals(gvcfWriter.checkError(), mockWriter.checkError());
+    }
+
+    @Test
+    public void testToVCFHeaderLine() {
+        final Range<Integer> band = Range.closedOpen(10,20);
+        Assert.assertEquals(GVCFWriter.rangeToVCFHeaderLine(band).getKey(), "GVCFBlock10-20", "Wrong key for " + band);
+        Assert.assertEquals(GVCFWriter.rangeToVCFHeaderLine(band).getValue(), "minGQ=10(inclusive),maxGQ=20(exclusive)", "Wrong value for" + band);
+    }
+
+    @DataProvider(name = "toWriteToDisk")
+    public Object[][] toWriteToDisk(){
+
+        return new Object[][]{
+                {Arrays.asList(makeHomRef(1, 33), makeHomRef(2, 31), makeHomRef(3, 30)), //merge multiple sites into one band
+                        Collections.singletonList(new MinimalData(CHR1, 1, 3, 30))},
+                {Arrays.asList(makeHomRef(CHR1, 1, 10), makeHomRef(CHR2, 2, 10)), //don't merge across chromosomes
+                        Arrays.asList(new MinimalData(CHR1, 1, 1, 10), new MinimalData(CHR2, 2, 2, 10))},
+                {Arrays.asList(makeHomRef(1,30), makeHomRef(2,15),makeHomRef(3,15)), //multiple bands stay distinct
+                    Arrays.asList(new MinimalData(CHR1, 1, 1, 30), new MinimalData(CHR1, 2,3,15))},
+                {Collections.singletonList(makeDeletion(100, 5)), Collections.singletonList(new MinimalData(CHR1, 100, 104, 50))},
+                {Arrays.asList(makeHomRef(1, 15), makeHomRef(2, 16), makeNonRef(CHR1, 3), makeHomRef(4, 15)),
+                        Arrays.asList(new MinimalData(CHR1, 1, 2, 15), new MinimalData(CHR1, 3, 3, 30), new MinimalData(CHR1, 4, 4, 15))}
+
+        };
+    }
+
+    /**
+     * data class to hold a SimpleInterval and a GQ together for easier testing
+     */
+    private static class MinimalData {
+        public final SimpleInterval location;
+        public final int gq;
+
+        public MinimalData(String chr, int start, int end, int gq) {
+            this.location = new SimpleInterval(chr, start, end);
+            this.gq = gq;
         }
     }
+
+    @Test(dataProvider = "toWriteToDisk")
+    public void writeGVCFToDisk(List<VariantContext> variants, List<MinimalData> expected) {
+        final List<Integer> gqPartitions = Arrays.asList(1, 10, 30);
+        final File outputFile =  createTempFile("generated", ".gvcf");
+
+        try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
+             GVCFWriter gvcfWriter = new GVCFWriter(writer, gqPartitions, HomoSapiensConstants.DEFAULT_PLOIDY))
+        {
+            gvcfWriter.writeHeader(getMinimalVCFHeader());
+            variants.forEach(gvcfWriter::add);
+        }
+        assertGVCFIsParseableAndVariantsMatch(outputFile, expected);
+    }
+
+    private static VCFHeader getMinimalVCFHeader() {
+        final Set<VCFHeaderLine> headerlines = new HashSet<>();
+        VCFStandardHeaderLines.addStandardFormatLines(headerlines, true, VCFConstants.GENOTYPE_KEY, VCFConstants.DEPTH_KEY, VCFConstants.GENOTYPE_QUALITY_KEY, VCFConstants.GENOTYPE_PL_KEY, VCFConstants.GENOTYPE_ALLELE_DEPTHS);
+        return new VCFHeader(headerlines, Sets.newHashSet(SAMPLE_NAME));
+    }
+
+    private static void assertGVCFIsParseableAndVariantsMatch(File variantFile, List<MinimalData> expected) {
+        Assert.assertTrue(variantFile.exists());
+        try ( FeatureDataSource<VariantContext> input = new FeatureDataSource<>(variantFile, new VCFCodec()))
+        {
+            final List<VariantContext> variants = Lists.newArrayList(input.iterator());
+            Assert.assertEquals(variants.size(), expected.size());
+            assertForEachPair(variants, expected, (vc, md) -> new SimpleInterval(vc).equals(md.location));
+            assertForEachPair(variants, expected, (vc, md) -> vc.getGenotype(0).getGQ() == md.gq);
+        }
+    }
+
+    /**
+     * assert that actual and expected have the same length l and
+     * assert that assertion(actual[i], expected[i]) is true for every 0 <= i < l
+     */
+    public static <A, B> void assertForEachPair(Iterable<A> actual, Iterable<B> expected, BiPredicate<A,B> assertion){
+        final Iterator<A> iteratorActual = actual.iterator();
+        final Iterator<B> iteratorExpected = expected.iterator();
+        while( iteratorActual.hasNext() && iteratorExpected.hasNext()){
+            final A a = iteratorActual.next();
+            final B b = iteratorExpected.next();
+            Assert.assertTrue(assertion.test(a, b), "Assertion failed for " + a + " and " + b);
+        }
+        if( iteratorActual.hasNext() || iteratorExpected.hasNext()){
+            Assert.fail("Actual and Expected are different lengths");
+        }
+
+    }
 }
-*/
