@@ -1,5 +1,7 @@
-package org.broadinstitute.hellbender.engine.writers;
+package org.broadinstitute.hellbender.utils.variant.writers;
 
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -8,6 +10,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -27,6 +30,7 @@ public class GVCFWriterUnitTest extends BaseTest {
         final List<VariantContext> emitted = new ArrayList<>();
         boolean headerWritten = false;
         boolean closed = false;
+        boolean error = false;
 
         @Override
         public void writeHeader(VCFHeader header) {
@@ -39,16 +43,21 @@ public class GVCFWriterUnitTest extends BaseTest {
         }
 
         @Override
+        public boolean checkError() {
+            return error;
+        }
+
+        @Override
         public void add(VariantContext vc) {
             emitted.add(vc);
         }
     }
 
     private MockWriter mockWriter;
-    private List<Integer> standardPartition = Arrays.asList(1, 10, 20);
-    private Allele REF = Allele.create("N", true);
-    private Allele ALT = Allele.create("A");
-    private List<Allele> ALLELES = Arrays.asList(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+    private final List<Integer> standardPartition = Arrays.asList(1, 10, 20);
+    private final Allele REF = Allele.create("N", true);
+    private final Allele ALT = Allele.create("A");
+    private final List<Allele> ALLELES = Arrays.asList(REF, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
     private final String SAMPLE_NAME = "XXYYZZ";
 
     @BeforeMethod
@@ -68,13 +77,6 @@ public class GVCFWriterUnitTest extends BaseTest {
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
         writer.close();
         Assert.assertTrue(mockWriter.closed);
-    }
-
-    @Test
-    public void testCloseWithoutClosingUnderlyingWriter() {
-        final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
-        writer.close(false);
-        Assert.assertFalse(mockWriter.closed);
     }
 
     private VariantContext makeHomRef(final String contig, final int start, final int GQ) {
@@ -108,7 +110,7 @@ public class GVCFWriterUnitTest extends BaseTest {
     }
 
     private VariantContext makeDeletion(final String contig, final int start, final int size) {
-        final String del = Utils.dupString("A", size);
+        final String del = Utils.dupChar('A', size);
         final String alt = del.substring(0, 1);
         final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", contig, start, Arrays.asList(del, alt));
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
@@ -217,7 +219,7 @@ public class GVCFWriterUnitTest extends BaseTest {
     }
 
     private void assertGoodVC(final VariantContext vc, final String contig, final int start, final int stop, final boolean nonRef) {
-        Assert.assertEquals(vc.getChr(), contig);
+        Assert.assertEquals(vc.getContig(), contig);
         Assert.assertEquals(vc.getStart(), start);
         Assert.assertEquals(vc.getEnd(), stop);
         if ( nonRef ) {
@@ -230,12 +232,12 @@ public class GVCFWriterUnitTest extends BaseTest {
             Assert.assertTrue(vc.hasGenotype(SAMPLE_NAME));
             Assert.assertEquals(vc.getGenotypes().size(), 1);
             final Genotype g = vc.getGenotype(SAMPLE_NAME);
-            Assert.assertEquals(g.hasAD(), false);
-            Assert.assertEquals(g.hasLikelihoods(), true);
-            Assert.assertEquals(g.hasPL(), true);
-            Assert.assertEquals(g.getPL().length == 3, true);
-            Assert.assertEquals(g.hasDP(), true);
-            Assert.assertEquals(g.hasGQ(), true);
+            Assert.assertFalse(g.hasAD());
+            Assert.assertTrue(g.hasLikelihoods());
+            Assert.assertTrue(g.hasPL());
+            Assert.assertEquals(g.getPL().length, 3);
+            Assert.assertTrue(g.hasDP());
+            Assert.assertTrue(g.hasGQ());
         }
     }
 
@@ -322,29 +324,54 @@ public class GVCFWriterUnitTest extends BaseTest {
         assertGoodVC(mockWriter.emitted.get(2), "20", 4, 7, false);
     }
 
-    @DataProvider(name = "BandPartitionData")
+    @DataProvider(name = "GoodBandPartitionData")
     public Object[][] makeBandPartitionData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        tests.add(new Object[]{null, false});
-        tests.add(new Object[]{Collections.emptyList(), false});
-        tests.add(new Object[]{Arrays.asList(1), true});
-        tests.add(new Object[]{Arrays.asList(1, 10), true});
-        tests.add(new Object[]{Arrays.asList(1, 10, 30), true});
-        tests.add(new Object[]{Arrays.asList(10, 1, 30), false});
-        tests.add(new Object[]{Arrays.asList(-1, 1), false});
-        tests.add(new Object[]{Arrays.asList(1, null, 10), false});
-
-        return tests.toArray(new Object[][]{});
+        return new Object[][]{
+                {Arrays.asList(1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,Integer.MAX_VALUE))},
+                {Arrays.asList(1, 2, 3), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,2), Range.closedOpen(2,3),Range.closedOpen(3,Integer.MAX_VALUE))},
+                {Arrays.asList(1, 10), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, Integer.MAX_VALUE))},
+                {Arrays.asList(1, 10, 30), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, 30),Range.closedOpen(30,Integer.MAX_VALUE))},
+        };
     }
 
-    @Test(dataProvider = "BandPartitionData")
-    public void testMyData(final List<Integer> partitions, final boolean expectedGood) {
-        try {
-            GVCFWriter.parsePartitions(partitions,2);
-            Assert.assertTrue(expectedGood, "Expected to fail but didn't");
-        } catch ( Exception e ) {
-            Assert.assertTrue(! expectedGood, "Expected to succeed but failed with message " + e.getMessage());
-        }
+    @Test(dataProvider = "GoodBandPartitionData")
+    public void testGoodPartitions(final List<Integer> partitions, List<Range<Integer>> expected) {
+        final RangeMap<Integer, Range<Integer>> ranges = GVCFWriter.parsePartitions(partitions);
+        Assert.assertEquals(new ArrayList<>(ranges.asMapOfRanges().keySet()), expected);
+
     }
+
+    @DataProvider(name = "BadBandPartitionData")
+    public Object[][] makeBadBandPartitionData() {
+        return new Object[][]{
+                {null},
+                {Collections.emptyList()},
+                {Arrays.asList(10, 1, 30)},
+                {Arrays.asList(-1, 1)},
+                {Arrays.asList(1, null, 10)}
+        };
+    }
+
+    @Test(dataProvider = "BadBandPartitionData", expectedExceptions = IllegalArgumentException.class)
+    public void testBadPartitionsThrowException(final List<Integer> partitions){
+        GVCFWriter.parsePartitions(partitions); // we should explode here
+    }
+
+    @Test
+    public void testCheckError(){
+        GVCFWriter gvcfWriter = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
+        mockWriter.error = false;
+        Assert.assertEquals(gvcfWriter.checkError(), mockWriter.checkError());
+        mockWriter.error = true;
+        Assert.assertEquals(gvcfWriter.checkError(), mockWriter.checkError());
+    }
+
+    @Test
+    public void testToVCFHeaderLine() {
+        final Range<Integer> band = Range.closedOpen(10,20);
+        Assert.assertEquals(GVCFWriter.rangeToVCFHeaderLine(band).getKey(), "GVCFBlock10-20", "Wrong key for " + band);
+        Assert.assertEquals(GVCFWriter.rangeToVCFHeaderLine(band).getValue(), "minGQ=10(inclusive),maxGQ=20(exclusive)", "Wrong value for" + band);
+
+    }
+
 }

@@ -5,8 +5,9 @@ import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.Arrays;
@@ -721,5 +722,21 @@ public final class MathUtils {
         final double[] ds = new double[is.length];
         for (int i = 0; i < is.length; ++i) ds[i] = is[i];
         return ds;
+    }
+
+    /**
+     * Compute the median of a list of numbers
+     *
+     * If values.length is even, this will be the middle value when the elements are sorted
+     * If values.length is odd then it will be the mean of the two values closest to the middle.
+     *
+     * @param values a list of numbers
+     * @return the median element of values
+     */
+    public static <T extends Number & Comparable<T>> double median(final Collection<T> values) {
+        Utils.nonEmpty(values, "cannot take the median of a collection with no values.");
+        DescriptiveStatistics stats = new DescriptiveStatistics();
+        values.stream().mapToDouble(Number::doubleValue).forEach(stats::addValue);
+        return stats.apply(new Median());
     }
 }
