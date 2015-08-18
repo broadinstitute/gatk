@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5Reader;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -151,7 +151,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     protected Object doWork() {
 
         Utils.regularReadableUserFile(ponFile);
-        try (final HDF5Reader ponReader = new HDF5Reader(ponFile)) {
+        try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
             final TargetCollection<? extends BEDFeature> exonCollection = readTargetCollection(targetFile);
             final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, exonCollection);
