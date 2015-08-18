@@ -135,10 +135,8 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
                 " --bqsr_recal_file " + getDataflowTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
                 params.args +
                 " -O %s";
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
-        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                ab.getString(),
+                args,
                 Arrays.asList(params.expectedFile));
         spec.executeTest("testPrintReads-" + params.args, this);
     }
