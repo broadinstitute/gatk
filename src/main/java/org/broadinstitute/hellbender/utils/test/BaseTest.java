@@ -46,8 +46,12 @@ public abstract class BaseTest {
 
     public static final String hg19_chr1_1M_Reference = publicTestDir + "Homo_sapiens_assembly19_chr1_1M.fasta";
     public static final String hg19_chr1_1M_dbSNP = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
-    public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
 
+    // the following file has been modified such that the first chromosome length is 1M; this is sometimes
+    // required due to sequence dictionary validation, since a reference FASTA with only 1M bases is used
+    public static final String hg19_chr1_1M_dbSNP_modified = publicTestDir + "HSA19.dbsnp135.chr1_1M.exome_intervals.modified.vcf";
+
+    public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
     public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
 
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
