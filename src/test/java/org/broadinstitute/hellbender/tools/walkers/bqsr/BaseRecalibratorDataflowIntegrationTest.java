@@ -182,7 +182,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         spec.executeTest("testBQSR-" + params.args, this);
     }
 
-    @Test(dataProvider = "BQSRTestCloud", groups = {"cloud"})
+    @Test(dataProvider = "BQSRTestCloud", groups = {"cloud_todo"})
     public void testBQSRCloud(BQSRTest params) throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
