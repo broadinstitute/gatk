@@ -1,7 +1,10 @@
-package org.broadinstitute.hellbender.dev.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.PCollection;
+import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.ValidationStringency;
@@ -15,7 +18,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyBQSRTransform;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutputSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
@@ -74,15 +77,16 @@ public final class ApplyBQSRDataflow extends DataflowCommandLineProgram {
         if (readArguments.getReadFilesNames().size()>1) {
             throw new UserException("Sorry, we only support a single input file for now.");
         }
-        String filename = readArguments.getReadFilesNames().get(0);
-        ReadsDataflowSource readsSource = new ReadsDataflowSource(filename, pipeline);
-        SAMFileHeader header = readsSource.getHeader();
+        final String filename = readArguments.getReadFilesNames().get(0);
+        final ReadsDataflowSource readsSource = new ReadsDataflowSource(filename, pipeline);
+        final SAMFileHeader header = readsSource.getHeader();
+        final PCollectionView<SAMFileHeader> headerView = pipeline.apply(Create.of(header)).apply(View.asSingleton());
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary) :
-                IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        PCollection<BaseRecalOutput> recalInfoSingletonCollection = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME);
-        PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false)
-                .apply(new ApplyBQSRTransform(header, recalInfoSingletonCollection, bqsrOpts));
+        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
+                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        final PCollectionView<BaseRecalOutput> recalInfoSingletonView = BaseRecalOutputSource.loadFileOrRemote(pipeline, BQSR_RECAL_FILE_NAME).apply(View.asSingleton());
+        final PCollection<GATKRead> output = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false)
+                .apply(new ApplyBQSRTransform(headerView, recalInfoSingletonView, bqsrOpts));
         intermediateRemoteBam = OUTPUT;
         if (needsIntermediateCopy()) {
             // The user specified remote execution and provided a local file name. So we're going to have to save to remote storage as a go-between.

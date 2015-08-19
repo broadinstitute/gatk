@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
-import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
 import org.testng.annotations.DataProvider;

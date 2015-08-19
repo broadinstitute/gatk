@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.dev;
+package org.broadinstitute.hellbender.utils.logging;
 
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.testng.annotations.Test;

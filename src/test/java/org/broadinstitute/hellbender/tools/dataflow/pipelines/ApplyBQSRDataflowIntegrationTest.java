@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -110,10 +110,11 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"bucket_todo"})
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"bucket"})
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
+                " --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() +
                 " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
                 params.args +
                 " -O %s";
@@ -125,7 +126,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"cloud_todo"})
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"cloud"})
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
