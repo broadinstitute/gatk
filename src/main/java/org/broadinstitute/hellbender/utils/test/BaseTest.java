@@ -44,6 +44,24 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
+    /**
+     * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)
+     */
+    public static final String largeFileTestDir = new File(publicTestDir, "large").getAbsolutePath() + "/";
+
+    // All of chromosomes 20 and 21 from the b37 reference
+    public static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
+
+    // ~600,000 reads from chromosomes 20 and 21 of an NA12878 WGS bam aligned to b37, plus ~50,000 unmapped reads
+    public static final String NA12878_20_21_WGS_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
+
+    // Variants from a DBSNP 138 VCF overlapping the reads in NA12878_20_21_WGS_bam
+    public static final String dbsnp_138_b37_20_21_vcf = largeFileTestDir + "dbsnp_138.b37.20.21.vcf";
+
+    /**
+     * END OF LARGE FILES FOR TESTING
+     */
+
     public static final String hg19_chr1_1M_Reference = publicTestDir + "Homo_sapiens_assembly19_chr1_1M.fasta";
     public static final String hg19_chr1_1M_dbSNP = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
 
