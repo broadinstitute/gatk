@@ -202,6 +202,36 @@ public final class CommandLineParserTest {
                         "--version false");
     }
 
+    private static class WithSensitiveValues {
+
+        @Argument(sensitive = true)
+        public String secretValue;
+
+        @Argument
+        public String openValue;
+    }
+
+    @Test
+    public void testGetCommandLineWithSensitiveArgument(){
+        final String supersecret = "supersecret";
+        final String unclassified = "unclassified";
+        final String[] args = {
+                "--secretValue", supersecret,
+                "--openValue", unclassified
+        };
+        final WithSensitiveValues sv = new WithSensitiveValues();
+        final CommandLineParser clp = new CommandLineParser(sv);
+        Assert.assertTrue(clp.parseArguments(System.err, args));
+
+        final String commandLine = clp.getCommandLine();
+
+        Assert.assertTrue(commandLine.contains(unclassified));
+        Assert.assertFalse(commandLine.contains(supersecret));
+
+        Assert.assertEquals(sv.openValue, unclassified);
+        Assert.assertEquals(sv.secretValue, supersecret);
+    }
+
     @Test
     public void testDefault() {
         final String[] args = {

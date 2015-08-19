@@ -78,7 +78,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
     protected File clientSecret;
 
     @Argument(doc = "API Key for google cloud authentication",
-            shortName = "apiKey", fullName = "apiKey", optional=true, mutex={"client_secret"})
+            shortName = "apiKey", fullName = "apiKey", optional=true, mutex={"client_secret"}, sensitive = true)
     protected String apiKey = null;
 
     @Argument(doc = "Number of Dataflow workers to use (or auto if unset).",

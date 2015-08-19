@@ -787,6 +787,7 @@ public final class CommandLineParser {
         final Set<String> mutuallyExclusive;
         final Object parent;
         final boolean isSpecial;
+        final boolean isSensitive;
 
         public ArgumentDefinition(final Field field, final Argument annotation, final Object parent){
             this.field = field;
@@ -799,6 +800,7 @@ public final class CommandLineParser {
 
             this.isCommon = annotation.common();
             this.isSpecial = annotation.special();
+            this.isSensitive = annotation.sensitive();
 
             this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
 
@@ -870,7 +872,11 @@ public final class CommandLineParser {
          */
         private String prettyNameValue(Object value) {
             if(value != null){
-                return String.format("--%s %s", getLongName(), value);
+                if (isSensitive){
+                    return String.format("--%s ***********", getLongName());
+                } else {
+                    return String.format("--%s %s", getLongName(), value);
+                }
             }
             return "";
         }

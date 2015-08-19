@@ -86,7 +86,7 @@ public abstract class BaseTest {
      *  name of the google cloud project that stores the data and will run the code, probably broad-dsde-dev
      *  @return HELLBENDER_TEST_PROJECT env. var if defined, throws otherwise.
      */
-    public String getDataflowTestProject() {
+    public static String getDataflowTestProject() {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_PROJECT");
     }
 
@@ -94,7 +94,7 @@ public abstract class BaseTest {
      * API key for HELLBENDER_TEST_PROJECT
      * @return HELLBENDER_TEST_APIKEY env. var if defined, throws otherwise.
      */
-    public String getDataflowTestApiKey() {
+    public static String getDataflowTestApiKey() {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_APIKEY");
     }
 
@@ -102,7 +102,7 @@ public abstract class BaseTest {
      * A writeable folder on the project's GCS, where java files will be staged for execution
      * @return HELLBENDER_TEST_STAGING env. var if defined, throws otherwise.
      */
-    public String getDataflowTestStaging() {
+    public static String getDataflowTestStaging() {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_STAGING");
     }
 
@@ -110,11 +110,11 @@ public abstract class BaseTest {
      *  A GCS path where the test inputs are stored
      *  @return HELLBENDER_TEST_INPUTS env. var if defined, throws otherwise.
      */
-    public String getDataflowTestInputPath() {
+    public static String getDataflowTestInputPath() {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
     }
 
-    private String getNonNullEnvironmentVariable(String envVarName) {
+    private static String getNonNullEnvironmentVariable(String envVarName) {
         String value = System.getenv(envVarName);
         if (null == value) {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
@@ -128,7 +128,7 @@ public abstract class BaseTest {
      *         {@link #getDataflowTestProject}, and {@link #getDataflowTestStaging}, suitable
      *         for use in a hellbender command line.
      */
-    public List<String> getStandardDataflowArgumentsFromEnvironment() {
+    public static List<String> getStandardDataflowArgumentsFromEnvironment() {
         return Arrays.asList("--apiKey", getDataflowTestApiKey(),
                              "--project", getDataflowTestProject(),
                              "--staging", getDataflowTestStaging());
@@ -142,7 +142,7 @@ public abstract class BaseTest {
      *
      * @return a PipelineOptions object containing our API key
      */
-    public PipelineOptions getAuthenticatedPipelineOptions() {
+    public static PipelineOptions getAuthenticatedPipelineOptions() {
         final GCSOptions popts = PipelineOptionsFactory.as(GCSOptions.class);
         popts.setApiKey(getDataflowTestApiKey());
         return popts;

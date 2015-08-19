@@ -1,24 +1,23 @@
 package org.broadinstitute.hellbender.cmdline;
 
-import htsjdk.samtools.util.Log;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
-
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
 
 import java.io.File;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
 import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
