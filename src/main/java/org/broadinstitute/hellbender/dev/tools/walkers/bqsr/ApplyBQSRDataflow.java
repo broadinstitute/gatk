@@ -16,8 +16,8 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalInterva
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.dev.pipelines.bqsr.ApplyBQSRTransform;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutputSource;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutputSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;

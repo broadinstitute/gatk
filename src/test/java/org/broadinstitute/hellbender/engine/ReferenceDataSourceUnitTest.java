@@ -21,27 +21,27 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testNonExistentReference() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(new File("/foo/bar/nonexistent.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(new File("/foo/bar/nonexistent.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceFaiFile.class)
     public void testReferenceWithMissingFaiFile() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(new File(publicTestDir + "fastaWithoutFai.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(publicTestDir + "fastaWithoutFai.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceDictFile.class)
     public void testReferenceWithMissingDictFile() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(new File(publicTestDir + "fastaWithoutDict.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(publicTestDir + "fastaWithoutDict.fasta"));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullReference() {
-        ReferenceDataSource refDataSource = new ReferenceDataSource(null);
+        ReferenceDataSource refDataSource = new ReferenceFileSource(null);
     }
 
     @Test
     public void testGetSequenceDictionary() {
-        try (ReferenceDataSource refDataSource = new ReferenceDataSource(TEST_REFERENCE)) {
+        try (ReferenceDataSource refDataSource = new ReferenceFileSource(TEST_REFERENCE)) {
             SAMSequenceDictionary sequenceDictionary = refDataSource.getSequenceDictionary();
             Assert.assertEquals(sequenceDictionary.size(), 4, "Wrong number of sequences in sequence dictionary returned from refDataSource.getSequenceDictionary()");
             for ( String contig : Arrays.asList("1", "2", "3", "4") ) {
@@ -66,7 +66,7 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
     public void testQueryAndPrefetch( final SimpleInterval interval, final String expectedBases ) {
-        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE))  {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE))  {
             ReferenceSequence queryResult = reference.queryAndPrefetch(interval);
 
             Assert.assertEquals(new String(queryResult.getBases()), expectedBases,
@@ -76,7 +76,7 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
     public void testQueryAndIterate( final SimpleInterval interval, final String expectedBases ) {
-        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
             Iterator<Byte> queryResultIterator = reference.query(interval);
             List<Byte> queryResult = new ArrayList<>();
 

@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.dev;
 
+import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
 import org.testng.Assert;
 
 public class BunnyLogTest {

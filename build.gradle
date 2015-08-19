@@ -43,13 +43,15 @@ repositories {
         url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
     }
     maven {
-        url "https://oss.sonatype.org/content/repositories/snapshots/"
+        url "https://oss.sonatype.org/content/repositories/snapshots/" // for http-client
     }
 }
 
 configurations.all {
     resolutionStrategy {
         force 'com.google.http-client:google-http-client:1.21.0-SNAPSHOT'
+        // the snapshot folder contains a dev version of guava, we don't want to use that.
+        force 'com.google.guava:guava:18.0'
     }
 }
 
@@ -84,10 +86,12 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
+    compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:1.138'
     compile ('com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15') {
         // an upstream dependency includes guava-jdk5, but we want the newer version instead.
         exclude module: 'guava-jdk5'
+        exclude group:  'guava-jdk5'
     }
     compile ('com.google.cloud.genomics:gatk-tools-java:1.1') {
         exclude module: 'guava-jdk5'
@@ -108,8 +112,10 @@ dependencies {
     compile ('com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30') {
         exclude module: 'guava-jdk5'
     }
-    compile 'com.google.guava:guava:18.0'
-    compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
+    // we don't need this guy. Plus, it asks for the latest version
+    // of com.google.http-client:google-http-client-jackson2,
+    // which is a problem when we have a SNAPSHOT version.
+    //compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.jgrapht:jgrapht-core:0.9.1'
     compile 'org.testng:testng:6.9.6' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
     compile 'com.cloudera.dataflow.spark:spark-dataflow:0.4.0'
@@ -195,11 +201,18 @@ test {
     String CI = "$System.env.CI"
     String CLOUD = "$System.env.CLOUD"
     useTestNG{
-        if ( CLOUD =="mandatory"){
+        if (CLOUD =="mandatory") {
+            // run only the cloud tests
             includeGroups 'cloud', 'bucket'
-        } else if( CLOUD == "todo"){
+        } else if (CLOUD == "todo") {
+            // run only the in-development cloud tests
             includeGroups 'cloud_todo', 'bucket_todo'
+        } else if (CLOUD == "together") {
+            // run both local tests and mandatory cloud tests, together.
+            // This is good when e.g. you are done for the day and want to run tests on your machine overnight.
+            excludeGroups 'cloud_todo', 'bucket_todo'
         } else {
+            // run only the local tests
             excludeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
         }
     }

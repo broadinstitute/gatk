@@ -196,7 +196,7 @@ public final class BaseRecalibrator extends ReadWalker {
         initializeRecalibrationEngine();
         minimumQToUse = PRESERVE_QSCORES_LESS_THAN;
 
-        referenceDataSource = new ReferenceDataSource(referenceArguments.getReferenceFile());
+        referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferenceFile());
     }
 
     /**

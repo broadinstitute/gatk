@@ -53,7 +53,7 @@ public class RefBasesFromAPI {
                         // Get a single interval spanning all the per-read reference windows.
                         SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);
 
-                        RefAPISource refAPISource = RefAPISource.getRefAPISource();
+                        RefAPISource refAPISource = RefAPISource.getInstance();
                         ReferenceBases bases = refAPISource.getReferenceBases(c.getPipelineOptions(), c.sideInput(dataView), interval);
                         c.output(KV.of(bases, reads));
                     }

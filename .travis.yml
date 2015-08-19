@@ -50,6 +50,7 @@ before_install:
 - $GCLOUD/gcloud config set project broad-dsde-dev
 - $GCLOUD/gcloud auth activate-service-account --key servicekey.json
 - R --version
+install: travis_wait gradle check
 after_success:
 - gradle jacocoTestReport coveralls
 after_failure:

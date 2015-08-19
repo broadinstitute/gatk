@@ -43,7 +43,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public File RECAL_TABLE_FILE = null;
     public transient PrintStream RECAL_TABLE;
 
-    //We always use the same covariates. The field is retained for comparibility with GATK3 reports.
+    // We always use the same covariates. The field is retained for compatibility with GATK3 reports.
     public static final boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
     /**

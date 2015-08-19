@@ -24,7 +24,7 @@ public final class ReferenceContextUnitTest extends BaseTest {
                 { new ReferenceContext() },
                 { new ReferenceContext(null, null) },
                 { new ReferenceContext(null, new SimpleInterval("1", 1, 1) ) },
-                { new ReferenceContext(new ReferenceDataSource(TEST_REFERENCE), null) }
+                { new ReferenceContext(new ReferenceFileSource(TEST_REFERENCE), null) }
         };
     }
 
@@ -51,7 +51,7 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test(dataProvider = "WindowlessReferenceIntervalDataProvider")
     public void testWindowlessReferenceContext( final SimpleInterval interval, final String expectedBases ) {
-        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
             ReferenceContext refContext = new ReferenceContext(reference, interval);
 
             checkReferenceContextBases(refContext, expectedBases);
@@ -82,7 +82,7 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test(dataProvider = "WindowedReferenceIntervalDataProvider")
     public void testWindowedContext( final SimpleInterval interval, final int windowStartOffset, final int windowStopOffset, final SimpleInterval expectedWindow, final String expectedBases ) {
-        try (ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
             ReferenceContext refContext = new ReferenceContext(reference, interval, windowStartOffset, windowStopOffset);
 
             checkReferenceContextBases(refContext, expectedBases);
@@ -97,7 +97,7 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test
     public void testDynamicallyChangingWindow() {
-        try (final ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE)) {
+        try (final ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
             final SimpleInterval interval = new SimpleInterval("1", 11210, 11220);
             final ReferenceContext refContext = new ReferenceContext(reference, interval);
             final String intervalBases = "CGGTGCTGTGC";
@@ -166,7 +166,7 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test(dataProvider = "InvalidWindowDataProvider", expectedExceptions = GATKException.class)
     public void testInvalidWindowHandlingAtConstruction( final int windowStartOffset, final int windowStopOffset ) {
-        try ( ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE) ) {
+        try ( ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE) ) {
             SimpleInterval interval = new SimpleInterval("1", 5, 10);
             ReferenceContext refContext = new ReferenceContext(reference, interval, windowStartOffset, windowStopOffset);
         }
@@ -174,7 +174,7 @@ public final class ReferenceContextUnitTest extends BaseTest {
 
     @Test(dataProvider = "InvalidWindowDataProvider", expectedExceptions = GATKException.class)
     public void testInvalidWindowHandlingPostConstruction( final int windowStartOffset, final int windowStopOffset ) {
-        try ( ReferenceDataSource reference = new ReferenceDataSource(TEST_REFERENCE) ) {
+        try ( ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE) ) {
             SimpleInterval interval = new SimpleInterval("1", 5, 10);
             ReferenceContext refContext = new ReferenceContext(reference, interval);
             refContext.setWindow(windowStartOffset, windowStopOffset);

@@ -25,6 +25,7 @@ To build and run all tests, run `gradle check`. Test report is in `build/reports
 To only build, run `gradle installApp`.
 
 To run all tests, run `gradle test`. 
+What will happen depends on the value of the `CLOUD` environment variable: if it's `false` or unset then only local tests are run. If it's `mandatory` then it'll run only the cloud tests. 
 
 To run a single test class, run something like this, `gradle test -Dtest.single=ReadUtilsUnitTest`.
 

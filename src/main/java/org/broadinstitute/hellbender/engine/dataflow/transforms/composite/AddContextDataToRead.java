@@ -6,7 +6,7 @@ import com.google.cloud.dataflow.sdk.transforms.join.CoGroupByKey;
 import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.*;
 import com.google.common.collect.Lists;
-import org.broadinstitute.hellbender.dev.DoFnWLog;
+import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPIMetadata;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;

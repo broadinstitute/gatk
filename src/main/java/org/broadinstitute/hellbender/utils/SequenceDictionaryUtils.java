@@ -238,7 +238,8 @@ public class SequenceDictionaryUtils {
 //            }
 //        }
 //        else {
-        if (me.getSequenceName() != that.getSequenceName())
+        // serialization/deserialization breaks the internalization, so we must use equals.
+        if (!(me.getSequenceName() .equals(that.getSequenceName())))
             return false; // Compare using == since we intern() the Strings
 //        }
 

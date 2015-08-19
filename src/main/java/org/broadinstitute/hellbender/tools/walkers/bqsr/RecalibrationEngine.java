@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalDatum;
 import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
@@ -115,6 +116,7 @@ public final class RecalibrationEngine {
      * and walks over this data to create summary data tables like by read group table.
      */
     public static void finalizeRecalibrationTables(final RecalibrationTables tables) {
+        Utils.nonNull(tables);
         final NestedIntegerArray<RecalDatum> byReadGroupTable = tables.getReadGroupTable();
         final NestedIntegerArray<RecalDatum> byQualTable = tables.getQualityScoreTable();
 
