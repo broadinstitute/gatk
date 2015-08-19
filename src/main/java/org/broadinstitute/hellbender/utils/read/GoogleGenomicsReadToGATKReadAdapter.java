@@ -24,8 +24,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -631,6 +633,9 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
 
     @Override
     public GATKRead copy() {
+
+        workAroundHttpClientCloneBug();
+
         // clone() actually makes a deep copy of all fields here (via GenericData.clone())
         return new GoogleGenomicsReadToGATKReadAdapter(genomicsRead.clone());
     }
@@ -668,5 +673,24 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
         result = 31 * result + uuid.hashCode();
 
         return result;
+    }
+
+    // TODO: Remove once https://github.com/broadinstitute/hellbender/issues/650 is solved.
+    private void workAroundHttpClientCloneBug() {
+        final List<Integer> alignedQuality = genomicsRead.getAlignedQuality();
+        if (null!=alignedQuality) {
+            genomicsRead.setAlignedQuality(new ArrayList<>(alignedQuality));
+        }
+        if (null!=genomicsRead.getInfo()) {
+            Map<String, List<String>> infoCopy = new HashMap<>();
+            for (Map.Entry<String, List<String>> entry : genomicsRead.getInfo().entrySet()) {
+                infoCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+            }
+            genomicsRead.setInfo(infoCopy);
+        }
+        final LinearAlignment alignment = genomicsRead.getAlignment();
+        if (null!=alignment) {
+            alignment.setCigar(new ArrayList<>(alignment.getCigar()));
+        }
     }
 }

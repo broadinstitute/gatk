@@ -16,10 +16,10 @@ import org.apache.logging.log4j.Logger;
 public final class BunnyLog {
     // to mark the log entries in the "bunny" format
     public static final String bunny = "=[**]=";
-    private Logger optLogger = null;
-    private final String id;
     // if false, then we don't print any message.
     private static boolean enabled = true;
+    private Logger optLogger = null;
+    private final String id;
 
     public BunnyLog() {
         this.id = "" + new Random().nextLong();

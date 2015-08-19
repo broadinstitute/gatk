@@ -16,11 +16,13 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
@@ -107,7 +109,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
         final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, refAPIMetadata, variantsDataflowSource);
 
-        // Apply BQSR.
+        // BQSR.
         // default arguments are best practice.
         BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
         final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
@@ -115,10 +117,10 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         checkSequenceDictionaries(refDictionary, readsDictionary);
         PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
         final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
-
         final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
 
-        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRStub(headerSingleton, mergedRecalibrationReport));
+        final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();
+        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRTransform(headerSingleton, mergedRecalibrationReport, applyArgs));
         SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
     }
 
@@ -126,30 +128,6 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         Utils.nonNull(refDictionary);
         Utils.nonNull(readsDictionary);
         SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary, true, null);
-    }
-
-    private static class ApplyBQSRStub extends PTransform<PCollection<GATKRead>, PCollection<GATKRead>> {
-        private static final long serialVersionUID = 1L;
-        private final PCollectionView<SAMFileHeader> header;
-        private final PCollectionView<BaseRecalOutput> reportView;
-
-        public ApplyBQSRStub( final PCollectionView<SAMFileHeader> header, final PCollectionView<BaseRecalOutput> recalibrationReport ) {
-            this.header = header;
-            this.reportView = recalibrationReport;
-        }
-
-        @Override
-        public PCollection<GATKRead> apply( PCollection<GATKRead> input ) {
-            return input.apply(ParDo.named("ApplyBQSR").
-                    of(new DoFnWLog<GATKRead, GATKRead>("ApplyBQSRStub") {
-                        private static final long serialVersionUID = 1L;
-
-                        @Override
-                        public void processElement( ProcessContext c ) throws Exception {
-                            c.output(c.element());
-                        }
-                    }).withSideInputs(header, reportView));
-        }
     }
 
 }
