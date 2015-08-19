@@ -5,6 +5,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -151,10 +152,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             if ( ! indicesAvailable ) {
                 raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
             }
-
-            logger.info("Preparing intervals for traversal");
+            BunnyLog bl = new BunnyLog(logger);
+            bl.start("Preparing intervals for traversal");
             preparedIntervals = prepareIntervalsForTraversal();
-            logger.info("Done preparing intervals for traversal");
+            bl.end();
         }
         else {
             preparedIntervals = null;
@@ -180,9 +181,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      */
     @Override
     public Iterator<GATKRead> iterator() {
-        logger.info("Preparing readers for traversal");
+        BunnyLog bunny = new BunnyLog(logger);
+        bunny.start("Preparing readers for traversal");
         final Iterator<GATKRead> traversalIter = prepareIteratorsForTraversal(preparedIntervals);
-        logger.info("Done preparing readers for traversal");
+        bunny.end();
 
         return traversalIter;
     }

@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -9,18 +11,39 @@ import java.util.NoSuchElementException;
 public final class ByteArrayIterator implements Iterator<Byte> {
     private final byte[] byteArray;
     private int currentPosition;
+    private int stopIndex;
 
     public ByteArrayIterator( final byte[] byteArray ) {
+        this(byteArray, 0, byteArray.length);
+    }
+
+    /**
+     * Iterates through this array, starting at index 'firstIndex' and going until
+     * (but not including) index 'stopIndex'.
+     */
+    public ByteArrayIterator( final byte[] byteArray, int firstIndex, int stopIndex ) {
+        if (!(byteArray.length==0 && firstIndex==0)) {
+            // special case: empty buffer, we can start at 0 even though it's technically outside.
+            Utils.validIndex(firstIndex, byteArray.length);
+        }
+        if (stopIndex>byteArray.length) {
+            throw new IllegalArgumentException("stopIndex is "+stopIndex+" yet we only have "+byteArray.length+" bytes.");
+        }
+        if (stopIndex < firstIndex) {
+            // we allow the == case, that's just an empty iterator.
+            throw new IllegalArgumentException("stopIndex<firstIndex ("+(stopIndex)+"<"+firstIndex+")");
+        }
         this.byteArray = byteArray;
-        currentPosition = 0;
+        currentPosition = firstIndex;
+        this.stopIndex = stopIndex;
     }
 
     public boolean hasNext() {
-        return currentPosition < byteArray.length;
+        return currentPosition < stopIndex;
     }
 
     public Byte next() {
-        if ( currentPosition >= byteArray.length ) {
+        if (currentPosition >= stopIndex) {
             throw new NoSuchElementException("No more elements in byte array");
         }
 

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.transformers;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
-import org.broadinstitute.hellbender.dev.pipelines.bqsr.BaseRecalOutput;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.recalibration.*;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -22,17 +23,17 @@ public class ReadsPreprocessingPipelineIntegrationTest extends CommandLineProgra
 
         return new Object[][] {
                 // This test case checks that the input and output bams are equal (which should be the case with stub tool implementations)
-                { testDir + "reads_data_source_test1.bam", "EOSt9JOVhp3jkwE", testDir + "feature_data_source_test.vcf", new File(testDir + "reads_data_source_test1.bam") }
+                { testDir + "reads_data_source_test1.bam", RefAPISource.HS37D5_REF_ID, testDir + "feature_data_source_test.vcf", new File(testDir + "reads_data_source_test1.bam") }
         };
     }
 
-    @Test(dataProvider = "EndToEndTestData", groups = {"cloud"})
+    @Test(dataProvider = "EndToEndTestData", groups = {"cloud_todo"})
     public void testPipelineEndToEnd( final String inputBam, final String reference, final String knownSites, final File expectedOutput ) throws IOException {
         final File output = createTempFile("testPipelineEndToEnd_output", ".bam");
         List<String> argv = new ArrayList<>();
 
         argv.addAll(Arrays.asList("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, inputBam,
-                                  "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, reference,
+                                  "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, RefAPISource.URL_PREFIX + reference,
                                   "-BQSRKnownVariants", knownSites,
                                   "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath()));
         argv.addAll(getStandardDataflowArgumentsFromEnvironment());

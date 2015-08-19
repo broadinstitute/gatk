@@ -26,6 +26,8 @@ import java.io.Serializable;
 public abstract class DataflowCommandLineProgram extends CommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1l;
 
+    // We need authentication options from GCSOptions, and Dataflow options from DataflowPipelineOptions.
+    // Neither inherits from the other, so we have to put them together like this.
     public interface HellbenderDataflowOptions extends GCSOptions, DataflowPipelineOptions {}
 
     protected enum PipelineRunnerType implements CommandLineParser.ClpEnum {

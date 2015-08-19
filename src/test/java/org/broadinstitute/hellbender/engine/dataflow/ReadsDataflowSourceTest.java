@@ -56,7 +56,7 @@ public final class ReadsDataflowSourceTest extends BaseTest {
         SAMFileHeader header = readsSource.getHeader();
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, false);
+        PCollection<GATKRead> reads = readsSource.getReadPCollection(intervals, ValidationStringency.SILENT, true);
         PCollection<Long> count = reads.apply(Count.globally());
         // for now we only get 1649, because it removes unmapped reads.
         DataflowAssert.thatSingleton(count).isEqualTo(1674L);

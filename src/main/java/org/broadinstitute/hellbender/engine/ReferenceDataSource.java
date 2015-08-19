@@ -3,12 +3,10 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Iterator;
 
 /**
@@ -17,14 +15,7 @@ import java.util.Iterator;
  * Supports targeted queries over the reference by interval, but does not
  * yet support complete iteration over the entire reference.
  */
-public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoCloseable {
-
-    /**
-     * Our reference file. Uses the caching version of IndexedFastaSequenceFile
-     * so that repeated queries over nearby locations will be efficient (this
-     * is the primary reference access pattern in most traversals).
-     */
-    private final CachingIndexedFastaSequenceFile reference;
+public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable {
 
     /**
      * Initialize this data source using a fasta file.
@@ -33,38 +24,15 @@ public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoClos
      *
      * @param fastaFile reference fasta file
      */
-    public ReferenceDataSource( final File fastaFile ) {
-        if ( fastaFile == null )
-            throw new IllegalArgumentException("fastaFile must be non-null");
-
-        // Will throw a UserException if the .fai and/or .dict are missing
-        reference = CachingIndexedFastaSequenceFile.checkAndCreate(fastaFile);
+    public static ReferenceDataSource of(final File fastaFile) {
+        return new ReferenceFileSource(fastaFile);
     }
 
     /**
-     * Start an iteration over the entire reference. Not yet supported!
-     *
-     * See the BaseUtils class for guidance on how to work with bases in this format.
-     *
-     * @return iterator over all bases in this reference
+     * Initialize this data source using ReferenceBases and corresponding sequence dictionary.
      */
-    @Override
-    public Iterator<Byte> iterator() {
-        throw new UnsupportedOperationException("Iteration over entire reference not yet implemented");
-    }
-
-    /**
-     * Query a specific interval on this reference, and get back an iterator over the bases spanning that interval.
-     *
-     * See the BaseUtils class for guidance on how to work with bases in this format.
-     *
-     * @param interval query interval
-     * @return iterator over the bases spanning the query interval
-     */
-    @Override
-    public Iterator<Byte> query( final SimpleInterval interval ) {
-        // TODO: need a way to iterate lazily over reference bases without necessarily loading them all into memory at once
-        return new ByteArrayIterator(queryAndPrefetch(interval).getBases());
+    public static ReferenceDataSource of(final ReferenceBases bases, final SAMSequenceDictionary referenceSequenceDictionary) {
+        return new ReferenceMemorySource(bases, referenceSequenceDictionary);
     }
 
     /**
@@ -75,7 +43,7 @@ public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoClos
      * @param interval query interval
      * @return a ReferenceSequence containing all bases spanning the query interval, prefetched
      */
-    public ReferenceSequence queryAndPrefetch( final SimpleInterval interval ) {
+    public default ReferenceSequence queryAndPrefetch(final SimpleInterval interval ) {
         return queryAndPrefetch(interval.getContig(), interval.getStart(), interval.getEnd());
     }
 
@@ -89,29 +57,29 @@ public final class ReferenceDataSource implements GATKDataSource<Byte>, AutoClos
      * @param stop query interval stop
      * @return a ReferenceSequence containing all bases spanning the query interval, prefetched
      */
-    public ReferenceSequence queryAndPrefetch( final String contig, final long start , final long stop) {
-        return reference.getSubsequenceAt(contig, start, stop);
-    }
+    public ReferenceSequence queryAndPrefetch(final String contig, final long start , final long stop);
 
+    /**
+      * Query a specific interval on this reference, and get back an iterator over the bases spanning that interval.
+      *
+      * See the BaseUtils class for guidance on how to work with bases in this format.
+      *
+      * @param interval query interval
+      * @return iterator over the bases spanning the query interval
+      */
+    @Override
+    public default Iterator<Byte> query(final SimpleInterval interval) {
+        // TODO: need a way to iterate lazily over reference bases without necessarily loading them all into memory at once
+        return new ByteArrayIterator(queryAndPrefetch(interval).getBases());
+    }
 
     /**
      * Get the sequence dictionary for this reference
      *
      * @return SAMSequenceDictionary for this reference
      */
-    public SAMSequenceDictionary getSequenceDictionary() {
-        return reference.getSequenceDictionary();
-    }
+    public SAMSequenceDictionary getSequenceDictionary();
 
-    /**
-     * Permanently close this data source
-     */
-    public void close() {
-        try {
-            reference.close();
-        }
-        catch ( IOException e ) {
-            throw new GATKException("Error closing reference file", e);
-        }
-    }
+    @Override
+    public void close();
 }

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.dataflow.datasources;
 import com.google.cloud.dataflow.sdk.coders.*;
 import com.google.cloud.dataflow.sdk.values.KV;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
@@ -56,6 +57,10 @@ public final class VariantShard {
      * @return All overlapping VariantShards
      */
     public static List<VariantShard> getVariantShardsFromInterval(final Locatable location) {
+        if (location.getContig()==null) {
+            // don't feed me unmapped reads!
+            throw new GATKException("getVariantShardsFromInterval requires locations to be mapped");
+        }
         List<VariantShard> shardList = new ArrayList<>();
         // Get all of the shard numbers that span the start and end of the interval.
         int startShard = location.getStart()/ VARIANT_SHARDSIZE;

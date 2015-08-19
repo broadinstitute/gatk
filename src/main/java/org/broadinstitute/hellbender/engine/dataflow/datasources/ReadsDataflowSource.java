@@ -119,6 +119,7 @@ public final class ReadsDataflowSource {
      * Reads that are unmapped are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
      * @param stringency how to react to malformed reads.
+     * @param includeUnmappedReads to include unmapped reads.
      * @return a PCollection containing all the reads that overlap the given intervals.
      */
     public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals, ValidationStringency stringency, boolean includeUnmappedReads) {
