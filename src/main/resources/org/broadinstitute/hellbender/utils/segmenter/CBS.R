@@ -25,8 +25,8 @@ min_log_value=as.numeric(opt[["min_log_value"]])
 segment_data = function(sample_name, tn_file, output_file, min_log_value) {
 	# Read in file and extract needed data
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
-	contig = tn[,"CONTIG"]
-	pos = tn[,"END"]
+	contig = tn[,"contig"]
+	pos = tn[,"stop"]
 	dat = 2^tn[,sample_name]
 
 	# Create CNA object

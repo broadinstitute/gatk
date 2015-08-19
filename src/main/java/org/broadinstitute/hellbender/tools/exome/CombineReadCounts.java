@@ -371,10 +371,10 @@ public final class CombineReadCounts extends CommandLineProgram {
 
     private static TableColumnCollection composeOutputColumns(final List<String> countColumns) {
         final Set<String> columnNames = new LinkedHashSet<>(countColumns.size() + 4);
-        columnNames.add(TargetTableReader.StandardColumn.CONTIG.toString());
-        columnNames.add(TargetTableReader.StandardColumn.START.toString());
-        columnNames.add(TargetTableReader.StandardColumn.END.toString());
-        columnNames.add(TargetTableReader.StandardColumn.NAME.toString());
+        columnNames.add(TargetColumns.CONTIG.toString());
+        columnNames.add(TargetColumns.START.toString());
+        columnNames.add(TargetColumns.END.toString());
+        columnNames.add(TargetColumns.NAME.toString());
         for (final String countColumn : countColumns) {
             if (!columnNames.add(countColumn)) {
                 throw new UserException.BadInput(
@@ -408,7 +408,7 @@ public final class CombineReadCounts extends CommandLineProgram {
      */
     private List<String> readCountColumnNames(final TableColumnCollection columns) {
         return columns.names().stream()
-                .filter(n -> !TargetTableReader.StandardColumn.COLUMN_NAME_SET.contains(n))
+                .filter(n -> !TargetColumns.isTargetColumnName(n))
                 .collect(Collectors.toList());
     }
 
@@ -430,9 +430,9 @@ public final class CombineReadCounts extends CommandLineProgram {
 
                 @Override
                 public void processColumns(final TableColumnCollection columns) {
-                    hasCoordinates = columns.containsAll(TargetTableReader.StandardColumn.CONTIG.toString(), TargetTableReader.StandardColumn.START.toString(),
-                            TargetTableReader.StandardColumn.END.toString());
-                    hasName = columns.contains(TargetTableReader.StandardColumn.NAME.toString());
+                    hasCoordinates = columns.containsAll(TargetColumns.CONTIG.toString(), TargetColumns.START.toString(),
+                            TargetColumns.END.toString());
+                    hasName = columns.contains(TargetColumns.NAME.toString());
                     if (!hasCoordinates && !hasName) {
                         throw this.formatException("header contain neither coordinates nor target name columns");
                     }
@@ -461,7 +461,7 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private Target createTarget(final DataLine dataLine) {
                     if (hasName) {
-                        final String name = dataLine.get(TargetTableReader.StandardColumn.NAME);
+                        final String name = dataLine.get(TargetColumns.NAME);
                         final Target target = targets.target(name);
                         final SimpleInterval interval = createInterval(dataLine);
                         if (target == null) {
@@ -489,9 +489,9 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private SimpleInterval createInterval(final DataLine dataLine) {
                     if (hasCoordinates) {
-                        return new SimpleInterval(dataLine.get(TargetTableReader.StandardColumn.CONTIG),
-                                dataLine.getInt(TargetTableReader.StandardColumn.START),
-                                dataLine.getInt(TargetTableReader.StandardColumn.END));
+                        return new SimpleInterval(dataLine.get(TargetColumns.CONTIG),
+                                dataLine.getInt(TargetColumns.START),
+                                dataLine.getInt(TargetColumns.END));
                     } else {
                         return null;
                     }

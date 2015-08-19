@@ -30,9 +30,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(arguments);
 
-        HashedListTargetCollection<TargetCoverage> targets =
-                new HashedListTargetCollection<TargetCoverage>(TargetCoverageUtils.readTargetsWithCoverage(TEST_TARGETS));
-
         List<CalledInterval> calls = SegmentUtils.readCalledIntervalsFromSegfile(outputFile);
 
         Assert.assertEquals(calls.get(0).getCall(), "+");
