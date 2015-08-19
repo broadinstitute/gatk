@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/broadinstitute/hellbender.svg?branch=master)](https://travis-ci.org/broadinstitute/hellbender)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/hellbender?branch=master)
 
-**This project is in an early stage of development.  It is subject to change without warning.**  
+**This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**  
 
 Hellbender
 ================
@@ -44,15 +44,15 @@ General guidelines for Hellbender developers
 
 * Hellbender is  BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
-* Hellbender is written in Java 8. Enjoy the new features in particular streams, lambdas, methods in interfaces.
-
-* Untested code is considered **non-existent** and thus is subject to removal at any time (exception is main methods, or super corner conditions, or `toString()` code).
-
 * Each tool should have at least one good end-to-end integration test with a check for expected output, plus high-quality unit tests for all non-trivial utility methods/classes used by the tool. Although we have no specific coverage target, coverage should be extensive enough that if tests pass, the tool is guaranteed to be in a usable state.
 
 * All newly written code must have good test coverage (>90%).
 
-* Don't issue or accept pull requests that introduce warnings. Warnings need to be addressed or suppressed.
+* All bug fixes must be accompanied by a regression test.
+
+* All pull requests must be reviewed before merging to master (even documentation changes).
+
+* Don't issue or accept pull requests that introduce warnings. Warnings must be addressed or suppressed.
 
 * Don't issue or accept pull requests that significantly decrease coverage (less than 1% decrease is sort of tolerable). 
 
