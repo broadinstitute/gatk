@@ -15,7 +15,11 @@ Requirements
 
 * Gradle 2.2.1
 
-* R 3.1.3 
+* R 3.1.3
+
+* Git 2.5
+
+* The [git-lfs plugin](https://git-lfs.github.com/). Run `git lfs init` after installing.
 
 
 Installation
@@ -40,7 +44,8 @@ General guidelines for Hellbender developers
 
 * **Do not put private or restricted data into the repo.**
 
-* **Try to keep datafiles under 100kb in size.**
+* **Try to keep datafiles under 100kb in size.** Larger test files should go into `src/test/resources/large`, and must be
+  managed using `git lfs` by running `git lfs track <file>` on each new large file before commit.
 
 * Hellbender is  BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
@@ -74,7 +79,7 @@ Tests
 ----------------
 We use [Travis-CI](https://travis-ci.org/broadinstitute/hellbender) as our continuous integration provider.
 
-* Before merging any branch make sure that all required tests pass on travis.  Currently tests in the `cloud` and `bucket` groups as well as the tests running on spark are not required to pass before merging.
+* Before merging any branch make sure that all required tests pass on travis.
 * Every travis build will upload the test results to our hellbender google bucket.  A link to the uploaded report will appear at the very bottom of the travis log.  Look for the line that says `See the test report at`.
 If TestNG itself crashes there will be no report generated.
 
