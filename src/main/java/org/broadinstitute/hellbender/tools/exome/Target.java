@@ -24,20 +24,34 @@ public class Target implements Locatable {
     private final SimpleInterval interval;
 
     /**
-     * Construct a new target given all its properties except coverage
-     * @param interval the interval.
-     * @param name the name of the interval.
+     * Creates a new target given its name.
+     * <p>
+     * The interval is left undefined.
+     * </p>
      *
-     * @throws IllegalArgumentException if either {@code interval} or {@code start}
-     *    and {@code end} do not represent a valid interval as described in
+     * @param name the new target name.
+     * @throws IllegalArgumentException if {@code name} is {@code null}.
+     */
+    public Target(final String name) {
+        this(name, null);
+    }
+
+    /**
+     * Construct a new target given all its properties except coverage.
+     * <p>
+     * The name cannot be a {@code null} but the interval can be, thus leaving it unspecified.
+     * </p>
+     *
+     * @param name the name of the interval.
+     * @param interval the interval.
+     *
+     * @throws IllegalArgumentException if {@code name} is {@code null}.
      */
     public Target(final String name, final SimpleInterval interval) {
         Utils.nonNull(name, "the name cannot be null");
         this.name = name;
         this.interval = interval;
     }
-
-
 
     /**
      * Returns the interval.
@@ -60,13 +74,28 @@ public class Target implements Locatable {
      */
 
     @Override
-    public String getContig() {return interval.getContig(); }
+    public String getContig() {
+        if (interval == null) {
+            throw new IllegalStateException("the target does not have an interval assigned");
+        }
+        return interval.getContig();
+    }
 
     @Override
-    public int getStart() {return interval.getStart(); }
+    public int getStart() {
+        if (interval == null) {
+            throw new IllegalStateException("the target does not have an interval assigned");
+        }
+        return interval.getStart();
+    }
 
     @Override
-    public int getEnd() {return interval.getEnd(); }
+    public int getEnd() {
+        if (interval == null) {
+            throw new IllegalStateException("the target does not have an interval assigned");
+        }
+        return interval.getEnd();
+    }
 
     @Override
     public boolean equals(final Object other) {
@@ -93,6 +122,11 @@ public class Target implements Locatable {
     @Override
     public int hashCode() {
         return name.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
 }
