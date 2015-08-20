@@ -33,6 +33,9 @@ public final class CallSegments extends CommandLineProgram{
     protected final static String OUTPUT_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
     protected final static String OUTPUT_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
 
+    protected final static String Z_THRESHOLD_SHORT_NAME = "Z";
+    protected final static String Z_THRESHOLD_LONG_NAME = "threshold";
+
     protected final static String SAMPLE_LONG_NAME = "sample";
 
     @Argument(
@@ -66,6 +69,16 @@ public final class CallSegments extends CommandLineProgram{
     )
     protected String sample;
 
+    @Argument(
+            doc = "(Advanced) Number of standard deviations of targets' coverage a segment mean must deviate from copy neutral"
+            + " to be considered an amplification or deletion.  This parameter controls the trade-off between"
+            + " sensitivity and specificity, with smaller values favoring sensitivity.",
+            shortName = Z_THRESHOLD_SHORT_NAME,
+            fullName = Z_THRESHOLD_LONG_NAME,
+            optional = true
+    )
+    protected double Z_threshold = ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD;
+
     @Override
     protected Object doWork() {
 
@@ -78,7 +91,7 @@ public final class CallSegments extends CommandLineProgram{
         segments = SegmentUtils.readIntervalsFromSegfile(segmentsFile);
 
         //add calls to segments in-place
-        List<CalledInterval> calledSegments = ReCapSegCaller.makeCalls(targets, segments);
+        List<CalledInterval> calledSegments = ReCapSegCaller.makeCalls(targets, segments, Z_threshold);
 
         SegmentUtils.writeCalledIntervalsToSegfile(outFile, calledSegments, sample);
 

@@ -28,8 +28,8 @@ public final class ReCapSegCaller {
     public static String DELETION_CALL = "-";
     public static String NEUTRAL_CALL = "0";
 
-    // number of standard deviations from mean required to call an amplification or deletion
-    public static final double Z_SCORE_THRESHOLD = 2.0;
+    // default number of standard deviations from mean required to call an amplification or deletion
+    public static final double DEFAULT_Z_SCORE_THRESHOLD = 2.0;
 
     //bounds on log_2 coverage we take as non-neutral a priori
     public static final double NON_NEUTRAL_THRESHOLD = 0.3;
@@ -40,13 +40,14 @@ public final class ReCapSegCaller {
     private ReCapSegCaller() {} // prevent instantiation
 
     /**
-     * Add calls in-place to a list of segments based on the coverage data in a set of targets
-     * Note that segments are modified by being given calls.  Any previous calls are erased.
+     * Make calls for a list of segments based on the coverage data in a set of targets.
      *
      * @param targets the collection representing all targets
      * @param segments segments, each of which holds a reference to these same targets
+     * @param zThreshold number of standard deviations from mean required to call an amplification or deletion
      */
-    public static List<CalledInterval> makeCalls(final TargetCollection<TargetCoverage> targets, final List<SimpleInterval> segments) {
+    public static List<CalledInterval> makeCalls(final TargetCollection<TargetCoverage> targets,
+                        final List<SimpleInterval> segments, final double zThreshold) {
         Utils.nonNull(segments, "Can't make calls on a null list of segments.");
         final List<CalledInterval> calls = new ArrayList<>();
 
@@ -80,9 +81,10 @@ public final class ReCapSegCaller {
             //principled treatment for a later caller
             final double Z = (SegmentUtils.meanTargetCoverage(segment, targets) - neutralCoverage)/neutralSigma;
 
-            final String call = Z < -Z_SCORE_THRESHOLD ? DELETION_CALL: (Z > Z_SCORE_THRESHOLD ? AMPLIFICATION_CALL : NEUTRAL_CALL);
+            final String call = Z < -zThreshold ? DELETION_CALL: (Z > zThreshold ? AMPLIFICATION_CALL : NEUTRAL_CALL);
             calls.add(new CalledInterval(segment, call));
         }
         return calls;
     }
+
 }

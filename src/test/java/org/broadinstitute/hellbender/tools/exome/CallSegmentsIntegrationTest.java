@@ -26,7 +26,8 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + CallSegments.SEGFILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
                 "-" + CallSegments.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + CallSegments.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME
+                "-" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
+                "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD)
         };
         runCommandLine(arguments);
 
