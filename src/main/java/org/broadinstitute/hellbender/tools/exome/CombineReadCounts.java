@@ -1,26 +1,117 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Target walker base class.
+ * Combines a set of read counts input files in a single multi read count column output file.
+ * <p>
+ * The user can indicate the input files individually using multiple
+ *   {@value org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions#INPUT_SHORT_NAME} arguments,
+ *   collectively in a input file name
+ *   list file using a single {@value #READ_COUNT_FILE_LIST_SHORT_NAME} argument or
+ *   a combination of both approaches.
+ * </p>
+ *
+ * <p>
+ *   The output read count columns will appear sorted in alpha-numerical order and target will appear in the same order as the input. The output
+ *   file name must be specified with the {@value org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions#OUTPUT_SHORT_NAME} argument.
+ * </p>
+ *
+ * <p>
+ *   By default, all targets in the inputs will be present in the output. However the user can indicate
+ *   the subset of targets to output using the {@value TargetArgumentCollection#TARGET_FILE_SHORT_NAME} argument.
+ * </p>
+ *
+ * <p>
+ *   In order to be able to handle a large number of input files, the tool proceeds to merge files
+ *   in a balance tree fashion. The maximum number of files to merge in one go can be specified using
+ *   the {@value #MAX_GROUP_SIZE_SHORT_NAME} argument that is set to {@value #DEFAULT_MAX_GROUP_SIZE} by default.
+ * </p>
+ *
+ * <p>
+ *    The following restrictions apply:
+ *
+ *    <ul>
+ *        <li>All input files must contain the subject targets in the same order.</li>
+ *        <li>If no target file is specified all input files must contain exactly the same targets.</li>
+ *        <li>If a target file is specified all input files must contain at least the targets listed in that file and in the same order;
+ *            they can contain other additional targets that may appear any where in the input files. These
+ *            will be ignored.</li>
+ *    </ul>
+ * </p>
+ *
+ * <p>
+ *     Example 1:
+ *     <pre>
+ *         java -jar hellbender.jar CombineReadCounts -I sample1.tab -I sample2.tab ... -I sampleN.tab -O all-samples.tab
+ *     </pre>
+ * </p>
+ * <p>
+ *     Example 2:
+ *     <pre>
+ *         java -jar hellbender.jar CombineReadCounts -inputList my-samples.list -O all-samples.tab
+ *     </pre>
+ *     where {@code my-samples.list} contains:
+ *     <pre>
+ *
+ *         sample1.tab
+ *         sample2.tab
+ *         sample3.tab
+ *         ...
+ *         sampleN.tab
+ *     </pre>
+ * </p>
+ * <h2>Input and Output File Format</h2>
+ * <p>
+ *    Input read count file format follows the one produced by {@link ExomeReadCounts}.
+ *    Namely a tab separated value table file where there is a least one column, <b>NAME</b>;
+ *    indicating the target name, an arbitrary number of read count columns (e.g. one per sample)
+ *    and the target coordinates (<b>CONTIG</b>, <b>START</b> and <b>STOP</b>) which are optional if
+ *    a targets file is provided.
+ * </p>
+ * <p>
+ *     Example:
+ *     <pre>
+ *         CONTIG   START   END     NAME        SAMPLE_1    SAMPLE_2    SAMPLE_3 ...    SAMPLE_N
+ *         1        100     200     target_0    10.1        13.3        .42             4.4
+ *         1        300     400     target_1    5.1         1.5         5.1             19.0
+ *         2        100     500     target_2    79.0        5.3         9.1             20.11
+ *     </pre>
+ * </p>
+ *
+ * <p>
+ *     When provided, the targets file follows the same format but without read count columns, the coordinate
+ *     columns are mandatory.
+ *
+ *     Example:
+ *     <pre>
+ *         CONTIG   START   END     NAME
+ *         1        100     200     target_0
+ *         1        300     400     target_1
+ *         2        100     500     target_2
+ *     </pre>
+ * </p>
+ *
+ * <p>
+ *     The output file format is the same as the input file format with a one read count column for each present amongst
+ *     the input files. The coordinates columns are always present.
+ * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -31,18 +122,17 @@ import java.util.stream.IntStream;
 )
 public final class CombineReadCounts extends CommandLineProgram {
 
-    public static final String TARGET_FILE_SHORT_NAME = "T";
-    public static final String TARGET_FILE_FULL_NAME = "targets";
     public static final String READ_COUNT_FILES_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
     public static final String READ_COUNT_FILES_FULL_NAME  = StandardArgumentDefinitions.INPUT_LONG_NAME;
     public static final String READ_COUNT_FILE_LIST_SHORT_NAME = "inputList";
     public static final String READ_COUNT_FILE_LIST_FULL_NAME = READ_COUNT_FILE_LIST_SHORT_NAME;
     public static final String MAX_GROUP_SIZE_SHORT_NAME = "MOF";
     public static final String MAX_GROUP_SIZE_FULL_NAME = "maxOpenFiles";
+    public static final int DEFAULT_MAX_GROUP_SIZE = 100;
 
     private static final String READ_COUNTS_FILE_DOCUMENTATION =
             "Coverage files to combine, they must contain all the targets in the input file (" +
-                    TARGET_FILE_FULL_NAME + ") and in the same order";
+                    TargetArgumentCollection.TARGET_FILE_FULL_NAME + ") and in the same order";
 
     @Argument(
             doc = "File containing a list of coverage files to merge",
@@ -66,15 +156,12 @@ public final class CombineReadCounts extends CommandLineProgram {
             fullName = MAX_GROUP_SIZE_FULL_NAME,
             optional = false
     )
-    protected int maxMergeSize = 100;
+    protected int maxMergeSize = DEFAULT_MAX_GROUP_SIZE;
 
-    @Argument(
-            doc = "Targets file, targets whose counts need to be merged",
-            shortName = TARGET_FILE_SHORT_NAME,
-            fullName = TARGET_FILE_FULL_NAME,
-            optional = true
-    )
-    protected File targetsFile;
+
+    @ArgumentCollection
+    protected TargetArgumentCollection targetArguments = new TargetArgumentCollection(() ->
+            composeAndCheckInputReadCountFiles(this.coverageFiles, this.coverageFileList).stream().findFirst().orElseGet(null));
 
     @Argument(
             doc = "Output file",
@@ -88,10 +175,8 @@ public final class CombineReadCounts extends CommandLineProgram {
     public Object doWork() {
         final Set<File> temporaryFiles = new HashSet<>();
         final List<File> coverageFiles = composeAndCheckInputReadCountFiles(this.coverageFiles, this.coverageFileList);
-        if (targetsFile == null) {
-            targetsFile = coverageFiles.get(0);
-        }
-        final TargetCollection<Target> targets = readTargetCollection(targetsFile);
+
+        final TargetCollection<Target> targets = targetArguments.readTargetCollection(false);
         final int optimalMergingFileCount = calculateOptimalMergingFileCount(coverageFiles.size());
         logger.info(String.format("Merging %d read count files, maximum %d file at a time", coverageFiles.size(), optimalMergingFileCount));
 
@@ -180,8 +265,8 @@ public final class CombineReadCounts extends CommandLineProgram {
      * @param coverageFileList coverage file list file name.
      * @return never {@code null}.
      */
-    private List<File> composeAndCheckInputReadCountFiles(final List<File> coverageFiles, final File coverageFileList) {
-        final List<File> result = new ArrayList<>(Math.max(100, this.coverageFiles.size()));
+    private static List<File> composeAndCheckInputReadCountFiles(final List<File> coverageFiles, final File coverageFileList) {
+        final List<File> result = new ArrayList<>(Math.max(100, coverageFiles.size()));
         result.addAll(coverageFiles);
         if (coverageFileList != null) {
             if (!coverageFileList.canRead() || !coverageFileList.isFile()) {
@@ -202,32 +287,13 @@ public final class CombineReadCounts extends CommandLineProgram {
             throw new UserException.BadArgumentValue(READ_COUNT_FILES_SHORT_NAME,
                     String.format("there must be at least one input file or a non-empty input file list (arg. -%s)", READ_COUNT_FILE_LIST_SHORT_NAME));
         } else {
-            final Optional<File> badInputFile = this.coverageFiles.stream().filter(f -> !f.canRead() || !f.isFile()).findAny();
+            final Optional<File> badInputFile = coverageFiles.stream().filter(f -> !f.canRead() || !f.isFile()).findAny();
             if (badInputFile.isPresent()) {
                 throw new UserException.CouldNotReadInputFile(badInputFile.get(), "is not readable or not a regular file");
             }
             return result;
         }
     }
-
-    private static TargetCollection<Target> readTargetCollection(final File file) {
-        try (final TargetTableReader reader = new TargetTableReader(file)) {
-            return new HashedListTargetCollection<Target>(Utils.nonNull(reader.stream().collect(Collectors.toList()), "the input feature list cannot be null")) {
-                @Override
-                public String name(final Target target) {
-                    return Utils.nonNull(target,"the input target cannot be null").getName();
-                }
-
-                @Override
-                public SimpleInterval location(final Target target) {
-                    return Utils.nonNull(target, "the input target cannot be null").getInterval();
-                }
-            };
-        } catch (final IOException | UncheckedIOException ex) {
-            throw new UserException.CouldNotReadInputFile(file, ex.getMessage());
-        }
-    }
-
 
     /**
      * The actual merge operation.
