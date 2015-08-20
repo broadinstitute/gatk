@@ -5,7 +5,6 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.common.collect.Maps;
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
@@ -22,9 +21,9 @@ import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -51,28 +50,20 @@ public final class RefBasesForReadsUnitTest extends BaseTest {
 
     @Test(dataProvider = "bases")
     public void refBasesTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
-                             List<SimpleInterval> intervals) {
+                             List<SimpleInterval> intervals) throws IOException {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
         PCollection<GATKRead> pReads = DataflowTestUtils.pCollectionCreateAndVerify(p, reads, new GATKReadCoder());
 
-        RefAPISource mockSource = mock(RefAPISource.class, withSettings().serializable());
+        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), any(RefAPIMetadata.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
-
-        String referenceName = "refName";
-        String crazyName = "0xbjfjd23f";
-        Map<String, String> referenceNameToIdTable = Maps.newHashMap();
-        referenceNameToIdTable.put(referenceName, crazyName);
-        RefAPIMetadata refAPIMetadata = new RefAPIMetadata(referenceName, referenceNameToIdTable);
-        RefAPISource.setInstance(mockSource);
-        PCollection<KV<GATKRead, ReferenceBases>> result = RefBasesForReads.addBases(pReads, refAPIMetadata);
+        when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
+        PCollection<KV<GATKRead, ReferenceBases>> result = RefBasesForReads.addBases(pReads, mockSource);
         DataflowAssert.that(result).containsInAnyOrder(kvReadRefBases);
         p.run();
-        // return to normal for the next test.
-        RefAPISource.setInstance(null);
     }
 
 }
