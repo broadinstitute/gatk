@@ -131,6 +131,7 @@ dependencies {
         exclude module: 'htsjdk'
     }
     compile('org.apache.hadoop:hadoop-client:2.7.1') // should be a 'provided' dependency
+    compile('com.github.jsr203hadoop:jsr203hadoop:1.0.1')
 
     compile('org.apache.spark:spark-core_2.10:1.5.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
