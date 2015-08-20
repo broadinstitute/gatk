@@ -34,9 +34,8 @@ public final class ReadFilterLibrary {
 
     public static final ReadFilter VALID_ALIGNMENT_START = read -> read.isUnmapped() || read.getStart() > 0;
 
-    // Alignment doesn't align to negative number of bases in the reference.
-    // Note: there seems to be no way a SAMRecord can fail this filter but we'll keep it because another read implementation may.
-    public static final ReadFilter VALID_ALIGNMENT_END = read -> read.isUnmapped() || (read.getEnd() - read.getStart() + 1) >= 0;
+    // Alignment doesn't align to a negative or zero number of bases in the reference.
+    public static final ReadFilter VALID_ALIGNMENT_END = read -> read.isUnmapped() || (read.getEnd() - read.getStart() + 1) > 0;
 
     public static final ReadFilter HAS_READ_GROUP = read -> read.getReadGroup() != null;
     public static final ReadFilter HAS_MATCHING_BASES_AND_QUALS = read -> read.getBases().length == read.getBaseQualities().length;
