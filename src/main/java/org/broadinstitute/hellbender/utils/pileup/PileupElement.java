@@ -3,13 +3,20 @@ package org.broadinstitute.hellbender.utils.pileup;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.*;
+import java.util.Deque;
+import java.util.EnumSet;
+import java.util.LinkedList;
+import java.util.List;
 
-public final class PileupElement implements Comparable<PileupElement> {
-    private static final LinkedList<CigarElement> EMPTY_LINKED_LIST = new LinkedList<>();
+/**
+ * Represents an individual base in a reads pileup.
+ */
+public final class PileupElement {
 
     private static final EnumSet<CigarOperator> ON_GENOME_OPERATORS =
             EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.D);
@@ -21,8 +28,8 @@ public final class PileupElement implements Comparable<PileupElement> {
     public static final byte T_FOLLOWED_BY_INSERTION_BASE = (byte) 89;
     public static final byte G_FOLLOWED_BY_INSERTION_BASE = (byte) 90;
 
-    protected final GATKRead read;         // the read this base belongs to
-    protected final int offset;                 // the offset in the bases array for this base
+    private final GATKRead read;         // the read this base belongs to
+    private final int offset;            // the offset in the bases array for this base
 
     private final CigarElement currentCigarElement;
     private final int currentCigarOffset;
@@ -38,24 +45,46 @@ public final class PileupElement implements Comparable<PileupElement> {
      * @param currentCigarOffset the offset of currentElement in read.getCigar().getElement(currentCigarOffset) == currentElement)
      * @param offsetInCurrentCigar how far into the currentElement are we in our alignment to the genome?
      */
-    public PileupElement(final GATKRead read, final int baseOffset,
-                         final CigarElement currentElement, final int currentCigarOffset,
+    public PileupElement(final GATKRead read,
+                         final int baseOffset,
+                         final CigarElement currentElement,
+                         final int currentCigarOffset,
                          final int offsetInCurrentCigar) {
-        assert currentElement != null;
-
+        Utils.nonNull(read, "read is null");
+        Utils.nonNull(currentElement, "currentElement is null");
+        Utils.validIndex(baseOffset, read.getLength());
+        Utils.validIndex(currentCigarOffset, read.getCigar().numCigarElements());
+        Utils.validIndex(offsetInCurrentCigar, currentElement.getLength());
         this.read = read;
         this.offset = baseOffset;
         this.currentCigarElement = currentElement;
         this.currentCigarOffset = currentCigarOffset;
         this.offsetInCurrentCigar = offsetInCurrentCigar;
+    }
 
-        // for performance regions these are assertions
-        assert this.read != null;
-        assert this.offset >= 0 && this.offset < this.read.getLength();
-        assert this.currentCigarOffset >= 0;
-        assert this.currentCigarOffset < read.getCigar().numCigarElements();
-        assert this.offsetInCurrentCigar >= 0;
-        assert this.offsetInCurrentCigar < currentElement.getLength();
+    /**
+     * Create a pileup element for read at offset.
+     *
+     * offset must correspond to a valid read offset given the read's cigar, or an IllegalStateException will be throw
+     *
+     * @param read a read
+     * @param offset the offset into the bases we'd like to use in the pileup
+     * @return a valid PileupElement with read and at offset
+     */
+    public static PileupElement createPileupForReadAndOffset(final GATKRead read, final int offset) {
+        Utils.nonNull(read, "read is null");
+        Utils.validIndex(offset, read.getLength());
+
+        final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
+
+        while ( stateMachine.stepForwardOnGenome() != null ) {
+            if ( stateMachine.getReadOffset() == offset ) {
+                return stateMachine.makePileupElement();
+            }
+        }
+
+        throw new IllegalStateException("Tried to create a pileup for read " + read + " with offset " + offset +
+                " but we never saw such an offset in the alignment state machine");
     }
 
     /**
@@ -113,9 +142,7 @@ public final class PileupElement implements Comparable<PileupElement> {
 
     /**
      * Get the base aligned to the genome at this location
-     *
-     * If the current element is a deletion returns DELETION_BASE
-     *
+     * If the current element is a deletion returns {@link DELETION_BASE}.
      * @return a base encoded as a byte
      */
     public byte getBase() {
@@ -153,18 +180,20 @@ public final class PileupElement implements Comparable<PileupElement> {
      * this and the next position) returns the CigarElement corresponding to this event.  Otherwise returns
      * null.
      *
-     * @return a CigarElement, or null if the next alignment state ins't an insertion or deletion.
+     * @return a CigarElement, or null if the next alignment state isn't an insertion or deletion.
      */
     private CigarElement getNextIndelCigarElement() {
         if ( isBeforeDeletionStart() ) {
             final CigarElement element = getNextOnGenomeCigarElement();
-            if ( element == null || element.getOperator() != CigarOperator.D )
+            if ( element == null || element.getOperator() != CigarOperator.D ) {
                 throw new IllegalStateException("Immediately before deletion but the next cigar element isn't a deletion " + element);
+            }
             return element;
         } else if ( isBeforeInsertion() ) {
             final CigarElement element = getBetweenNextPosition().get(0);
-            if ( element.getOperator() != CigarOperator.I )
+            if ( element.getOperator() != CigarOperator.I ) {
                 throw new IllegalStateException("Immediately before insertion but the next cigar element isn't an insertion " + element);
+            }
             return element;
         } else {
             return null;
@@ -179,29 +208,10 @@ public final class PileupElement implements Comparable<PileupElement> {
         return read.getMappingQuality();
     }
 
+    @Override
     public String toString() {
         return String.format("%s @ %d = %c Q%d", getRead().getName(), getOffset(), (char) getBase(), getQual());
     }
-
-    @Override
-    public int compareTo(final PileupElement pileupElement) {
-        if (offset < pileupElement.offset)
-            return -1;
-        else if (offset > pileupElement.offset)
-            return 1;
-        else if (read.getStart() < pileupElement.read.getStart())
-            return -1;
-        else if (read.getStart() > pileupElement.read.getStart())
-            return 1;
-        else
-            return 0;
-    }
-
-    // --------------------------------------------------------------------------
-    //
-    // Reduced read accessors
-    //
-    // --------------------------------------------------------------------------
 
     /**
      * Get the cigar element aligning this element to the genome
@@ -237,7 +247,7 @@ public final class PileupElement implements Comparable<PileupElement> {
      * @return a non-null list of CigarElements
      */
     public LinkedList<CigarElement> getBetweenPrevPosition() {
-        return atStartOfCurrentCigar() ? getBetween(Direction.PREV) : EMPTY_LINKED_LIST;
+        return atStartOfCurrentCigar() ? getBetween(Direction.PREV) : new LinkedList<>();
     }
 
     /**
@@ -247,8 +257,8 @@ public final class PileupElement implements Comparable<PileupElement> {
      *
      * @return a non-null list of CigarElements
      */
-    public List<CigarElement> getBetweenNextPosition() {
-        return atEndOfCurrentCigar() ? getBetween(Direction.NEXT) : EMPTY_LINKED_LIST;
+    public LinkedList<CigarElement> getBetweenNextPosition() {
+        return atEndOfCurrentCigar() ? getBetween(Direction.NEXT) : new LinkedList<>();
     }
 
     /** for some helper functions */
@@ -266,24 +276,26 @@ public final class PileupElement implements Comparable<PileupElement> {
         final int nCigarElements = read.getCigar().numCigarElements();
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
             final CigarElement elt = read.getCigar().getCigarElement(i);
-            if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) )
+            if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) ) {
                 break;
-            else {
+            } else {
                 // optimization: don't allocate list if not necessary
-                if ( elements == null )
+                if ( elements == null ) {
                     elements = new LinkedList<>();
+                }
 
-                if ( increment > 0 )
+                if ( increment > 0 ) {
                     // to keep the list in the right order, if we are incrementing positively add to the end
                     elements.add(elt);
-                else
+                } else {
                     // counting down => add to front
                     elements.addFirst(elt);
+                }
             }
         }
 
         // optimization: elements is null because nothing got added, just return the empty list
-        return elements == null ? EMPTY_LINKED_LIST : elements;
+        return elements == null ? new LinkedList<>() : elements;
     }
 
     /**
@@ -323,8 +335,9 @@ public final class PileupElement implements Comparable<PileupElement> {
 
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
             final CigarElement elt = read.getCigar().getCigarElement(i);
-            if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) )
+            if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) ) {
                 return elt;
+            }
         }
 
         // getting here means that you didn't find anything

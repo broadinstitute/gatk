@@ -349,6 +349,25 @@ public final class Utils {
 
 
     /**
+     * makes an array filled with n copies of the given char.
+     */
+    public static byte[] repeatChars(final char c, final int n) {
+        return repeatBytes((byte)c, n);
+    }
+
+    /**
+     * makes an array filled with n copies of the given byte.
+     */
+    public static byte[] repeatBytes(final byte b, final int n) {
+        if (n < 0){
+            throw new IllegalArgumentException("negative length");
+        }
+        final byte[] bytes = new byte[n];
+        Arrays.fill(bytes, b);
+        return bytes;
+    }
+
+    /**
      * Make all combinations of N size of objects
      *
      * if objects = [A, B, C]
@@ -537,5 +556,4 @@ public final class Utils {
             throw new IllegalArgumentException(msg + " length goes beyond end of left array");
         }
     }
-
 }

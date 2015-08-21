@@ -400,5 +400,6 @@ public final class UtilsUnitTest extends BaseTest {
         // Restore the logging level back to the original level in place at the beginning of the test
         LoggingUtils.setLoggingLevel(LoggingUtils.levelFromLog4jLevel(initialLevel));
         Assert.assertTrue(logger.getLevel() == initialLevel);
+
     }
 }
