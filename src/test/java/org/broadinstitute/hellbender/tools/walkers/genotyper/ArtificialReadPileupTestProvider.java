@@ -1,18 +1,16 @@
 
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.TestingReferenceDataSource;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.util.*;
 
@@ -41,9 +39,13 @@ public class ArtificialReadPileupTestProvider {
     private static final int lead = 100;
     private static final int trail = 100;
     public final GenomeLoc window = genomeLocParser.createGenomeLoc(artificialContig,locStart-lead,locStart+trail);
-    public final String windowBases = refBases.substring(locStart-lead-1,locStart+trail);
+    public final String windowBases = refBases.substring(locStart - lead - 1, locStart + trail);
 
-    public final ReferenceContext referenceContext = new ReferenceContext(new TestingReferenceDataSource(artificialContig, windowBases.getBytes()), new SimpleInterval(loc), lead, trail);
+    final SimpleInterval interval1 = new SimpleInterval(artificialContig, 1, windowBases.length());
+    final ReferenceBases ref = new ReferenceBases(windowBases.getBytes(), interval1);
+
+    final SAMSequenceDictionary dict = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord(artificialContig, windowBases.length())));
+    public final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(ref, dict), new SimpleInterval(loc), lead, trail);
 
     byte BASE_QUAL = 50;
 

@@ -31,9 +31,9 @@ final class OriginalDiploidExactAFCalculator extends DiploidExactAFCalculator {
         final int lastK = result.getLeft();
         final int mleK = result.getRight();
 
-        final double log10LikelihoodAFGt0 = lastK == 0 ? MathUtils.LOG10_P_OF_ZERO : MathUtils.log10sumLog10(log10AlleleFrequencyLikelihoods, 1, lastK+1);
+        final double log10LikelihoodAFGt0 = lastK == 0 ? MathUtils.LOG10_P_OF_ZERO : MathUtils.log10SumLog10(log10AlleleFrequencyLikelihoods, 1, lastK+1);
         final double[] log10Likelihoods = new double[]{log10AlleleFrequencyLikelihoods[0], log10LikelihoodAFGt0};
-        final double[] log10Priors = new double[]{log10AlleleFrequencyPriors[0], MathUtils.log10sumLog10(log10AlleleFrequencyPriors, 1)};
+        final double[] log10Priors = new double[]{log10AlleleFrequencyPriors[0], MathUtils.log10SumLog10(log10AlleleFrequencyPriors, 1)};
         final double[] log10Posteriors = MathUtils.vectorSum(log10Likelihoods, log10Priors);
 
         final double log10PRef = log10Posteriors[1] > log10Posteriors[0] ? MathUtils.LOG10_P_OF_ZERO : 0.0;

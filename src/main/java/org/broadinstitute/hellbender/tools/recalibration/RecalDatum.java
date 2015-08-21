@@ -248,16 +248,16 @@ public final class RecalDatum implements Serializable {
 
         final int numBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1) * (int)RESOLUTION_BINS_PER_QUAL;
 
-        final double[] logPosteriors = new double[numBins];
+        final double[] log10Posteriors = new double[numBins];
 
         for ( int bin = 0; bin < numBins; bin++ ) {
 
             final double QEmpOfBin = bin / RESOLUTION_BINS_PER_QUAL;
 
-            logPosteriors[bin] = logQempPrior(QEmpOfBin, QReported) + logQempLikelihood(QEmpOfBin, nObservations, nErrors);
+            log10Posteriors[bin] = log10QempPrior(QEmpOfBin, QReported) + log10QempLikelihood(QEmpOfBin, nObservations, nErrors);
         }
 
-        final double[] normalizedPosteriors = MathUtils.normalizeFromLog(logPosteriors);
+        final double[] normalizedPosteriors = MathUtils.normalizeFromLog10(log10Posteriors);
         final int MLEbin = MathUtils.maxElementIndex(normalizedPosteriors);
 
         final double Qemp = MLEbin / RESOLUTION_BINS_PER_QUAL;
@@ -269,7 +269,7 @@ public final class RecalDatum implements Serializable {
      * in the base quality score recalibrator
      */
     public static final byte MAX_GATK_USABLE_Q_SCORE = 40;
-    private static final double[] logQempPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
+    private static final double[] log10QempPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
     static {
         // f(x) = a*exp(-((x - b)^2 / (2*c^2)))
         // Note that a is the height of the curve's peak, b is the position of the center of the peak, and c controls the width of the "bell".
@@ -279,21 +279,21 @@ public final class RecalDatum implements Serializable {
 
         final Gaussian gaussian = new Gaussian(GF_a, GF_b, GF_c);
         for ( int i = 0; i <= MAX_GATK_USABLE_Q_SCORE; i++ ) {
-            double logPrior = Math.log(gaussian.value((double) i));
-            if ( Double.isInfinite(logPrior) )
-                logPrior = -Double.MAX_VALUE;
-            logQempPriorCache[i] = logPrior;
+            double log10Prior = Math.log10(gaussian.value((double) i));
+            if ( Double.isInfinite(log10Prior) )
+                log10Prior = -Double.MAX_VALUE;
+            log10QempPriorCache[i] = log10Prior;
         }
     }
 
-    protected static double logQempPrior(final double Qempirical, final double Qreported) {
+    protected static double log10QempPrior(final double Qempirical, final double Qreported) {
         final int difference = Math.min(Math.abs((int) (Qempirical - Qreported)), MAX_GATK_USABLE_Q_SCORE);
-        return logQempPriorCache[difference];
+        return log10QempPriorCache[difference];
     }
 
     private static final long MAX_NUMBER_OF_OBSERVATIONS = Integer.MAX_VALUE - 1;
 
-    protected static double logQempLikelihood(final double Qempirical, long nObservations, long nErrors) {
+    protected static double log10QempLikelihood(final double Qempirical, long nObservations, long nErrors) {
         if ( nObservations == 0 )
             return 0.0;
 
@@ -308,10 +308,10 @@ public final class RecalDatum implements Serializable {
         }
 
         // this is just a straight binomial PDF
-        double logProb = MathUtils.logBinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToLogErrorProb(Qempirical));
-        if ( Double.isInfinite(logProb) || Double.isNaN(logProb) )
-            logProb = -Double.MAX_VALUE;
+        double log10Prob = MathUtils.log10BinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToErrorProbLog10(Qempirical));
+        if ( Double.isInfinite(log10Prob) || Double.isNaN(log10Prob) )
+            log10Prob = -Double.MAX_VALUE;
 
-        return logProb;
+        return log10Prob;
     }
 }

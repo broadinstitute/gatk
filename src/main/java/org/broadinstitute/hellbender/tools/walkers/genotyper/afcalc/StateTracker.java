@@ -133,7 +133,7 @@ final class StateTracker {
             if ( log10LikelihoodsForAFGt0CacheIndex == 0 ){ // there's nothing to sum up, so make the sum equal to the smallest thing we have
                 log10LikelihoodsForAFGt0Sum = MathUtils.LOG10_P_OF_ZERO;
             } else {
-                log10LikelihoodsForAFGt0Sum = MathUtils.log10sumLog10(log10LikelihoodsForAFGt0, 0, log10LikelihoodsForAFGt0CacheIndex);
+                log10LikelihoodsForAFGt0Sum = MathUtils.log10SumLog10(log10LikelihoodsForAFGt0, 0, log10LikelihoodsForAFGt0CacheIndex);
             }
         }
         return log10LikelihoodsForAFGt0Sum;
@@ -160,7 +160,7 @@ final class StateTracker {
     AFCalculationResult toAFCalculationResult(final double[] log10PriorsByAC) {
         final int [] subACOfMLE = Arrays.copyOf(alleleCountsOfMLE, allelesUsedInGenotyping.size() - 1);
         final double[] log10Likelihoods = MathUtils.normalizeFromLog10(new double[]{getLog10LikelihoodOfAFzero(), getLog10LikelihoodOfAFNotZero()}, true);
-        final double[] log10Priors = MathUtils.normalizeFromLog10(new double[]{log10PriorsByAC[0], MathUtils.log10sumLog10(log10PriorsByAC, 1)}, true);
+        final double[] log10Priors = MathUtils.normalizeFromLog10(new double[]{log10PriorsByAC[0], MathUtils.log10SumLog10(log10PriorsByAC, 1)}, true);
 
         final Map<Allele, Double> log10pRefByAllele = new HashMap<>(allelesUsedInGenotyping.size());
         for ( int i = 0; i < subACOfMLE.length; i++ ) {
@@ -251,7 +251,7 @@ final class StateTracker {
 
         // if we've filled up the cache, then condense by summing up all of the values and placing the sum back into the first cell
         if ( log10LikelihoodsForAFGt0CacheIndex == LIKELIHOODS_CACHE_SIZE) {
-            final double temporarySum = MathUtils.log10sumLog10(log10LikelihoodsForAFGt0, 0, log10LikelihoodsForAFGt0CacheIndex);
+            final double temporarySum = MathUtils.log10SumLog10(log10LikelihoodsForAFGt0, 0, log10LikelihoodsForAFGt0CacheIndex);
             Arrays.fill(log10LikelihoodsForAFGt0, Double.POSITIVE_INFINITY);
             log10LikelihoodsForAFGt0[0] = temporarySum;
             log10LikelihoodsForAFGt0CacheIndex = 1;

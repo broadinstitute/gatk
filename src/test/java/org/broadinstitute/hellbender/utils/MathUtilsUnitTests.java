@@ -14,7 +14,10 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.Iterator;
 
+import static java.lang.Math.exp;
 import static java.lang.Math.log10;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 
 /**
  * Basic unit test for MathUtils
@@ -62,7 +65,7 @@ public final class MathUtilsUnitTests extends BaseTest {
             @Override
             public Object[] next() {
                 final double input = inValues[i++];
-                final double output = Math.log10( 1 - Math.pow(10,input));
+                final double output = log10(1 - Math.pow(10, input));
                 return new Object[] { input, output };
             }
 
@@ -90,7 +93,7 @@ public final class MathUtilsUnitTests extends BaseTest {
             @Override
             public Object[] next() {
                 final double input = inValues[i++];
-                final double output = Math.log( 1 - Math.exp(input));
+                final double output = Math.log(1 - exp(input));
                 return new Object[] { input, output };
             }
 
@@ -105,15 +108,15 @@ public final class MathUtilsUnitTests extends BaseTest {
     public void testGoodProbability(){
         for (final double good : Arrays.asList(0.1, 1.0)) {
             Assert.assertTrue(MathUtils.goodProbability(good));
-            Assert.assertTrue(MathUtils.goodLogProbability(Math.log(good)));
-            Assert.assertTrue(MathUtils.goodLogProbability(Math.log(good), true));
-            Assert.assertTrue(MathUtils.goodLogProbability(Math.log(good), false));
+            Assert.assertTrue(MathUtils.goodLog10Probability(log10(good)));
+            Assert.assertTrue(MathUtils.goodLog10Probability(log10(good), true));
+            Assert.assertTrue(MathUtils.goodLog10Probability(log10(good), false));
         }
 
         Assert.assertTrue(MathUtils.goodProbability(0.0));
-        Assert.assertTrue(MathUtils.goodLogProbability(Double.NEGATIVE_INFINITY));
-        Assert.assertTrue(MathUtils.goodLogProbability(Double.NEGATIVE_INFINITY, true));
-        Assert.assertFalse(MathUtils.goodLogProbability(Double.NEGATIVE_INFINITY, false));
+        Assert.assertTrue(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY));
+        Assert.assertTrue(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY, true));
+        Assert.assertFalse(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY, false));
 
         for (final double bad : Arrays.asList(-1.0, 2.0, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)) {
             Assert.assertFalse(MathUtils.goodProbability(bad));
@@ -121,10 +124,18 @@ public final class MathUtilsUnitTests extends BaseTest {
     }
 
     @Test
-    public void testLogOneMinusX(){
-        Assert.assertEquals(-0.10536051565, MathUtils.logOneMinusX(0.1), 1e-6); //result from Wolfram Alpha
-        Assert.assertEquals(0.0, MathUtils.logOneMinusX(0.0), 1e-6);
-        Assert.assertEquals(Double.NEGATIVE_INFINITY, MathUtils.logOneMinusX(1.0), 1e-6);
+    public void testLog10OneMinusX(){
+        Assert.assertEquals(-0.04575749056, MathUtils.log10OneMinusX(0.1), 1e-6); //result from wolphram alpha
+        Assert.assertEquals(0.0, MathUtils.log10OneMinusX(0.0), 1e-6);
+        Assert.assertEquals(Double.NEGATIVE_INFINITY, MathUtils.log10OneMinusX(1.0), 1e-6);
+    }
+
+    @Test
+    public void testLog10Gamma() {
+        //The expected values were checked against Wolphram Alpha
+        Assert.assertEquals(MathUtils.log10Gamma(4.0), 0.7781513, 1e-6);
+        Assert.assertEquals(MathUtils.log10Gamma(10), 5.559763, 1e-6);
+        Assert.assertEquals(MathUtils.log10Gamma(10654), 38280.532152137, 1e-6);
     }
 
     @Test
@@ -145,56 +156,56 @@ public final class MathUtilsUnitTests extends BaseTest {
     }
 
     @Test
-    public void testLogBinomialCoefficient() {
+    public void testLog10BinomialCoefficient() {
         // note that we can test the binomial coefficient calculation indirectly via Newton's identity
         // (1+z)^m = sum (m choose k)z^k
         double[] z_vals = new double[]{0.999, 0.9, 0.8, 0.5, 0.2, 0.01, 0.0001};
         int[] exponent = new int[]{5, 15, 25, 50, 100};
         for (double z : z_vals) {
-            double logz = Math.log(z);
+            double logz = log10(z);
             for (int exp : exponent) {
-                double expected_log = exp * Math.log(1 + z);
+                double expected_log = exp * log10(1 + z);
                 double[] newtonArray_log = new double[1 + exp];
                 for (int k = 0; k <= exp; k++) {
-                    newtonArray_log[k] = MathUtils.logBinomialCoefficient(exp, k) + k * logz;
+                    newtonArray_log[k] = MathUtils.log10BinomialCoefficient(exp, k) + k * logz;
                 }
-                Assert.assertEquals(MathUtils.logSumLog(newtonArray_log), expected_log, 1e-6);
+                Assert.assertEquals(MathUtils.log10SumLog10(newtonArray_log), expected_log, 1e-6);
             }
         }
 
         // results from Wolfram Alpha
-        Assert.assertEquals(MathUtils.logBinomialCoefficient(4, 2), 1.7917595, 1e-6);
-        Assert.assertEquals(MathUtils.logBinomialCoefficient(10, 3), 4.7874917, 1e-6);
-        Assert.assertEquals(MathUtils.logBinomialCoefficient(103928, 119), 921.5305037, 1e-4);
+        Assert.assertEquals(MathUtils.log10BinomialCoefficient(4, 2), 0.7781513, 1e-6);
+        Assert.assertEquals(MathUtils.log10BinomialCoefficient(10, 3), 2.079181, 1e-6);
+        Assert.assertEquals(MathUtils.log10BinomialCoefficient(103928, 119), 400.2156, 1e-4);
     }
 
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBinomialCoefficientErrorN() {
-        Assert.assertEquals(MathUtils.logBinomialCoefficient(-1, 1), 0.0, 1e-6);
+        Assert.assertEquals(MathUtils.log10BinomialCoefficient(-1, 1), 0.0, 1e-6);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBinomialCoefficientErrorK() {
-        Assert.assertEquals(MathUtils.logBinomialCoefficient(1, -1), 0.0, 1e-6);
+        Assert.assertEquals(MathUtils.log10BinomialCoefficient(1, -1), 0.0, 1e-6);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBinomialCoefficientErrorKmoreThanN() {
-        Assert.assertEquals(MathUtils.logBinomialCoefficient(1, 2), 0.0, 1e-6);
+        Assert.assertEquals(MathUtils.log10BinomialCoefficient(1, 2), 0.0, 1e-6);
     }
 
     @Test
     public void testApproximateLogSumLog() {
         final double requiredPrecision = 1E-4;
 
-        Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{0.0, 0.0, 0.0}), Math.log(3), requiredPrecision);
-        Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{0.0, 0.0, 0.0}, 0), 0.0, requiredPrecision);
-        Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{0.0, 0.0, 0.0}, 3), Math.log(3), requiredPrecision);
-        Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{0.0, 0.0, 0.0}, 2), Math.log(2), requiredPrecision);
-        Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{0.0, 0.0, 0.0}, 1), 0.0, requiredPrecision);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{0.0, 0.0, 0.0}), log10(3), requiredPrecision);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{0.0, 0.0, 0.0}, 0), 0.0, requiredPrecision);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{0.0, 0.0, 0.0}, 3), log10(3), requiredPrecision);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{0.0, 0.0, 0.0}, 2), log10(2), requiredPrecision);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{0.0, 0.0, 0.0}, 1), 0.0, requiredPrecision);
 
-        Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY}), Double.NEGATIVE_INFINITY);
+        Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY}), Double.NEGATIVE_INFINITY);
 
         final Random random = new Random(13);
         for (int j = 0; j < 5; j++) {
@@ -203,26 +214,30 @@ public final class MathUtilsUnitTests extends BaseTest {
                 final double b = (1 + 3 * j) * random.nextGaussian();
                 final double c = (1 + 3 * j) * random.nextGaussian();
 
-                Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{a}), a, requiredPrecision);
-                Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{a, Double.NEGATIVE_INFINITY}), a, requiredPrecision);
-                Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{a, b}), Math.log(Math.exp(a) + Math.exp(b)), requiredPrecision);
-                Assert.assertEquals(MathUtils.approximateLogSumLog(a, b), Math.log(Math.exp(a) + Math.exp(b)), requiredPrecision);
-                Assert.assertEquals(MathUtils.approximateLogSumLog(b, a), Math.log(Math.exp(a) + Math.exp(b)), requiredPrecision);
-                Assert.assertEquals(MathUtils.approximateLogSumLog(new double[]{a, b, c}), Math.log(Math.exp(a) + Math.exp(b) + Math.exp(c)), requiredPrecision);
-                Assert.assertEquals(MathUtils.approximateLogSumLog(a, b, c), Math.log(Math.exp(a) + Math.exp(b) + Math.exp(c)), requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{a}), a, requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{a, Double.NEGATIVE_INFINITY}), a, requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{a, b}), log10(exp10(a) + exp10(b)), requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(a, b), log10(exp10(a) + exp10(b)), requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(b, a), log10(exp10(a) + exp10(b)), requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{a, b, c}), log10(exp10(a) + exp10(b) + exp10(c)), requiredPrecision);
+                Assert.assertEquals(MathUtils.approximateLog10SumLog10(a, b, c), log10(exp10(a) + exp10(b) + exp10(c)), requiredPrecision);
             }
         }
+    }
+
+    private static double exp10(final double x){
+        return Math.pow(10.0, x);
     }
 
     @Test
     public void testLogSumLog() {
         final double requiredPrecision = 1E-14;
 
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{0.0, 0.0, 0.0}), Math.log(3), requiredPrecision);
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{0.0, 0.0, 0.0}, 0), Math.log(3), requiredPrecision);
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{0.0, 0.0, 0.0}, 0, 3), Math.log(3), requiredPrecision);
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{0.0, 0.0, 0.0}, 0, 2), Math.log(2), requiredPrecision);
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{0.0, 0.0, 0.0}, 0, 1), 0.0, requiredPrecision);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{0.0, 0.0, 0.0}), log10(3), requiredPrecision);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{0.0, 0.0, 0.0}, 0), log10(3), requiredPrecision);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{0.0, 0.0, 0.0}, 0, 3), log10(3), requiredPrecision);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{0.0, 0.0, 0.0}, 0, 2), log10(2), requiredPrecision);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{0.0, 0.0, 0.0}, 0, 1), 0.0, requiredPrecision);
 
         final Random random = new Random(13);
         for (int j = 0; j < 5; j++) {
@@ -231,10 +246,10 @@ public final class MathUtilsUnitTests extends BaseTest {
                 final double b = (1 + 3 * j) * random.nextGaussian();
                 final double c = (1 + 3 * j) * random.nextGaussian();
 
-                Assert.assertEquals(MathUtils.logSumLog(new double[]{a}), a, requiredPrecision);
-                Assert.assertEquals(MathUtils.logSumLog(new double[]{a, Double.NEGATIVE_INFINITY}), a, requiredPrecision);
-                Assert.assertEquals(MathUtils.logSumLog(new double[]{a, b}), Math.log(Math.exp(a) + Math.exp(b)), requiredPrecision);
-                Assert.assertEquals(MathUtils.logSumLog(new double[]{a, b, c}), Math.log(Math.exp(a) + Math.exp(b) + Math.exp(c)), requiredPrecision);
+                Assert.assertEquals(MathUtils.log10SumLog10(new double[]{a}), a, requiredPrecision);
+                Assert.assertEquals(MathUtils.log10SumLog10(new double[]{a, Double.NEGATIVE_INFINITY}), a, requiredPrecision);
+                Assert.assertEquals(MathUtils.log10SumLog10(new double[]{a, b}), log10(exp10(a) + exp10(b)), requiredPrecision);
+                Assert.assertEquals(MathUtils.log10SumLog10(new double[]{a, b, c}), log10(exp10(a) + exp10(b) + exp10(c)), requiredPrecision);
             }
         }
     }
@@ -243,56 +258,55 @@ public final class MathUtilsUnitTests extends BaseTest {
     public void testlogsumLogEdgeCases(){
         final double requiredPrecision = 1E-14;
 
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{3.0, 2.0, 1.0}, 2, 1), Double.NEGATIVE_INFINITY);
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY}), Double.NEGATIVE_INFINITY);
-        Assert.assertEquals(MathUtils.logSumLog(new double[]{3.0, 2.0, 1.0}), Math.log(Math.exp(3.0) + Math.exp(2.0) + Math.exp(1.0)), requiredPrecision);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{3.0, 2.0, 1.0}, 2, 1), Double.NEGATIVE_INFINITY);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY}), Double.NEGATIVE_INFINITY);
+        Assert.assertEquals(MathUtils.log10SumLog10(new double[]{3.0, 2.0, 1.0}), log10(exp10(3.0) + exp10(2.0) + exp10(1.0)), requiredPrecision);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testlogsumLogErrorNaN(){
-        MathUtils.logSumLog(new double[]{Double.NaN, 1.0});
+        MathUtils.log10SumLog10(new double[]{Double.NaN, 1.0});
     }
 
     @Test
     public void testNormalize(){
         final double error = 1e-6;
 
-        final double[] normalized = MathUtils.normalizeFromLog(new double[]{Math.log(3.0), Math.log(2.0), Math.log(1.0)});
-        final double[] normalizedLog = MathUtils.normalizeFromLog(new double[]{Math.log(3.0), Math.log(2.0), Math.log(1.0)}, true);
-        final double[] normalizedLogInLog = MathUtils.normalizeFromLog(new double[]{3.0, 2.0, 1.0}, true, true);
+        final double[] normalized      = MathUtils.normalizeFromLog10(new double[]{log10(3.0), log10(2.0), log10(1.0)});
+        final double[] normalizedLog10 = MathUtils.normalizeFromLog10(new double[]{log10(3.0), log10(2.0), log10(1.0)}, true);
+        final double[] normalizedLogInLog10 = MathUtils.normalizeFromLog10(new double[]{3.0, 2.0, 1.0}, true, true);
         final double[] normalizedExpected    = {3.0/6.0, 2.0/6.0, 1.0/6.0};  //sum of those is 1
-        final double[] normalizedLogExpected = {Math.log(3.0/6.0), Math.log(2.0/6.0), Math.log(1.0/6.0)}; //sum of exp of those is 1
+        final double[] normalizedLog10Expected = {log10(3.0 / 6.0), log10(2.0 / 6.0), log10(1.0 / 6.0)}; //sum of 10^ of those is 1
         final double[] normalizedLogInLogExpected = {0.0, -1.0, -2.0};
 
         assertEqualsDoubleArray(normalizedExpected, normalized, error);
-        assertEqualsDoubleArray(normalizedLogExpected, normalizedLog, error);
-        assertEqualsDoubleArray(normalizedLogInLogExpected, normalizedLogInLog, error);
+        assertEqualsDoubleArray(normalizedLog10Expected, normalizedLog10, error);
+        assertEqualsDoubleArray(normalizedLogInLogExpected, normalizedLogInLog10, error);
     }
 
     @Test
     public void testLogFactorial() {
-        logger.warn("Executing testLogFactorial");
-
         // results from Wolfram Alpha
-        Assert.assertEquals(MathUtils.logFactorial(4), 3.1780538, 1e-6);
-        Assert.assertEquals(MathUtils.logFactorial(10), 15.1044125, 1e-6);
-        Assert.assertEquals(MathUtils.logFactorial(200), 863.2319872, 1e-3);
-        Assert.assertEquals(MathUtils.logFactorial(12342), 103934.6907023, 1e-1);
+        Assert.assertEquals(log10ToLog(log10Factorial(4)), 3.1780538, 1e-6);
+        Assert.assertEquals(log10ToLog(log10Factorial(10)), 15.1044125, 1e-6);
+        Assert.assertEquals(log10ToLog(log10Factorial(200)), 863.2319872, 1e-3);
+        Assert.assertEquals(log10ToLog(log10Factorial(12342)), 103934.6907023, 1e-1);
 
-        double logFactorial_small = 0;
-        double logFactorial_middle = 863.2319872;
-        double logFactorial_large = 103934.6907023;
+
         int small_start = 1;
         int med_start = 200;
         int large_start = 12342;
+        double log10Factorial_small = 0;
+        double log10Factorial_middle = log10Factorial(med_start);
+        double log10Factorial_large = log10Factorial(large_start);
         for ( int i = 1; i < 1000; i++ ) {
-            logFactorial_small += Math.log(i + small_start);
-            logFactorial_middle += Math.log(i + med_start);
-            logFactorial_large += Math.log(i + large_start);
+            log10Factorial_small += log10(i + small_start);
+            log10Factorial_middle += log10(i + med_start);
+            log10Factorial_large += log10(i + large_start);
 
-            Assert.assertEquals(MathUtils.logFactorial(small_start+i),logFactorial_small,1e-6);
-            Assert.assertEquals(MathUtils.logFactorial(med_start+i),logFactorial_middle,1e-3);
-            Assert.assertEquals(MathUtils.logFactorial(large_start+i),logFactorial_large,1e-1);
+            Assert.assertEquals(log10Factorial(small_start + i),log10Factorial_small,1e-6);
+            Assert.assertEquals(log10Factorial(med_start + i),log10Factorial_middle,1e-3);
+            Assert.assertEquals(log10Factorial(large_start + i),log10Factorial_large,1e-1);
         }
     }
 

@@ -397,7 +397,7 @@ public class PairHMMIndelErrorModel {
                             new IndexedSampleList(Collections.singletonList("DUMMY_SAMPLE")),distinctHaplotypesList, Collections.singletonMap("DUMMY_SAMPLE", Collections.singletonList(processedRead)));
 
                     final LikelihoodMatrix<Haplotype> dummySampleLikelihoods = rl.sampleMatrix(0);
-                    pairHMM.computeLikelihoods(rl.sampleMatrix(0), Collections.singletonList(processedRead), readGCPArrayMap);
+                    pairHMM.computeLog10Likelihoods(rl.sampleMatrix(0), Collections.singletonList(processedRead), readGCPArrayMap);
 
                     // Pack the original pilup element, each allele, and each associated log10 likelihood into a final map, and add each likelihood to the array
                     for (final Allele a: trimmedHaplotypeMap.keySet()){

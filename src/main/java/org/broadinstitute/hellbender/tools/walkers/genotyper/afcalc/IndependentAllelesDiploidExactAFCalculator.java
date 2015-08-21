@@ -287,8 +287,8 @@ import java.util.*;
             }
         }
 
-        final double XB = MathUtils.log10sumLog10(XBvalues);
-        final double XX = MathUtils.log10sumLog10(XXvalues);
+        final double XB = MathUtils.log10SumLog10(XBvalues);
+        final double XX = MathUtils.log10SumLog10(XXvalues);
 
         final double[] GLs = { XX, XB, BB};
         return new GenotypeBuilder(original).PL(GLs).alleles(BIALLELIC_NOCALL).make();
