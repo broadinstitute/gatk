@@ -202,6 +202,18 @@ public final class ReadFilterLibraryUnitTest {
     }
 
     @Test
+    public void failsValidAlignmentEndReadConsumesZeroRefBases() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+
+        // Read with only soft-clips and insertions, consuming no reference bases
+        read.setCigar("60S30I11S");
+        Assert.assertEquals(read.getCigar().getReferenceLength(), 0, "read should consume no reference bases");
+
+        Assert.assertFalse(VALID_ALIGNMENT_END.test(read), "Read consuming no reference bases should have failed VALID_ALIGNMENT_END");
+    }
+
+    @Test
     public void failsHAS_READ_GROUP() {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
