@@ -249,7 +249,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
     private File runTool(final File targetFile, final List<File> inputFiles, final File inputFileList) {
         final List<String> args = new ArrayList<>();
         if (targetFile != null) {
-            args.add("-" + CombineReadCounts.TARGET_FILE_SHORT_NAME);
+            args.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
             args.add(targetFile.getAbsolutePath());
         }
         if (inputFileList != null) {
