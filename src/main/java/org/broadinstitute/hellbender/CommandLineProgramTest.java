@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -8,6 +11,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -69,6 +73,101 @@ public abstract class CommandLineProgramTest extends BaseTest {
 
     public Object runCommandLine(final List<String> args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
+    }
+
+    public String makeString(String[] strings) {
+        if (strings.length > 0) {
+            StringBuilder builder = new StringBuilder();
+
+            for (String s : strings) {
+                builder.append(s).append("',");
+            }
+
+            builder.deleteCharAt(builder.length() - 1);
+            return builder.toString();
+        } else {
+            return "";
+        }
+    }
+
+    public Object runSparkCommandLine(final List<String> args) throws IOException, InterruptedException {
+        final String[] strings = makeCommandLineArgs(args);
+        for (String s: strings) {
+            System.out.println("** " + s);
+        }
+        // Check for the shadowJar, if missing make it
+        Runtime r = Runtime.getRuntime();
+
+        Process jarP = r.exec("gradle properties");
+        CharStreams.toString(new InputStreamReader(jarP.getErrorStream()));
+        final String[] properties = CharStreams.toString(new InputStreamReader(jarP.getInputStream())).split("\\r?\\n");
+        String version = "";
+        for (String s : properties) {
+            int idx = s.indexOf("version: ");
+            if (idx != -1) {
+                version = s.substring(9);
+            }
+        }
+
+        if (version.isEmpty()) {
+            throw new GATKException("unable to find version from \"gradle properties\"");
+        }
+
+        System.out.println("**** " + version);
+        String fullJarName = "hellbender_branch-all-" + version + "-spark.jar";
+        String jarPath = "build/libs/" + fullJarName;
+        //System.out.println("***** " + jarPath);
+        Process jarSearchP = r.exec("test -f " + jarPath);
+        CharStreams.toString(new InputStreamReader(jarSearchP.getInputStream())); // Drain the streams.
+        CharStreams.toString(new InputStreamReader(jarSearchP.getErrorStream())); // Drain the streams.
+        if (jarSearchP.waitFor() != 0) {
+            System.out.println("jar not found");
+            // Build the jar
+            Process shadowJarP = r.exec("gradle shadowJar");
+            CharStreams.toString(new InputStreamReader(shadowJarP.getInputStream())); // Drain the streams.
+            CharStreams.toString(new InputStreamReader(shadowJarP.getErrorStream())); // Drain the streams.
+            int exitCode = shadowJarP.waitFor();
+            if (exitCode != 0) {
+                throw new GATKException("unable to build shadow jar");
+            }
+        } else {
+            System.out.println("jar found at: " + jarPath);
+        }
+
+        /*
+        // Copy the jar to the master.
+        Process copyP = r.exec("gcloud compute copy-files " + jarPath + " broad-dsde-dev-m:~/ --zone us-central1-a");
+        String stdout = CharStreams.toString(new InputStreamReader(copyP.getInputStream()));// Drain the streams.
+        String stderr = CharStreams.toString(new InputStreamReader(copyP.getErrorStream()));// Drain the streams.
+        int exitCode = copyP.waitFor();
+        System.out.println("stdout: " + stdout);
+        System.out.println("stderr: " + stderr);
+
+        if (exitCode != 0) {
+            throw new GATKException("unable to build copy jar to master");
+        }
+        */
+        // Run spark-submit on the master.
+
+        String commandList;// <-------- START HERE!!!!!
+
+
+        /*
+        String testedClassName = getTestedClassName();
+        //Runtime r = Runtime.getRuntime();
+        String[] args1 = {"ls", "-l"};
+        try {
+            Process p = r.exec(args1);
+            final String stdout = CharStreams.toString(new InputStreamReader(p.getInputStream()));
+            final String stderr = CharStreams.toString(new InputStreamReader(p.getErrorStream()));
+            System.out.println("stdout: " + stdout);
+            System.out.println("stderr: " + stderr);
+            final int exitValue = p.exitValue();
+            System.out.println("exit value: " + exitValue);
+        } catch (IOException e) {
+            throw new GATKException("runSparkCommandLine");
+        }*/
+        return null; //new Main().instanceMain(makeCommandLineArgs(args));
     }
 
     public Object runCommandLine(final String[] args) {
