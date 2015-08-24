@@ -78,7 +78,7 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         final PCollection<GATKRead> results = preads.apply(new MarkDuplicates(headerPcolView, finderPcolView));
 
         // TODO: support writing large output files (need a sharded BAM writer)
-        SmallBamWriter.writeToFile(pipeline, results, header, outputFile);
+        //SmallBamWriter.writeToFile(pipeline, results, header, outputFile);
 
         if (metricsFile != null) {
             final PCollection<KV<String,DuplicationMetrics>> metrics = results.apply(new MarkDuplicatesUtils.GenerateMetricsTransform(headerPcolView));

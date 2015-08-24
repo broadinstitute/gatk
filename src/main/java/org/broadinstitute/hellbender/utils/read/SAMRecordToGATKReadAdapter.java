@@ -526,4 +526,12 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
 
         return result;
     }
+
+    /**
+     * Manually overwriting the header is not something you'd normally do, but you may have to if you want to serialize
+     * reads and their header separately, and put them back together afterwards.
+     */
+    public void setHeader(SAMFileHeader h) {
+        samRecord.setHeader(h);
+    }
 }

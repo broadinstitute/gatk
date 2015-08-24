@@ -127,6 +127,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
                 logger.info("Loading " + clientSecret.getName());
                 options.setSecretsFile(clientSecret.getAbsolutePath());
             }
+            String name = jobName();
+            if (null!=name) options.setJobName(name);
             return options;
         } else {
             final SparkPipelineOptions options = PipelineOptionsFactory.as(SparkPipelineOptions.class);
@@ -167,6 +169,14 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
      * Override this to run code after the pipeline returns.
      */
     protected void afterPipeline(Pipeline pipeline) {}
+
+    /**
+     * Override to pick a name for the pipeline.
+     * Note that Dataflow requires the name to be unique among running jobs.
+     */
+    protected String jobName() {
+        return null;
+    }
 
     // ---------------------------------------------------
     // Helpers
