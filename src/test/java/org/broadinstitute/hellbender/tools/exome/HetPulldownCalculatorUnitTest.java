@@ -119,10 +119,10 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputIsPileupHetCompatible")
     public void testIsPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCounts,
-                                          final double hetAlleleFreq, final double pvalThreshold,
+                                          final double hetAlleleFraction, final double pvalThreshold,
                                           final boolean expected) {
         final boolean result = HetPulldownCalculator.isPileupHetCompatible(baseCounts, totalBaseCounts,
-                hetAlleleFreq, pvalThreshold);
+                hetAlleleFraction, pvalThreshold);
         Assert.assertEquals(result, expected);
     }
 
@@ -136,7 +136,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
         normalHetPulldown1.add(new Interval("2", 14689, 14689), 6, 9);
         normalHetPulldown1.add(new Interval("2", 14982, 14982), 6, 5);
 
-        //changing hetAlleleFreq from 0.5 -> 0.45 removes first het SNP
+        //changing hetAlleleFraction from 0.5 -> 0.45 removes first het SNP
         Pulldown normalHetPulldown2 = new Pulldown(normalHeader);
         normalHetPulldown2.add(new Interval("1", 11522, 11522), 7, 4);
         normalHetPulldown2.add(new Interval("1", 12098, 12098), 8, 6);
@@ -151,9 +151,9 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "inputGetNormalHetPulldown")
-    public void testGetNormalHetPulldown(final double hetAlleleFreq, final double pvalThreshold,
+    public void testGetNormalHetPulldown(final double hetAlleleFraction, final double pvalThreshold,
                                          final Pulldown expected) {
-        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, hetAlleleFreq, pvalThreshold);
+        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, hetAlleleFraction, pvalThreshold);
         Assert.assertEquals(result, expected);
     }
 

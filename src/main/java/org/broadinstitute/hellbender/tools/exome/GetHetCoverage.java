@@ -93,7 +93,7 @@ public final class GetHetCoverage extends CommandLineProgram {
             shortName = HET_ALLELE_FRACTION_SHORT_NAME,
             optional = false
     )
-    protected double hetAlleleFreq = 0.5;
+    protected double hetAlleleFraction = 0.5;
 
     @Argument(
             doc = "p-value threshold for binomial test for heterozygous SNPs in normal sample.",
@@ -114,7 +114,7 @@ public final class GetHetCoverage extends CommandLineProgram {
         final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REF_ARGUMENTS.getReferenceFile(), snpFile);
 
         logger.log(Level.INFO, "Getting normal het pulldown...");
-        final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, hetAlleleFreq, pvalThreshold);
+        final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, hetAlleleFraction, pvalThreshold);
         normalHetPulldown.write(normalHetOutputFile);
         logger.log(Level.INFO, "Normal het pulldown written to " + normalHetOutputFile.toString());
 
