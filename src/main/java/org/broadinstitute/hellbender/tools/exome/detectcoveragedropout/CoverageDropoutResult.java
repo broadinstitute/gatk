@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.detectcoveragedropout;
 
-import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;

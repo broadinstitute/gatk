@@ -15,8 +15,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramG
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
