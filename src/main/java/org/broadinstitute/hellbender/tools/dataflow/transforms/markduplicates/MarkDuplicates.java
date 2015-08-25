@@ -52,13 +52,17 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
         return PCollectionList.of(fragmentsTransformed).and(pairsTransformed).and(not_primary).apply(Flatten.<GATKRead>pCollections());
     }
 
+    public static int primaryNonPrimaryAlignment(GATKRead read) {
+        return read.isSecondaryAlignment() || read.isSupplementaryAlignment() || read.isUnmapped() ? ReadsPartition.NOT_PRIMARY.ordinal() : ReadsPartition.PRIMARY.ordinal();
+    }
+
     private static PCollectionList<GATKRead> partitionReadsByPrimaryNonPrimaryAlignment(PCollection<GATKRead> preads) {
         return preads.apply(Partition.of(2, new Partition.PartitionFn<GATKRead>() {
             private static final long serialVersionUID = 1l;
 
             @Override
             public int partitionFor(final GATKRead read, final int n) {
-                return read.isSecondaryAlignment() || read.isSupplementaryAlignment() || read.isUnmapped() ? ReadsPartition.NOT_PRIMARY.ordinal() : ReadsPartition.PRIMARY.ordinal();
+                return primaryNonPrimaryAlignment(read);
             }
         }));
     }
