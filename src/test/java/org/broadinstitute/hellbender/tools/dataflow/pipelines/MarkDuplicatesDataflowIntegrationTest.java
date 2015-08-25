@@ -72,6 +72,8 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 
+        addDataflowRunnerArgs(args);
+
         runCommandLine(args.getArgsArray());
 
         Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
@@ -127,6 +129,7 @@ public class MarkDuplicatesDataflowIntegrationTest extends CommandLineProgramTes
       args.add(metricsFile.getAbsolutePath());
       args.add("--READ_NAME_REGEX");
       args.add(null);
+      addDataflowRunnerArgs(args);
       runCommandLine(args.getArgsArray());
     }
 }

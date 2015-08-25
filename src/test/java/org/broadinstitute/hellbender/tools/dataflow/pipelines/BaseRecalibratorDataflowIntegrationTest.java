@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -155,8 +156,10 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     // "local", but we're still getting the reference from the cloud.
     @Test(dataProvider = "BQSRTest", groups = {"cloud"})
     public void testBQSRLocal(BQSRTest params) throws IOException {
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                params.getCommandLine(),
+                ab.getString(),
                 Arrays.asList(params.expectedFileName));
         spec.executeTest("testBQSR-" + params.args, this);
     }
@@ -164,8 +167,10 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"})
     public void testBQSRBucket(BQSRTest params) throws IOException {
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                params.getCommandLine(),
+                ab.getString(),
                 Arrays.asList(params.expectedFileName));
         spec.executeTest("testBQSR-" + params.args, this);
     }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.dataflow;
 
+import com.cloudera.dataflow.spark.SparkPipelineRunner;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
@@ -15,17 +16,17 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
-import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
@@ -79,11 +80,28 @@ public class SmallBamWriterTest extends BaseTest {
         testReadAndWrite(getCloudInput(), outputPath, true, true);
     }
 
+    @Test
+    public void checkHDFSOutput() throws Exception {
+        File out = createTempFile("temp",".bam");
+        String tempName = out.getName();
+        MiniDFSCluster cluster = null;
+        try {
+            cluster = new MiniDFSCluster.Builder(new Configuration()).build();
+            String staging = cluster.getFileSystem().getWorkingDirectory().toString();
+            String outputPath = staging + tempName;
+            testReadAndWrite(LOCAL_INPUT, outputPath, false, false);
+        } finally {
+            if (cluster != null) {
+                cluster.shutdown();
+            }
+        }
+    }
+
     protected void testReadAndWrite(final String inputPath, final String outputPath, boolean enableGcs, boolean enableCloudExec) throws IOException {
         String localInput = inputPath;
         String localOutput = outputPath;
         logger.info("outputPath="+outputPath);
-        final Pipeline pipeline = setupPipeline(enableGcs, enableCloudExec);
+        final Pipeline pipeline = setupPipeline(inputPath, outputPath, enableGcs, enableCloudExec);
         if (BucketUtils.isCloudStorageUrl(inputPath)) {
             File out = createTempFile("temp-input",".bam");
             localInput = out.getPath();
@@ -98,6 +116,11 @@ public class SmallBamWriterTest extends BaseTest {
             localOutput = out.getPath();
             logger.info("Downloading the output to " + localOutput+" (for comparison).");
             downloadFromGCS(pipeline.getOptions(), outputPath, localOutput);
+        } else if (BucketUtils.isHadoopUrl(outputPath)) {
+            File out = createTempFile("temp-output",".bam");
+            localOutput = out.getPath();
+            logger.info("Downloading the output to " + localOutput + " (for comparison).");
+            BucketUtils.copyFile(outputPath, pipeline.getOptions(), localOutput);
         }
         IntegrationTestSpec.assertEqualBamFiles(new File(localInput), new File(localOutput));
     }
@@ -114,12 +137,14 @@ public class SmallBamWriterTest extends BaseTest {
         }
     }
 
-    private Pipeline setupPipeline(boolean enableGcs, boolean enableCloudExec) {
+    private Pipeline setupPipeline(final String inputPath, final String outputPath, boolean enableGcs, boolean enableCloudExec) {
         final DataflowCommandLineProgram.HellbenderDataflowOptions options = PipelineOptionsFactory.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class);
         if (enableCloudExec) {
             options.setStagingLocation(getDataflowTestStaging());
             options.setProject(getDataflowTestProject());
             options.setRunner(BlockingDataflowPipelineRunner.class);
+        } else if (BucketUtils.isHadoopUrl(inputPath) || BucketUtils.isHadoopUrl(outputPath)) {
+            options.setRunner(SparkPipelineRunner.class);
         } else {
             options.setRunner(DirectPipelineRunner.class);
         }

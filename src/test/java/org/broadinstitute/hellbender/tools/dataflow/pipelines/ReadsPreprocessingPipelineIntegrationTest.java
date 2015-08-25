@@ -37,6 +37,7 @@ public class ReadsPreprocessingPipelineIntegrationTest extends CommandLineProgra
                                   "-BQSRKnownVariants", knownSites,
                                   "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath()));
         argv.addAll(getStandardDataflowArgumentsFromEnvironment());
+        addDataflowRunnerArgs(argv);
 
         // Note: could use IntegrationTestSpec if we expand it a bit
         runCommandLine(argv);
