@@ -224,7 +224,7 @@ test {
     minHeapSize = "1G"
     maxHeapSize = "2G"
 
-    if (CI == "true") {
+    if (CI == "true" && CLOUD == "false" ) {
         int count = 0
         // listen to events in the test execution lifecycle
         testLogging {
