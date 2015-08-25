@@ -32,7 +32,6 @@ public final class NormalizeFastaIntegrationTest extends CommandLineProgramTest 
         final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
-
         };
 
         runCommandLine(args);
