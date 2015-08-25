@@ -69,12 +69,19 @@ final class MarkDuplicatesUtils {
    */
   static PCollection<GATKRead> transformReads(final PCollectionView<SAMFileHeader> headerPcolView, final PCollectionView<OpticalDuplicateFinder> finderPcolView, final PCollection<GATKRead> pairs) {
 
-    final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName = keyReadsByName(headerPcolView);
-    final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo =
-        keyPairedEndsWithAlignmentInfo(headerPcolView);
-    final PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds = markDuplicatePairedEnds(finderPcolView);
+      final SerializableFunction<GATKRead, Boolean> hasMappedMate = new SerializableFunction<GATKRead, Boolean>() {
+          @Override
+          public Boolean apply(GATKRead read) {
+              return ReadUtils.readHasMappedMate(read);
+          }
+      } ;
+      final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName = keyReadsByName(headerPcolView);
+      final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo =
+          keyPairedEndsWithAlignmentInfo(headerPcolView);
+      final PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds = markDuplicatePairedEnds(finderPcolView);
 
-    return pairs
+      return pairs
+        .apply(Filter.by(hasMappedMate))
         .apply(keyReadsByName)
         .apply(GroupByKey.<String, GATKRead>create())
         .apply(keyPairedEndsWithAlignmentInfo)
@@ -93,7 +100,6 @@ final class MarkDuplicatesUtils {
 
     // the specific key
     static String keyForRead(SAMFileHeader header, GATKRead read) {
-        if (!ReadUtils.readHasMappedMate(read)) return null;
         return ReadsKey.keyForRead(header, read);
     }
 
@@ -142,6 +148,53 @@ final class MarkDuplicatesUtils {
                 });
     }
 
+    static ArrayList<GATKRead> markDuplicatePairedEndsFn(OpticalDuplicateFinder finder, Iterable<PairedEnds> pairs) {
+        ArrayList<GATKRead> ret = new ArrayList<>();
+        final Iterable<PairedEnds> pairedEndsCopy = Iterables.transform(pairs, PairedEnds::copy);
+        final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEndsCopy, pair -> pair.second() != null);
+
+        // As in Picard, unpaired ends left alone.
+        for (final PairedEnds pair : paired.get(false)) {
+            ret.add(pair.first());
+        }
+
+        // order by score
+        List<PairedEnds> scored = Ordering.natural().reverse().onResultOf((PairedEnds pair) -> pair.score()).sortedCopy(paired.get(true));
+
+        final PairedEnds best = Iterables.getFirst(scored, null);
+        if (best == null) {
+            return ret;
+        }
+
+        // Mark everyone who's not best as a duplicate
+        for (final PairedEnds pair : Iterables.skip(scored, 1)) {
+            pair.first().setIsDuplicate(true);
+            pair.second().setIsDuplicate(true);
+        }
+        // Now, add location information to the paired ends
+        for (final PairedEnds pair : scored) {
+            // Both elements in the pair have the same name
+            finder.addLocationInformation(pair.first().getName(), pair);
+        }
+
+        // This must happen last, as findOpticalDuplicates mutates the list.
+        // We do not need to split the list by orientation as the keys for the pairs already
+        // include directionality information and a FR pair would not be grouped with an RF pair.
+        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
+        int numOpticalDuplicates = 0;
+        for (final boolean b : opticalDuplicateFlags) {
+            if (b) {
+                numOpticalDuplicates++;
+            }
+        }
+        best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
+
+        for (final PairedEnds pair : scored) {
+            ret.add(pair.first());
+            ret.add(pair.second());
+        }
+        return ret;
+    }
 
     static PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds(PCollectionView<OpticalDuplicateFinder> finderPcolView) {
         return ParDo
@@ -152,52 +205,9 @@ final class MarkDuplicatesUtils {
 
                     @Override
                     public void processElement(final ProcessContext context) throws Exception {
-                        // We need to copy the PairedEnds because we mutate it (and Dataflow assumes that elements
-                        // are never mutated).
-                        Iterable<PairedEnds> pairedEndsCopy = Iterables.transform(context.element().getValue(), PairedEnds::copy);
-
                         final OpticalDuplicateFinder finder = context.sideInput(finderPcolView);
-                        final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEndsCopy, pair -> pair.second() != null);
-
-                        // As in Picard, unpaired ends left alone.
-                        for (final PairedEnds pair : paired.get(false)) {
-                            context.output(pair.first());
-                        }
-
-                        // order by score
-                        List<PairedEnds> scored = Ordering.natural().reverse().onResultOf((PairedEnds pair) -> pair.score()).sortedCopy(paired.get(true));
-
-                        final PairedEnds best = Iterables.getFirst(scored, null);
-                        if (best == null) {
-                            return;
-                        }
-
-                        // Mark everyone who's not best as a duplicate
-                        for (final PairedEnds pair : Iterables.skip(scored, 1)) {
-                            pair.first().setIsDuplicate(true);
-                            pair.second().setIsDuplicate(true);
-                        }
-                        // Now, add location information to the paired ends
-                        for (final PairedEnds pair : scored) {
-                            // Both elements in the pair have the same name
-                            finder.addLocationInformation(pair.first().getName(), pair);
-                        }
-
-                        // This must happen last, as findOpticalDuplicates mutates the list.
-                        // We do not need to split the list by orientation as the keys for the pairs already
-                        // include directionality information and a FR pair would not be grouped with an RF pair.
-                        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
-                        int numOpticalDuplicates = 0;
-                        for (final boolean b : opticalDuplicateFlags) {
-                            if (b) {
-                                numOpticalDuplicates++;
-                            }
-                        }
-                        best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
-
-                        for (final PairedEnds pair : scored) {
-                            context.output(pair.first());
-                            context.output(pair.second());
+                        for (GATKRead read : markDuplicatePairedEndsFn(finder, context.element().getValue())) {
+                            context.output(read);
                         }
                     }
                 });
@@ -269,7 +279,6 @@ final class MarkDuplicatesUtils {
 
     // the specific key
     static String keyForFragment(SAMFileHeader header, GATKRead read) {
-        read.setIsDuplicate(false);
         return ReadsKey.keyForFragment(header, read);
     }
 

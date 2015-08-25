@@ -8,7 +8,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -22,9 +24,12 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
 
     private final SAMRecord samRecord;
     private final UUID uuid;
+    private final static long uuidHighWord = new Random().nextLong();
+    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     public SAMRecordToGATKReadAdapter( final SAMRecord samRecord ) {
-        this(samRecord, UUID.randomUUID());
+        // this is much faster than UUID.randomUUID()
+        this(samRecord, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
     }
 
     /**

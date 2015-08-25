@@ -46,6 +46,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
@@ -60,13 +61,14 @@ import java.util.stream.Collectors;
 /**
  * Class to load reads into a PCollection from a cloud storage bucket, a Hadoop filesystem, or a local bam file.
  */
-public final class ReadsDataflowSource {
+public final class ReadsDataflowSource implements Serializable {
+    private static final long serialVersionUID = 1l;
     private final static Logger logger = LogManager.getLogger(ReadsDataflowSource.class);
     private final String bam;
     private final boolean cloudStorageUrl;
     private final boolean hadoopUrl;
-    private GCSOptions options;
-    private final Pipeline pipeline;
+    private transient GCSOptions options;
+    private transient final Pipeline pipeline;
     private GenomicsFactory.OfflineAuth auth;
 
     /**
@@ -162,7 +164,7 @@ public final class ReadsDataflowSource {
     }
 
     public static PCollectionView<SAMFileHeader> getHeaderView(Pipeline p, SAMFileHeader readsHeader) {
-        return p.apply(Create.of(readsHeader).withCoder(SerializableCoder.of(SAMFileHeader.class))).apply(View.<SAMFileHeader>asSingleton());
+        return p.apply(Create.of(readsHeader).withCoder(SerializableCoder.of(SAMFileHeader.class))).setName("reads header").apply(View.<SAMFileHeader>asSingleton());
     }
 
 

@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 
+import com.google.cloud.dataflow.sdk.io.TextIO;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionList;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
@@ -15,7 +17,7 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
     private static final long serialVersionUID = 1l;
 
     //private vs non-primary alignments
-    private enum ReadsPartition {
+    public enum ReadsPartition {
         PRIMARY, NOT_PRIMARY
     }
 
@@ -43,11 +45,23 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
         final PCollection<GATKRead> fragments = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
         final PCollection<GATKRead> fragmentsTransformed = MarkDuplicatesUtils.transformFragments(header, fragments);
 
+        fragmentsTransformed.apply(Count.globally())
+            .apply(DataflowUtils.convertToString())
+            .apply(TextIO.Write.to("tmp-fragmentsTransformed"));
+
         final PCollection<GATKRead> pairs = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
         final PCollection<GATKRead> pairsTransformed = MarkDuplicatesUtils.transformReads(header, opticalDuplicateFinder, pairs);
 
+        pairsTransformed.apply(Count.globally())
+            .apply(DataflowUtils.convertToString())
+            .apply(TextIO.Write.to("tmp-pairsTransformed"));
+
         //no work on those
         final PCollection<GATKRead> not_primary = readsPartitioned.get(ReadsPartition.NOT_PRIMARY.ordinal());
+
+        not_primary.apply(Count.globally())
+            .apply(DataflowUtils.convertToString())
+            .apply(TextIO.Write.to("tmp-not_primary"));
 
         return PCollectionList.of(fragmentsTransformed).and(pairsTransformed).and(not_primary).apply(Flatten.<GATKRead>pCollections());
     }
