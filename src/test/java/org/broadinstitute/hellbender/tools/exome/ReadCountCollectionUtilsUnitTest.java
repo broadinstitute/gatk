@@ -23,6 +23,11 @@ public class ReadCountCollectionUtilsUnitTest {
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/tools/exome");
     private static final File FULL_CORRECT_FILE = new File(TEST_FILE_DIR, "rcc-test-full-counts.txt");
 
+    private static final String CONTIG_START_END = TargetColumns.CONTIG.toString()
+            + "\t" + TargetColumns.START.toString() + "\t" + TargetColumns.END.toString();
+
+    private static final String CONTIG_START_END_NAME = CONTIG_START_END + "\t" + TargetColumns.NAME.toString();
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullFile() throws IOException {
         ReadCountCollectionUtils.parse(null);
@@ -65,7 +70,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("CONTIG\tSTART\tEND\tNAME");
+        writer.println(CONTIG_START_END_NAME);
         writer.close();
         ReadCountCollectionUtils.parse(testFile);
     }
@@ -87,7 +92,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("CONTIG\tSTART\tEND\tNAME\tSAMPLE1\tSAMPLE1");
+        writer.println(CONTIG_START_END_NAME + "\tSAMPLE1\tSAMPLE1");
         writer.close();
         ReadCountCollectionUtils.parse(testFile);
     }
@@ -109,7 +114,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("CONTIG\tSTART\tEND\tNAME\tSAMPLE1\tSAMPLE2");
+        writer.println(CONTIG_START_END_NAME + "\tSAMPLE1\tSAMPLE2");
         writer.close();
         ReadCountCollectionUtils.parse(testFile);
     }
@@ -120,7 +125,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("CONTIG\tSTART\tEND\tNAME\tSAMPLE1\tSAMPLE2");
+        writer.println(CONTIG_START_END_NAME + "\tSAMPLE1\tSAMPLE2");
         writer.println("1\t100\t200\ttgt_0\t1.1\t2.2");
         writer.println("1\t201\t300\ttgt_1\t1.1\t2.2");
         writer.println("2\t400\t500\ttgt_0\t-1.1E-7\t-2.2E-8");
@@ -134,7 +139,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("CONTIG\tSTART\tEND\tNAME\tSAMPLE1\tSAMPLE2");
+        writer.println(CONTIG_START_END_NAME + "\tSAMPLE1\tSAMPLE2");
         writer.println("1\t100\t200\ttgt_0\t1.1\t2.2");
         writer.println("2\t200\t300\ttgt_1\t-1.1E-7\t-2.2E-8");
         writer.close();
@@ -159,7 +164,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("SAMPLE2\tSAMPLE1\tNAME");
+        writer.println("SAMPLE2\tSAMPLE1\t" + TargetColumns.NAME.toString());
         writer.println("1.1\t2.2\ttgt_0");
         writer.println("-1.1E-7\t-2.2E-8\ttgt_1");
         writer.close();
@@ -182,13 +187,13 @@ public class ReadCountCollectionUtilsUnitTest {
     public void testReadIntervalsOnlyFile() throws IOException {
         final File targetFile = createTempFile();
         final PrintWriter targetWriter = new PrintWriter(targetFile);
-        targetWriter.println("#CONTIG\tSTART\tEND\tNAME");
+        targetWriter.println("#" + CONTIG_START_END_NAME);
         targetWriter.println("1\t100\t200\tTGT_0");
         targetWriter.println("2\t200\t300\tTGT_1");
         targetWriter.close();
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
-        writer.println("CONTIG\tSAMPLE3\tEND\tSAMPLE2\tSTART");
+        writer.println("contig\tSAMPLE3\tstop\tSAMPLE2\tstart");
         writer.println("1\t1.1\t200\t2.2\t100");
         writer.println("2\t-1.1E-7\t300\t-2.2E-8\t200");
         writer.close();
@@ -213,7 +218,7 @@ public class ReadCountCollectionUtilsUnitTest {
     public void testOneTooFewValueInLine() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
-        writer.println("CONTIG\tSAMPLE3\tEND\tSAMPLE2\tSTART");
+        writer.println("contig\tSAMPLE3\tstop\tSAMPLE2\tstart");
         writer.println("1.1\t200\t2.2\t100");
         writer.println("2\t-1.1E-7\t300\t-2.2E-8\t200");
         writer.close();
@@ -224,7 +229,7 @@ public class ReadCountCollectionUtilsUnitTest {
     public void testOneTooManyValueInLine() throws IOException {
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
-        writer.println("CONTIG\tSAMPLE3\tEND\tSAMPLE2\tSTART");
+        writer.println("contig\tSAMPLE3\tstop\tSAMPLE2\tstart");
         writer.println("1\t1.1\t200\t2.2\t100\t21.0");
         writer.println("2\t-1.1E-7\t300\t-2.2E-8\t200");
         writer.close();

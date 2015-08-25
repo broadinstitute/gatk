@@ -17,25 +17,24 @@ import java.util.stream.Collectors;
  * Created by davidben on 7/17/15.
  */
 public final class TargetCoverageUtils {
-    private static final String CONTIG_COLUMN_NAME = "CONTIG";
-    private static final String START_COLUMN_NAME = "START";
-    private static final String END_COLUMN_NAME = "END";
-    private static final String TARGET_NAME_COLUMN_NAME = "NAME";
+    private static final String TARGET_NAME_COLUMN = "name";
+    private static final String CONTIG_COLUMN = "contig";
+    private static final String START_COLUMN = "start";
+    private static final String END_COLUMN = "stop";
 
     /**
-     * read a list of targets with coverage from a file
+     * read a list of targets with coverage from a tab-separated file with header line:
+     * name contig  start   stop    <sample name>
+     * where the final column is numerical data, generally coverage or normalized coverage
      */
     public static List<TargetCoverage> readTargetsWithCoverage(final File targetsFile) {
         try (final TableReader<TargetCoverage> reader = TableUtils.reader(targetsFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.matchesAll(0,
-                            CONTIG_COLUMN_NAME, START_COLUMN_NAME, END_COLUMN_NAME, TARGET_NAME_COLUMN_NAME))
-                            //coverage is fifth column w/ header = <sample name>
+                    if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN))
                         throw formatExceptionFactory.apply("Bad header");
                     //return the lambda to translate dataLines into targets
-                    return (dataLine) -> new TargetCoverage(dataLine.get(3),
-                            new SimpleInterval(dataLine.get(0), dataLine.getInt(1), dataLine.getInt(2)),
-                            dataLine.getDouble(4));
+                    return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
+                            new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.getDouble(4));
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
@@ -49,8 +48,7 @@ public final class TargetCoverageUtils {
     public static void writeTargetsWithCoverage(final File outFile, final String sampleName,
                                                 final List<TargetCoverage> targets) {
         try (final TableWriter<TargetCoverage> writer = TableUtils.writer(outFile,
-                new TableColumnCollection(
-                        CONTIG_COLUMN_NAME, START_COLUMN_NAME, END_COLUMN_NAME, TARGET_NAME_COLUMN_NAME, sampleName),
+                new TableColumnCollection(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, sampleName),
                 //lambda for filling an initially empty DataLine
                 (target, dataLine) -> {
                     final SimpleInterval interval = target.getInterval();
@@ -59,7 +57,7 @@ public final class TargetCoverageUtils {
                     final int end = interval.getEnd();
                     final String name = target.getName();
                     final double coverage = target.getCoverage();
-                    dataLine.append(contig).append(start, end).append(name).append(coverage);
+                    dataLine.append(name, contig).append(start, end).append(coverage);
                 })) {
             for (final TargetCoverage target : targets) {
                 writer.writeRecord(target);

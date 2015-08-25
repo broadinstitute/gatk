@@ -120,7 +120,7 @@ public final class ReadCountCollectionUtils {
                                                                        final ReadCountCollection collection) throws IOException {
 
         final List<String> columnNames = new ArrayList<>();
-        columnNames.add(ReadCountsSpecialColumns.NAME.name());
+        columnNames.add(TargetColumns.NAME.toString());
         columnNames.addAll(collection.columnNames());
         final TableColumnCollection columns = new TableColumnCollection(columnNames);
         return new TableWriter<ReadCountRecord>(writer, columns) {
@@ -136,10 +136,10 @@ public final class ReadCountCollectionUtils {
     private static TableWriter<ReadCountRecord> writerWithIntervals(final Writer writer,
                                                                     final ReadCountCollection collection) throws IOException {
         final List<String> columnNames = new ArrayList<>();
-        columnNames.add(ReadCountsSpecialColumns.CONTIG.name());
-        columnNames.add(ReadCountsSpecialColumns.START.name());
-        columnNames.add(ReadCountsSpecialColumns.END.name());
-        columnNames.add(ReadCountsSpecialColumns.NAME.name());
+        columnNames.add(TargetColumns.CONTIG.toString());
+        columnNames.add(TargetColumns.START.toString());
+        columnNames.add(TargetColumns.END.toString());
+        columnNames.add(TargetColumns.NAME.toString());
         columnNames.addAll(collection.columnNames());
         final TableColumnCollection columns = new TableColumnCollection(columnNames);
 
@@ -201,7 +201,7 @@ public final class ReadCountCollectionUtils {
             protected void processColumns(final TableColumnCollection columns) {
                 countColumnNames.clear();
                 countColumnNames.addAll(columns.names().stream()
-                        .filter(name -> !ReadCountsSpecialColumns.isSpecialColumnName(name))
+                        .filter(name -> !TargetColumns.isTargetColumnName(name))
                         .collect(Collectors.toList()));
 
                 @SuppressWarnings("all")
@@ -234,7 +234,7 @@ public final class ReadCountCollectionUtils {
 
             private Function<DataLine, double[]> countExtractor(final TableColumnCollection columns) {
                 final int[] countColumnIndexes = IntStream.range(0, columns.columnCount())
-                        .filter(i -> !ReadCountsSpecialColumns.isSpecialColumnName(columns.nameAt(i))).toArray();
+                        .filter(i -> !TargetColumns.isTargetColumnName(columns.nameAt(i))).toArray();
                 return (v) -> {
                     final double[] result = new double[countColumnIndexes.length];
                     for (int i = 0; i < countColumnIndexes.length; i++) {
@@ -283,14 +283,14 @@ public final class ReadCountCollectionUtils {
      * <p>
      * This method will return {@code null} if it is not possible to extract the target name from the input directly; for
      * example the input only contain the coordinates of the target and not the target name itself (
-     * (i.e. the {@link ReadCountsSpecialColumns#NAME NAME} column is missing).
+     * (i.e. the {@link TargetColumns#NAME NAME} column is missing).
      * </p>
      *
      * @param columns the column-name array for that file.
      * @return non-{@code null} iff is not possible to extract the target name from the input directly.
      */
     private static Function<DataLine, String> targetNameExtractor(final TableColumnCollection columns) {
-        final int nameColumnIndex = columns.indexOf(ReadCountsSpecialColumns.NAME.name());
+        final int nameColumnIndex = columns.indexOf(TargetColumns.NAME.toString());
         return nameColumnIndex < 0 ? null : (v) -> v.get(nameColumnIndex);
     }
 
@@ -304,9 +304,9 @@ public final class ReadCountCollectionUtils {
     private static Function<DataLine, SimpleInterval> intervalExtractor(final TableColumnCollection columns,
                                                                         final Function<String, RuntimeException> errorExceptionFactory) {
 
-        final int contigColumnNumber = columns.indexOf(ReadCountsSpecialColumns.CONTIG.name());
-        final int startColumnNumber = columns.indexOf(ReadCountsSpecialColumns.START.name());
-        final int endColumnNumber = columns.indexOf(ReadCountsSpecialColumns.END.name());
+        final int contigColumnNumber = columns.indexOf(TargetColumns.CONTIG.toString());
+        final int startColumnNumber = columns.indexOf(TargetColumns.START.toString());
+        final int endColumnNumber = columns.indexOf(TargetColumns.END.toString());
         return composeIntervalBuilder(contigColumnNumber, startColumnNumber, endColumnNumber, errorExceptionFactory);
     }
 

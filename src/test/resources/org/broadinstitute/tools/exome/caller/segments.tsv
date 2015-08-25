@@ -1,5 +1,5 @@
-Sample	Chromosome	Start	End
-sample	chr	100	200
-sample	chr	300	400
-sample	chr	450	550
-sample	chr	650	750
+Sample	Chromosome	Start	End	Num_Probes	Segment_Mean
+sample	chr	100	200	NA	NA
+sample	chr	300	400	NA	NA
+sample	chr	450	550	NA	NA
+sample	chr	650	750	NA	NA

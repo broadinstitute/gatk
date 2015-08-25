@@ -21,19 +21,27 @@ import java.util.stream.Collectors;
  * Created by David Benjamin 7/15/15
  */
 public final class SegmentUtils {
+    private static final String SAMPLE_COLUMN = "Sample";
+    private static final String CONTIG_COLUMN = "Chromosome";
+    private static final String START_COLUMN = "Start";
+    private static final String END_COLUMN = "End";
+    private static final String NUM_PROBES_COLUMN = "Num_Probes";
+    private static final String MEAN_COLUMN = "Segment_Mean";
+    private static final String CALL_COLUMN = "Segment_Call";
+    private static final String MISSING_DATA = "NA";
+
     /**
-     * read a list of intervals without calls from a segfile
+     * read a list of intervals without calls from a segfile with header:
+     * Sample   Chromosome  Start  End Num_PRobes  Segment_Mean    Segment_Call
      */
     public static List<SimpleInterval> readIntervalsFromSegfile(final File segmentsFile) {
         try (final TableReader<SimpleInterval> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.matchesAll(0, "Sample", "Chromosome", "Start", "End")) {//ignore last two columns: NTARGETS and AVERAGE
+                    if (!columns.containsAll(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN)) {
                         throw formatExceptionFactory.apply("Bad header");
                     }
-
                     // return the lambda to translate dataLines into uncalled segments.
-                    return (dataLine) ->
-                            new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3));
+                    return (dataLine) -> new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN));
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
@@ -47,12 +55,12 @@ public final class SegmentUtils {
     public static List<CalledInterval> readCalledIntervalsFromSegfile(final File segmentsFile) {
         try (final TableReader<CalledInterval> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.matchesExactly("Sample", "Chromosome", "Start", "End", "Call")) {
+                    if (!columns.containsAll(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, CALL_COLUMN)) {
                         throw formatExceptionFactory.apply("Bad header");
                     }
                     // return the lambda to translate dataLines into called segments.
-                    return (dataLine) -> new CalledInterval(
-                            new SimpleInterval(dataLine.get(1), dataLine.getInt(2), dataLine.getInt(3)), dataLine.get(4));
+                    return (dataLine) -> new CalledInterval(new SimpleInterval(
+                            dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.get(CALL_COLUMN));
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
@@ -65,12 +73,12 @@ public final class SegmentUtils {
      */
     public static void writeCalledIntervalsToSegfile(final File outFile, List<CalledInterval> segments, final String sample) {
         try (final TableWriter<CalledInterval> writer = TableUtils.writer(outFile,
-                new TableColumnCollection("Sample", "Chromosome", "Start", "End", "Call"),
+                new TableColumnCollection(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, NUM_PROBES_COLUMN, MEAN_COLUMN, CALL_COLUMN),
 
                 //lambda for filling an initially empty DataLine
                 (ci, dataLine) -> {
                     dataLine.append(sample, ci.getContig()).append(ci.getStart(), ci.getEnd())
-                            .append(ci.getCall());
+                            .append(MISSING_DATA, MISSING_DATA).append(ci.getCall());
                 })) {
             for (final CalledInterval ci : segments) {
                 if (ci == null) {
