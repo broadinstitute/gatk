@@ -10,13 +10,14 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 
 /**
- * This coder does nothing; we use it in stage we want fused. It'll report an error if decode is ever called.
+ * This coder does nothing; we can use it in fused stages to reduce sampling overheads.
  */
 public final class GATKGroupedReadNullCoder extends CustomCoder<KV<String, Iterable<GATKRead>>> {
     private static final long serialVersionUID = 1l;
     private boolean allowDecode = false;
 
     public GATKGroupedReadNullCoder() {}
+
     public GATKGroupedReadNullCoder(boolean allowDecode) {
         this.allowDecode = allowDecode;
     }

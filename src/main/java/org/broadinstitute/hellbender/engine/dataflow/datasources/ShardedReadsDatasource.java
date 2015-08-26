@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 /**
  * see ShardedReadsDatasource.get
  */
-public class ShardedReadsDatasource {
+public final class ShardedReadsDatasource {
     private final static Logger logger = LogManager.getLogger(ShardedReadsDatasource.class);
 
     /**
@@ -310,20 +310,35 @@ public class ShardedReadsDatasource {
     }
 
 
-    public static class BatchingIterator<T> implements Iterator<ArrayList<T>> {
-        Iterator<T> iter; int count; ArrayList<T> buf;
-        public BatchingIterator(Iterator<T> iter, int count)  {
+    /**
+     * Iterator of T -> iterator of arrays of T (by reading multiple at once).
+     * The last array may be smaller, as we run out of elements.
+     */
+    private static final class BatchingIterator<T> implements Iterator<ArrayList<T>> {
+        final Iterator<T> iter;
+        final int count;
+        ArrayList<T> buf;
+
+        // will give you "count" elements at a time, from "iter".
+        public BatchingIterator(final Iterator<T> iter, int count)  {
             this(iter, count, null);
         }
-        public BatchingIterator(Iterator<T> iter, int count, ArrayList<T> buf)  {
+
+        // if you pass it an array, it'll be used to put new content. Don't access it until
+        // you get it back via next().
+        public BatchingIterator(final Iterator<T> iter, int count, final ArrayList<T> buf)  {
             this.iter = iter;
             this.count = count;
             this.buf = buf;
             if (buf==null) this.buf = new ArrayList<T>(count);
+            else buf.clear();
         }
+
         public boolean hasNext() {
             return iter.hasNext() || (null!=buf && !buf.isEmpty());
         }
+
+        // the returned array is yours, it won't be modified from this point on.
         public ArrayList<T> next() {
             if (null==buf) buf = new ArrayList<T>();
             while (iter.hasNext() && buf.size()<count) {
@@ -333,6 +348,9 @@ public class ShardedReadsDatasource {
             this.buf = null;
             return ret;
         }
+        // call this after next returns and before calling it again
+        // if you want to provide a fresh buffer to use.
+        // Don't access it until you get it back via next();
         public void reuse(ArrayList<T> buf) {
             // reject the offer if we already have data.
             if (this.buf!=null && !this.buf.isEmpty()) return;

@@ -357,6 +357,7 @@ final class MarkDuplicatesUtils {
                                 SAMRecordToGATKReadAdapter record = (SAMRecordToGATKReadAdapter) r;
                                 record.setHeader(c.sideInput(header));
                                 c.output(record);
+                                return;
                             }
                             c.output(r);
                     }

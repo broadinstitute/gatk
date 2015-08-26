@@ -60,6 +60,7 @@ public final class MarkDuplicatesFromShardsDataflowTransform extends PTransform<
                     log.info("MarkDuplicatesFromShardsDataflow bundle worked: "+processing.elapsed(TimeUnit.MILLISECONDS)+" ms. Shipped: "+shipping.elapsed(TimeUnit.MILLISECONDS)+" ms.");
                 }
 
+                // Convert from PCollection to LocalCollection, run the computation there, convert back to PCollection.
                 @Override
                 public void processElement(ProcessContext c) throws Exception {
                     processing.start();
@@ -96,8 +97,6 @@ public final class MarkDuplicatesFromShardsDataflowTransform extends PTransform<
 
         LocalCollection<GATKRead> ret = LocalCollection.union(fragmentsTransformed, pairsTransformed, not_primary)
             .map(MarkDuplicatesFromShardsDataflowTransform::removeHeader);
-
-        System.out.println("result of MarkDuplicatesFromShardsDataflow has: "+ret.size()+" elements.");
 
         return ret;
     }
@@ -157,6 +156,7 @@ public final class MarkDuplicatesFromShardsDataflowTransform extends PTransform<
     public static GATKRead removeHeader(GATKRead r) {
         if (r instanceof SAMRecordToGATKReadAdapter) {
             SAMRecordToGATKReadAdapter record = (SAMRecordToGATKReadAdapter)r;
+            record.setHeader(null);
             return record;
         }
         return r;

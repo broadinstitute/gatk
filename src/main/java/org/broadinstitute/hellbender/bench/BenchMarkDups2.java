@@ -16,7 +16,8 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 /**
- *
+ * To use the profiler, we need a decent-sized input. Decent-sized input makes Dataflow's direct runner choke.
+ * Hence this little one-off program to exercise file IO, conversion, and MarkDuplicates.
  */
 public class BenchMarkDups2 {
 

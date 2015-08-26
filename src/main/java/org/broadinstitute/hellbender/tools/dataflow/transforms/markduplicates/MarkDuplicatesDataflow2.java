@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
@@ -58,14 +60,17 @@ public final class MarkDuplicatesDataflow2 extends DataflowCommandLineProgram {
         shortName = "M", fullName = "METRICS_FILE")
     protected File metricsFile;
 
+    // use this for large files now, since we would crash otherwise.
     @Argument(doc = "Skips saving the output.", optional=true,
         fullName = "dontSave")
     protected boolean dontSave;
 
+    // the default values are fine, but this allows for fine-tuning if necessary.
     @Argument(doc = "How many bases do we query from disk at once", optional=true,
         fullName = "readShardSize")
     protected int readShardSize = 1_000_000;
 
+    // the default values are fine, but this allows for fine-tuning if necessary.
     @Argument(doc = "How many bases do we process at a once", optional=true,
         fullName = "processShardSize")
     protected int processShardSize = 5_000;
@@ -92,16 +97,14 @@ public final class MarkDuplicatesDataflow2 extends DataflowCommandLineProgram {
         final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).setName("OpticalDuplicateFinder").apply(View.<OpticalDuplicateFinder>asSingleton());
 
         // we read this many at a time
-        int basesPerShard = readShardSize; //1_000_000;
+        int basesPerShard = readShardSize;
         // and then output groups this large
-        int outputBasesPerWorkUnit = processShardSize; //10_000;
-
-        logger.info("Using shard sizes "+basesPerShard+" and "+outputBasesPerWorkUnit);
+        int outputBasesPerWorkUnit = processShardSize;
 
         final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, basesPerShard, outputBasesPerWorkUnit, pipeline);
         final PCollection<GATKRead> results = readsByShard.apply(new MarkDuplicatesFromShardsDataflowTransform(headerSingleton, finderPcolView));
 
-        // TODO: support writing large output files (need a sharded BAM writer)
+            // TODO: support writing large output files (need a sharded BAM writer)
         if (!dontSave) {
             SmallBamWriter.writeToFile(pipeline, results, readsHeader, outputFile);
         }
