@@ -350,6 +350,7 @@ final class MarkDuplicatesUtils {
                 // put the headers back
                 .apply(ParDo.withSideInputs(this.header).named("restoreHeader")
                     .of(new DoFn<GATKRead, GATKRead>() {
+                        private static final long serialVersionUID = 1l;
                         @Override
                         public void processElement(ProcessContext c) throws Exception {
                             GATKRead r = c.element();

@@ -29,8 +29,6 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.GoogleGenomicsReadToGATKRead;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -39,31 +37,18 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.security.GeneralSecurityException;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * Class to load reads into a PCollection from a cloud storage bucket, a Hadoop filesystem, or a local bam file.
  */
 public final class ReadsDataflowSource {
-    private static final long serialVersionUID = 1l;
-    private final static Logger logger = LogManager.getLogger(ReadsDataflowSource.class);
     private final String bam;
     private final boolean cloudStorageUrl;
     private final boolean hadoopUrl;

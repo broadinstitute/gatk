@@ -9,6 +9,12 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
+/**
+ * LocalCollection is a thin wrapper around ArrayList that exposes a functional-style interface.
+ * The goal is to write local programs whose style exactly match that of Dataflow programs.
+ *
+ * @param <T>
+ */
 public class LocalCollection<T> implements Serializable {
     private static final long serialVersionUID = 1l;
     ArrayList<T> data;
