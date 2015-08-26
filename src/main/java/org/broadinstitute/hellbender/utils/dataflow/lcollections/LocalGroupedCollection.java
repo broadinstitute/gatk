@@ -40,7 +40,7 @@ public class LocalGroupedCollection<T> implements Serializable {
         for (String k : groups.keySet()) {
             groups2.put(k, mapper.apply(groups.get(k)) );
         }
-        return new LocalGroupedCollection(groups2);
+        return new LocalGroupedCollection<>(groups2);
     }
 
     // map and transform together

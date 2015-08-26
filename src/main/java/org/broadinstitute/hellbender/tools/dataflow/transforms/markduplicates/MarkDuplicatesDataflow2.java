@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicat
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.coders.GATKGroupedReadNullCoder;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -57,6 +58,19 @@ public final class MarkDuplicatesDataflow2 extends DataflowCommandLineProgram {
         shortName = "M", fullName = "METRICS_FILE")
     protected File metricsFile;
 
+    @Argument(doc = "Skips saving the output.", optional=true,
+        fullName = "dontSave")
+    protected boolean dontSave;
+
+    @Argument(doc = "How many bases do we query from disk at once", optional=true,
+        fullName = "readShardSize")
+    protected int readShardSize = 1_000_000;
+
+    @Argument(doc = "How many bases do we process at a once", optional=true,
+        fullName = "processShardSize")
+    protected int processShardSize = 5_000;
+
+
     @Override
     protected String jobName() {
         // surprisingly, Dataflow requires that the name be unique.
@@ -78,14 +92,19 @@ public final class MarkDuplicatesDataflow2 extends DataflowCommandLineProgram {
         final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).setName("OpticalDuplicateFinder").apply(View.<OpticalDuplicateFinder>asSingleton());
 
         // we read this many at a time
-        int basesPerShard = 1_000_000;
+        int basesPerShard = readShardSize; //1_000_000;
         // and then output groups this large
-        int outputBasesPerWorkUnit = 200_000;
+        int outputBasesPerWorkUnit = processShardSize; //10_000;
+
+        logger.info("Using shard sizes "+basesPerShard+" and "+outputBasesPerWorkUnit);
+
         final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, basesPerShard, outputBasesPerWorkUnit, pipeline);
         final PCollection<GATKRead> results = readsByShard.apply(new MarkDuplicatesFromShardsDataflowTransform(headerSingleton, finderPcolView));
 
         // TODO: support writing large output files (need a sharded BAM writer)
-        //SmallBamWriter.writeToFile(pipeline, results, readsHeader, outputFile);
+        if (!dontSave) {
+            SmallBamWriter.writeToFile(pipeline, results, readsHeader, outputFile);
+        }
 
         if (metricsFile != null) {
             final PCollection<KV<String,DuplicationMetrics>> metrics = results.apply(new MarkDuplicatesUtils.GenerateMetricsTransform(headerSingleton));

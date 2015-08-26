@@ -25,6 +25,7 @@ public class LocalCollection<T> implements Serializable {
      * Creates a new LocalCollection that holds the union of the contents
      * of the collections passed in argument.
      */
+    @SafeVarargs
     public static <T> LocalCollection<T> union(LocalCollection<T>... lcs) {
         ArrayList<T> data = new ArrayList<T>();
         for (LocalCollection<T> c : lcs) {
