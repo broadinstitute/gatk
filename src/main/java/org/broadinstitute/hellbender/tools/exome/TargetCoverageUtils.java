@@ -43,6 +43,33 @@ public final class TargetCoverageUtils {
     }
 
     /**
+     * read a list of targets with coverage from a file into a TargetCollection
+     */
+    public static TargetCollection<TargetCoverage> readTargetsWithCoverageIntoTargetCollection(final File file) throws IOException {
+        final List<TargetCoverage> targetList = readTargetsWithCoverage(file);
+        return new HashedListTargetCollection<>(targetList);
+    }
+
+    public static TargetCollection<TargetCoverage> readModeledTargetFileIntoTargetCollection(final File file) throws IOException {
+        try (final TableReader<TargetCoverage> reader = TableUtils.reader(file,
+                (columns, formatExceptionFactory) -> {
+                    if (!columns.containsAll("name", "contig", "start", "stop") || (columns.columnCount() < 5))
+
+                        throw formatExceptionFactory.apply("Bad header");
+                    //return the lambda to translate dataLines into targets
+                    //coverage is fifth column w/ header = <sample name>, so we use the column index.
+                    return (dataLine) -> new TargetCoverage(dataLine.get("name"),
+                            new SimpleInterval(dataLine.get("contig"), dataLine.getInt("start"), dataLine.getInt("stop")),
+                            dataLine.getDouble(4));
+                })) {
+            return new HashedListTargetCollection<>(reader.stream().collect(Collectors.toList()));
+        } catch (final UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
+
+    /**
      * write a list of targets with coverage to file
      */
     public static void writeTargetsWithCoverage(final File outFile, final String sampleName,

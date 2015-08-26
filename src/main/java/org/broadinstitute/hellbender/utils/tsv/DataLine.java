@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.function.Function;
@@ -120,6 +121,18 @@ public final class DataLine {
     }
 
     /**
+     * Sets the boolean value in the data-line that correspond to a column by its name.
+     *
+     * @param name  the column name.
+     * @param value the new value.
+     * @return reference to this data-line.
+     * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
+     */
+    public DataLine set(final String name, final boolean value) {
+        return set(columnIndex(name), Boolean.toString(value));
+    }
+
+    /**
      * Sets the int value in the data-line that correspond to a column by its name.
      *
      * @param name  the column name.
@@ -129,6 +142,18 @@ public final class DataLine {
      */
     public DataLine set(final String name, final int value) {
         return set(name, Integer.toString(value));
+    }
+
+    /**
+     * Sets the long value in the data-line that correspond to a column by its name.
+     *
+     * @param name  the column name.
+     * @param value the new value.
+     * @return reference to this data-line.
+     * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
+     */
+    public DataLine set(final String name, final long value) {
+        return set(name, Long.toString(value));
     }
 
     /**
@@ -172,6 +197,18 @@ public final class DataLine {
      */
     public DataLine set(final int index, final int value) {
         return set(index, Integer.toString(value));
+    }
+
+    /**
+     * Sets the long value of a column given its index.
+     *
+     * @param index the target column index.
+     * @param value the new value for that column.
+     * @return reference to this data-line.
+     * @throws IllegalArgumentException if {@code index} is not a valid column index.
+     */
+    public DataLine set(final int index, final long value) {
+        return set(index, Long.toString(value));
     }
 
     /**
@@ -222,6 +259,52 @@ public final class DataLine {
     }
 
     /**
+     * Returns the long value in a column by its index.
+     *
+     * @param index the target column index.
+     * @return any long value.
+     * @throws IllegalArgumentException if {@code index} is not valid.
+     * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
+     * @throws RuntimeException         if the value at that target column cannot be transform into a long.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public long getLong(final int index) {
+        try {
+            return Long.parseLong(get(index));
+        } catch (final NumberFormatException ex) {
+            throw formatErrorFactory.apply(String.format("expected long value for column %s but found %s", columns.nameAt(index), get(index)));
+        }
+    }
+
+    /**
+     * Returns the boolean value in a column by its index.
+     *
+     * @param index the target column index.
+     * @return any boolean value.
+     * @throws IllegalArgumentException if {@code index} is not valid.
+     * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
+     * @throws RuntimeException         if the value at that target column cannot be transform into a boolean.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public boolean getBoolean(final int index) {
+        try {
+            String b = get(index);
+            final String FALSE = Boolean.toString(false);
+            final String TRUE = Boolean.toString(true);
+
+            if (!(b.equals(TRUE)) && !(b.equals(FALSE))) {
+                throw formatErrorFactory.apply(String.format("Boolean value must be '%s' or '%s' (case sensitive) for column %s but found %s", TRUE, FALSE,
+                        columns.nameAt(index), get(index)));
+            }
+            return Boolean.parseBoolean(get(index));
+        } catch (final NumberFormatException ex) {
+            throw formatErrorFactory.apply(String.format("expected boolean value for column %s but found %s", columns.nameAt(index), get(index)));
+        }
+    }
+
+    /**
      * Returns the double value in a column by its index.
      *
      * @param index the target column index.
@@ -258,6 +341,22 @@ public final class DataLine {
     }
 
     /**
+     * Returns the string value in a column by its index.  If column name does not exist, returns the default value.
+     *
+     * @param columnName the target column name.
+     * @param defaultValue default value to use if columnName not found.
+     * @return {@code null} iff {@code defaultValue == null} and there is not such a column with name {@code columnName}.
+     */
+    public String get(final String columnName, final String defaultValue) {
+        final int index = columns.indexOf(columnName);
+        if (index < 0) {
+            return defaultValue;
+        } else {
+            return values[index];
+        }
+    }
+
+    /**
      * Returns the index of a column by its name or fails if invalid or unknown.
      *
      * @param columnName the column name.
@@ -285,6 +384,36 @@ public final class DataLine {
      */
     public int getInt(final String columnName) {
         return getInt(columnIndex(columnName));
+    }
+
+    /**
+     * Returns the long value in a column by its index.
+     *
+     * @param columnName the target column name.
+     * @return any long value.
+     * @throws IllegalArgumentException if {@code columnName} is {@code null} or an unknown column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a long.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public long getLong(final String columnName) {
+        return getLong(columnIndex(columnName));
+    }
+
+    /**
+     * Returns the boolean value in a column by its index.
+     *
+     * @param columnName the target column name.
+     * @return any boolean value.
+     * @throws IllegalArgumentException if {@code columnName} is {@code null} or an unknown column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a boolean.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link #DataLine}.
+     */
+    public boolean getBoolean(final String columnName) {
+        return getBoolean(columnIndex(columnName));
     }
 
     /**

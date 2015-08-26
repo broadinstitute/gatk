@@ -6,12 +6,12 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Created by davidben on 8/3/15.
- */
+
 public class SegmentUtilsUnitTest extends BaseTest {
     //a common set of CalledIntervals for tests
     private static final CalledInterval ci1 = new CalledInterval(new SimpleInterval("chr1", 1, 4), "call");
@@ -56,6 +56,26 @@ public class SegmentUtilsUnitTest extends BaseTest {
         Assert.assertEquals(SegmentUtils.meanTargetCoverage(ci1, targets), (1.0 + 2.0) / 2, 0.00001);
         Assert.assertEquals(SegmentUtils.meanTargetCoverage(ci2, targets), (3.0) / 1, 0.00001);
         Assert.assertEquals(SegmentUtils.meanTargetCoverage(ci3, targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
+    }
+
+    @Test
+    public void testSegmentDifference() {
+        //a common set of targets for tests
+        final TargetCoverage target1 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 1, 2), 1.0);
+        final TargetCoverage target2 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 3, 4), 2.0);
+        final TargetCoverage target3 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 3, 4), 5.0);
+        final TargetCoverage target4 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 5, 6), 6.0);
+        final HashedListTargetCollection<TargetCoverage> targets =
+                new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4));
+
+        final ModeledSegment seg = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "", 1.1);
+
+        double [] gt_diffs = {-0.14354693, 1.85645307};
+        List<Double> diffs = SegmentUtils.segmentMeanTargetDifference(seg, targets);
+
+        for (int i = 0; i < diffs.size(); i++){
+            Assert.assertEquals(gt_diffs[i], diffs.get(i), 0.0000001, "Predicted difference not the same as ground truth (within tolerance).");
+        }
     }
 
     @Test
