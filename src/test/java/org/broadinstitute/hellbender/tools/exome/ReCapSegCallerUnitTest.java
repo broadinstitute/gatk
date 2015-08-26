@@ -41,7 +41,7 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
         segments.add(new SimpleInterval("chr", 450, 550)); //neutral
         segments.add(new SimpleInterval("chr", 650, 750)); //neutral
 
-        List<CalledInterval> calls = ReCapSegCaller.makeCalls(targets, segments);
+        List<CalledInterval> calls = ReCapSegCaller.makeCalls(targets, segments, ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD);
 
         Assert.assertEquals(calls.get(0).getCall(), ReCapSegCaller.AMPLIFICATION_CALL);
         Assert.assertEquals(calls.get(1).getCall(), ReCapSegCaller.DELETION_CALL);
