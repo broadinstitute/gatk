@@ -208,10 +208,6 @@ public class ShardedReadsDatasource {
                                     currentShard = shards.get(currentShardIndex);
                                 }
 
-                                //Read genR = ReadConverter.makeRead(r);
-                                //GATKRead gatkR = new GoogleGenomicsReadToGATKReadAdapter(genR);
-                                //ret.add(gatkR);
-
                                 // work around some serialization madness
                                 r.setHeader(null);
                                 ret.add(new SAMRecordToGATKReadAdapter(r));
