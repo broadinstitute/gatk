@@ -50,9 +50,10 @@ public class SequenceDictionaryUtils {
     public enum SequenceDictionaryCompatibility {
         IDENTICAL,                      // the dictionaries are identical
         COMMON_SUBSET,                  // there exists a common subset of equivalent contigs
+        SUPERSET,                       // the first dict's set of contigs supersets the second dict's set
         NO_COMMON_CONTIGS,              // no overlap between dictionaries
         UNEQUAL_COMMON_CONTIGS,         // common subset has contigs that have the same name but different lengths
-        NON_CANONICAL_HUMAN_ORDER,      // human reference detected but the order of the contigs is non-standard (lexicographic, for examine)
+        NON_CANONICAL_HUMAN_ORDER,      // human reference detected but the order of the contigs is non-standard (lexicographic, for example)
         OUT_OF_ORDER,                   // the two dictionaries overlap but the overlapping contigs occur in different
         // orders with respect to each other
         DIFFERENT_INDICES               // the two dictionaries overlap and the overlapping contigs occur in the same
@@ -78,8 +79,7 @@ public class SequenceDictionaryUtils {
                                              final SAMSequenceDictionary dict1,
                                              final String name2,
                                              final SAMSequenceDictionary dict2,
-                                             final boolean isReadsToReferenceComparison,
-                                             final List<SimpleInterval> intervals ) {
+                                             final boolean isReadsToReferenceComparison ) {
 
         final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2);
 
@@ -87,6 +87,11 @@ public class SequenceDictionaryUtils {
             case IDENTICAL:
                 return;
             case COMMON_SUBSET:
+                if (isReadsToReferenceComparison) {
+                    throw new UserException.IncompatibleSequenceDictionaries("Reference is missing contigs found in reads", name1, dict1, name2, dict2);
+                }
+                return;
+            case SUPERSET:
                 return;
             case NO_COMMON_CONTIGS:
                 throw new UserException.IncompatibleSequenceDictionaries("No overlapping contigs found", name1, dict1, name2, dict2);
@@ -126,25 +131,21 @@ public class SequenceDictionaryUtils {
             }
 
             case DIFFERENT_INDICES: {
+
                 // This is currently only known to be problematic when the index mismatch is between a bam and the
                 // reference AND when the user's intervals actually include one or more of the contigs that are
                 // indexed differently from the reference. In this case, the engine will fail to correctly serve
                 // up the reads from those contigs, so throw an exception.
-                if ( isReadsToReferenceComparison && intervals != null ) {
-
-                    final Set<String> misindexedContigs = findMisindexedContigsInIntervals(intervals, dict1, dict2);
-
-                    if ( ! misindexedContigs.isEmpty() ) {
-                        final String msg = "The following contigs included in the intervals to process have " +
-                                        "different indices in the sequence dictionaries for the reads vs. " +
-                                        "the reference: %s.  As a result, the GATK engine will not correctly " +
-                                        "process reads from these contigs. You should either fix the sequence " +
-                                        "dictionaries for your reads so that these contigs have the same indices " +
-                                        "as in the sequence dictionary for your reference, or exclude these contigs " +
-                                        "from your intervals.";
-                        final UserException ex = new UserException.IncompatibleSequenceDictionaries(msg, name1, dict1, name2, dict2);
-                        throw ex;
-                    }
+                if ( isReadsToReferenceComparison ) {
+                    final String msg = "Some contigs have " +
+                            "different indices in the sequence dictionaries for the reads vs. " +
+                            "the reference.  As a result, the GATK engine will not correctly " +
+                            "process reads from these contigs. You should either fix the sequence " +
+                            "dictionaries for your reads so that these contigs have the same indices " +
+                            "as in the sequence dictionary for your reference, or exclude these contigs " +
+                            "from your intervals.";
+                    final UserException ex = new UserException.IncompatibleSequenceDictionaries(msg, name1, dict1, name2, dict2);
+                    throw ex;
                 }
                 break;
             }
@@ -176,10 +177,28 @@ public class SequenceDictionaryUtils {
             return SequenceDictionaryCompatibility.IDENTICAL;
         else if ( ! commonContigsAreAtSameIndices(commonContigs, dict1, dict2) )
             return SequenceDictionaryCompatibility.DIFFERENT_INDICES;
+        else if ( supersets(dict1, dict2))
+            return SequenceDictionaryCompatibility.SUPERSET;
         else {
             return SequenceDictionaryCompatibility.COMMON_SUBSET;
         }
     }
+
+
+    /**
+     * Utility function that tests whether dict1's set of contigs supersets dict2's
+     *
+     * @param dict1
+     * @param dict2
+     * @return true if dict1's set of contigs supersets dict2's
+     */
+    private static boolean supersets(SAMSequenceDictionary dict1, SAMSequenceDictionary dict2) {
+        Set<SAMSequenceRecord> setOne = new HashSet<>(dict1.getSequences());
+        Set<SAMSequenceRecord> setTwo = new HashSet<>(dict2.getSequences());
+        return setOne.containsAll(setTwo);
+    }
+
+
 
     /**
      * Utility function that tests whether the commonContigs in both dicts are equivalent.  Equivalence means
