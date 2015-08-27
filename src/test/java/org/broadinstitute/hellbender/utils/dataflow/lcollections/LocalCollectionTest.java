@@ -67,8 +67,8 @@ public class LocalCollectionTest {
     @Test
     public void testGroupBy() throws Exception {
         Integer[] nums =     new Integer[] { 1,2,3,4,5 };
-        Integer[] even = new Integer[] { 2 };
-        Integer[] odd = new Integer[] { 1,3 };
+        Integer[] even = new Integer[] { 2,4 };
+        Integer[] odd = new Integer[] { 1,3,5 };
         LocalCollection<Integer> evens = LocalCollection.of(Arrays.asList(even));
         LocalCollection<Integer> odds = LocalCollection.of(Arrays.asList(odd));
 

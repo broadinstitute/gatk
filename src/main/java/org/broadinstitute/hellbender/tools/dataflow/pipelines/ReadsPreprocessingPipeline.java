@@ -74,6 +74,10 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
+
+    @Argument(doc = "use the non-optimized MarkDuplicates", fullName = "oldMarkDups", optional = true)
+    protected boolean oldMarkDups = false;
+
     @Override
     protected void setupPipeline( Pipeline pipeline ) {
         try {
@@ -94,14 +98,17 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
             // and then output shards that span this many
             int outputBasesPerWorkUnit = 5_000;
 
-            // Apply MarkDuplicates to produce updated GATKReads.
-            //final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
-            //final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
+            PCollection<GATKRead> markedReads;
 
-            // Optimized MarkDuplicates
-            final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, basesPerShard, outputBasesPerWorkUnit, pipeline);
-            final PCollection<GATKRead> markedReads = readsByShard.apply(new MarkDuplicatesFromShardsDataflowTransform(headerSingleton, finderPcolView));
-
+            if (oldMarkDups) {
+                // Apply MarkDuplicates to produce updated GATKReads.
+                final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+                markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
+            } else {
+                // Optimized MarkDuplicates
+                final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, basesPerShard, outputBasesPerWorkUnit, pipeline);
+                markedReads = readsByShard.apply(new MarkDuplicatesFromShardsDataflowTransform(headerSingleton, finderPcolView));
+            }
 
             // Load the Variants and the Reference and join them to reads.
             final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
