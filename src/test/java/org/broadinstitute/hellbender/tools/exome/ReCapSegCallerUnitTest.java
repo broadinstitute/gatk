@@ -11,7 +11,7 @@ import java.util.List;
 public final class ReCapSegCallerUnitTest extends BaseTest{
     @Test
     public void testMakeCalls() {
-        List<TargetCoverage> targetList = new ArrayList<TargetCoverage>();
+        List<TargetCoverage> targetList = new ArrayList<>();
         //add amplification targets
         for (int i = 0; i < 10; i++) {
             targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 100 + 2 * i, 101 + 2 * i), 1.0));
@@ -33,15 +33,15 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
             targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 700 + 2 * i, 701 + 2 * i), 0.1 * i));
         }
 
-        HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<TargetCoverage>(targetList);
+        HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);
 
-        List<SimpleInterval> segments = new ArrayList<>();
-        segments.add(new SimpleInterval("chr", 100, 200)); //amplification
-        segments.add(new SimpleInterval("chr", 300, 400)); //deletion
-        segments.add(new SimpleInterval("chr", 450, 550)); //neutral
-        segments.add(new SimpleInterval("chr", 650, 750)); //neutral
+        List<ModeledSegment> segments = new ArrayList<>();
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 100, 200), 100, 1.0)); //amplification
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 300, 400), 100, -1.0)); //deletion
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 450, 550), 100, 0.01)); //neutral
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 650, 750), 100, 0.1)); //neutral
 
-        List<CalledInterval> calls = ReCapSegCaller.makeCalls(targets, segments, ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD);
+        List<ModeledSegment> calls = ReCapSegCaller.makeCalls(targets, segments, ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD);
 
         Assert.assertEquals(calls.get(0).getCall(), ReCapSegCaller.AMPLIFICATION_CALL);
         Assert.assertEquals(calls.get(1).getCall(), ReCapSegCaller.DELETION_CALL);

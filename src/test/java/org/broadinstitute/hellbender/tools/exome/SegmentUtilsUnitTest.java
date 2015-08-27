@@ -13,10 +13,10 @@ import java.util.List;
 
 
 public class SegmentUtilsUnitTest extends BaseTest {
-    //a common set of CalledIntervals for tests
-    private static final CalledInterval ci1 = new CalledInterval(new SimpleInterval("chr1", 1, 4), "call");
-    private static final CalledInterval ci2 = new CalledInterval(new SimpleInterval("chr1", 5, 12), "call");
-    private static final CalledInterval ci3 = new CalledInterval(new SimpleInterval("chr2", 1, 10), "call");
+    //a common set of ModeledSegments for tests
+    private static final ModeledSegment ci1 = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "call", 100, 1);
+    private static final ModeledSegment ci2 = new ModeledSegment(new SimpleInterval("chr1", 5, 12), "call", 200, 0);
+    private static final ModeledSegment ci3 = new ModeledSegment(new SimpleInterval("chr2", 1, 10), "call", 300, 0.5);
 
     @Test
     public void testReadUncalledSegments() {
@@ -34,10 +34,10 @@ public class SegmentUtilsUnitTest extends BaseTest {
     @Test
     public void testReadAndWriteCalledIntervals() {
         final File file = createTempFile("test",".txt");
-        List<CalledInterval> calledIntervals = Arrays.asList(ci1, ci2, ci3);
+        List<ModeledSegment> calledIntervals = Arrays.asList(ci1, ci2, ci3);
 
-        SegmentUtils.writeCalledIntervalsToSegfile(file, calledIntervals, "sample");
-        List<CalledInterval> sameIntervals = SegmentUtils.readCalledIntervalsFromSegfile(file);
+        SegmentUtils.writeModeledSegmentsToSegfile(file, calledIntervals, "sample");
+        List<ModeledSegment> sameIntervals = SegmentUtils.readModeledSegmentsFromSegfile(file);
         Assert.assertEquals(calledIntervals, sameIntervals);
     }
 
@@ -68,7 +68,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
         final HashedListTargetCollection<TargetCoverage> targets =
                 new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4));
 
-        final ModeledSegment seg = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "", 1.1);
+        final ModeledSegment seg = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "", 200, 1.1);
 
         double [] gt_diffs = {-0.14354693, 1.85645307};
         List<Double> diffs = SegmentUtils.segmentMeanTargetDifference(seg, targets);

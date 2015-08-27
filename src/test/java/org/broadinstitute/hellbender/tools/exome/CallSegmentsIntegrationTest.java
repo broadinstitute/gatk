@@ -9,8 +9,6 @@ import java.util.List;
 
 /**
  * Integration test for {@link CallSegments}.
- *
- * @author David Benjamin
  */
 public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/tools/exome/caller");
@@ -26,12 +24,14 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + CallSegments.SEGFILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
                 "-" + CallSegments.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + CallSegments.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
+                "--" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD)
         };
         runCommandLine(arguments);
 
-        List<CalledInterval> calls = SegmentUtils.readCalledIntervalsFromSegfile(outputFile);
+        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(TEST_TARGETS);
+
+        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegfile(outputFile);
 
         Assert.assertEquals(calls.get(0).getCall(), "+");
         Assert.assertEquals(calls.get(1).getCall(), "-");

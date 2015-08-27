@@ -24,19 +24,19 @@ import java.util.List;
 )
 public final class CallSegments extends CommandLineProgram{
 
-    protected final static String SEGFILE_SHORT_NAME = "S";
-    protected final static String SEGFILE_LONG_NAME = "segments";
+    protected static final String SEGFILE_SHORT_NAME = "S";
+    protected static final String SEGFILE_LONG_NAME = "segments";
 
-    protected final static String TARGET_FILE_SHORT_NAME = "T";
-    protected final static String TARGET_FILE_LONG_NAME = "targets";
+    protected static final String TARGET_FILE_SHORT_NAME = "T";
+    protected static final String TARGET_FILE_LONG_NAME = "targets";
 
-    protected final static String OUTPUT_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
-    protected final static String OUTPUT_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
+    protected static final String OUTPUT_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
+    protected static final String OUTPUT_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
 
-    protected final static String Z_THRESHOLD_SHORT_NAME = "Z";
-    protected final static String Z_THRESHOLD_LONG_NAME = "threshold";
+    protected static final String Z_THRESHOLD_SHORT_NAME = "Z";
+    protected static final String Z_THRESHOLD_LONG_NAME = "threshold";
 
-    protected final static String SAMPLE_LONG_NAME = "sample";
+    protected static final String SAMPLE_LONG_NAME = "sample";
 
     @Argument(
             doc = "normalized read counts input file.",
@@ -77,23 +77,20 @@ public final class CallSegments extends CommandLineProgram{
             fullName = Z_THRESHOLD_LONG_NAME,
             optional = true
     )
-    protected double Z_threshold = ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD;
+    protected double zThreshold = ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD;
 
     @Override
     protected Object doWork() {
 
-        final List<SimpleInterval> segments;
-        final List<TargetCoverage> targetList;
 
-        targetList = TargetCoverageUtils.readTargetsWithCoverage(targetsFile);
-        final HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<TargetCoverage>(targetList);
+        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(targetsFile);
 
-        segments = SegmentUtils.readIntervalsFromSegfile(segmentsFile);
+        final List<ModeledSegment> segments = SegmentUtils.readModeledSegmentsFromSegfile(segmentsFile);
 
         //add calls to segments in-place
-        List<CalledInterval> calledSegments = ReCapSegCaller.makeCalls(targets, segments, Z_threshold);
+        ReCapSegCaller.makeCalls(targets, segments, zThreshold);
 
-        SegmentUtils.writeCalledIntervalsToSegfile(outFile, calledSegments, sample);
+        SegmentUtils.writeModeledSegmentsToSegfile(outFile, segments, sample);
 
         return "SUCCESS";
     }

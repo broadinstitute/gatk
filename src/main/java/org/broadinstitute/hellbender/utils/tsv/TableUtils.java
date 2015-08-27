@@ -231,7 +231,7 @@ public final class TableUtils {
         return new DataLineComposerBasedTableWriter<>(writer, columns, dataLineComposer);
     }
 
-    private final static class DataLineComposerBasedTableWriter<R> extends TableWriter<R> {
+    private static final class DataLineComposerBasedTableWriter<R> extends TableWriter<R> {
         private final BiConsumer<R, DataLine> dataLineComposer;
 
         private DataLineComposerBasedTableWriter(final File file, final TableColumnCollection columns, final BiConsumer<R, DataLine> dataLineComposer) throws IOException {

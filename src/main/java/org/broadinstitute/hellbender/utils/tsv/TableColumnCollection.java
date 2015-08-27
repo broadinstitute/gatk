@@ -129,7 +129,7 @@ public final class TableColumnCollection {
      *
      * @param names the names to test.
      * @return {@code true} iff all the names in {@code names} correspond to columns in this collection.
-     * @throws IllegalArgumentException if {@code names} is {@code null} or contains {@code null}.
+     * @throws IllegalArgumentException if {@code names} is {@code null} or contains any {@code null}.
      */
     public boolean containsAll(final String... names) {
         return Stream.of(Utils.nonNull(names, "names cannot be null")).allMatch(this::contains);

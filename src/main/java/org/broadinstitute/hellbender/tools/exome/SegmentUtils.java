@@ -4,9 +4,6 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections4.ListUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IndexRange;
-import org.apache.avro.generic.GenericData;
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -53,65 +50,28 @@ public final class SegmentUtils {
     }
 
     /**
-     * read a list of intervals with calls from a file
-     */
-    public static List<CalledInterval> readCalledIntervalsFromSegfile(final File segmentsFile) {
-        try (final TableReader<CalledInterval> reader = TableUtils.reader(segmentsFile,
-                (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, CALL_COLUMN)) {
-                        throw formatExceptionFactory.apply("Bad header");
-                    }
-                    // return the lambda to translate dataLines into called segments.
-                    return (dataLine) -> new CalledInterval(new SimpleInterval(
-                            dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.get(CALL_COLUMN));
-                })) {
-            return reader.stream().collect(Collectors.toList());
-        } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
-        }
-    }
-
-    /**
      * read a list of segments (with calls, if possible) from a file.  Creates a list of modeled segments
+     *
+     * Note Segment_Call is optional.  If not present, the modeled segments will be populated with a blank value.
      */
-    public static List<ModeledSegment> readModeledSegmentsFromSegfile(final File segmentsFile) throws IOException {
+    public static List<ModeledSegment> readModeledSegmentsFromSegfile(final File segmentsFile) {
         try (final TableReader<ModeledSegment> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     // Note that Segment_Call is optional
-                    if (!columns.containsAll("Sample", "Chromosome", "Start", "End", "Segment_Mean")) {
+                    if (!columns.containsAll(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, NUM_PROBES_COLUMN,
+                            MEAN_COLUMN)) {
                         throw formatExceptionFactory.apply("Bad header");
                     }
                     // return the lambda to translate dataLines into called segments.
                     return (dataLine) -> new ModeledSegment(
-                            new SimpleInterval(dataLine.get("Chromosome"), dataLine.getInt("Start"), dataLine.getInt("End")), dataLine.get("Segment_Call", ""),
-                            dataLine.getDouble("Segment_Mean"));
+                            new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)),
+                            dataLine.get(CALL_COLUMN, ModeledSegment.NO_CALL),
+                            dataLine.getLong(NUM_PROBES_COLUMN),
+                            dataLine.getDouble(MEAN_COLUMN));
                 })) {
             return reader.stream().collect(Collectors.toList());
-        } catch (final UncheckedIOException e) {
-            throw e.getCause();
-        }
-    }
-
-    /**
-     * write a list of intervals with calls to file
-     */
-    public static void writeCalledIntervalsToSegfile(final File outFile, List<CalledInterval> segments, final String sample) {
-        try (final TableWriter<CalledInterval> writer = TableUtils.writer(outFile,
-                new TableColumnCollection(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, NUM_PROBES_COLUMN, MEAN_COLUMN, CALL_COLUMN),
-
-                //lambda for filling an initially empty DataLine
-                (ci, dataLine) -> {
-                    dataLine.append(sample, ci.getContig()).append(ci.getStart(), ci.getEnd())
-                            .append(MISSING_DATA, MISSING_DATA).append(ci.getCall());
-                })) {
-            for (final CalledInterval ci : segments) {
-                if (ci == null) {
-                    throw new IllegalArgumentException("Segments list contains a null.");
-                }
-                writer.writeRecord(ci);
-            }
-        } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
         }
     }
 
@@ -290,5 +250,31 @@ public final class SegmentUtils {
         final double segMean = segment.getSegmentMeanInCRSpace();
         final List<TargetCoverage> myTargets = targets.targets(segment);
         return myTargets.stream().map(t -> ( Math.pow(2, t.getCoverage()) - segMean)).collect(Collectors.toList());
+    }
+
+    /**
+     * write a list of intervals with calls to file
+     */
+    public static void writeModeledSegmentsToSegfile(final File outFile, List<ModeledSegment> segments, final String sample) {
+        try (final TableWriter<ModeledSegment> writer = TableUtils.writer(outFile,
+                new TableColumnCollection(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, NUM_PROBES_COLUMN,
+                        MEAN_COLUMN, CALL_COLUMN),
+
+                //lambda for filling an initially empty DataLine
+                (ci, dataLine) -> {
+                    dataLine.append(sample, ci.getContig()).append(ci.getStart(), ci.getEnd())
+                            .append(ci.getOriginalProbeCount())
+                            .append(ci.getSegmentMean())
+                            .append(ci.getCall());
+                })) {
+            for (final ModeledSegment ci : segments) {
+                if (ci == null) {
+                    throw new IllegalArgumentException("Segments list contains a null.");
+                }
+                writer.writeRecord(ci);
+            }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
     }
 }

@@ -49,6 +49,4 @@ public class ParamUtilsTest {
     public void testInRangeFailureValMinMaxUnreasonable(){
         ParamUtils.inRange(5, 10, -7, "Range calculation did not work properly.  Min was greater than max, so will always throw exception.");
     }
-
-
 }
