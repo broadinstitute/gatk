@@ -10,7 +10,7 @@ if (!("optparse" %in% rownames(installed.packages))) {
   install.packages(optparseUrl, repos=NULL, type="source")
 }
 dependencies = c("naturalsort")
-if (!all(dependencies %in% rownames(installed.packages))) {
+if (!all(dependencies %in% rownames(installed.packages()))) {
   install.packages(setdiff(dependencies, rownames(installed.packages())), repos="http://cran.cnr.Berkeley.edu")
 }
 q(save="no")
