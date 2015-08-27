@@ -96,7 +96,6 @@ public final class IntegrationTestSpec {
      * @param tmpFiles              the temp file corresponding to the expectedFileNames list
      * @param args                  the argument list
      * @param expectedException     the expected exception or null
-     * @return a pair of file and string lists
      */
     private void executeTest(String testName, CommandLineProgramTest testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
         if (outputFileLocation != null) {
@@ -123,12 +122,8 @@ public final class IntegrationTestSpec {
         boolean gotAnException = false;
         try {
             final String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-            final String cmdline = String.join(" ", command);
-            System.out.println(String.format("[%s] Executing test %s:%s with GATK arguments: %s", now, testClass.getClass().getSimpleName(), testName, cmdline));
-            // also write the command line to the HTML log for convenient follow-up
-            // do the replaceAll so paths become relative to the current
-            BaseTest.log(cmdline.replaceAll(BaseTest.publicTestDirRoot, ""));
-            Object result = testClass.runCommandLine(command);
+            System.out.println(String.format("[%s] Executing test %s:%s", now, testClass.getClass().getSimpleName(), testName));
+            testClass.runCommandLine(command);
         } catch (Exception e) {
             gotAnException = true;
             if (expectedException == null) {

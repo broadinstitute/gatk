@@ -72,5 +72,11 @@ public @interface Argument {
      */
     boolean special() default false;
 
+    /**
+     * Are the contents of this argument private and should be kept out of logs.
+     * Examples of sensitive arguments are encryption and api keys.
+     */
+    boolean sensitive() default false;
+
 
 }

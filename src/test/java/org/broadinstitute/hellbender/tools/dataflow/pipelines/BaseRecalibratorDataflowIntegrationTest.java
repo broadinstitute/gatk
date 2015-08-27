@@ -60,7 +60,8 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
                     " " + args +
                     (knownSites.isEmpty() ? "": " -BQSRKnownVariants " + knownSites) +
                     " --RECAL_TABLE_FILE %s" +
-                    " -sortAllCols";
+                    " -sortAllCols" +
+                    " --apiKey " + getDataflowTestApiKey();
         }
 
         @Override
@@ -105,7 +106,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
         // we need an API key to get to the reference
-        final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " ";
+        final String apiArgs = " --project " + getDataflowTestProject() + " ";
         final String localResources =  getResourceDir();
         final String hg19Ref = "EMWV_ZfLxrDY-wE";
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
@@ -127,7 +128,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
-        final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject();
+        final String apiArgs = " --project " + getDataflowTestProject();
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud = getCloudInputs() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
@@ -141,7 +142,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @DataProvider(name = "BQSRTestCloud")
     public Object[][] createBQSRTestDataCloud() {
-        final String cloudArgs = "--runner BLOCKING --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging();
+        final String cloudArgs = "--runner BLOCKING --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging();
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud = getCloudInputs() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
@@ -186,7 +187,6 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     // TODO: enable this once we figure out how to read bams without requiring them to be indexed.
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
-        final String cloudArgs = "--apiKey " + getDataflowTestApiKey() + " ";
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID; // that's the "full" version
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
@@ -195,8 +195,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = cloudArgs
-                + " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + HiSeqBam
+        final String argPre = " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + HiSeqBam
                 + " -RECAL_TABLE_FILE " + tablePre + " --sort_by_all_columns true";
         new BaseRecalibratorDataflow().instanceMain(Utils.escapeExpressions(argPre));
 
@@ -204,8 +203,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = cloudArgs
-                + " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
+        final String argsPost = " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
                 + " -RECAL_TABLE_FILE " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
         // currently fails with:
         // org.broadinstitute.hellbender.exceptions.UserException: A USER ERROR has occurred: Traversal by intervals was requested but some input files are not indexed.
@@ -225,7 +223,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     @Test(groups = {"cloud"})
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
-        final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " ";
+        final String apiArgs = " --project " + getDataflowTestProject() + " ";
         final String localResources =  getResourceDir();
 
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID; // that's the "full" version
@@ -243,7 +241,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
     @Test(groups = {"cloud"})
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
-        final String apiArgs = "--apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " ";
+        final String apiArgs = " --project " + getDataflowTestProject() + " ";
         final String localResources =  getResourceDir();
 
         final String hg19Ref = "EMWV_ZfLxrDY-wE";
