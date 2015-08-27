@@ -53,8 +53,8 @@ final public class CoverageDropoutDetectorTest extends BaseTest {
         HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);
 
         List<ModeledSegment> segments = new ArrayList<>();
-        segments.add(new ModeledSegment(new SimpleInterval("chr1", 100, 16050), "", 1));
-        segments.add(new ModeledSegment(new SimpleInterval("chr1", 16100, 20200), "", 1.5));
+        segments.add(new ModeledSegment(new SimpleInterval("chr1", 100, 16050), 8000, 1));
+        segments.add(new ModeledSegment(new SimpleInterval("chr1", 16100, 20200), 2000, 1.5));
 
         return new Object [] []{ {targets, segments}};
     }
@@ -88,8 +88,8 @@ final public class CoverageDropoutDetectorTest extends BaseTest {
         HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);
 
         List<ModeledSegment> segments = new ArrayList<>();
-        segments.add(new ModeledSegment(new SimpleInterval("chr1", 100, 16050), "", 1));
-        segments.add(new ModeledSegment(new SimpleInterval("chr1", 16100, 20200), "", 1.5));
+        segments.add(new ModeledSegment(new SimpleInterval("chr1", 100, 16050), 8000, 1));
+        segments.add(new ModeledSegment(new SimpleInterval("chr1", 16100, 20200), 2000, 1.5));
 
         return new Object [] []{ {targets, segments}};
     }

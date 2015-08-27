@@ -105,7 +105,7 @@ public final class ReadCountCollectionUtils {
         }
     }
 
-    private final static class ReadCountRecord {
+    private static final class ReadCountRecord {
 
         public final Target target;
         public final double[] counts;

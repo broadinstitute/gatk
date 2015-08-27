@@ -3,10 +3,9 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -46,10 +45,10 @@ public final class ReCapSegCaller {
      * @param segments segments, each of which holds a reference to these same targets
      * @param zThreshold number of standard deviations from mean required to call an amplification or deletion
      */
-    public static List<CalledInterval> makeCalls(final TargetCollection<TargetCoverage> targets,
-                        final List<SimpleInterval> segments, final double zThreshold) {
+    public static List<ModeledSegment> makeCalls(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments, final double zThreshold) {
         Utils.nonNull(segments, "Can't make calls on a null list of segments.");
-        final List<CalledInterval> calls = new ArrayList<>();
+        Utils.nonNull(targets, "Can't make calls on a null list of targets.");
+        ParamUtils.isPositiveOrZero(zThreshold, "zThreshold must be positive or zero.");
 
         /**
          * estimate the copy-number neutral log_2 coverage as the median over all targets.
@@ -72,7 +71,7 @@ public final class ReCapSegCaller {
         final double neutralSigma = new StandardDeviation().evaluate(nearNeutralCoverage);
 
 
-        for (final SimpleInterval segment : segments) {
+        for (final ModeledSegment segment : segments) {
             //Get the number of standard deviations the mean falls from the copy neutral value
             //we should really use the standard deviation of the mean of segment.numTargets() targets
             //which is sigma/ sqrt(numTargets).  However, the underlying segment means vary due to noise not
@@ -82,9 +81,10 @@ public final class ReCapSegCaller {
             final double Z = (SegmentUtils.meanTargetCoverage(segment, targets) - neutralCoverage)/neutralSigma;
 
             final String call = Z < -zThreshold ? DELETION_CALL: (Z > zThreshold ? AMPLIFICATION_CALL : NEUTRAL_CALL);
-            calls.add(new CalledInterval(segment, call));
-        }
-        return calls;
-    }
 
+            // Attach the call to this modeled segment
+            segment.setCall(call);
+        }
+        return segments;
+    }
 }

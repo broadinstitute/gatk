@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.detectcoveragedropout;
 
+import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -70,65 +71,33 @@ public final class CoverageDropoutResult {
     public boolean isCoverageDropout() {
         return isCoverageDropout;
     }
-
-    public void setIsCoverageDropout(final boolean isCoverageDropout) {
-        this.isCoverageDropout = isCoverageDropout;
-    }
-
+    
     public double getGoodSegmentThreshold() {
         return goodSegmentThreshold;
-    }
-
-    public void setGoodSegmentThreshold(final double goodSegmentThreshold) {
-        this.goodSegmentThreshold = goodSegmentThreshold;
     }
 
     public double getMinWeight() {
         return minWeight;
     }
 
-    public void setMinWeight(final double minWeight) {
-        this.minWeight = minWeight;
-    }
-
     public double getMinTargetProportion() {
         return minTargetProportion;
-    }
-
-    public void setMinTargetProportion(final double minTargetProportion) {
-        this.minTargetProportion = minTargetProportion;
     }
 
     public long getNumGoodSegments() {
         return numGoodSegments;
     }
 
-    public void setNumGoodSegments(final long numGoodSegments) {
-        this.numGoodSegments = numGoodSegments;
-    }
-
     public long getNumSegments() {
         return numSegments;
-    }
-
-    public void setNumSegments(final long numSegments) {
-        this.numSegments = numSegments;
     }
 
     public double getThresholdDistancePerSegment() {
         return thresholdDistancePerSegment;
     }
 
-    public void setThresholdDistancePerSegment(final double thresholdDistancePerSegment) {
-        this.thresholdDistancePerSegment = thresholdDistancePerSegment;
-    }
-
     public long getNumSegmentsAfterFiltering() {
         return numSegmentsAfterFiltering;
-    }
-
-    public void setNumSegmentsAfterFiltering(final long numSegmentsAfterFiltering) {
-        this.numSegmentsAfterFiltering = numSegmentsAfterFiltering;
     }
 
     public String getComment() {
@@ -169,16 +138,6 @@ public final class CoverageDropoutResult {
                         throw formatExceptionFactory.apply("Missing headers.");
                     }
 
-                    /**COVERAGE_DROPOUT_COLUMN = "isCoverageDropout";
-                     GOOD_SEGMENT_THRESHOLD_COLUMN = "goodSegmentThreshold";
-                     MININUM_WEIGHT_COLUMN = "minWeight";
-                     MININUM_TARGET_PROPORTION_COLUMN = "minTargetProportion";
-                     NUM_GOOD_SEGMENTS_COLUMN = "numGoodSegments";
-                     NUM_SEGMENTS_AFTER_FILTERING_COLUMN = "numSegmentsAfterFiltering";
-                     NUM_SEGMENTS_COLUMN = "numSegments";
-                     THRESHOLD_DISTANCE_PER_SEGMENTS_COLUMN = "thresholdDistancePerSegment";
-                     COMMENT_COLUMN = "comment";
-                     */
                     // return the lambda to translate dataLines into coverage dropout result.
                     return (dataLine) -> new CoverageDropoutResult(dataLine.getBoolean(COVERAGE_DROPOUT_COLUMN),
                             dataLine.getDouble(GOOD_SEGMENT_THRESHOLD_COLUMN),

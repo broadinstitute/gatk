@@ -50,21 +50,21 @@ public final class TargetCoverageUtils {
         return new HashedListTargetCollection<>(targetList);
     }
 
-    public static TargetCollection<TargetCoverage> readModeledTargetFileIntoTargetCollection(final File file) throws IOException {
+    public static TargetCollection<TargetCoverage> readModeledTargetFileIntoTargetCollection(final File file) {
         try (final TableReader<TargetCoverage> reader = TableUtils.reader(file,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll("name", "contig", "start", "stop") || (columns.columnCount() < 5))
+                    if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN) || (columns.columnCount() < 5))
 
                         throw formatExceptionFactory.apply("Bad header");
                     //return the lambda to translate dataLines into targets
                     //coverage is fifth column w/ header = <sample name>, so we use the column index.
-                    return (dataLine) -> new TargetCoverage(dataLine.get("name"),
-                            new SimpleInterval(dataLine.get("contig"), dataLine.getInt("start"), dataLine.getInt("stop")),
+                    return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
+                            new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)),
                             dataLine.getDouble(4));
                 })) {
             return new HashedListTargetCollection<>(reader.stream().collect(Collectors.toList()));
-        } catch (final UncheckedIOException e) {
-            throw e.getCause();
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(file, e);
         }
     }
 

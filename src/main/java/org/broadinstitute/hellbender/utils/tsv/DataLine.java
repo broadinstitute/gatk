@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.function.Function;
@@ -524,6 +523,22 @@ public final class DataLine {
     public DataLine append(final int value) {
         return append(Integer.toString(value));
     }
+
+    /**
+     * Sets the next long value in the data-line that correspond to a column.
+     * <p>
+     * The next column index advances so that the following {@link #append append} will change the value of
+     * the following column and so forth.
+     * </p>
+     *
+     * @param value the new value.
+     * @return reference to this data-line.
+     * @throws IllegalStateException if the next column to set is beyond the last column.
+     */
+    public DataLine append(final long value) {
+        return append(Long.toString(value));
+    }
+
 
     /**
      * Sets the next double value in the data-line that correspond to a column.
