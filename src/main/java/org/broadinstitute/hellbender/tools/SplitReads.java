@@ -8,7 +8,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.readersplitters.LibraryNameSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
@@ -31,6 +33,8 @@ public final class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";
     public static final String READ_GROUP_SHORT_NAME = "RG";
+    public static final String LIBRARY_NAME_SHORT_NAME = "LB";
+    public static final String UNKNOWN_OUT_PREFIX = "unknown";
 
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -45,6 +49,10 @@ public final class SplitReads extends ReadWalker {
     @Argument(shortName = READ_GROUP_SHORT_NAME,
             doc = "Split file by read group.")
     public boolean READ_GROUP;
+
+    @Argument(shortName = LIBRARY_NAME_SHORT_NAME,
+            doc = "Split file by library.")
+    public boolean LIBRARY_NAME;
 
     private final List<ReaderSplitter<?>> splitters = new ArrayList<>();
     private Map<String, SAMFileGATKReadWriter> outs = null;
@@ -62,12 +70,15 @@ public final class SplitReads extends ReadWalker {
         if (READ_GROUP) {
             splitters.add(new ReadGroupIdSplitter());
         }
+        if (LIBRARY_NAME) {
+            splitters.add(new LibraryNameSplitter());
+        }
         outs = createWriters(splitters);
     }
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outs.get(getKey(splitters, read)).addRead(read);
+        outs.computeIfAbsent(getKey(splitters, read), this::createUnknownOutOnDemand).addRead(read);
     }
 
     @Override
@@ -76,6 +87,33 @@ public final class SplitReads extends ReadWalker {
             outs.values().forEach(writer -> writer.close());
         }
         return null;
+    }
+
+    // Create an output stream on demand for holding any reads that do not have a value for one or more of the
+    // attributes we're grouping by
+    private SAMFileGATKReadWriter createUnknownOutOnDemand(String attributeValue) {
+        if (!attributeValue.equals("."+UNKNOWN_OUT_PREFIX)) {
+            // the only attribute value we should ever discover at runtime is the string ".unknown" which is
+            // synthesized by "getkey" below when a splitter returns null because we're splitting on some
+            // attribute for which a given read/group has no value; anything else indicates a coding error
+            throw new GATKException.ShouldNeverReachHereException("Unrecognized attribute value found: " + attributeValue);
+        }
+        final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
+        final SAMFileHeader samFileHeaderIn = getHeaderForReads();
+
+        return prepareSAMFileWriter(samFileWriterFactory, samFileHeaderIn, attributeValue);
+    }
+
+    //  Create a new output file and prepare and return the corresponding SAMFileGATKReadWriter.
+    private SAMFileGATKReadWriter prepareSAMFileWriter(
+            SAMFileWriterFactory samFileWriterFactory,
+            SAMFileHeader samFileHeaderIn,
+            final String keyName) {
+        final String base = FilenameUtils.getBaseName(readArguments.getReadFiles().get(0).getName());
+        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadFiles().get(0).getName());
+        final File outFile = new File(OUTPUT_DIRECTORY, base + keyName + extension);
+        final SAMFileHeader samFileHeaderOut = ReadUtils.cloneSAMFileHeader(samFileHeaderIn);
+        return new SAMFileGATKReadWriter(samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.getReferenceFile()));
     }
 
     /**
@@ -87,10 +125,7 @@ public final class SplitReads extends ReadWalker {
         final Map<String, SAMFileGATKReadWriter> outs = new HashMap<>();
 
         final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
-
         final SAMFileHeader samFileHeaderIn = getHeaderForReads();
-        final String base = FilenameUtils.getBaseName(readArguments.getReadFiles().get(0).getName());
-        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadFiles().get(0).getName());
 
         // Build up a list of key options at each level.
         final List<List<?>> splitKeys = splitters.stream()
@@ -99,9 +134,7 @@ public final class SplitReads extends ReadWalker {
 
         // For every combination of keys, add a SAMFileWriter.
         addKey(splitKeys, 0, "", key -> {
-            final SAMFileHeader samFileHeaderOut = ReadUtils.cloneSAMFileHeader(samFileHeaderIn);
-            final File outFile = new File(OUTPUT_DIRECTORY, base + key + extension);
-            outs.put(key, new SAMFileGATKReadWriter(samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.getReferenceFile())));
+            outs.put(key, prepareSAMFileWriter(samFileWriterFactory, samFileHeaderIn, key));
         });
 
         return outs;
@@ -132,8 +165,14 @@ public final class SplitReads extends ReadWalker {
      * @return The generated key that may then be used to find the appropriate SAMFileWriter.
      */
     private String getKey(final List<ReaderSplitter<?>> splitters, final GATKRead record) {
+        // if a read is missing the value for the target split, return the constant "unknown" which will
+        // result in a new output stream being created on demand to hold uncategorized reads
+
         return splitters.stream()
-                .map(s -> s.getSplitBy(record, getHeaderForReads()).toString())
+                .map(s -> {
+                    final Object key = s.getSplitBy(record, getHeaderForReads());
+                    return key == null ? UNKNOWN_OUT_PREFIX : key.toString();
+                })
                 .reduce("", (acc, item) -> acc + "." + item);
     }
 }
