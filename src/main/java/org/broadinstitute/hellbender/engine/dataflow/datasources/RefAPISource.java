@@ -11,11 +11,11 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Bytes;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -26,11 +26,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 
 /**
@@ -51,7 +47,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
     public static final String URL_PREFIX = "gg://reference/";
 
     private static final long serialVersionUID = 1L;
-    private static final int pageSize = 1000000; // The number results per request (the default is 200k).
+    private static final int defaultPageSize = 1_000_000; // The number of results per request
     private final static Logger logger = LogManager.getLogger(RefAPISource.class);
 
     // With our current design, there are three steps required (1) Create a map from reference name to Id,
@@ -87,50 +83,64 @@ public class RefAPISource implements ReferenceSource, Serializable {
     }
 
 
-    /**
-     * Query the Google Genomics API for reference bases spanning the specified interval from the specified
-     * reference name.
-     *
-     * Footnote: queries larger than pageSize will be truncated.
-     *
-     * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
-     * @param interval - the range of bases to retrieve.
-     * @return the reference bases specified by interval and apiData (using the Google Genomics API).
-     */
-    @Override
-    public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) {
-        Utils.nonNull(pipelineOptions);
-        Utils.nonNull(interval);
+      /**
+       * Query the Google Genomics API for reference bases spanning the specified interval from the specified
+       * reference name.
+       *
+       * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
+       * @param interval - the range of bases to retrieve.
+       * @return the reference bases specified by interval and apiData (using the Google Genomics API).
+       */
+      @Override
+      public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) {
+          return getReferenceBases(pipelineOptions, interval, defaultPageSize);
+      }
 
-        if (genomicsService == null) {
-            genomicsService = createGenomicsService(pipelineOptions);
-        }
-        if ( !referenceNameToIdTable.containsKey(interval.getContig()) ) {
-            throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
-        }
+      /**
+       * Query the Google Genomics API for reference bases spanning the specified interval from the specified
+       * reference name.
+       *
+       * @param pipelineOptions -- are used to get the credentials necessary to call the Genomics API
+       * @param interval - the range of bases to retrieve.
+       * @return the reference bases specified by interval and apiData (using the Google Genomics API).
+       */
+      public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval, int pageSize) {
+          Utils.nonNull(pipelineOptions);
+          Utils.nonNull(interval);
 
-        try {
-            final Genomics.References.Bases.List listRequest = genomicsService.references().bases().list(referenceNameToIdTable.get(interval.getContig())).setPageSize(pageSize);
-            // We're subtracting 1 with the start but not the end because GA4GH is zero-based (inclusive,exclusive)
-            // for its intervals.
-            listRequest.setStart((long) interval.getGA4GHStart());
-            listRequest.setEnd((long) interval.getGA4GHEnd());
+          if (genomicsService == null) {
+              genomicsService = createGenomicsService(pipelineOptions);
+          }
+          if (!referenceNameToIdTable.containsKey(interval.getContig())) {
+              throw new UserException("Contig " + interval.getContig() + " not in our set of reference names for this reference source");
+          }
 
-            final ListBasesResponse result = listRequest.execute();
-            if ( result.getSequence() == null ) {
-                throw new UserException("No reference bases returned in query for interval " + interval + ". Is the interval valid for this reference?");
-            }
-            byte[] bases = result.getSequence().getBytes();
-            if (bases.length != interval.size()) {
-                throw new GATKException("Did not get all bases for query, is the query longer than pageSize?");
-            }
-
-            return new ReferenceBases(bases, interval);
-        }
-        catch ( IOException e ) {
-            throw new UserException("Query to genomics service failed for reference interval " + interval, e);
-        }
-    }
+          try {
+              final Genomics.References.Bases.List listRequest = genomicsService.references().bases().list(referenceNameToIdTable.get(interval.getContig())).setPageSize(pageSize);
+              listRequest.setStart(interval.getGA4GHStart());
+              listRequest.setEnd(interval.getGA4GHEnd());
+              ListBasesResponse result = listRequest.execute();
+              if (result.getSequence() == null) {
+                  throw new UserException("No reference bases returned in query for interval " + interval + ". Is the interval valid for this reference?");
+              }
+              byte[] received = result.getSequence().getBytes();
+              byte[] bases = received;
+              if (received.length < interval.size()) {
+                  ArrayList<byte[]> blobs = new ArrayList<byte[]>();
+                  blobs.add(received);
+                  while (result.getNextPageToken() != null) {
+                      listRequest.setPageToken(result.getNextPageToken());
+                      result = listRequest.execute();
+                      blobs.add(result.getSequence().getBytes());
+                  }
+                  final byte[][] resultsArray = blobs.toArray(new byte[blobs.size()][]);
+                  bases = Bytes.concat(resultsArray);
+              }
+              return new ReferenceBases(bases, interval);
+          } catch (IOException e) {
+              throw new UserException("Query to genomics service failed for reference interval " + interval, e);
+          }
+      }
 
     /**
      * Return a sequence dictionary for the reference.

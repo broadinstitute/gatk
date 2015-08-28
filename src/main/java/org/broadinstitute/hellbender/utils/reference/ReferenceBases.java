@@ -65,15 +65,15 @@ public class ReferenceBases implements Serializable {
 
     /**
      * getSubset returns only the bases of the interval passed in.
-     * @param interval, the subset to be returned
+     * @param subsetInterval, the subset to be returned
      * @return the subset of ReferenceBases
      */
-    public ReferenceBases getSubset(SimpleInterval interval) {
-        if (!this.interval.contains(interval)) {
-            throw new GATKException("Reference doesn't match input interval");
+    public ReferenceBases getSubset(SimpleInterval subsetInterval) {
+        if (!this.interval.contains(subsetInterval)) {
+            throw new GATKException("Reference doesn't match input interval (asked for "+subsetInterval.toString()+" but we have "+this.interval+")");
         }
-        int start = interval.getStart() - this.interval.getStart();
-        int end = interval.getEnd() - this.interval.getStart();
-        return new ReferenceBases(Arrays.copyOfRange(this.bases, start, end + 1), interval);
+        int start = subsetInterval.getStart() - this.interval.getStart();
+        int end = subsetInterval.getEnd() - this.interval.getStart();
+        return new ReferenceBases(Arrays.copyOfRange(this.bases, start, end + 1), subsetInterval);
     }
 }
