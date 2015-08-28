@@ -174,7 +174,7 @@ public final class SimpleInterval implements Locatable, Serializable {
     /**
     * @return the 0-based start position (from the GA4GH spec).
     */
-    public final int getGA4GHStart() {return start - 1; }
+    public final long getGA4GHStart() {return start - 1; }
 
     /**
      * @return the 1-based closed-ended end position of the interval on the contig.
@@ -186,7 +186,7 @@ public final class SimpleInterval implements Locatable, Serializable {
     /**
     * @return the typical end spans are [zero-start,end) (from the GA4GH spec).
     */
-    public final int getGA4GHEnd() { return end; }
+    public final long getGA4GHEnd() { return end; }
 
     /**
      * @return number of bases covered by this interval (will always be > 0)

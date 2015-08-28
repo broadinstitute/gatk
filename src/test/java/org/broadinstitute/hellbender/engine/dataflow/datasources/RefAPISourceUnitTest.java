@@ -1,13 +1,14 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
+import com.google.api.services.genomics.model.Reference;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -18,19 +19,30 @@ import org.testng.annotations.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import com.google.api.services.genomics.model.Reference;
 
 public class RefAPISourceUnitTest extends BaseTest {
 
-    private ReferenceBases queryReferenceAPI( final String referenceName, final SimpleInterval interval ) {
-        GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
-        options.setApiKey(getDataflowTestApiKey());
-        options.setProject(getDataflowTestProject());
+    private ReferenceBases queryReferenceAPI( final String referenceName, final SimpleInterval interval, int pageSize ) {
+        final Pipeline p = setupPipeline();
 
-        final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
+        RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
+        return refAPISource.getReferenceBases(p.getOptions(), interval, pageSize);
+    }
+
+    private ReferenceBases queryReferenceAPI( final String referenceName, final SimpleInterval interval ) {
+        final Pipeline p = setupPipeline();
 
         RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
         return refAPISource.getReferenceBases(p.getOptions(), interval);
+    }
+
+    private Pipeline setupPipeline() {
+      GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
+      options.setApiKey(getDataflowTestApiKey());
+      options.setProject(getDataflowTestProject());
+
+      final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
+      return p;
     }
 
     @DataProvider(name = "sortData")
@@ -110,6 +122,66 @@ public class RefAPISourceUnitTest extends BaseTest {
     public void testReferenceSourceQueryWithNullInterval() {
         final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", null);
     }
+
+
+  @Test(groups = "cloud")
+  public void testReferenceSourceMultiPageQuery() {
+      final int mio = 1_000_000;
+      final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 50000 + mio + 50));
+      final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50025 + mio + 50));
+
+      Assert.assertNotNull(bases1);
+      Assert.assertNotNull(bases1.getBases());
+      Assert.assertNotNull(bases2);
+      Assert.assertNotNull(bases2.getBases());
+      // those SimpleIntervals include the end, hence +1
+      Assert.assertEquals(bases1.getBases().length, mio + 50 + 1, "Wrong number of bases returned");
+      Assert.assertEquals(bases2.getBases().length, mio + 50 + 1, "Wrong number of bases returned");
+
+      // grab some bases around the seam
+      ReferenceBases seam1 = bases1.getSubset(new SimpleInterval("1", 50000 + mio - 100, 50000 + mio + 50));
+      ReferenceBases seam2 = bases2.getSubset(new SimpleInterval("1", 50000 + mio - 100, 50000 + mio + 50));
+
+      Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
+
+  }
+
+    @Test(groups = "cloud")
+    public void testReferenceSourceMultiSmallPagesQuery() {
+        int pageSize = 300;
+        // not a multiple of pageSize (testing the fetching of a partial page)
+        final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 51000), pageSize);
+        // multiple of pageSize (testing ending on an exact page boundary)
+        final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50924), pageSize);
+
+        Assert.assertNotNull(bases1);
+        Assert.assertNotNull(bases1.getBases());
+        Assert.assertNotNull(bases2);
+        Assert.assertNotNull(bases2.getBases());
+        // those SimpleIntervals include the end, hence +1
+        Assert.assertEquals(bases1.getBases().length, 1001, "Wrong number of bases returned");
+        Assert.assertEquals(bases2.getBases().length, 900, "Wrong number of bases returned");
+
+        // grab some bases they should have in common
+        ReferenceBases seam1 = bases1.getSubset(new SimpleInterval("1", 50025, 50902));
+        ReferenceBases seam2 = bases2.getSubset(new SimpleInterval("1", 50025, 50902));
+
+        Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
+    }
+
+  @Test(groups = "cloud")
+  public void testReferenceSourceVaryingPageSizeQuery() {
+
+    SimpleInterval interval = new SimpleInterval("1", 50000, 50050);
+    final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval);
+    final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval, 10);
+
+    Assert.assertNotNull(bases1);
+    Assert.assertNotNull(bases1.getBases());
+    Assert.assertNotNull(bases2);
+    Assert.assertNotNull(bases2.getBases());
+    Assert.assertEquals(bases1.getBases(), bases2.getBases(), "bases should match despite different paging size");
+  }
 
 
     private Map<String, Reference> createDummyReferenceMap(String[] contig) {
