@@ -109,7 +109,7 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                 { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, true},
                 { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, true},
 
-                // These have isReadsToReferenceComparison == true but no overlapping intervals, so we don't expect an exception:
+                // We expect exceptions for these because the common contigs' indicies don't match correctly.
                 { Arrays.asList(CHR2_HG19, CHR10_HG19),                              Arrays.asList(CHR10_HG19),                       DIFFERENT_INDICES, UserException.IncompatibleSequenceDictionaries.class, true},
                 { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19),             Arrays.asList(CHR1_HG19, CHR2_HG19),             DIFFERENT_INDICES, UserException.IncompatibleSequenceDictionaries.class, true},
                 { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), DIFFERENT_INDICES, UserException.IncompatibleSequenceDictionaries.class, true},
