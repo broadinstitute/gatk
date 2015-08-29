@@ -74,7 +74,6 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
             new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
-
         final PCollection<GATKRead> results = preads.apply(new MarkDuplicates(headerPcolView, finderPcolView));
 
         // TODO: support writing large output files (need a sharded BAM writer)

@@ -118,6 +118,10 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             options.setProject(projectID);
             options.setStagingLocation(stagingLocation);
             options.setRunner(this.runnerType.runner);
+            // n1-standard-4 is 4x the RAM and 4x the CPUs as the default machine, at only 4x the price.
+            options.setWorkerMachineType("n1-standard-4");
+            // this is new code. If there's a problem, odds are it's our fault and retrying won't help.
+            options.setNumberOfRetries(0);
             if (numWorkers!=0) {
                 options.setNumWorkers(numWorkers);
             }
@@ -127,6 +131,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
                 logger.info("Loading " + clientSecret.getName());
                 options.setSecretsFile(clientSecret.getAbsolutePath());
             }
+            String name = jobName();
+            if (null!=name) options.setJobName(name);
             return options;
         } else {
             final SparkPipelineOptions options = PipelineOptionsFactory.as(SparkPipelineOptions.class);
@@ -167,6 +173,14 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
      * Override this to run code after the pipeline returns.
      */
     protected void afterPipeline(Pipeline pipeline) {}
+
+    /**
+     * Override to pick a name for the pipeline.
+     * Note that Dataflow requires the name to be unique among running jobs.
+     */
+    protected String jobName() {
+        return null;
+    }
 
     // ---------------------------------------------------
     // Helpers

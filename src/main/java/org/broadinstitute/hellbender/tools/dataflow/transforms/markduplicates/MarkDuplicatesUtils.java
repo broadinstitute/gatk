@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.engine.dataflow.coders.PairedEndsCoder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
@@ -32,9 +33,11 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -67,12 +70,20 @@ final class MarkDuplicatesUtils {
    */
   static PCollection<GATKRead> transformReads(final PCollectionView<SAMFileHeader> headerPcolView, final PCollectionView<OpticalDuplicateFinder> finderPcolView, final PCollection<GATKRead> pairs) {
 
-    final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName = keyReadsByName(headerPcolView);
-    final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo =
-        keyPairedEndsWithAlignmentInfo(headerPcolView);
-    final PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds = markDuplicatePairedEnds(finderPcolView);
+      final SerializableFunction<GATKRead, Boolean> hasMappedMate = new SerializableFunction<GATKRead, Boolean>() {
+          private static final long serialVersionUID = 1l;
+          @Override
+          public Boolean apply(GATKRead read) {
+              return ReadUtils.readHasMappedMate(read);
+          }
+      } ;
+      final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName = keyReadsByName(headerPcolView);
+      final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo =
+          keyPairedEndsWithAlignmentInfo(headerPcolView);
+      final PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds = markDuplicatePairedEnds(finderPcolView);
 
-    return pairs
+      return pairs
+        .apply(Filter.by(hasMappedMate))
         .apply(keyReadsByName)
         .apply(GroupByKey.<String, GATKRead>create())
         .apply(keyPairedEndsWithAlignmentInfo)
@@ -85,54 +96,114 @@ final class MarkDuplicatesUtils {
      * Makes keys for read pairs. To be grouped by in the next step.
      */
     static PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> keyReadsByName(final PCollectionView<SAMFileHeader> headerPcolView) {
-        return ParDo
-                .named("key reads by name")
-                .withSideInputs(headerPcolView)
-                .of(new DoFn<GATKRead, KV<String, GATKRead>>() {
-                    private static final long serialVersionUID = 1l;
-
-                    @Override
-                    public void processElement(final ProcessContext context) throws Exception {
-                        final GATKRead record = context.element();
-                        if (ReadUtils.readHasMappedMate(record)) {
-                            final SAMFileHeader h = context.sideInput(headerPcolView);
-                            final String key = ReadsKey.keyForRead(h, record);
-                            final KV<String, GATKRead> kv = KV.of(key, record);
-                            context.output(kv);
-                        }
-                    }
-                });
+        BiFunction<SAMFileHeader, GATKRead ,String> func = (BiFunction<SAMFileHeader, GATKRead ,String> & Serializable) MarkDuplicatesUtils::keyForRead;
+        return applyKeyFunction(headerPcolView, func, "key reads by name");
     }
 
+    // the specific key
+    static String keyForRead(SAMFileHeader header, GATKRead read) {
+        return ReadsKey.keyForRead(header, read);
+    }
+
+    // given reads that have the same ReadKey (i.e. are at the same location), we output PairedEnds.
+    static ArrayList<PairedEnds> pairTheReads(SAMFileHeader header, Iterable<GATKRead> keyedReads) {
+        ArrayList<PairedEnds> ret = new ArrayList<>();
+        final List<GATKRead> sorted = Lists.newArrayList(keyedReads);
+        sorted.sort(new GATKOrder(header));
+        PairedEnds pair = null;
+        //Records are sorted, we iterate over them and pair them up.
+        for (final GATKRead record : sorted) {
+            if (pair == null) {                                //first in pair
+                pair = PairedEnds.of(record);
+            } else {                                           //second in pair
+                pair.and(record);
+                ret.add(pair);
+                pair = null;                                   //back to first
+            }
+        }
+        if (pair != null) {                                    //left over read
+            ret.add(pair);
+        }
+        return ret;
+    }
+
+    // PairedEnd -> its key
+    static String keyForPair(SAMFileHeader header, PairedEnds pair) {
+        return pair.key(header);
+    }
+
+    // Dataflowese for "pairTheReads and then keyForPair"
     static PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<KV<String, PairedEnds>>> keyPairedEndsWithAlignmentInfo(final PCollectionView<SAMFileHeader> headerPcolView) {
         return ParDo
                 .named("key paired ends with alignment info")
                 .withSideInputs(headerPcolView)
-                .of(new DoFn<KV<String, Iterable<GATKRead>>, KV<String, PairedEnds>>() {
-                    private static final long serialVersionUID = 1L;
-                    @Override
-                    public void processElement(final ProcessContext context) throws Exception {
-                        final SAMFileHeader header = context.sideInput(headerPcolView);
-                        final List<GATKRead> sorted = Lists.newArrayList(context.element().getValue());
-                        sorted.sort(new GATKOrder(header));
-                        PairedEnds pair = null;
-                        //Records are sorted, we iterate over them and pair them up.
-                        for (final GATKRead record : sorted) {
-                            if (pair == null) {                                //first in pair
-                                pair = PairedEnds.of(record);
-                            } else {                                           //second in pair
-                                pair.and(record);
-                                context.output(KV.of(pair.key(header), pair));
-                                pair = null;                                   //back to first
-                            }
-                        }
-                        if (pair != null) {                                    //left over read
-                            context.output(KV.of(pair.key(header), pair));
-                        }
+            .of(new DoFn<KV<String, Iterable<GATKRead>>, KV<String, PairedEnds>>() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public void processElement(final ProcessContext context) throws Exception {
+                    final SAMFileHeader header = context.sideInput(headerPcolView);
+                    for (PairedEnds pair : pairTheReads(header, context.element().getValue())) {
+                        context.output(KV.of(keyForPair(header, pair), pair));
+                    }
                     }
                 });
     }
 
+    static ArrayList<GATKRead> markDuplicatePairedEndsFn(OpticalDuplicateFinder finder, Iterable<PairedEnds> pairs, boolean copy) {
+        ArrayList<GATKRead> ret = new ArrayList<>();
+        Iterable<PairedEnds> pairedEndsCopy;
+        if (copy) {
+            pairedEndsCopy = Iterables.transform(pairs, PairedEnds::copy);
+        } else {
+            pairedEndsCopy = pairs;
+        }
+        final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEndsCopy, pair -> pair.second() != null);
+
+        // As in Picard, unpaired ends left alone.
+        for (final PairedEnds pair : paired.get(false)) {
+            ret.add(pair.first());
+        }
+
+        // order by score
+        List<PairedEnds> scored = Ordering.natural().reverse().onResultOf((PairedEnds pair) -> pair.score()).sortedCopy(paired.get(true));
+
+        final PairedEnds best = Iterables.getFirst(scored, null);
+        if (best == null) {
+            return ret;
+        }
+
+        // Mark everyone who's not best as a duplicate
+        for (final PairedEnds pair : Iterables.skip(scored, 1)) {
+            pair.first().setIsDuplicate(true);
+            pair.second().setIsDuplicate(true);
+        }
+        if (null!=finder) {
+            // Now, add location information to the paired ends
+            for (final PairedEnds pair : scored) {
+                // Both elements in the pair have the same name
+                finder.addLocationInformation(pair.first().getName(), pair);
+            }
+
+            // This must happen last, as findOpticalDuplicates mutates the list.
+            // We do not need to split the list by orientation as the keys for the pairs already
+            // include directionality information and a FR pair would not be grouped with an RF pair.
+            final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
+            int numOpticalDuplicates = 0;
+            for (final boolean b : opticalDuplicateFlags) {
+                if (b) {
+                    numOpticalDuplicates++;
+                }
+            }
+            best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
+        }
+
+        for (final PairedEnds pair : scored) {
+            ret.add(pair.first());
+            ret.add(pair.second());
+        }
+        return ret;
+    }
 
     static PTransform<PCollection<? extends KV<String, Iterable<PairedEnds>>>, PCollection<GATKRead>> markDuplicatePairedEnds(PCollectionView<OpticalDuplicateFinder> finderPcolView) {
         return ParDo
@@ -143,52 +214,9 @@ final class MarkDuplicatesUtils {
 
                     @Override
                     public void processElement(final ProcessContext context) throws Exception {
-                        // We need to copy the PairedEnds because we mutate it (and Dataflow assumes that elements
-                        // are never mutated).
-                        Iterable<PairedEnds> pairedEndsCopy = Iterables.transform(context.element().getValue(), PairedEnds::copy);
-
                         final OpticalDuplicateFinder finder = context.sideInput(finderPcolView);
-                        final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEndsCopy, pair -> pair.second() != null);
-
-                        // As in Picard, unpaired ends left alone.
-                        for (final PairedEnds pair : paired.get(false)) {
-                            context.output(pair.first());
-                        }
-
-                        // order by score
-                        List<PairedEnds> scored = Ordering.natural().reverse().onResultOf((PairedEnds pair) -> pair.score()).sortedCopy(paired.get(true));
-
-                        final PairedEnds best = Iterables.getFirst(scored, null);
-                        if (best == null) {
-                          return;
-                        }
-
-                        // Mark everyone who's not best as a duplicate
-                        for (final PairedEnds pair : Iterables.skip(scored, 1)) {
-                          pair.first().setIsDuplicate(true);
-                          pair.second().setIsDuplicate(true);
-                        }
-                        // Now, add location information to the paired ends
-                        for (final PairedEnds pair : scored) {
-                          // Both elements in the pair have the same name
-                          finder.addLocationInformation(pair.first().getName(), pair);
-                        }
-
-                        // This must happen last, as findOpticalDuplicates mutates the list.
-                        // We do not need to split the list by orientation as the keys for the pairs already
-                        // include directionality information and a FR pair would not be grouped with an RF pair.
-                        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
-                        int numOpticalDuplicates = 0;
-                        for (final boolean b : opticalDuplicateFlags) {
-                          if (b) {
-                            numOpticalDuplicates++;
-                          }
-                        }
-                        best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
-
-                        for (final PairedEnds pair : scored) {
-                          context.output(pair.first());
-                          context.output(pair.second());
+                        for (GATKRead read : markDuplicatePairedEndsFn(finder, context.element().getValue(), true)) {
+                            context.output(read);
                         }
                     }
                 });
@@ -207,9 +235,45 @@ final class MarkDuplicatesUtils {
         final PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForFragments =  makeKeysForFragments(headerPcolView);
         final PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<GATKRead>> markGroupedDuplicateFragments = markGroupedDuplicateFragments();
         return fragments
+                .apply(markNonDuplicateTransform())
                 .apply(makeKeysForFragments)
                 .apply(GroupByKey.<String, GATKRead>create())
-                .apply(markGroupedDuplicateFragments);//no need to set up coder for Read (uses GenericJsonCoder)
+            .apply(markGroupedDuplicateFragments);//no need to set up coder for Read (uses GenericJsonCoder)
+    }
+
+    // set copy=false only if you know for sure that it's safe.
+    static ArrayList<GATKRead> transformFragmentsFn(Iterable<GATKRead> input, boolean copy) {
+        ArrayList<GATKRead> ret = new ArrayList<>();
+        //split reads by paired vs unpaired
+        Iterable<GATKRead> readsCopy;
+        if (copy) {
+            readsCopy = Iterables.transform(input, GATKRead::copy);
+        } else {
+            readsCopy = input;
+        }
+        final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
+            read -> ReadUtils.readHasMappedMate(read)
+        ));
+
+        // Note the we emit only fragments from this mapper.
+        if (byPairing.get(true).isEmpty()) {
+            // There are no paired reads, mark all but the highest scoring fragment as duplicate.
+            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.score(read)).immutableSortedCopy(byPairing.get(false));
+            if (!frags.isEmpty()) {
+                ret.add(frags.get(0));                        //highest score - just emit
+                for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
+                    record.setIsDuplicate(true);
+                    ret.add(record);
+                }
+            }
+        } else {
+            // There are paired ends so we mark all fragments as duplicates.
+            for (final GATKRead record : byPairing.get(false)) {
+                record.setIsDuplicate(true);
+                ret.add(record);
+            }
+        }
+        return ret;
     }
 
     static PTransform<PCollection<? extends KV<String, Iterable<GATKRead>>>, PCollection<GATKRead>> markGroupedDuplicateFragments() {
@@ -219,53 +283,52 @@ final class MarkDuplicatesUtils {
 
                     @Override
                     public void processElement(final ProcessContext context) throws Exception {
-                        //split reads by paired vs unpaired
-                        Iterable<GATKRead> readsCopy = Iterables.transform(context.element().getValue(), GATKRead::copy);
-                        final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
-                                read -> ReadUtils.readHasMappedMate(read)
-                        ));
-
-                        // Note the we emit only fragments from this mapper.
-                        if (byPairing.get(true).isEmpty()) {
-                            // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.score(read)).immutableSortedCopy(byPairing.get(false));
-                            if (!frags.isEmpty()) {
-                                context.output(frags.get(0));                        //highest score - just emit
-                                for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
-                                    record.setIsDuplicate(true);
-                                    context.output(record);
-                                }
-                            }
-                        } else {
-                            // There are paired ends so we mark all fragments as duplicates.
-                            for (final GATKRead record : byPairing.get(false)) {
-                                record.setIsDuplicate(true);
-                                context.output(record);
-                            }
+                        for (GATKRead r : transformFragmentsFn(context.element().getValue(), true)) {
+                            context.output(r);
                         }
                     }
                 });
     }
 
+
+
+    // the specific key
+    static String keyForFragment(SAMFileHeader header, GATKRead read) {
+        return ReadsKey.keyForFragment(header, read);
+    }
+
+
     /**
      * Groups reads by keys - keys are tuples of (library, contig, position, orientation).
      */
     static PTransform<PCollection<? extends GATKRead>, PCollection<KV<String, GATKRead>>> makeKeysForFragments(final PCollectionView<SAMFileHeader> headerPcolView) {
+        BiFunction<SAMFileHeader, GATKRead ,String> func = (BiFunction<SAMFileHeader, GATKRead ,String> & Serializable) MarkDuplicatesUtils::keyForFragment;
+        return applyKeyFunction(headerPcolView, func, "key fragments");
+    }
+
+    public static GATKRead markNonDuplicate(GATKRead read) {
+        final GATKRead record = read.copy();
+        record.setIsDuplicate(false);
+        return record;
+    }
+
+    // be careful with this one.
+    public static GATKRead markNonDuplicateNoCopy(GATKRead read) {
+        read.setIsDuplicate(false);
+        return read;
+    }
+
+    static PTransform<PCollection<? extends GATKRead>, PCollection<GATKRead>> markNonDuplicateTransform() {
         return ParDo
-                .named("make keys for reads")
-                .withSideInputs(headerPcolView)
-                .of(new DoFn<GATKRead, KV<String, GATKRead>>() {
-                    private static final long serialVersionUID = 1L;
-                    @Override
-                    public void processElement(final ProcessContext context) throws Exception {
-                        final GATKRead record = context.element().copy();
-                        record.setIsDuplicate(false);
-                        final SAMFileHeader h = context.sideInput(headerPcolView);
-                        final String key = ReadsKey.keyForFragment(h, record);
-                        final KV<String, GATKRead> kv = KV.of(key, record);
-                        context.output(kv);
-                    }
-                });
+            .named("mark non-duplicate")
+            .of(new DoFn<GATKRead, GATKRead>() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public void processElement(final ProcessContext context) throws Exception {
+                    context.output(markNonDuplicate(context.element()));
+                }
+            });
     }
 
     // This transform takes marked reads and generates the metrics from those tests.
@@ -284,20 +347,36 @@ final class MarkDuplicatesUtils {
         @Override
         public PCollection<KV<String, DuplicationMetrics>> apply(final PCollection<GATKRead> preads) {
             return preads
+                // put the headers back
+                .apply(ParDo.withSideInputs(this.header).named("restoreHeader")
+                    .of(new DoFn<GATKRead, GATKRead>() {
+                        private static final long serialVersionUID = 1l;
+                        @Override
+                        public void processElement(ProcessContext c) throws Exception {
+                            GATKRead r = c.element();
+                            if (r instanceof SAMRecordToGATKReadAdapter) {
+                                SAMRecordToGATKReadAdapter record = (SAMRecordToGATKReadAdapter) r;
+                                record.setHeader(c.sideInput(header));
+                                c.output(record);
+                                return;
+                            }
+                            c.output(r);
+                    }
+                }))
                 .apply(Filter.by(
                     new SerializableFunction<GATKRead, Boolean>() {
-                      private static final long serialVersionUID = 0;
+                        private static final long serialVersionUID = 0;
 
-                      public Boolean apply(GATKRead element) {
-                        return !element.isSecondaryAlignment() && !element.isSupplementaryAlignment();
-                      }
+                        public Boolean apply(GATKRead element) {
+                            return !element.isSecondaryAlignment() && !element.isSupplementaryAlignment();
+                        }
                     }))
                 .apply(generateMetricsByLibrary())
                 .setCoder(KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(DuplicationMetrics.class)))
-                // Combine metrics for reads from the same library.
+                    // Combine metrics for reads from the same library.
                 .apply(Combine.<String, DuplicationMetrics>perKey(new CombineMetricsFn()))
-                // For each library, finalize the metrics by computing derived metrics and dividing paired counters
-                // by 2.
+                    // For each library, finalize the metrics by computing derived metrics and dividing paired counters
+                    // by 2.
                 .apply(finalizeMetrics());
         }
 
@@ -306,41 +385,41 @@ final class MarkDuplicatesUtils {
                 .named("generate metrics by library")
                 .withSideInputs(header)
                 .of(new DoFn<GATKRead, KV<String, DuplicationMetrics>>() {
-                        private static final long serialVersionUID = 1l;
+                    private static final long serialVersionUID = 1l;
 
-                        @Override
-                        public void processElement(final ProcessContext context) throws Exception {
-                            final GATKRead record = context.element();
-                            if (record.isSecondaryAlignment() || record.isSupplementaryAlignment()) {
-                              return;
-                            }
-                            final SAMFileHeader h = context.sideInput(header);
-                            final String library = LibraryIdGenerator.getLibraryName(h, record.getReadGroup());
-                            DuplicationMetrics metrics = new DuplicationMetrics();
-                            metrics.LIBRARY = library;
-                            if (record.isUnmapped()) {
-                              ++metrics.UNMAPPED_READS;
-                            } else if (!record.isPaired() || record.mateIsUnmapped()) {
-                                ++metrics.UNPAIRED_READS_EXAMINED;
-                            } else {
-                                ++metrics.READ_PAIRS_EXAMINED;
-                            }
-
-                            if (record.isDuplicate()) {
-                                if (!record.isPaired() || record.mateIsUnmapped()) {
-                                    ++metrics.UNPAIRED_READ_DUPLICATES;
-                                } else {
-                                    ++metrics.READ_PAIR_DUPLICATES;
-                                }
-                            }
-                            if (record.hasAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)) {
-                              metrics.READ_PAIR_OPTICAL_DUPLICATES +=
-                                  record.getAttributeAsInteger(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
-                            }
-                            final KV<String, DuplicationMetrics> kv = KV.of(library, metrics);
-                            context.output(kv);
+                    @Override
+                    public void processElement(final ProcessContext context) throws Exception {
+                        final GATKRead record = context.element();
+                        if (record.isSecondaryAlignment() || record.isSupplementaryAlignment()) {
+                            return;
                         }
-                    });
+                        final SAMFileHeader h = context.sideInput(header);
+                        final String library = LibraryIdGenerator.getLibraryName(h, record.getReadGroup());
+                        DuplicationMetrics metrics = new DuplicationMetrics();
+                        metrics.LIBRARY = library;
+                        if (record.isUnmapped()) {
+                            ++metrics.UNMAPPED_READS;
+                        } else if (!record.isPaired() || record.mateIsUnmapped()) {
+                            ++metrics.UNPAIRED_READS_EXAMINED;
+                        } else {
+                            ++metrics.READ_PAIRS_EXAMINED;
+                        }
+
+                        if (record.isDuplicate()) {
+                            if (!record.isPaired() || record.mateIsUnmapped()) {
+                                ++metrics.UNPAIRED_READ_DUPLICATES;
+                            } else {
+                                ++metrics.READ_PAIR_DUPLICATES;
+                            }
+                        }
+                        if (record.hasAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)) {
+                            metrics.READ_PAIR_OPTICAL_DUPLICATES +=
+                                record.getAttributeAsInteger(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+                        }
+                        final KV<String, DuplicationMetrics> kv = KV.of(library, metrics);
+                        context.output(kv);
+                    }
+                });
         }
 
 
@@ -453,6 +532,30 @@ final class MarkDuplicatesUtils {
             return sum;
         }
     }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Dataflow helper functions
+
+    // key function -> PTransform that puts this key in front.
+    static <T> PTransform<PCollection<? extends T>, PCollection<KV<String, T>>> applyKeyFunction(final PCollectionView<SAMFileHeader> headerPcolView, final BiFunction<SAMFileHeader, T ,String> keyFunc, final String name) {
+        final BiFunction<SAMFileHeader, T ,String> serializableKeyFunc = (BiFunction<SAMFileHeader, T ,String> & Serializable) keyFunc;
+        return ParDo
+            .named(name)
+            .withSideInputs(headerPcolView)
+            .of(new DoFn<T, KV<String, T>>() {
+                private static final long serialVersionUID = 1l;
+
+                @Override
+                public void processElement(final ProcessContext context) throws Exception {
+                    final T record = context.element();
+                    final SAMFileHeader h = context.sideInput(headerPcolView);
+                    String key = serializableKeyFunc.apply(h, record);
+                    if (null != key) context.output(KV.of(key, record));
+                }
+            });
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
 
     /**
      * GATKRead comparator that compares based on mapping position followed by SAM flags.

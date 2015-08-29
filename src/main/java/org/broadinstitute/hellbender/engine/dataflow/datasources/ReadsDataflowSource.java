@@ -5,7 +5,10 @@ import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.DoFn;
+import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.View;
+import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
@@ -16,8 +19,11 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.Contig;
 import com.google.cloud.genomics.utils.GenomicsFactory;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -143,6 +149,25 @@ public final class ReadsDataflowSource {
     }
 
     public static PCollectionView<SAMFileHeader> getHeaderView(Pipeline p, SAMFileHeader readsHeader) {
-        return p.apply(Create.of(readsHeader).withCoder(SerializableCoder.of(SAMFileHeader.class))).apply(View.<SAMFileHeader>asSingleton());
+        return p.apply(Create.of(readsHeader).withCoder(SerializableCoder.of(SAMFileHeader.class))).setName("reads header").apply(View.<SAMFileHeader>asSingleton());
     }
+
+
+
+    /**
+     * Create a {@link PCollection< KV <String,Iterable<GATKRead>>>} containing all the reads starting in the given intervals and their mates,
+     * grouped by the shard they start in.
+     * The shards are strings as per SimpleInterval's ToString syntax.
+     * Reads that are malformed or unmapped are ignored.
+     *
+     * Note: for performance reasons, this will give you SAMRecords that have no header. You have to put it back in.
+     *
+     * @param intervals a list of SimpleIntervals.
+     * @param readShardSize shards of this size are assigned to individual machines (streamed in from GCS).
+     * @param  outputShardSize shards of this many reads are output at a time (held all together in RAM).
+     */
+    public PCollection<KV<String,Iterable<GATKRead>>> getGroupedReadPCollection(List<SimpleInterval> intervals, int readShardSize, int outputShardSize, Pipeline pipeline) {
+        return ShardedReadsDatasource.get(bam, intervals, readShardSize, outputShardSize, pipeline, auth);
+    }
+
 }

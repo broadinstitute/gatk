@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOut
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.MarkDuplicates;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.MarkDuplicatesFromShardsDataflowTransform;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -73,6 +74,10 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
+
+    @Argument(doc = "use the non-optimized MarkDuplicates", fullName = "oldMarkDups", optional = true)
+    protected boolean oldMarkDups = false;
+
     @Override
     protected void setupPipeline( Pipeline pipeline ) {
         try {
@@ -83,14 +88,27 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
                     : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
             final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
-            final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
             final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                     new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
             final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
 
-            // Apply MarkDuplicates to produce updated GATKReads.
-            final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
+            // we read from shards that span this many bp
+            int basesPerShard = 1_000_000;
+            // and then output shards that span this many
+            int outputBasesPerWorkUnit = 5_000;
+
+            PCollection<GATKRead> markedReads;
+
+            if (oldMarkDups) {
+                // Apply MarkDuplicates to produce updated GATKReads.
+                final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+                markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
+            } else {
+                // Optimized MarkDuplicates
+                final PCollection<KV<String, Iterable<GATKRead>>> readsByShard = readsDataflowSource.getGroupedReadPCollection(intervals, basesPerShard, outputBasesPerWorkUnit, pipeline);
+                markedReads = readsByShard.apply(new MarkDuplicatesFromShardsDataflowTransform(headerSingleton, finderPcolView));
+            }
 
             // Load the Variants and the Reference and join them to reads.
             final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
