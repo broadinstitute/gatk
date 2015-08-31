@@ -534,5 +534,12 @@ public interface GATKRead extends Locatable {
      */
     Read convertToGoogleGenomicsRead();
 
+    /**
+     * Get a string representation of this read in SAM string format, terminated with '\n'. Fields are separated by '\t',
+     *
+     * @return SAM string representation of this read.
+     */
+    String getSAMString();
+
 }
 

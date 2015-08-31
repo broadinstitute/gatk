@@ -483,6 +483,11 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public String getSAMString() {
+        return samRecord.getSAMString();
+    }
+
+    @Override
     public SAMRecord convertToSAMRecord( final SAMFileHeader header ) {
         samRecord.setHeader(header);
         return samRecord;

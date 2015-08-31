@@ -5,13 +5,27 @@ import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.genomics.gatk.common.GenomicsConverter;
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -25,6 +39,9 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     private static final long serialVersionUID = 1L;
 
     private final Read genomicsRead;
+
+    private final static String SAM_FIELD_SEPARATOR = "\t";
+    private final static String SAM_ATTRIBUTE_SEPARATOR = ":";
 
     public GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead ) {
         this.genomicsRead = genomicsRead;
@@ -121,6 +138,10 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             throw new IllegalArgumentException("contig must be non-null and not equal to " + SAMRecord.NO_ALIGNMENT_REFERENCE_NAME + ", and start must be >= 1");
         }
 
+        // NOTE: this implementation will retain the previous value of the mate reverseStrandFlag if one
+        // is already set. We should probably unset it here. However, once it is unset, an exception will
+        // be thrown when querying the value, and I don't think we have a guard method that can tell if its
+        // safe to call.
         makePositionIfNecessary();
 
         genomicsRead.getAlignment().getPosition().setReferenceName(contig);
@@ -181,6 +202,10 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         // Calling this method has the additional effect of marking the read as paired
         setIsPaired(true);
 
+        // NOTE: this implementation will retain the previous value of the mate reverseStrandFlag if one
+        // is already set. We should probably unset it here. However, once it is unset, an exception will
+        // be thrown when querying the value, and I don't think we have a guard method that can tell if its
+        // safe to call.
         makeMatePositionIfNecessary();
         genomicsRead.getNextMatePosition().setReferenceName(contig);
         // Convert from a 1-based to a 0-based position
@@ -327,6 +352,9 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
     @Override
     public void setIsPaired( final boolean isPaired ) {
+        // Setting isPaired==false changes numberOfReads to 1, but the GenomicsConverter will
+        // still set the isFirstOfPair flag unless the readNumber is 1.
+        // https://github.com/broadinstitute/hellbender/issues/891
         genomicsRead.setNumberReads(isPaired ? 2 : 1);
         if ( ! isPaired ) {
             genomicsRead.setProperPlacement(false);
@@ -595,6 +623,41 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         return new GoogleGenomicsReadToGATKReadAdapter(genomicsRead.clone());
     }
 
+    /**
+     * Return a SAM string representation of this read.
+     */
+    @Override
+    public String getSAMString() {
+        final String contigName = getContig();
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append(getName());
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(Integer.toString(ReadUtils.getSAMFlagsForRead(this)));
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(null == contigName ? SAMRecord.NO_ALIGNMENT_REFERENCE_NAME : contigName);
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(Integer.toString(getStart()));
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(Integer.toString(getMappingQuality()));
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(getCigar().toString());
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(getMateContigDisplayString(contigName));
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(isPaired() ? Integer.toString(getMateStart()) : ReadConstants.UNSET_POSITION);
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(Integer.toString(getFragmentLength())); // getInferredInsertSize
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(getBasesString());
+        sb.append(SAM_FIELD_SEPARATOR);
+        sb.append(ReadUtils.getBaseQualityString(this));
+        sb.append(getAttributesDisplayString());
+
+        sb.append("\n");
+        return sb.toString();
+    }
+
     @Override
     public SAMRecord convertToSAMRecord( final SAMFileHeader header ) {
         // TODO: this converter is imperfect and should either be patched or replaced completely.
@@ -622,6 +685,50 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         return genomicsRead != null ? genomicsRead.hashCode() : 0;
     }
 
+    private String getMateContigDisplayString(final String contigName) {
+        String mateContigString;
+        if (!isPaired()) {
+            mateContigString = SAMRecord.NO_ALIGNMENT_REFERENCE_NAME;
+        }
+        else {
+            final String mateContigName = getMateContig();
+            if (null == mateContigName) {
+                mateContigString = SAMRecord.NO_ALIGNMENT_REFERENCE_NAME;
+            }
+            else if (null != contigName &&
+                    !contigName.equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) &&
+                    contigName.equals(mateContigName)) {
+                mateContigString = "=";
+            }
+            else {
+                mateContigString = mateContigName;
+            }
+        }
+        return mateContigString;
+    }
+
+    private String getAttributesDisplayString() {
+        final StringBuilder sb = new StringBuilder();
+        if (null != genomicsRead.getInfo()) {
+            final TreeSet<String> sortedAttributes = new TreeSet<>();
+            final Set<String> keys = genomicsRead.getInfo().keySet();
+            sortedAttributes.addAll(keys);
+            // Add the RG attribute if necessary since its not returned by read.getInfo
+            if (getReadGroup() != null) {
+                sortedAttributes.add(SAMTag.RG.name());
+            }
+            for (String key: sortedAttributes) {
+                sb.append(SAM_FIELD_SEPARATOR);
+                sb.append(key
+                        + SAM_ATTRIBUTE_SEPARATOR
+                        + GenomicsConverter.getTagType(key)
+                        + SAM_ATTRIBUTE_SEPARATOR
+                        + resolveAttributeValue(keys, key)); // resolve readGroup value if necessary
+            }
+        }
+        return sb.toString();
+    }
+
     // TODO: Remove once https://github.com/broadinstitute/hellbender/issues/650 is solved.
     private void workAroundHttpClientCloneBug() {
         final List<Integer> alignedQuality = genomicsRead.getAlignedQuality();
@@ -640,4 +747,18 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             alignment.setCigar(new ArrayList<>(alignment.getCigar()));
         }
     }
+
+    private String resolveAttributeValue(Set<String> keys, String key) {
+        String attributeValue;
+        if (keys.contains(key)) {
+            attributeValue = getAttributeAsString(key);
+        } else if (key.equals(SAMTag.RG.name())) {
+            attributeValue = getReadGroup();
+        }
+        else {
+            throw new GATKException.ShouldNeverReachHereException("Unresolvable attribute value: " + key);
+        }
+        return attributeValue;
+    }
+
 }

@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.util.Arrays;
@@ -89,6 +90,36 @@ public final class ReadUtils {
         }
         final String oqString = read.getAttributeAsString(ORIGINAL_BASE_QUALITIES_TAG);
         return oqString.length() > 0 ? SAMUtils.fastqToPhred(oqString) : null;
+    }
+
+    /**
+     * Returns the base qualities for the read as a string.
+     *
+     * @param read read whose base qualities should be returned
+     * @return Base qualities string as printable ASCII values (encoded as a FASTQ string).
+     */
+    public static String getBaseQualityString( final GATKRead read ) {
+        Utils.nonNull(read);
+        if ( Arrays.equals(SAMRecord.NULL_QUALS, read.getBaseQualities()) ) {
+            return SAMRecord.NULL_QUALS_STRING;
+        }
+        return SAMUtils.phredToFastq(read.getBaseQualities());
+    }
+
+    /**
+     * Set the base qualities from a string of ASCII encoded values
+     * @param read read whose base qualities should be set
+     * @param baseQualityString ASCII encoded (encoded as a FASTQ string) values of base qualities.
+     */
+    public static void setBaseQualityString(final GATKRead read, final String baseQualityString) {
+        Utils.nonNull(read);
+        Utils.nonNull(baseQualityString);
+
+        if ( SAMRecord.NULL_QUALS_STRING.equals(baseQualityString) ) {
+            read.setBaseQualities(SAMRecord.NULL_QUALS);
+        } else {
+            read.setBaseQualities(SAMUtils.fastqToPhred(baseQualityString));
+        }
     }
 
     /**
@@ -284,7 +315,7 @@ public final class ReadUtils {
         if ( read.isPaired() && read.mateIsUnmapped() ) {
             samFlags |= SAM_MATE_UNMAPPED_FLAG;
         }
-        if ( read.isReverseStrand() ) {
+        if ( !read.isUnmapped() && read.isReverseStrand() ) {
             samFlags |= SAM_READ_STRAND_FLAG;
         }
         if ( read.isPaired() && ! read.mateIsUnmapped() && read.mateIsReverseStrand() ) {
