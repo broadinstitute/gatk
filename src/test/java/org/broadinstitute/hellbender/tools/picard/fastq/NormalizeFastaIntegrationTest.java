@@ -16,7 +16,7 @@ import java.io.IOException;
 
 public final class NormalizeFastaIntegrationTest extends CommandLineProgramTest {
 
-    private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/fastq/NormalizeFasta" );
+    private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/fasta/" );
 
     public String getTestedClassName() {
         return NormalizeFasta.class.getSimpleName();
@@ -26,7 +26,7 @@ public final class NormalizeFastaIntegrationTest extends CommandLineProgramTest 
     public void testNormalize () throws IOException {
 
         final File input = new File(TEST_DATA_PATH, "exampleFASTA.fasta");
-        final File expectedFile = new File(TEST_DATA_PATH, "Normalizedexp1.fasta");
+        final File expectedFile = new File(TEST_DATA_PATH, "Normalizedexp.fasta");
         final File outfile = BaseTest.createTempFile("normalized", ".fasta");
 
         final String[] args = {
