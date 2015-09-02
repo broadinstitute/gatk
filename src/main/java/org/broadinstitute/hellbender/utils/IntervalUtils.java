@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.tools.picard.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
