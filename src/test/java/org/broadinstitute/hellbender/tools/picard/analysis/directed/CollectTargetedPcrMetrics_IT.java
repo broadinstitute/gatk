@@ -12,7 +12,7 @@ import java.io.IOException;
  */
 public final class CollectTargetedPcrMetrics_IT extends CommandLineProgramTest {
 
-    private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/analysis/directed" );
+    private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/analysis/Collect_Targeted_PCR_Metrics" );
 
     public String getTestedClassName() {
         return CollectTargetedPcrMetrics.class.getSimpleName();
@@ -22,16 +22,18 @@ public final class CollectTargetedPcrMetrics_IT extends CommandLineProgramTest {
     public void testCollect () throws IOException {
 
         final File input = new File(TEST_DATA_PATH, "first5000a.bam");
-        final File amplicon_intervals = new File(TEST_DATA_PATH, "intervallist_copy.vcf");
-        final File target_intervals = new File(TEST_DATA_PATH, "intervallist_copy.vcf");
-        final File expectedFile = new File(TEST_DATA_PATH, "PCRMetrics.txt");
-        final File outfile = BaseTest.createTempFile("PCRmetrics", ".txt");
+        final File amplicon_intervals = new File(TEST_DATA_PATH, "intervallist.vcf");
+        final File target_intervals = new File(TEST_DATA_PATH, "intervallist.vcf");
+        final File expectedFile = new File(TEST_DATA_PATH, "PCRMetrics_2.txt");
+        final File outfile = BaseTest.createTempFile("PCRMetrics", ".txt");
+        final File reference = new File(TEST_DATA_PATH, "human_b37_20.fasta");
 
         final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
-                "--Amplicon_Intervals", amplicon_intervals.getAbsolutePath(),
-                "--Target_Intervals", target_intervals.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath()
+                "--AI", amplicon_intervals.getAbsolutePath(),
+                "--TI", target_intervals.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--R", reference.getAbsolutePath() ,
         };
 
         runCommandLine(args);
