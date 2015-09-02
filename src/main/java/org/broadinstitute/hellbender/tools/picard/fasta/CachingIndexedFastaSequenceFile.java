@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.fasta;
+package org.broadinstitute.hellbender.tools.picard.fasta;
 
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMSequenceRecord;
