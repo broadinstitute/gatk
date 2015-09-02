@@ -14,13 +14,12 @@ import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.tools.picard.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.read.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.function.UnaryOperator;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
