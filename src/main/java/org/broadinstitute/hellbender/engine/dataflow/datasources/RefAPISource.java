@@ -16,6 +16,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -141,6 +143,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
               throw new UserException("Query to genomics service failed for reference interval " + interval, e);
           }
       }
+
 
     /**
      * Return a sequence dictionary for the reference.
@@ -276,10 +279,10 @@ public class RefAPISource implements ReferenceSource, Serializable {
 
     private Genomics createGenomicsService(final PipelineOptions pipelineOptions) {
         try {
-            final GenomicsFactory.OfflineAuth auth = GenomicsOptions.Methods.getGenomicsAuth(pipelineOptions.as(GCSOptions.class));
+            final GenomicsFactory.OfflineAuth auth = DataflowCommandLineProgram.HellbenderDataflowOptions.Methods.getOfflineAuth(pipelineOptions.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class));
             return auth.getGenomics(auth.getDefaultFactory());
         }
-        catch ( GeneralSecurityException e ) {
+        catch ( GeneralSecurityException|ClassNotFoundException e ) {
             throw new UserException("Authentication failed for Google genomics service", e);
         }
         catch ( IOException e ) {
@@ -297,6 +300,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
         }
         stream.writeObject(referenceNameToIdTable);
     }
+    
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         JsonFactory jsonFactory = com.google.api.client.googleapis.util.Utils.getDefaultJsonFactory();
         final Map<String, Reference> refs = new HashMap<>();
