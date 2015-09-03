@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.tools.picard.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.Reporter;
