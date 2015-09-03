@@ -4,19 +4,16 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 
 /**
- * Created by dkling on 9/1/15.
+ * Created by dkling on 9/3/15.
  */
-public final class CollectTargetedPcrMetrics_IT extends CommandLineProgramTest {
-
+public final class CollectTargetedPcrMetricsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/analysis/Collect_Targeted_PCR_Metrics/");
 
-    public String getTestedClassName() {
-        return CollectTargetedPcrMetrics.class.getSimpleName();
-    }
 
     @Test
     public void testCollect () throws IOException {
@@ -40,5 +37,4 @@ public final class CollectTargetedPcrMetrics_IT extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
 
     }
-
 }
