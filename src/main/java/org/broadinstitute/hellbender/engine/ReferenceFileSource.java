@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.tools.picard.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
 import java.io.File;
 import java.io.IOException;

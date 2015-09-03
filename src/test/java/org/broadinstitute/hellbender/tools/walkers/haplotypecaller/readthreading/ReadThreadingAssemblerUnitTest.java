@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVer
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.tools.picard.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
