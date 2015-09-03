@@ -1,0 +1,2 @@
+both_reads_present_only_first_aligns
+
