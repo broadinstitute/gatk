@@ -12,15 +12,24 @@ import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.security.GeneralSecurityException;
 
 
 public abstract class DataflowCommandLineProgram extends CommandLineProgram implements Serializable {
@@ -28,7 +37,44 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     // We need authentication options from GCSOptions, and Dataflow options from DataflowPipelineOptions.
     // Neither inherits from the other, so we have to put them together like this.
-    public interface HellbenderDataflowOptions extends GCSOptions, DataflowPipelineOptions {}
+    //
+    // This also includes code to save the OfflineAuth onto the pipelineoptions, so we can get to them later.
+    // You see, GCSOptions will store the API Key and the path to client-secrets.json, but the latter
+    // doesn't help us if we call createCredentials on the worker (because it won't be able to find
+    // the client-secrets file). So here instead we create the OfflineAuth first (which has the
+    // contents of the file, if one was specified) and stash that in the options.
+    // This guarantees that anyone can call HellbenderDataflowOptions.Methods.getOfflineAuth and
+    // succeed.
+    public interface HellbenderDataflowOptions extends GCSOptions, DataflowPipelineOptions {
+
+        public static class Methods {
+            public static void setOfflineAuth(HellbenderDataflowOptions opts, GenomicsFactory.OfflineAuth auth) throws IOException {
+                ByteArrayOutputStream os = new ByteArrayOutputStream();
+                try (ObjectOutputStream oos = new ObjectOutputStream(os)) {
+                    oos.writeObject(auth);
+                    oos.flush();
+                }
+                opts.setSerializedOfflineAuth(os.toByteArray());
+            }
+            public static GenomicsFactory.OfflineAuth getOfflineAuth(HellbenderDataflowOptions opts) throws IOException, ClassNotFoundException, GeneralSecurityException {
+                byte[] serialized = opts.getSerializedOfflineAuth();
+                if (null==serialized && opts.getApiKey()!=null) {
+                    // fall back to using the API key only (even if a secrets file was also specified).
+                    GenomicsFactory.Builder builder =
+                        GenomicsFactory.builder(opts.getAppName()).setNumberOfRetries(opts.getNumberOfRetries());
+                    return builder.build().getOfflineAuthFromApiKey(opts.getApiKey());
+                }
+                try (ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(serialized))) {
+                    return (GenomicsFactory.OfflineAuth)(is.readObject());
+                }
+            }
+        }
+
+        // you don't need to call those directly, use the helper methods in Methods instead.
+        void setSerializedOfflineAuth(byte[] auth);
+        byte[] getSerializedOfflineAuth();
+
+    }
 
     protected enum PipelineRunnerType implements CommandLineParser.ClpEnum {
         LOCAL(DirectPipelineRunner.class, "run the pipeline locally"),
@@ -118,6 +164,10 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             options.setProject(projectID);
             options.setStagingLocation(stagingLocation);
             options.setRunner(this.runnerType.runner);
+            // n1-standard-4 is 4x the RAM and 4x the CPUs as the default machine, at only 4x the price.
+            options.setWorkerMachineType("n1-standard-1");
+            // this is new code. If there's a problem, odds are it's our fault and retrying won't help.
+            options.setNumberOfRetries(0);
             if (numWorkers!=0) {
                 options.setNumWorkers(numWorkers);
             }
@@ -127,6 +177,17 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
                 logger.info("Loading " + clientSecret.getName());
                 options.setSecretsFile(clientSecret.getAbsolutePath());
             }
+            if (apiKey!=null || clientSecret != null) {
+                // put a serialized version of the credentials in the pipelineOptions, so we can get to it later.
+                try {
+                    GenomicsFactory.OfflineAuth auth = GCSOptions.Methods.createGCSAuth(options);
+                    HellbenderDataflowOptions.Methods.setOfflineAuth(options, auth);
+                } catch (Exception x) {
+                    throw new GATKException("Error with credentials",x);
+                }
+            }
+            String name = jobName();
+            if (null!=name) options.setJobName(name);
             return options;
         } else {
             final SparkPipelineOptions options = PipelineOptionsFactory.as(SparkPipelineOptions.class);
@@ -167,6 +228,14 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
      * Override this to run code after the pipeline returns.
      */
     protected void afterPipeline(Pipeline pipeline) {}
+
+    /**
+     * Override to pick a name for the pipeline.
+     * Note that Dataflow requires the name to be unique among running jobs.
+     */
+    protected String jobName() {
+        return null;
+    }
 
     // ---------------------------------------------------
     // Helpers
