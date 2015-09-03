@@ -12,7 +12,7 @@ import java.io.IOException;
  */
 public final class CollectTargetedPcrMetrics_IT extends CommandLineProgramTest {
 
-    private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/analysis/Collect_Targeted_PCR_Metrics" );
+    private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/analysis/Collect_Targeted_PCR_Metrics/");
 
     public String getTestedClassName() {
         return CollectTargetedPcrMetrics.class.getSimpleName();
