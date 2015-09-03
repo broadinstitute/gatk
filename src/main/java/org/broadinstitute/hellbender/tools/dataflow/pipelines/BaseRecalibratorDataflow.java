@@ -250,7 +250,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
     private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
         Utils.nonNull(refDictionary);
         Utils.nonNull(readsDictionary);
-        SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary, true);
+        SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
     }
 
 
