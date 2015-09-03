@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.fasta;
+package org.broadinstitute.hellbender.utils.fasta;
 
 
 // the imports for unit testing.
