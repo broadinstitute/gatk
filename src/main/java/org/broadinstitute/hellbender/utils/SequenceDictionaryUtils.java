@@ -55,40 +55,63 @@ public class SequenceDictionaryUtils {
         UNEQUAL_COMMON_CONTIGS,         // common subset has contigs that have the same name but different lengths
         NON_CANONICAL_HUMAN_ORDER,      // human reference detected but the order of the contigs is non-standard (lexicographic, for example)
         OUT_OF_ORDER,                   // the two dictionaries overlap but the overlapping contigs occur in different
-        // orders with respect to each other
+                                        // orders with respect to each other
         DIFFERENT_INDICES               // the two dictionaries overlap and the overlapping contigs occur in the same
-        // order with respect to each other, but one or more of them have different
-        // indices in the two dictionaries. Eg., { chrM, chr1, chr2 } vs. { chr1, chr2 }
+                                        // order with respect to each other, but one or more of them have different
+                                        // indices in the two dictionaries. Eg., { chrM, chr1, chr2 } vs. { chr1, chr2 }
     }
 
     /**
      * Tests for compatibility between two sequence dictionaries.  If the dictionaries are incompatible, then
      * UserExceptions are thrown with detailed error messages.
-     * Two sequence dictionaries are compatible if they have the same names and lengths for contigs, or share some contigs.
+     *
+     * Two sequence dictionaries are compatible if they share a common subset of equivalent contigs,
+     * where equivalent contigs are defined as having the same name and length.
+     *
+     * This version of validateDictionaries does not check whether common contigs occur at the same absolute
+     * indices, and does not require that dict1 be a superset of dict2.
      *
      * @param name1 name associated with dict1
      * @param dict1 the sequence dictionary dict1
      * @param name2 name associated with dict2
      * @param dict2 the sequence dictionary dict2
-     * @param isReadsToReferenceComparison true if one of the dictionaries comes from a reads data source (eg., a BAM),
-     *                                     and the other from a reference data source
-     * @param intervals the user-specified genomic intervals: only required when isReadsToReferenceComparison is true,
-     *                  otherwise can be null
+     */
+    public static void validateDictionaries( final String name1,
+                                             final SAMSequenceDictionary dict1,
+                                             final String name2,
+                                             final SAMSequenceDictionary dict2 ) {
+        validateDictionaries(name1, dict1, name2, dict2, false, false);
+    }
+
+    /**
+     * Tests for compatibility between two sequence dictionaries.  If the dictionaries are incompatible, then
+     * UserExceptions are thrown with detailed error messages.
+     *
+     * Two sequence dictionaries are compatible if they share a common subset of equivalent contigs,
+     * where equivalent contigs are defined as having the same name and length.
+     *
+     * @param name1 name associated with dict1
+     * @param dict1 the sequence dictionary dict1
+     * @param name2 name associated with dict2
+     * @param dict2 the sequence dictionary dict2
+     * @param requireSuperset if true, require that dict1 be a superset of dict2, rather than dict1 and dict2 sharing a common subset
+     * @param checkContigIndices if true, check whether common contigs occur at the same absolute indices in each dictionary
      */
     public static void validateDictionaries( final String name1,
                                              final SAMSequenceDictionary dict1,
                                              final String name2,
                                              final SAMSequenceDictionary dict2,
-                                             final boolean isReadsToReferenceComparison ) {
+                                             final boolean requireSuperset,
+                                             final boolean checkContigIndices ) {
 
-        final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2);
+        final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2, checkContigIndices);
 
         switch ( type ) {
             case IDENTICAL:
                 return;
             case COMMON_SUBSET:
-                if (isReadsToReferenceComparison) {
-                    throw new UserException.IncompatibleSequenceDictionaries("Reference is missing contigs found in reads", name1, dict1, name2, dict2);
+                if ( requireSuperset ) {
+                    throw new UserException.IncompatibleSequenceDictionaries(String.format("Dictionary %s is missing contigs found in dictionary %s", name1, name2), name1, dict1, name2, dict2);
                 }
                 return;
             case SUPERSET:
@@ -122,32 +145,24 @@ public class SequenceDictionaryUtils {
 
             case OUT_OF_ORDER: {
                 UserException ex = new UserException.IncompatibleSequenceDictionaries(
-                        "The relative ordering of the common contigs in " + name1 + " and " + name2 +
+                                "The relative ordering of the common contigs in " + name1 + " and " + name2 +
                                 " is not the same; to fix this please see: "
                                 + "(https://www.broadinstitute.org/gatk/guide/article?id=1328), "
                                 + " which describes reordering contigs in BAM and VCF files.",
-                        name1, dict1, name2, dict2);
+                                name1, dict1, name2, dict2);
                 throw ex;
             }
 
             case DIFFERENT_INDICES: {
-
-                // This is currently only known to be problematic when the index mismatch is between a bam and the
-                // reference AND when the user's intervals actually include one or more of the contigs that are
-                // indexed differently from the reference. In this case, the engine will fail to correctly serve
-                // up the reads from those contigs, so throw an exception.
-                if ( isReadsToReferenceComparison ) {
-                    final String msg = "Some contigs have " +
-                            "different indices in the sequence dictionaries for the reads vs. " +
-                            "the reference.  As a result, the GATK engine will not correctly " +
-                            "process reads from these contigs. You should either fix the sequence " +
-                            "dictionaries for your reads so that these contigs have the same indices " +
-                            "as in the sequence dictionary for your reference, or exclude these contigs " +
-                            "from your intervals.";
-                    final UserException ex = new UserException.IncompatibleSequenceDictionaries(msg, name1, dict1, name2, dict2);
-                    throw ex;
-                }
-                break;
+                // We only get DIFFERENT_INDICES if the caller explicitly requested that we check contig indices,
+                // so we should always throw when we see it.
+                final String msg = "One or more contigs common to both dictionaries have " +
+                        "different indices (ie., absolute positions) in each dictionary. Code " +
+                        "that is sensitive to contig ordering can fail when this is the case. " +
+                        "You should fix the sequence dictionaries so that all shared contigs " +
+                        "occur at the same absolute positions in both dictionaries.";
+                final UserException ex = new UserException.IncompatibleSequenceDictionaries(msg, name1, dict1, name2, dict2);
+                throw ex;
             }
             default:
                 throw new GATKException("Unexpected SequenceDictionaryComparison type: " + type);
@@ -157,28 +172,48 @@ public class SequenceDictionaryUtils {
     /**
      * Workhorse routine that takes two dictionaries and returns their compatibility.
      *
+     * This version does not check whether common contigs occur at the same absolute indices in each dictionary.
+     *
      * @param dict1 first sequence dictionary
      * @param dict2 second sequence dictionary
      * @return A SequenceDictionaryCompatibility enum value describing the compatibility of the two dictionaries
      */
-    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2) {
+    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2 ) {
+        return compareDictionaries(dict1, dict2, false);
+    }
+
+    /**
+     * Workhorse routine that takes two dictionaries and returns their compatibility.
+     *
+     * @param dict1 first sequence dictionary
+     * @param dict2 second sequence dictionary
+     * @param checkContigIndices if true, check whether the common contigs occur at the same absolute indices
+     * @return A SequenceDictionaryCompatibility enum value describing the compatibility of the two dictionaries
+     */
+    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2, final boolean checkContigIndices ) {
         if ( nonCanonicalHumanContigOrder(dict1) || nonCanonicalHumanContigOrder(dict2) )
             return SequenceDictionaryCompatibility.NON_CANONICAL_HUMAN_ORDER;
 
         final Set<String> commonContigs = getCommonContigsByName(dict1, dict2);
 
-        if (commonContigs.size() == 0)
+        if (commonContigs.size() == 0) {
             return SequenceDictionaryCompatibility.NO_COMMON_CONTIGS;
-        else if ( ! commonContigsHaveSameLengths(commonContigs, dict1, dict2) )
+        }
+        else if ( ! commonContigsHaveSameLengths(commonContigs, dict1, dict2) ) {
             return SequenceDictionaryCompatibility.UNEQUAL_COMMON_CONTIGS;
-        else if ( ! commonContigsAreInSameRelativeOrder(commonContigs, dict1, dict2) )
+        }
+        else if ( ! commonContigsAreInSameRelativeOrder(commonContigs, dict1, dict2) ) {
             return SequenceDictionaryCompatibility.OUT_OF_ORDER;
-        else if ( commonContigs.size() == dict1.size() && commonContigs.size() == dict2.size() )
+        }
+        else if ( commonContigs.size() == dict1.size() && commonContigs.size() == dict2.size() ) {
             return SequenceDictionaryCompatibility.IDENTICAL;
-        else if ( ! commonContigsAreAtSameIndices(commonContigs, dict1, dict2) )
+        }
+        else if ( checkContigIndices && ! commonContigsAreAtSameIndices(commonContigs, dict1, dict2) ) {
             return SequenceDictionaryCompatibility.DIFFERENT_INDICES;
-        else if ( supersets(dict1, dict2))
+        }
+        else if ( supersets(dict1, dict2) ) {
             return SequenceDictionaryCompatibility.SUPERSET;
+        }
         else {
             return SequenceDictionaryCompatibility.COMMON_SUBSET;
         }
@@ -186,16 +221,22 @@ public class SequenceDictionaryUtils {
 
 
     /**
-     * Utility function that tests whether dict1's set of contigs supersets dict2's
+     * Utility function that tests whether dict1's set of contigs is a superset of dict2's
      *
-     * @param dict1
-     * @param dict2
+     * @param dict1 first sequence dictionary
+     * @param dict2 second sequence dictionary
      * @return true if dict1's set of contigs supersets dict2's
      */
-    private static boolean supersets(SAMSequenceDictionary dict1, SAMSequenceDictionary dict2) {
-        Set<SAMSequenceRecord> setOne = new HashSet<>(dict1.getSequences());
-        Set<SAMSequenceRecord> setTwo = new HashSet<>(dict2.getSequences());
-        return setOne.containsAll(setTwo);
+    private static boolean supersets( SAMSequenceDictionary dict1, SAMSequenceDictionary dict2 ) {
+        // Cannot rely on SAMSequenceRecord.equals() as it's too strict (takes extended attributes into account).
+        for ( final SAMSequenceRecord dict2Record : dict2.getSequences() ) {
+            final SAMSequenceRecord dict1Record = dict1.getSequence(dict2Record.getSequenceName());
+            if ( dict1Record == null || ! sequenceRecordsAreEquivalent(dict2Record, dict1Record) ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 
@@ -234,35 +275,22 @@ public class SequenceDictionaryUtils {
     }
 
     /**
-     * Helper routine that returns two sequence records are equivalent, defined as having the same name and
-     * lengths, if both are non-zero
+     * Helper routine that returns whether two sequence records are equivalent, defined as having the same name and
+     * lengths
      *
-     * @param me
-     * @param that
-     * @return
+     * @param first first sequence record to compare
+     * @param second second sequence record to compare
+     * @return true if first and second have the same names and lengths, otherwise false
      */
-    private static boolean sequenceRecordsAreEquivalent(final SAMSequenceRecord me, final SAMSequenceRecord that) {
-        if (me == that) return true;
-        if (that == null) return false;
-
-        if (me.getSequenceLength() != 0 && that.getSequenceLength() != 0 && me.getSequenceLength() != that.getSequenceLength())
+    private static boolean sequenceRecordsAreEquivalent(final SAMSequenceRecord first, final SAMSequenceRecord second) {
+        if ( first == second ) {
+            return true;
+        }
+        if ( first == null || second == null ) {
             return false;
+        }
 
-        // todo -- reenable if we want to be really strict here
-//        if (me.getExtendedAttribute(SAMSequenceRecord.MD5_TAG) != null && that.getExtendedAttribute(SAMSequenceRecord.MD5_TAG) != null) {
-//            final BigInteger thisMd5 = new BigInteger((String)me.getExtendedAttribute(SAMSequenceRecord.MD5_TAG), 16);
-//            final BigInteger thatMd5 = new BigInteger((String)that.getExtendedAttribute(SAMSequenceRecord.MD5_TAG), 16);
-//            if (!thisMd5.equals(thatMd5)) {
-//                return false;
-//            }
-//        }
-//        else {
-        // serialization/deserialization breaks the internalization, so we must use equals.
-        if (!(me.getSequenceName() .equals(that.getSequenceName())))
-            return false; // Compare using == since we intern() the Strings
-//        }
-
-        return true;
+        return first.getSequenceLength() == second.getSequenceLength() && first.getSequenceName().equals(second.getSequenceName());
     }
 
     /**

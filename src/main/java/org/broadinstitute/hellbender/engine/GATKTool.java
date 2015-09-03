@@ -276,8 +276,16 @@ public abstract class GATKTool extends CommandLineProgram {
      * Currently, read dict is checked against
      * ref dict, and both are checked against any variant header dicts. No interval dicts are checked at this time.
      *
+     * The reference dictionary is required to be a superset of the reads dictionary if there is at least
+     * one cram input; otherwise, all dictionaries are required to have a common subset of equivalent contigs,
+     * and these common contigs must occur in the same relative order (absolute position/index does not matter).
      */
     private void validateSequenceDictionaries() {
+        // We are not requiring common contigs to occur at the same index/absolute position across dictionaries.
+        final boolean checkContigIndices = false;
+        // If there is at least one cram input, we require the reference dictionary to be a superset of the reads dictionary.
+        final boolean requireReferenceIsSupersetOfReads = hasCramInput();
+
         final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
         final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
         List<SAMSequenceDictionary> variantDicts = new ArrayList<>();
@@ -290,9 +298,10 @@ public abstract class GATKTool extends CommandLineProgram {
                 }
             }
         }
+
         //check reference dict against reads dict
         if (hasReference() && hasReads()) {
-            SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, true);
+            SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, requireReferenceIsSupersetOfReads, checkContigIndices);
         }
 
         //check all variants dicts against the ref and/or read dicts, as well as the
@@ -300,14 +309,14 @@ public abstract class GATKTool extends CommandLineProgram {
         for (int k = 0; k < variantDicts.size(); k++){
             String name = "variants" + (k+1);
             if (hasReference()){
-                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false);
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false, checkContigIndices);
             }
             if (hasReads()) {
-                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false);
+                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false, checkContigIndices);
             }
             if (k+1 < variantDicts.size()) {
                 String name2 = "variants" + (k+2);
-                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false);
+                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false, checkContigIndices);
             }
         }
 
