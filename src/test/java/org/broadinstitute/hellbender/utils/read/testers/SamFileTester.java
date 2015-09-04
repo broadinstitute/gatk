@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
 import java.io.File;
 import java.util.*;
@@ -20,6 +21,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private int readNameCounter = 0;
     private boolean noMateCigars = false;
     private boolean deleteOnExit = true;
+    private boolean useStandardInputNames = false;
     private final List<String> args = new ArrayList<>();
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy) {
@@ -31,6 +33,11 @@ public abstract class SamFileTester extends CommandLineProgramTest {
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength) {
         this(readLength, deleteOnExit, defaultChromosomeLength, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+    }
+
+  public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, boolean useStandardInputNames) {
+        this(readLength, deleteOnExit, defaultChromosomeLength, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+        this.useStandardInputNames = true;
     }
 
     public void setHeader(final SAMFileHeader header) {
@@ -73,7 +80,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private void setOutputDir() {
         this.outputDir = IOUtil.createTempDir(this.getClass().getSimpleName() + ".", ".tmp");
         if (deleteOnExit) {
-            outputDir.deleteOnExit();
+          outputDir.deleteOnExit();
         }
     }
 
@@ -255,18 +262,22 @@ public abstract class SamFileTester extends CommandLineProgramTest {
      */
     public void runTest() {
         final File input = createInputFile();
-
         output = new File(outputDir, "output.sam");
-        addArg("--INPUT", input.getAbsolutePath());
-        addArg("--OUTPUT", output.getAbsolutePath());
+        if (useStandardInputNames) {
+          addArg("--" + StandardArgumentDefinitions.INPUT_LONG_NAME, input.getAbsolutePath());
+          addArg("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, output.getAbsolutePath());
+        } else {
+          addArg("--INPUT", input.getAbsolutePath());
+          addArg("--OUTPUT", output.getAbsolutePath());
+        }
         runCommandLine(args);
         test();
     }
 
     private File createInputFile() {
         // Create the input file
-        final File input = new File(outputDir, "input.sam");
-        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(samRecordSetBuilder.getHeader(), true, input)) {
+        final File input = new File(outputDir, "input.bam");
+        try (final SAMFileWriter writer = new SAMFileWriterFactory().setCreateIndex(true).makeBAMWriter(samRecordSetBuilder.getHeader(), true, input)) {
             for (final SAMRecord record : samRecordSetBuilder.getRecords()) {
                 writer.addAlignment(record);
             }
