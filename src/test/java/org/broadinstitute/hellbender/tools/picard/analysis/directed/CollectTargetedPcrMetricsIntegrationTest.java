@@ -31,7 +31,6 @@ public final class CollectTargetedPcrMetricsIntegrationTest extends CommandLineP
         final File pertargetcoverage = new File(TEST_DATA_PATH, "pcr_metrics_pertarg_new.txt");
 
 
-
         final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--AI", amplicon_intervals.getAbsolutePath(),
