@@ -13,7 +13,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 public final class CollectBaseDistributionByCycleIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectBaseDistributionByCycle");
 
-    @Test(groups = {"R"})
+    @Test
     public void test() throws IOException {
         final File input = new File(TEST_DATA_DIR, "first5000a.bam");
         final File expectedFile = new File(TEST_DATA_DIR, "CollectBaseDistributionByCycle.txt");
@@ -29,7 +29,7 @@ public final class CollectBaseDistributionByCycleIntegrationTest extends Command
         };
         runCommandLine(args);
 
-        try (final FileReader actualReader = new FileReader(outfile);) {
+        try (final FileReader actualReader = new FileReader(outfile)) {
             final MetricsFile<?,Integer> output = new MetricsFile<>();
             output.read(actualReader);
             Assert.assertEquals(output.getMetrics().size(), 202);
