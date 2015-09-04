@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.collections4.list.SetUniqueList;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -10,12 +11,11 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Created by davidben on 7/17/15.
- */
+
 public final class TargetCoverageUtils {
     private static final String TARGET_NAME_COLUMN = "name";
     private static final String CONTIG_COLUMN = "contig";
@@ -92,5 +92,28 @@ public final class TargetCoverageUtils {
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
+    }
+
+    /**
+     *  Create a new ReadCountCollection that uses the column names for target coverage.
+     *
+     * @param originalReadCountCollection -- read count collection to be converted
+     * @return a copy of the read count collection with updated column names.
+     */
+    public static ReadCountCollection createReadCountCollection(ReadCountCollection originalReadCountCollection) {
+        // Change the column names to match the original format
+        final HashMap<String, String> replaceNames = new HashMap<>();
+        replaceNames.put(ExomeReadCounts.EXON_CONTIG_COLUMN_NAME, TargetCoverageUtils.CONTIG_COLUMN);
+        replaceNames.put(ExomeReadCounts.EXON_NAME_COLUMN_NAME, TargetCoverageUtils.TARGET_NAME_COLUMN);
+        replaceNames.put(ExomeReadCounts.EXON_START_COLUMN_NAME, TargetCoverageUtils.START_COLUMN);
+        replaceNames.put(ExomeReadCounts.EXON_END_COLUMN_NAME, TargetCoverageUtils.END_COLUMN);
+
+        final List<String> updatedColumnNames = originalReadCountCollection.columnNames().stream().
+                map(col -> replaceNames.getOrDefault(col, col)).collect(Collectors.toList());
+
+        return new ReadCountCollection(
+                SetUniqueList.setUniqueList(originalReadCountCollection.targets()),
+                SetUniqueList.setUniqueList(updatedColumnNames),
+                originalReadCountCollection.counts());
     }
 }

@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -383,10 +384,14 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
     /**
      * Writes the tangent-factor normalized outputs.
+     *
+     * Please note that this file is written in the target format originally used in recapseg.
+     *
      * @param tangentNormalized the read count collection to write.
      */
     private void writeTangentNormalizedOutput(final ReadCountCollection tangentNormalized) {
-        writeOutput(outFile,tangentNormalized,"Tangent normalized target counts");
+        final ReadCountCollection updatedReadCountCollection = TargetCoverageUtils.createReadCountCollection(tangentNormalized);
+        writeOutput(outFile, updatedReadCountCollection, "Tangent normalized target counts");
     }
 
     private void writeOutput(final File file, final ReadCountCollection counts, final String title) {
