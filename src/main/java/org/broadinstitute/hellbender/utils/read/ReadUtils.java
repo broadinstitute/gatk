@@ -270,7 +270,7 @@ public final class ReadUtils {
         if ( read.isReverseStrand() ) {
             samFlags |= SAM_READ_STRAND_FLAG;
         }
-        if ( read.mateIsReverseStrand() ) {
+        if ( ! read.mateIsUnmapped() && read.mateIsReverseStrand() ) {
             samFlags |= SAM_MATE_STRAND_FLAG;
         }
         if ( read.isFirstOfPair() ) {

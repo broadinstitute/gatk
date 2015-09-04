@@ -25,6 +25,23 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
         this.uuid = uuid;
     }
 
+    VariantContextVariantAdapter(VariantContext vc, UUID uuid) {
+        this.variantContext = vc;
+        this.uuid = uuid;
+    }
+
+    /**
+     * Produces a VariantContextVariantAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
+     * and loading the variants twice (which can happen when caching is missing) prevents joining.
+     * @param vc VariantContext to adapt
+     * @return adapted VariantContext.
+     */
+    public static Variant sparkVariantAdapter(VariantContext vc) {
+        return new VariantContextVariantAdapter(vc, new UUID(0L, 0L));
+    }
+
+
+
     @Override
     public String getContig() { return variantContext.getContig(); }
     @Override

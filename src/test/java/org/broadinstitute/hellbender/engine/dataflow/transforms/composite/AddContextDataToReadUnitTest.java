@@ -50,7 +50,7 @@ public final class AddContextDataToReadUnitTest extends BaseTest {
             List<KV<GATKRead, ReferenceBases>> kvReadRefBases = testData.getKvReadsRefBases();
             List<SimpleInterval> intervals = testData.getAllIntervals();
             List<Variant> variantList = testData.getVariants();
-            List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant = testData.getKvReadiVariant();
+            List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant = testData.getKvReadiVariantBroken();
             List<KV<GATKRead, ReadContextData>> kvReadContextData = testData.getKvReadContextData();
             data[i] = new Object[]{reads, variantList, kvReadRefBases, kvReadContextData, intervals, kvReadiVariant};
         }

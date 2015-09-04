@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -32,6 +33,7 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
      */
     public ReferenceDataflowSource(final PipelineOptions pipelineOptions, final String referenceURL,
                                    final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
+        Utils.nonNull(referenceWindowFunction);
         if (isFasta(referenceURL)) {
             if (BucketUtils.isHadoopUrl(referenceURL)) {
                 referenceSource = new ReferenceHadoopSource(referenceURL);
