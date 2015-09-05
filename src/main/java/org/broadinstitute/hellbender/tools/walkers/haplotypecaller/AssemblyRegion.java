@@ -291,7 +291,7 @@ public final class AssemblyRegion {
      *
      * @throws IllegalArgumentException if read doesn't overlap the extended region of this active region
      *
-     * @param read a non-null GATKSAMRecord
+     * @param read a non-null GATKRead
      */
     public void add( final GATKRead read ) {
         Utils.nonNull(read, "Read cannot be null");

@@ -43,8 +43,9 @@ final class MergeTails extends VertexBasedTransformer {
         }
 
         for ( final SeqVertex t : tails ) {
-            if (!getGraph().isSink(t) || getGraph().inDegreeOf(t) > 1)
+            if (!getGraph().isSink(t) || getGraph().inDegreeOf(t) > 1) {
                 return false;
+            }
         }
 
         if ( dontModifyGraphEvenIfPossible() ) {

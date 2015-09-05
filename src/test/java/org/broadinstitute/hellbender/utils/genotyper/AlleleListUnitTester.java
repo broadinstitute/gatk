@@ -43,7 +43,7 @@ public final class AlleleListUnitTester {
             throw new IllegalArgumentException("the expected list cannot be null");
         final Set<A> expectedAlleleSet = new HashSet<>(expected.size());
         Assert.assertNotNull(actual);
-        Assert.assertEquals(actual.alleleCount(), expected.size());
+        Assert.assertEquals(actual.numberOfAlleles(), expected.size());
         for (int i = 0; i < expected.size(); i++) {
             final A expectedAllele = expected.get(i);
             if (expectedAllele == null)
@@ -52,15 +52,15 @@ public final class AlleleListUnitTester {
                 throw new IllegalArgumentException("you cannot use the forbidden sample name");
             if (expectedAlleleSet.contains(expected.get(i)))
                 throw new IllegalArgumentException("repeated allele in the expected list, this is a test bug");
-            final A actualAllele = actual.alleleAt(i);
+            final A actualAllele = actual.getAllele(i);
             Assert.assertNotNull(actualAllele, "allele cannot be null");
             Assert.assertFalse(expectedAlleleSet.contains(actualAllele), "repeated allele: " + actualAllele);
             Assert.assertEquals(actualAllele, expectedAllele, "wrong allele order; index = " + i);
-            Assert.assertEquals(actual.alleleIndex(actualAllele), i, "allele index mismatch");
+            Assert.assertEquals(actual.indexOfAllele(actualAllele), i, "allele index mismatch");
             expectedAlleleSet.add(actualAllele);
         }
 
-        Assert.assertEquals(actual.alleleIndex((A) NEVER_USE_ALLELE), -1);
+        Assert.assertEquals(actual.indexOfAllele((A) NEVER_USE_ALLELE), -1);
     }
 
     /**
@@ -120,7 +120,7 @@ public final class AlleleListUnitTester {
         if (alleleCount > 0)
             alleles[0] = Allele.create(alleles[0].getBases(), true);
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles);
-        if (skipIfRepeats && alleleList.alleleCount() != alleles.length)
+        if (skipIfRepeats && alleleList.numberOfAlleles() != alleles.length)
             throw new SkipException("repeated alleles, should be infrequent");
         return alleleList;
     }

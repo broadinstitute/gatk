@@ -1,14 +1,12 @@
 
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.CountSet;
-import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
 import java.io.PrintWriter;
@@ -36,12 +34,11 @@ public final class AssemblyResultSet {
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
     private AssemblyRegion regionForGenotyping;
     private byte[] fullReferenceWithPadding;
-    private GenomeLoc paddedReferenceLoc;
+    private Locatable paddedReferenceLoc;
     private boolean variationPresent;
     private Haplotype refHaplotype;
     private boolean wasTrimmed = false;
     private final CountSet kmerSizes;
-    private SortedSet<VariantContext> variationEvents;
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
 
@@ -153,7 +150,7 @@ public final class AssemblyResultSet {
         return originalByTrimmedHaplotypes;
     }
 
-    private Map<Haplotype, Haplotype> mapOriginalToTrimmed(final Map<Haplotype, Haplotype> originalByTrimmedHaplotypes, final List<Haplotype> trimmedHaplotypes) {
+    private static Map<Haplotype, Haplotype> mapOriginalToTrimmed(final Map<Haplotype, Haplotype> originalByTrimmedHaplotypes, final List<Haplotype> trimmedHaplotypes) {
         final Map<Haplotype,Haplotype> sortedOriginalByTrimmedHaplotypes = new LinkedHashMap<>(trimmedHaplotypes.size());
         for (final Haplotype trimmed : trimmedHaplotypes) {
             sortedOriginalByTrimmedHaplotypes.put(trimmed, originalByTrimmedHaplotypes.get(trimmed));
@@ -234,7 +231,7 @@ public final class AssemblyResultSet {
      */
     public boolean add(final Haplotype h) {
         Utils.nonNull(h, "input haplotype cannot be null");
-        Utils.nonNull(h.getGenomeLocation(), "input haplotype cannot be null");
+        Utils.nonNull(h.getGenomeLocation(), "haplotype genomeLocation cannot be null");
         if (haplotypes.contains(h)) {
             return false;
         }
@@ -353,7 +350,7 @@ public final class AssemblyResultSet {
      *
      * @return might be {@code null}
      */
-    public GenomeLoc getPaddedReferenceLoc() {
+    public Locatable getPaddedReferenceLoc() {
         return paddedReferenceLoc;
     }
 
@@ -361,7 +358,7 @@ public final class AssemblyResultSet {
      * Changes the padded reference location.
      * @param paddedReferenceLoc the new value.
      */
-    public void setPaddedReferenceLoc(final GenomeLoc paddedReferenceLoc) {
+    public void setPaddedReferenceLoc(final Locatable paddedReferenceLoc) {
         this.paddedReferenceLoc = paddedReferenceLoc;
     }
 
@@ -492,23 +489,5 @@ public final class AssemblyResultSet {
         } else {// assumes that we have checked wether the haplotype is already in the collection and so is no need to check equality.
             throw new IllegalStateException("the assembly-result-set already have a reference haplotype that is different");
         }
-    }
-
-    /**
-     * Returns a sorted set of variant events that best explain the haplotypes found by the assembly
-     * across kmerSizes.
-     *
-     * <p/>
-     * The result is sorted incrementally by location.
-     *
-     * @return never {@code null}, but perhaps an empty collection.
-     */
-    public SortedSet<VariantContext> getVariationEvents() {
-        if (variationEvents == null) {
-            final List<Haplotype> haplotypeList = getHaplotypeList();
-            EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug);
-            variationEvents = EventMap.getAllVariantContexts(haplotypeList);
-        }
-        return variationEvents;
     }
 }

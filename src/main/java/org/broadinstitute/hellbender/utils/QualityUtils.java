@@ -185,7 +185,7 @@ public final class QualityUtils {
      * The calculation is extremely efficient
      *
      * @param qual a phred-scaled quality score encoded as a double
-     * @return a probability (0.0-1.0)
+     * @return log of probability (0.0-1.0)
      */
     public static double qualToLogErrorProb(final double qual) {
         if ( qual < 0.0 ) throw new IllegalArgumentException("qual must be >= 0.0 but got " + qual);

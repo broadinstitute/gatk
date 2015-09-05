@@ -355,6 +355,35 @@ public final class PairHMMUnitTest extends BaseTest {
         Assert.assertTrue(d <= 0.0, "Likelihoods should be <= 0 but got " + d);
     }
 
+    @DataProvider(name = "HMMProviderSimple")
+    public Object[][] HMMProviderSimple() {
+        List<Object[]> tests = new ArrayList<>();
+
+        for ( final int readSize : Arrays.asList(1, 2, 5, 10) ) {
+            for ( final PairHMM hmm : getHMMs() )
+                tests.add(new Object[]{hmm, readSize});
+        }
+
+        return tests.toArray(new Object[][]{});
+    }
+    @Test(enabled = !DEBUG, dataProvider = "HMMProviderSimple")
+    void testReadSameAsHaplotype(final PairHMM hmm, final int readSize) {
+        final byte[] readBases =  Utils.dupBytes((byte)'A', readSize);
+        final byte[] refBases = readBases;
+        final byte baseQual = 20;
+        final byte insQual = 37;
+        final byte delQual = 37;
+        final byte gcp = 10;
+        hmm.initialize(readBases.length, refBases.length);
+        // running HMM with no haplotype caching. Should therefore pass null in place of nextRef bases
+        final double d = hmm.computeReadLogLikelihoodGivenHaplotype(refBases, readBases,
+                Utils.dupBytes(baseQual, readBases.length),
+                Utils.dupBytes(insQual, readBases.length),
+                Utils.dupBytes(delQual, readBases.length),
+                Utils.dupBytes(gcp, readBases.length), true, null);
+        Assert.assertTrue(d <= 0.0, "Likelihoods should be <= 0 but got " + d);
+    }
+
     @Test(enabled = !DEBUG, dataProvider = "HMMProvider")
     void testAllMatchingRead(final PairHMM hmm, final int readSize, final int refSize) {
         final byte[] readBases =  Utils.dupBytes((byte)'A', readSize);
@@ -374,8 +403,8 @@ public final class PairHMMUnitTest extends BaseTest {
         Assert.assertEquals(d, expected, 1e-3, "Likelihoods should sum to just the error prob of the read " + String.format("readSize=%d refSize=%d", readSize, refSize));
     }
 
-    private double getExpectedMatchingLogLikelihood(byte[] readBases, byte[] refBases, byte baseQual, byte insQual) {
-        double expected = 0;
+    private static double getExpectedMatchingLogLikelihood(final byte[] readBases, final byte[] refBases, final byte baseQual, final byte insQual) {
+        double expected =  0;
         final double initialCondition = ((double) Math.abs(refBases.length - readBases.length + 1))/refBases.length;
         if (readBases.length < refBases.length) {
             expected = Math.log(initialCondition * Math.pow(QualityUtils.qualToProb(baseQual), readBases.length));
@@ -526,32 +555,32 @@ public final class PairHMMUnitTest extends BaseTest {
             }
 
             @Override
-            public int alleleIndex(Haplotype allele) {
+            public int indexOfAllele(Haplotype allele) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public int readIndex(GATKRead read) {
+            public int indexOfRead(GATKRead read) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public int alleleCount() {
+            public int numberOfAlleles() {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public int readCount() {
+            public int numberOfReads() {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public Haplotype alleleAt(int alleleIndex) {
+            public Haplotype getAllele(int alleleIndex) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public GATKRead readAt(int readIndex) {
+            public GATKRead getRead(int readIndex) {
                 throw new UnsupportedOperationException();
             }
 

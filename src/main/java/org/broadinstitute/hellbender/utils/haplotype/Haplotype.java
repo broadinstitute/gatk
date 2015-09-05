@@ -3,18 +3,17 @@ package org.broadinstitute.hellbender.utils.haplotype;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.HasGenomeLocation;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public final class Haplotype extends Allele implements HasGenomeLocation {
+public final class Haplotype extends Allele {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -24,7 +23,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
             Comparator.comparingInt((Haplotype hap) -> hap.getBases().length)
                       .thenComparing(hap -> hap.getBaseString());
 
-    private GenomeLoc genomeLocation = null;
+    private Locatable genomeLocation = null;
     private EventMap eventMap = null;
     private Cigar cigar;
     private int alignmentStartHapwrtRef;
@@ -65,7 +64,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
         setCigar(cigar);
     }
 
-    public Haplotype( final byte[] bases, final GenomeLoc loc ) {
+    public Haplotype( final byte[] bases, final Locatable loc ) {
         this(bases, false);
         this.genomeLocation = loc;
     }
@@ -82,20 +81,30 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      * @param loc a location completely contained within this Haplotype's location
      * @return a new Haplotype within only the bases spanning the provided location, or null for some reason the haplotype would be malformed if
      */
-    public Haplotype trim(final GenomeLoc loc) {
-        if ( loc == null ) throw new IllegalArgumentException("Loc cannot be null");
-        if ( genomeLocation == null ) throw new IllegalStateException("Cannot trim a Haplotype without containing GenomeLoc");
-        if ( ! genomeLocation.containsP(loc) ) throw new IllegalArgumentException("Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
-        if ( getCigar() == null ) throw new IllegalArgumentException("Cannot trim haplotype without a cigar " + this);
+    public Haplotype trim(final Locatable loc) {
+        if ( loc == null ) {
+            throw new IllegalArgumentException("Loc cannot be null");
+        }
+        if ( genomeLocation == null ) {
+            throw new IllegalStateException("Cannot trim a Haplotype without containing GenomeLoc");
+        }
+        if ( ! new SimpleInterval(genomeLocation).contains(loc) ) {
+            throw new IllegalArgumentException("Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
+        }
+        if ( getCigar() == null ) {
+            throw new IllegalArgumentException("Cannot trim haplotype without a cigar " + this);
+        }
 
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
-        final int newStop = newStart + loc.size() - 1;
+        final int newStop = newStart + loc.getEnd() - loc.getStart();
         final byte[] newBases = AlignmentUtils.getBasesCoveringRefInterval(newStart, newStop, getBases(), 0, getCigar());
         final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop);
 
         if ( newBases == null || AlignmentUtils.startsOrEndsWithInsertionOrDeletion(newCigar) )
             // we cannot meaningfully chop down the haplotype, so return null
+        {
             return null;
+        }
 
         final Haplotype ret = new Haplotype(newBases, isReference());
         ret.setCigar(newCigar);
@@ -105,7 +114,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
     }
 
     @Override
-    public boolean equals( Object h ) {
+    public boolean equals( final Object h ) {
         return h instanceof Haplotype && Arrays.equals(getBases(), ((Haplotype) h).getBases());
     }
 
@@ -131,11 +140,11 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      * Get the span of this haplotype (may be null)
      * @return a potentially null genome loc
      */
-    public GenomeLoc getLocation() {
+    public Locatable getLocation() {
         return this.genomeLocation;
     }
 
-    public void setGenomeLocation(GenomeLoc genomeLocation) {
+    public void setGenomeLocation(final Locatable genomeLocation) {
         this.genomeLocation = genomeLocation;
     }
 
@@ -144,7 +153,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
     }
 
     public long getStopPosition() {
-        return genomeLocation.getStop();
+        return genomeLocation.getEnd();
     }
 
     public int getAlignmentStartHapwrtRef() {
@@ -171,9 +180,13 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      * @return a newly allocated Cigar that consolidate(getCigar + padSize + M)
      */
     public Cigar getConsolidatedPaddedCigar(final int padSize) {
-        if ( padSize < 0 ) throw new IllegalArgumentException("padSize must be >= 0 but got " + padSize);
+        if ( padSize < 0 ) {
+            throw new IllegalArgumentException("padSize must be >= 0 but got " + padSize);
+        }
         final Cigar extendedHaplotypeCigar = new Cigar(getCigar().getCigarElements());
-        if ( padSize > 0 ) extendedHaplotypeCigar.add(new CigarElement(padSize, CigarOperator.M));
+        if ( padSize > 0 ) {
+            extendedHaplotypeCigar.add(new CigarElement(padSize, CigarOperator.M));
+        }
         return AlignmentUtils.consolidateCigar(extendedHaplotypeCigar);
     }
 
@@ -186,8 +199,9 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      */
     public void setCigar( final Cigar cigar ) {
         this.cigar = AlignmentUtils.consolidateCigar(cigar);
-        if ( this.cigar.getReadLength() != length() )
+        if ( this.cigar.getReadLength() != length() ) {
             throw new IllegalArgumentException("Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
+        }
     }
 
     public Haplotype insertAllele( final Allele refAllele, final Allele altAllele, final int refInsertLocation, final int genomicInsertLocation ) {
@@ -220,7 +234,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      *
      * @param score a double, where higher values are better
      */
-    public void setScore(double score) {
+    public void setScore(final double score) {
         this.score = score;
     }
 
@@ -228,7 +242,7 @@ public final class Haplotype extends Allele implements HasGenomeLocation {
      * Get the span of this haplotype (may be null)
      * @return a potentially null genome loc
      */
-    public GenomeLoc getGenomeLocation() {
+    public Locatable getGenomeLocation() {
         return genomeLocation;
     }
 }
