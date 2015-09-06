@@ -282,25 +282,20 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     private R fetchNextRecord() throws IOException {
 
-        // find the first non-comment line.
-        final String[] line = skipCommentLines();
-        // is it the end?
-        if (line == null) {
-            return null;
-        } else {
-            if (line.length != columns.columnCount()) {
+        String[] line;
+        while ((line = csvReader.readNext()) != null) {
+            if (isCommentLine(line)) {
+                continue;
+            } else if (line.length != columns.columnCount()) {
                 throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
             } else {
                 final R result = createRecord(new DataLine(line, columns, this::formatException));
-                if (result == null) {
-                    throw new IllegalStateException("line resulted in a null record " +
-                            ((source == null) ? String.format("at line %d: %s", reader.getLineNumber(), Arrays.toString(line))
-                                    : String.format("from '%s' at line %d: %s", source, reader.getLineNumber(), Arrays.toString(line))));
-                } else {
+                if (result != null) {
                     return result;
                 }
             }
         }
+        return null;
     }
 
     /**

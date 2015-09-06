@@ -174,7 +174,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      */
     private void applyTangentNormalization(final PoN pon, final ReadCountCollection originalCounts, final ReadCountCollection targetFactorNormalizedCounts) {
 
-        final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(targetFactorNormalizedCounts.targets(), pon.reducedPoNTargetNames(), readCountsFile);
+        final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(targetFactorNormalizedCounts.targets(), pon.getPanelTargetNames(), readCountsFile);
 
         // The input counts with row (targets) sorted so that the match the PoN's matrix order.
         final RealMatrix tangentNormalizationRawInputCounts = targetMapper.fromCaseToPoNCounts(targetFactorNormalizedCounts.counts());
@@ -218,7 +218,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      */
     private ReadCountCollection applyTargetFactorNormalization(final PoN pon, final ReadCountCollection inputReadCounts) {
 
-        final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(inputReadCounts.targets(), pon.targetNames(), readCountsFile);
+        final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(inputReadCounts.targets(), pon.getTargetNames(), readCountsFile);
         final RealMatrix inputCounts = targetMapper.fromCaseToPoNCounts(inputReadCounts.counts());
         final RealMatrix targetNormalizedCounts = pon.factorNormalization(inputCounts);
 
@@ -367,7 +367,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     private <E extends BEDFeature> ReadCountCollection readInputReadCounts(final File readCountsFile,
                                                                            final TargetCollection<E> targetCollection) {
         try {
-            return ReadCountCollectionUtils.parse(readCountsFile, targetCollection);
+            return ReadCountCollectionUtils.parse(readCountsFile, targetCollection, false);
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(readCountsFile, ex.getMessage(), ex);
         }

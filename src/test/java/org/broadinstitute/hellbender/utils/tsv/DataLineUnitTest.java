@@ -176,12 +176,12 @@ public class DataLineUnitTest extends BaseTest {
         COL2_INT,
         COL3_INT,
         COL1_DBL,
-        COL2_DBL;
+        COL2_DBL
     }
 
     @Test(dependsOnMethods = "testToArray")
     public void testSeekByEnum() {
-        final TableColumnCollection columns = new TableColumnCollection(TestEnum.values());
+        final TableColumnCollection columns = new TableColumnCollection(TestEnum.class);
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
         subject.seek(TestEnum.COL1_DBL).append(1.1, 2.2).seek(TestEnum.COL1_INT).append(1, 2, 3).seek(TestEnum.COL1_STR).append("a", "b", "c");
         Assert.assertEquals(subject.toArray(), new String[]{"a", "b", "c", "1", "2", "3", "" + 1.1, "" + 2.2});
@@ -189,7 +189,7 @@ public class DataLineUnitTest extends BaseTest {
 
     @Test()
     public void testGetDoubleByEnum() {
-        final TableColumnCollection columns = new TableColumnCollection(TestEnum.values());
+        final TableColumnCollection columns = new TableColumnCollection(TestEnum.class);
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
         for (int i = 0; i < columns.columnCount(); i++) {
             Assert.assertSame(subject.set(i, (double) i), subject);

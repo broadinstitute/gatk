@@ -671,6 +671,7 @@ public final class HDF5File implements AutoCloseable {
         for (final String value : values) {
             Utils.nonNull(value);
         }
+
         return makeDataset(fullPath, basicStringArrayTypeIdSupplier(), dimensions, values);
     }
 

@@ -24,7 +24,7 @@ public interface PoN {
      *
      * @return never {@code null}.
      */
-    List<String> targetNames();
+    List<String> getTargetNames();
 
     /**
      * Reduced PoN Target names listed by their numerical index in the reduced PoN.
@@ -36,7 +36,7 @@ public interface PoN {
      *
      * @return never {@code null}.
      */
-    List<String> reducedPoNTargetNames();
+    List<String> getPanelTargetNames();
 
     /**
      * Sample names listed by their numerical index in this PoN.
@@ -48,7 +48,7 @@ public interface PoN {
      *
      * @return never {@code null}.
      */
-    List<String> sampleNames();
+    List<String> getSampleNames();
 
     /**
      * Log normal selected samples listed by their numerical index in the log-normal matrices.
@@ -60,14 +60,14 @@ public interface PoN {
      *
      * @return never {@code null}.
      */
-    List<String> logNormalSampleNames();
+    List<String> getPanelSampleNames();
 
     /**
-     * Target factors.
+     * Return the target factors.
      *
      * <p>
      * The result matrix is a column vector where the ith element is the factor for the ith target
-     * as returned by {@link #targetNames}.
+     * as returned by {@link #getTargetNames}.
      * </p>
      *
      * <p>
@@ -78,7 +78,16 @@ public interface PoN {
      * @return never {@code null}. A matrix with {@code Tx1} dimensions where {@code T}
      * is the number of targets in this PoN.
      */
-    RealMatrix targetFactors();
+    RealMatrix getTargetFactors();
+
+    /**
+     * Set the target factors in the pon.
+     *
+     * @param targetFactors the new value for the target factors.
+     * @throws IllegalArgumentException if {@code targetFactors} is null or has the wrong
+     * dimensions.
+     */
+    void setTargetFactors(final RealMatrix targetFactors);
 
     /**
      * Normalized percent coverage.
@@ -96,21 +105,19 @@ public interface PoN {
      * @return never {@code null}. A matrix with {@code TxS} dimensions where {@code T}
      * is the number of targets and {@code S} the number of samples in this PoN.
      */
-    RealMatrix normalizedPercentCoverage();
-
-    /**
-     * Returns the maximum ratio cut-off.
-     *
-     * @return a valid ratio cut-off.
-     */
-    double maximumRatioCutoff();
+    RealMatrix getNormalCounts();
 
     /**
      * Returns the PoN version.
      *
-     * @return never {@code null}, an string of the form ver.sub-ver
+     * <p>
+     *     The version major is the integer part, whereas the version minor is the
+     *     decimal part.
+     * </p>
+     *
+     * @return any valid double value.
      */
-    String version();
+    double getVersion();
 
     /**
      * Returns the log-normal matrix.
@@ -128,7 +135,7 @@ public interface PoN {
      * @return never {@code null}, a matrix with dimensions {@code SxT} where {@code T} is the number of targets and
      * {@code S} the number of samples considered for the log-normal.
      */
-    RealMatrix logNormals();
+    RealMatrix getLogNormalCounts();
 
     /**
      * Returns the log-normal pseudo-inverse matrix.
@@ -141,7 +148,7 @@ public interface PoN {
      * @return never {@code null}, a matrix with dimensions {@code TxS} where {@code T} is the number of targets and
      * {@code S} the number of samples considered for the log-normal.
      */
-    RealMatrix logNormalsPseudoInverse();
+    RealMatrix getLogNormalPInverseCounts();
 
     /**
      * Returns the reduced PoN matrix.
@@ -154,7 +161,7 @@ public interface PoN {
      * @return never {@code null}, a matrix with dimensions {@code TxE} where {@code T} is the number of targets and
      * {@code E} the number of eigen samples.
      */
-    RealMatrix reducedPoN();
+    RealMatrix getReducedPanelCounts();
 
     /**
      * Returns the reduced PoN pseudo-inverse matrix.
@@ -167,7 +174,7 @@ public interface PoN {
      * @return never {@code null}, a matrix with dimensions {@code ExT} where {@code T} is the number of targets and
      * {@code E} the number of eigen samples.
      */
-    RealMatrix reducedPoNPseudoInverse();
+    RealMatrix getReducedPanelPInverseCounts();
 
     /**
      * Performs target factor normalization on a matrix.
@@ -182,7 +189,7 @@ public interface PoN {
      */
     default RealMatrix factorNormalization(final RealMatrix input) {
         Utils.nonNull(input, "the input matrix cannot be null");
-        final RealMatrix targetFactors = targetFactors();
+        final RealMatrix targetFactors = getTargetFactors();
         if (input.getRowDimension() != targetFactors.getRowDimension()) {
             throw new IllegalArgumentException(String.format("the input row count must match the PoN's target count: %d != %d",
                     input.getRowDimension(),targetFactors.getRowDimension()));
@@ -213,7 +220,7 @@ public interface PoN {
         if (Double.isNaN(epsilon) || epsilon <= 0) {
             throw new IllegalArgumentException(String.format("invalid epsilon value must be > 0: %f", epsilon));
         }
-        final RealMatrix normalsInverse = useReduced ? reducedPoNPseudoInverse() : logNormalsPseudoInverse();
+        final RealMatrix normalsInverse = useReduced ? getReducedPanelPInverseCounts() : getLogNormalPInverseCounts();
         final double relevantTargetThreshold = (Math.log(epsilon) / Math.log(2)) + 1;
         final RealMatrix normalsInverseTranspose = normalsInverse.transpose();
         final RealMatrix result = new Array2DRowRealMatrix(normalsInverse.getRowDimension(),input.getColumnDimension());
@@ -248,7 +255,7 @@ public interface PoN {
         if (input.getColumnDimension() != betaHats.getColumnDimension()) {
             throw new IllegalArgumentException(String.format("the input count column count (%d) does not match the number of columns in the beta-hats (%d)", input.getColumnDimension(), betaHats.getColumnDimension()));
         }
-        final RealMatrix normals = useReduced ? reducedPoN() : logNormals();
+        final RealMatrix normals = useReduced ? getReducedPanelCounts() : getLogNormalCounts();
         if (normals.getColumnDimension() != betaHats.getRowDimension()) {
             throw new IllegalArgumentException(String.format("beta-hats component count (%d) does not match the number of samples in the PoN (%d)", normals.getRowDimension(), normals.getColumnDimension()));
         }

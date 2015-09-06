@@ -38,9 +38,7 @@ public final class HDF5LibraryUnitTests {
     public static File TEST_PON = new File(TEST_RESOURCE_DIR,"test_creation_of_panel.pon");
 
     @SuppressWarnings("FieldCanBeLocal")
-    private static double TEST_PON_MAXIMUM_RATIO_CUTOFF = 0.0;
-    @SuppressWarnings("FieldCanBeLocal")
-    private static String TEST_PON_VERSION = "1.3";
+    private static double TEST_PON_VERSION = 1.3;
 
     @Test(groups = "supported")
     public void testIsSupported() {
@@ -71,7 +69,7 @@ public final class HDF5LibraryUnitTests {
     public void testTargetNameReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targetNames = pon.targetNames();
+        final List<String> targetNames = pon.getTargetNames();
         final List<String> expected = readLines(TEST_PON_TARGETS);
         Assert.assertNotNull(targetNames);
         Assert.assertEquals(targetNames,expected);
@@ -82,7 +80,7 @@ public final class HDF5LibraryUnitTests {
     public void testSampleNameReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> sampleNames = pon.sampleNames();
+        final List<String> sampleNames = pon.getSampleNames();
         final List<String> expected = readLines(TEST_PON_SAMPLES);
         Assert.assertNotNull(sampleNames);
         Assert.assertEquals(sampleNames, expected);
@@ -96,7 +94,7 @@ public final class HDF5LibraryUnitTests {
 
         final List<String> expected = readLines(TEST_PON_LOG_NORMAL_SAMPLES);
 
-        final List<String> logNormalSampleNames = pon.logNormalSampleNames().stream().sorted().collect(Collectors.toList());
+        final List<String> logNormalSampleNames = pon.getPanelSampleNames().stream().sorted().collect(Collectors.toList());
         Assert.assertEquals(logNormalSampleNames, expected);
     }
 
@@ -104,8 +102,8 @@ public final class HDF5LibraryUnitTests {
     public void testTargetFactorsReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.targetNames();
-        final RealMatrix factors = pon.targetFactors();
+        final List<String> targets = pon.getTargetNames();
+        final RealMatrix factors = pon.getTargetFactors();
         Assert.assertEquals(factors.getRowDimension(),targets.size());
         Assert.assertEquals(factors.getColumnDimension(),1);
 
@@ -119,18 +117,10 @@ public final class HDF5LibraryUnitTests {
     }
 
     @Test(dependsOnGroups = "supported")
-    public void testMaximumRatioCutoffReading() {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        Assert.assertEquals(pon.maximumRatioCutoff(),TEST_PON_MAXIMUM_RATIO_CUTOFF,0.0001);
-        reader.close();
-    }
-
-    @Test(dependsOnGroups = "supported")
     public void testVersionReading() {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        Assert.assertEquals(pon.version(),TEST_PON_VERSION);
+        Assert.assertEquals(pon.getVersion(),TEST_PON_VERSION);
         reader.close();
     }
 
@@ -138,9 +128,9 @@ public final class HDF5LibraryUnitTests {
     public void testNormalizedPcovReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.targetNames();
-        final List<String> samples = pon.sampleNames();
-        final RealMatrix actual = pon.normalizedPercentCoverage();
+        final List<String> targets = pon.getTargetNames();
+        final List<String> samples = pon.getSampleNames();
+        final RealMatrix actual = pon.getNormalCounts();
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertEquals(actual.getColumnDimension(), samples.size());
@@ -152,9 +142,9 @@ public final class HDF5LibraryUnitTests {
     public void testLogNormalMatrixReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.targetNames();
-        final List<String> samples = pon.logNormalSampleNames();
-        final RealMatrix actual = pon.logNormals();
+        final List<String> targets = pon.getTargetNames();
+        final List<String> samples = pon.getPanelSampleNames();
+        final RealMatrix actual = pon.getLogNormalCounts();
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertEquals(actual.getColumnDimension(), samples.size());
@@ -166,9 +156,9 @@ public final class HDF5LibraryUnitTests {
     public void testLogNormalPInvMatrixReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.targetNames();
-        final List<String> samples = pon.logNormalSampleNames();
-        final RealMatrix actual = pon.logNormalsPseudoInverse();
+        final List<String> targets = pon.getTargetNames();
+        final List<String> samples = pon.getPanelSampleNames();
+        final RealMatrix actual = pon.getLogNormalPInverseCounts();
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.getRowDimension(), samples.size());
         Assert.assertEquals(actual.getColumnDimension(), targets.size());
@@ -180,9 +170,9 @@ public final class HDF5LibraryUnitTests {
     public void testReducedPoNMatrixReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.targetNames();
-        final List<String> samples = pon.logNormalSampleNames();
-        final RealMatrix actual = pon.reducedPoN();
+        final List<String> targets = pon.getTargetNames();
+        final List<String> samples = pon.getPanelSampleNames();
+        final RealMatrix actual = pon.getReducedPanelCounts();
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertTrue(actual.getColumnDimension() <= samples.size());
@@ -194,9 +184,9 @@ public final class HDF5LibraryUnitTests {
     public void testReducedPoNPInvMatrixReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.targetNames();
-        final List<String> samples = pon.logNormalSampleNames();
-        final RealMatrix actual = pon.reducedPoNPseudoInverse();
+        final List<String> targets = pon.getTargetNames();
+        final List<String> samples = pon.getPanelSampleNames();
+        final RealMatrix actual = pon.getReducedPanelPInverseCounts();
         Assert.assertNotNull(actual);
         Assert.assertTrue(actual.getRowDimension() <= samples.size());
         Assert.assertEquals(actual.getColumnDimension(), targets.size());
