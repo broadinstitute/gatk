@@ -76,7 +76,7 @@ jacoco {
 compileJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror']
 }
-compileTestJava { 
+compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror']
 }
 
@@ -206,6 +206,7 @@ task testAll(type: Test){
 test {
     String CI = "$System.env.CI"
     String CLOUD = "$System.env.CLOUD"
+    String SPARK = "$System.env.SPARK"
     useTestNG{
         if (CLOUD =="mandatory") {
             // run only the cloud tests
@@ -220,6 +221,10 @@ test {
         } else {
             // run only the local tests
             excludeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
+        }
+        if (SPARK == "false") {
+            // exclude Spark (but not Spark Dataflow, see DATAFLOW_RUNNER env variable) if explicitly requested
+            excludeGroups 'spark'
         }
     }
 

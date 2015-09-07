@@ -31,7 +31,7 @@ public class VariantsSparkSourceUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "loadVariants")
+    @Test(dataProvider = "loadVariants", groups = "spark")
     public void pairReadsAndVariantsTest(String vcf) {
         JavaSparkContext ctx = SparkTestUtils.getTestContext();
 

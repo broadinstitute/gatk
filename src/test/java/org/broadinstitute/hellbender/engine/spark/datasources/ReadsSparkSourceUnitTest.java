@@ -29,7 +29,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "loadReads")
+    @Test(dataProvider = "loadReads", groups = "spark")
     public void readsSparkSourceTest(String bam) {
         JavaSparkContext ctx = SparkTestUtils.getTestContext();
 
