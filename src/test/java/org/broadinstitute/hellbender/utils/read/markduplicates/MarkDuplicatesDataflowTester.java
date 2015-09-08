@@ -12,4 +12,10 @@ public final class MarkDuplicatesDataflowTester extends AbstractMarkDuplicatesTe
 
     @Override
     protected CommandLineProgram getProgram() { return new MarkDuplicatesDataflow(); }
+
+    @Override
+    protected void addArgs() {
+        super.addArgs();
+        addDataflowRunnerArgs(args);
+    }
 }

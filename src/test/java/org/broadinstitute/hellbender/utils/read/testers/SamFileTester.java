@@ -22,7 +22,7 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private boolean noMateCigars = false;
     private boolean deleteOnExit = true;
     private boolean useStandardInputNames = false;
-    private final List<String> args = new ArrayList<>();
+    protected final List<String> args = new ArrayList<>();
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy) {
         this.deleteOnExit = deleteOnExit;
@@ -270,8 +270,13 @@ public abstract class SamFileTester extends CommandLineProgramTest {
           addArg("--INPUT", input.getAbsolutePath());
           addArg("--OUTPUT", output.getAbsolutePath());
         }
+        addArgs();
         runCommandLine(args);
         test();
+    }
+
+    protected void addArgs() {
+        // subclasses may override to add more arguments
     }
 
     private File createInputFile() {
