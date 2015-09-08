@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -176,6 +177,7 @@ public final class FeatureInput<T extends Feature> {
      * @param rawArgumentValue String of the form "logical_name:feature_file" or "feature_file"
      */
     FeatureInput(final String rawArgumentValue) {
+        Utils.nonNull(rawArgumentValue, "rawArgumentValue");
         final ParsedArgument parsedArgument = ParsedArgument.of(rawArgumentValue);
 
         name = parsedArgument.getName();
@@ -187,16 +189,19 @@ public final class FeatureInput<T extends Feature> {
     /**
      * Construct a FeatureInput from raw components: name, key value pairs and the file.
      *
-     * This constructor is meant to be called by the engine and test classes and thus is package-visible --
+     * This constructor is meant to be called by the engine and test classes --
      * FeatureInputs constructed some other way will not be recognized by the engine.
      */
-    FeatureInput(final String name, final Map<String, String> kevValueMap, final File featureFile) {
+    @VisibleForTesting
+    public FeatureInput(final String name, final Map<String, String> kevValueMap, final File featureFile) {
+        Utils.nonNull(name, "name");
+        Utils.nonNull(kevValueMap, "kevValueMap");
+        Utils.nonNull(featureFile, "featureFile");
         this.name = name;
         this.kevValueMap = Collections.unmodifiableMap(new HashMap<>(kevValueMap));   //make a unmodifiable copy
         this.featureFile = featureFile;
         this.featureType = null;  // Must be set after construction
     }
-
 
     /**
      * Gets the value for the given key associated with this Feature source or {@code null}

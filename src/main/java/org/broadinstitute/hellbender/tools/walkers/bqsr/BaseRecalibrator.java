@@ -8,10 +8,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadWalker;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -24,10 +21,10 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -174,11 +171,14 @@ public final class BaseRecalibrator extends ReadWalker {
 
         baq = new BAQ(BAQGOP); // setup the BAQ object with the provided gap open penalty
 
-        if (RAC.FORCE_PLATFORM != null)
+        if (RAC.FORCE_PLATFORM != null) {
             RAC.DEFAULT_PLATFORM = RAC.FORCE_PLATFORM;
+        }
 
         if (RAC.knownSites.isEmpty() && !RAC.RUN_WITHOUT_DBSNP) // Warn the user if no dbSNP file or other variant mask was specified
+        {
             throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
+        }
 
         covariates = new StandardCovariateList(RAC, getHeaderForReads());
 
@@ -443,7 +443,9 @@ public final class BaseRecalibrator extends ReadWalker {
     private static void updateIndel(final int[] indel, final int index, final EventType mode, final EventType requiredMode) {
         if ( mode == requiredMode && index >= 0 && index < indel.length )
             // protect ourselves from events at the start or end of the read (1D3M or 3M1D)
+        {
             indel[index] = 1;
+        }
     }
 
     protected static double[] calculateFractionalErrorArray( final int[] errorArray, final byte[] baqArray ) {

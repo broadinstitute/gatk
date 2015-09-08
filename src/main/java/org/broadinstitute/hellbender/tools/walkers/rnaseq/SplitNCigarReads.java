@@ -166,12 +166,15 @@ public final class SplitNCigarReads extends CommandLineProgram {
 
         //in case a section of the read ends or starts with D (for example the first section in 1M1D1N1M is 1M1D), we should trim this cigar element
         // it can be 'if', but it was kept as 'while' to make sure the code can work with Cigar strings that were not "cleaned"
-        while(read.getCigar().getCigarElement(cigarFirstIndex).getOperator().equals(CigarOperator.D))
+        while(read.getCigar().getCigarElement(cigarFirstIndex).getOperator().equals(CigarOperator.D)) {
             cigarFirstIndex++;
-        while(read.getCigar().getCigarElement(cigarSecondIndex-1).getOperator().equals(CigarOperator.D))
+        }
+        while(read.getCigar().getCigarElement(cigarSecondIndex-1).getOperator().equals(CigarOperator.D)) {
             cigarSecondIndex--;
-        if(cigarFirstIndex > cigarSecondIndex)
+        }
+        if(cigarFirstIndex > cigarSecondIndex) {
             throw new IllegalArgumentException("Cannot split this read (might be an empty section between Ns, for example 1N1D1N): " + read.getCigar().toString());
+        }
 
         // we keep only the section of the read that is aligned to the reference between startRefIndex and stopRefIndex (inclusive).
         // the other sections of the read are clipped:

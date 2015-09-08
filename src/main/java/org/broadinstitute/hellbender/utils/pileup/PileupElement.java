@@ -8,10 +8,7 @@ import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.Deque;
-import java.util.EnumSet;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Represents an individual base in a reads pileup.
@@ -34,6 +31,20 @@ public final class PileupElement {
     private final CigarElement currentCigarElement;
     private final int currentCigarOffset;
     private final int offsetInCurrentCigar;
+
+    public static final Comparator<PileupElement> COMPARATOR = (p1, p2) -> {
+        if (p1.offset < p2.offset) {
+            return -1;
+        } else if (p1.offset > p2.offset) {
+            return 1;
+        } else if (p1.read.getStart() < p2.read.getStart()) {
+            return -1;
+        } else if (p1.read.getStart() > p2.read.getStart()) {
+            return 1;
+        } else {
+            return 0;
+        }
+    };
 
     /**
      * Create a new pileup element

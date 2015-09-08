@@ -114,13 +114,15 @@ public class OverhangFixingManager {
      * @param end     the end of the split, inclusive
      */
     public void addSplicePosition(final String contig, final int start, final int end) {
-        if ( doNotFixOverhangs )
+        if ( doNotFixOverhangs ) {
             return;
+        }
 
         // is this a new splice?  if not, we are done
         final Splice splice = new Splice(contig, start, end);
-        if ( splices.contains(splice) )
+        if ( splices.contains(splice) ) {
             return;
+        }
 
         // initialize it with the reference context
         // we don't want to do this until we know for sure that it's a new splice position
@@ -128,17 +130,20 @@ public class OverhangFixingManager {
 
         // clear the set of old split positions seen if we hit a new contig
         final boolean sameContig = splices.isEmpty() || splices.iterator().next().loc.getContig().equals(contig);
-        if ( !sameContig )
+        if ( !sameContig ) {
             splices.clear();
+        }
 
         // run this position against the existing reads
-        for ( final SplitRead read : waitingReads )
+        for ( final SplitRead read : waitingReads ) {
             fixSplit(read, splice);
+        }
 
         splices.add(splice);
 
-        if ( splices.size() > MAX_SPLICES_TO_KEEP )
+        if ( splices.size() > MAX_SPLICES_TO_KEEP ) {
             cleanSplices();
+        }
     }
 
     /**
@@ -147,27 +152,33 @@ public class OverhangFixingManager {
      * @param read  the read to add
      */
     public void addRead(final GATKRead read) {
-        if ( read == null ) throw new IllegalArgumentException("read added to manager is null, which is not allowed");
+        if ( read == null ) {
+            throw new IllegalArgumentException("read added to manager is null, which is not allowed");
+        }
 
         // if the new read is on a different contig or we have too many reads, then we need to flush the queue and clear the map
         final boolean tooManyReads = getNReadsInQueue() >= MAX_RECORDS_IN_MEMORY;
         final boolean encounteredNewContig = getNReadsInQueue() > 0 && !waitingReads.peek().read.getContig().equals(read.getContig());
 
         if ( tooManyReads || encounteredNewContig ) {
-            if ( DEBUG ) logger.warn("Flushing queue on " + (tooManyReads ? "too many reads" : ("move to new contig: " + read.getContig() + " from " + waitingReads.peek().read.getContig())) + " at " + read.getStart());
+            if ( DEBUG ) {
+                logger.warn("Flushing queue on " + (tooManyReads ? "too many reads" : ("move to new contig: " + read.getContig() + " from " + waitingReads.peek().read.getContig())) + " at " + read.getStart());
+            }
 
             final int targetQueueSize = encounteredNewContig ? 0 : MAX_RECORDS_IN_MEMORY / 2;
 
             // write the required number of waiting reads to disk
-            while ( getNReadsInQueue() > targetQueueSize )
+            while ( getNReadsInQueue() > targetQueueSize ) {
                 writer.addRead(waitingReads.poll().read);
+            }
         }
 
         final SplitRead splitRead = new SplitRead(read);
 
         // fix overhangs, as needed
-        for ( final Splice splice : splices)
+        for ( final Splice splice : splices) {
             fixSplit(splitRead, splice);
+        }
 
         // add the new read to the queue
         waitingReads.add(splitRead);
@@ -193,8 +204,9 @@ public class OverhangFixingManager {
      */
     private void fixSplit(final SplitRead read, final Splice splice) {
         // if the read doesn't even overlap the split position then we can just exit
-        if ( read.loc == null || !splice.loc.overlapsP(read.loc) )
+        if ( read.loc == null || !splice.loc.overlapsP(read.loc) ) {
             return;
+        }
 
         if ( isLeftOverhang(read.loc, splice.loc) ) {
             final int overhang = splice.loc.getStop() - read.loc.getStart() + 1;
@@ -250,14 +262,16 @@ public class OverhangFixingManager {
                                                final int referenceStartIndex,
                                                final int spanToTest) {
         // don't process too small a span, too large a span, or a span that is most of a read
-        if ( spanToTest < 1 || spanToTest > MAX_BASES_IN_OVERHANG || spanToTest > read.length / 2 )
+        if ( spanToTest < 1 || spanToTest > MAX_BASES_IN_OVERHANG || spanToTest > read.length / 2 ) {
             return false;
+        }
 
         int numMismatchesSeen = 0;
         for ( int i = 0; i < spanToTest; i++ ) {
             if ( read[readStartIndex + i] != reference[referenceStartIndex + i] ) {
-                if ( ++numMismatchesSeen > MAX_MISMATCHES_IN_OVERHANG )
+                if ( ++numMismatchesSeen > MAX_MISMATCHES_IN_OVERHANG ) {
                     return true;
+                }
             }
         }
 
@@ -270,8 +284,9 @@ public class OverhangFixingManager {
      */
     public void close() {
         // write out all of the remaining reads
-        while ( ! waitingReads.isEmpty() )
+        while ( ! waitingReads.isEmpty() ) {
             writer.addRead(waitingReads.poll().read);
+        }
     }
 
     // class to represent the reads with their soft-clip-included GenomeLocs
@@ -287,8 +302,9 @@ public class OverhangFixingManager {
         public void setRead(final GATKRead read) {
             if ( ! read.isEmpty() ) {
                 this.read = read;
-                if ( ! read.isUnmapped() )
+                if ( ! read.isUnmapped() ) {
                     loc = genomeLocParser.createGenomeLoc(read.getContig(), ReadUtils.getSoftStart(read), ReadUtils.getSoftEnd(read));
+                }
             }
         }
     }

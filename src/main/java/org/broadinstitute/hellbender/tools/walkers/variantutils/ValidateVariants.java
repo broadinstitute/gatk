@@ -132,9 +132,10 @@ public final class ValidateVariants extends VariantWalker {
 
         static {
             final Set<ValidationType> cts = new LinkedHashSet<>(values().length - 1);
-            for (final ValidationType v : values())
+            for (final ValidationType v : values()) {
                 if (v != ALL)
                     cts.add(v);
+            }
             CONCRETE_TYPES = Collections.unmodifiableSet(cts);
         }
     }

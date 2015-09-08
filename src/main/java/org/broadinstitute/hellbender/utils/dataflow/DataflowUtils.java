@@ -196,7 +196,7 @@ public final class DataflowUtils {
      * get a transform that throws a specified exception
      */
     public static <I,O> PTransform<PCollection<? extends I>,PCollection<O>> throwException(Exception e){
-        return ParDo.of(new ThrowExceptionFn<I, O>(e));
+        return ParDo.of(new ThrowExceptionFn<>(e));
     }
 
     /**
