@@ -132,11 +132,11 @@ dependencies {
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
-        exclude module: 'kryo'
     }
 
-    compile 'com.esotericsoftware.kryo:kryo:2.24.0' // We need the latest 2.x version for de.javakaffee:kryo-serializers
-    compile 'de.javakaffee:kryo-serializers:0.26'
+    compile('de.javakaffee:kryo-serializers:0.26') {
+        exclude module: 'kryo' // use Spark's version
+    }
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
