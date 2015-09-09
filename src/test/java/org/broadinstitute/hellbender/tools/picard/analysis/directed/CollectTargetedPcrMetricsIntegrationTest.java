@@ -21,6 +21,7 @@ public final class CollectTargetedPcrMetricsIntegrationTest extends CommandLineP
     @Test
     public void testCollect () throws IOException {
 
+
         final File input = new File(TEST_DATA_PATH, "first5Kamod_reordered.bam");
         final File amplicon_intervals = new File(TEST_DATA_PATH, "intervals_b37_20_1.interval_list");
         final File target_intervals = new File(TEST_DATA_PATH, "intervals_b37_20_1.interval_list");
@@ -40,7 +41,6 @@ public final class CollectTargetedPcrMetricsIntegrationTest extends CommandLineP
                 "--N", "intervals_b37_20",
                 "--LEVEL", "ALL_READS",
                 "--PER_TARGET_COVERAGE", pertargetcoverage.getAbsolutePath(),
-
 
         };
 
