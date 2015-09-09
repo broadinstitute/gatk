@@ -15,6 +15,7 @@ plugins {
     id "de.undercouch.download" version "1.2"
 }
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 
 apply plugin: 'java'
@@ -280,24 +281,29 @@ task fatJar(type: Jar) {
     with jar
 }
 
-shadowJar {
+configurations {
+    sparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.10'
+    }
+}
+
+task sparkJar(type: ShadowJar) {
     manifest {
         attributes 'Implementation-Title': 'Hellbender',
                 'Implementation-Version': version,
                 'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
+    configurations = [project.configurations.sparkConfiguration]
+    from(project.sourceSets.main.output)
     baseName = project.name + '-all'
     classifier = 'spark'
     mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
-    dependencies {
-        // exclude Hadoop dependencies, since they are provided when running with Spark
-        // TODO: improve this, since it doesn't take transitive dependencies into account
-        // see https://github.com/broadinstitute/hellbender/issues/836
-        exclude(dependency('org.apache.hadoop:.*:.*'))
-        exclude(dependency('org.xerial.snappy:snappy-java:.*'))
-    }
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
