@@ -30,7 +30,7 @@ public final class SamAssertionUtils {
              final SamReader reader2 = getReader(sam2, validationStringency, reference)) {
             final SamComparison comparison = new SamComparison(reader1, reader2);
             final boolean equal = comparison.areEqual();
-            Assert.assertTrue(equal, "SAM file output differs from expected output");
+            Assert.assertTrue(equal, "SAM file " + sam1.getPath() + " differs from expected output:" + sam2.getPath());
         }
     }
 
