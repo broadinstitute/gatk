@@ -38,7 +38,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
         return data;
     }
 
-    @Test(dataProvider = "pairedReadsAndVariants")
+    @Test(dataProvider = "pairedReadsAndVariants", groups = "spark")
     public void pairReadsAndVariantsTest(List<GATKRead> reads, List<Variant> variantList, List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant) {
         JavaSparkContext ctx = SparkTestUtils.getTestContext();
 

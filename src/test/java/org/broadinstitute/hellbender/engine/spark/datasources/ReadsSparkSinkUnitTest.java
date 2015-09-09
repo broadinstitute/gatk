@@ -27,7 +27,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "loadReads")
+    @Test(dataProvider = "loadReads", groups = "spark")
     public void readsSinkTest(String inputBam, String outputFile) throws IOException {
         new File(outputFile).deleteOnExit();
         JavaSparkContext ctx = SparkTestUtils.getTestContext();

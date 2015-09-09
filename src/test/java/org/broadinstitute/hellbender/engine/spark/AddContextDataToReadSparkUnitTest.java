@@ -51,7 +51,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         return data;
     }
 
-    @Test(dataProvider = "bases")
+    @Test(dataProvider = "bases", groups = "spark")
     public void addContextDataTest(List<GATKRead> reads, List<Variant> variantList,
                                    List<KV<GATKRead, ReadContextData>> expectedReadContextData,
                                    List<SimpleInterval> intervals) throws IOException {

@@ -45,7 +45,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends TestCase {
         return data;
     }
 
-    @Test(dataProvider = "bases")
+    @Test(dataProvider = "bases", groups = "spark")
     public void refBasesTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
                              List<SimpleInterval> intervals) throws IOException {
         JavaSparkContext ctx = SparkTestUtils.getTestContext();
