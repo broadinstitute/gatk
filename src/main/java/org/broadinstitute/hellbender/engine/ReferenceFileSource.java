@@ -5,6 +5,8 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.io.IOException;

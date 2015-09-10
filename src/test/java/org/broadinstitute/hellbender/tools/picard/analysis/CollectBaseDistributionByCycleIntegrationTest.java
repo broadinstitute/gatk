@@ -29,7 +29,7 @@ public final class CollectBaseDistributionByCycleIntegrationTest extends Command
         };
         runCommandLine(args);
 
-        try (final FileReader actualReader = new FileReader(outfile)) {
+        try (final FileReader actualReader = new FileReader(outfile);) {
             final MetricsFile<?,Integer> output = new MetricsFile<>();
             output.read(actualReader);
             Assert.assertEquals(output.getMetrics().size(), 202);
