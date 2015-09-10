@@ -8,7 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.engine.spark.SparkTestUtils;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.Variant;
@@ -33,7 +33,7 @@ public class VariantsSparkSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "loadVariants", groups = "spark")
     public void pairReadsAndVariantsTest(String vcf) {
-        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<Variant> rddSerialVariants =
@@ -44,8 +44,6 @@ public class VariantsSparkSourceUnitTest extends BaseTest {
         List<Variant> serialVariants = rddSerialVariants.collect();
         List<Variant> parallelVariants = rddParallelVariants.collect();
         Assert.assertEquals(parallelVariants, serialVariants);
-
-        ctx.stop();
     }
 
     /**

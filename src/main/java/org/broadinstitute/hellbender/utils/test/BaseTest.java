@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
@@ -32,7 +33,7 @@ public abstract class BaseTest {
     static {
         // set properties for the local Spark runner
         System.setProperty("dataflow.spark.test.reuseSparkContext", "true");
-        System.setProperty("spark.ui.enabled", "false");
+        SparkContextFactory.enableTestSparkContext();
     }
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.gatk");

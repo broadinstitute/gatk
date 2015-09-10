@@ -7,7 +7,7 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.spark.SparkTestUtils;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -31,7 +31,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "loadReads", groups = "spark")
     public void readsSparkSourceTest(String bam) {
-        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, bam);
@@ -40,8 +40,6 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         List<GATKRead> serialReads = rddSerialReads.collect();
         List<GATKRead> parallelReads = rddParallelReads.collect();
         Assert.assertEquals(serialReads.size(), parallelReads.size());
-
-        ctx.stop();
     }
 
     /**
