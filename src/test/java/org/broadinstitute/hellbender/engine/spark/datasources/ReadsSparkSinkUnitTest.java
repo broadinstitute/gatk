@@ -4,7 +4,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.spark.SparkTestUtils;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -30,7 +30,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @Test(dataProvider = "loadReads", groups = "spark")
     public void readsSinkTest(String inputBam, String outputFile) throws IOException {
         new File(outputFile).deleteOnExit();
-        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
@@ -50,8 +50,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             Assert.assertTrue(comparator.compare(smaller, larger) < 0);
         }
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
-
-        ctx.stop();
     }
 
 }

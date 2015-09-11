@@ -18,6 +18,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -82,6 +83,10 @@ public class SmallBamWriterTest extends BaseTest {
 
     @Test
     public void checkHDFSOutput() throws Exception {
+        String dataflowRunner = CommandLineProgramTest.getExternallySpecifiedRunner();
+        if (!SparkPipelineRunner.class.getSimpleName().equals(dataflowRunner)) {
+            return; // only run if SparkPipelineRunner specified
+        }
         File out = createTempFile("temp",".bam");
         String tempName = out.getName();
         MiniDFSCluster cluster = null;

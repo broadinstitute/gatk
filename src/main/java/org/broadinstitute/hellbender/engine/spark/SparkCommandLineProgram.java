@@ -21,21 +21,11 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
 
     @Override
     protected Object doWork() {
-        final JavaSparkContext ctx = buildContext();
+        final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkMaster);
         runPipeline(ctx);
         afterPipeline(ctx);
 
         return null;
-    }
-
-    private JavaSparkContext buildContext() {
-        SparkConf sparkConf = new SparkConf().setAppName(getProgramName())
-                .setMaster(sparkMaster)
-                .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                .set("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
-                .set("spark.kryoserializer.buffer.max", "512m");
-
-        return new JavaSparkContext(sparkConf);
     }
 
     // ---------------------------------------------------
@@ -47,7 +37,7 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
      * Override this to run code after the pipeline returns.
      */
     protected void afterPipeline(final JavaSparkContext ctx) {
-        ctx.stop();
+        SparkContextFactory.stopSparkContext(ctx);
     }
 
     protected abstract String getProgramName();

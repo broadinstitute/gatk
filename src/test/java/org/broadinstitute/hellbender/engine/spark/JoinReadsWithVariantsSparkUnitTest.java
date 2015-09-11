@@ -40,7 +40,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
 
     @Test(dataProvider = "pairedReadsAndVariants", groups = "spark")
     public void pairReadsAndVariantsTest(List<GATKRead> reads, List<Variant> variantList, List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant) {
-        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<Variant> rddVariants = ctx.parallelize(variantList);
@@ -56,6 +56,5 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
             HashSet<Variant> expectedHashVariants = Sets.newHashSet(iVariants);
             Assert.assertEquals(hashVariants, expectedHashVariants);
         }
-        ctx.close();
     }
 }

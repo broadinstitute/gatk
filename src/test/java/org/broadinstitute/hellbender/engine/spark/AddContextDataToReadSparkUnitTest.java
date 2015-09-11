@@ -55,7 +55,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
     public void addContextDataTest(List<GATKRead> reads, List<Variant> variantList,
                                    List<KV<GATKRead, ReadContextData>> expectedReadContextData,
                                    List<SimpleInterval> intervals) throws IOException {
-        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<Variant> rddVariants = ctx.parallelize(variantList);
@@ -77,7 +77,5 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
                     Lists.newArrayList(kv.getValue().getOverlappingVariants())));
             Assert.assertEquals(readContextData.getOverlappingReferenceBases(), kv.getValue().getOverlappingReferenceBases());
         }
-
-        ctx.close();
     }
 }

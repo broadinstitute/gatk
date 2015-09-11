@@ -48,7 +48,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends TestCase {
     @Test(dataProvider = "bases", groups = "spark")
     public void refBasesTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
                              List<SimpleInterval> intervals) throws IOException {
-        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
 
@@ -66,7 +66,6 @@ public class JoinReadsWithRefBasesSparkUnitTest extends TestCase {
             Assert.assertNotNull(referenceBases);
             Assert.assertEquals(kv.getValue(),referenceBases);
         }
-        ctx.close();
     }
 
 }

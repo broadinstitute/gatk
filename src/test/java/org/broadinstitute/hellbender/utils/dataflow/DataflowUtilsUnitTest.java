@@ -11,6 +11,7 @@ import com.google.cloud.dataflow.sdk.transforms.DoFnTester;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.fs.Path;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -66,6 +67,10 @@ public final class DataflowUtilsUnitTest extends BaseTest {
 
     @Test
     public void testGetReadsFromHadoopBam() {
+        String dataflowRunner = CommandLineProgramTest.getExternallySpecifiedRunner();
+        if (!SparkPipelineRunner.class.getSimpleName().equals(dataflowRunner)) {
+            return; // only run if SparkPipelineRunner specified
+        }
         List<SimpleInterval> intervals = Arrays.asList(new SimpleInterval("chr7:1-202"), new SimpleInterval("chr8:2-202"));
         File inputFile = new File(getToolTestDataDir(), "example_reads.bam");
         List<GATKRead> expected = getReadsFromFile(intervals, inputFile, true);
