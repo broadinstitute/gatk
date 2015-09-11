@@ -5,20 +5,26 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileAlreadyExistsException;
 import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.parquet.avro.AvroParquetOutputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
+import org.bdgenomics.adam.models.RecordGroupDictionary;
+import org.bdgenomics.adam.models.SequenceDictionary;
+import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.seqdoop.hadoop_bam.KeyIgnoringBAMOutputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import scala.Tuple2;
@@ -64,23 +70,41 @@ public class ReadsSparkSink {
      * @param outputFile path to the output bam.
      * @param rddReads reads to write.
      * @param header the header to put at the top of the files
-     * @param singleFile should the output be a single file or sharded, i.e., outputfile/part-r-00000, outputfile/part-r-00001...
+     * @param format should the output be a single file, sharded, ADAM, etc.
      */
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
-            final SAMFileHeader header, boolean singleFile) throws IOException {
-        if (singleFile) {
+            final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
+        if (format.equals(ReadsWriteFormat.SINGLE)) {
             writeReadsSingle(ctx, outputFile, rddReads, header);
-        } else {
+        } else if (format.equals(ReadsWriteFormat.SHARDED)) {
             writeReadsSharded(ctx, outputFile, rddReads, header);
-
+        } else if (format.equals(ReadsWriteFormat.ADAM)) {
+            writeReadsADAM(ctx, outputFile, rddReads, header);
         }
+    }
 
+    private static void writeReadsADAM(
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddGATKReads,
+            final SAMFileHeader header) throws IOException {
+        SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
+        RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
+        JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
+                rddGATKReads.map(read -> GATKReadToBDGAlignmentRecordConverter.convert(read, header, seqDict, readGroups))
+                        .mapToPair(alignmentRecord -> new Tuple2<>(null, alignmentRecord));
+        // instantiating a Job is necessary here in order to set the Hadoop Configuration...
+        Job job = Job.getInstance(ctx.hadoopConfiguration());
+        // ...here, which sets a config property that the AvroParquetOutputFormat needs when writing data. Specifically,
+        // we are writing the Avro schema to the Configuration as a JSON string. The AvroParquetOutputFormat class knows
+        // how to translate objects in the Avro data model to the Parquet primitives that get written.
+        AvroParquetOutputFormat.setSchema(job, AlignmentRecord.getClassSchema());
+        rddAlignmentRecords.saveAsNewAPIHadoopFile(
+                outputFile, Void.class, AlignmentRecord.class, AvroParquetOutputFormat.class, job.getConfiguration());
     }
 
     private static void writeReadsSharded(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
-                                         final SAMFileHeader header) {
+            final SAMFileHeader header) {
         // Set the header on the main thread.
         SparkBAMOutputFormat.setHeader(header);
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call

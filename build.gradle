@@ -115,6 +115,10 @@ dependencies {
     compile ('com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30') {
         exclude module: 'guava-jdk5'
     }
+
+    compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
+    compile 'org.bdgenomics.adam:adam-core_2.10:0.17.1'
+
     // we don't need this guy. Plus, it asks for the latest version
     // of com.google.http-client:google-http-client-jackson2,
     // which is a problem when we have a SNAPSHOT version.

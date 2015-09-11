@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -49,7 +50,8 @@ public final class SortBamSpark extends SparkCommandLineProgram {
                 .keys();
         try {
             readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            ReadsSparkSink.writeReads(ctx, outputFile, sortedReads, readsHeader, parallelism == 1);
+            ReadsSparkSink.writeReads(
+                    ctx, outputFile, sortedReads, readsHeader, parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }

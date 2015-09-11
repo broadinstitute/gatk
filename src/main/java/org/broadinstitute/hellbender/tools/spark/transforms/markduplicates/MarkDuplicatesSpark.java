@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
@@ -80,7 +81,7 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
         final JavaRDD<GATKRead> finalReads = mark(reads, readsHeader, finder);
 
         try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, true);
+            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, ReadsWriteFormat.SINGLE);
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }

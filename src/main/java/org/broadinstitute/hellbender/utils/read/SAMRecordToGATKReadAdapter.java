@@ -19,7 +19,7 @@ import java.util.UUID;
  * but care must be exercised if the underlying read has been exposed somewhere before
  * wrapping.
  */
-public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
+public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final SAMRecord samRecord;

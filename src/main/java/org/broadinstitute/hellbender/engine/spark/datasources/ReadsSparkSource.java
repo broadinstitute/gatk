@@ -6,26 +6,37 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.broadcast.Broadcast;
+import org.bdgenomics.adam.models.SAMFileHeaderWritable;
+import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
+import scala.Tuple2;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
  */
-public class ReadsSparkSource {
-    private final JavaSparkContext ctx;
+public class ReadsSparkSource implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private transient final JavaSparkContext ctx;
     public ReadsSparkSource(JavaSparkContext ctx) {
         this.ctx = ctx;
     }
@@ -72,6 +83,28 @@ public class ReadsSparkSource {
         final SAMFileHeader readsHeader = getHeader(ctx, bam);
         List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         return getParallelReads(bam, intervals);
+    }
+
+    /**
+     * Loads ADAM reads stored as Parquet.
+     * @param inputPath path to the Parquet data
+     * @return RDD of (ADAM-backed) GATKReads from the file.
+     */
+    public JavaRDD<GATKRead> getADAMReads(final String inputPath, SAMFileHeader header) throws IOException {
+        Job job = Job.getInstance(ctx.hadoopConfiguration());
+        AvroParquetInputFormat.setAvroReadSchema(job, AlignmentRecord.getClassSchema());
+        Broadcast<SAMFileHeader> bHeader;
+        if (header == null) {
+            bHeader= ctx.broadcast(null);
+        } else {
+            bHeader = ctx.broadcast(header);
+        }
+        @SuppressWarnings("unchecked")
+        JavaRDD<AlignmentRecord> recordsRdd = ctx.newAPIHadoopFile(
+                inputPath, AvroParquetInputFormat.class, Void.class, AlignmentRecord.class, job.getConfiguration())
+                .values();
+        JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
+        return readsRdd;
     }
 
     /**

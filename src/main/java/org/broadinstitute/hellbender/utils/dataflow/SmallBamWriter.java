@@ -55,11 +55,14 @@ public class SmallBamWriter implements Serializable {
      * @param reads  the reads to write (they don't need to be sorted).
      * @param header the header that corresponds to the reads.
      * @param destPath the GCS or local path to write to (must start with "gs://" if writing to GCS).
+     * @param parquet whether to write out BAM or Parquet data (BDG AlignmentRecords); only applies when writing to Hadoop
      */
-    public static void writeToFile(Pipeline pipeline, PCollection<GATKRead> reads, final SAMFileHeader header, final String destPath) {
+    public static void writeToFile(
+            Pipeline pipeline, PCollection<GATKRead> reads, final SAMFileHeader header, final String destPath,
+            final boolean parquet) {
         if (BucketUtils.isHadoopUrl(destPath) ||
                 pipeline.getRunner().getClass().equals(SparkPipelineRunner.class)) {
-            writeToHadoop(pipeline, reads, header, destPath);
+            writeToHadoop(pipeline, reads, header, destPath, parquet);
         } else {
             PCollectionView<Iterable<GATKRead>> iterableView =
                     reads.apply(View.<GATKRead>asIterable());
@@ -71,6 +74,10 @@ public class SmallBamWriter implements Serializable {
                             .of(new SaveToBAMFile(header, iterableView))
             );
         }
+    }
+
+    public static void writeToFile(Pipeline pipeline, PCollection<GATKRead> reads, final SAMFileHeader header, final String destPath) {
+        writeToFile(pipeline, reads, header, destPath, false);
     }
 
     private static class SaveToBAMFile extends DoFn<String,Void> {
@@ -99,7 +106,9 @@ public class SmallBamWriter implements Serializable {
         }
     }
 
-    private static void writeToHadoop(Pipeline pipeline, PCollection<GATKRead> reads, final SAMFileHeader header, final String destPath) {
+    private static void writeToHadoop(
+            Pipeline pipeline, PCollection<GATKRead> reads, final SAMFileHeader header, final String destPath,
+            final boolean parquet) {
         if (destPath.equals("/dev/null")) {
             return;
         }
