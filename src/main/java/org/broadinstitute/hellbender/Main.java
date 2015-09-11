@@ -6,8 +6,8 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.ClassUtils;
 
-import java.lang.reflect.Modifier;
 import java.util.*;
 
 /**
@@ -109,8 +109,7 @@ public class Main {
         final Map<String, Class<?>> simpleNameToClass = new HashMap<>();
         for (final Class<?> clazz : classFinder.getClasses()) {
             // No interfaces, synthetic, primitive, local, or abstract classes.
-            if (!clazz.isInterface() && !clazz.isSynthetic() && !clazz.isPrimitive() && !clazz.isLocalClass()
-                    && !Modifier.isAbstract(clazz.getModifiers())) {
+            if (ClassUtils.canMakeInstances(clazz)) {
                 final CommandLineProgramProperties property = getProgramProperty(clazz);
                 // Check for missing annotations
                 if (null == property) {

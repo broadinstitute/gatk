@@ -6,8 +6,6 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.GenotypeAnnotation;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
@@ -20,7 +18,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.broadinstitute.hellbender.utils.BaseUtils.Base.*;
+import static org.broadinstitute.hellbender.utils.BaseUtils.Base.A;
+import static org.broadinstitute.hellbender.utils.BaseUtils.Base.C;
 
 
 /**

@@ -8,15 +8,12 @@ import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public final class DepthPerAlleleBySampleUnitTest extends BaseTest {
 

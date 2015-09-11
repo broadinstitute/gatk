@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -9,7 +8,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.GenotypeAnnotation;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 
@@ -35,7 +33,7 @@ import java.util.*;
  *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AlleleBalanceBySample.php">AlleleBalanceBySample</a></b> calculates allele balance for each individual sample.</li>
  * </ul>
  */
-public final class DepthPerAlleleBySample extends GenotypeAnnotation {
+public final class DepthPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation {
 
     public void annotate(final ReferenceContext ref,
                          final VariantContext vc,

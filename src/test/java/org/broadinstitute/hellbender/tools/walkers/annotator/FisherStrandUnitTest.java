@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -16,6 +14,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 
 public final class FisherStrandUnitTest {
     private static final double DELTA_PRECISION = 10e-8;
@@ -187,5 +189,12 @@ public final class FisherStrandUnitTest {
         Assert.assertEquals(actualPhredPval, expectedPhredPvalue, DELTA_PRECISION_FOR_PHRED, "phred pvalues");
 
         Assert.assertEquals(Math.pow(10, actualPhredPval / -10.0), expectedPvalue, DELTA_PRECISION);
+    }
+
+    @Test
+    public void testNullIfNonVariant() {
+        FisherStrand fs= new FisherStrand();
+        Assert.assertNull(fs.annotate(null, when(mock(VariantContext.class).isVariant()).thenReturn(false).getMock(), null));
+
     }
 }

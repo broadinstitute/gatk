@@ -1,10 +1,9 @@
-package org.broadinstitute.hellbender.tools.walkers.annotator.interfaces;
+package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 
@@ -13,7 +12,7 @@ import java.util.List;
 /**
  * Represents an annotation that is computed for a single genotype.
  */
-public abstract class GenotypeAnnotation {
+public abstract class GenotypeAnnotation extends VariantAnnotation{
 
     /**
      * Computes the annotation for the given genotype and the likelihoods per read.
@@ -35,9 +34,4 @@ public abstract class GenotypeAnnotation {
      * Return the descriptions used for the VCF FORMAT meta field
      */
     public abstract List<VCFFormatHeaderLine> getDescriptions();
-
-    /**
-     * Return the FORMAT keys
-     */
-    public abstract List<String> getKeyNames();
 }

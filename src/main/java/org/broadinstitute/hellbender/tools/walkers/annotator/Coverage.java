@@ -5,11 +5,12 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Total depth of coverage per sample and over all samples.
@@ -29,7 +30,7 @@ import java.util.*;
  *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerSampleHC.php">DepthPerSampleHC</a></b> calculates depth of coverage after filtering by HaplotypeCaller.</li>
  * </ul>
  */
-public final class Coverage extends InfoFieldAnnotation {
+public final class Coverage extends InfoFieldAnnotation implements StandardAnnotation {
 
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,

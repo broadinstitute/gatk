@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.samples.Sample;
 import org.broadinstitute.hellbender.utils.samples.Sex;
 import org.broadinstitute.hellbender.utils.samples.Trio;

@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.OptionalDouble;
@@ -25,6 +24,7 @@ import java.util.OptionalDouble;
  *
  */
 public final class ClippingRankSumTest extends RankSumTest {
+
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.CLIPPING_RANK_SUM_KEY); }
 

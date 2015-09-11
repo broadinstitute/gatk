@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.annotator.interfaces;
+package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * Annotations relevant to the INFO field of the variant file (ie annotations for sites).
  */
-public abstract class InfoFieldAnnotation {
+public abstract class InfoFieldAnnotation extends VariantAnnotation{
 
     /**
      * Computes the annotation for the given variant and the likelihoods per read.
@@ -37,10 +37,4 @@ public abstract class InfoFieldAnnotation {
         }
         return lines;
     }
-
-    /**
-     * Return the INFO keys
-     */
-    public abstract List<String> getKeyNames();
-
 }
