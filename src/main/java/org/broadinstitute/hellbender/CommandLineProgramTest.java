@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender;
 
 import com.google.common.base.Strings;
+import com.google.common.io.CharStreams;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -8,6 +10,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -73,6 +76,109 @@ public abstract class CommandLineProgramTest extends BaseTest {
 
     public Object runCommandLine(final String[] args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
+    }
+
+
+    public Object runSparkGoogleCommandLine(final List<String> args) throws IOException, InterruptedException {
+        /* Example command
+        ./bdutil -p broad-dsde-dev -P broad-dsde-dev -z us-central1-a -u \
+        /Users/davidada/dev/git_projects/broad/hellbender_branch/build/libs/hellbender_branch-all-GATK.4.alpha-624-g1c89045-SNAPSHOT-spark.jar \
+        run_command -- spark-submit  --master spark://broad-dsde-dev-m:7077 \
+        --class org.broadinstitute.hellbender.Main hellbender_branch-all-GATK.4.alpha-*-SNAPSHOT-spark.jar \
+        ReadsPipelineSpark --input gs://davidada-hellbender-ctd/resources/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam \
+        --output gs://davidada-hellbender-ctd/output/output.bam  \
+        -R gg://reference/EOSsjdnTicvzwAE -BQSRKnownVariants gs://davidada-hellbender-ctd/resources/dbsnp_132.b37.chr17_69k_70k.vcf \
+        --apiKey AIzaSyDjKyy2KWcEVgtlOlJBdqy4O4oUVMxluE4 --sparkMaster spark://broad-dsde-dev-m:7077
+
+         */
+        final String[] strings = makeCommandLineArgs(args);
+        for (String s: strings) {
+            System.out.println("** " + s);
+        }
+
+        // Find the --sparkMaster arg and get the next item for the value of the flag.
+        String sparkMaster = "";
+        for (int i = 0; i < strings.length-1; ++i) {
+            if (strings[i].equals("--sparkMaster")) {
+                sparkMaster = strings[i+1];
+            }
+        }
+
+        // Check for the shadowJar, if missing make it
+        Runtime r = Runtime.getRuntime();
+
+        // Use gradle properties to find the jar name
+        // TODO: we could try to use git describe --always
+        Process jarP = r.exec("gradle properties");
+        CharStreams.toString(new InputStreamReader(jarP.getErrorStream()));
+        final String[] properties = CharStreams.toString(new InputStreamReader(jarP.getInputStream())).split("\\r?\\n");
+        String version = "";
+        for (String s : properties) {
+            int idx = s.indexOf("version: ");
+            if (idx != -1) {
+                version = s.substring(9);
+            }
+        }
+
+        if (version.isEmpty()) {
+            throw new GATKException("unable to find version from \"gradle properties\"");
+        }
+
+        System.out.println("**** " + version);
+        String fullJarName = "hellbender_branch-all-" + version + "-spark.jar";
+        String jarPath = "build/libs/" + fullJarName;
+        //System.out.println("***** " + jarPath);
+        Process jarSearchP = r.exec("test -f " + jarPath);
+        CharStreams.toString(new InputStreamReader(jarSearchP.getInputStream())); // Drain the streams.
+        CharStreams.toString(new InputStreamReader(jarSearchP.getErrorStream())); // Drain the streams.
+        if (jarSearchP.waitFor() != 0) {
+            System.out.println("jar not found");
+            // Build the jar
+            Process shadowJarP = r.exec("gradle sparkJar");
+            CharStreams.toString(new InputStreamReader(shadowJarP.getInputStream())); // Drain the streams.
+            CharStreams.toString(new InputStreamReader(shadowJarP.getErrorStream())); // Drain the streams.
+            int exitCode = shadowJarP.waitFor();
+            if (exitCode != 0) {
+                throw new GATKException("unable to build the Spark jar");
+            }
+        } else {
+            System.out.println("jar found at: " + jarPath);
+        }
+
+        /*
+        // Copy the jar to the master.
+        Process copyP = r.exec("gcloud compute copy-files " + jarPath + " broad-dsde-dev-m:~/ --zone us-central1-a");
+        String stdout = CharStreams.toString(new InputStreamReader(copyP.getInputStream()));// Drain the streams.
+        String stderr = CharStreams.toString(new InputStreamReader(copyP.getErrorStream()));// Drain the streams.
+        int exitCode = copyP.waitFor();
+        System.out.println("stdout: " + stdout);
+        System.out.println("stderr: " + stderr);
+
+        if (exitCode != 0) {
+            throw new GATKException("unable to build copy jar to master");
+        }
+        */
+        // Run spark-submit on the master.
+
+        String commandList;// <-------- START HERE!!!!!
+
+
+        /*
+        String testedClassName = getTestedClassName();
+        //Runtime r = Runtime.getRuntime();
+        String[] args1 = {"ls", "-l"};
+        try {
+            Process p = r.exec(args1);
+            final String stdout = CharStreams.toString(new InputStreamReader(p.getInputStream()));
+            final String stderr = CharStreams.toString(new InputStreamReader(p.getErrorStream()));
+            System.out.println("stdout: " + stdout);
+            System.out.println("stderr: " + stderr);
+            final int exitValue = p.exitValue();
+            System.out.println("exit value: " + exitValue);
+        } catch (IOException e) {
+            throw new GATKException("runSparkCommandLine");
+        }*/
+        return null; //new Main().instanceMain(makeCommandLineArgs(args));
     }
 
     /**
