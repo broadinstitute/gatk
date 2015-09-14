@@ -2,11 +2,16 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Utility class to facilitate base quality score recalibration.
@@ -16,6 +21,8 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
     private final int qualDimension;
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;
+
+    final StandardCovariateList covariates;  // save the covariates this was created with
 
     //These two tables are special
     private final NestedIntegerArray<RecalDatum> readGroupTable;
@@ -29,11 +36,13 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
     private final Map<NestedIntegerArray<RecalDatum>, Covariate> tableToCovariate;
 
 
+
     public RecalibrationTables(final StandardCovariateList covariates) {
         this(covariates, covariates.getReadGroupCovariate().maximumKeyValue() + 1);
     }
 
     public RecalibrationTables(StandardCovariateList covariates, final int numReadGroups) {
+        this.covariates = covariates;
         this.additionalTables = new ArrayList<>();
         this.allTables = new ArrayList<>();
         this.covariateToTable = new LinkedHashMap<>();
@@ -128,7 +137,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
     /**
      * Merge all of the tables from toMerge into into this set of tables
      */
-    public void combine(final RecalibrationTables toMerge) {
+    public RecalibrationTables combine(final RecalibrationTables toMerge) {
         if ( numTables() != toMerge.numTables() )
             throw new IllegalArgumentException("Attempting to merge RecalibrationTables with different sizes");
 
@@ -137,6 +146,18 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
             final NestedIntegerArray<RecalDatum> otherTable = toMerge.allTables.get(i);
             RecalUtils.combineTables(myTable, otherTable);
         }
+
+        return this;
+    }
+
+    public static RecalibrationTables safeCombine(final RecalibrationTables left, final RecalibrationTables right){
+        Utils.nonNull(left);
+        Utils.nonNull(right);
+
+        final RecalibrationTables newTable = new RecalibrationTables(left.covariates, left.numReadGroups);
+        newTable.combine(left);
+        newTable.combine(right);
+        return newTable;
     }
 
     //XXX this should not be accessible by index
