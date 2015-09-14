@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -88,8 +89,8 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants);
-
-        JavaRDD<RecalibrationTables> tables = rddReadContext.map(new BaseRecalibratorStub());
+        Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(readsHeader);
+        JavaRDD<RecalibrationTables> tables = rddReadContext.mapPartitions(new BaseRecalibratorSparkFn(headerBroadcast));
         RecalibrationTables nestedIntegerArrays = null;
         if (tables != null) {
             nestedIntegerArrays = tables.collect().get(0);
