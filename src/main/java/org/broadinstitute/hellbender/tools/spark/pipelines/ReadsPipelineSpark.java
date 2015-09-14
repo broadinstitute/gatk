@@ -111,6 +111,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
         final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader, new ApplyBQSRArgumentCollection());
 
+
         try {
             ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
         } catch (IOException e) {

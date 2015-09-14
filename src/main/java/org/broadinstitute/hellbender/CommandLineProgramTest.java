@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender;
 
 import com.google.common.base.Strings;
+import com.google.common.io.CharStreams;
+import org.apache.commons.lang.StringUtils;
+import org.apache.spark.launcher.SparkLauncher;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -8,6 +12,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -73,6 +78,92 @@ public abstract class CommandLineProgramTest extends BaseTest {
 
     public Object runCommandLine(final String[] args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
+    }
+
+    public String buildSparkJarIfMissing() throws IOException, InterruptedException {
+        // Check for the sparkJar, if missing make it
+        Runtime r = Runtime.getRuntime();
+        // Use gradle properties to find the jar name
+        // TODO: we could try to use git describe --always
+        Process jarP = r.exec("gradle properties");
+        CharStreams.toString(new InputStreamReader(jarP.getErrorStream()));
+        final String[] properties = CharStreams.toString(new InputStreamReader(jarP.getInputStream())).split("\\r?\\n");
+        String version = "";
+        for (String s : properties) {
+            int idx = s.indexOf("version: ");
+            if (idx != -1) {
+                version = s.substring(9);
+            }
+        }
+
+        if (version.isEmpty()) {
+            throw new GATKException("unable to find version from \"gradle properties\"");
+        }
+
+        System.out.println("**** " + version);
+        String fullJarName = "hellbender_branch-all-" + version + "-spark.jar";
+        String jarPath = "build/libs/" + fullJarName;
+
+        Process jarSearchP = r.exec("test -f " + jarPath);
+        //CharStreams.toString(new InputStreamReader(jarSearchP.getInputStream())); // Drain the streams.
+        //CharStreams.toString(new InputStreamReader(jarSearchP.getErrorStream())); // Drain the streams.
+        if (jarSearchP.waitFor() != 0) {
+            System.out.println("jar not found");
+            // Build the jar
+            Process shadowJarP = r.exec("gradle sparkJar");
+            //CharStreams.toString(new InputStreamReader(shadowJarP.getInputStream())); // Drain the streams.
+            //CharStreams.toString(new InputStreamReader(shadowJarP.getErrorStream())); // Drain the streams.
+            int exitCode = shadowJarP.waitFor();
+            if (exitCode != 0) {
+                throw new GATKException("unable to build the Spark jar");
+            }
+        }
+        return jarPath;
+    }
+
+    public int runLocalSpark(final List<String> args) throws IOException, InterruptedException {
+        args.add("--sparkMaster");
+        args.add(getSparkMasterURL());
+        String path = new File("build/classes/main").getCanonicalPath();
+        String jarLibPath = new File("build/deps/*").getCanonicalPath(); // from copyDeps in build.gradle
+        String[] cmdArgs = makeCommandLineArgs(args);
+
+
+        Process spark = new SparkLauncher()
+                .setAppResource("")
+                .setMainClass("org.broadinstitute.hellbender.Main")
+                .setMaster(getSparkMasterURL()) //"spark://davidada-macbookpro2.roam.corp.google.com:7077")
+                .setConf(SparkLauncher.EXECUTOR_EXTRA_CLASSPATH, path + ":" + jarLibPath)
+                .setConf(SparkLauncher.DRIVER_EXTRA_CLASSPATH, path + ":" + jarLibPath)
+                        .addAppArgs(cmdArgs)
+                .launch();
+        String stdout = CharStreams.toString(new InputStreamReader(spark.getInputStream()));// Drain the streams.
+        String stderr = CharStreams.toString(new InputStreamReader(spark.getErrorStream()));// Drain the streams.
+        int returnCode = spark.waitFor();
+        System.out.println(stdout);
+        System.err.println(stderr);
+        return returnCode;
+    }
+
+    public int runSparkGoogleCommandLine(final List<String> args) throws IOException, InterruptedException {
+        args.add("--sparkMaster");
+        args.add("yarn-client");
+        String[] cmdArgs = makeCommandLineArgs(args);
+
+        String jarPath = buildSparkJarIfMissing();
+        String dataProcCommand = "gcloud alpha dataproc jobs submit spark --cluster "
+                + getGoogleSparkCluster() + " --class org.broadinstitute.hellbender.Main --jar "
+                + jarPath + " " + StringUtils.join(cmdArgs, " ");
+
+        Runtime r = Runtime.getRuntime();
+
+        Process dataProc = r.exec(dataProcCommand);
+        String stdout = CharStreams.toString(new InputStreamReader(dataProc.getInputStream()));
+        String stderr = CharStreams.toString(new InputStreamReader(dataProc.getErrorStream()));
+        int returnCode = dataProc.waitFor();
+        System.out.println(stdout);
+        System.out.println(stderr);
+        return returnCode;
     }
 
     /**
