@@ -85,6 +85,19 @@ public final class BQSRReadTransformer implements ReadTransformer {
     }
 
     /**
+     * Constructor using a GATK Report file
+     *
+     * @param header header for the reads
+     * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
+     * @param quantizationLevels number of bins to quantize the quality scores
+     * @param disableIndelQuals  if true, do not emit base indel qualities
+     * @param preserveQLessThan  preserve quality scores less than this value
+     */
+    public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationReport recalInfo, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+        this(header, new BaseRecalOutput(recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates()), quantizationLevels, disableIndelQuals, preserveQLessThan, emitOriginalQuals, globalQScorePrior);
+    }
+
+    /**
      * Recalibrates the base qualities of a read
      * <p>
      * It updates the base qualities of the read with the new recalibrated qualities (for all event types)

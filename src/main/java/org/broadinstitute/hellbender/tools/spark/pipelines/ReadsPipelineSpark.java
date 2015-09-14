@@ -23,8 +23,12 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
+import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -89,19 +93,10 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants);
-        Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(readsHeader);
-        JavaRDD<RecalibrationTables> tables = rddReadContext.mapPartitions(new BaseRecalibratorSparkFn(headerBroadcast));
-        RecalibrationTables nestedIntegerArrays = null;
-        if (tables != null) {
-            nestedIntegerArrays = tables.collect().get(0);
-        }
-        final Broadcast<RecalibrationTables> broadcast = ctx.broadcast(nestedIntegerArrays);
-
-        // ApplyBQSRStub.
-        JavaRDD<GATKRead> finalReads = markedReads.map(v1 -> {
-            RecalibrationTables value = broadcast.getValue();
-            return v1;
-        });
+        // TODO: broadcast the reads header?
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null));
+        final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
+        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader);
 
         try {
             ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, false);

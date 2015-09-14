@@ -28,7 +28,7 @@ import java.util.Iterator;
 
 public class BaseRecalibratorSparkFn {
 
-    public static RecalibrationTables apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary ) {
+    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary ) {
         final BaseRecalibrationArgumentCollection brac = new BaseRecalibrationArgumentCollection();
         final BQSRSpark bqsr = new BQSRSpark(header, referenceDictionary, brac);
         bqsr.onTraversalStart();
@@ -53,8 +53,7 @@ public class BaseRecalibratorSparkFn {
         File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
         try {
             BaseRecalibratorFn.SaveTextualReport(temp, header, combinedTables, brac);
-            final RecalibrationReport recalibrationReport = new RecalibrationReport(temp);
-            return recalibrationReport.getRecalibrationTables();
+            return new RecalibrationReport(temp);
         } catch (FileNotFoundException e) {
             throw new GATKException("can't find my own temporary file", e);
         } catch (IOException e) {
