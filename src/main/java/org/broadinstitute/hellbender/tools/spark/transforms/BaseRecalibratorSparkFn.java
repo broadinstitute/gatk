@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
@@ -24,7 +23,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Iterator;
 
 public class BaseRecalibratorSparkFn {
 
@@ -32,19 +30,16 @@ public class BaseRecalibratorSparkFn {
         final BaseRecalibrationArgumentCollection brac = new BaseRecalibrationArgumentCollection();
         final BQSRSpark bqsr = new BQSRSpark(header, referenceDictionary, brac);
         bqsr.onTraversalStart();
-        JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(new FlatMapFunction<Iterator<Tuple2<GATKRead, ReadContextData>>, RecalibrationTables>() {
-            @Override
-            public Iterable<RecalibrationTables> call( Iterator<Tuple2<GATKRead, ReadContextData>> readWithContextIterator ) throws Exception {
-                while ( readWithContextIterator.hasNext() ) {
-                    final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
-                    Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
-                    final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
-                    ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
+        JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(readWithContextIterator -> {
+            while ( readWithContextIterator.hasNext() ) {
+                final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
+                Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
+                final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
+                ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
 
-                    bqsr.apply(readWithData._1(), refDS, variants);
-                }
-                return Arrays.asList(bqsr.getRecalibrationTable());
+                bqsr.apply(readWithData._1(), refDS, variants);
             }
+            return Arrays.asList(bqsr.getRecalibrationTable());
         });
 
         final RecalibrationTables combinedTables = unmergedTables.reduce(RecalibrationTables::safeCombine);

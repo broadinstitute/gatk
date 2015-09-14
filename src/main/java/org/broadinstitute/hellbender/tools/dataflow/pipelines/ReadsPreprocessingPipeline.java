@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.transforms.*;
+import com.google.cloud.dataflow.sdk.transforms.Create;
+import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
@@ -15,12 +16,15 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransform;
-import org.broadinstitute.hellbender.engine.dataflow.*;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
@@ -33,7 +37,6 @@ import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
-import java.io.IOException;
 import java.util.List;
 
 
@@ -74,48 +77,44 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
     @Override
-    protected void setupPipeline( Pipeline pipeline ) {
-        try {
-            // Load the reads.
-            final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
-            final SAMFileHeader readsHeader = readsDataflowSource.getHeader();
-            final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
-                    : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
+protected void setupPipeline( Pipeline pipeline ) {
+        // Load the reads.
+        final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
+        final SAMFileHeader readsHeader = readsDataflowSource.getHeader();
+        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
+                : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-            final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
-            final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+        final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
+        final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
-            final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
-                    new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
-            final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
+        final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
+                new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
 
-            // Apply MarkDuplicates to produce updated GATKReads.
-            final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
+        // Apply MarkDuplicates to produce updated GATKReads.
+        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
 
-            // Load the Variants and the Reference and join them to reads.
-            final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
+        // Load the Variants and the Reference and join them to reads.
+        final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
 
-            // Use the BQSR_REFERENCE_WINDOW_FUNCTION so that the reference bases required by BQSR for each read are fetched
-            final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
+        // Use the BQSR_REFERENCE_WINDOW_FUNCTION so that the reference bases required by BQSR for each read are fetched
+        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-            final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, referenceDataflowSource, variantsDataflowSource);
+        final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, referenceDataflowSource, variantsDataflowSource);
 
-            // BQSR.
-            // default arguments are best practice.
-            BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
-            final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
-            final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
-            checkSequenceDictionaries(refDictionary, readsDictionary);
-            PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
-            final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
-            final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
+        // BQSR.
+        // default arguments are best practice.
+        BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+        final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
+        final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
+        checkSequenceDictionaries(refDictionary, readsDictionary);
+        PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
+        final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
+        final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
 
-            final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();
-            final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRTransform(headerSingleton, mergedRecalibrationReport, applyArgs));
-            SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
-        } catch (IOException x) {
-            throw new GATKException("Unexpected: " + x.getMessage(), x);
-        }
+        final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();
+        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRTransform(headerSingleton, mergedRecalibrationReport, applyArgs));
+        SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
     }
 
     private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
