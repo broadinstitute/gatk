@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.io.FileUtils;
@@ -9,14 +10,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -26,6 +27,7 @@ import java.io.Reader;
 import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipException;
 
 public final class IOUtils {
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
@@ -377,10 +379,33 @@ public final class IOUtils {
      * Makes a reader for a file, unzipping if the file's name ends with '.gz'.
      */
     public static Reader makeReaderMaybeGzipped(File file) throws IOException {
-        if (file.getPath().endsWith(".gz")) {
-            return new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
+        final InputStream in = new BufferedInputStream( new FileInputStream(file));
+        return makeReaderMaybeGzipped(in, file.getPath().endsWith(".gz"));
+    }
+
+    /**
+     * makes a reader for an inputStream wrapping it in an appropriate unzipper if necessary
+     * @param zipped is this stream zipped
+     */
+    public static Reader makeReaderMaybeGzipped(InputStream in, boolean zipped) throws IOException {
+        if (zipped) {
+            return new InputStreamReader(makeZippedInputStream(in));
         } else {
-            return new FileReader(file);
+            return new InputStreamReader(in);
+        }
+    }
+
+    /**
+     * creates an input stream from a zipped stream
+     * @return tries to create a block gzipped input stream and if it's not block gzipped it produces to a gzipped stream instead
+     * @throws ZipException if !in.markSupported()
+     */
+    public static InputStream makeZippedInputStream(InputStream in) throws IOException {
+        Utils.nonNull(in);
+        if (BlockCompressedInputStream.isValidFile(in)) {
+                return new BlockCompressedInputStream(in);
+        } else {
+            return new GZIPInputStream(in);
         }
     }
 

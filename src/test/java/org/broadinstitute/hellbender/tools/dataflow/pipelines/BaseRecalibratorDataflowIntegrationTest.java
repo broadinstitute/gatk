@@ -58,8 +58,8 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
             return  " -R " + RefAPISource.URL_PREFIX + referenceSetID +
                     " -I " + bam +
                     " " + args +
-                    (knownSites.isEmpty() ? "": " -BQSRKnownVariants " + knownSites) +
-                    " --RECAL_TABLE_FILE %s" +
+                    (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
+                    " -O %s" +
                     " -sortAllCols" +
                     " --apiKey " + getDataflowTestApiKey();
         }
@@ -221,16 +221,16 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + HiSeqBam
-                + " -RECAL_TABLE_FILE " + tablePre + " --sort_by_all_columns true";
+        final String argPre = " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -knownSites " + dbSNPb37 + " -I " + HiSeqBam
+                + " -O " + tablePre + " --sort_by_all_columns true";
         new BaseRecalibratorDataflow().instanceMain(Utils.escapeExpressions(argPre));
 
         final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre+ "  -O " + actualHiSeqBam_recalibrated.getAbsolutePath();
         new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -BQSRKnownVariants " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
-                + " -RECAL_TABLE_FILE " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
+        final String argsPost = " -apiref " + RefAPISource.URL_PREFIX + GRCh37Ref + " -knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
+                + " -O " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
         // currently fails with:
         // org.broadinstitute.hellbender.exceptions.UserException: A USER ERROR has occurred: Traversal by intervals was requested but some input files are not indexed.
         // Please index all input files:

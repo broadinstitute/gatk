@@ -4,18 +4,28 @@ import com.google.api.client.util.ByteStreams;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
+import htsjdk.tribble.AbstractFeatureReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.channels.Channels;
-import java.security.GeneralSecurityException;
 import java.util.UUID;
 
 /**
@@ -48,6 +58,8 @@ public final class BucketUtils {
     /**
      * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
      *
+     * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream
+     *
      * @param path the GCS, HDFS or local path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
      * @return an InputStream that reads from the specified file.
@@ -56,19 +68,37 @@ public final class BucketUtils {
     public static InputStream openFile(String path, PipelineOptions popts) {
         try {
             Utils.nonNull(path);
+            InputStream inputStream;
             if (BucketUtils.isCloudStorageUrl(path)) {
-                Utils.nonNull(popts);
-                return Channels.newInputStream(new GcsUtil.GcsUtilFactory().create(popts).open(GcsPath.fromUri(path)));
+                Utils.nonNull(popts, "Cannot load from a GCS path without authentication.");
+                inputStream = Channels.newInputStream(new GcsUtil.GcsUtilFactory().create(popts).open(GcsPath.fromUri(path)));
             } else if (isHadoopUrl(path)) {
-                Path file = new Path(path);
+                Path file = new org.apache.hadoop.fs.Path(path);
                 FileSystem fs = file.getFileSystem(new Configuration());
-                return fs.open(file);
+                inputStream = fs.open(file);
             } else {
-                return new FileInputStream(path);
+                inputStream = new FileInputStream(path);
+            }
+
+            if(AbstractFeatureReader.hasBlockCompressedExtension(path)){
+                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
+            } else {
+                return inputStream;
             }
         } catch (IOException x) {
             throw new UserException.CouldNotReadInputFile(path, x);
         }
+    }
+
+    /**
+     * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
+     *
+     * @param path the GCS, HDFS or local path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
+     * @param apiKey a GCS api key for accessing gcs paths, may be null if you will never open a gcs file
+     * @return an InputStream that reads from the specified file.
+     */
+    public static InputStream openFile(String path, String apiKey) {
+        return openFile(path, apiKey != null ? getAuthenticatedGCSOptions(apiKey) : null);
     }
 
     /**
@@ -172,5 +202,16 @@ public final class BucketUtils {
             return MAYBE;
         }
         return true;
+    }
+
+    /**
+     * Create a new GCS options with a given api key.
+     * @param apiKey a valid GCS api key
+     */
+    public static GCSOptions getAuthenticatedGCSOptions(String apiKey) {
+        Utils.nonNull(apiKey);
+        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+        options.setApiKey(apiKey);
+        return options;
     }
 }

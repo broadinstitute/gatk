@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -37,7 +38,7 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
      * @return adapted VariantContext.
      */
     public static Variant sparkVariantAdapter(VariantContext vc) {
-        return new VariantContextVariantAdapter(vc, new UUID(0L, 0L));
+        return new MinimalVariant(new SimpleInterval(vc.getContig(),vc.getStart(),vc.getEnd()), vc.isSNP(), vc.isIndel(), new UUID(0L, 0L));
     }
 
 

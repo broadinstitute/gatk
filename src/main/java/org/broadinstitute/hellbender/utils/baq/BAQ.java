@@ -15,6 +15,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.io.Serializable;
+
 /*
   The topology of the profile HMM:
 
@@ -40,7 +42,9 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
    insertion). q[i] gives the phred scaled posterior probability of
    state[i] being wrong.
  */
-public final class BAQ {
+public final class BAQ implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private static final Logger logger = LogManager.getLogger(BAQ.class);
     private static final boolean DEBUG = false;
 
