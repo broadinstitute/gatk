@@ -2,10 +2,20 @@ package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.Reader;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 /**
  * Container class for GATK report tables
@@ -30,7 +40,7 @@ public final class GATKReport {
      * @param filename the path to the file to load
      */
     public GATKReport(String filename) {
-        this(new File(filename));
+        this(BucketUtils.openFile(filename, (String) null));
     }
 
     /**
@@ -39,7 +49,11 @@ public final class GATKReport {
      * @param file the file to load
      */
     public GATKReport(File file) {
-        loadReport(file);
+        this(file.getPath());
+    }
+
+    public GATKReport(InputStream in){
+        loadReport(new InputStreamReader(in));
     }
 
     /**
@@ -52,20 +66,17 @@ public final class GATKReport {
     }
 
     /**
-     * Load a GATKReport file from disk
+     * Load a GATKReport from a {@link Reader}
      *
-     * @param file the file to load
+     * @param in the reader to load from
      */
-    private void loadReport(File file) {
-        BufferedReader reader;
+    private void loadReport(Reader in) {
+        BufferedReader reader = new BufferedReader(in);
         String reportHeader;
         try {
-            reader = new BufferedReader(IOUtils.makeReaderMaybeGzipped(file));
             reportHeader = reader.readLine();
-        } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotReadInputFile(file, "it does not exist");
         } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(file, e);
+            throw new UserException("Couldn't read RecalibrationReport", e);
         }
 
 
@@ -82,6 +93,7 @@ public final class GATKReport {
             addTable(new GATKReportTable(reader, version));
         }
     }
+
 
     /**
      * Add a new, empty table to the report

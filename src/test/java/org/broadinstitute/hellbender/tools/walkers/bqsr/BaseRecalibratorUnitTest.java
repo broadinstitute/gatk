@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
@@ -23,7 +24,7 @@ public final class BaseRecalibratorUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[6] = answer[7] = answer[8] = answer[9] = 1.0 / 4.0;
-        double[] result = BaseRecalibrator.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibrationEngine.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -38,7 +39,7 @@ public final class BaseRecalibratorUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[0] = answer[1] = answer[2] = answer[3] = 1.0 / 4.0;
-        double[] result = BaseRecalibrator.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibrationEngine.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -53,7 +54,7 @@ public final class BaseRecalibratorUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[7] = 1.0;
-        double[] result = BaseRecalibrator.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibrationEngine.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -68,7 +69,7 @@ public final class BaseRecalibratorUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[7] = 1.0;
-        double[] result = BaseRecalibrator.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibrationEngine.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -83,7 +84,7 @@ public final class BaseRecalibratorUnitTest {
         double[] answer = new double[baq.length];
         Arrays.fill(answer, 0.0);
         answer[2] = answer[3] = answer[4] = answer[5] = answer[6] = 1.0 / 5.0;
-        double[] result = BaseRecalibrator.calculateFractionalErrorArray(errors, baq);
+        double[] result = BaseRecalibrationEngine.calculateFractionalErrorArray(errors, baq);
         for( int iii = 0; iii < answer.length; iii++) {
             Assert.assertEquals(result[iii], answer[iii], 1E-6);
         }
@@ -131,7 +132,7 @@ public final class BaseRecalibratorUnitTest {
     public void testCalculateIsIndel(final String cigar, final boolean negStrand, final EventType mode, final int[] expected) {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(cigar));
         read.setIsReverseStrand(negStrand);
-        final int[] actual = BaseRecalibrator.calculateIsIndel(read, mode);
+        final int[] actual = BaseRecalibrationEngine.calculateIsIndel(read, mode);
         Assert.assertEquals(actual, expected, "CalculateIsIndel failed with " + mode + " and cigar " + cigar + " Expected " + Arrays.toString(expected) + " but got " + Arrays.toString(actual));
     }
 }

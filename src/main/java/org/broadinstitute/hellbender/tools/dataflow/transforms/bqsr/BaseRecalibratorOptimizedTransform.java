@@ -12,9 +12,9 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -23,8 +23,8 @@ import java.io.IOException;
 
 /**
  * Base Quality Score Recalibration, phase 1
- * This contains the Dataflow-specific bits. Most of the work is done by BaseRecalibratorFn.
- * The Hellbender-specific bits are in BaseRecalibratorDataflow2.
+ * This contains the Dataflow-specific bits. Most of the work is done by BaseRecalibratorOptimizedFn.
+ * The Hellbender-specific bits are in BaseRecalibratorDataflowOptimized.
  *
  * Unlike the non-optimized version, this one works on a whole shard at a time.
  */
@@ -32,21 +32,20 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
     private static final long serialVersionUID = 1L;
     private PCollectionView<SAMFileHeader> headerView;
     private PCollectionView<SAMSequenceDictionary> refDictionary;
-    BaseRecalibrationArgumentCollection BRAC;
+    RecalibrationArgumentCollection recalArgs;
 
-    public BaseRecalibratorOptimizedTransform(final PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> refDictionary, BaseRecalibrationArgumentCollection BRAC) {
+    public BaseRecalibratorOptimizedTransform(final PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> refDictionary, RecalibrationArgumentCollection recalArgs) {
         this.headerView = headerView;
         this.refDictionary = refDictionary;
-        this.BRAC = BRAC;
+        this.recalArgs = recalArgs;
     }
-
 
     @Override
     public PCollection<RecalibrationTables> apply( PCollection<AddContextDataToReadOptimized.ContextShard> input ) {
         PCollection<RecalibrationTables> oneStatPerWorker =
             input.apply(ParDo.named("BaseRecalibrator")
                 .withSideInputs(headerView, refDictionary)
-                .of(new BaseRecalibratorOptimizedFn(headerView, refDictionary, BRAC)));
+                .of(new BaseRecalibratorOptimizedFn(headerView, refDictionary, recalArgs)));
         return aggregateStatistics(oneStatPerWorker);
     }
 
@@ -55,7 +54,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
             private static final long serialVersionUID = 1L;
             @Override
             public PCollection<BaseRecalOutput> apply(PCollection<RecalibrationTables> aggregateInput) {
-                return addQuantizationInfo(headerView, BRAC, aggregateInput);
+                return addQuantizationInfo(headerView, recalArgs, aggregateInput);
             }
         };
     }
@@ -87,7 +86,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
                             log.warn("No recalibration tables!");
                         } else {
                             // normal case: recalibrate
-                            RecalibrationEngine.finalizeRecalibrationTables(tables);
+                            BaseRecalibrationEngine.finalizeRecalibrationTables(tables);
                         }
                         c.output(tables);
                     }
@@ -98,7 +97,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
     * addQuantizationInfo takes the computed RecalibrationTable and adds the QuantizationInfo and RequestedCovariates objects.
     * We call this triplet "BaseRecalOutput". It contains everything we need from phase 1 to continue onto phase 2 of BQSR.
     */
-    private static PCollection<BaseRecalOutput> addQuantizationInfo(PCollectionView<SAMFileHeader> headerView, BaseRecalibrationArgumentCollection toolArgs, PCollection<RecalibrationTables> recal) {
+    private static PCollection<BaseRecalOutput> addQuantizationInfo(PCollectionView<SAMFileHeader> headerView, RecalibrationArgumentCollection recalArgs, PCollection<RecalibrationTables> recal) {
         return recal.apply(ParDo
             .named("addQuantizationInfo")
             .withSideInputs(headerView)
@@ -116,14 +115,12 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
                     if (null==rt) {
                         // special case where we have zero reads in the input. Create a valid empty report.
                         log.debug("Special case: zero reads in input.");
-                        StandardCovariateList covariates = new StandardCovariateList(toolArgs.RAC, header);
-                        int numReadGroups = header.getReadGroups().size();
-                        RecalibrationEngine recalibrationEngine = new RecalibrationEngine(covariates, numReadGroups);
+                        BaseRecalibrationEngine recalibrationEngine = new BaseRecalibrationEngine(recalArgs, header);
                         rt = recalibrationEngine.getRecalibrationTables();
-                        RecalibrationEngine.finalizeRecalibrationTables(rt);
+                        BaseRecalibrationEngine.finalizeRecalibrationTables(rt);
                     }
                     try {
-                        BaseRecalibratorFn.saveTextualReport(temp, header, rt, toolArgs);
+                        BaseRecalibratorOptimizedFn.saveTextualReport(temp, header, rt, recalArgs);
                         BaseRecalOutput ret = new BaseRecalOutput(temp);
                         c.output(ret);
                     } catch (FileNotFoundException e) {
@@ -134,7 +131,6 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
                 }
             }));
     }
-
 }
 
 

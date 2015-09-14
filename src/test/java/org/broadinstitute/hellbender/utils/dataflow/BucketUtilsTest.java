@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.dataflow;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.hadoop.conf.Configuration;
@@ -65,8 +64,7 @@ public final class BucketUtilsTest extends BaseTest {
         File dest = createTempFile("copy-empty", ".vcf");
         final String intermediate = BucketUtils.randomRemotePath(getDataflowTestStaging(), "test-copy-empty", ".vcf");
         Assert.assertTrue(BucketUtils.isCloudStorageUrl(intermediate), "!BucketUtils.isCloudStorageUrl(intermediate)");
-        GCSOptions popts = PipelineOptionsFactory.as(GCSOptions.class);
-        popts.setApiKey(getDataflowTestApiKey());
+        GCSOptions popts = getAuthenticatedPipelineOptions();
         BucketUtils.copyFile(src, popts, intermediate);
         BucketUtils.copyFile(intermediate, popts, dest.getPath());
         IOUtil.assertFilesEqual(new File(src), dest);

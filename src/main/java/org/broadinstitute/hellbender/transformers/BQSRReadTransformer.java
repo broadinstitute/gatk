@@ -3,15 +3,15 @@ package org.broadinstitute.hellbender.transformers;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.*;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
+import org.broadinstitute.hellbender.utils.recalibration.*;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -82,6 +82,17 @@ public final class BQSRReadTransformer implements ReadTransformer {
         this.preserveQLessThan = preserveQLessThan;
         this.globalQScorePrior = globalQScorePrior;
         this.emitOriginalQuals = emitOriginalQuals;
+    }
+
+    /**
+     * Constructor using a GATK Report file
+     *
+     * @param header header for the reads
+     * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
+     * @param args a set of arguments to control how bqsr is applied
+     */
+    public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationReport recalInfo, ApplyBQSRArgumentCollection args) {
+        this(header, new BaseRecalOutput(recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates()), args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
     }
 
     /**

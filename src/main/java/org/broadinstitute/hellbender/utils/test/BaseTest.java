@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Genotype;
@@ -12,14 +11,25 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.Reporter;
 import org.testng.annotations.BeforeClass;
 
-import java.io.*;
-import java.util.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 
@@ -143,10 +153,8 @@ public abstract class BaseTest {
      *
      * @return a PipelineOptions object containing our API key
      */
-    public static PipelineOptions getAuthenticatedPipelineOptions() {
-        final GCSOptions popts = PipelineOptionsFactory.as(GCSOptions.class);
-        popts.setApiKey(getDataflowTestApiKey());
-        return popts;
+    public static GCSOptions getAuthenticatedPipelineOptions() {
+        return BucketUtils.getAuthenticatedGCSOptions(getDataflowTestApiKey());
     }
 
     @BeforeClass
