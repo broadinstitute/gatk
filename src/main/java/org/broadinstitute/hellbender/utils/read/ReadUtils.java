@@ -59,6 +59,22 @@ public final class ReadUtils {
     }
 
     /**
+     * Checks whether read is a headerless SAMRecordToGATKReadAdapter, and if it is, sets its
+     * header to the provided header.
+     *
+     * @param read A potentially headerless GATKRead
+     * @param header header to store in the read, if it's a headerless SAMRecord-backed read
+     */
+    public static void restoreHeaderIfNecessary( final GATKRead read, final SAMFileHeader header ) {
+        if ( read instanceof SAMRecordToGATKReadAdapter ) {
+            SAMRecordToGATKReadAdapter readAdapter = (SAMRecordToGATKReadAdapter)read;
+            if ( ! readAdapter.hasHeader() ) {
+                readAdapter.setHeader(header);
+            }
+        }
+    }
+
+    /**
      * Retrieve the original base qualities of the given read, if present,
      * as stored in the OQ attribute.
      *

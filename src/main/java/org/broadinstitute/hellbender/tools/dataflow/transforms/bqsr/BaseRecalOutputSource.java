@@ -34,7 +34,7 @@ public final class BaseRecalOutputSource implements Serializable {
                     @Override
                     public void processElement(ProcessContext c) {
                         final String fname = c.element();
-                        File dest = IOUtils.createTempFile("temp-BaseRecal-", ".gz");
+                        File dest = IOUtils.createTempFile("temp-BaseRecal-", ".tmp");
                         try {
                             BucketUtils.copyFile(fname, c.getPipelineOptions(), dest.getPath());
                         } catch (IOException x) {

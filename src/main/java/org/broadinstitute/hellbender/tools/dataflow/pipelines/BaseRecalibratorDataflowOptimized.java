@@ -15,6 +15,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
@@ -23,14 +25,11 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflo
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorFn;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorOptimizedTransform;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -41,6 +40,8 @@ import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.File;
@@ -98,22 +99,35 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
      * all the command line arguments for BQSR and its covariates
      */
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
-    private transient final BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+    private final RecalibrationArgumentCollection recalArgs = new RecalibrationArgumentCollection();
 
-    @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = false)
-    protected List<String> baseRecalibrationKnownVariants;
+    @ArgumentCollection
+    private final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
+
+    @ArgumentCollection
+    private final IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
+
+    @ArgumentCollection
+    private final ReferenceInputArgumentCollection referenceArguments = new RequiredReferenceInputArgumentCollection();
+
+    @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
+    private List<String> knownVariants;
 
     /**
-     * Path to save the serialized tables to. Local or GCS.
+     * Path to save the temporary serialized recalibration tables to. Local or GCS.
      */
-    @Argument(doc = "Path to save the serialized recalibrationTables to. If running on the cloud, either leave outputTablesPath unset or point it to a GCS location.",
-            shortName = "otp", fullName = "outputTablesPath", optional = true)
+    @Argument(doc = "Path to save the serialized recalibrationTables to. If running on the cloud, either leave serializedOutputTablesPath unset or point it to a GCS location.",
+            shortName = "sotp", fullName = "serializedOutputTablesPath", optional = true)
+    protected String serializedOutputTablesPath = null;
+
+    /**
+     * Path to save the final recalibration tables to. Local.
+     */
+    @Argument(doc = "Path to save the final recalibrationTables to.",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String outputTablesPath = null;
 
     // ------------------------------------------
-
-    // Whether we want to save the textual version of the output.
-    private boolean saveTextualTables;
 
     private SAMFileHeader readsHeader;
 
@@ -121,27 +135,24 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
 
     @Override
     protected String jobName() {
-        return "BaseRecalibrator2-"+ (100+new Random().nextInt(900));
+        return "BaseRecalibratorDataflowOptimized-"+ (100+new Random().nextInt(900));
     }
 
     @Override
     protected void setupPipeline(Pipeline pipeline) {
         try {
-            bunny.start("BaseRecalibratorDataflow2");
+            bunny.start("BaseRecalibratorDataflowOptimized");
 
-            if (null==baseRecalibrationKnownVariants || baseRecalibrationKnownVariants.isEmpty()) {
+            if (knownVariants == null || knownVariants.isEmpty()) {
                 throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
             }
 
-            // TODO: once we move to our own thing, make RECAL_TABLE_FILE optional
-            saveTextualTables = (null != BRAC.RAC.RECAL_TABLE_FILE);
+            String referenceURL = referenceArguments.getReferenceFileName();
 
-            String referenceURL = BRAC.referenceArguments.getReferenceFileName();
-
-            if (BRAC.readArguments.getReadFilesNames().size()!=1) {
+            if (readArguments.getReadFilesNames().size()!=1) {
                 throw new UserException("Sorry, we only support a single reads input for now.");
             }
-            String bam = BRAC.readArguments.getReadFilesNames().get(0);
+            String bam = readArguments.getReadFilesNames().get(0);
 
             if (!BucketUtils.isCloudStorageUrl(bam) && isRemote()) {
                 throw new UserException("Sorry, for remote execution the BAM must be stored remotely.");
@@ -151,10 +162,10 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
             final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
             readsHeader = readsDataflowSource.getHeader();
             final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
-            final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
-                : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
+            final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
+                                                       : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
             final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
-            CountingReadFilter filterToApply = BaseRecalibratorDataflowOptimized.readFilter(readsHeader);
+            final CountingReadFilter readFilterToApply = BaseRecalibrator.getStandardBQSRReadFilter(readsHeader);
 
             bunny.stepEnd("set up bam input");
 
@@ -172,7 +183,7 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
 
             List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, bigShardSize);
             // since we currently can only read variants at the client, that's the right place to populate the shards.
-            List<Variant> variants = VariantsDataflowSource.getVariantsList(baseRecalibrationKnownVariants);
+            List<Variant> variants = VariantsDataflowSource.getVariantsList(knownVariants);
 
             bunny.stepEnd("load variants");
             ArrayList<AddContextDataToReadOptimized.ContextShard> shards = AddContextDataToReadOptimized.fillVariants(shardedIntervals, variants, margin);
@@ -184,22 +195,19 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
 
             PCollection<AddContextDataToReadOptimized.ContextShard> shardsWithContext = shardsPCol
                 // big shards of variants -> smaller shards with variants, reads. We take the opportunity to filter the reads as close to the source as possible.
-                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, filterToApply)))
+                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, readFilterToApply)))
                 // add ref bases to the shards.
                 .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(referenceDataflowSource)));
 
-            final PCollection<RecalibrationTables> recalibrationTable = shardsWithContext.apply(new BaseRecalibratorOptimizedTransform(headerSingleton, refDictionaryView, BRAC));
+            final PCollection<RecalibrationTables> recalibrationTable = shardsWithContext.apply(new BaseRecalibratorOptimizedTransform(headerSingleton, refDictionaryView, recalArgs));
 
-            // If saving textual output then we need to make sure we can get to the output
-            if (saveTextualTables) {
-                if (null == outputTablesPath) {
-                    // we need those, so let's pick a temporary location for them.
-                    outputTablesPath = pickTemporaryRecaltablesPath(isRemote(), stagingLocation);
-                }
-                DataflowUtils.SaveDestination dest = DataflowUtils.serializeSingleObject(recalibrationTable, outputTablesPath);
-                if (isRemote() && dest == DataflowUtils.SaveDestination.LOCAL_DISK) {
-                    throw new UserException("If running on the cloud, either leave outputTablesPath unset or point it to a GCS location.");
-                }
+            if (null == serializedOutputTablesPath) {
+                // we need those, so let's pick a temporary location for them.
+                serializedOutputTablesPath = pickTemporaryRecaltablesPath(isRemote(), stagingLocation);
+            }
+            DataflowUtils.SaveDestination dest = DataflowUtils.serializeSingleObject(recalibrationTable, serializedOutputTablesPath);
+            if (isRemote() && dest == DataflowUtils.SaveDestination.LOCAL_DISK) {
+                throw new UserException("If running on the cloud, either leave serializedOutputTablesPath unset or point it to a GCS location.");
             }
             bunny.stepEnd("setup");
         } catch (UserException|GATKException rx) {
@@ -212,21 +220,16 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
     @Override
     protected void afterPipeline(Pipeline p) {
         bunny.stepEnd("dataflow");
-        if (saveTextualTables) {
-            logger.info("Saving recalibration report to "+BRAC.RAC.RECAL_TABLE_FILE.getName());
-            //  Get the table back and output it in text form to RAC.RECAL_TABLE.
-            // TODO: if running on the cloud and the output destination is on the cloud, then it's faster to have a worker do it directly, without the file roundtrip.
-            try (ObjectInputStream oin = new ObjectInputStream(BucketUtils.openFile(outputTablesPath, p.getOptions()))) {
-                Object o = oin.readObject();
-                RecalibrationTables rt = (RecalibrationTables) o;
-                BaseRecalibratorFn.saveTextualReport(BRAC.RAC.RECAL_TABLE_FILE, readsHeader, rt, BRAC);
-                bunny.stepEnd("repatriate_report");
-            } catch (Exception e) {
-                throw new GATKException("Unexpected: unable to read results file. (bug?)", e);
-            }
-        } else {
-            // because the user didn't ask us to.
-            logger.info("Not saving recalibration report");
+        logger.info("Saving recalibration report to " + outputTablesPath);
+        //  Get the table back and output it in text form to outputTablesPath
+        // TODO: if running on the cloud and the output destination is on the cloud, then it's faster to have a worker do it directly, without the file roundtrip.
+        try (ObjectInputStream oin = new ObjectInputStream(BucketUtils.openFile(serializedOutputTablesPath, p.getOptions()))) {
+            Object o = oin.readObject();
+            RecalibrationTables rt = (RecalibrationTables) o;
+            BaseRecalibratorFn.saveTextualReport(new File(outputTablesPath), readsHeader, rt, recalArgs);
+            bunny.stepEnd("repatriate_report");
+        } catch (Exception e) {
+            throw new GATKException("Unexpected: unable to read results file. (bug?)", e);
         }
         bunny.end();
     }
@@ -242,20 +245,9 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
         }
     }
 
-    private static CountingReadFilter readFilter( final SAMFileHeader header ) {
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))
-            .and(new CountingReadFilter("Mapping_Quality_Not_Zero", ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO))
-            .and(new CountingReadFilter("Mapping_Quality_Available", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
-            .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
-            .and(new CountingReadFilter("Primary_Alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT))
-            .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
-            .and(new CountingReadFilter("Passes_Vendor_Quality_Check", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK));
-    }
-
     private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
         Utils.nonNull(refDictionary);
         Utils.nonNull(readsDictionary);
         SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
     }
-
 }
