@@ -22,6 +22,7 @@ import scala.Tuple2;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class BaseRecalibratorSparkFn {
@@ -39,7 +40,7 @@ public class BaseRecalibratorSparkFn {
 
                 bqsr.apply(readWithData._1(), refDS, variants);
             }
-            return Arrays.asList(bqsr.getRecalibrationTable());
+            return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTable()));
         });
 
         final RecalibrationTables combinedTables = unmergedTables.reduce(RecalibrationTables::safeCombine);

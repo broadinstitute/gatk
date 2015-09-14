@@ -25,12 +25,13 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
  * Created by droazen on 9/14/15.
  */
-public class BQSRSpark {
+public class BQSRSpark implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private SAMFileHeader header;

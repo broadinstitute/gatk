@@ -10,7 +10,11 @@ import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
-public final class RecalibrationEngine {
+import java.io.Serializable;
+
+public final class RecalibrationEngine implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     protected final StandardCovariateList covariates;
 
     /**
