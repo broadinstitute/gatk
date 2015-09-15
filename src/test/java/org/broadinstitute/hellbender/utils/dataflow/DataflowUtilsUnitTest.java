@@ -73,7 +73,7 @@ public final class DataflowUtilsUnitTest extends BaseTest {
         }
         List<SimpleInterval> intervals = Arrays.asList(new SimpleInterval("chr7:1-202"), new SimpleInterval("chr8:2-202"));
         File inputFile = new File(getToolTestDataDir(), "example_reads.bam");
-        List<GATKRead> expected = getReadsFromFile(intervals, inputFile, true);
+        List<GATKRead> expected = getReadsFromFile(intervals, inputFile, false);
 
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);

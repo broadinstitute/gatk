@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.dataflow;
 
 import com.cloudera.dataflow.hadoop.HadoopIO;
-import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -159,8 +158,7 @@ public final class DataflowUtils {
                 SAMRecord sam = c.element().getValue().get();
                 if ( samRecordOverlaps(sam, intervals) ) {
                     try {
-                        Read read = com.google.cloud.genomics.utils.ReadUtils.makeRead(sam);
-                        c.output(new GoogleGenomicsReadToGATKReadAdapter(read));
+                        c.output(new SAMRecordToGATKReadAdapter(sam));
                     }
                     catch ( SAMException e ) {
                         if ( stringency == ValidationStringency.STRICT ) {
@@ -185,7 +183,12 @@ public final class DataflowUtils {
             return true;
         }
         for (SimpleInterval interval : intervals) {
-            if (interval.overlaps(record)) {
+            if (record.getReadUnmappedFlag() && record.getAlignmentStart() != SAMRecord.NO_ALIGNMENT_START) {
+                // This follows the behavior of htsjdk's SamReader which states that "an unmapped read will be returned
+                // by this call if it has a coordinate for the purpose of sorting that is in the query region".
+                int start = record.getAlignmentStart();
+                return interval.getStart() <= start && interval.getEnd() >= start;
+            } else  if (interval.overlaps(record)) {
                 return true;
             }
         }
