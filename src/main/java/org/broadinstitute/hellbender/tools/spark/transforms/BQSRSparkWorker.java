@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.transforms;
 
-import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
@@ -31,7 +30,7 @@ import java.util.Arrays;
 /**
  * Created by droazen on 9/14/15.
  */
-public class BQSRSpark implements Serializable {
+public class BQSRSparkWorker implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private SAMFileHeader header;
@@ -50,7 +49,7 @@ public class BQSRSpark implements Serializable {
     private BAQ baq; // BAQ the reads on the fly to generate the alignment uncertainty vector
     private final static byte NO_BAQ_UNCERTAINTY = (byte) '@';
 
-    public BQSRSpark( final SAMFileHeader header, final SAMSequenceDictionary referenceSequenceDictionary, BaseRecalibrationArgumentCollection brac ) {
+    public BQSRSparkWorker( final SAMFileHeader header, final SAMSequenceDictionary referenceSequenceDictionary, BaseRecalibrationArgumentCollection brac ) {
         this.header = header;
         this.referenceSequenceDictionary = referenceSequenceDictionary;
         this.BRAC = brac;
@@ -344,7 +343,7 @@ public class BQSRSpark implements Serializable {
     }
 
     private ReadTransformer makeReadTransform() {
-        ReadTransformer f0 = BQSRSpark::consolidateCigar;
+        ReadTransformer f0 = BQSRSparkWorker::consolidateCigar;
 
         ReadTransformer f =
                 f0.andThen(this::setDefaultBaseQualities)
