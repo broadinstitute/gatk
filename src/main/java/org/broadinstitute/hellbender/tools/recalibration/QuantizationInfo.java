@@ -17,7 +17,7 @@ public final class QuantizationInfo implements Serializable {
     private static final long serialVersionUID = 1L;
     private List<Byte> quantizedQuals;
     private final List<Long> empiricalQualCounts;
-    private Integer quantizationLevels;
+    private int quantizationLevels;
 
     private QuantizationInfo(List<Byte> quantizedQuals, List<Long> empiricalQualCounts, int quantizationLevels) {
         this.quantizedQuals = quantizedQuals;
@@ -54,7 +54,7 @@ public final class QuantizationInfo implements Serializable {
     }
 
     public void noQuantization() {
-        this.quantizationLevels = Integer.valueOf(QualityUtils.MAX_SAM_QUAL_SCORE);
+        this.quantizationLevels = QualityUtils.MAX_SAM_QUAL_SCORE;
         for (int i = 0; i < this.quantizationLevels; i++)
             quantizedQuals.set(i, (byte) i);
     }
