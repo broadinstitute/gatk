@@ -1,0 +1,2 @@
+*.sa filter=lfs diff=lfs merge=lfs -text
+*.bwt filter=lfs diff=lfs merge=lfs -text
