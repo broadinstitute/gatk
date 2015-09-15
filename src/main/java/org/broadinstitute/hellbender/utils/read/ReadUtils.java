@@ -264,13 +264,13 @@ public final class ReadUtils {
         if ( read.isUnmapped() ) {
             samFlags |= SAM_READ_UNMAPPED_FLAG;
         }
-        if ( read.mateIsUnmapped() ) {
+        if ( read.isPaired() && read.mateIsUnmapped() ) {
             samFlags |= SAM_MATE_UNMAPPED_FLAG;
         }
         if ( read.isReverseStrand() ) {
             samFlags |= SAM_READ_STRAND_FLAG;
         }
-        if ( ! read.mateIsUnmapped() && read.mateIsReverseStrand() ) {
+        if ( read.isPaired() && ! read.mateIsUnmapped() && read.mateIsReverseStrand() ) {
             samFlags |= SAM_MATE_STRAND_FLAG;
         }
         if ( read.isFirstOfPair() ) {

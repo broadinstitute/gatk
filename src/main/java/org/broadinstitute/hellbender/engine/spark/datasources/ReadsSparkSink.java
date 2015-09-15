@@ -5,8 +5,11 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapred.FileAlreadyExistsException;
+import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -41,6 +44,17 @@ public class ReadsSparkSink {
         public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
             setSAMHeader(bamHeader);
             return super.getRecordWriter(ctx);
+        }
+
+        @Override
+        public void checkOutputSpecs(JobContext job) throws IOException {
+            try {
+                super.checkOutputSpecs(job);
+            } catch (FileAlreadyExistsException e) {
+                // delete existing files before overwriting them
+                Path outDir = getOutputPath(job);
+                outDir.getFileSystem(job.getConfiguration()).delete(outDir, true);
+            }
         }
     }
 

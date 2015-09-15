@@ -457,7 +457,7 @@ final class MarkDuplicatesUtils {
     /**
      * GATKRead comparator that compares based on mapping position followed by SAM flags.
      */
-    final static class GATKOrder implements Comparator<GATKRead>, Serializable {
+    public final static class GATKOrder implements Comparator<GATKRead>, Serializable {
         private static final long serialVersionUID = 1l;
         private final SAMFileHeader header;
         // TODO: Unify with other comparators in the codebase

@@ -47,16 +47,6 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
     }
 
     /**
-     * Produces a GoogleGenomicsReadToGATKReadAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
-     * and loading the reads twice (which can happen when caching is missing) prevents joining.
-     * @param genomicsRead Read to adapt
-     * @return adapted Read
-     */
-    public static GATKRead sparkReadAdapter(final Read genomicsRead) {
-        return new GoogleGenomicsReadToGATKReadAdapter(genomicsRead, new UUID(0L, 0L));
-    }
-
-    /**
      * Constructor that allows an explicit UUID to be passed in -- only meant
      * for internal use and test class use, which is why it's package protected.
      */

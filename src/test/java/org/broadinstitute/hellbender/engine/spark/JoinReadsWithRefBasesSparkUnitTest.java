@@ -4,16 +4,15 @@ import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.values.KV;
 import htsjdk.samtools.SAMRecord;
-import junit.framework.TestCase;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -28,14 +27,14 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
-public class JoinReadsWithRefBasesSparkUnitTest extends TestCase {
+public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases(){
         Object[][] data = new Object[2][];
         List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
-            ReadsPreprocessingPipelineTestData testData = new ReadsPreprocessingPipelineTestData(c);
+            ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
 
             List<GATKRead> reads = testData.getReads();
             List<SimpleInterval> intervals = testData.getAllIntervals();
