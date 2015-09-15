@@ -33,9 +33,9 @@ public class BaseRecalibratorSparkFn {
 
     public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final BaseRecalibrationArgumentCollection args ) {
         final ReadFilter filter = readFilter(header);
-        readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
+        final JavaPairRDD<GATKRead, ReadContextData> filtered = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
 
-        JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(readWithContextIterator -> {
+        JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithContextIterator -> {
             final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
             bqsr.onTraversalStart();
 
