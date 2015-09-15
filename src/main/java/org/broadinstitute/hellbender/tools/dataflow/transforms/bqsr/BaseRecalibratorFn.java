@@ -81,7 +81,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
     }
 
     // This ctor leaves referenceSequenceDictionaryView uninitialized. Caveat emptor.
-    public BaseRecalibratorFn(SAMFileHeader header, BaseRecalibrationArgumentCollection BRAC) {
+    private BaseRecalibratorFn(SAMFileHeader header, BaseRecalibrationArgumentCollection BRAC) {
         super("BaseRecalibratorFn");
         this.header = header;
         this.BRAC = BRAC;
@@ -151,7 +151,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
         referenceSequenceDictionary = c.sideInput(referenceSequenceDictionaryView);
     }
 
-    public void onTraversalStart() {
+    private void onTraversalStart() {
 
         baq = new BAQ(BRAC.BAQGOP); // setup the BAQ object with the provided gap open penalty
 
@@ -176,7 +176,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
      *
      * Soft-clipped bases won't be considered in the error model.
      */
-    public void apply(GATKRead originalRead, final ReferenceDataSource refDS, Iterable<? extends Locatable> knownLocations) {
+    private void apply(GATKRead originalRead, final ReferenceDataSource refDS, Iterable<? extends Locatable> knownLocations) {
         ReadTransformer transform = makeReadTransform();
         final GATKRead read = transform.apply(originalRead);
 
@@ -223,7 +223,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
      * @param hasEvents a vector a vectors of 0 (no event) and 1 (has event)
      * @return the total number of events across all hasEvent arrays
      */
-    public static int nEvents(final int[]... hasEvents) {
+    protected static int nEvents(final int[]... hasEvents) {
         int n = 0;
         for (final int[] hasEvent : hasEvents) {
             n += MathUtils.sum(hasEvent);
@@ -231,7 +231,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
         return n;
     }
 
-    public boolean[] calculateSkipArray(final GATKRead read, final Iterable<? extends Locatable> skipLocations) {
+    private boolean[] calculateSkipArray(final GATKRead read, final Iterable<? extends Locatable> skipLocations) {
         final byte[] bases = read.getBases();
         final boolean[] skip = new boolean[bases.length];
         final boolean[] knownSites = calculateKnownSites(read, skipLocations);
@@ -241,7 +241,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
         return skip;
     }
 
-    public boolean[] calculateKnownSites(final GATKRead read, final Iterable<? extends Locatable> knownLocations) {
+    private boolean[] calculateKnownSites(final GATKRead read, final Iterable<? extends Locatable> knownLocations) {
         final int readLength = read.getBases().length;
         final boolean[] knownSites = new boolean[readLength];
         Arrays.fill(knownSites, false);
@@ -266,16 +266,16 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
     }
 
 
-    public boolean isLowQualityBase(final GATKRead read, final int offset) {
+    private boolean isLowQualityBase(final GATKRead read, final int offset) {
         return read.getBaseQualities()[offset] < minimumQToUse;
     }
 
-    public boolean badSolidOffset(final GATKRead read, final int offset) {
+    private boolean badSolidOffset(final GATKRead read, final int offset) {
         return ReadUtils.isSOLiDRead(read, header) && BRAC.RAC.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
     // TODO: can be merged with calculateIsIndel
-    public static int[] calculateIsSNP(final GATKRead read, final ReferenceDataSource ref) {
+    private static int[] calculateIsSNP(final GATKRead read, final ReferenceDataSource ref) {
         final byte[] readBases = read.getBases();
         final byte[] refBases = ref.queryAndPrefetch(read.getContig(), read.getStart(), read.getEnd()).getBases();
         int refPos = 0;
