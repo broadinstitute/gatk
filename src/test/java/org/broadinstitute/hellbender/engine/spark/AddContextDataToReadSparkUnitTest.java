@@ -10,7 +10,6 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
@@ -40,7 +39,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
-            ReadsPreprocessingPipelineTestData testData = new ReadsPreprocessingPipelineTestData(c);
+            ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
 
             List<GATKRead> reads = testData.getReads();
             List<SimpleInterval> intervals = testData.getAllIntervals();

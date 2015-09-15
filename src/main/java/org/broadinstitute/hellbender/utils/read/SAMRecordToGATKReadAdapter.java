@@ -30,6 +30,16 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
     }
 
     /**
+     * Produces a SAMRecordToGATKReadAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
+     * and loading the reads twice (which can happen when caching is missing) prevents joining.
+     * @param samRecord Read to adapt
+     * @return adapted Read
+     */
+    public static GATKRead sparkReadAdapter(final SAMRecord samRecord) {
+        return new SAMRecordToGATKReadAdapter(samRecord, new UUID(0L, 0L));
+    }
+
+    /**
      * Constructor that allows an explicit UUID to be passed in -- only meant
      * for internal use and test class use, which is why it's package protected.
      */
@@ -495,6 +505,10 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
     @Override
     public SAMRecord convertToSAMRecord( final SAMFileHeader header ) {
         samRecord.setHeader(header);
+        return samRecord;
+    }
+
+    public SAMRecord getSamRecord() {
         return samRecord;
     }
 

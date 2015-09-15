@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.google.api.services.genomics.model.Read;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import org.apache.spark.serializer.KryoRegistrator;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.Collections;
 
@@ -24,5 +25,9 @@ public class GATKRegistrator implements KryoRegistrator {
         // fix here.
         // We are tracking this issue with (#874)
         kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
+
+        // SAMRecordToGATKReadAdapterSerializer is not currently being used until we are sure that headers are being
+        // properly handled (https://github.com/broadinstitute/hellbender/issues/900)
+        //kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
     }
 }
