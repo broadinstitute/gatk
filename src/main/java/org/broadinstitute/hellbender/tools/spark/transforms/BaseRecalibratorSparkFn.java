@@ -32,13 +32,13 @@ import java.util.Arrays;
 public class BaseRecalibratorSparkFn {
 
     public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final BaseRecalibrationArgumentCollection args ) {
-        final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
-        bqsr.onTraversalStart();
-
         final ReadFilter filter = readFilter(header);
         readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
 
         JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(readWithContextIterator -> {
+            final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
+            bqsr.onTraversalStart();
+
             while ( readWithContextIterator.hasNext() ) {
                 final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
                 Iterable<Variant> variants = readWithData._2().getOverlappingVariants();

@@ -84,7 +84,11 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
 
         JavaRDD<GATKRead> markedReads = initialReads.map(new MarkDuplicatesStub());
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants);
+
+        // TODO: workaround for known bug in List version of getParallelVariants
+        JavaRDD<Variant> bqsrKnownVariants = baseRecalibrationKnownVariants.size() == 1 ?
+                                             variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0)) :
+                                             variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants);
 
         GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setApiKey(apiKey);
