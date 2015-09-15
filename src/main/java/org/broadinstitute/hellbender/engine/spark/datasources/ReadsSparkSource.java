@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.cloud.genomics.utils.ReadUtils;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
@@ -15,7 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
@@ -42,7 +40,9 @@ public class ReadsSparkSource {
      */
     public JavaRDD<GATKRead> getParallelReads(final String bam, final List<SimpleInterval> intervals) {
         Configuration conf = new Configuration();
-        conf.set("mapred.max.split.size", "2097152");
+        // reads take more space in memory than on disk so we need to limit the split size
+        // TODO: make this configurable, or tune automatically
+        conf.set("mapred.max.split.size", "20971520");
 
         JavaPairRDD<LongWritable, SAMRecordWritable> rdd2 = ctx.newAPIHadoopFile(
                 bam, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
@@ -52,14 +52,9 @@ public class ReadsSparkSource {
             SAMRecord sam = v1._2().get();
             if (samRecordOverlaps(sam, intervals)) {
                 try {
-                    // TODO: Try using the SAMRecord without the header (#875)
-                    Read read = ReadUtils.makeRead(sam);
-                    if (read == null) {
-                        throw new GATKException("null read, initial sam: " + sam);
-                    }
-                    return GoogleGenomicsReadToGATKReadAdapter.sparkReadAdapter(read);
+                    return SAMRecordToGATKReadAdapter.sparkReadAdapter(sam);
                 } catch (SAMException e) {
-                    // Do nothing.
+                    // TODO: add stringency
                 }
             }
             return null;
@@ -103,7 +98,12 @@ public class ReadsSparkSource {
             return true;
         }
         for (SimpleInterval interval : intervals) {
-            if (interval.overlaps(record)) {
+            if (record.getReadUnmappedFlag() && record.getAlignmentStart() != SAMRecord.NO_ALIGNMENT_START) {
+                // This follows the behavior of htsjdk's SamReader which states that "an unmapped read will be returned
+                // by this call if it has a coordinate for the purpose of sorting that is in the query region".
+                int start = record.getAlignmentStart();
+                return interval.getStart() <= start && interval.getEnd() >= start;
+            } else  if (interval.overlaps(record)) {
                 return true;
             }
         }

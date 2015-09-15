@@ -5,13 +5,9 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMRecord;
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
-import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.Variant;
@@ -28,11 +24,11 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
         List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
-            ReadsPreprocessingPipelineTestData testData = new ReadsPreprocessingPipelineTestData(c);
+            ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
 
             List<GATKRead> reads = testData.getReads();
             List<Variant> variantList = testData.getVariants();
-            List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant = testData.getKvReadiVariantFixed();
+            List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant = testData.getKvReadiVariant();
             data[i] = new Object[]{reads, variantList, kvReadiVariant};
         }
         return data;
