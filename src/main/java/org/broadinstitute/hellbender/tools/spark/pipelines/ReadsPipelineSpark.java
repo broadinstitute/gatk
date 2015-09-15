@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
@@ -94,7 +95,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         // TODO: and ApplyBQSRStub simpler (#855).
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants);
         // TODO: broadcast the reads header?
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null));
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new BaseRecalibrationArgumentCollection());
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
         final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader);
 
@@ -115,14 +116,6 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         @Override
         public GATKRead call(GATKRead v1) throws Exception {
             return v1;
-        }
-    }
-
-    private static class BaseRecalibratorStub implements Function<Tuple2<GATKRead,ReadContextData>, RecalibrationTables> {
-        private final static long serialVersionUID = 1L;
-        @Override
-        public RecalibrationTables call(Tuple2<GATKRead, ReadContextData> v1) throws Exception {
-            return null;
         }
     }
 

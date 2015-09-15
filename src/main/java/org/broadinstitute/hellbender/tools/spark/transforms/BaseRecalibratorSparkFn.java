@@ -31,9 +31,8 @@ import java.util.Arrays;
 
 public class BaseRecalibratorSparkFn {
 
-    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary ) {
-        final BaseRecalibrationArgumentCollection brac = new BaseRecalibrationArgumentCollection();
-        final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, brac);
+    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final BaseRecalibrationArgumentCollection args ) {
+        final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
         bqsr.onTraversalStart();
 
         final ReadFilter filter = readFilter(header);
@@ -56,7 +55,7 @@ public class BaseRecalibratorSparkFn {
 
         File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
         try {
-            BaseRecalibratorFn.SaveTextualReport(temp, header, combinedTables, brac);
+            BaseRecalibratorFn.SaveTextualReport(temp, header, combinedTables, args);
             return new RecalibrationReport(temp);
         } catch (FileNotFoundException e) {
             throw new GATKException("can't find my own temporary file", e);
