@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
+import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
@@ -46,7 +47,7 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
 
         return new Object[][]{
                 // local computation and files (except for the reference)
-                {GRCh37Ref, HiSeqBam, dbSNPb37, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt"},
+                {GRCh37Ref, HiSeqBam, dbSNPb37, localResources + "expected.no_unmapped_from_non_dataflow.recal.txt"},
 //                {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "-knownSites " + moreSites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
 //                {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--indels_context_size 4",  localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.indels_context_size_4.recal.txt")},
 //                {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--low_quality_tail 5",     localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.low_quality_tail_5.recal.txt")},
@@ -79,8 +80,8 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
         try( PrintStream out = new PrintStream(report)){
             bqsrReport.createGATKReport().print(out);
         }
-        //IntegrationTestSpec.assertEqualTextFiles(report, new File(expected));
-        Assert.assertEquals(bqsrReport.createGATKReport(), new GATKReport(expected));
+        IntegrationTestSpec.assertEqualTextFiles(report, new File(expected));
+      //  Assert.assertEquals(bqsrReport.createGATKReport(), new GATKReport(expected));
     }
 
 }
