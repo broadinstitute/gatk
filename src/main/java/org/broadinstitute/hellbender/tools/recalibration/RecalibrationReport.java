@@ -244,7 +244,7 @@ public final class RecalibrationReport {
             quals[originalQual] = quantizedQual;
             counts[originalQual] = quantizedCount;
         }
-        return new QuantizationInfo(Arrays.asList(quals), Arrays.asList(counts));
+        return new QuantizationInfo(new ArrayList<>(Arrays.asList(quals)), new ArrayList<>(Arrays.asList(counts)));
     }
 
     /**
@@ -266,7 +266,7 @@ public final class RecalibrationReport {
             }
 
             if (argument.equals("covariate") && value != null) {
-                final List<String> covs = Arrays.asList(value.toString().split(","));
+                final List<String> covs = new ArrayList<>(Arrays.asList(value.toString().split(",")));
                 if (!covs.equals(standardCovariateClassNames)) {
                     throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but was " + covs);
                 }

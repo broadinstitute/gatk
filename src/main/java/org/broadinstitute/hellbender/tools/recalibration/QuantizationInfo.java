@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,7 +17,7 @@ public final class QuantizationInfo implements Serializable {
     private static final long serialVersionUID = 1L;
     private List<Byte> quantizedQuals;
     private final List<Long> empiricalQualCounts;
-    private int quantizationLevels;
+    private Integer quantizationLevels;
 
     private QuantizationInfo(List<Byte> quantizedQuals, List<Long> empiricalQualCounts, int quantizationLevels) {
         this.quantizedQuals = quantizedQuals;
@@ -40,7 +41,7 @@ public final class QuantizationInfo implements Serializable {
             final int empiricalQual = MathUtils.fastRound(datum.getEmpiricalQuality()); // convert the empirical quality to an integer ( it is already capped by MAX_QUAL )
             qualHistogram[empiricalQual] += datum.getNumObservations(); // add the number of observations for every key
         }
-        empiricalQualCounts = Arrays.asList(qualHistogram); // histogram with the number of observations of the empirical qualities
+        empiricalQualCounts = new ArrayList<>(Arrays.asList(qualHistogram)); // histogram with the number of observations of the empirical qualities
         quantizeQualityScores(quantizationLevels);
 
         this.quantizationLevels = quantizationLevels;
@@ -53,7 +54,7 @@ public final class QuantizationInfo implements Serializable {
     }
 
     public void noQuantization() {
-        this.quantizationLevels = QualityUtils.MAX_SAM_QUAL_SCORE;
+        this.quantizationLevels = Integer.valueOf(QualityUtils.MAX_SAM_QUAL_SCORE);
         for (int i = 0; i < this.quantizationLevels; i++)
             quantizedQuals.set(i, (byte) i);
     }
