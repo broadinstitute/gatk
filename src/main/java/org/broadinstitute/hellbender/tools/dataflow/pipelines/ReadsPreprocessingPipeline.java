@@ -75,47 +75,43 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
     @Override
     protected void setupPipeline( Pipeline pipeline ) {
-        try {
-            // Load the reads.
-            final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
-            final SAMFileHeader readsHeader = readsDataflowSource.getHeader();
-            final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
-                    : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
+        // Load the reads.
+        final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
+        final SAMFileHeader readsHeader = readsDataflowSource.getHeader();
+        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
+                : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-            final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
-            final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
+        final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
+        final PCollection<GATKRead> initialReads = readsDataflowSource.getReadPCollection(intervals);
 
-            final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
-                    new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
-            final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
+        final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
+                new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        final PCollectionView<OpticalDuplicateFinder> finderPcolView = pipeline.apply(Create.of(finder)).apply(View.<OpticalDuplicateFinder>asSingleton());
 
-            // Apply MarkDuplicates to produce updated GATKReads.
-            final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
+        // Apply MarkDuplicates to produce updated GATKReads.
+        final PCollection<GATKRead> markedReads = initialReads.apply(new MarkDuplicates(headerSingleton, finderPcolView));
 
-            // Load the Variants and the Reference and join them to reads.
-            final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
+        // Load the Variants and the Reference and join them to reads.
+        final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
 
-            // Use the BQSR_REFERENCE_WINDOW_FUNCTION so that the reference bases required by BQSR for each read are fetched
-            final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
+        // Use the BQSR_REFERENCE_WINDOW_FUNCTION so that the reference bases required by BQSR for each read are fetched
+        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-            final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, referenceDataflowSource, variantsDataflowSource);
+        final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, referenceDataflowSource, variantsDataflowSource);
 
-            // BQSR.
-            // default arguments are best practice.
-            BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
-            final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
-            final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
-            checkSequenceDictionaries(refDictionary, readsDictionary);
-            PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
-            final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
-            final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
+        // BQSR.
+        // default arguments are best practice.
+        BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+        final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
+        final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
+        checkSequenceDictionaries(refDictionary, readsDictionary);
+        PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
+        final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
+        final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
 
-            final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();
-            final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRTransform(headerSingleton, mergedRecalibrationReport, applyArgs));
-            SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
-        } catch (IOException x) {
-            throw new GATKException("Unexpected: " + x.getMessage(), x);
-        }
+        final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();
+        final PCollection<GATKRead> finalReads = markedReads.apply(new ApplyBQSRTransform(headerSingleton, mergedRecalibrationReport, applyArgs));
+        SmallBamWriter.writeToFile(pipeline, finalReads, readsHeader, output);
     }
 
     private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
