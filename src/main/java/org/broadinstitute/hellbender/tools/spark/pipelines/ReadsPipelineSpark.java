@@ -86,9 +86,11 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
 
         // TODO: workaround for known bug in List version of getParallelVariants
-        JavaRDD<Variant> bqsrKnownVariants = baseRecalibrationKnownVariants.size() == 1 ?
-                                             variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0)) :
-                                             variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants);
+        if ( baseRecalibrationKnownVariants.size() > 1 ) {
+            throw new GATKException("Cannot currently handle more than one known sites file, " +
+                                    "as getParallelVariants(List) is broken");
+        }
+        JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
         GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setApiKey(apiKey);

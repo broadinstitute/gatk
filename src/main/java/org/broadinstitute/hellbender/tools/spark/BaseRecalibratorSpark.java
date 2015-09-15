@@ -84,7 +84,11 @@ public class BaseRecalibratorSpark extends SparkCommandLineProgram {
         JavaRDD<GATKRead> initialReads = readSource.getParallelReads(bam, intervals);
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants);
+        if ( baseRecalibrationKnownVariants.size() > 1 ) {
+            throw new GATKException("Cannot currently handle more than one known sites file, " +
+                    "as getParallelVariants(List) is broken");
+        }
+        JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
         GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setApiKey(apiKey);
