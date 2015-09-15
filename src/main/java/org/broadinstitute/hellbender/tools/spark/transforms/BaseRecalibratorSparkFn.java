@@ -7,6 +7,10 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorFn;
@@ -31,6 +35,10 @@ public class BaseRecalibratorSparkFn {
         final BaseRecalibrationArgumentCollection brac = new BaseRecalibrationArgumentCollection();
         final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, brac);
         bqsr.onTraversalStart();
+
+        final ReadFilter filter = readFilter(header);
+        readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
+
         JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(readWithContextIterator -> {
             while ( readWithContextIterator.hasNext() ) {
                 final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
@@ -57,4 +65,14 @@ public class BaseRecalibratorSparkFn {
         }
     }
 
+
+    private static CountingReadFilter readFilter( final SAMFileHeader header ) {
+        return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))
+                .and(new CountingReadFilter("Mapping_Quality_Not_Zero", ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO))
+                .and(new CountingReadFilter("Mapping_Quality_Available", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
+                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
+                .and(new CountingReadFilter("Primary_Alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
+                .and(new CountingReadFilter("Passes_Vendor_Quality_Check", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK));
+    }
 }
