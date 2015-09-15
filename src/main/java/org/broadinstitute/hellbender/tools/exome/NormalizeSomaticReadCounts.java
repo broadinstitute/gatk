@@ -25,7 +25,6 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -379,20 +378,27 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * @param targetFactorNormalized the read count collection to write.
      */
     private void writeTargetFactorNormalizedOutput(final ReadCountCollection targetFactorNormalized) {
-        writeOutput(fntOutFile,targetFactorNormalized,"Target factor normalized target counts");
+        writeOutput(fntOutFile, targetFactorNormalized, "Target factor normalized target counts");
     }
 
     /**
      * Writes the tangent-factor normalized outputs.
      *
-     * Please note that this file is written in the target format originally used in recapseg.
+     * Please note that this file is written in the target format originally used in recapseg.  In other words, it is
+     *  written as if it was target coverage.
      *
      * @param tangentNormalized the read count collection to write.
      */
     private void writeTangentNormalizedOutput(final ReadCountCollection tangentNormalized) {
-        final ReadCountCollection updatedReadCountCollection = TargetCoverageUtils.createReadCountCollection(tangentNormalized);
-        writeOutput(outFile, updatedReadCountCollection, "Tangent normalized target counts");
+        try {
+            ReadCountCollectionUtils.writeAsTargetCoverage(outFile, tangentNormalized, "fileFormat = tsv",
+                    "commandLine = " + getCommandLine(),
+                    "title = Tangent normalized coverage profile");
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, ex.getMessage());
+        }
     }
+
 
     private void writeOutput(final File file, final ReadCountCollection counts, final String title) {
         if (file == null) {

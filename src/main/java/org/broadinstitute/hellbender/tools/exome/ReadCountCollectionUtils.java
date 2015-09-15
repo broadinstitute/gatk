@@ -92,18 +92,47 @@ public final class ReadCountCollectionUtils {
             final boolean withIntervals = collection.targets().stream().anyMatch(t -> t.getInterval() != null);
             final TableWriter<ReadCountRecord> tableWriter = withIntervals
                     ? writerWithIntervals(writer, collection) : writerWithoutIntervals(writer, collection);
-
-            // print the header comments
-            for (final String comment : headerComments) {
-                tableWriter.writeComment(comment);
-            }
-            final List<Target> targets = collection.targets();
-            final RealMatrix counts = collection.counts();
-            for (int i = 0; i < targets.size(); i++) {
-                tableWriter.writeRecord(new ReadCountRecord(targets.get(i), counts.getRow(i)));
-            }
+            performWriting(collection, tableWriter, headerComments);
         }
     }
+
+    /**
+     * Writes the content of a collection into a file as if it was target coverage.  Intervals will always be included,
+     *  even if non-existent
+     *
+     * @param file           the output file.
+     * @param collection     the output collection.
+     * @param headerComments header comments.
+     * @throws IllegalArgumentException if any of the input parameters is {@code null}
+     *                                  or {@code collection} has a mixture of targets with and without intervals
+     *                                  defined.
+     * @throws IOException              if there is some IO issue when writing into the output file.
+     */
+    public static void writeAsTargetCoverage(final File file, final ReadCountCollection collection, final String... headerComments) throws IOException {
+        Utils.nonNull(file, "output file cannot be null");
+        Utils.nonNull(collection, "input collection cannot be null");
+        Utils.nonNull(headerComments, "header comments cannot be null");
+        try (final Writer writer = new FileWriter(file)) {
+            final boolean withIntervals = collection.targets().stream().anyMatch(t -> t.getInterval() != null);
+            final TableWriter<ReadCountRecord> tableWriter = withIntervals
+                    ? targetCoverageWriterWithIntervals(writer, collection) : targetCoverageWriterWithoutIntervals(writer, collection);
+
+            performWriting(collection, tableWriter, headerComments);
+        }
+    }
+
+    private static void performWriting(ReadCountCollection collection, TableWriter<ReadCountRecord> tableWriter, String[] headerComments) throws IOException {
+        // print the header comments
+        for (final String comment : headerComments) {
+            tableWriter.writeComment(comment);
+        }
+        final List<Target> targets = collection.targets();
+        final RealMatrix counts = collection.counts();
+        for (int i = 0; i < targets.size(); i++) {
+            tableWriter.writeRecord(new ReadCountRecord(targets.get(i), counts.getRow(i)));
+        }
+    }
+
 
     private static final class ReadCountRecord {
 
@@ -122,15 +151,7 @@ public final class ReadCountCollectionUtils {
         final List<String> columnNames = new ArrayList<>();
         columnNames.add(TargetColumns.NAME.toString());
         columnNames.addAll(collection.columnNames());
-        final TableColumnCollection columns = new TableColumnCollection(columnNames);
-        return new TableWriter<ReadCountRecord>(writer, columns) {
-
-            @Override
-            protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
-                dataLine.append(record.target.getName())
-                        .append(record.counts);
-            }
-        };
+        return createReadCountRecordTableWriterWithoutIntervals(writer, columnNames);
     }
 
     private static TableWriter<ReadCountRecord> writerWithIntervals(final Writer writer,
@@ -141,6 +162,29 @@ public final class ReadCountCollectionUtils {
         columnNames.add(TargetColumns.END.toString());
         columnNames.add(TargetColumns.NAME.toString());
         columnNames.addAll(collection.columnNames());
+        return createReadCountRecordTableWriterWithIntervals(writer, columnNames);
+    }
+
+    private static TableWriter<ReadCountRecord> targetCoverageWriterWithIntervals(final Writer writer,
+                                                                    final ReadCountCollection collection) throws IOException {
+        final List<String> columnNames = new ArrayList<>();
+        columnNames.add(TargetCoverageUtils.CONTIG_COLUMN);
+        columnNames.add(TargetCoverageUtils.START_COLUMN);
+        columnNames.add(TargetCoverageUtils.END_COLUMN);
+        columnNames.add(TargetCoverageUtils.TARGET_NAME_COLUMN);
+        columnNames.addAll(collection.columnNames());
+        return createReadCountRecordTableWriterWithIntervals(writer, columnNames);
+    }
+
+    private static TableWriter<ReadCountRecord> targetCoverageWriterWithoutIntervals(final Writer writer,
+                                                                                  final ReadCountCollection collection) throws IOException {
+        final List<String> columnNames = new ArrayList<>();
+        columnNames.add(TargetCoverageUtils.TARGET_NAME_COLUMN);
+        columnNames.addAll(collection.columnNames());
+        return createReadCountRecordTableWriterWithoutIntervals(writer, columnNames);
+    }
+
+    private static TableWriter<ReadCountRecord> createReadCountRecordTableWriterWithIntervals(final Writer writer, List<String> columnNames) throws IOException {
         final TableColumnCollection columns = new TableColumnCollection(columnNames);
 
         return new TableWriter<ReadCountRecord>(writer, columns) {
@@ -154,6 +198,18 @@ public final class ReadCountCollectionUtils {
                         .append(interval.getStart())
                         .append(interval.getEnd())
                         .append(record.target.getName())
+                        .append(record.counts);
+            }
+        };
+    }
+
+    private static TableWriter<ReadCountRecord> createReadCountRecordTableWriterWithoutIntervals(final Writer writer, List<String> columnNames) throws IOException {
+        final TableColumnCollection columns = new TableColumnCollection(columnNames);
+        return new TableWriter<ReadCountRecord>(writer, columns) {
+
+            @Override
+            protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
+                dataLine.append(record.target.getName())
                         .append(record.counts);
             }
         };
