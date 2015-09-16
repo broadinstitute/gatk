@@ -364,7 +364,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         return snp;
     }
 
-    protected static int[] calculateIsIndel( final GATKRead read, final EventType mode ) {
+    public static int[] calculateIsIndel( final GATKRead read, final EventType mode ) {
         final int[] indel = new int[read.getBases().length];
         int readPos = 0;
         for ( final CigarElement ce : read.getCigar().getCigarElements() ) {
@@ -415,7 +415,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         }
     }
 
-    protected static double[] calculateFractionalErrorArray( final int[] errorArray, final byte[] baqArray ) {
+    public static double[] calculateFractionalErrorArray( final int[] errorArray, final byte[] baqArray ) {
         if ( errorArray.length != baqArray.length ) {
             throw new GATKException("Array length mismatch detected. Malformed read?");
         }
