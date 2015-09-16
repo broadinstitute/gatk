@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -79,7 +80,7 @@ public final class BucketUtils {
             }
 
             if(path.endsWith(".gz")){
-                return IOUtils.makeZippedInputStream(inputStream);
+                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
             } else {
                 return inputStream;
             }
