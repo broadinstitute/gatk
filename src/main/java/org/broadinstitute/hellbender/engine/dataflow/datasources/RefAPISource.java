@@ -7,9 +7,7 @@ import com.google.api.services.genomics.model.Reference;
 import com.google.api.services.genomics.model.SearchReferencesRequest;
 import com.google.api.services.genomics.model.SearchReferencesResponse;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Bytes;
@@ -18,10 +16,10 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -29,7 +27,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
@@ -122,8 +124,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
           if (genomicsService == null) {
               if (pipelineOptions == null) {
                   // Fall back on the saved apiKey for Spark.
-                  GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
-                  options.setApiKey(apiKey);
+                  GCSOptions options = BucketUtils.getAuthenticatedGCSOptions(apiKey);
                   genomicsService = createGenomicsService(options);
               } else {
                   genomicsService = createGenomicsService(pipelineOptions);

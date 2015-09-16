@@ -39,7 +39,15 @@ public final class GATKReport {
      * @param file the file to load
      */
     public GATKReport(File file) {
-        loadReport(file);
+        try {
+            loadReport(IOUtils.makeReaderMaybeGzipped(file));
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile(file, e);
+        }
+    }
+
+    public GATKReport(InputStream in){
+        loadReport(new InputStreamReader(in));
     }
 
     /**
@@ -52,20 +60,17 @@ public final class GATKReport {
     }
 
     /**
-     * Load a GATKReport file from disk
+     * Load a GATKReport from a {@link Reader}
      *
-     * @param file the file to load
+     * @param in the reader to load from
      */
-    private void loadReport(File file) {
-        BufferedReader reader;
+    private void loadReport(Reader in) {
+        BufferedReader reader = new BufferedReader(in);
         String reportHeader;
         try {
-            reader = new BufferedReader(IOUtils.makeReaderMaybeGzipped(file));
             reportHeader = reader.readLine();
-        } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotReadInputFile(file, "it does not exist");
         } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(file, e);
+            throw new UserException("Couldn't read RecalibrationReport", e);
         }
 
 
@@ -82,6 +87,7 @@ public final class GATKReport {
             addTable(new GATKReportTable(reader, version));
         }
     }
+
 
     /**
      * Add a new, empty table to the report

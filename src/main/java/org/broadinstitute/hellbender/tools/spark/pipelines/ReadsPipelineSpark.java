@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -23,19 +22,16 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
-import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
+import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.Variant;
-import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.List;
@@ -92,8 +88,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         }
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
-        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
-        options.setApiKey(apiKey);
+        GCSOptions options = BucketUtils.getAuthenticatedGCSOptions(apiKey);
 
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 

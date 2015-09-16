@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.transforms;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -66,8 +65,7 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(vcf);
 
-        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
-        options.setApiKey(getDataflowTestApiKey());
+        GCSOptions options = getAuthenticatedPipelineOptions();
 
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, reference, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
