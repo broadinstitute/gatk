@@ -123,7 +123,6 @@ public final class DetectCoverageDropout extends CommandLineProgram {
         try (Writer writer = new BufferedWriter(new OutputStreamWriter(
                 new FileOutputStream(outFile), "utf-8"))) {
             writer.write(warning);
-            writer.close();
         } catch (final IOException ioe) {
             throw new UserException.CouldNotCreateOutputFile(outFile, ioe.getMessage());
         }

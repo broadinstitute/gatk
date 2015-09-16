@@ -378,16 +378,27 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * @param targetFactorNormalized the read count collection to write.
      */
     private void writeTargetFactorNormalizedOutput(final ReadCountCollection targetFactorNormalized) {
-        writeOutput(fntOutFile,targetFactorNormalized,"Target factor normalized target counts");
+        writeOutput(fntOutFile, targetFactorNormalized, "Target factor normalized target counts");
     }
 
     /**
      * Writes the tangent-factor normalized outputs.
+     *
+     * Please note that this file is written in the target format originally used in recapseg.  In other words, it is
+     *  written as if it was target coverage.
+     *
      * @param tangentNormalized the read count collection to write.
      */
     private void writeTangentNormalizedOutput(final ReadCountCollection tangentNormalized) {
-        writeOutput(outFile,tangentNormalized,"Tangent normalized target counts");
+        try {
+            ReadCountCollectionUtils.writeAsTargetCoverage(outFile, tangentNormalized, "fileFormat = tsv",
+                    "commandLine = " + getCommandLine(),
+                    "title = Tangent normalized coverage profile");
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, ex.getMessage());
+        }
     }
+
 
     private void writeOutput(final File file, final ReadCountCollection counts, final String title) {
         if (file == null) {
