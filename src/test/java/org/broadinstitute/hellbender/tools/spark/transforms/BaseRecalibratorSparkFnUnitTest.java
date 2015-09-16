@@ -71,7 +71,7 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
 
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, reference, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants)
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants);
 
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new BaseRecalibrationArgumentCollection());
         final File report = BaseTest.createTempFile("report", "txt");

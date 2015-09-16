@@ -14,8 +14,7 @@ public class ApplyBQSRSparkFn {
     public static JavaRDD<GATKRead> apply( JavaRDD<GATKRead> reads, final Broadcast<RecalibrationReport> reportBroadcast, final SAMFileHeader readsHeader ) {
         return reads.map(read -> {
             RecalibrationReport report = reportBroadcast.getValue();
-            ApplyBQSRArgumentCollection args = new ApplyBQSRArgumentCollection();
-            BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
+            BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, new ApplyBQSRArgumentCollection());
             // TODO: remove protective copy?
             return transformer.apply(read.copy());
         });

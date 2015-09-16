@@ -3,9 +3,15 @@ package org.broadinstitute.hellbender.transformers;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.*;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
+import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
+import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.tools.recalibration.RecalDatum;
+import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -89,12 +95,10 @@ public final class BQSRReadTransformer implements ReadTransformer {
      *
      * @param header header for the reads
      * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
-     * @param quantizationLevels number of bins to quantize the quality scores
-     * @param disableIndelQuals  if true, do not emit base indel qualities
-     * @param preserveQLessThan  preserve quality scores less than this value
+     * @param args a set of arguments to control how bqsr is applied
      */
-    public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationReport recalInfo, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
-        this(header, new BaseRecalOutput(recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates()), quantizationLevels, disableIndelQuals, preserveQLessThan, emitOriginalQuals, globalQScorePrior);
+    public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationReport recalInfo, ApplyBQSRArgumentCollection args) {
+        this(header, new BaseRecalOutput(recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates()), args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
     }
 
     /**
