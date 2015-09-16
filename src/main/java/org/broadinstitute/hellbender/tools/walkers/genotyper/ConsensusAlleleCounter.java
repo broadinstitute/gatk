@@ -17,21 +17,18 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * Code for determining which indels are segregating among the samples.
  */
-public class ConsensusAlleleCounter {
-    final protected static Logger logger = Logger.getLogger(ConsensusAlleleCounter.class);
+public final class ConsensusAlleleCounter {
     private final int minIndelCountForGenotyping;
-    private final boolean doMultiAllelicCalls;
     private final double minFractionInOneSample;
 
-    public ConsensusAlleleCounter(final boolean doMultiAllelicCalls,
-                                  final int minIndelCountForGenotyping,
+    public ConsensusAlleleCounter(final int minIndelCountForGenotyping,
                                   final double minFractionInOneSample) {
         this.minIndelCountForGenotyping = minIndelCountForGenotyping;
-        this.doMultiAllelicCalls = doMultiAllelicCalls;
         this.minFractionInOneSample = minFractionInOneSample;
     }
 
@@ -54,11 +51,11 @@ public class ConsensusAlleleCounter {
                                                        final Map<String, AlignmentContext> contexts,
                                                        final AlignmentContextUtils.ReadOrientation contextType) {
         final Locatable loc = ref.getInterval();
-        final HashMap<String, Integer> consensusIndelStrings = new HashMap<>();
+        final Map<String, Integer> consensusIndelStrings = new HashMap<>();
 
         int insCount = 0, delCount = 0;
         // quick check of total number of indels in pileup
-        for ( final Map.Entry<String, AlignmentContext> sample : contexts.entrySet() ) {
+        for ( final Entry<String, AlignmentContext> sample : contexts.entrySet() ) {
             final AlignmentContext context = AlignmentContextUtils.stratify(sample.getValue(), contextType);
 
             final ReadPileup indelPileup = context.getBasePileup();
@@ -70,7 +67,7 @@ public class ConsensusAlleleCounter {
             return Collections.emptyMap();
         }
 
-        for (final Map.Entry<String, AlignmentContext> sample : contexts.entrySet()) {
+        for (final Entry<String, AlignmentContext> sample : contexts.entrySet()) {
             // todo -- warning, can be duplicating expensive partition here
             final AlignmentContext context = AlignmentContextUtils.stratify(sample.getValue(), contextType);
 
@@ -98,8 +95,8 @@ public class ConsensusAlleleCounter {
 
                     boolean foundKey = false;
                     // copy of hashmap into temp arrayList
-                    final ArrayList<Pair<String,Integer>> cList = new ArrayList<>();
-                    for (final Map.Entry<String, Integer> s : consensusIndelStrings.entrySet()) {
+                    final List<Pair<String,Integer>> cList = new ArrayList<>();
+                    for (final Entry<String, Integer> s : consensusIndelStrings.entrySet()) {
                         cList.add(Pair.of(s.getKey(), s.getValue()));
                     }
 
@@ -182,10 +179,9 @@ public class ConsensusAlleleCounter {
                                                   final Map<String, Integer> consensusIndelStrings) {
         final Locatable loc = ref.getInterval();
         final Collection<VariantContext> vcs = new ArrayList<>();
-        int maxAlleleCnt = 0;
         Allele refAllele, altAllele;
 
-        for (final Map.Entry<String, Integer> elt : consensusIndelStrings.entrySet()) {
+        for (final Entry<String, Integer> elt : consensusIndelStrings.entrySet()) {
             final String s = elt.getKey();
             final int curCnt = elt.getValue();
             int stop = 0;
@@ -228,15 +224,9 @@ public class ConsensusAlleleCounter {
             builder.loc(loc.getContig(), loc.getStart(), stop);
             builder.alleles(Arrays.asList(refAllele, altAllele));
             builder.noGenotypes();
-            if (doMultiAllelicCalls) {
-                vcs.add(builder.make());
-                if (vcs.size() >= GenotypeLikelihoods.MAX_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
-                    break;
-                }
-            } else if (curCnt > maxAlleleCnt) {
-                maxAlleleCnt = curCnt;
-                vcs.clear();
-                vcs.add(builder.make());
+            vcs.add(builder.make());
+            if (vcs.size() >= GenotypeLikelihoods.MAX_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
+                break;
             }
         }
 

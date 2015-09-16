@@ -4,7 +4,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.util.List;
 
-public class GenotypingEngine {
+/**
+ * TODO this class is a stub.
+ */
+public final class GenotypingEngine {
     /**
      * Function that fills vector with allele frequency priors. By default, infinite-sites, neutral variation prior is used,
      * where Pr(AC=i) = theta/i where theta is heterozygosity

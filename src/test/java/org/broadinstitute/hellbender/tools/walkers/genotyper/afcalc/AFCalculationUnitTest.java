@@ -67,72 +67,6 @@ public final class AFCalculationUnitTest extends BaseTest {
         return gb.make();
     }
 
-    private class GetGLsTest extends TestDataProvider {
-        GenotypesContext GLs;
-        int numAltAlleles;
-        final AFCalculator calc;
-        final int[] expectedACs;
-        final double[] priors;
-        final String priorName;
-
-        private GetGLsTest(final AFCalculator calc, int numAltAlleles, List<Genotype> arg, final double[] priors, final String priorName) {
-            super(GetGLsTest.class);
-            GLs = GenotypesContext.create(new ArrayList<>(arg));
-            this.numAltAlleles = numAltAlleles;
-            this.calc = calc;
-            this.priors = priors;
-            this.priorName = priorName;
-
-            expectedACs = new int[numAltAlleles+1];
-            for ( int alleleI = 0; alleleI < expectedACs.length; alleleI++ ) {
-                expectedACs[alleleI] = 0;
-                final Allele allele = getAlleles().get(alleleI);
-                for ( Genotype g : arg ) {
-                    expectedACs[alleleI] += Collections.frequency(g.getAlleles(), allele);
-                }
-            }
-        }
-
-        public AFCalculationResult execute() {
-            return getCalc().getLog10PNonRef(getVC(), HomoSapiensConstants.DEFAULT_PLOIDY, numAltAlleles, getPriors());
-        }
-
-        public AFCalculationResult executeRef() {
-            final AFCalculator ref = AFCalculatorImplementation.EXACT_REFERENCE.newInstance();
-            return ref.getLog10PNonRef(getVC(), HomoSapiensConstants.DEFAULT_PLOIDY, numAltAlleles, getPriors());
-        }
-
-        public double[] getPriors() {
-            return priors;
-        }
-
-        public AFCalculator getCalc() {
-            return calc;
-        }
-
-        public VariantContext getVC() {
-            VariantContextBuilder builder = new VariantContextBuilder("test", "1", 1, 1, getAlleles());
-            builder.genotypes(GLs);
-            return builder.make();
-        }
-
-        public List<Allele> getAlleles() {
-            return Arrays.asList(Allele.create("A", true),
-                    Allele.create("C"),
-                    Allele.create("G"),
-                    Allele.create("T")).subList(0, numAltAlleles+1);
-        }
-
-        public int getExpectedAltAC(final int alleleI) {
-            return expectedACs[alleleI+1];
-        }
-
-        public String toString() {
-            return String.format("%s model=%s prior=%s input=%s", super.toString(), calc.getClass().getSimpleName(),
-                    priorName, GLs.size() > 5 ? String.format("%d samples", GLs.size()) : GLs);
-        }
-    }
-
 
     private static final int MAX_ALT_ALLELES = 2;
     private static final int PLOIDY = 2;
@@ -403,7 +337,7 @@ public final class AFCalculationUnitTest extends BaseTest {
     }
 
     @Test(enabled = true && ! DEBUG_ONLY, dataProvider = "PNonRef")
-    private void testPNonRef(final VariantContext vcRoot,
+    public void testPNonRef(final VariantContext vcRoot,
                              AFCalculatorImplementation modelType,
                              AFCalculatorTestBuilder.PriorType priorType,
                              final List<Genotype> genotypes,
@@ -492,7 +426,7 @@ public final class AFCalculationUnitTest extends BaseTest {
     }
 
     @Test(enabled = true && ! DEBUG_ONLY, dataProvider = "PNonRefBiallelicSystematic")
-    private void PNonRefBiallelicSystematic(AFCalculatorImplementation modelType, final List<Genotype> genotypes) {
+    public void PNonRefBiallelicSystematic(AFCalculatorImplementation modelType, final List<Genotype> genotypes) {
         //logger.warn("Running " + modelType + " with " + genotypes);
         final AFCalculatorTestBuilder refBuilder = new AFCalculatorTestBuilder(genotypes.size(), 1, AFCalculatorImplementation.EXACT_REFERENCE, AFCalculatorTestBuilder.PriorType.human);
         final AFCalculatorTestBuilder testBuilder = new AFCalculatorTestBuilder(genotypes.size(), 1, modelType, AFCalculatorTestBuilder.PriorType.human);

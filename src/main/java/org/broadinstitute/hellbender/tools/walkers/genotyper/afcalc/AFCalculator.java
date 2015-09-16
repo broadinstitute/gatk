@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -129,4 +130,13 @@ public abstract class AFCalculator {
         }
         return stateTracker;
     }
+
+    /**
+     * Please don't use this method in production.
+     */
+    @VisibleForTesting
+    int getAltAlleleCountOfMAP(final int allele) {
+        return getStateTracker(false,allele + 1).getAlleleCountsOfMAP()[allele];
+    }
+
 }

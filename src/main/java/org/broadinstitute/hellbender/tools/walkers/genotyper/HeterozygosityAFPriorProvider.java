@@ -9,7 +9,7 @@ import java.util.Arrays;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class HeterozygosityAFPriorProvider extends AFPriorProvider {
+public final class HeterozygosityAFPriorProvider extends AFPriorProvider {
 
     private final double heterozygosity;
     private final double log10Heterozygosity;

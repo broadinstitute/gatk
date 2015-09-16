@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 
 /**
  * General heterogeneous ploidy model.
- *
- * <p>
- *     Currenly only avaialable for testing but will be promoted at some point and have its own unit test.
- * </p>
  */
 public final class HeterogeneousPloidyModel implements PloidyModel {
 
@@ -20,12 +17,8 @@ public final class HeterogeneousPloidyModel implements PloidyModel {
     private final boolean isHomogeneous;
 
     public HeterogeneousPloidyModel(final SampleList sampleList, final int[] ploidies) {
-        if (sampleList == null) {
-            throw new IllegalArgumentException("the sample list cannot be null");
-        }
-        if (ploidies == null) {
-            throw new IllegalArgumentException("the ploidies cannot be null");
-        }
+        Utils.nonNull(sampleList, "the sample list cannot be null");
+        Utils.nonNull(ploidies, "the ploidies cannot be null");
         if (sampleList.numberOfSamples() != ploidies.length) {
             throw new IllegalArgumentException("sample-list and ploidy array length must match");
         }

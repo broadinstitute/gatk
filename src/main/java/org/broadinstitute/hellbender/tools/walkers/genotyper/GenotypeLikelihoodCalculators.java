@@ -10,13 +10,31 @@ import java.util.Arrays;
  *     count (number of distinct alleles).
  * </p>
  *
- * <p>
- *     This class is thread-safe.
- * </p>
- *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class GenotypeLikelihoodCalculators {
+
+    /**
+     * The current maximum ploidy supported by the tables.
+     * <p>
+     *     Its initial value indicates the initial capacity of the shared {@link #genotypeTableByPloidy}. Feel free
+     *     to change it to anything reasonable that is non-negative.
+     * </p>
+     */
+    private int maximumPloidy = 2; // its initial value is the initial capacity of the shared tables.
+
+    /**
+     * Cached log10 values for the first integer up to the maximum ploidy requested thus far.
+     */
+    private double[] ploidyLog10;
+
+    // Initialize {@link #ploidyLog10}.
+    {
+        ploidyLog10 = new double[maximumPloidy + 1];
+        for (int i = 0; i <= maximumPloidy; i++) {
+            ploidyLog10[i] = Math.log10(i);
+        }
+    }
 
     /**
      * Maximum possible number of genotypes that this calculator can handle.
@@ -26,7 +44,7 @@ public final class GenotypeLikelihoodCalculators {
     /**
      * Mark to indicate genotype-count overflow due to a large number of allele and ploidy;
      */
-    protected static final int GENOTYPE_COUNT_OVERFLOW = -1;
+    static final int GENOTYPE_COUNT_OVERFLOW = -1;
 
     /**
      * The current maximum allele index supported by the tables.
@@ -35,23 +53,14 @@ public final class GenotypeLikelihoodCalculators {
      *     Feel free to change it to anything reasonable that is non-negative.
      * </p>
      */
-    private static int maximumAllele = 1; // its initial value is the initial capacity of the shared tables.
-
-    /**
-     * The current maximum ploidy supported by the tables.
-     * <p>
-     *     Its initial value indicates the initial capacity of the shared {@link #genotypeTableByPloidy}. Feel free
-     *     to change it to anything reasonable that is non-negative.
-     * </p>
-     */
-    private static int maximumPloidy = 2; // its initial value is the initial capacity of the shared tables.
+    private int maximumAllele = 1; // its initial value is the initial capacity of the shared tables.
 
     /**
      * Shared copy of the offset table as described in {@link #buildGenotypeAlleleCountsTable(int, int, int[][])}.
      *
      * This reference holds the largest requested so far in terms of maximum-allele and maximum-ploidy.
      */
-    private volatile static int[][] alleleFirstGenotypeOffsetByPloidy =
+    private int[][] alleleFirstGenotypeOffsetByPloidy =
             buildAlleleFirstGenotypeOffsetTable(maximumPloidy, maximumAllele);
 
 
@@ -62,10 +71,8 @@ public final class GenotypeLikelihoodCalculators {
      *  Its format is described in {@link #buildGenotypeAlleleCountsTable(int, int, int[][])}.
      * </p>
      */
-    private volatile static GenotypeAlleleCounts[][] genotypeTableByPloidy =
+    private GenotypeAlleleCounts[][] genotypeTableByPloidy =
             buildGenotypeAlleleCountsTable(maximumPloidy,maximumAllele,alleleFirstGenotypeOffsetByPloidy);
-
-
 
     /**
      * Build the table with the genotype offsets based on ploidy and the maximum allele index with representation
@@ -155,8 +162,9 @@ public final class GenotypeLikelihoodCalculators {
         for (int ploidy = 1; ploidy < rowCount; ploidy++) {
             for (int allele = 1; allele < colCount; allele++) {
                 result[ploidy][allele] = result[ploidy][allele - 1] + result[ploidy - 1][allele];
-                if (result[ploidy][allele] < result[ploidy][allele - 1])
+                if (result[ploidy][allele] < result[ploidy][allele - 1]) {
                     result[ploidy][allele] = GENOTYPE_COUNT_OVERFLOW;
+                }
             }
         }
         return result;
@@ -245,18 +253,6 @@ public final class GenotypeLikelihoodCalculators {
         return result;
     }
 
-    /**
-     * Cached log10 values for the first integer up to the maximum ploidy requested thus far.
-     */
-    private volatile static double[] ploidyLog10;
-
-    // Initialize {@link #ploidyLog10}.
-    static {
-        ploidyLog10 = new double[maximumPloidy + 1];
-        for (int i = 0; i <= maximumPloidy; i++) {
-            ploidyLog10[i] = Math.log10(i);
-        }
-    }
 
     /**
      * Returns an instance given its ploidy and the number of alleles.
@@ -269,18 +265,8 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return never {@code null}.
      */
-    public static GenotypeLikelihoodCalculator getInstance(final int ploidy,
-                                                   final int alleleCount) {
+    public GenotypeLikelihoodCalculator getInstance(final int ploidy, final int alleleCount) {
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
-        if (alleleCount < 0) {
-            throw new IllegalArgumentException("the allele count cannot be negative");
-        }
-        if (ploidy < 0) {
-            throw new IllegalArgumentException("the ploidy count cannot be negative");
-        }
-
-        // Non-thread safe (fast) check on tables capacities,
-        // if not enough capacity we expand the tables in a thread-safe manner:
         if (alleleCount > maximumAllele || ploidy > maximumPloidy) {
             ensureCapacity(alleleCount, ploidy);
         }
@@ -290,12 +276,12 @@ public final class GenotypeLikelihoodCalculators {
     }
 
     /**
-     * Thread safe update of shared tables
+     * Update of shared tables
      *
      * @param requestedMaximumAllele the new requested maximum allele maximum.
      * @param requestedMaximumPloidy the new requested ploidy maximum.
      */
-    private synchronized static void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
+    private void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
 
         final boolean needsToExpandAlleleCapacity = requestedMaximumAllele > maximumAllele;
         final boolean needsToExpandPloidyCapacity = requestedMaximumPloidy > maximumPloidy;
@@ -336,7 +322,7 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return never code {@code null}.
      */
-    private static double[] ploidyLog10Extension(final int newMaximumPloidy) {
+    private double[] ploidyLog10Extension(final int newMaximumPloidy) {
         final int start = ploidyLog10.length;
         final double[] result = Arrays.copyOf(ploidyLog10, newMaximumPloidy + 1);
         for (int i = start; i < result.length; i++) {
@@ -389,7 +375,7 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return 0 or greater.
      */
-    public final static int genotypeCount(final int ploidy, final int alleleCount) {
+    public int genotypeCount(final int ploidy, final int alleleCount) {
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
         if (ploidy > maximumPloidy || alleleCount > maximumAllele) {
             ensureCapacity(alleleCount, ploidy);

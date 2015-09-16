@@ -5,12 +5,13 @@ import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.Hidden;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
 public class UnifiedArgumentCollection extends StandardCallerArgumentCollection {
 
     @Argument(fullName = "genotype_likelihoods_model", shortName = "glm", doc = "Genotype likelihoods calculation model to employ -- SNP is the default option, while INDEL is also available for calling indels and BOTH is available for calling both together", optional = true)
-    public GenotypeLikelihoodsCalculationModel.Model GLmodel = GenotypeLikelihoodsCalculationModel.Model.SNP;
+    public GenotypeLikelihoodsCalculationModel GLmodel = GenotypeLikelihoodsCalculationModel.SNP;
 
     /**
      * The PCR error rate is independent of the sequencing error rate, which is necessary because we cannot necessarily
@@ -18,7 +19,7 @@ public class UnifiedArgumentCollection extends StandardCallerArgumentCollection 
      * effectively acts as a cap on the base qualities.
      */
     @Argument(fullName = "pcr_error_rate", shortName = "pcr_error", doc = "The PCR error rate to be used for computing fragment-based likelihoods", optional = true)
-    public Double PCR_error = DiploidSNPGenotypeLikelihoods.DEFAULT_PCR_ERROR_RATE;
+    public Double PCR_error = FragmentUtils.DEFAULT_PCR_ERROR_RATE;
 
     /**
      * Note that calculating the SLOD increases the runtime by an appreciable amount.
@@ -106,7 +107,7 @@ public class UnifiedArgumentCollection extends StandardCallerArgumentCollection 
      */
     @Hidden
     @Argument(fullName="reference_sample_calls", shortName = "referenceCalls", doc="VCF file with the truth callset for the reference sample", optional=true)
-    FeatureInput<VariantContext> referenceSampleRod;
+    public FeatureInput<VariantContext> referenceSampleRod;
 
     /*
         Reference sample name: if included, a site-specific error model will be built in order to improve calling quality. This requires ideally
@@ -115,24 +116,24 @@ public class UnifiedArgumentCollection extends StandardCallerArgumentCollection 
      */
     @Hidden
     @Argument(shortName="refsample", fullName="reference_sample_name", doc="Reference sample name.", optional=true)
-    String referenceSampleName;
+    public String referenceSampleName;
 
     /**
      * The following argument are for debug-only tweaks when running generalized ploidy with a reference sample
      */
     @Hidden
     @Argument(shortName="minqs", fullName="min_quality_score", doc="Min quality score to consider. Smaller numbers process faster. Default: Q1.", optional=true)
-    byte minQualityScore= 1;
+    public byte minQualityScore= 1;
 
     @Hidden
     @Argument(shortName="maxqs", fullName="max_quality_score", doc="Max quality score to consider. Smaller numbers process faster. Default: Q40.", optional=true)
-    byte maxQualityScore= 40;
+    public byte maxQualityScore= 40;
 
     @Hidden
     @Argument(shortName="site_prior", fullName="site_quality_prior", doc="Phred-Scaled prior quality of the site. Default: Q20.", optional=true)
-    byte phredScaledPrior = 20;
+    public byte phredScaledPrior = 20;
 
     @Hidden
     @Argument(shortName = "min_call_power", fullName = "min_power_threshold_for_calling", doc="The minimum confidence in the error model to make a call. Number should be between 0 (no power requirement) and 1 (maximum power required).", optional = true)
-    double minPower = 0.95;
+    public double minPower = 0.95;
 }

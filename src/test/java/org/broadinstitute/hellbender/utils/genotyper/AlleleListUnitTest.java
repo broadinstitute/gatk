@@ -52,6 +52,13 @@ public final class AlleleListUnitTest {
         al.getAllele(0);
     }
 
+    @Test
+    public void testEmptyIndexedList() throws Exception {
+        final AlleleList<Allele> al = new IndexedAlleleList<>();
+        Assert.assertEquals(al.numberOfAlleles(), 0);
+        Assert.assertEquals(al.indexOfReference(), -1);
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "singleAlleleListData")
     public void testEqualToNull(final List<Allele> alleles1){
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles1);
@@ -208,10 +215,4 @@ public final class AlleleListUnitTest {
                 result[index++] = new Object[] { alleleLists[i], alleleLists[j]};
         return result;
     }
-
-
-
-
-
-
 }

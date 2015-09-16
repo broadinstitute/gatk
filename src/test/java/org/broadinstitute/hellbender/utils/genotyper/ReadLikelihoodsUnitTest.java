@@ -21,8 +21,7 @@ import java.util.*;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class ReadLikelihoodsUnitTest
-{
+public final class ReadLikelihoodsUnitTest {
     private static final double EPSILON = 1e-6;
     private static final int ODD_READ_START = 101;
     private static final int EVEN_READ_START = 1;
@@ -33,7 +32,8 @@ public class ReadLikelihoodsUnitTest
 
         Assert.assertEquals(result.numberOfSamples(), samples.length);
         Assert.assertEquals(result.numberOfAlleles(), alleles.length);
-
+        Assert.assertEquals(result.samples().size(), samples.length);
+        Assert.assertEquals(result.alleles().size(), alleles.length);
 
         testSampleQueries(samples, reads, result);
         testAlleleQueries(alleles, result);
@@ -733,14 +733,15 @@ public class ReadLikelihoodsUnitTest
     }
 
     private AlleleList<Allele> alleleList(final int numberOfAlleles, final boolean hasReference) {
-        final Allele[] alleles = AlleleListUnitTester.generateRandomAlleles(numberOfAlleles,100);
+        final Allele[] alleles = AlleleListUnitTester.generateRandomUniqueAlleles(numberOfAlleles, 100);
         if (hasReference) {
             final int referenceIndex = rnd.nextInt(numberOfAlleles);
             alleles[referenceIndex] = Allele.create(alleles[referenceIndex].getBases(), true);
         }
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles);
-        if (alleleList.numberOfAlleles() != alleles.length)
+        if (alleleList.numberOfAlleles() != alleles.length) {
             throw new SkipException("repeated alleles, should be infrequent");
+        }
         return alleleList;
     }
 

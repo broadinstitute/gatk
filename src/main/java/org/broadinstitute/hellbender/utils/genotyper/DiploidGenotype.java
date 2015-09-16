@@ -98,9 +98,9 @@ public enum DiploidGenotype {
     }
 
     private static final DiploidGenotype[][] conversionMatrix = {
-            { DiploidGenotype.AA, DiploidGenotype.AC, DiploidGenotype.AG, DiploidGenotype.AT },
-            { DiploidGenotype.AC, DiploidGenotype.CC, DiploidGenotype.CG, DiploidGenotype.CT },
-            { DiploidGenotype.AG, DiploidGenotype.CG, DiploidGenotype.GG, DiploidGenotype.GT },
-            { DiploidGenotype.AT, DiploidGenotype.CT, DiploidGenotype.GT, DiploidGenotype.TT }
+            { AA, AC, AG, AT },
+            { AC, CC, CG, CT },
+            { AG, CG, GG, GT },
+            { AT, CT, GT, TT }
     };
 }

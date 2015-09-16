@@ -22,7 +22,7 @@ import java.util.List;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class InfiniteRandomMatingPopulationModel implements GenotypingModel {
+public final class InfiniteRandomMatingPopulationModel implements GenotypingModel {
 
     private final int cachePloidyCapacity;
     private final int cacheAlleleCountCapacity;
@@ -92,13 +92,13 @@ public class InfiniteRandomMatingPopulationModel implements GenotypingModel {
 
     private GenotypeLikelihoodCalculator getLikelihoodsCalculator(final int samplePloidy, final int alleleCount) {
         if (samplePloidy >= cacheAlleleCountCapacity) {
-            return GenotypeLikelihoodCalculators.getInstance(samplePloidy, alleleCount);
+            return new GenotypeLikelihoodCalculators().getInstance(samplePloidy, alleleCount);
         } else if (alleleCount >= cacheAlleleCountCapacity) {
-            return GenotypeLikelihoodCalculators.getInstance(samplePloidy, alleleCount);
+            return new GenotypeLikelihoodCalculators().getInstance(samplePloidy, alleleCount);
         }
         final GenotypeLikelihoodCalculator[][] cache = likelihoodCalculators.get();
         final GenotypeLikelihoodCalculator result = cache[samplePloidy][alleleCount];
-        return result != null ? result : (cache[samplePloidy][alleleCount] = GenotypeLikelihoodCalculators.getInstance(samplePloidy, alleleCount));
+        return result != null ? result : (cache[samplePloidy][alleleCount] = new GenotypeLikelihoodCalculators().getInstance(samplePloidy, alleleCount));
     }
 
     private <A extends Allele> GenotypingLikelihoods<A> multiSampleHeterogeneousPloidyModelLikelihoods(final AlleleList<A> genotypingAlleles,

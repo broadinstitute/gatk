@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -114,35 +115,6 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         this.sortedAlleleCounts = sortedAlleleCounts;
         this.distinctAlleleCount = distinctAlleleCount;
         this.log10CombinationCount = log10CombinationCount;
-    }
-
-    /**
-     * Returns the log10 of the number of possible allele combinations that would give raise to this allele count.
-     * @return 0 or less.
-     */
-    public double log10CombinationCount() {
-        if (log10CombinationCount == -1) {
-            return log10CombinationCount = calculateLog10CombinationCount();
-        } else {
-            return log10CombinationCount;
-        }
-    }
-
-    /**
-     * Calculates log10 combination count.
-     *
-     * @return 0 or less.
-     */
-    private double calculateLog10CombinationCount() {
-        if (ploidy <= 1) {
-            return 0;
-        } else {
-            final int[] counts = new int[distinctAlleleCount];
-            for (int i = 0, j = 1; i < distinctAlleleCount; i++, j+=2) {
-                counts[i] = sortedAlleleCounts[j];
-            }
-            return MathUtils.log10MultinomialCoefficient(ploidy, counts);
-        }
     }
 
     /**
@@ -407,29 +379,22 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      */
     @Override
     public boolean equals(final Object o) {
-        if (o instanceof GenotypeAlleleCounts) {
-            return equals((GenotypeAlleleCounts) o);
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * Compares with another genotype.
-     * @param o the other genotype.
-     * @return never {@code null}.
-     */
-    public boolean equals(final GenotypeAlleleCounts o) {
         if (o == this) {
             return true;
         }
-        if (o == null) {
+        if (!(o instanceof GenotypeAlleleCounts)) {
             return false;
         }
-        if (ploidy != o.ploidy) {
+        final GenotypeAlleleCounts other = (GenotypeAlleleCounts) o;
+        if (ploidy != other.ploidy) {
             return false;
         }
-        return Arrays.equals(sortedAlleleCounts, o.sortedAlleleCounts);
+        return Arrays.equals(sortedAlleleCounts, other.sortedAlleleCounts);
+    }
+
+    @Override
+    public int hashCode() {
+        return ((31 + ploidy) * 31 ) + index;
     }
 
     /**
@@ -456,22 +421,15 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      */
     @Override
     public int compareTo(final GenotypeAlleleCounts other) {
+        Utils.nonNull(other, "input genotype cannot be null");
         if (other == this) {
             return 0;
         }
-        if (other == null) {
-            throw new IllegalArgumentException("input genotype cannot be null");
-        }
         if (other.ploidy == ploidy) {
-            return index - other.index;
+            return Integer.compare(index, other.index);
         } else {
-            return ploidy - other.ploidy;
+            return Integer.compare(ploidy, other.ploidy);
         }
-    }
-
-    @Override
-    public int hashCode() {
-        return ((31 + ploidy) * 31 ) + index;
     }
 
     /**
@@ -621,9 +579,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      *   are required for the job.
      */
     public void copyAlleleCounts(final int[] dest, final int offset) {
-        if (dest == null) {
-            throw new IllegalArgumentException("the destination cannot be null");
-        }
+        Utils.nonNull(dest, "the destination cannot be null");
         if (offset < 0) {
             throw new IllegalArgumentException("the offset cannot be negative");
         }
@@ -652,21 +608,6 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         }
     }
 
-    /**
-     * Makes the next genotype in likelihood indexing order.
-     *
-     * @param g the original genotype.
-     *
-     * @throws IllegalArgumentException if {@code g} is {@code null}.
-     *
-     * @return never {@code null}.
-     */
-    public static GenotypeAlleleCounts makeNextGenotype(final GenotypeAlleleCounts g) {
-        if (g == null) {
-            throw new IllegalArgumentException("the next genotype");
-        }
-        return g.next();
-    }
 
     /**
      * Returns the largest allele index present in the genotype.
@@ -714,9 +655,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      */
     @SuppressWarnings("unchecked")
     public <T extends Allele> List<T> asAlleleList(final List<T> allelesToUse) {
-        if (allelesToUse == null) {
-            throw new IllegalArgumentException("the input allele list cannot be null");
-        }
+        Utils.nonNull(allelesToUse, "the input allele list cannot be null");
         if (allelesToUse.size() < maximumAlleleIndex()) {
             throw new IllegalArgumentException("the provided alleles to use does not contain an element for the maximum allele ");
         }
@@ -740,37 +679,4 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         }
     }
 
-    /**
-     * Returns an array with the allele indices repeated based on the number of occurrences in the genotype.
-     *
-     * <p>
-     *     indices are sorted from the smallest to the greatest.
-     * </p>
-     *
-     * <p>
-     *     If a sufficiently large array is provided as {@code dest}, this is used as the destination. Unnecessary
-     *     positions at the back of the array are left untouched.
-     * </p>
-     *
-     * <p>
-     *     However if {@code dest} is {@code null} or it does not have enough space, a new array of with length equal to
-     *     the ploidy will be used and returned instead.
-     * </p>
-     *
-     * @param dest destination array. Can be {@code null} or not have sufficient positions (ploidy); in that case a new
-     *             one is created.
-     * @return never {@code null}, {@code dest} if sufficiently large otherwise an array of ploidy positions.
-     */
-    public int[] toAlleleIndicesArray(final int[] dest) {
-        final int[] result = dest == null || dest.length < ploidy ? new int[ploidy] : dest;
-        int k = 0;
-        for (int i = 0,ii = 0; i < distinctAlleleCount; i++) {
-            final int index = sortedAlleleCounts[ii++];
-            final int repeats = sortedAlleleCounts[ii++];
-            for (int j = 0; j < repeats; j++) {
-                result[k++] = index;
-            }
-        }
-        return result;
-    }
 }

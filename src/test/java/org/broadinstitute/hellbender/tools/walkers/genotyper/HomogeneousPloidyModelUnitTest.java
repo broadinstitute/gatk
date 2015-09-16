@@ -14,10 +14,10 @@ import java.util.List;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class HomogeneousPloidyModelUnitTest {
-    private static final int[] PLOIDY = new int[] { 1, 2, 3, 7, 10};
+public final class HomogeneousPloidyModelUnitTest {
+    private static final int[] PLOIDY = { 1, 2, 3, 7, 10};
 
-    private static final int[] SAMPLE_COUNT = new int[] { 0, 1, 3, 4, 5, 6, 10, 101};
+    private static final int[] SAMPLE_COUNT = { 0, 1, 3, 4, 5, 6, 10, 101};
 
 
     @Test(dataProvider = "ploidyAndSampleListData")

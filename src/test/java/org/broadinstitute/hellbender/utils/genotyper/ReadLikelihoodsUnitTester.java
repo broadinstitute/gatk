@@ -13,8 +13,7 @@ import java.util.Map;
 /**
  * Constains utilities for tests that need to create read-likelihoods.
  */
-public class ReadLikelihoodsUnitTester {
-
+public final class ReadLikelihoodsUnitTester {
 
     public static ReadLikelihoods<Allele> readLikelihoods(final int alleleCount, final int[] readCount) {
         final int sampleCount = readCount.length;

@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -114,9 +116,30 @@ public enum AFCalculatorImplementation {
         if (EXACT_INDEPENDENT.usableForParams(requiredPloidy,requiredAlternativeAlleleCount)) {
             return EXACT_INDEPENDENT;
         }
-        if (EXACT_REFERENCE.usableForParams(requiredPloidy,requiredAlternativeAlleleCount)) {
+        if (EXACT_REFERENCE.usableForParams(requiredPloidy,requiredAlternativeAlleleCount)) {  //TODO: this seems to be dead code. EXACT_REFERENCE will always lose to EXACT_INDEPENDENT.
             return EXACT_REFERENCE;
         }
         return EXACT_GENERAL_PLOIDY;
+    }
+
+    /**
+     * Returns the value that corresponds to a given implementation calculator class.
+     *
+     * @param clazz the target class.
+     *
+     * @throws IllegalArgumentException if {@code clazz} is {@code null} or if it is abstract.
+     * @throws IllegalStateException if
+     *
+     * @return never {@code null}.
+     */
+    public static AFCalculatorImplementation fromCalculatorClass(final Class<? extends AFCalculator> clazz) {
+        Utils.nonNull(clazz, "input class cannot be null");
+        //Using iteration instead of a static map to avoid static state.
+        for (final AFCalculatorImplementation impl : AFCalculatorImplementation.values()){
+            if (clazz.equals(impl.newInstance().getClass())){
+                return impl;
+            }
+        }
+        throw new IllegalArgumentException("Attempt to retrieve AFCalculatorImplementation instance from a non-registered calculator class " + clazz.getName());
     }
 }

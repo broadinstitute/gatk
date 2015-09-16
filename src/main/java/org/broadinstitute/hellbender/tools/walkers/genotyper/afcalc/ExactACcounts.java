@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.Arrays;
 
 /**
@@ -12,8 +14,12 @@ public final class ExactACcounts {
     /**
      * Note: this constructor does not make a copy of the argument and stores a live pointer to the given array.
      * Callers must make sure the array is not mutated to maintain semantics of hashcode.
+     * The array must be not null and longer than 0 elements.
      */
     public ExactACcounts(final int[] counts) {
+        if (counts == null || counts.length == 0){
+            throw new IllegalArgumentException("counts should not be null or empty");
+        }
         this.counts = counts;
     }
 
@@ -29,7 +35,7 @@ public final class ExactACcounts {
     @Override
     public int hashCode() {
         if ( hashcode == -1 ) {
-            hashcode = Arrays.hashCode(getCounts());
+            hashcode = Arrays.hashCode(counts);
         }
         return hashcode;
     }
@@ -37,10 +43,10 @@ public final class ExactACcounts {
     @Override
     public String toString() {
         final StringBuffer sb = new StringBuffer();
-        sb.append(getCounts()[0]);
-        for ( int i = 1; i < getCounts().length; i++ ) {
+        sb.append(counts[0]);
+        for ( int i = 1; i < counts.length; i++ ) {
             sb.append("/");
-            sb.append(getCounts()[i]);
+            sb.append(counts[i]);
         }
         return sb.toString();
     }

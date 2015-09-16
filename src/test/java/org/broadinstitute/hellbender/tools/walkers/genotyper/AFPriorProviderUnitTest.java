@@ -8,15 +8,11 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-/**
- * TODO document this.
- *
- * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
- */
-public class AFPriorProviderUnitTest extends BaseTest {
+public final class AFPriorProviderUnitTest extends BaseTest {
 
     private static final double TOLERANCE = 0.0001;
 
@@ -43,6 +39,27 @@ public class AFPriorProviderUnitTest extends BaseTest {
         }
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorNegativeHet() throws Exception {
+        new HeterozygosityAFPriorProvider(-0.1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorTooHighHet() throws Exception {
+        new HeterozygosityAFPriorProvider(1.1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorNaNHet() throws Exception {
+        new HeterozygosityAFPriorProvider(Double.NaN);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testErrorHeterozygosityTooHighForPloidy() throws Exception {
+        new HeterozygosityAFPriorProvider(0.999).buildPriors(2);
+    }
+
+
     @Test(dataProvider="CustomProviderData")
     public void testCustomProvider(final int ploidy) {
         final double[] priors = new double[ploidy];
@@ -66,10 +83,10 @@ public class AFPriorProviderUnitTest extends BaseTest {
     }
 
 
-    private double[] hets = new double[] { 0.00001, 0.001, 0.1, 0.5, 0.99, 0.999 };
-    private int[] useCounts = new int[] { 10, 100, 1000 };
+    private double[] hets = { 0.00001, 0.001, 0.1, 0.5, 0.99, 0.999 };
+    private int[] useCounts = { 10, 100, 1000 };
 
-    private int[] ploidy = new int[] { 1 , 2, 3, 10, 100, 200, 500};
+    private int[] ploidy = { 1 , 2, 3, 10, 100, 200, 500};
 
     @DataProvider(name="CustomProviderData")
     public Object[][] customProviderData() {
@@ -91,5 +108,34 @@ public class AFPriorProviderUnitTest extends BaseTest {
         return result;
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCustomErrorPloidy() throws Exception {
+        new CustomAFPriorProvider(Arrays.asList(0.5)).forTotalPloidy(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCustomErrorNull() throws Exception {
+        new CustomAFPriorProvider(null);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCustomHetError() throws Exception {
+        new CustomAFPriorProvider(Arrays.asList(-1.0));
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCustomNaNError() throws Exception {
+        new CustomAFPriorProvider(Arrays.asList(Double.NaN));
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCustomHetTooHighError() throws Exception {
+        new CustomAFPriorProvider(Arrays.asList(0.5, 0.6));
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCustomPriorsError() throws Exception {
+        new CustomAFPriorProvider(Arrays.asList(0.5, 0.4)).buildPriors(17);
+    }
 
 }

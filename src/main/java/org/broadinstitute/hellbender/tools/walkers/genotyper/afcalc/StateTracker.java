@@ -125,6 +125,11 @@ final class StateTracker {
         return tooLowLikelihood(log10LofK) && (!enforceLowerACs || isLowerAC(ACs,exactACcountsContainReference));
     }
 
+    @VisibleForTesting
+    int[] getAlleleCountsOfMAP() {
+        return alleleCountsOfMAP;
+    }
+
     /**
      * @return the likelihoods summed across all AC values for AC > 0
      */

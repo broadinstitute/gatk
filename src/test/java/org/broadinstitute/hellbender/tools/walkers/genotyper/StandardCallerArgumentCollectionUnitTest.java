@@ -16,7 +16,7 @@ import java.util.Random;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class StandardCallerArgumentCollectionUnitTest {
+public final class StandardCallerArgumentCollectionUnitTest {
 
     public final static List<Class<? extends StandardCallerArgumentCollection>> COLLECTION_CLASSES;
 

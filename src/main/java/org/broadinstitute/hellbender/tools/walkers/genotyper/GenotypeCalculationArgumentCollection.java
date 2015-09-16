@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import java.util.Collections;
 import java.util.List;
 
-public class GenotypeCalculationArgumentCollection {
+public final class GenotypeCalculationArgumentCollection {
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.

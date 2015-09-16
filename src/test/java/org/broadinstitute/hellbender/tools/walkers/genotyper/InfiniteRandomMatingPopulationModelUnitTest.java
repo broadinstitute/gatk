@@ -15,7 +15,7 @@ import java.util.Random;
 /**
  * Test {@link org.broadinstitute.gatk.tools.walkers.genotyper.InfiniteRandomMatingPopulationModel}
  */
-public class InfiniteRandomMatingPopulationModelUnitTest {
+public final class InfiniteRandomMatingPopulationModelUnitTest {
 
     @Test(dataProvider="ploidyAndMaximumAlleleAndReadCountsData")
     public void testCalculateLikelihoods(final int[] ploidies, final int alleleCount, final int discardAlleleCount, final int[] readCounts) {
@@ -35,7 +35,7 @@ public class InfiniteRandomMatingPopulationModelUnitTest {
             Assert.assertNotNull(sampleLikelihoods);
             final double[] values = sampleLikelihoods.getAsVector();
             Assert.assertNotNull(values);
-            Assert.assertEquals(values.length, GenotypeLikelihoodCalculators.getInstance(ploidies[i], genotypingAlleleList.numberOfAlleles()).genotypeCount());
+            Assert.assertEquals(values.length, new GenotypeLikelihoodCalculators().getInstance(ploidies[i], genotypingAlleleList.numberOfAlleles()).genotypeCount());
             for (int j = 0; j < values.length; j++)
                 Assert.assertTrue(values[j] <= 0);
         }

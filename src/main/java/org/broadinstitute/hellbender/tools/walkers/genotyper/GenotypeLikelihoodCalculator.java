@@ -17,7 +17,7 @@ import java.util.PriorityQueue;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class GenotypeLikelihoodCalculator {
+public final class GenotypeLikelihoodCalculator {
 
     /**
      * Maximum number of components (or distinct alleles) for any genotype with this calculator ploidy and allele count.
@@ -156,6 +156,9 @@ public class GenotypeLikelihoodCalculator {
                                            final int[][] alleleFirstGenotypeOffsetByPloidy,
                                            final GenotypeAlleleCounts[][] genotypeTableByPloidy,
                                            final double[] ploidyLog10) {
+        if (ploidy < 1){
+            throw new IllegalArgumentException("ploidy must be at least 1 but was " + ploidy);
+        }
         this.alleleFirstGenotypeOffsetByPloidy = alleleFirstGenotypeOffsetByPloidy;
         genotypeAlleleCounts = genotypeTableByPloidy[ploidy];
         this.alleleCount = alleleCount;
@@ -572,7 +575,7 @@ public class GenotypeLikelihoodCalculator {
                     + resultAlleleCount + " alleles ");
         }
         final int resultLength = resultAlleleCount == alleleCount
-                ? genotypeCount : GenotypeLikelihoodCalculators.genotypeCount(ploidy,resultAlleleCount);
+                ? genotypeCount : new GenotypeLikelihoodCalculators().genotypeCount(ploidy,resultAlleleCount);
 
         final int[] result = new int[resultLength];
         final int[] sortedAlleleCounts = new int[Math.max(ploidy, alleleCount) << 1];

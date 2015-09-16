@@ -6,8 +6,6 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 /**
  * Common interface for genotyping models.
  *
- * Given a plo
- *
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */

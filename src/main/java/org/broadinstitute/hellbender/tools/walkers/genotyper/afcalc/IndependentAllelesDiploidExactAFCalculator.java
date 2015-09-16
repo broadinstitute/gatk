@@ -113,7 +113,7 @@ import java.util.*;
         return biAlleleExactModel.getLog10PNonRef(combinedAltAllelesVariantContext, defaultPloidy, vc.getNAlleles() - 1, log10AlleleFrequencyPriors);
     }
 
-    private VariantContext makeCombinedAltAllelesVariantContext(final VariantContext vc) {
+    private static VariantContext makeCombinedAltAllelesVariantContext(final VariantContext vc) {
         final int nAltAlleles = vc.getNAlleles() - 1;
 
         if ( nAltAlleles == 1 ) {
@@ -122,7 +122,7 @@ import java.util.*;
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
         final Allele reference = vcb.getAlleles().get(0);
         vcb.alleles(Arrays.asList(reference, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
-        final int genotypeCount = GenotypeLikelihoodCalculators.genotypeCount(2, vc.getNAlleles());
+        final int genotypeCount = new GenotypeLikelihoodCalculators().genotypeCount(2, vc.getNAlleles());
         final double[] hetLikelihoods = new double[vc.getNAlleles() - 1];
         final double[] homAltLikelihoods = new double[genotypeCount - hetLikelihoods.length - 1];
         final double[] newLikelihoods = new double[3];
@@ -179,7 +179,7 @@ import java.util.*;
      * @return a bi-allelic variant context for each alt allele in vc
      */
     @VisibleForTesting
-    List<VariantContext> makeAlleleConditionalContexts(final VariantContext vc) {
+    static List<VariantContext> makeAlleleConditionalContexts(final VariantContext vc) {
         final int nAltAlleles = vc.getNAlleles() - 1;
 
         if ( nAltAlleles == 1 ) {
@@ -204,7 +204,7 @@ import java.util.*;
      * @param altAlleleIndex index of the alt allele, from 0 == first alt allele
      * @return a bi-allelic variant context based on rootVC
      */
-    private VariantContext biallelicCombinedGLs(final VariantContext rootVC, final int altAlleleIndex) {
+    private static VariantContext biallelicCombinedGLs(final VariantContext rootVC, final int altAlleleIndex) {
         if ( rootVC.isBiallelic() ) {
             return rootVC;
         }
@@ -248,7 +248,7 @@ import java.util.*;
      * @return a new biallelic genotype with appropriate PLs
      */
     @VisibleForTesting
-    Genotype combineGLsPrecise(final Genotype original, final int altIndex, final int nAlts ) {
+    static Genotype combineGLsPrecise(final Genotype original, final int altIndex, final int nAlts) {
 
         if ( original.isNonInformative() ) {
             return new GenotypeBuilder(original).PL(BIALLELIC_NON_INFORMATIVE_PLS).alleles(BIALLELIC_NOCALL).make();
@@ -295,7 +295,7 @@ import java.util.*;
     }
 
     @VisibleForTesting
-    List<AFCalculationResult> applyMultiAllelicPriors(final List<AFCalculationResult> conditionalPNonRefResults) {
+    static List<AFCalculationResult> applyMultiAllelicPriors(final List<AFCalculationResult> conditionalPNonRefResults) {
         final List<AFCalculationResult> sorted = new ArrayList<>(conditionalPNonRefResults);
 
         // sort the results, so the most likely allele is first
@@ -333,9 +333,9 @@ import java.util.*;
      *
      * @param sortedResultsWithThetaNPriors the pNonRef result for each allele independently
      */
-    private AFCalculationResult combineIndependentPNonRefs(final VariantContext vc,
-                                                           final List<AFCalculationResult> sortedResultsWithThetaNPriors,
-                                                           final AFCalculationResult combinedAltAllelesResult) {
+    private static AFCalculationResult combineIndependentPNonRefs(final VariantContext vc,
+                                                                  final List<AFCalculationResult> sortedResultsWithThetaNPriors,
+                                                                  final AFCalculationResult combinedAltAllelesResult) {
 
 
         final int nAltAlleles = sortedResultsWithThetaNPriors.size();
@@ -363,8 +363,8 @@ import java.util.*;
                 log10pRefByAllele);
     }
 
-    private boolean combineAltAlleleLikelihoods(final Genotype g, final int plMaxIndex, final double[] dest,
-                                                final double[] hetLikelihoods, final double[] homAltLikelihoods) {
+    private static boolean combineAltAlleleLikelihoods(final Genotype g, final int plMaxIndex, final double[] dest,
+                                                       final double[] hetLikelihoods, final double[] homAltLikelihoods) {
 
         final int[] pls = g.getPL();
         if (pls == null) {

@@ -1,16 +1,15 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Arrays;
 
-public class ProbabilityVector {
+public final class ProbabilityVector {
     private final double[] probabilityArray;
     private final int minVal;
     private final int maxVal;
 
-    final static double LOG_DYNAMIC_RANGE = 10; // values X below max vector value will be removed
+    static final double LOG_DYNAMIC_RANGE = 10; // values X below max vector value will be removed
 
     /**
      * Default constructor: take vector in log-space, with support from range [0,len-1]
@@ -22,15 +21,14 @@ public class ProbabilityVector {
         final int maxValIdx = MathUtils.maxElementIndex(vec);
         final double maxv = vec[maxValIdx];
         if (maxv > 0.0) {
-            throw new GATKException("BUG: Attempting to create a log-probability vector with positive elements");
+            throw new IllegalArgumentException("BUG: Attempting to create a log-probability vector with positive elements");
         }
 
         if (compressRange) {
             minVal = getMinIdx(vec, maxValIdx);
             maxVal = getMaxIdx(vec, maxValIdx);
             probabilityArray = Arrays.copyOfRange(vec, minVal, maxVal + 1);
-
-        }   else {
+        } else {
             probabilityArray = vec;
             minVal = 0;
             maxVal = vec.length-1;
@@ -50,18 +48,6 @@ public class ProbabilityVector {
     public int getMinVal() { return minVal;}
     public int getMaxVal() { return maxVal;}
     public double[] getProbabilityVector() { return probabilityArray;}
-    
-    public double[] getProbabilityVector(final int minVal, final int maxVal) {
-        // get vector in specified range. If range is outside of current vector, fill with negative infinities
-        final double[] x = new double[maxVal - minVal + 1];
-
-        for (int k=minVal; k <= maxVal; k++) {
-            x[k - minVal] = getLogProbabilityForIndex(k);
-        }
-
-
-        return x;
-    }
 
     public double[] getUncompressedProbabilityVector() {
         final double[] x = new double[maxVal+1];
@@ -81,16 +67,11 @@ public class ProbabilityVector {
      * @return      log10(Pr X = i) )
      */
     public double getLogProbabilityForIndex(final int idx) {
-    if (idx < minVal || idx > maxVal) {
-        return Double.NEGATIVE_INFINITY;
-    } else {
-        return probabilityArray[idx - minVal];
-    }
-    }
-
-    //public ProbabilityVector
-    public static ProbabilityVector compressVector(final double[] vec ) {
-        return new ProbabilityVector(vec, true);
+        if (idx < minVal || idx > maxVal) {
+            return Double.NEGATIVE_INFINITY;
+        } else {
+            return probabilityArray[idx - minVal];
+        }
     }
 
     /**

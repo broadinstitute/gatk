@@ -69,6 +69,35 @@ public final class AlleleListUnitTester {
     private static final Allele NEVER_USE_ALLELE = Allele.create(new String("ACTGACTGACTGACTGACTGACTGACTGACTGGTCAGTCAGTCAGTCAGTCAGTCA").getBytes(), false);
 
     /**
+     * Generate testing alleles. Guarantees that alleles are unique.
+     *
+     * <p>
+     *     Basically all are random alleles given the maximum allele length.
+     * </p>
+     *
+     * <p>
+     *     So with a low max-allele-length and high allele-count you can force repeats.
+     * </p>
+     *
+     * @param alleleCount number of alleles to generate.
+     * @param maxAlleleLength the maximum length of the allele in bases.
+     *
+     * @throws RuntimeException if {@code alleleCount} is negative or {@code maxAlleleLength} is less than 1.
+     * @return never {@code null}.
+     */
+    public static Allele[] generateRandomUniqueAlleles(final int alleleCount, final int maxAlleleLength) {
+        if (maxAlleleLength < 1)
+            throw new IllegalArgumentException("the max allele length cannot be less than 1");
+        final Set<Allele> set = new HashSet<>(alleleCount);
+        while(set.size() < alleleCount){
+            final int alleleLength = rnd.nextInt(maxAlleleLength) + 1;
+            final Allele result = Allele.create(rndDNA.nextBases(alleleLength));
+            set.add(result);
+        }
+        return set.toArray(new Allele[set.size()]);
+    }
+
+    /**
      * Generate testing alleles.
      *
      * <p>
@@ -116,7 +145,7 @@ public final class AlleleListUnitTester {
      * @return never {@code null}.
      */
     public static AlleleList<Allele> alleleList(final int alleleCount, final int maxAlleleLength, final boolean skipIfRepeats) {
-        final Allele[] alleles = AlleleListUnitTester.generateRandomAlleles(alleleCount,maxAlleleLength);
+        final Allele[] alleles = AlleleListUnitTester.generateRandomUniqueAlleles(alleleCount, maxAlleleLength);
         if (alleleCount > 0)
             alleles[0] = Allele.create(alleles[0].getBases(), true);
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles);

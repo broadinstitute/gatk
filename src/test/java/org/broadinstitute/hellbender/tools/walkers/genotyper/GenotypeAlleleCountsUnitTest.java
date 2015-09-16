@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import com.google.common.base.Strings;
 import htsjdk.variant.variantcontext.Allele;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -15,7 +16,49 @@ import java.util.List;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class GenotypeAlleleCountsUnitTest {
+public final class GenotypeAlleleCountsUnitTest {
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testFirstError() {
+        GenotypeAlleleCounts.first(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAlleleIndexAtError() {
+        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
+        first.alleleIndexAt(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAlleleRankForError() {
+        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
+        first.alleleRankFor(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAlleleCountAtError() {
+        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
+        first.alleleCountAt(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAlleleCountsByIndexError() {
+        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
+        first.alleleCountsByIndex(-1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCopyAlleleCountsIndexError() {
+        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
+        first.copyAlleleCounts(new int[3], -1);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCopyAlleleCountsOffsetError() {
+        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
+        first.copyAlleleCounts(new int[3], 4);
+    }
+
 
     @Test(dataProvider="ploidyData")
     public void testFirst(final int ploidy) {
@@ -41,9 +84,12 @@ public class GenotypeAlleleCountsUnitTest {
             expected[0] = ploidy;
             Assert.assertEquals(subject.alleleCountsByIndex(maximumAlleleIndex), expected);
         }
+
+        Assert.assertNotNull(subject.toString());
+        Assert.assertEquals(subject.toUnphasedGenotypeString(), ploidy == 1 ? "0" : Strings.repeat("0/", ploidy-1) + "0");
     }
 
-    @Test(dataProvider = "ploidyData",dependsOnMethods = "testFirst")
+    @Test(dataProvider = "ploidyDataWithZero",dependsOnMethods = "testFirst")
     public void testNext(final int ploidy) {
         if (ploidy == 0)
             testNextZeroPloidy();
@@ -53,7 +99,7 @@ public class GenotypeAlleleCountsUnitTest {
             testPloidyTwoOrMore(ploidy);
     }
 
-    @Test(dataProvider = "ploidyData",dependsOnMethods = "testNext")
+    @Test(dataProvider = "ploidyDataWithZero",dependsOnMethods = "testNext")
     public void testIncrease(final int ploidy) {
         if (ploidy == 0)
             testNextZeroPloidyIncrease();
@@ -77,9 +123,13 @@ public class GenotypeAlleleCountsUnitTest {
             final int[] expected = new int[maximumAlleleIndex + 1];
             Assert.assertEquals(next.alleleCountsByIndex(maximumAlleleIndex), expected);
         }
+
+        first.increase();
+        Assert.assertEquals(first, next);
     }
 
     private void testNextOnePloidy() {
+       final GenotypeAlleleCounts ploidy2 = GenotypeAlleleCounts.first(2);
        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(1);
        GenotypeAlleleCounts current = first;
 
@@ -95,11 +145,20 @@ public class GenotypeAlleleCountsUnitTest {
             Assert.assertEquals(next.alleleCountFor(next.minimumAlleleIndex() + 1), 0);
             Assert.assertEquals(next.ploidy(), 1);
 
+            int[] dest = new int[next.distinctAlleleCount()*2];
+            next.copyAlleleCounts(dest, 0);
+            Assert.assertEquals(dest, new int[]{next.index(), 1});
+
             Assert.assertTrue(next.compareTo(current) > 0);
             Assert.assertTrue(current.compareTo(next) < 0);
             Assert.assertTrue(next.compareTo(next) == 0);
             Assert.assertTrue(next.equals(next));
+            Assert.assertFalse(next.equals(null));
+            Assert.assertFalse(next.equals(next.toString()));
+            Assert.assertFalse(next.equals(ploidy2));
+            Assert.assertFalse(ploidy2.equals(next));
             Assert.assertFalse(next.equals(current));
+            Assert.assertNotEquals(next.hashCode(), current.hashCode());
             Assert.assertFalse(current.equals(next));
 
             Assert.assertEquals(next.index(), current.index() + 1);
@@ -203,7 +262,7 @@ public class GenotypeAlleleCountsUnitTest {
 
         while (!next.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
             final GenotypeAlleleCounts current = next.copy();
-            next.increase();
+            next.increase(1);
             Assert.assertEquals(next.minimumAlleleIndex(), next.maximumAlleleIndex());
             Assert.assertEquals(next.minimumAlleleIndex(), current.minimumAlleleIndex() + 1);
             Assert.assertEquals(next.alleleCountAt(0), 1);
@@ -301,7 +360,8 @@ public class GenotypeAlleleCountsUnitTest {
         }
     }
 
-    private static final int[] PLOIDY = new int[] { 1, 2, 3, 7, 10};
+    private static final int[] PLOIDY = { 1, 2, 3, 7, 10};
+    private static final int[] PLOIDY_WITH_ZERO = { 0, 1, 2, 3, 7, 10};
 
     @DataProvider(name="ploidyData")
     public Object[][] ploidyData() {
@@ -310,4 +370,13 @@ public class GenotypeAlleleCountsUnitTest {
             result[i] = new Object[] { PLOIDY[i ]};
         return result;
     }
+
+    @DataProvider(name="ploidyDataWithZero")
+    public Object[][] ploidyDataWithZero() {
+        final Object[][] result = new Object[PLOIDY_WITH_ZERO.length][];
+        for (int i = 0; i < PLOIDY_WITH_ZERO.length; i++)
+            result[i] = new Object[] { PLOIDY_WITH_ZERO[i ]};
+        return result;
+    }
+
 }

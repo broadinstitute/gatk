@@ -9,7 +9,7 @@ import java.util.*;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class SampleListUnitTester {
+public final class SampleListUnitTester {
 
     /**
      * Test that the contents of a sample-list are the ones expected.

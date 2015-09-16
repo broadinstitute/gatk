@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class AFCalculatorTestBuilder {
+public final class AFCalculatorTestBuilder {
     final static Allele A = Allele.create("A", true);
     final static Allele C = Allele.create("C");
     final static Allele G = Allele.create("G");

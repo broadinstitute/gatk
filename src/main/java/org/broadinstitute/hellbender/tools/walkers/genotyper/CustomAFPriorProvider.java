@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.List;
 
 /**
  * Custom priors provided as an array.
  */
-public class CustomAFPriorProvider extends AFPriorProvider {
+public final class CustomAFPriorProvider extends AFPriorProvider {
 
     private final double[] priors;
 
@@ -14,9 +16,7 @@ public class CustomAFPriorProvider extends AFPriorProvider {
      * @param priorValues must exactly the number of genomes in the samples (the total ploidy).
      */
     public CustomAFPriorProvider(final List<Double> priorValues) {
-        if (priorValues == null) {
-            throw new IllegalArgumentException("the input prior values cannot be null");
-        }
+        Utils.nonNull(priorValues,"the input prior values cannot be null");
         priors = new double[priorValues.size() + 1];
 
         int i = 1;
@@ -40,7 +40,7 @@ public class CustomAFPriorProvider extends AFPriorProvider {
     @Override
     protected double[] buildPriors(final int totalPloidy) {
         if (totalPloidy != priors.length - 1) {
-            throw new IllegalStateException("requesting an invalid prior total ploidy " + totalPloidy + " != " + (priors.length - 1));
+            throw new IllegalArgumentException("requesting an invalid prior total ploidy " + totalPloidy + " != " + (priors.length - 1));
         }
         return priors;
     }

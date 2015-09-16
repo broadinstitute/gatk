@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -28,12 +29,8 @@ public final class GenotypingData<A extends Allele> implements SampleList, Allel
      *   or they are not compatible in terms of the samples they contain; their lists must match.
      */
     public GenotypingData(final PloidyModel ploidyModel, final ReadLikelihoods<A> likelihoods) {
-        if (ploidyModel == null) {
-            throw new IllegalArgumentException("the ploidy model cannot be null");
-        }
-        if (likelihoods == null) {
-            throw new IllegalArgumentException("the likelihood object cannot be null");
-        }
+        Utils.nonNull(ploidyModel, "the ploidy model cannot be null");
+        Utils.nonNull(likelihoods, "the likelihood object cannot be null");
         this.ploidyModel = ploidyModel;
         this.likelihoods = likelihoods;
         if (!ploidyModel.asListOfSamples().equals(likelihoods.asListOfSamples())) {
