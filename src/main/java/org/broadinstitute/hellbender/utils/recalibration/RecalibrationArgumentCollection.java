@@ -1,18 +1,15 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
-import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
-import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
-import java.io.PrintStream;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A collection of the arguments that are used for BQSR. Used to be common to both CovariateCounterWalker and TableRecalibrationWalker.
@@ -21,25 +18,6 @@ import java.util.Map;
 
 public final class RecalibrationArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
-    /**
-     * This algorithm treats every reference mismatch as an indication of error. However, real genetic variation is expected to mismatch the reference,
-     * so it is critical that a database of known polymorphic sites is given to the tool in order to skip over those sites. This tool accepts any number of
-     * Feature-containing files (VCF, BCF, BED, etc.) for use as this database. For users wishing to exclude an interval list of known variation simply
-     * use -XL my.interval.list to skip over processing those sites. Please note however that the statistics reported by the tool will not accurately
-     * reflected those sites skipped by the -XL argument.
-     */
-    @Argument(fullName = "knownSites", shortName = "knownSites", doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = true)
-    public transient List<FeatureInput<Feature>> knownSites;
-
-    /**
-     * After the header, data records occur one per line until the end of the file. The first several items on a line are the
-     * values of the individual covariates and will change depending on which covariates were specified at runtime. The last
-     * three items are the data- that is, number of observations for this combination of covariates, number of reference mismatches,
-     * and the raw empirical quality score calculated by phred-scaling the mismatch rate.   Use '/dev/stdout' to print to standard out.
-     */
-    @Argument(fullName= "RECAL_TABLE_FILE", shortName="RECAL_TABLE_FILE", doc = "The output recalibration table file to create", optional = false)
-    public File RECAL_TABLE_FILE = null;
-    public transient PrintStream RECAL_TABLE;
 
     // We always use the same covariates. The field is retained for compatibility with GATK3 reports.
     public static final boolean DO_NOT_USE_STANDARD_COVARIATES = false;
@@ -127,6 +105,43 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
      */
     @Argument(fullName = "sort_by_all_columns", shortName = "sortAllCols", doc = "Sort the rows in the tables of reports", optional = true)
     public Boolean SORT_BY_ALL_COLUMNS  = false;
+
+    @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName="bqsrBAQGOP", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
+    public double BAQGOP = BAQ.DEFAULT_GOP;
+
+    /**
+     * This flag tells GATK not to modify quality scores less than this value. Instead they will be written out unmodified in the recalibrated BAM file.
+     * In general it's unsafe to change qualities scores below < 6, since base callers use these values to indicate random or bad bases.
+     * For example, Illumina writes Q2 bases when the machine has really gone wrong. This would be fine in and of itself,
+     * but when you select a subset of these reads based on their ability to align to the reference and their dinucleotide effect,
+     * your Q2 bin can be elevated to Q8 or Q10, leading to issues downstream.
+     */
+    @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -BQSR)", optional = true)
+    public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
+
+
+    // --------------------------------------------------------------------------------------------------------------
+    //
+    // quality encoding checking arguments
+    //
+    // --------------------------------------------------------------------------------------------------------------
+
+    /**
+     * This flag tells GATK to use the original base qualities (that were in the data before BQSR/recalibration) which
+     * are stored in the OQ tag, if they are present, rather than use the post-recalibration quality scores. If no OQ
+     * tag is present for a read, the standard qual score will be used.
+     */
+    @Argument(fullName="useOriginalQualities", shortName = "OQ", doc = "Use the base quality scores from the OQ tag", optional = true)
+    public Boolean useOriginalBaseQualities = false;
+
+    /**
+     * If reads are missing some or all base quality scores, this value will be used for all base quality scores.
+     * By default this is set to -1 to disable default base quality assignment.
+     */
+    //TODO: minValue = 0, maxValue = Byte.MAX_VALUE)
+    @Argument(fullName="defaultBaseQualities", shortName = "DBQ", doc = "Assign a default base quality", optional = true)
+    public byte defaultBaseQualities = -1;
+
 
     /////////////////////////////
     // Debugging-only Arguments

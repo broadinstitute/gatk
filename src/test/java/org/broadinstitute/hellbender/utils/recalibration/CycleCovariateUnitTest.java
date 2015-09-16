@@ -1,9 +1,11 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.CycleCovariate;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CycleCovariate;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;

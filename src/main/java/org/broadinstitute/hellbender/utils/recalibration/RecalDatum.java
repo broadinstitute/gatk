@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMUtils;
 import org.apache.commons.math3.analysis.function.Gaussian;

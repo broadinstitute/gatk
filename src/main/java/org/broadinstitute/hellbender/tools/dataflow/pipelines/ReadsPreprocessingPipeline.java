@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.MarkDuplicates;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -32,6 +31,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
 import java.io.IOException;
 import java.util.List;
@@ -101,12 +101,12 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
 
         // BQSR.
         // default arguments are best practice.
-        BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+        RecalibrationArgumentCollection recalArgs = new RecalibrationArgumentCollection();
         final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
         final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
         checkSequenceDictionaries(refDictionary, readsDictionary);
         PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
-        final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
+        final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, recalArgs));
         final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
 
         final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();

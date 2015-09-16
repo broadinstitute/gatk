@@ -1,10 +1,9 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 import java.io.Serializable;
 import java.util.ArrayList;

@@ -1,5 +1,7 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
+import org.broadinstitute.hellbender.utils.recalibration.RecalDatum;
+import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;

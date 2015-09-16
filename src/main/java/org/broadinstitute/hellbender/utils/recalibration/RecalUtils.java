@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
@@ -7,8 +7,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -358,9 +357,9 @@ public final class RecalUtils {
      * @param covariates The list of requested covariates
      * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      */
-    public static void outputRecalibrationReport(final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
+    public static void outputRecalibrationReport(final PrintStream recalTableStream, final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
         final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, covariates, sortByCols));
-        report.print(RAC.RECAL_TABLE);
+        report.print(recalTableStream);
     }
 
     /**

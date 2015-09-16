@@ -1,8 +1,10 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -17,8 +19,8 @@ import org.testng.annotations.Test;
 
 import java.util.Random;
 
-import static org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate.getStrandedBytes;
-import static org.broadinstitute.hellbender.tools.recalibration.covariates.ContextCovariate.getStrandedOffset;
+import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedBytes;
+import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedOffset;
 
 public final class ContextCovariateUnitTest extends BaseTest {
     ContextCovariate covariate;

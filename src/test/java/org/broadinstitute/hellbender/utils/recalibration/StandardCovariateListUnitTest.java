@@ -1,7 +1,8 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.*;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

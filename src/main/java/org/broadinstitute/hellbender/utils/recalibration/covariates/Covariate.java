@@ -1,7 +1,7 @@
-package org.broadinstitute.hellbender.tools.recalibration.covariates;
+package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;

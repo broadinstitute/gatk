@@ -1,9 +1,9 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.RecalibrationTablesMerger;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.*;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;

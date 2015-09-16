@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;

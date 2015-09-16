@@ -1,15 +1,15 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.CycleCovariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.*;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CycleCovariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

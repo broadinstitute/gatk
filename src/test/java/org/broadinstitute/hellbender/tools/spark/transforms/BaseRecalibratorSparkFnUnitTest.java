@@ -14,8 +14,8 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -71,7 +71,7 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
 
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants);
 
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new BaseRecalibrationArgumentCollection());
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection());
         final File report = BaseTest.createTempFile("report", "txt");
         try( PrintStream out = new PrintStream(report)){
             bqsrReport.createGATKReport().print(out);

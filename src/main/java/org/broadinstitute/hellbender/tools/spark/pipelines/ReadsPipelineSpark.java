@@ -24,14 +24,14 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.IOException;
@@ -97,7 +97,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         // TODO: and ApplyBQSRStub simpler (#855).
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants);
         // TODO: broadcast the reads header?
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new BaseRecalibrationArgumentCollection());
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection());
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
         final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader, new ApplyBQSRArgumentCollection());
 

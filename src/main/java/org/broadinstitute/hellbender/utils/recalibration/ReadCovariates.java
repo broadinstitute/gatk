@@ -1,9 +1,8 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.LRUCache;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 /**
  * The object temporarily held by a read that describes all of its covariates.

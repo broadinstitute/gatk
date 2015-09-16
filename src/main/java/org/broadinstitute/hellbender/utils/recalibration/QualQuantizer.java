@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;

@@ -1,13 +1,12 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 

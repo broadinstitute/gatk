@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.transforms;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
@@ -11,11 +12,12 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorFn;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
+import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -27,56 +29,38 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 
 public class BaseRecalibratorSparkFn {
 
-    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final BaseRecalibrationArgumentCollection args ) {
-        final ReadFilter filter = readFilter(header);
+    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final RecalibrationArgumentCollection recalArgs ) {
+        final ReadFilter filter = BaseRecalibrator.getStandardBQSRReadFilter(header);
+        final JavaPairRDD<GATKRead, ReadContextData> filtered = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
 
-        final RecalibrationTables combinedTables = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()))
-                .mapPartitions(iter -> calculateTableFromPartition(iter, header, referenceDictionary, args))
-                .reduce(RecalibrationTables::safeCombine);
+        JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithContextIterator -> {
+            final BaseRecalibrationEngine bqsr = new BaseRecalibrationEngine(recalArgs, header);
 
-        RecalibrationEngine.finalizeRecalibrationTables(combinedTables);
+            while ( readWithContextIterator.hasNext() ) {
+                final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
+                Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
+                final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
+                ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
+
+                bqsr.processRead(readWithData._1(), refDS, variants);
+            }
+            return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTables()));
+        });
+
+        final RecalibrationTables combinedTables = unmergedTables.reduce(RecalibrationTables::safeCombine);
+        BaseRecalibrationEngine.finalizeRecalibrationTables(combinedTables);
 
         File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
         try {
-            BaseRecalibratorFn.SaveTextualReport(temp, header, combinedTables, args);
+            BaseRecalibratorFn.SaveTextualReport(temp, header, combinedTables, recalArgs);
             return new RecalibrationReport(temp);
         } catch (FileNotFoundException e) {
             throw new GATKException("can't find my own temporary file", e);
         } catch (IOException e) {
             throw new GATKException("unable to save temporary report to " + temp.getPath(), e);
         }
-    }
-
-    private static List<RecalibrationTables> calculateTableFromPartition(final Iterator<Tuple2<GATKRead, ReadContextData>> readWithContextIterator,
-                                                                         final SAMFileHeader header,
-                                                                         final SAMSequenceDictionary referenceDictionary,
-                                                                         final BaseRecalibrationArgumentCollection args){
-        final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
-        bqsr.onTraversalStart();
-
-        while (readWithContextIterator.hasNext()) {
-            final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
-            Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
-            final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
-            ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
-
-            bqsr.apply(readWithData._1(), refDS, variants);
-        }
-        return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTable()));
-    }
-
-    private static CountingReadFilter readFilter( final SAMFileHeader header ) {
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))
-                .and(new CountingReadFilter("Mapping_Quality_Not_Zero", ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO))
-                .and(new CountingReadFilter("Mapping_Quality_Available", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
-                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
-                .and(new CountingReadFilter("Primary_Alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT))
-                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
-                .and(new CountingReadFilter("Passes_Vendor_Quality_Check", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK));
     }
 }

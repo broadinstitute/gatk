@@ -1,6 +1,7 @@
-package org.broadinstitute.hellbender.tools.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration;
 
 
+import org.broadinstitute.hellbender.utils.recalibration.QualQuantizer;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;

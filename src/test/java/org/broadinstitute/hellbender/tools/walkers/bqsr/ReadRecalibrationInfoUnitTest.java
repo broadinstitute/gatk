@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import htsjdk.samtools.SAMUtils;
-import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.ReadRecalibrationInfo;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;

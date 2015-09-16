@@ -1,12 +1,12 @@
-package org.broadinstitute.hellbender.tools.recalibration.covariates;
+package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;

@@ -1,6 +1,6 @@
-package org.broadinstitute.hellbender.tools.walkers.bqsr;
+package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
