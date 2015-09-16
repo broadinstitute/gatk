@@ -2,10 +2,20 @@ package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.Reader;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 /**
  * Container class for GATK report tables
@@ -30,7 +40,7 @@ public final class GATKReport {
      * @param filename the path to the file to load
      */
     public GATKReport(String filename) {
-        this(new File(filename));
+        this(BucketUtils.openFile(filename, (String) null));
     }
 
     /**
@@ -39,11 +49,7 @@ public final class GATKReport {
      * @param file the file to load
      */
     public GATKReport(File file) {
-        try {
-            loadReport(IOUtils.makeReaderMaybeGzipped(file));
-        } catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(file, e);
-        }
+        this(file.getPath());
     }
 
     public GATKReport(InputStream in){

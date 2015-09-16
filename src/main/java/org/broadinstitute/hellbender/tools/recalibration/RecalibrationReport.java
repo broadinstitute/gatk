@@ -12,7 +12,13 @@ import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
-import java.util.*;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * This class has all the static functionality for reading a recalibration report file into memory. 
@@ -26,12 +32,18 @@ public final class RecalibrationReport {
     private final RecalibrationArgumentCollection RAC; // necessary for quantizing qualities with the same parameter
 
     public RecalibrationReport(final File recalFile) {
-        this(recalFile, getReadGroups(recalFile));
+        this(new GATKReport(recalFile));
     }
 
-    public RecalibrationReport(final File recalFile, final SortedSet<String> allReadGroups) {
-        final GATKReport report = new GATKReport(recalFile);
+    public RecalibrationReport(final InputStream recalibrationTableStream){
+        this(new GATKReport(recalibrationTableStream));
+    }
 
+    public RecalibrationReport(final GATKReport report){
+        this(report, getReadGroups(report));
+    }
+
+    public RecalibrationReport(final GATKReport report, final SortedSet<String> allReadGroups) {
         argumentTable = report.getTable(RecalUtils.ARGUMENT_REPORT_TABLE_TITLE);
         RAC = initializeArgumentCollectionTable(argumentTable);
 
@@ -50,16 +62,6 @@ public final class RecalibrationReport {
 
         parseAllCovariatesTable(report.getTable(RecalUtils.ALL_COVARIATES_REPORT_TABLE_TITLE), recalibrationTables);
 
-    }
-
-    /**
-     * Gets the unique read groups in the recal file
-     *
-     * @param recalFile the recal file as a GATK Report
-     * @return the unique read groups
-     */
-    public static SortedSet<String> getReadGroups(final File recalFile) {
-        return getReadGroups(new GATKReport(recalFile));
     }
 
     /**
@@ -322,14 +324,6 @@ public final class RecalibrationReport {
         }
 
         return RAC;
-    }
-
-    /**
-     * this functionality avoids recalculating the empirical qualities, estimated reported quality
-     * and quantization of the quality scores during every call of combine(). Very useful for the BQSRGatherer.
-     */
-    public void calculateQuantizedQualities() {
-        quantizationInfo = new QuantizationInfo(recalibrationTables, RAC.QUANTIZING_LEVELS);
     }
 
     /**

@@ -4,16 +4,15 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
-import org.broadinstitute.hellbender.utils.commandline.Gather;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
 import java.io.PrintStream;
-import java.io.Serializable;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A collection of the arguments that are used for BQSR. Used to be common to both CovariateCounterWalker and TableRecalibrationWalker.
@@ -38,7 +37,6 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
      * three items are the data- that is, number of observations for this combination of covariates, number of reference mismatches,
      * and the raw empirical quality score calculated by phred-scaling the mismatch rate.   Use '/dev/stdout' to print to standard out.
      */
-    @Gather(BQSRGatherer.class)
     @Argument(fullName= "RECAL_TABLE_FILE", shortName="RECAL_TABLE_FILE", doc = "The output recalibration table file to create", optional = false)
     public File RECAL_TABLE_FILE = null;
     public transient PrintStream RECAL_TABLE;

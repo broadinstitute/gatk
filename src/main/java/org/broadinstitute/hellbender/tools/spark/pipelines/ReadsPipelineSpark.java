@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.pipelines.BaseRecalibratorDataflow;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
@@ -98,7 +99,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         // TODO: broadcast the reads header?
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new BaseRecalibrationArgumentCollection());
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
-        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader);
+        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader, new ApplyBQSRArgumentCollection());
 
         try {
             ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, false);

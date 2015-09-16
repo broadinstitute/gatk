@@ -11,10 +11,10 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 public class ApplyBQSRSparkFn {
 
-    public static JavaRDD<GATKRead> apply( JavaRDD<GATKRead> reads, final Broadcast<RecalibrationReport> reportBroadcast, final SAMFileHeader readsHeader ) {
+    public static JavaRDD<GATKRead> apply(JavaRDD<GATKRead> reads, final Broadcast<RecalibrationReport> reportBroadcast, final SAMFileHeader readsHeader, ApplyBQSRArgumentCollection args) {
         return reads.map(read -> {
             RecalibrationReport report = reportBroadcast.getValue();
-            BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, new ApplyBQSRArgumentCollection());
+            BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, args);
             // TODO: remove protective copy?
             return transformer.apply(read.copy());
         });
