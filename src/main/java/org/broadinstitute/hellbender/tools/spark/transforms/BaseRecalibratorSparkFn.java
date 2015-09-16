@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.transforms;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
@@ -28,29 +27,18 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 public class BaseRecalibratorSparkFn {
 
     public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final BaseRecalibrationArgumentCollection args ) {
         final ReadFilter filter = readFilter(header);
-        final JavaPairRDD<GATKRead, ReadContextData> filtered = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
 
-        JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithContextIterator -> {
-            final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
-            bqsr.onTraversalStart();
+        final RecalibrationTables combinedTables = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()))
+                .mapPartitions(iter -> calculateTableFromPartition(iter, header, referenceDictionary, args))
+                .reduce(RecalibrationTables::safeCombine);
 
-            while ( readWithContextIterator.hasNext() ) {
-                final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
-                Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
-                final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
-                ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
-
-                bqsr.apply(readWithData._1(), refDS, variants);
-            }
-            return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTable()));
-        });
-
-        final RecalibrationTables combinedTables = unmergedTables.reduce(RecalibrationTables::safeCombine);
         RecalibrationEngine.finalizeRecalibrationTables(combinedTables);
 
         File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
@@ -64,6 +52,23 @@ public class BaseRecalibratorSparkFn {
         }
     }
 
+    private static List<RecalibrationTables> calculateTableFromPartition(final Iterator<Tuple2<GATKRead, ReadContextData>> readWithContextIterator,
+                                                                         final SAMFileHeader header,
+                                                                         final SAMSequenceDictionary referenceDictionary,
+                                                                         final BaseRecalibrationArgumentCollection args){
+        final BQSRSparkWorker bqsr = new BQSRSparkWorker(header, referenceDictionary, args);
+        bqsr.onTraversalStart();
+
+        while (readWithContextIterator.hasNext()) {
+            final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
+            Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
+            final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
+            ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
+
+            bqsr.apply(readWithData._1(), refDS, variants);
+        }
+        return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTable()));
+    }
 
     private static CountingReadFilter readFilter( final SAMFileHeader header ) {
         return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import com.google.common.collect.Lists;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -65,7 +66,7 @@ public class JoinReadsWithVariants {
 
         JavaPairRDD<GATKRead, Variant> allPairs = pairReadsWithVariants(readsWShards, variantsWShards);
 
-        return allPairs.distinct().groupByKey();
+        return allPairs.distinct().groupByKey().persist(StorageLevel.MEMORY_AND_DISK());
     }
 
     private static JavaPairRDD<VariantShard, GATKRead> pairReadsWithVariantShards(final JavaRDD<GATKRead> reads) {

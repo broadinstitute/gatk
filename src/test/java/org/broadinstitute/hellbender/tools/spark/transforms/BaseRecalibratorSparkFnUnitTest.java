@@ -20,10 +20,8 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.Variant;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -73,7 +71,7 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
 
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, reference, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants)
 
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new BaseRecalibrationArgumentCollection());
         final File report = BaseTest.createTempFile("report", "txt");
@@ -81,7 +79,6 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
             bqsrReport.createGATKReport().print(out);
         }
         IntegrationTestSpec.assertEqualTextFiles(report, new File(expected));
-      //  Assert.assertEquals(bqsrReport.createGATKReport(), new GATKReport(expected));
     }
 
 }
