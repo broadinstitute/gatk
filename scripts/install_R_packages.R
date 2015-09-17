@@ -1,7 +1,7 @@
 source("http://bioconductor.org/biocLite.R")
 biocLite("DNAcopy")
-
-getoptUrl="http://lib.stat.cmu.edu/R/CRAN/bin/macosx/contrib/3.1/getopt_1.20.0.tgz"
+#Make sure to use http not https as this will give an "unsupported URL scheme" error
+getoptUrl="http://cran.r-project.org/src/contrib/getopt_1.20.0.tar.gz"
 if (!("getopt" %in% rownames(installed.packages))) {
   install.packages(getoptUrl, repos=NULL, type="source")
 }

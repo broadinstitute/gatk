@@ -9,8 +9,7 @@ library(optparse)
 option_list <- list(
     make_option(c("--sample_name", "-sample_name"), dest="sample_name", action="store"),
     make_option(c("--targets_file", "-targets_file"), dest="targets_file", action="store"),
-    make_option(c("--output_file", "-output_file"), dest="output_file", action="store"),
-    make_option(c("--min_log_value", "-min_log_value"), dest="min_log_value", action="store"))
+    make_option(c("--output_file", "-output_file"), dest="output_file", action="store"))
 
 opt <- parse_args(OptionParser(option_list=option_list))
 print(opt)
@@ -19,15 +18,14 @@ save(opt, file="debug.RData")
 sample_name=opt[["sample_name"]]
 tn_file=opt[["targets_file"]]
 output_file=opt[["output_file"]]
-min_log_value=as.numeric(opt[["min_log_value"]])
 
 # Use a function for debugging purposes
-segment_data = function(sample_name, tn_file, output_file, min_log_value) {
+segment_data = function(sample_name, tn_file, output_file) {
 	# Read in file and extract needed data
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	contig = tn[,"contig"]
 	pos = tn[,"stop"]
-	dat = 2^tn[,sample_name]
+	dat = log2(tn[,sample_name])
 
 	# Create CNA object
 	cna_dat = CNA(dat, contig, pos, data.type="logratio", sampleid=sample_name)
@@ -35,11 +33,10 @@ segment_data = function(sample_name, tn_file, output_file, min_log_value) {
 	# Perform segmentation
 	set.seed(25)
 	segmented = segment(smooth.CNA(cna_dat))$output
-	segmented[,"seg.mean"] = log2(segmented[,"seg.mean"])
 
 	# Ensure that there are no too-small values which will be problematic for downstream tools.
-	log10_min_copy_ratio = min_log_value
-	segmented[segmented[,"seg.mean"]<log10_min_copy_ratio,"seg.mean"] = log10_min_copy_ratio
+	segmented[,"seg.mean"] = 2^segmented[,"seg.mean"]
+	segmented[segmented[,"seg.mean"]<.Machine$double.eps,"seg.mean"] = .Machine$double.eps
 
 	# Convention for column names
 	colnames(segmented) = c("Sample", "Chromosome", "Start", "End", "Num_Probes", "Segment_Mean")
@@ -57,4 +54,4 @@ segment_data = function(sample_name, tn_file, output_file, min_log_value) {
 	write.table(segmented, file=output_file, sep="\t", quote=FALSE, row.names=FALSE)
 }
 
-segment_data(sample_name, tn_file, output_file, min_log_value)
+segment_data(sample_name, tn_file, output_file)

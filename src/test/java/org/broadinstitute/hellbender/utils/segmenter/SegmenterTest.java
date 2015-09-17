@@ -16,34 +16,31 @@ public class SegmenterTest extends BaseTest {
 
     @Test
     public void testHCC1143Reduced() throws IOException {
-        float min_log_value = -10;
         final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_reduced.tsv");
         final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
         assertEqualSegments(output,EXPECTED);
     }
 
     @Test
     public void testHCC1143Short() throws IOException {
-        float min_log_value = -10;
         final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_short.tsv");
         final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_short_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
         assertEqualSegments(output,EXPECTED);
     }
 
     @Test
     public void testSimple() throws IOException {
-        float min_log_value = -10;
         final File INPUT_FILE = new File("src/test/resources/segmenter/input/Simple.tsv");
         final File EXPECTED = new File("src/test/resources/segmenter/output/Simple_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "Simple";
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), min_log_value);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
         assertEqualSegments(output,EXPECTED);
     }
 
