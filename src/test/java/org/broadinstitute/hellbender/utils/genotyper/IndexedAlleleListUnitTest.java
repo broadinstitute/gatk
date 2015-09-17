@@ -12,7 +12,7 @@ import java.util.List;
 import static org.broadinstitute.hellbender.utils.genotyper.AlleleListUnitTester.assertAlleleList;
 
 /**
- * Tests {@link org.broadinstitute.gatk.utils.genotyper.IndexedSampleList}.
+ * Tests {@link org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleListUnitTest}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
