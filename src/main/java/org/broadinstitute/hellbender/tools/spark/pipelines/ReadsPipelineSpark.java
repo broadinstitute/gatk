@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
@@ -103,7 +104,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         });
 
         try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, false);
+            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, ReadsWriteFormat.SHARDED);
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }
