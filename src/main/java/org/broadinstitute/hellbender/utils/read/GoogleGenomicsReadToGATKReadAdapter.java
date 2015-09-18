@@ -22,13 +22,16 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of the {@link GATKRead} interface for the Google Genomics {@link Read} class.
@@ -37,13 +40,17 @@ import java.util.UUID;
  * but care must be exercised if the underlying read has been exposed somewhere before
  * wrapping.
  */
-public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead {
+public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Serializable {
+    private static final long serialVersionUID = 1L;
+    private final static long uuidHighWord = new Random().nextLong();
+    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     private final Read genomicsRead;
     private final UUID uuid;
 
     public GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead ) {
-        this(genomicsRead, UUID.randomUUID());
+        // this is 100x faster than UUID.randomUUID()
+        this(genomicsRead, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
     }
 
     /**
