@@ -10,7 +10,9 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -21,12 +23,15 @@ import java.util.UUID;
  */
 public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     private static final long serialVersionUID = 1L;
+    private final static long uuidHighWord = new Random().nextLong();
+    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     private final SAMRecord samRecord;
     private final UUID uuid;
 
     public SAMRecordToGATKReadAdapter( final SAMRecord samRecord ) {
-        this(samRecord, UUID.randomUUID());
+        // this is 100x faster than UUID.randomUUID()
+        this(samRecord, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
     }
 
     /**
@@ -165,7 +170,7 @@ public final class SAMRecordToGATKReadAdapter implements GATKRead, Serializable 
 
     @Override
     public void setMatePosition( final Locatable locatable ) {
-        Utils.nonNull( locatable,  "Cannot set mate position to null");
+        Utils.nonNull(locatable, "Cannot set mate position to null");
 
         setMatePosition(locatable.getContig(), locatable.getStart());
     }
