@@ -289,6 +289,14 @@ configurations {
         exclude group: 'org.apache.hadoop'
         exclude module: 'spark-core_2.10'
     }
+    localSparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.10'
+        exclude group: 'org.slf4j'
+    }
 }
 
 task sparkJar(type: ShadowJar) {
@@ -315,6 +323,13 @@ task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
     classifier = 'sources'
 }
+
+task copyDeps(type: Copy) {
+    from configurations.localSparkConfiguration
+    //configurations = [project.configurations.sparkConfiguration]
+    into 'build/lib'
+}
+
 
 // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
 if (JavaVersion.current().isJava8Compatible()) {

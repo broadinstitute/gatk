@@ -2,7 +2,11 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.launcher.SparkLauncher;
 import org.apache.spark.serializer.KryoSerializer;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Manages creation of the Spark context. In particular, for tests a shared global context is used, since Spark does not
@@ -83,11 +87,24 @@ public final class SparkContextFactory {
     }
 
     private static JavaSparkContext createTestSparkContext() {
+        String path = null;
+        String jarLibPath = null;
+        try {
+            path = "/Users/davidada/apps/spark-1.4.1-bin-hadoop2.6/lib/*:" + new File("build/classes/main").getCanonicalPath();
+            jarLibPath = new File("build/lib/*").getCanonicalPath();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         SparkConf sparkConf = new SparkConf().setAppName("TestContext")
-                .setMaster("local[2]")
+                .setSparkHome("/Users/davidada/apps/spark-1.4.1-bin-hadoop2.6")
+                //.set("spark.driver.userClassPathFirst", "true")
+                //.set("spark.executor.userClassPathFirst", "true")
+        .set(SparkLauncher.EXECUTOR_EXTRA_CLASSPATH, path + ":" + jarLibPath)
+                .set(SparkLauncher.DRIVER_EXTRA_CLASSPATH, path + ":" + jarLibPath)
+                .setMaster("spark://davidada-macbookpro2.roam.corp.google.com:7077") //.setMaster("local[2]")
                 .set("spark.serializer", KryoSerializer.class.getCanonicalName())
                 .set("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
-                .set("spark.ui.enabled", "false");
+                ;//.set("spark.ui.enabled", "false");
 
         return new JavaSparkContext(sparkConf);
     }
