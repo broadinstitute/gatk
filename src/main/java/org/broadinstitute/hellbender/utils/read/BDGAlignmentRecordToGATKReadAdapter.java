@@ -6,7 +6,9 @@ import org.bdgenomics.adam.converters.AlignmentRecordConverter;
 import org.bdgenomics.adam.models.SAMFileHeaderWritable;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link AlignmentRecord} class.
@@ -27,6 +29,8 @@ import java.util.UUID;
  */
 public final class BDGAlignmentRecordToGATKReadAdapter extends SAMRecordToGATKReadAdapter {
     private static final long serialVersionUID = 1L;
+    private final static long uuidHighWord = new Random().nextLong();
+    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     private final AlignmentRecord alignmentRecord;
 
@@ -35,7 +39,8 @@ public final class BDGAlignmentRecordToGATKReadAdapter extends SAMRecordToGATKRe
     }
 
     public BDGAlignmentRecordToGATKReadAdapter( final AlignmentRecord alignmentRecord, final SAMFileHeader header) {
-        this(alignmentRecord, header, UUID.randomUUID());
+        // this is 100x faster than UUID.randomUUID()
+        this(alignmentRecord, header, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
     }
 
     /**
