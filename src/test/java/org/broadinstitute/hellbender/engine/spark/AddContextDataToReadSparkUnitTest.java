@@ -34,15 +34,6 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 public class AddContextDataToReadSparkUnitTest extends BaseTest {
-    @Test
-    public void dummyTest() {
-        JavaSparkContext sc = SparkContextFactory.getTestSparkContext();
-        JavaRDD<Integer> rddInts = sc.parallelize(Arrays.asList(1, 2, 3, 4, 5));
-        long count = rddInts.count();
-        Assert.assertEquals(count, 5L);
-
-    }
-    /*
     @DataProvider(name = "bases")
     public Object[][] bases() {
         Object[][] data = new Object[2][];
@@ -86,5 +77,5 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
                     Lists.newArrayList(kv.getValue().getOverlappingVariants())));
             Assert.assertEquals(readContextData.getOverlappingReferenceBases(), kv.getValue().getOverlappingReferenceBases());
         }
-    }*/
+    }
 }
