@@ -23,8 +23,6 @@ public class MySparkLauncher {
                 .setMaster("spark://davidada-macbookpro2.roam.corp.google.com:7077")
                 .setConf(SparkLauncher.EXECUTOR_EXTRA_CLASSPATH, path + ":" + jarLibPath)
                 .setConf(SparkLauncher.DRIVER_EXTRA_CLASSPATH, path + ":" + jarLibPath)
-                //.setConf(SparkLauncher.DRIVER_EXTRA_LIBRARY_PATH, path + ":" + jarLibPath)
-                //.setConf(SparkLauncher.EXECUTOR_EXTRA_LIBRARY_PATH, path + ":" + jarLibPath)
                 .addAppArgs("ReadsPipelineSpark",
                         "-I", inputBam,
                         "-O", outputBam,
