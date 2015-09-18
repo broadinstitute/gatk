@@ -60,12 +60,11 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final OpticalDuplicateFinder opticalDuplicateFinder, final int parallelism) {
 
-        JavaRDD<GATKRead> fragments = reads.filter(v1 -> !isNonPrimary(v1));
+        JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !isNonPrimary(v1));
         JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> isNonPrimary(v1));
-        JavaRDD<GATKRead> pairsTransformed = MarkDuplicatesSparkUtils.transformReads(header, opticalDuplicateFinder, fragments, parallelism);
+        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, opticalDuplicateFinder, primaryReads, parallelism);
 
-        JavaRDD<GATKRead> fragmentsTransformed = MarkDuplicatesSparkUtils.transformFragments(header, fragments, parallelism);
-        return fragmentsTransformed.union(pairsTransformed).union(nonPrimaryReads);
+        return primaryReadsTransformed.union(nonPrimaryReads);
     }
 
     private static boolean isNonPrimary(GATKRead read) {

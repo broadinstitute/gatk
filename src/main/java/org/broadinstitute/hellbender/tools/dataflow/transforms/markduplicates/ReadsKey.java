@@ -9,10 +9,21 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
  */
 public final class ReadsKey {
 
+    public static final String FRAGMENT_PREFIX = "f|";
+
+    private static final String PAIRED_ENDS_PREFIX = "p|";
+
     /**
      * Makes a unique key for the fragment.
      */
     public static String keyForFragment(final SAMFileHeader header, final GATKRead read) {
+        return FRAGMENT_PREFIX + subkeyForFragment(header, read);
+    }
+
+    /**
+     * Makes a unique key for the fragment (excluding the prefix).
+     */
+    private static String subkeyForFragment(final SAMFileHeader header, final GATKRead read) {
         final String library = ReadUtils.getLibrary(read, header);
 
         return String.format(
@@ -27,13 +38,13 @@ public final class ReadsKey {
      * Makes a unique key for the paired reads.
      */
     public static String keyForPairedEnds(final SAMFileHeader header, final GATKRead first, final GATKRead second) {
-        final String key = keyForFragment(header, first);
+        final String key = subkeyForFragment(header, first);
         if (second == null) {
-            return key;
+            return PAIRED_ENDS_PREFIX + key;
         }
 
         return String.format(
-                "%s|%d|%d|%s",
+                PAIRED_ENDS_PREFIX + "%s|%d|%d|%s",
                 key,
                 ReadUtils.getReferenceIndex(second, header),
                 ReadUtils.getStrandedUnclippedStart(second),
@@ -48,5 +59,12 @@ public final class ReadsKey {
                 "%s|%s",
                 read.getReadGroup(),
                 read.getName());
+    }
+
+    /**
+     * Returns true if the key is a fragment key.
+     */
+    public static boolean isFragment(String key) {
+        return key.startsWith(FRAGMENT_PREFIX);
     }
 }
