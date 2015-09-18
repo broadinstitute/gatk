@@ -39,10 +39,12 @@ public final class ReadCoordinateComparator implements Comparator<GATKRead>, Ser
         if ( result != 0 ) { return result; }
         result = Integer.compare(first.getMappingQuality(), second.getMappingQuality());
         if ( result != 0 ) { return result; }
-        result = Integer.compare(ReadUtils.getMateReferenceIndex(first, header), ReadUtils.getMateReferenceIndex(second, header));
-        if ( result != 0 ) { return result; }
-        result = Integer.compare(first.getMateStart(), second.getMateStart());
-        if ( result != 0 ) { return result; }
+        if (first.isPaired()) {
+            result = Integer.compare(ReadUtils.getMateReferenceIndex(first, header), ReadUtils.getMateReferenceIndex(second, header));
+            if ( result != 0 ) { return result; }
+            result = Integer.compare(first.getMateStart(), second.getMateStart());
+            if ( result != 0 ) { return result; }
+        }
         result = Integer.compare(first.getFragmentLength(), second.getFragmentLength());
 
         return result;
