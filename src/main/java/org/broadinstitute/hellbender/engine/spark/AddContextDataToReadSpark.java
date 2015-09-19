@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
@@ -32,7 +31,7 @@ public class AddContextDataToReadSpark {
             final JavaRDD<Variant> variants) {
         // Join Reads and Variants, Reads and ReferenceBases
         JavaPairRDD<GATKRead, Iterable<Variant>> readiVariants = JoinReadsWithVariants.join(reads, variants);
-        JavaPairRDD<GATKRead, ReferenceBases> readRefBases = JoinReadsWithRefBases.addBases(referenceDataflowSource, reads);
+        JavaPairRDD<GATKRead, ReferenceBases> readRefBases = ShuffleJoinReadsWithRefBases.addBases(referenceDataflowSource, reads);
 
         // For testing we want to know that the reads from the KVs coming back from JoinReadsWithVariants.Join
         // and JoinReadsWithRefBases.Pair are the same reads from "reads".

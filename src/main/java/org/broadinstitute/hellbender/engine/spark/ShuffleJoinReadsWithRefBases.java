@@ -51,7 +51,7 @@ import java.util.stream.StreamSupport;
  * The reference bases paired with each read can be customized by passing in a reference window function
  * inside the {@link ReferenceDataflowSource} argument to {@link #addBases}. See {@link org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions} for examples.
  */
-public class JoinReadsWithRefBases {
+public class ShuffleJoinReadsWithRefBases {
     public static JavaPairRDD<GATKRead, ReferenceBases> addBases(final ReferenceDataflowSource referenceDataflowSource,
                                                                  final JavaRDD<GATKRead> reads) {
         SerializableFunction<GATKRead, SimpleInterval> windowFunction = referenceDataflowSource.getReferenceWindowFunction();
