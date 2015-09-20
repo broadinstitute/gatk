@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Map;
 
 /**
  * Class to load a reference sequence from the Google Genomics API, or a file stored on HDFS or locally.
@@ -74,6 +75,11 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
         return referenceSource.getReferenceBases(pipelineOptions, interval);
     }
 
+    @Override
+    public Map<String, ReferenceBases> getAllReferenceBases() throws IOException {
+        return referenceSource.getAllReferenceBases();
+    }
+
     /**
      * Return a sequence dictionary for the reference.
      * @param optReadSequenceDictionaryToMatch - (optional) the sequence dictionary of the reads, we'll match its order if possible.
@@ -87,5 +93,9 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
         catch ( IOException e ) {
             throw new GATKException("Error getting reference sequence dictionary");
         }
+    }
+
+    public ReferenceSource getReferenceSource() {
+        return referenceSource;
     }
 }

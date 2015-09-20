@@ -36,6 +36,7 @@ public class ReferenceFileSource implements ReferenceSource, Serializable {
         return new ReferenceBases(sequence.getBases(), interval);
     }
 
+    @Override
     public Map<String, ReferenceBases> getAllReferenceBases() throws IOException {
         ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath));
         Map<String, ReferenceBases> bases = new LinkedHashMap<>();

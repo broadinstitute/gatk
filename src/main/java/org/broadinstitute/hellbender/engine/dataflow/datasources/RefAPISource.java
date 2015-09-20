@@ -161,6 +161,10 @@ public class RefAPISource implements ReferenceSource, Serializable {
           }
       }
 
+    @Override
+    public Map<String, ReferenceBases> getAllReferenceBases() throws IOException {
+        throw new UnsupportedOperationException("getAllReferenceBases is not supported");
+    }
 
     /**
      * Return a sequence dictionary for the reference.
