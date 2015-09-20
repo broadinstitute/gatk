@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
+import org.broadinstitute.hellbender.engine.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
@@ -32,10 +33,13 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.Map;
 
 @CommandLineProgramProperties(
         summary = "Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
@@ -92,11 +96,18 @@ public class BaseRecalibratorSpark extends SparkCommandLineProgram {
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
         checkSequenceDictionaries(referenceDataflowSource.getReferenceSequenceDictionary(null), readsHeader.getSequenceDictionary());
 
-        // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
-        // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants);
+        final JavaPairRDD<GATKRead, Iterable<Variant>> readsWithVariants = JoinReadsWithVariants.join(initialReads, bqsrKnownVariants);
+
+        final Map<String, ReferenceBases> allReferenceBases;
+
+        try {
+            allReferenceBases = referenceDataflowSource.getAllReferenceBases();
+        } catch (IOException e) {
+            throw new GATKException("Couldn't read reference " + e.getMessage());
+        }
+
         // TODO: broadcast the reads header?
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), bqsrArgs);
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(readsWithVariants, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), bqsrArgs, allReferenceBases, ctx);
 
         try ( final PrintStream reportStream = new PrintStream(BucketUtils.createFile(outputTablesPath, options)) ) {
             RecalUtils.outputRecalibrationReport(reportStream, bqsrArgs, bqsrReport.getQuantizationInfo(), bqsrReport.getRecalibrationTables(), new StandardCovariateList(bqsrArgs, readsHeader), true);

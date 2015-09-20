@@ -4,6 +4,8 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
@@ -29,23 +31,27 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 
 public class BaseRecalibratorSparkFn {
 
-    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final RecalibrationArgumentCollection recalArgs ) {
-        final ReadFilter filter = BaseRecalibrator.getStandardBQSRReadFilter(header);
-        final JavaPairRDD<GATKRead, ReadContextData> filtered = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
+    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, Iterable<Variant>> readsWithVariants, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final RecalibrationArgumentCollection recalArgs, final Map<String, ReferenceBases> allReferenceBases, final JavaSparkContext ctx) {
 
-        JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithContextIterator -> {
+        final Broadcast<Map<String, ReferenceBases>> refBroadcast = ctx.broadcast(allReferenceBases);
+
+        final ReadFilter filter = BaseRecalibrator.getStandardBQSRReadFilter(header);
+        final JavaPairRDD<GATKRead, Iterable<Variant>> filtered = readsWithVariants.filter(readWithVariants -> filter.apply(readWithVariants._1()));
+
+        JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithVariants -> {
             final BaseRecalibrationEngine bqsr = new BaseRecalibrationEngine(recalArgs, header);
 
-            while ( readWithContextIterator.hasNext() ) {
-                final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
-                Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
-                final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
-                ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
-
-                bqsr.processRead(readWithData._1(), refDS, variants);
+            while ( readWithVariants.hasNext() ) {
+                final Tuple2<GATKRead, Iterable<Variant>> readWithData = readWithVariants.next();
+                GATKRead read = readWithData._1();
+                Iterable<Variant> variants = readWithData._2();
+                final ReferenceBases referenceBases = refBroadcast.getValue().get(read.getContig());
+                ReferenceDataSource refDS = new ReferenceMemorySource(referenceBases, referenceDictionary);
+                bqsr.processRead(read, refDS, variants);
             }
             return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTables()));
         });

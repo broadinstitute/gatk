@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
+import org.broadinstitute.hellbender.engine.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -32,10 +33,12 @@ import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 
 @CommandLineProgramProperties(
@@ -93,11 +96,18 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
 
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-        // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
-        // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants);
+        final JavaPairRDD<GATKRead, Iterable<Variant>> readsWithVariants = JoinReadsWithVariants.join(initialReads, bqsrKnownVariants);
+
+        final Map<String, ReferenceBases> allReferenceBases;
+
+        try {
+            allReferenceBases = referenceDataflowSource.getAllReferenceBases();
+        } catch (IOException e) {
+            throw new GATKException("Couldn't read reference " + e.getMessage());
+        }
+
         // TODO: broadcast the reads header?
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection());
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(readsWithVariants, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection(), allReferenceBases, ctx);
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
         final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader, new ApplyBQSRArgumentCollection());
 

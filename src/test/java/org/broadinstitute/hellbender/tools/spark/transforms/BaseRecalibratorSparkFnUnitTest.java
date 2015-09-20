@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
+import org.broadinstitute.hellbender.engine.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
@@ -37,14 +38,13 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
         final String localResources = getResourceDir();
-        final String GRCh37Ref = "gg://reference/" + RefAPISource.GRCH37_REF_ID;
-        final String HiSeqBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
-        final String dbSNPb37 = getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
-        final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
+        final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
+        final String HiSeqBam = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
+        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
 
         return new Object[][]{
                 // local computation and files (except for the reference)
-                {GRCh37Ref, HiSeqBam, dbSNPb37, localResources + "expected.no_unmapped_from_non_dataflow.recal.txt"},
+                {hg18Reference, HiSeqBam, dbSNPb37, getResourceDir() + "expected.NA12878.chr17_69k_70k.txt"},
 //                {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "-knownSites " + moreSites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
 //                {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--indels_context_size 4",  localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.indels_context_size_4.recal.txt")},
 //                {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--low_quality_tail 5",     localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.low_quality_tail_5.recal.txt")},
@@ -65,13 +65,11 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(vcf);
 
-        GCSOptions options = getAuthenticatedPipelineOptions();
+        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(null, reference, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, reference, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
+        final JavaPairRDD<GATKRead, Iterable<Variant>> readsWithVariants = JoinReadsWithVariants.join(initialReads, bqsrKnownVariants);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants);
-
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection());
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(readsWithVariants, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection(), referenceDataflowSource.getAllReferenceBases(), ctx);
         final File report = BaseTest.createTempFile("report", "txt");
         try( PrintStream out = new PrintStream(report)){
             bqsrReport.createGATKReport().print(out);
