@@ -296,6 +296,13 @@ configurations {
         exclude group: 'org.apache.hadoop'
         exclude module: 'spark-core_2.10'
         exclude group: 'org.slf4j'
+        exclude module: 'netty'
+        exclude module: 'netty-transport' // ?
+        exclude module: 'netty-buffer' // ?
+        exclude module: 'netty-common' // ?
+        exclude module: 'netty-handler' // ?
+
+        //exclude group: 'akka.remote' // ?
     }
 }
 
