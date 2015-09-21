@@ -50,17 +50,20 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
+    @Argument(doc="the output parallelism, sets the number of reducers", shortName = "P", fullName = "parallelism", optional = true)
+    protected int parallelism = 0;
+
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
-                                         final OpticalDuplicateFinder opticalDuplicateFinder) {
+                                         final OpticalDuplicateFinder opticalDuplicateFinder, final int parallelism) {
 
         JavaRDD<GATKRead> fragments = reads.filter(v1 -> !isNonPrimary(v1));
         JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> isNonPrimary(v1));
-        JavaRDD<GATKRead> pairsTransformed = MarkDuplicatesSparkUtils.transformReads(header, opticalDuplicateFinder, fragments);
+        JavaRDD<GATKRead> pairsTransformed = MarkDuplicatesSparkUtils.transformReads(header, opticalDuplicateFinder, fragments, parallelism);
 
-        JavaRDD<GATKRead> fragmentsTransformed = MarkDuplicatesSparkUtils.transformFragments(header, fragments);
+        JavaRDD<GATKRead> fragmentsTransformed = MarkDuplicatesSparkUtils.transformFragments(header, fragments, parallelism);
         return fragmentsTransformed.union(pairsTransformed).union(nonPrimaryReads);
     }
 
@@ -75,13 +78,16 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         JavaRDD<GATKRead> reads = readSource.getParallelReads(bam, intervals);
+        if (parallelism == 0) {
+            parallelism = reads.partitions().size();
+        }
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
 
-        final JavaRDD<GATKRead> finalReads = mark(reads, readsHeader, finder);
+        final JavaRDD<GATKRead> finalReads = mark(reads, readsHeader, finder, parallelism);
 
         try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, ReadsWriteFormat.SINGLE);
+            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }
