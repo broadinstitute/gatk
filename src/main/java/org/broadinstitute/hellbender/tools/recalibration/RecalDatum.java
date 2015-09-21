@@ -15,6 +15,7 @@ public final class RecalDatum implements Serializable {
     public static final byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
     private static final double UNINITIALIZED = -1.0;
     private static final long serialVersionUID = 1L;
+    private static final double MULTIPLIER = 1000.0;
 
     /**
      * estimated reported quality score based on combined data's individual q-reporteds and number of observations
@@ -33,6 +34,9 @@ public final class RecalDatum implements Serializable {
 
     /**
      * number of bases seen that didn't match the reference
+     * (actually sum of the error weights - so not necessarily a whole number)
+     * Stored with an internal multiplier to keep it closer to the floating-point sweet spot and avoid numerical error
+     * (see https://github.com/broadinstitute/hellbender/wiki/Numerical-errors ).
      */
     private double numMismatches;
 
@@ -60,7 +64,7 @@ public final class RecalDatum implements Serializable {
         if ( reportedQuality < 0 ) throw new IllegalArgumentException("reportedQuality < 0");
 
         numObservations = _numObservations;
-        numMismatches = _numMismatches;
+        numMismatches = (_numMismatches*MULTIPLIER);
         estimatedQReported = reportedQuality;
         empiricalQuality = UNINITIALIZED;
     }
@@ -70,8 +74,8 @@ public final class RecalDatum implements Serializable {
      * @param copy  RecalDatum to copy
      */
     public RecalDatum(final RecalDatum copy) {
-        this.numObservations = copy.getNumObservations();
-        this.numMismatches = copy.getNumMismatches();
+        this.numObservations = copy.numObservations;
+        this.numMismatches = copy.numMismatches;
         this.estimatedQReported = copy.estimatedQReported;
         this.empiricalQuality = copy.empiricalQuality;
     }
@@ -120,7 +124,7 @@ public final class RecalDatum implements Serializable {
             return 0.0;
         else {
             // cache the value so we don't call log over and over again
-            final double doubleMismatches = numMismatches + SMOOTHING_CONSTANT;
+            final double doubleMismatches = (numMismatches/MULTIPLIER) + SMOOTHING_CONSTANT;
             // smoothing is one error and one non-error observation, for example
             final double doubleObservations = numObservations + SMOOTHING_CONSTANT + SMOOTHING_CONSTANT;
             return doubleMismatches / doubleObservations;
@@ -182,12 +186,12 @@ public final class RecalDatum implements Serializable {
     }
 
     public final double getNumMismatches() {
-        return numMismatches;
+        return numMismatches/MULTIPLIER;
     }
 
     public final void setNumMismatches(final double numMismatches) {
         if ( numMismatches < 0 ) throw new IllegalArgumentException("numMismatches < 0");
-        this.numMismatches = numMismatches;
+        this.numMismatches = (numMismatches*MULTIPLIER);
         empiricalQuality = UNINITIALIZED;
     }
 
@@ -197,13 +201,13 @@ public final class RecalDatum implements Serializable {
     }
 
     public final void incrementNumMismatches(final double by) {
-        numMismatches += by;
+        numMismatches += (by*MULTIPLIER);
         empiricalQuality = UNINITIALIZED;
     }
 
     public final void increment(final long incObservations, final double incMismatches) {
         numObservations += incObservations;
-        numMismatches += incMismatches;
+        numMismatches += (incMismatches*MULTIPLIER);
         empiricalQuality = UNINITIALIZED;
     }
 

@@ -108,7 +108,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         // we need an API key to get to the reference
         final String apiArgs = " --project " + getDataflowTestProject() + " ";
         final String localResources =  getResourceDir();
-        final String hg19Ref = "EMWV_ZfLxrDY-wE";
+        //final String hg19Ref = RefAPISource.HG19_REF_ID;
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
         final String HiSeqBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
@@ -123,6 +123,21 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
             {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--quantizing_levels 6",    localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.quantizing_levels_6.recal.txt")},
             {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--mismatches_context_size 4", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.mismatches_context_size_4.recal.txt")},
             //// //{new BQSRTest(b36Reference, origQualsBam, dbSNPb36, "-OQ", getResourceDir() + "expected.originalQuals.1kg.chr1.1-1K.1RG.dictFix.OQ.txt")},
+        };
+    }
+
+    @DataProvider(name = "BQSRTrickyTest")
+    public Object[][] createBQSRTrickyTestData() {
+        // we need an API key to get to the reference
+        final String apiArgs = " --project " + getDataflowTestProject() + " ";
+        final String localResources =  getResourceDir();
+        final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
+        final String trickyBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.bam";
+        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
+
+        return new Object[][]{
+            // local computation and files (except for the reference)
+            {new BQSRTest(GRCh37Ref, trickyBam, dbSNPb37, apiArgs + "", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.recal.txt")},
         };
     }
 
@@ -163,6 +178,17 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
                 ab.getString(),
                 Arrays.asList(params.expectedFileName));
         spec.executeTest("testBQSR-" + params.args, this);
+    }
+
+    // "local", but we're still getting the reference from the cloud.
+    @Test(dataProvider = "BQSRTrickyTest", groups = {"cloud"})
+    public void testBQSRLocalTricky(BQSRTest params) throws IOException {
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        addDataflowRunnerArgs(ab);
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+            ab.getString(),
+            Arrays.asList(params.expectedFileName));
+        spec.executeTest("testBQSR-tricky-" + params.args, this);
     }
 
 
