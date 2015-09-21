@@ -6,3 +6,4 @@ dbsnp_138.b37.20.21.vcf.idx filter=lfs diff=lfs merge=lfs -text
 human_g1k_v37.20.21.dict filter=lfs diff=lfs merge=lfs -text
 human_g1k_v37.20.21.fasta filter=lfs diff=lfs merge=lfs -text
 human_g1k_v37.20.21.fasta.fai filter=lfs diff=lfs merge=lfs -text
+exampleLargeFile.txt filter=lfs diff=lfs merge=lfs -text

@@ -19,7 +19,7 @@ Requirements
 
 * Git 2.5
 
-* The [git-lfs plugin](https://git-lfs.github.com/). Run `git lfs init` after installing.
+* The [git-lfs plugin](https://git-lfs.github.com/). Run `git lfs init` after installing, followed by `git lfs pull` to download the large files.  We recommend v0.6.0 but newer versions may also work.
 
 
 Installation

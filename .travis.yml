@@ -40,6 +40,8 @@ cache:
   - $HOME/gcloud/
 
 before_install:
+#download large files
+- bash scripts/install_git_lfs.sh
 #setup google stuff
 - openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv
   -in resources_for_CI/servicekey.json.enc -out servicekey.json -d
