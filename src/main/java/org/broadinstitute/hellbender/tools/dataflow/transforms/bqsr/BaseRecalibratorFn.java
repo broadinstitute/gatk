@@ -88,7 +88,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
     }
 
     // saves to BRAC.BRAC.RAC.RECAL_TABLE_FILE.getName()
-    public static void SaveTextualReport(File output, SAMFileHeader header, RecalibrationTables rt, BaseRecalibrationArgumentCollection BRAC) throws IOException {
+    public static void saveTextualReport(File output, SAMFileHeader header, RecalibrationTables rt, BaseRecalibrationArgumentCollection BRAC) throws IOException {
         QuantizationInfo qi = new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
         BaseRecalibratorFn worker = new BaseRecalibratorFn(header, BRAC);
         worker.onTraversalStart();

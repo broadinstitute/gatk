@@ -103,7 +103,7 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
                     // TODO(issue#799): Figure out what it changes, and just do that instead of doing the whole rigamarole.
                     File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
                     try {
-                        BaseRecalibratorFn.SaveTextualReport(temp, header, rt, toolArgs);
+                        BaseRecalibratorFn.saveTextualReport(temp, header, rt, toolArgs);
                         BaseRecalOutput ret = new BaseRecalOutput(temp);
                         c.output(ret);
                     } catch (FileNotFoundException e) {

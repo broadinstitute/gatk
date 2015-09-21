@@ -52,7 +52,6 @@ import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 
 
 /**
@@ -216,7 +215,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
             try (ObjectInputStream oin = new ObjectInputStream(BucketUtils.openFile(outputTablesPath, p.getOptions()))) {
                 Object o = oin.readObject();
                 RecalibrationTables rt = (RecalibrationTables) o;
-                BaseRecalibratorFn.SaveTextualReport(BRAC.RAC.RECAL_TABLE_FILE, readsHeader, rt,  BRAC);
+                BaseRecalibratorFn.saveTextualReport(BRAC.RAC.RECAL_TABLE_FILE, readsHeader, rt, BRAC);
                 bunny.stepEnd("repatriate_report");
             } catch (Exception e) {
                 throw new GATKException("Unexpected: unable to read results file. (bug?)", e);
