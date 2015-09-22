@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.dataflow;
 
 import com.cloudera.dataflow.spark.SparkPipelineOptions;
 import com.cloudera.dataflow.spark.SparkPipelineRunner;
+import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.PipelineResult;
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
@@ -68,6 +69,12 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
                     return (GenomicsFactory.OfflineAuth)(is.readObject());
                 }
             }
+
+            public static Storage.Objects createStorageClient(HellbenderDataflowOptions opts) throws GeneralSecurityException, IOException, ClassNotFoundException {
+                GenomicsFactory.OfflineAuth auth = getOfflineAuth(opts);
+                return GCSOptions.Methods.createStorageClient(opts.as(GCSOptions.class), auth);
+            }
+
         }
 
         // you don't need to call those directly, use the helper methods in Methods instead.
@@ -131,19 +138,22 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             shortName = "numWorkers", fullName = "numWorkers", optional=true)
     protected int numWorkers = 0;
 
+    @Argument(doc = "The Google Compute Engine machine type that Dataflow will use when spinning up worker VMs",
+         fullName = "workerMachineType", optional=true)
+    protected String workerMachineType = "n1-standard-1";
+
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster;
 
     @Override
-    protected String[] customCommandLineValidation(){
-        if((runnerType == PipelineRunnerType.BLOCKING || runnerType == PipelineRunnerType.NONBLOCKING)
-            && (projectID == null || stagingLocation==null)){
+    protected String[] customCommandLineValidation() {
+        if ((runnerType == PipelineRunnerType.BLOCKING || runnerType == PipelineRunnerType.NONBLOCKING)
+            && (projectID == null || stagingLocation==null)) {
             throw new UserException.CommandLineException(String.format("Non local dataflow execution requires project " +
-                    "and staging to be set. project:%s id:%s.",projectID, stagingLocation));
+                    "and staging to be set. project:%s staging location:%s.",projectID, stagingLocation));
         }
         return null;
     }
-
 
     @Override
     protected Object doWork() {
@@ -164,8 +174,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             options.setProject(projectID);
             options.setStagingLocation(stagingLocation);
             options.setRunner(this.runnerType.runner);
-            // n1-standard-4 is 4x the RAM and 4x the CPUs as the default machine, at only 4x the price.
-            options.setWorkerMachineType("n1-standard-1");
+            options.setWorkerMachineType(workerMachineType);
             // this is new code. If there's a problem, odds are it's our fault and retrying won't help.
             options.setNumberOfRetries(0);
             if (numWorkers!=0) {
@@ -180,8 +189,8 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             if (apiKey!=null || clientSecret != null) {
                 // put a serialized version of the credentials in the pipelineOptions, so we can get to it later.
                 try {
-                    GenomicsFactory.OfflineAuth auth = GCSOptions.Methods.createGCSAuth(options);
-                    HellbenderDataflowOptions.Methods.setOfflineAuth(options, auth);
+                    GenomicsFactory.OfflineAuth offlineAuth = GCSOptions.Methods.createGCSAuth(options);
+                    HellbenderDataflowOptions.Methods.setOfflineAuth(options, offlineAuth);
                 } catch (Exception x) {
                     throw new GATKException("Error with credentials",x);
                 }

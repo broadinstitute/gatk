@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.tools.recalibration.RecalDatum;
 import org.broadinstitute.hellbender.tools.recalibration.RecalUtils;
@@ -66,8 +67,17 @@ public final class RecalibrationEngine {
                     final byte qual = recalInfo.getQual(eventType, offset);
                     final double isError = recalInfo.getErrorFraction(eventType, offset);
 
+                    for (int j=0; j<2; j++) {
+                        if (keys[j]<0) {
+                            throw new GATKException.ShouldNeverReachHereException("keys["+j+"]="+keys[j]+", should not have been negative.");
+                        }
+                    }
+
                     RecalUtils.incrementDatumOrPutIfNecessary(qualityScoreTable, qual, isError, keys[0], keys[1], eventIndex);
 
+                    if (eventIndex<0) {
+                        throw new GATKException.ShouldNeverReachHereException("eventIndex="+eventIndex+", should not have been negative.");
+                    }
                     for (int i = 2; i < covariates.size(); i++) { //XXX the 2 is hard-wired here as the number of special covariates
                         if (keys[i] < 0) {
                             continue;

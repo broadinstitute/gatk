@@ -107,7 +107,8 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
             final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
             checkSequenceDictionaries(refDictionary, readsDictionary);
             PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
-            final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC));
+            BaseRecalibratorTransform baseRecalibrator = new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC);
+            final PCollection<BaseRecalOutput> recalibrationReports = readsWithContext.apply(baseRecalibrator).apply(baseRecalibrator.toBaseRecalOutput());
             final PCollectionView<BaseRecalOutput> mergedRecalibrationReport = recalibrationReports.apply(View.<BaseRecalOutput>asSingleton());
 
             final ApplyBQSRArgumentCollection applyArgs = new ApplyBQSRArgumentCollection();

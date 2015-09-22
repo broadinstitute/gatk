@@ -81,8 +81,11 @@ public class VariantsDataflowSource {
     }
 
 
-    @VisibleForTesting
-    static List<Variant> getVariantsList(List<String> variantSources) {
+    /**
+     * getVariantsList grabs the variants from local files (or perhaps eventually buckets).
+     * @param variantSources, list of files  to read from
+     */
+    public static List<Variant> getVariantsList(List<String> variantSources) {
         final List<Variant> aggregatedResults = new ArrayList<>();
 
         for ( final String variantSource : variantSources ) {

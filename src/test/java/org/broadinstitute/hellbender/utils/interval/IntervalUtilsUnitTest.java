@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.interval;
 
+import com.google.common.collect.Lists;
+
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -1161,8 +1163,8 @@ public final class IntervalUtilsUnitTest extends BaseTest {
                 l,
                 new SimpleFeature(r.getContig(),r.getStart(),r.getEnd())),expected);
         Assert.assertFalse(IntervalUtils.overlaps(
-                new SimpleFeature(null,r.getStart(),r.getEnd()),
-                new SimpleFeature(null,l.getStart(),l.getEnd())));
+                new SimpleFeature(null, r.getStart(), r.getEnd()),
+                new SimpleFeature(null, l.getStart(), l.getEnd())));
     }
 
     @DataProvider(name = "overlapData")
@@ -1224,5 +1226,100 @@ public final class IntervalUtilsUnitTest extends BaseTest {
             result.add(new Object[] { locatables });
         }
         return result.toArray(new Object[result.size()][]);
+    }
+
+
+    @DataProvider(name="intervals")
+    public Object[][] intervals(){
+        ArrayList<SimpleInterval> input = Lists.newArrayList(new SimpleInterval("1", 10, 100));
+        ArrayList<SimpleInterval> output = input;
+        ArrayList<SimpleInterval> hundred = Lists.newArrayList(new SimpleInterval("1", 1, 100));
+
+        return new Object[][]{
+                // input fits all in one shard
+                new Object[]{input, 1000, output},
+                // input could fit in the shard, but is cut anyways so it's aligned to integer multiples of shard boundary
+                new Object[]{input, 90, Lists.newArrayList(new SimpleInterval("1", 10, 90),new SimpleInterval("1", 91, 100))},
+                // shard ends just after input
+                new Object[]{hundred, 101, hundred},
+                // shard ends at input
+                new Object[]{hundred, 100, hundred},
+                // shard ends just before input does
+                new Object[]{hundred, 99, Lists.newArrayList(new SimpleInterval("1", 1, 99),new SimpleInterval("1", 100, 100))},
+                // input overlaps three shards
+                new Object[]{hundred, 40, Lists.newArrayList(new SimpleInterval("1", 1, 40),new SimpleInterval("1", 41, 80),new SimpleInterval("1", 81, 100))},
+                // input covers four shards exactly
+                new Object[]{hundred, 25, Lists.newArrayList(
+                        new SimpleInterval("1", 1, 25),new SimpleInterval("1", 26, 50),new SimpleInterval("1", 51, 75),new SimpleInterval("1", 76, 100))},
+        };
+    }
+
+    @Test(dataProvider = "intervals")
+    public void testCutToShards(ArrayList<SimpleInterval> input, int shardSize, ArrayList<SimpleInterval> expected) throws Exception {
+        List<SimpleInterval> actual = IntervalUtils.cutToShards(input, shardSize);
+        Assert.assertEquals(
+                actual,
+                expected
+        );
+    }
+
+    @DataProvider(name="shardIndex")
+    public Object[][] shardIndex(){
+        return new Object[][]{
+                // offset, shardSize, expected shardIndex
+                new Object[]{1,10,0},
+                new Object[]{10,10,0},
+                new Object[]{11,10,1},
+                new Object[]{20,10,1},
+                new Object[]{21,10,2}
+        };
+    }
+
+    @Test(dataProvider = "shardIndex")
+    public void testShardIndex(int offset, int shardSize, int shardIndex) throws Exception {
+        Assert.assertEquals(
+                IntervalUtils.shardIndex(offset, shardSize),
+                shardIndex
+        );
+    }
+
+    @DataProvider(name="shardBegin")
+    public Object[][] shardBegin(){
+        return new Object[][]{
+                // shard index, shard size, shard begin
+                new Object[]{0,10,1},
+                new Object[]{1,10,11},
+                new Object[]{1,42,43},
+                new Object[]{2,10,21},
+                new Object[]{2,42,85}
+        };
+    }
+
+    @Test(dataProvider = "shardBegin")
+    public void testBeginOfShard(int index, int shardSize, int shardBegin) throws Exception {
+        Assert.assertEquals(
+                IntervalUtils.beginOfShard(index, shardSize),
+                shardBegin
+        );
+    }
+
+    @DataProvider(name="shardEnd")
+    public Object[][] shardEnd(){
+        return new Object[][]{
+                // shard index, shard size, shard end
+                new Object[]{0,10,10},
+                new Object[]{1,10,20},
+                new Object[]{2,10,30},
+                new Object[]{0,42,42},
+                new Object[]{1,42,84},
+        };
+    }
+
+    @Test(dataProvider = "shardEnd")
+    public void testEndOfShard(int index, int shardSize, int shardEnd) throws Exception {
+        Assert.assertEquals(
+                IntervalUtils.endOfShard(index, shardSize),
+                shardEnd
+        );
     }
 }

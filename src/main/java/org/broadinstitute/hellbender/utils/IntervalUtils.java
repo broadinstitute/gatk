@@ -966,4 +966,59 @@ public final class IntervalUtils {
                 .collect(Collectors.toList());
     }
 
+
+    //-------------------------------------------------------------------------------------------------
+    // Utility code related to the notion of splitting intervals at well-defined boundaries,
+    // so that whichever intervals you start from, the resulting shards will line up.
+
+    /**
+     *
+     * Splits the given input intervals into shards of at most the requested size.
+     * The shard boundaries lie at integer multiples of shardSize.
+     *
+     * chr2:1-200 -> chr2:1-100,chr2:101-200
+     */
+    static public List<SimpleInterval> cutToShards(Iterable<SimpleInterval> intervals, int shardSize) {
+        ArrayList<SimpleInterval> ret = new ArrayList<>();
+        for (SimpleInterval i : intervals) {
+            int beginShard = shardIndex(i.getStart(), shardSize);
+            int endShard = shardIndex(i.getEnd(), shardSize);
+            if (beginShard==endShard) {
+                ret.add(i);
+                continue;
+            }
+            // more than one shard: output begin to end-of-shard, then multiple full shards, then begin-of-shard to end.
+            ret.add(new SimpleInterval(i.getContig(), i.getStart(), endOfShard(beginShard, shardSize)));
+            for (int shard = beginShard+1; shard<endShard; shard++) {
+                ret.add(new SimpleInterval(i.getContig(), beginOfShard(shard, shardSize), endOfShard(shard, shardSize)));
+            }
+            ret.add(new SimpleInterval(i.getContig(), beginOfShard(endShard, shardSize), i.getEnd()));
+        }
+        return ret;
+    }
+
+
+    /**
+     * number of the shard this offset is in. Shards are numbered starting at zero.
+     */
+    static public int shardIndex(int oneBasedOffset, int shardSize) {
+        return ((oneBasedOffset-1) / shardSize);
+    }
+
+    /**
+     * first offset in this shard (1-based).
+     */
+    static public int beginOfShard(int shardIndex, int shardSize) {
+        return ((shardIndex) * shardSize) + 1;
+    }
+
+    /**
+     * last offset in this shard (1-based).
+     */
+    static public int endOfShard(int shardIndex, int shardSize) {
+        return beginOfShard(shardIndex+1, shardSize)-1;
+    }
+
+
+    // (end of shard-related code)
 }

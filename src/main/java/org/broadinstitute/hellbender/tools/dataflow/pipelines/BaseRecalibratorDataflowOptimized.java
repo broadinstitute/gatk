@@ -6,7 +6,6 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
@@ -17,24 +16,20 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.utils.logging.BunnyLog;
-import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorFn;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.DataflowReadFilter;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorTransform;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorFn;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorOptimizedTransform;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -44,19 +39,20 @@ import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 
 /**
- * First pass of the base quality score recalibration -- Generates recalibration table based on various covariates
+ * Optimized version of the base quality score recalibration -- Generates recalibration table based on various covariates
  * (such as read group, reported quality score, machine cycle, and nucleotide context).
  * <p>
  * Note: unmapped reads are ignored by this version of the tool.
@@ -68,7 +64,7 @@ import java.util.Random;
         oneLineSummary = "Generates recalibration table",
         programGroup = ReadProgramGroup.class
 )
-public class BaseRecalibratorDataflow extends DataflowCommandLineProgram implements Serializable {
+public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -81,9 +77,19 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
 
     public static final String NO_DBSNP_EXCEPTION = "This calculation is critically dependent on being able to skip over known variant sites. Please provide a VCF file containing known sites of genetic variation.";
 
-    private final static Logger logger = LogManager.getLogger(BaseRecalibratorDataflow.class);
+    private final static Logger logger = LogManager.getLogger(BaseRecalibratorDataflowOptimized.class);
     // temporary file with the serialized recalibrationTables.
     private final static String TEMP_RECALTABLES = "temp-ds-recaltables";
+
+    // the granularity at which we'll want to assign work and read inputs.
+    private final int bigShardSize = 1_000_000;
+    // the granularity at which we want to batch reads,variants,and reference for processing.
+    private final int smallShardSize = 5_000;
+    // we make the assumption that all reads that start in a shard
+    // will end within "margin" of the shard. This allows us to split the computation
+    // across machines.
+    private final int margin = 1000;
+
 
     // ------------------------------------------
     // Command-line options
@@ -93,9 +99,6 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
      */
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
     private transient final BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
-
-    // the ID of the reference set the user is asking for (extracted from BRAC.referenceArguments)
-    protected String referenceID;
 
     @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = false)
     protected List<String> baseRecalibrationKnownVariants;
@@ -117,11 +120,16 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
     private transient BunnyLog bunny = new BunnyLog(logger);
 
     @Override
+    protected String jobName() {
+        return "BaseRecalibrator2-"+ (100+new Random().nextInt(900));
+    }
+
+    @Override
     protected void setupPipeline(Pipeline pipeline) {
         try {
-            bunny.start("BaseRecalibratorDataflow");
+            bunny.start("BaseRecalibratorDataflow2");
 
-            if (null==baseRecalibrationKnownVariants || baseRecalibrationKnownVariants.size()==0) {
+            if (null==baseRecalibrationKnownVariants || baseRecalibrationKnownVariants.isEmpty()) {
                 throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
             }
 
@@ -135,6 +143,10 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
             }
             String bam = BRAC.readArguments.getReadFilesNames().get(0);
 
+            if (!BucketUtils.isCloudStorageUrl(bam) && isRemote()) {
+                throw new UserException("Sorry, for remote execution the BAM must be stored remotely.");
+            }
+
             // Load the input bam
             final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
             readsHeader = readsDataflowSource.getHeader();
@@ -142,52 +154,41 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
             final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
             final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
-            final PCollection<GATKRead> reads = readsDataflowSource.getReadPCollection(intervals)
-                .apply(ParDo.of(new DoFnWLog<GATKRead, GATKRead>("unsam") {
-                    private static final long serialVersionUID = 1l;
-                    @Override
-                    public void processElement(ProcessContext c) throws Exception {
-                        // SAMRecords use too much memory when serialized. We convert to Genomic Reads.
-                        GATKRead r = c.element();
-                        if (!(r instanceof SAMRecordToGATKReadAdapter)) {
-                            c.output(r);
-                            return;
-                        }
-                        SAMRecordToGATKReadAdapter adapter = (SAMRecordToGATKReadAdapter)r;
-                        c.output(new GoogleGenomicsReadToGATKReadAdapter(adapter.convertToGoogleGenomicsRead()));
-                    }
-                }));
-            final PCollection<GATKRead> filteredReads = reads.apply(new DataflowReadFilter(BaseRecalibratorDataflow.readFilter(readsHeader), readsHeader));
+            CountingReadFilter filterToApply = BaseRecalibratorDataflowOptimized.readFilter(readsHeader);
 
             bunny.stepEnd("set up bam input");
 
             // Load the Variants and the Reference
-            final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
-
             final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BQSR_REFERENCE_WINDOW_FUNCTION);
-
+            bunny.stepEnd("create referenceDataflowSource");
             final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
-
-            checkSequenceDictionaries(refDictionary, readsDictionary);
-            PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
             bunny.stepEnd("load ref sequence dictionary");
 
-            // Set up the data pipeline-style
-            final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(filteredReads, referenceDataflowSource, variantsDataflowSource);
+            checkSequenceDictionaries(refDictionary, readsDictionary);
+            bunny.stepEnd("checkSequenceDictionaries");
+            PCollectionView<SAMSequenceDictionary> refDictionaryView = pipeline.apply(Create.of(refDictionary)).setName("refDictionary").apply(View.asSingleton());
+            bunny.stepEnd("create ref dictionary view");
 
-            // run the base recalibrator, grab just the output we want.
-            BaseRecalibratorTransform t = new BaseRecalibratorTransform(headerSingleton, refDictionaryView, BRAC);
-            final PCollection<RecalibrationTables> recalibrationTable = readsWithContext.apply(t)
-                    .apply(t.toBaseRecalOutput())
-                    .apply(ParDo.of(new DoFnWLog<BaseRecalOutput, RecalibrationTables>("getTables") {
-                        private static final long serialVersionUID = 1L;
 
-                        @Override
-                        public void processElement(ProcessContext c) {
-                            final BaseRecalOutput br = c.element();
-                            c.output(br.getRecalibrationTables());
-                        }
-                    }));
+            List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, bigShardSize);
+            // since we currently can only read variants at the client, that's the right place to populate the shards.
+            List<Variant> variants = VariantsDataflowSource.getVariantsList(baseRecalibrationKnownVariants);
+
+            bunny.stepEnd("load variants");
+            ArrayList<AddContextDataToReadOptimized.ContextShard> shards = AddContextDataToReadOptimized.fillVariants(shardedIntervals, variants, margin);
+            bunny.stepEnd("sharding variants");
+
+            logger.info("Shipping "+shards.size()+" big shards.");
+
+            PCollection<AddContextDataToReadOptimized.ContextShard> shardsPCol = pipeline.apply(Create.of(shards));
+
+            PCollection<AddContextDataToReadOptimized.ContextShard> shardsWithContext = shardsPCol
+                // big shards of variants -> smaller shards with variants, reads. We take the opportunity to filter the reads as close to the source as possible.
+                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, filterToApply)))
+                // add ref bases to the shards.
+                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(referenceDataflowSource)));
+
+            final PCollection<RecalibrationTables> recalibrationTable = shardsWithContext.apply(new BaseRecalibratorOptimizedTransform(headerSingleton, refDictionaryView, BRAC));
 
             // If saving textual output then we need to make sure we can get to the output
             if (saveTextualTables) {
@@ -233,7 +234,7 @@ public class BaseRecalibratorDataflow extends DataflowCommandLineProgram impleme
     protected static String pickTemporaryRecaltablesPath(boolean remote, String stagingLocation) {
         if (remote) {
             // in case multiple tests are running at the same time.
-            String uniquifier = "-DF1-" + Math.abs(new Random().nextInt());
+            String uniquifier = "-DF2-" + Math.abs(new Random().nextInt());
             return GcsPath.fromUri(stagingLocation).resolve(TEMP_RECALTABLES + uniquifier + ".sj").toString();
         } else {
             File outputTables = IOUtils.createTempFile(TEMP_RECALTABLES, ".sj");

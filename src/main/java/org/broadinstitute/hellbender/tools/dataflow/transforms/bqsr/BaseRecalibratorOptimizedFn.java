@@ -1,16 +1,18 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
+
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
+import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
 import org.broadinstitute.hellbender.tools.recalibration.ReadCovariates;
@@ -37,12 +39,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 /**
  * DoFn for BaseRecalibrator.
  * Takes in reads + contextual data (overlapping reference bases and variants), spits out RecalibrationTables.
  */
-public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextData>, RecalibrationTables> {
+public final class BaseRecalibratorOptimizedFn extends DoFnWLog<AddContextDataToReadOptimized.ContextShard, RecalibrationTables> {
     private static final long serialVersionUID = 1L;
 
     private PCollectionView<SAMFileHeader> headerView;
@@ -74,7 +77,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
      * DoFn for BaseRecalibrator.
      * Takes in reads + contextual data (overlapping reference bases and variants), spits out RecalibrationTables.
      */
-    public BaseRecalibratorFn(PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> referenceSequenceDictionaryView, BaseRecalibrationArgumentCollection BRAC) {
+    public BaseRecalibratorOptimizedFn(PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> referenceSequenceDictionaryView, BaseRecalibrationArgumentCollection BRAC) {
         super("BaseRecalibratorFn");
         this.headerView = headerView;
         this.referenceSequenceDictionaryView = referenceSequenceDictionaryView;
@@ -82,16 +85,16 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
     }
 
     // This ctor leaves referenceSequenceDictionaryView uninitialized. Caveat emptor.
-    private BaseRecalibratorFn(SAMFileHeader header, BaseRecalibrationArgumentCollection BRAC) {
+    private BaseRecalibratorOptimizedFn(SAMFileHeader header, BaseRecalibrationArgumentCollection BRAC) {
         super("BaseRecalibratorFn");
         this.header = header;
         this.BRAC = BRAC;
     }
 
     // saves to BRAC.BRAC.RAC.RECAL_TABLE_FILE.getName()
-    public static void saveTextualReport(File output, SAMFileHeader header, RecalibrationTables rt, BaseRecalibrationArgumentCollection BRAC) throws IOException {
+    public static void SaveTextualReport(File output, SAMFileHeader header, RecalibrationTables rt, BaseRecalibrationArgumentCollection BRAC) throws IOException {
         QuantizationInfo qi = new QuantizationInfo(rt, BRAC.RAC.QUANTIZING_LEVELS);
-        BaseRecalibratorFn worker = new BaseRecalibratorFn(header, BRAC);
+        BaseRecalibratorOptimizedFn worker = new BaseRecalibratorOptimizedFn(header, BRAC);
         worker.onTraversalStart();
         worker.saveReport(output, rt, qi, worker.covariates);
     }
@@ -104,6 +107,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
         nReadsProcessed = 0;
         // resetting firstInBundle in case we have multiple bundles via the same instance.
         firstInBundle = true;
+
     }
 
     @Override
@@ -116,13 +120,17 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
             onTraversalStart();
             firstInBundle = false;
         }
-        GATKRead r = c.element().getKey();
-        ReadContextData rc = c.element().getValue();
-        Iterable<Variant> variants = rc.getOverlappingVariants();
-        final ReferenceBases refBases = rc.getOverlappingReferenceBases();
-        ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceSequenceDictionary);
 
-        apply(r, refDS, variants);
+        AddContextDataToReadOptimized.ContextShard shard = c.element();
+
+        for (int i=0; i<shard.reads.size(); i++) {
+            GATKRead r = shard.reads.get(i);
+            ReadContextData rc = shard.readContext.get(i);
+            Iterable<Variant> variants = rc.getOverlappingVariants();
+            final ReferenceBases refBases = rc.getOverlappingReferenceBases();
+            ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceSequenceDictionary);
+            apply(r, refDS, variants);
+        }
     }
 
     @Override
@@ -141,7 +149,9 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
             }
             // let's output something anyways
         }
-        bunny.stepEnd("Processed "+nReadsProcessed+" reads.");
+        String s = "Processed "+nReadsProcessed+" reads.";
+        bunny.stepEnd(s);
+
         super.finishBundle(c);
     }
 
@@ -200,11 +210,6 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
         }
 
         // We've checked in onTraversalStart() that we have a reference, so ref.get() is safe
-//        final int[] isSNP = calculateIsSNP(read, refDS);
-//        final int[] isInsertion = calculateIsIndel(read, EventType.BASE_INSERTION);
-//        final int[] isDeletion = calculateIsIndel(read, EventType.BASE_DELETION);
-//        final int nErrors = nEvents(isSNP, isInsertion, isDeletion);
-
         int[] isSNP, isInsertion, isDeletion;
         isSNP = new int[read.getBases().length];
         isInsertion = new int[isSNP.length];
@@ -311,9 +316,9 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
                     }
                     break;
                 case D: {
+                    refPos += elementLength;
                     final int index = (read.isReverseStrand() ? readPos : readPos - 1);
                     updateIndel(isDel, index);
-                    refPos += elementLength;
                     break;
                 }
                 case N:
@@ -350,6 +355,8 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
         final byte[] readBases = read.getBases();
         final byte[] refBases = ref.queryAndPrefetch(read.getContig(), read.getStart(), read.getEnd()).getBases();
         int refPos = 0;
+
+
 
         final int[] snp = new int[readBases.length];
         int readPos = 0;
@@ -515,7 +522,7 @@ public final class BaseRecalibratorFn extends DoFnWLog<KV<GATKRead, ReadContextD
     }
 
     private ReadTransformer makeReadTransform() {
-        ReadTransformer f0 = BaseRecalibratorFn::consolidateCigar;
+        ReadTransformer f0 = BaseRecalibratorOptimizedFn::consolidateCigar;
 
         ReadTransformer f =
             f0.andThen(this::setDefaultBaseQualities)

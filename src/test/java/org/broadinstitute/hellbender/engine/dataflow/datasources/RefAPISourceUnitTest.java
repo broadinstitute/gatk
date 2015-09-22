@@ -4,11 +4,16 @@ import com.google.api.services.genomics.model.Reference;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.testing.TestPipeline;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
+import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -37,12 +42,22 @@ public class RefAPISourceUnitTest extends BaseTest {
     }
 
     private Pipeline setupPipeline() {
-      GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
-      options.setApiKey(getDataflowTestApiKey());
-      options.setProject(getDataflowTestProject());
+        // We create HellbenderDataflowOptions instead of DataflowPipelineOptions to keep track of the secrets
+        // so we can read the reference.
+        final DataflowCommandLineProgram.HellbenderDataflowOptions options = PipelineOptionsFactory.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class);
+        options.setProject(getDataflowTestProject());
+        if (getDataflowTestApiKey() != null) {
+            options.setApiKey(getDataflowTestApiKey());
+            // put a serialized version of the credentials in the pipelineOptions, so we can get to it later.
+            try {
+                GenomicsFactory.OfflineAuth auth = GCSOptions.Methods.createGCSAuth(options);
+                DataflowCommandLineProgram.HellbenderDataflowOptions.Methods.setOfflineAuth(options, auth);
+            } catch (Exception x) {
+                throw new GATKException("Error with credentials",x);
+            }
+        }
 
-      final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
-      return p;
+        return TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
     }
 
     @DataProvider(name = "sortData")
@@ -108,43 +123,27 @@ public class RefAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(new String(bases.getBases()), "TAAACAGGTT", "Wrong bases returned");
     }
 
-    @Test(groups = "cloud", expectedExceptions = UserException.class)
-    public void testReferenceSourceQueryWithInvalidContig() {
-        final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("FOOCONTIG", 1, 2));
+    @Test(groups = "cloud")
+    public void testReferenceSourceMultiPageQuery() {
+        final int mio = 1_000_000;
+        final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 50000 + mio + 50));
+        final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50025 + mio + 50));
+
+        Assert.assertNotNull(bases1);
+        Assert.assertNotNull(bases1.getBases());
+        Assert.assertNotNull(bases2);
+        Assert.assertNotNull(bases2.getBases());
+        // those SimpleIntervals include the end, hence +1
+        Assert.assertEquals(bases1.getBases().length, mio + 50 + 1, "Wrong number of bases returned");
+        Assert.assertEquals(bases2.getBases().length, mio + 50 + 1, "Wrong number of bases returned");
+
+        // grab some bases around the seam
+        ReferenceBases seam1 = bases1.getSubset(new SimpleInterval("1", 50000 + mio - 100, 50000 + mio + 50));
+        ReferenceBases seam2 = bases2.getSubset(new SimpleInterval("1", 50000 + mio - 100, 50000 + mio + 50));
+
+        Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
+
     }
-
-    @Test(groups = "cloud", expectedExceptions = UserException.class)
-    public void testReferenceSourceQueryWithInvalidPosition() {
-        final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("1", 1000000000, 2000000000));
-    }
-
-    @Test(groups = "cloud", expectedExceptions = IllegalArgumentException.class)
-    public void testReferenceSourceQueryWithNullInterval() {
-        final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", null);
-    }
-
-
-  @Test(groups = "cloud")
-  public void testReferenceSourceMultiPageQuery() {
-      final int mio = 1_000_000;
-      final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 50000 + mio + 50));
-      final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50025 + mio + 50));
-
-      Assert.assertNotNull(bases1);
-      Assert.assertNotNull(bases1.getBases());
-      Assert.assertNotNull(bases2);
-      Assert.assertNotNull(bases2.getBases());
-      // those SimpleIntervals include the end, hence +1
-      Assert.assertEquals(bases1.getBases().length, mio + 50 + 1, "Wrong number of bases returned");
-      Assert.assertEquals(bases2.getBases().length, mio + 50 + 1, "Wrong number of bases returned");
-
-      // grab some bases around the seam
-      ReferenceBases seam1 = bases1.getSubset(new SimpleInterval("1", 50000 + mio - 100, 50000 + mio + 50));
-      ReferenceBases seam2 = bases2.getSubset(new SimpleInterval("1", 50000 + mio - 100, 50000 + mio + 50));
-
-      Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
-
-  }
 
     @Test(groups = "cloud")
     public void testReferenceSourceMultiSmallPagesQuery() {
@@ -169,20 +168,34 @@ public class RefAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
     }
 
-  @Test(groups = "cloud")
-  public void testReferenceSourceVaryingPageSizeQuery() {
+    @Test(groups = "cloud")
+    public void testReferenceSourceVaryingPageSizeQuery() {
 
-    SimpleInterval interval = new SimpleInterval("1", 50000, 50050);
-    final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval);
-    final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval, 10);
+        SimpleInterval interval = new SimpleInterval("1", 50000, 50050);
+        final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval);
+        final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval, 10);
 
-    Assert.assertNotNull(bases1);
-    Assert.assertNotNull(bases1.getBases());
-    Assert.assertNotNull(bases2);
-    Assert.assertNotNull(bases2.getBases());
-    Assert.assertEquals(bases1.getBases(), bases2.getBases(), "bases should match despite different paging size");
-  }
+        Assert.assertNotNull(bases1);
+        Assert.assertNotNull(bases1.getBases());
+        Assert.assertNotNull(bases2);
+        Assert.assertNotNull(bases2.getBases());
+        Assert.assertEquals(bases1.getBases(), bases2.getBases(), "bases should match despite different paging size");
+    }
 
+    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    public void testReferenceSourceQueryWithInvalidContig() {
+        final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("FOOCONTIG", 1, 2));
+    }
+
+    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    public void testReferenceSourceQueryWithInvalidPosition() {
+        final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", new SimpleInterval("1", 1000000000, 2000000000));
+    }
+
+    @Test(groups = "cloud", expectedExceptions = IllegalArgumentException.class)
+    public void testReferenceSourceQueryWithNullInterval() {
+        final ReferenceBases bases = queryReferenceAPI("EOSt9JOVhp3jkwE", null);
+    }
 
     private Map<String, Reference> createDummyReferenceMap(String[] contig) {
         HashMap<String,Reference> fake = new HashMap<>();

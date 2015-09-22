@@ -13,6 +13,8 @@ testSortingFile.txt
 gsalib.tar.gz
 *.swp
 gradlew.bat
+tmp/
+src/main/java/local/
 
 #Please don't commit me
 client_secret.json

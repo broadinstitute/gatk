@@ -167,6 +167,27 @@ public final class SimpleIntervalUnitTest extends BaseTest {
                             "overlap() returned incorrect result for intervals " + firstInterval + " and " + secondInterval);
     }
 
+    @DataProvider(name = "overlapsWithMargin")
+    public Object[][] overlapsWithMargin(){
+        final SimpleInterval standardInterval = new SimpleInterval("1", 10, 20);
+        final SimpleInterval middleInterval = new SimpleInterval("1", 100, 200);
+
+        return new Object[][] {
+                { standardInterval, new SimpleInterval("2", 10, 20), 100, false },
+                { standardInterval, new SimpleInterval("1", 1, 15), 0, true },
+                { standardInterval, new SimpleInterval("1", 30, 50), 9, false },
+                { standardInterval, new SimpleInterval("1", 30, 50), 10, true },
+                { middleInterval, new SimpleInterval("1", 50, 99), 0, false },
+                { middleInterval, new SimpleInterval("1", 50, 90), 9, false },
+                { middleInterval, new SimpleInterval("1", 50, 90), 10, true },
+        };
+    }
+    @Test(dataProvider = "overlapsWithMargin")
+    public void testOverlapWithMargin( final SimpleInterval firstInterval, final SimpleInterval secondInterval, int margin, final boolean expectedOverlapResult ) {
+        Assert.assertEquals(firstInterval.overlapsWithMargin(secondInterval, margin), expectedOverlapResult,
+                "overlap() returned incorrect result for intervals " + firstInterval + " and " + secondInterval);
+    }
+
     @DataProvider(name = "IntervalContainsData")
     public Object[][] getIntervalContainsData() {
         final SimpleInterval containingInterval = new SimpleInterval("1", 10, 20);

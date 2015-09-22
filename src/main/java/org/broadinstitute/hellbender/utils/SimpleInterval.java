@@ -209,7 +209,24 @@ public final class SimpleInterval implements Locatable, Serializable {
         return this.contig.equals(other.getContig()) && this.start <= other.getEnd() && other.getStart() <= this.end;
     }
 
-    /**
+     /**
+      * Determines whether this interval comes within "margin" of overlapping the provided locatable.
+      * This is the same as plain overlaps if margin=0.
+      *
+      * @param other interval to check
+      * @param margin how many bases may be between the two interval for us to still consider them overlapping.
+      * @return true if this interval overlaps other, otherwise false
+      */
+     public final boolean overlapsWithMargin(final Locatable other, int margin) {
+         if ( other == null || other.getContig() == null ) {
+             return false;
+         }
+
+         return this.contig.equals(other.getContig()) && this.start <= other.getEnd() + margin && other.getStart() - margin <= this.end;
+     }
+
+
+     /**
      * Determines whether this interval contains the entire region represented by other
      *
      * @param other interval to check

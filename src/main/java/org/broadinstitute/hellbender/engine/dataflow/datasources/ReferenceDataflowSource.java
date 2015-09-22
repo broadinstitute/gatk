@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 /**
- * Class to load a reference sequence from the Google Genomics API, or a file stored on HDFS or locally.
+ * Wrapper to load a reference sequence from the Google Genomics API, or a file stored on HDFS or locally.
  *
  * This class needs to be mocked, so it cannot be declared final.
  */

@@ -30,14 +30,9 @@ import java.util.Arrays;
  *                          - human_g1k_v37.chr17_1Mb.*
  *                          - NA12878.chr17_69k_70k.dictFix.*
  */
-public final class BaseRecalibratorDataflowIntegrationTest extends CommandLineProgramTest {
+public final class BaseRecalibratorDataflowOptimizedIntegrationTest extends CommandLineProgramTest {
 
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
-
-    // this is a hack so we can run the stuff from a Jar file without too much hassle
-    public static void main(String[] args) throws Exception {
-        new BaseRecalibratorDataflowIntegrationTest().runAllTests();
-    }
 
     private static class BQSRTest {
         final String referenceSetID;
@@ -78,39 +73,16 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
         return getDataflowTestInputPath() + THIS_TEST_FOLDER;
     }
 
-
-    public void runAllTests() throws Exception {
-        System.out.println("testBQSRLocal");
-        for(Object[] in : createBQSRTestData()) {
-            BQSRTest testCase = (BQSRTest)in[0];
-            testBQSRLocal(testCase);
-        }
-        System.out.println("testBQSRFailWithoutDBSNP");
-        testBQSRFailWithoutDBSNP();
-        System.out.println("testBQSRFailWithIncompatibleReference");
-        testBQSRFailWithIncompatibleReference();
-        System.out.println("testBQSRBucket");
-        for(Object[] in : createBQSRTestDataBucket()) {
-            BQSRTest testCase = (BQSRTest)in[0];
-            testBQSRBucket(testCase);
-        }
-        System.out.println("testBQSRCloud");
-        for(Object[] in : createBQSRTestDataCloud()) {
-            BQSRTest testCase = (BQSRTest)in[0];
-            testBQSRCloud(testCase);
-        }
-        System.out.println("Tests passed.");
-    }
-
-
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
         // we need an API key to get to the reference
         final String apiArgs = " --project " + getDataflowTestProject() + " ";
         final String localResources =  getResourceDir();
-        //final String hg19Ref = RefAPISource.HG19_REF_ID;
+        final String hg19Ref = "EMWV_ZfLxrDY-wE";
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
         final String HiSeqBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
+        // it's called "tricky" because it triggered the bug described in:
+        // https://github.com/broadinstitute/hellbender/wiki/Numerical-errors
         final String trickyBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.bam";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
@@ -125,21 +97,6 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
             {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--quantizing_levels 6",    localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.quantizing_levels_6.recal.txt")},
             {new BQSRTest(GRCh37Ref, HiSeqBam, dbSNPb37, apiArgs + "--mismatches_context_size 4", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.mismatches_context_size_4.recal.txt")},
             //// //{new BQSRTest(b36Reference, origQualsBam, dbSNPb36, "-OQ", getResourceDir() + "expected.originalQuals.1kg.chr1.1-1K.1RG.dictFix.OQ.txt")},
-        };
-    }
-
-    @DataProvider(name = "BQSRTrickyTest")
-    public Object[][] createBQSRTrickyTestData() {
-        // we need an API key to get to the reference
-        final String apiArgs = " --project " + getDataflowTestProject() + " ";
-        final String localResources =  getResourceDir();
-        final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
-        final String trickyBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.bam";
-        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
-
-        return new Object[][]{
-            // local computation and files (except for the reference)
-            {new BQSRTest(GRCh37Ref, trickyBam, dbSNPb37, apiArgs + "", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.recal.txt")},
         };
     }
 
@@ -159,7 +116,7 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
 
     @DataProvider(name = "BQSRTestCloud")
     public Object[][] createBQSRTestDataCloud() {
-        final String cloudArgs = "--runner BLOCKING --numWorkers 1 --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging();
+        final String cloudArgs = "--runner BLOCKING --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging();
         final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud = getCloudInputs() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
@@ -181,18 +138,6 @@ public final class BaseRecalibratorDataflowIntegrationTest extends CommandLinePr
                 Arrays.asList(params.expectedFileName));
         spec.executeTest("testBQSR-" + params.args, this);
     }
-
-    // "local", but we're still getting the reference from the cloud.
-    @Test(dataProvider = "BQSRTrickyTest", groups = {"cloud"})
-    public void testBQSRLocalTricky(BQSRTest params) throws IOException {
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
-        addDataflowRunnerArgs(ab);
-        IntegrationTestSpec spec = new IntegrationTestSpec(
-            ab.getString(),
-            Arrays.asList(params.expectedFileName));
-        spec.executeTest("testBQSR-tricky-" + params.args, this);
-    }
-
 
     @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"})
     public void testBQSRBucket(BQSRTest params) throws IOException {

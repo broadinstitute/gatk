@@ -5,19 +5,17 @@ import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
-import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,25 +25,28 @@ import java.io.IOException;
  * Base Quality Score Recalibration, phase 1
  * This contains the Dataflow-specific bits. Most of the work is done by BaseRecalibratorFn.
  * The Hellbender-specific bits are in BaseRecalibratorDataflow2.
+ *
+ * Unlike the non-optimized version, this one works on a whole shard at a time.
  */
-public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<GATKRead, ReadContextData>>, PCollection<RecalibrationTables>> {
+public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollection<AddContextDataToReadOptimized.ContextShard>, PCollection<RecalibrationTables>> {
     private static final long serialVersionUID = 1L;
     private PCollectionView<SAMFileHeader> headerView;
     private PCollectionView<SAMSequenceDictionary> refDictionary;
     BaseRecalibrationArgumentCollection BRAC;
 
-    public BaseRecalibratorTransform(final PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> refDictionary, BaseRecalibrationArgumentCollection BRAC) {
+    public BaseRecalibratorOptimizedTransform(final PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> refDictionary, BaseRecalibrationArgumentCollection BRAC) {
         this.headerView = headerView;
         this.refDictionary = refDictionary;
         this.BRAC = BRAC;
     }
 
+
     @Override
-    public PCollection<RecalibrationTables> apply( PCollection<KV<GATKRead, ReadContextData>> input ) {
+    public PCollection<RecalibrationTables> apply( PCollection<AddContextDataToReadOptimized.ContextShard> input ) {
         PCollection<RecalibrationTables> oneStatPerWorker =
             input.apply(ParDo.named("BaseRecalibrator")
-            .withSideInputs(headerView, refDictionary)
-            .of(new BaseRecalibratorFn(headerView, refDictionary, BRAC)));
+                .withSideInputs(headerView, refDictionary)
+                .of(new BaseRecalibratorOptimizedFn(headerView, refDictionary, BRAC)));
         return aggregateStatistics(oneStatPerWorker);
     }
 
