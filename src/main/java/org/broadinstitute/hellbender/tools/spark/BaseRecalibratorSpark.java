@@ -87,14 +87,15 @@ public class BaseRecalibratorSpark extends SparkCommandLineProgram {
         }
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants.get(0));
 
-        GCSOptions options = BucketUtils.getAuthenticatedGCSOptions(apiKey);
+//        GCSOptions options = BucketUtils.getAuthenticatedGCSOptions(apiKey);
+        GCSOptions options = null;
         final String referenceURL = referenceArguments.getReferenceFileName();
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(options, referenceURL, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
         checkSequenceDictionaries(referenceDataflowSource.getReferenceSequenceDictionary(readsHeader.getSequenceDictionary()), readsHeader.getSequenceDictionary());
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, referenceDataflowSource, bqsrKnownVariants);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads.filter(r -> !r.isUnmapped()), referenceDataflowSource, bqsrKnownVariants);
         // TODO: broadcast the reads header?
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), bqsrArgs);
 

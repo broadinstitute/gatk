@@ -8,13 +8,10 @@ import org.bdgenomics.utils.io.ByteArrayByteAccess;
  * Therefore, the user should exercise caution that the underlying data does not get mutated.
  */
 class DirectFullByteArrayByteAccess extends ByteArrayByteAccess {
+    private static final long serialVersionUID = 1L;
+
     DirectFullByteArrayByteAccess(byte[] bytes) {
         super(bytes);
-    }
-
-    @Override
-    public byte[] bytes() {
-        return this.bytes();
     }
 
     @Override

@@ -26,4 +26,14 @@ public class BroadcastJoinReadsWithRefBases {
             return new Tuple2<>(read, bReferenceSource.getValue().getReferenceBases(null, interval));
         });
     }
+
+    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(final ReferenceDataflowSource referenceDataflowSource,
+                                                                                final JavaPairRDD<GATKRead, T> keyedByRead) {
+        JavaSparkContext ctx = new JavaSparkContext(keyedByRead.context());
+        Broadcast<ReferenceDataflowSource> bReferenceSource = ctx.broadcast(referenceDataflowSource);
+        return keyedByRead.mapToPair(pair -> {
+            SimpleInterval interval = bReferenceSource.getValue().getReferenceWindowFunction().apply(pair._1());
+            return new Tuple2<>(pair._1(), new Tuple2<>(pair._2(), bReferenceSource.getValue().getReferenceBases(null, interval)));
+        });
+    }
 }

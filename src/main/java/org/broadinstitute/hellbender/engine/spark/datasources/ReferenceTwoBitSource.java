@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
  * Created by laserson on 9/18/15.
  */
 public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String referenceURL;
     private TwoBitFile twoBitFile;
 
