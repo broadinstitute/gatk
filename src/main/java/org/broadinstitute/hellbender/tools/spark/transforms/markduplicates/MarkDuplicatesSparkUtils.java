@@ -41,7 +41,7 @@ public class MarkDuplicatesSparkUtils {
      *   (b) if at least one is marked as paired, mark all fragments as duplicates.
      *  Note: Emit only the fragments, as the paired reads are handled separately.
      */
-    static JavaRDD<GATKRead> transformFragments(final SAMFileHeader header, final JavaRDD<GATKRead> fragments) {
+    static JavaRDD<GATKRead> transformFragments(final SAMFileHeader header, final JavaRDD<GATKRead> fragments, final int parallelism) {
         //
         // Groups reads by keys - keys are tuples of (library, contig, position, orientation).
         //
@@ -49,7 +49,7 @@ public class MarkDuplicatesSparkUtils {
         JavaPairRDD<String, Iterable<GATKRead>> groupedReads = fragments.mapToPair(read -> {
             read.setIsDuplicate(false);
             return new Tuple2<>(ReadsKey.keyForFragment(header, read), read);
-        }).groupByKey();
+        }).groupByKey(parallelism);
 
         return groupedReads.flatMap(v1 -> {
             List<GATKRead> reads = Lists.newArrayList();
@@ -117,10 +117,10 @@ public class MarkDuplicatesSparkUtils {
      *       highest scoring as duplicates.
      *   (b) Determine which duplicates are optical duplicates and increase the overall count.
      */
-    static JavaRDD<GATKRead> transformReads(final SAMFileHeader header, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> pairs) {
+    static JavaRDD<GATKRead> transformReads(final SAMFileHeader header, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> pairs, final int parallelism) {
 
         JavaPairRDD<String, Iterable<GATKRead>> keyedReads =
-                pairs.filter(ReadUtils::readHasMappedMate).mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read)).groupByKey();
+                pairs.filter(ReadUtils::readHasMappedMate).mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read)).groupByKey(parallelism);
 
         JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
             List<Tuple2<String, PairedEnds>> out = Lists.newArrayList();
