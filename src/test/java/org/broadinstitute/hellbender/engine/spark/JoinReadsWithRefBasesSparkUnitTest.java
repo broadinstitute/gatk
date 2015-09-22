@@ -57,7 +57,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReferenceBases> rddResult = JoinReadsWithRefBases.addBases(mockSource, rddReads);
+        JavaPairRDD<GATKRead, ReferenceBases> rddResult = ShuffleJoinReadsWithRefBases.addBases(mockSource, rddReads);
         Map<GATKRead, ReferenceBases> result = rddResult.collectAsMap();
 
         for (KV<GATKRead, ReferenceBases> kv : kvReadRefBases) {
