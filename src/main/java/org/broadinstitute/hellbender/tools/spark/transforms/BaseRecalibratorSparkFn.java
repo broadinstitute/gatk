@@ -55,7 +55,7 @@ public class BaseRecalibratorSparkFn {
 
         File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
         try {
-            BaseRecalibratorFn.SaveTextualReport(temp, header, combinedTables, recalArgs);
+            BaseRecalibratorFn.saveTextualReport(temp, header, combinedTables, recalArgs);
             return new RecalibrationReport(temp);
         } catch (FileNotFoundException e) {
             throw new GATKException("can't find my own temporary file", e);
