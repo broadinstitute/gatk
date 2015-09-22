@@ -20,27 +20,31 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
 
     private static class BQSRTest {
-        final String referenceSetID;
+        final String referenceURL;
         final String bam;
         final String knownSites;
         final String args;
         final String expectedFileName;
 
-        private BQSRTest(String referenceSetID, String bam, String knownSites, String args, String expectedFileName) {
-            this.referenceSetID = referenceSetID;
+        private BQSRTest(String referenceURL, String bam, String knownSites, String args, String expectedFileName) {
+            this.referenceURL = referenceURL;
             this.bam = bam;
             this.knownSites = knownSites;
             this.args = args;
             this.expectedFileName = expectedFileName;
         }
 
-        public String getCommandLine() {
-            return  " -R " + RefAPISource.URL_PREFIX + referenceSetID +
+        public String getCommandLineNoApiKey() {
+            return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
                     " -O %s" +
-                    " -sortAllCols" +
+                    " -sortAllCols";
+        }
+
+        public String getCommandLine() {
+            return  getCommandLineNoApiKey() +
                     " --apiKey " + getDataflowTestApiKey();
         }
 
@@ -62,7 +66,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
     public Object[][] createBQSRTestData() {
         final String localResources =  getResourceDir();
         final String hg19Ref = "EMWV_ZfLxrDY-wE";
-        final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
+        final String GRCh37Ref = RefAPISource.URL_PREFIX + RefAPISource.GRCH37_REF_ID;
         final String HiSeqBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
         final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
@@ -85,7 +89,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
-        final String GRCh37Ref = RefAPISource.GRCH37_REF_ID;
+        final String GRCh37Ref = RefAPISource.URL_PREFIX + RefAPISource.GRCH37_REF_ID;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud = getCloudInputs() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
@@ -94,6 +98,29 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
                 // input in cloud, computation local.
                 {new BQSRTest(GRCh37Ref, HiSeqBamCloud, dbSNPb37, "", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
         };
+    }
+
+    @DataProvider(name = "BQSRLocalRefTest")
+    public Object[][] createBQSRLocalRefTestData() {
+        final String GRCh37Ref = b37_reference_20_21;
+        final String GRCh37Ref2bit = b37_2bit_reference_20_21;
+        final String hiSeqBam = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
+        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
+
+        return new Object[][]{
+                // input local, computation local.
+                {new BQSRTest(GRCh37Ref2bit, hiSeqBam, dbSNPb37, "--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
+                {new BQSRTest(GRCh37Ref, hiSeqBam, dbSNPb37, "--joinStrategy SHUFFLE", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
+        };
+    }
+
+    @Test(dataProvider = "BQSRLocalRefTest")
+    public void testBQSRLocalRef(BQSRTest params) throws IOException {
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                ab.getString(),
+                Arrays.asList(params.expectedFileName));
+        spec.executeTest("testBQSR-" + params.args, this);
     }
 
     // "local", but we're still getting the reference from the cloud.
@@ -152,7 +179,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String GRCh37Ref = RefAPISource.GRCH37_REF_ID; // that's the "full" version
+        final String GRCh37Ref = RefAPISource.URL_PREFIX + RefAPISource.GRCH37_REF_ID; // that's the "full" version
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
@@ -169,7 +196,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String hg19Ref = "EMWV_ZfLxrDY-wE";
+        final String hg19Ref = RefAPISource.URL_PREFIX + "EMWV_ZfLxrDY-wE";
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";

@@ -33,8 +33,9 @@ import static org.mockito.Mockito.*;
 public class AddContextDataToReadSparkUnitTest extends BaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases() {
-        Object[][] data = new Object[2][];
         List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
+        JoinStrategy[] strategies = JoinStrategy.values();
+        Object[][] data = new Object[classes.size() * strategies.length][];
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
             ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
@@ -43,7 +44,9 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
             List<SimpleInterval> intervals = testData.getAllIntervals();
             List<Variant> variantList = testData.getVariants();
             List<KV<GATKRead, ReadContextData>> expectedReadContextData = testData.getKvReadContextData();
-            data[i] = new Object[]{reads, variantList, expectedReadContextData, intervals};
+            for (int j = 0; j < strategies.length; j++) {
+                data[i * strategies.length + j] = new Object[]{reads, variantList, expectedReadContextData, intervals, strategies[j]};
+            }
         }
         return data;
     }
@@ -51,7 +54,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
     @Test(dataProvider = "bases", groups = "spark")
     public void addContextDataTest(List<GATKRead> reads, List<Variant> variantList,
                                    List<KV<GATKRead, ReadContextData>> expectedReadContextData,
-                                   List<SimpleInterval> intervals) throws IOException {
+                                   List<SimpleInterval> intervals, JoinStrategy joinStrategy) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
@@ -63,7 +66,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(rddReads, mockSource, rddVariants);
+        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(rddReads, mockSource, rddVariants, joinStrategy);
         Map<GATKRead, ReadContextData> actual = rddActual.collectAsMap();
 
         Assert.assertEquals(actual.size(), expectedReadContextData.size());
