@@ -33,6 +33,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.spark.JoinStrategy;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.IOException;
@@ -69,6 +70,9 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
     @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
     protected List<String> baseRecalibrationKnownVariants;
 
+    @Argument(doc = "the join strategy for reference bases", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
+    private JoinStrategy joinStrategy = JoinStrategy.SHUFFLE;
+
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
@@ -96,7 +100,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants, joinStrategy);
         // TODO: broadcast the reads header?
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection());
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);

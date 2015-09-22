@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDatafl
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.spark.JoinStrategy;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
@@ -28,10 +29,18 @@ import java.util.NoSuchElementException;
 public class AddContextDataToReadSpark {
     public static JavaPairRDD<GATKRead, ReadContextData> add(
             final JavaRDD<GATKRead> reads, final ReferenceDataflowSource referenceDataflowSource,
-            final JavaRDD<Variant> variants) {
-        // Join Reads and Variants, Reads and ReferenceBases
+            final JavaRDD<Variant> variants, final JoinStrategy joinStrategy) {
+        // Join Reads and Variants
         JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = JoinReadsWithVariants.join(reads, variants);
-        JavaPairRDD<GATKRead, Tuple2<Iterable<Variant>, ReferenceBases>> withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
+        // Join Reads with ReferenceBases
+        JavaPairRDD<GATKRead, Tuple2<Iterable<Variant>, ReferenceBases>> withVariantsWithRef;
+        if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
+            withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
+        } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
+            withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
+        } else {
+            throw new IllegalArgumentException("Unknown JoinStrategy");
+        }
         return withVariantsWithRef.mapToPair(in -> new Tuple2<>(in._1(), new ReadContextData(in._2()._2(), in._2()._1())));
     }
 }

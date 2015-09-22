@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.spark.JoinStrategy;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.testng.annotations.DataProvider;
@@ -67,7 +68,7 @@ public class BaseRecalibratorSparkFnUnitTest extends BaseTest {
 
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(null, reference, BaseRecalibratorDataflow.BQSR_REFERENCE_WINDOW_FUNCTION);
 
-        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads.filter(r -> !r.isUnmapped()), referenceDataflowSource, bqsrKnownVariants);
+        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads.filter(r -> !r.isUnmapped()), referenceDataflowSource, bqsrKnownVariants, JoinStrategy.SHUFFLE);
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDataflowSource.getReferenceSequenceDictionary(null), new RecalibrationArgumentCollection());
         final File report = BaseTest.createTempFile("report", "txt");
         try( PrintStream out = new PrintStream(report)){
