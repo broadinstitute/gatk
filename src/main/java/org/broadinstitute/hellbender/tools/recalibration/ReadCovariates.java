@@ -25,14 +25,19 @@ public final class ReadCovariates {
      * keeps the total number of cached arrays to less than LRU_CACHE_SIZE.
      *
      */
-    private static final LRUCache<Integer, int[][][]> keysCache = new LRUCache<>(LRU_CACHE_SIZE);
+    private static final ThreadLocal<LRUCache<Integer, int[][][]>> keysCache = new ThreadLocal<LRUCache<Integer, int[][][]>>(){
+        @Override
+        protected LRUCache<Integer, int[][][]> initialValue() {
+            return new LRUCache<>(LRU_CACHE_SIZE);
+        }
+    };
 
     /**
      * The keys cache is only valid for a single covariate count.  Normally this will remain constant for the analysis.
      * If running multiple analyses (or the unit test suite), it's necessary to clear the cache.
      */
     public static void clearKeysCache() {
-        keysCache.clear();
+        keysCache.get().clear();
     }
 
     /**
@@ -46,7 +51,7 @@ public final class ReadCovariates {
     private int currentCovariateIndex = 0;
 
     public ReadCovariates(final int readLength, final int numberOfCovariates) {
-        final LRUCache<Integer, int[][][]> cache = keysCache;
+        final LRUCache<Integer, int[][][]> cache = keysCache.get();
         final int[][][] cachedKeys = cache.get(readLength);
         if ( cachedKeys == null ) {
             // There's no cached value for read length so we need to create a new int[][][] array

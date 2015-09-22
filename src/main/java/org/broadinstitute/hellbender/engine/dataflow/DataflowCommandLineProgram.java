@@ -13,7 +13,6 @@ import com.google.cloud.dataflow.sdk.runners.DataflowPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.DirectPipelineRunner;
 import com.google.cloud.dataflow.sdk.runners.PipelineRunner;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -140,7 +139,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
 
     @Argument(doc = "The Google Compute Engine machine type that Dataflow will use when spinning up worker VMs",
          fullName = "workerMachineType", optional=true)
-    protected String workerMachineType = "n1-standard-1";
+    protected String workerMachineType = "n1-standard-4";
 
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster;
