@@ -46,6 +46,22 @@ public class ParamUtils {
     }
 
     /**
+     * Checks that the  input is within range and returns the same value or throws an {@link IllegalArgumentException}
+     * @param val value to check
+     * @param min minimum value for val (inclusive)
+     * @param max maximum value for val (inclusive)
+     * @param message the text message that would be pass to the exception thrown when val gt min or val lt max.
+     * @return the same value
+     * @throws IllegalArgumentException if a {@code o == null}
+     */
+    public static long inRange(final long val, final long min, final long max, final String message) {
+        if ((val < min) || (val > max)){
+            throw new IllegalArgumentException(message);
+        }
+        return val;
+    }
+
+    /**
      * Checks that the  input is positive or zero and returns the same value or throws an {@link IllegalArgumentException}
      * @param val value to check
      * @param message the text message that would be pass to the exception thrown

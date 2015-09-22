@@ -2,13 +2,17 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
+import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTests;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -36,10 +40,15 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private static final File FULL_READ_COUNTS_INPUT = new File(TEST_DIR,"full-read-counts.txt");
     private static final File FULL_READ_COUNTS_INPUT_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts.1sample.txt");
     private static final File TARGET_NAME_ONLY_READ_COUNTS_INPUT = new File(TEST_DIR,"only-names-read-counts.txt");
+    private static final File TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE = new File(TEST_DIR,"only-names-read-counts.1sample.txt");
     private static final File COORD_ONLY_READ_COUNTS_INPUT = new File(TEST_DIR,"only-coords-read-counts.txt");
+    private static final File COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE = new File(TEST_DIR,"only-coords-read-counts.1sample.txt");
     private static final File FULL_READ_COUNTS_WITH_EXTRA_TARGET_INPUT = new File(TEST_DIR,"full-read-counts-with-extra-target.txt");
+    private static final File FULL_READ_COUNTS_WITH_EXTRA_TARGET_INPUT_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts-with-extra-target.1sample.txt");
     private static final File FULL_READ_COUNTS_MISSING_A_TARGET_INPUT = new File(TEST_DIR,"full-read-counts-missing-a-target.txt");
+    private static final File FULL_READ_COUNTS_MISSING_A_TARGET_INPUT_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts-missing-a-target.1sample.txt");
     private static final File FULL_READ_COUNTS_BAD_NAME = new File(TEST_DIR,"full-read-counts-bad-target-name.txt");
+    private static final File FULL_READ_COUNTS_BAD_NAME_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts-bad-target-name.1sample.txt");
 
     private static final File TEST_TARGETS = new File(TEST_DIR,"targets.bed");
 
@@ -87,7 +96,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.BadInput.class)
     public void testFullInputWithExtraTarget() throws IOException {
         final File factorNormalizedOutput = createTempFile("test",".txt");
         final File tangentNormalizationOutput = createTempFile("test",".txt");
@@ -97,6 +106,25 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_WITH_EXTRA_TARGET_INPUT.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
+    public void testFullInputWithExtraTargetOneSample() throws IOException {
+        final File factorNormalizedOutput = createTempFile("test",".txt");
+        final File tangentNormalizationOutput = createTempFile("test",".txt");
+        final File betaHatsOutput = createTempFile("tangent-", ".bhats");
+        final File preTangentNormalizationOutput = createTempFile("pre-tn-",".txt");
+
+
+        final String[] arguments = {
+                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_WITH_EXTRA_TARGET_INPUT_ONE_SAMPLE.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
@@ -125,6 +153,25 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
     }
 
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testFullInputMissingATargetOneSample() throws IOException {
+        final File factorNormalizedOutput = createTempFile("test",".txt");
+        final File tangentNormalizationOutput = createTempFile("test",".txt");
+        final File betaHatsOutput = createTempFile("tangent-", ".bhats");
+        final File preTangentNormalizationOutput = createTempFile("pre-tn-",".txt");
+
+
+        final String[] arguments = {
+                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_MISSING_A_TARGET_INPUT_ONE_SAMPLE.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+        };
+        runCommandLine(arguments);
+    }
+
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testFullInputRunWithTargetFileWithBadName() throws IOException {
@@ -142,7 +189,23 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testFullInputRunWithTargetFileWithBadNameOneSample() throws IOException {
+        final File factorNormalizedOutput = createTempFile("test",".txt");
+        final File tangentNormalizationOutput = createTempFile("test",".txt");
+
+
+        final String[] arguments = {
+                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_BAD_NAME_ONE_SAMPLE.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
     public void testFullReadCountsInputRun() throws IOException {
         final File factorNormalizedOutput = createTempFile("test",".txt");
         final File tangentNormalizationOutput = createTempFile("test",".txt");
@@ -157,34 +220,14 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
-       };
+        };
 
-       runCommandLine(arguments);
-        final ReadCountCollection input = ReadCountCollectionUtils.parse(FULL_READ_COUNTS_INPUT, null);
-        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, null);
-        final ReadCountCollection tangentNormalized = ReadCountCollectionUtils.parse(tangentNormalizationOutput, null);
-        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput, null);
-        final RealMatrix betaHats = readBetaHats(betaHatsOutput, input);
-
-       Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
-       Assert.assertTrue(!factorNormalized.targets().stream().anyMatch(t -> t.getInterval() == null));
-       Assert.assertEquals(factorNormalized.targets().stream().map(Target::getInterval).collect(Collectors.toSet()),
-               input.targets().stream().map(Target::getInterval).collect(Collectors.toSet()));
-       Assert.assertEquals(factorNormalized.targets().stream().collect(Collectors.toSet()),
-               input.targets().stream().collect(Collectors.toSet()));
-       Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
-       Assert.assertEquals(tangentNormalized.columnNames(), input.columnNames());
-       Assert.assertEquals(preTangentNormalized.columnNames(), input.columnNames());
-       Assert.assertEquals(factorNormalized.targets().stream().collect(Collectors.toSet()),
-               input.targets().stream().collect(Collectors.toSet()));
-       assertFactorNormalizedValues(input, factorNormalized);
-       assertPreTangentNormalizedValues(factorNormalized, preTangentNormalized);
-       assertBetaHats(preTangentNormalized, betaHats, TEST_PON);
-       assertTangentNormalized(tangentNormalized, preTangentNormalized, betaHats, TEST_PON);
+        runCommandLine(arguments);
+        // Expecting failure since test data has more than one sample.
     }
 
     @Test
-    public void testFullReadCountsOneSampleInputRun() throws IOException {
+    public void testFullReadCountsInputRunOneSample() throws IOException {
         final File factorNormalizedOutput = createTempFile("test",".txt");
         final File tangentNormalizationOutput = createTempFile("test",".txt");
         final File betaHatsOutput = createTempFile("tangent-", ".bhats");
@@ -192,36 +235,40 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
 
         final String[] arguments = {
-                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+               "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
+               "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+               "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
+               "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+               "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
+               "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
 
         runCommandLine(arguments);
         final ReadCountCollection input = ReadCountCollectionUtils.parse(FULL_READ_COUNTS_INPUT_ONE_SAMPLE, null);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, null);
-        final ReadCountCollection tangentNormalized = ReadCountCollectionUtils.parse(tangentNormalizationOutput, null);
         final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput, null);
         final RealMatrix betaHats = readBetaHats(betaHatsOutput, input);
 
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
         Assert.assertTrue(!factorNormalized.targets().stream().anyMatch(t -> t.getInterval() == null));
         Assert.assertEquals(factorNormalized.targets().stream().map(Target::getInterval).collect(Collectors.toSet()),
-                input.targets().stream().map(Target::getInterval).collect(Collectors.toSet()));
+               input.targets().stream().map(Target::getInterval).collect(Collectors.toSet()));
         Assert.assertEquals(factorNormalized.targets().stream().collect(Collectors.toSet()),
-                input.targets().stream().collect(Collectors.toSet()));
+               input.targets().stream().collect(Collectors.toSet()));
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
-        Assert.assertEquals(tangentNormalized.columnNames(), input.columnNames());
+
         Assert.assertEquals(preTangentNormalized.columnNames(), input.columnNames());
         Assert.assertEquals(factorNormalized.targets().stream().collect(Collectors.toSet()),
-                input.targets().stream().collect(Collectors.toSet()));
+               input.targets().stream().collect(Collectors.toSet()));
         assertFactorNormalizedValues(input, factorNormalized);
         assertPreTangentNormalizedValues(factorNormalized, preTangentNormalized);
         assertBetaHats(preTangentNormalized, betaHats, TEST_PON);
+
+        // Test the tangent normalized output
+        final TargetCollection<TargetCoverage> tangentNormalizedAsTargetCollection = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(tangentNormalizationOutput);
+        final ReadCountCollection tangentNormalized = convertToReadCountCollection(tangentNormalizedAsTargetCollection, "SAMPLE1");
         assertTangentNormalized(tangentNormalized, preTangentNormalized, betaHats, TEST_PON);
+        Assert.assertEquals(tangentNormalized.columnNames(), input.columnNames());
 
         // Make sure that we can read in the tangent normalized targets as a collection of TargetCoverage
         final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(new File(tangentNormalizationOutput.getAbsolutePath()));
@@ -229,8 +276,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         Assert.assertEquals(targets.targets().get(2).getName(), "target_179700_CRYBB1");
     }
 
-    @Test(expectedExceptions = UserException.class)
-    public void testNameOnlyCountsInputRunCannotLoadTangentNormalizedFileAsTargetCoverage() throws IOException {
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testNameOnlyCountsInputRunCannotLoadTangentNormalizedFileDueToTwoSamples() throws IOException {
         final File factorNormalizedOutput = createTempFile("test", ".txt");
         final File tangentNormalizationOutput = createTempFile("tangent-", ".txt");
         final File betaHatsOutput = createTempFile("tangent-", ".bhats");
@@ -246,12 +293,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-
-        // Make sure that we cannot read in the tangent normalized targets as a collection of TargetCoverage
-        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(new File(tangentNormalizationOutput.getAbsolutePath()));
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.BadInput.class)
     public void testNameOnlyCountsInputRun() throws IOException {
         final File factorNormalizedOutput = createTempFile("test",".txt");
         final File tangentNormalizationOutput = createTempFile("tangent-", ".txt");
@@ -268,7 +312,27 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-        final ReadCountCollection input = ReadCountCollectionUtils.parse(TARGET_NAME_ONLY_READ_COUNTS_INPUT, null);
+        // Exception expected due to more than one sample.
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testNameOnlyCountsInputRunOneSample() throws IOException {
+        final File factorNormalizedOutput = createTempFile("test",".txt");
+        final File tangentNormalizationOutput = createTempFile("tangent-", ".txt");
+        final File betaHatsOutput = createTempFile("tangent-", ".bhats");
+        final File preTangentNormalizationOutput = createTempFile("pre-tn-",".txt");
+
+        final String[] arguments = {
+                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+        };
+
+        runCommandLine(arguments);
+        final ReadCountCollection input = ReadCountCollectionUtils.parse(TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE, null);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, null);
         final ReadCountCollection tangentNormalized = ReadCountCollectionUtils.parse(tangentNormalizationOutput, null);
         final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput, null);
@@ -303,7 +367,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         return new Array2DRowRealMatrix(betaHats,false);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.BadInput.class)
     public void testCoordOnlyCountsInputFileRun() throws IOException {
         final File factorNormalizedOutput = createTempFile("test",".txt");
         final File tangentNormalizationOutput = createTempFile("test",".txt");
@@ -317,8 +381,26 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
+
+        // Expect exception due to multiple samples.
+    }
+
+    @Test
+    public void testCoordOnlyCountsInputFileRunOneSample() throws IOException {
+        final File factorNormalizedOutput = createTempFile("test",".txt");
+        final File tangentNormalizationOutput = createTempFile("test",".txt");
+
+        final String[] arguments = {
+                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+        };
+
+        runCommandLine(arguments);
         final TargetCollection<? extends BEDFeature> exons = TargetCollections.fromBEDFeatureFile(TEST_TARGETS,new BEDCodec());
-        final ReadCountCollection input = ReadCountCollectionUtils.parse(COORD_ONLY_READ_COUNTS_INPUT,exons);
+        final ReadCountCollection input = ReadCountCollectionUtils.parse(COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE,exons);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, exons);
 
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
@@ -467,7 +549,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
-            final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized,pon.reducedPoNTargetNames());
+            final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, pon.reducedPoNTargetNames());
             final RealMatrix actual = reorderTargetsToPoNOrder(actualReadCounts,pon.reducedPoNTargetNames());
             final RealMatrix ponMat = pon.reducedPoN();
             final RealMatrix projection = ponMat.multiply(betaHats);
@@ -499,4 +581,19 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         // The actual input to create the beta-hats, sorted by the PoN targets:
         return new Array2DRowRealMatrix(ponPreparedInput,false);
     }
+
+    private static ReadCountCollection convertToReadCountCollection(final TargetCollection<TargetCoverage> targetCollection, final String sampleName) {
+
+        Utils.nonNull(targetCollection, "Cannot convert a null TargetCollection.");
+
+        final double[] counts = targetCollection.targets().stream().mapToDouble(TargetCoverage::getCoverage).toArray();
+
+        final List<String> singletonSampleNameList = new ArrayList<>();
+        singletonSampleNameList.add(sampleName);
+
+        return new ReadCountCollection(SetUniqueList.setUniqueList(new ArrayList<>(targetCollection.targets())),
+                SetUniqueList.setUniqueList(singletonSampleNameList),
+                new Array2DRowRealMatrix(counts));
+    }
 }
+

@@ -92,7 +92,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     public static final String PRE_TANGENT_NORMALIZATION_SHORT_NAME = "PTNO";
 
     @Argument(
-            doc = "read counts input file.",
+            doc = "read counts input file.  This can only contain one sample at a time.",
             shortName = READ_COUNTS_FILE_SHORT_NAME,
             fullName = READ_COUNTS_FILE_FULL_NAME,
             optional = false
