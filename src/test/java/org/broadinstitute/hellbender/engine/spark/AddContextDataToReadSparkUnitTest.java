@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFuncti
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.spark.JoinStrategy;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.Variant;
@@ -65,7 +66,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(rddReads, mockSource, rddVariants);
+        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(rddReads, mockSource, rddVariants, JoinStrategy.SHUFFLE);
         Map<GATKRead, ReadContextData> actual = rddActual.collectAsMap();
 
         Assert.assertEquals(actual.size(), expectedReadContextData.size());

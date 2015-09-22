@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -16,7 +17,7 @@ import java.util.List;
  * (GATKRead,Iterable<Variant>) for every read and all the variants that overlap. We do this by first
  * Making Tuple2s of GATKRead,Variant, which means that a read or variant may be present
  * multiple times in the output. Also, there may be duplicate (GATKRead,Variant) pairs in the output.
- * Currently, all reads must be mapped. We then dedup (distinct) then group by key.
+ * Currently, all reads must be mapped. We then aggregrate by key to remove duplicate variants.
  *
  * The function works by creating a single RDD of Tuple2 where GATKRead is the key and Variant is the value.
  * We do this join by sharding both collections by "variant shard" and checking for overlap on each "shard."
@@ -51,7 +52,7 @@ import java.util.List;
  * Tuple2<read b, variant 3> // from shard 2
  * Tuple2<read b, variant 3> // from shard 3
  *
- * step 4: distinct and group by key
+ * step 4: aggregate by key
  * Tuple2<read a, <variant 1, variant2>>
  * Tuple2<read b, <variant 3>>
  */
@@ -65,7 +66,15 @@ public class JoinReadsWithVariants {
 
         JavaPairRDD<GATKRead, Variant> allPairs = pairReadsWithVariants(readsWShards, variantsWShards);
 
-        return allPairs.distinct().groupByKey();
+        return allPairs.aggregateByKey(new HashSet<>(), (vs, v) -> {
+            if (v != null) { // pairReadsWithVariants can produce null variant
+                ((HashSet<Variant>) vs).add(v);
+            }
+            return vs;
+        }, (vs1, vs2) -> {
+            ((HashSet<Variant>) vs1).addAll((HashSet<Variant>) vs2);
+            return vs1;
+        });
     }
 
     private static JavaPairRDD<VariantShard, GATKRead> pairReadsWithVariantShards(final JavaRDD<GATKRead> reads) {

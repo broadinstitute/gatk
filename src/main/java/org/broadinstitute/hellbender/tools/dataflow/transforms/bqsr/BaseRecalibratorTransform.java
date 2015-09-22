@@ -13,8 +13,9 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.RecalibrationEngine;
+import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -31,12 +32,12 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
     private static final long serialVersionUID = 1L;
     private PCollectionView<SAMFileHeader> headerView;
     private PCollectionView<SAMSequenceDictionary> refDictionary;
-    BaseRecalibrationArgumentCollection BRAC;
+    RecalibrationArgumentCollection recalArgs;
 
-    public BaseRecalibratorTransform(final PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> refDictionary, BaseRecalibrationArgumentCollection BRAC) {
+    public BaseRecalibratorTransform(final PCollectionView<SAMFileHeader> headerView, PCollectionView<SAMSequenceDictionary> refDictionary, RecalibrationArgumentCollection recalArgs) {
         this.headerView = headerView;
         this.refDictionary = refDictionary;
-        this.BRAC = BRAC;
+        this.recalArgs = recalArgs;
     }
 
     @Override
@@ -44,9 +45,9 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
         PCollection<RecalibrationTables> oneStatPerWorker =
             input.apply(ParDo.named("BaseRecalibrator")
             .withSideInputs(headerView, refDictionary)
-            .of(new BaseRecalibratorFn(headerView, refDictionary, BRAC)));
+            .of(new BaseRecalibratorFn(headerView, refDictionary, recalArgs)));
         PCollection<RecalibrationTables> aggregate = aggregateStatistics(oneStatPerWorker);
-        return addQuantizationInfo(headerView, BRAC, aggregate);
+        return addQuantizationInfo(headerView, recalArgs, aggregate);
     }
 
     @Override
@@ -76,7 +77,7 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
                             log.warn("No recalibration tables!");
                         } else {
                             // normal case: recalibrate
-                            RecalibrationEngine.finalizeRecalibrationTables(tables);
+                            BaseRecalibrationEngine.finalizeRecalibrationTables(tables);
                         }
                         c.output(tables);
                     }
@@ -87,7 +88,7 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
     * addQuantizationInfo takes the computed RecalibrationTable and adds the QuantizationInfo and RequestedCovariates objects.
     * We call this triplet "BaseRecalOutput". It contains everything we need from phase 1 to continue onto phase 2 of BQSR.
     */
-    private static PCollection<BaseRecalOutput> addQuantizationInfo(PCollectionView<SAMFileHeader> headerView, BaseRecalibrationArgumentCollection toolArgs, PCollection<RecalibrationTables> recal) {
+    private static PCollection<BaseRecalOutput> addQuantizationInfo(PCollectionView<SAMFileHeader> headerView, RecalibrationArgumentCollection recalArgs, PCollection<RecalibrationTables> recal) {
         return recal.apply(ParDo
             .named("addQuantizationInfo")
             .withSideInputs(headerView)
@@ -103,7 +104,7 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
                     // TODO(issue#799): Figure out what it changes, and just do that instead of doing the whole rigamarole.
                     File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
                     try {
-                        BaseRecalibratorFn.saveTextualReport(temp, header, rt, toolArgs);
+                        BaseRecalibratorFn.saveTextualReport(temp, header, rt, recalArgs);
                         BaseRecalOutput ret = new BaseRecalOutput(temp);
                         c.output(ret);
                     } catch (FileNotFoundException e) {

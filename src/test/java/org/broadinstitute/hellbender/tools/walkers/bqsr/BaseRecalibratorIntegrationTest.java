@@ -37,7 +37,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
-                    " --RECAL_TABLE_FILE %s" +
+                    " -O %s" +
                     " -sortAllCols";
         }
 
@@ -93,14 +93,14 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final File actualHiSeqBam_recalibrated = createTempFile("actual.NA12878.chr17_69k_70k.dictFix.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = "-R " + hg18Reference + " --knownSites " + dbSNPb37 + " -I " + HiSeqBam + " -RECAL_TABLE_FILE " + tablePre + " --sort_by_all_columns true";
+        final String argPre = "-R " + hg18Reference + " --knownSites " + dbSNPb37 + " -I " + HiSeqBam + " -O " + tablePre + " --sort_by_all_columns true";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argPre));
 
         final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre+ "  -O " + actualHiSeqBam_recalibrated.getAbsolutePath();
         new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = "-R " + hg18Reference + " --knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath() + " -RECAL_TABLE_FILE " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
+        final String argsPost = "-R " + hg18Reference + " --knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath() + " -O " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argsPost));
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.bam");

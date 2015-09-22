@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
-import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
+import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -83,13 +83,13 @@ public class ReadsPreprocessingPipelineSparkTestData {
         );
 
         variants = Lists.newArrayList(
-                new SkeletonVariant(new SimpleInterval("1", 170, 180), true, false, new UUID(1001, 1001)),
-                new SkeletonVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
-                new SkeletonVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
+                new MinimalVariant(new SimpleInterval("1", 170, 180), true, false, new UUID(1001, 1001)),
+                new MinimalVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
+                new MinimalVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
                         ReferenceShard.REFERENCE_SHARD_SIZE), true, false, new UUID(1003, 1003)),
-                new SkeletonVariant(new SimpleInterval("1", 3 * ReferenceShard.REFERENCE_SHARD_SIZE - 2,
+                new MinimalVariant(new SimpleInterval("1", 3 * ReferenceShard.REFERENCE_SHARD_SIZE - 2,
                         3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true, new UUID(1004, 1004)),
-                new SkeletonVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
+                new MinimalVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
                         ReferenceShard.REFERENCE_SHARD_SIZE), false, true, new UUID(1005, 1005))
         );
 

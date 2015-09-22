@@ -11,9 +11,7 @@ import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.broadcast.Broadcast;
-import org.bdgenomics.adam.models.SAMFileHeaderWritable;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -24,7 +22,6 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -47,7 +44,7 @@ public class ReadsSparkSource implements Serializable {
      * i.e., file:///path/to/bam.bam.
      * @param bam file to load
      * @param intervals intervals of reads to include.
-     * @return RDD of (Google Read-backed) GATKReads from the file.
+     * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String bam, final List<SimpleInterval> intervals) {
         Configuration conf = new Configuration();
@@ -66,7 +63,7 @@ public class ReadsSparkSource implements Serializable {
                     return SAMRecordToGATKReadAdapter.sparkReadAdapter(sam);
                 } catch (SAMException e) {
                     // TODO: add stringency
-                }
+                }            
             }
             return null;
 

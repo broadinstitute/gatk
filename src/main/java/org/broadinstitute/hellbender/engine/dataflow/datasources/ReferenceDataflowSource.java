@@ -3,15 +3,15 @@ package org.broadinstitute.hellbender.engine.dataflow.datasources;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 
@@ -34,7 +34,13 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
     public ReferenceDataflowSource(final PipelineOptions pipelineOptions, final String referenceURL,
                                    final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);
-        if (isFasta(referenceURL)) {
+        if (isTwoBit(referenceURL)) {
+            try {
+                referenceSource = new ReferenceTwoBitSource(referenceURL, pipelineOptions);
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to create a ReferenceTwoBitSource object" + e.getMessage());
+            }
+        } else if (isFasta(referenceURL)) {
             if (BucketUtils.isHadoopUrl(referenceURL)) {
                 referenceSource = new ReferenceHadoopSource(referenceURL);
             } else {
@@ -51,6 +57,13 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
             if (reference.endsWith(ext)) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    private static boolean isTwoBit(String reference) {
+        if (reference.endsWith(".2bit")) {
+            return true;
         }
         return false;
     }
@@ -79,7 +92,12 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
      * @return sequence dictionary for the reference
      */
     @Override
-    public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-        return referenceSource.getReferenceSequenceDictionary(optReadSequenceDictionaryToMatch);
+    public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) {
+        try {
+            return referenceSource.getReferenceSequenceDictionary(optReadSequenceDictionaryToMatch);
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Error getting reference sequence dictionary");
+        }
     }
 }

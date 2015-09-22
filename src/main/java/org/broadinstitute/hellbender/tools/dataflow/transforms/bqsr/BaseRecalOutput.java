@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
-import org.broadinstitute.hellbender.tools.recalibration.QuantizationInfo;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationReport;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
-import org.broadinstitute.hellbender.tools.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.QuantizationInfo;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 
 import java.io.File;
 import java.io.Serializable;
