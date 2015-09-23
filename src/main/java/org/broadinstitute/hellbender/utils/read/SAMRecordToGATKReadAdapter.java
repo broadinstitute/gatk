@@ -555,4 +555,8 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         }
         return "SAMRecord with no bases";
     }
+
+    public void setHeader(SAMFileHeader header) {
+        samRecord.setHeader(header);
+    }
 }

@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,10 +12,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
-/**
- *
- */
-public class IntervalsSkipListTest {
+public class IntervalsSkipListOneContigUnitTest extends BaseTest {
 
 
     @DataProvider(name="intervals")
@@ -71,12 +69,13 @@ public class IntervalsSkipListTest {
                 new Object[]{manyOverlapping, new SimpleInterval("1", 20, 20), manyOverlapping},
                 // input with multiple intervals
                 new Object[]{mixInput, new SimpleInterval("1",30,50), mixExpected}
+
         };
     }
 
     @Test(dataProvider = "intervals")
     public void testOverlap(ArrayList<Locatable> input, SimpleInterval query, ArrayList<Locatable> expected) throws Exception {
-        IntervalsSkipList<Locatable> ints = new IntervalsSkipList<>(input);
+        IntervalsSkipListOneContig<Locatable> ints = new IntervalsSkipListOneContig<>(input);
         ArrayList<Locatable> actual = ints.getOverlapping(query);
         Assert.assertEquals(
                 actual,
@@ -94,7 +93,7 @@ public class IntervalsSkipListTest {
         }
 
         Stopwatch indexing = Stopwatch.createStarted();
-        IntervalsSkipList<Locatable> ints = new IntervalsSkipList<>(si);
+        IntervalsSkipListOneContig<Locatable> ints = new IntervalsSkipListOneContig<>(si);
         indexing.stop();
 
         Stopwatch v1 = Stopwatch.createStarted();

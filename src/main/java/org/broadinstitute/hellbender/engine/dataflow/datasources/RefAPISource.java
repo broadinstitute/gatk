@@ -9,7 +9,6 @@ import com.google.api.services.genomics.model.SearchReferencesResponse;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import com.google.cloud.genomics.dataflow.utils.GenomicsOptions;
 import com.google.cloud.genomics.utils.GenomicsFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Bytes;
@@ -18,7 +17,6 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -30,7 +28,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.util.*;
-
 
 /**
  * RefAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works

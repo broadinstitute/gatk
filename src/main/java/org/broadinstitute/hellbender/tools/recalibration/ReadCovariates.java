@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.recalibration;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.LRUCache;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
