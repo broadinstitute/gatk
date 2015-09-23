@@ -19,11 +19,10 @@ public final class SNPSegmenter {
      * @param snpCounts             list of allelic counts at SNP sites
      * @param sampleName            sample name
      * @param outputFile            segment file to write to and return
-     * @param minLogValue           values of log2 coverage below this minimum value are set to it
      * @throws IOException          if temporary target file cannot be created or written to
      */
     public static void writeSegmentFile(final List<AllelicCount> snpCounts,
-                                        final String sampleName, final File outputFile, final float minLogValue)
+                                        final String sampleName, final File outputFile)
             throws IOException {
         final File targetsFromSNPCountsFile = File.createTempFile("targets-from-snps", ".tsv");
 
@@ -33,6 +32,6 @@ public final class SNPSegmenter {
         TargetCoverageUtils.writeTargetsWithCoverage(targetsFromSNPCountsFile, sampleName, targetsFromSNPCounts);
 
         RCBSSegmenter.writeSegmentFile(sampleName, targetsFromSNPCountsFile.getAbsolutePath(),
-                outputFile.getAbsolutePath(), minLogValue);
+                outputFile.getAbsolutePath());
     }
 }

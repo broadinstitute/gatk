@@ -48,8 +48,7 @@ public final class AllelicCount implements Locatable {
         final double minorAlleleFraction = Math.min(
                 (double) refReadCount / (refReadCount + altReadCount),
                 (double) altReadCount / (refReadCount + altReadCount));
-        final double coverage = Math.log(minorAlleleFraction) / Math.log(2.);
-        final TargetCoverage target = new TargetCoverage(name, new SimpleInterval(interval), coverage);
+        final TargetCoverage target = new TargetCoverage(name, new SimpleInterval(interval), minorAlleleFraction);
         return target;
     }
 

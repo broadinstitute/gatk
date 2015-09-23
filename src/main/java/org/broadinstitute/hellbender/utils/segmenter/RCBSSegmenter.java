@@ -15,14 +15,12 @@ public final class RCBSSegmenter {
      * @param sample_name Name of the sample being run through the segmenter
      * @param tnFile Tangent-normalized targets file
      * @param outputFile Full path to the outputted segment file
-     * @param minLogValue Any values under this threshold will be set to it
      */
-    public static void writeSegmentFile(String sample_name, String tnFile, String outputFile, Float minLogValue) {
+    public static void writeSegmentFile(String sample_name, String tnFile, String outputFile) {
         final RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new Resource(R_SCRIPT, RCBSSegmenter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
-        executor.addArgs("--args", "--sample_name="+sample_name, "--targets_file="+tnFile, "--output_file="+outputFile,
-                "--min_log_value="+minLogValue);
+        executor.addArgs("--args", "--sample_name="+sample_name, "--targets_file="+tnFile, "--output_file="+outputFile);
         executor.exec();
     }
 }

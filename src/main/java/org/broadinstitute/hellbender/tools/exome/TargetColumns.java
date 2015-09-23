@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;

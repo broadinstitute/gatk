@@ -23,9 +23,6 @@ public final class PerformCBSSegmentation extends CommandLineProgram {
     public static final String SEGMENT_FILE_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
     public static final String SEGMENT_FILE_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
 
-    public static final String MIN_LOG_VALUE_LONG_NAME = "minLogValue";
-    public static final String MIN_LOG_VALUE_SHORT_NAME = "M";
-
     @Argument(
             doc = "Name of the sample being segmented",
             shortName = SAMPLE_NAME_SHORT_NAME,
@@ -50,21 +47,13 @@ public final class PerformCBSSegmentation extends CommandLineProgram {
     )
     protected String outFile;
 
-    @Argument(
-            doc = "Any values under this threshold will be set to it",
-            shortName = MIN_LOG_VALUE_SHORT_NAME,
-            fullName = MIN_LOG_VALUE_LONG_NAME,
-            optional = true
-    )
-    protected float minLogValue;
-
     @Override
     protected Object doWork() {
-        applySegmentation(sampleName, tangentFile, outFile, minLogValue);
+        applySegmentation(sampleName, tangentFile, outFile);
         return "Success";
     }
 
-    private void applySegmentation(String sampleName, String tangentFile, String outFile, float minLogValue){
-        RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile, minLogValue);
+    private void applySegmentation(String sampleName, String tangentFile, String outFile){
+        RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile);
     }
 }
