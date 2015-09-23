@@ -5,7 +5,6 @@
 # This script does a binary search to look for the smallest input that will
 # break something.
 #
-# JPM
 
 # The folder for us to store our temporary files. There may be many of them.
 # This folder should exist before you start the script.
