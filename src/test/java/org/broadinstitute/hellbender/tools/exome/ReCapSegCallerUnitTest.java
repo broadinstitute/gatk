@@ -14,32 +14,32 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
         List<TargetCoverage> targetList = new ArrayList<>();
         //add amplification targets
         for (int i = 0; i < 10; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 100 + 2 * i, 101 + 2 * i), 1.0));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 100 + 2 * i, 101 + 2 * i), 2.0));
         }
         //add deletion targets
         for (int i = 0; i < 10; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 300 + 2 * i, 301 + 2 * i), -1.0));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 300 + 2 * i, 301 + 2 * i), 0.5));
         }
         //add targets that don't belong to a segment
         for (int i = 1; i < 10; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 400 + 2 * i, 401 + 2 * i), 0.0));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 400 + 2 * i, 401 + 2 * i), 1.0));
         }
         //add obviously neutral targets with some small spread
         for (int i = -5; i < 6; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 500 + 2 * i, 501 + 2 * i), 0.01 * i));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 500 + 2 * i, 501 + 2 * i), 0.01 * i + 1));
         }
         //add spread-out targets to a neutral segment (mean near zero)
         for (int i = -5; i < 6; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 700 + 2 * i, 701 + 2 * i), 0.1 * i));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 700 + 2 * i, 701 + 2 * i), 0.1 * i + 1));
         }
 
         HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);
 
         List<ModeledSegment> segments = new ArrayList<>();
-        segments.add(new ModeledSegment(new SimpleInterval("chr", 100, 200), 100, 1.0)); //amplification
-        segments.add(new ModeledSegment(new SimpleInterval("chr", 300, 400), 100, -1.0)); //deletion
-        segments.add(new ModeledSegment(new SimpleInterval("chr", 450, 550), 100, 0.01)); //neutral
-        segments.add(new ModeledSegment(new SimpleInterval("chr", 650, 750), 100, 0.1)); //neutral
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 100, 200), 100, 2.0)); //amplification
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 300, 400), 100, 0.5)); //deletion
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 450, 550), 100, 1)); //neutral
+        segments.add(new ModeledSegment(new SimpleInterval("chr", 650, 750), 100, 1)); //neutral
 
         List<ModeledSegment> calls = ReCapSegCaller.makeCalls(targets, segments, ReCapSegCaller.DEFAULT_Z_SCORE_THRESHOLD);
 
