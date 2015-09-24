@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Simple caller that
- * 1) estimates the value of log_2 normalized coverage corresponding to copy neutral segments
+ * 1) estimates the value of normalized coverage corresponding to copy neutral segments
  * This value is not necessarily equal to zero.  For example, a large amplification on one segment
  * depresses the proportional coverage of all other segments.
  * 2) estimates the variance of targets' normalized coverage within a segment, assuming that
@@ -30,11 +30,12 @@ public final class ReCapSegCaller {
     // default number of standard deviations from mean required to call an amplification or deletion
     public static final double DEFAULT_Z_SCORE_THRESHOLD = 2.0;
 
-    //bounds on log_2 coverage we take as non-neutral a priori
-    public static final double NON_NEUTRAL_THRESHOLD = 0.3;
+    //bounds on coverage we take as non-neutral a priori
+    public static final double NON_NEUTRAL_THRESHOLD_HIGH = 1.25;
+    public static final double NON_NEUTRAL_THRESHOLD_LOW = 0.75;
 
-    //bounds on log_2 coverage for high-confidence neutral segments
-    public static final double COPY_NEUTRAL_CUTOFF = 0.1;
+    //bounds on coverage for high-confidence neutral segments
+    public static final double COPY_NEUTRAL_CUTOFF = 1.1;
 
     private ReCapSegCaller() {} // prevent instantiation
 
@@ -51,20 +52,20 @@ public final class ReCapSegCaller {
         ParamUtils.isPositiveOrZero(zThreshold, "zThreshold must be positive or zero.");
 
         /**
-         * estimate the copy-number neutral log_2 coverage as the median over all targets.
+         * estimate the copy-number neutral coverage as the median over all targets.
          * As a precaution we take the median after filtering extreme coverages that are definitely not neutral
          * i.e. those below -NON_NEUTRAL_COVERAGE or above +NON_NEUTRAL_COVERAGE
          */
         final double []  nonExtremeCoverage = targets.targets()
                 .stream()
                 .mapToDouble(TargetCoverage::getCoverage)
-                .filter(c -> Math.abs(c) < NON_NEUTRAL_THRESHOLD)
+                .filter(c -> c < NON_NEUTRAL_THRESHOLD_HIGH && c > NON_NEUTRAL_THRESHOLD_LOW)
                 .toArray();
         final double neutralCoverage = new Median().evaluate(nonExtremeCoverage);
 
         // Get the standard deviation of targets belonging to high-confidence neutral segments
         final double[] nearNeutralCoverage = segments.stream()
-                .filter(s -> Math.abs(SegmentUtils.meanTargetCoverage(s, targets) - neutralCoverage) < COPY_NEUTRAL_CUTOFF)
+                .filter(s -> SegmentUtils.meanTargetCoverage(s, targets)/neutralCoverage < COPY_NEUTRAL_CUTOFF && SegmentUtils.meanTargetCoverage(s, targets)/neutralCoverage > 1/COPY_NEUTRAL_CUTOFF)
                 .flatMap(s -> targets.targets(s).stream())
                 .mapToDouble(TargetCoverage::getCoverage)
                 .toArray();
