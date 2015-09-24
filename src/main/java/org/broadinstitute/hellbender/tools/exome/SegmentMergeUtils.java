@@ -27,14 +27,14 @@ public final class SegmentMergeUtils {
 
     //random generator for breaking ties in small-segment merging
     private static final int RANDOM_SEED = 42;
-    private static final RandomGenerator RANDOM_GENERATOR =
+    private static final RandomGenerator randomGenerator =
             RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
     //Kolmogorov-Smirnov test for small-segment merging
     private static final int KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED = 42;
-    private static final RandomGenerator KOLMOGOROV_SMIRNOV_TEST_RANDOM_GENERATOR =
+    private static final RandomGenerator kolmogorovSmirnovTestRandomGenerator =
             RandomGeneratorFactory.createRandomGenerator(new Random(KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED));
-    private static final KolmogorovSmirnovTest KOLMOGOROV_SMIRNOV_TEST =
-            new KolmogorovSmirnovTest(KOLMOGOROV_SMIRNOV_TEST_RANDOM_GENERATOR);
+    private static final KolmogorovSmirnovTest kolmogorovSmirnovTest =
+            new KolmogorovSmirnovTest(kolmogorovSmirnovTestRandomGenerator);
 
     private SegmentMergeUtils() {};
 
@@ -47,7 +47,7 @@ public final class SegmentMergeUtils {
      */
     public static SimpleInterval mergeSegments(final SimpleInterval segment1, final SimpleInterval segment2) {
         if (!segment1.getContig().equals(segment2.getContig())) {
-            throw new RuntimeException(String.format("Cannot join segments " +
+            throw new IllegalArgumentException(String.format("Cannot join segments " +
                             segment1.getContig() + ":%d-%d and " +
                             segment2.getContig() + ":%d-%d on different chromosomes.",
                     segment1.getStart(), segment1.getEnd(), segment2.getStart(), segment2.getEnd()));
@@ -98,7 +98,7 @@ public final class SegmentMergeUtils {
      * segment, the segment is repeatedly merged with its closest neighboring segment until it is above threshold,
      * then the traversal resumes.  Does not modify the input collections.
      * @param segments              original list of segments (will not be modified)
-     * @param genome                target-coverage and SNP-allele-count data to be segmented
+     * @param genome                linear target-coverage and SNP-allele-count data to be segmented
      * @param targetNumberThreshold number of targets below which a segment is considered small
      * @return                      new list of segments with small segments merged, never {@code null}
      */
@@ -307,7 +307,7 @@ public final class SegmentMergeUtils {
          * @return          distance between data sets given by the two-sample Kolmogorov-Smirnov test statistic
          */
         private static double kolmogorovSmirnovDistance(final double[] data1, final double[] data2) {
-            return KOLMOGOROV_SMIRNOV_TEST.kolmogorovSmirnovStatistic(data1, data2);
+            return kolmogorovSmirnovTest.kolmogorovSmirnovStatistic(data1, data2);
         }
 
         /**
@@ -408,7 +408,7 @@ public final class SegmentMergeUtils {
             try {
                 //if not enough alternate-allele fractions in any segment to use Apache Commons implementation of
                 //kolmogorovSmirnovStatistic, kolmogorovSmirnovDistance will throw an unchecked
-                // InsufficientDataException and the finally block will be executed
+                //InsufficientDataException and the finally block will be executed
                 final double leftKSDistance = kolmogorovSmirnovDistance(leftAAFs, centerAAFs);
                 final double rightKSDistance = kolmogorovSmirnovDistance(centerAAFs, rightAAFs);
 
@@ -435,6 +435,7 @@ public final class SegmentMergeUtils {
             } finally {
                 //use Hodges-Lehmann scores computed using inverse minor-allele fractions
                 //(which, ideally, are proportional to total copy ratio)
+                //no need for a catch block because this should also be executed after an InsufficientDataException
                 final double[] leftInverseMAFs = Doubles.toArray(calculateInverseMAFs(leftSegment, snps));
                 final double[] centerInverseMAFs = Doubles.toArray(calculateInverseMAFs(centerSegment, snps));
                 final double[] rightInverseMAFs = Doubles.toArray(calculateInverseMAFs(rightSegment, snps));
@@ -446,13 +447,12 @@ public final class SegmentMergeUtils {
         /**
          * Returns a list of the coverages for targets in a given segment.
          * @param segment   segment to consider
-         * @param targets   target-coverage data to be segmented
+         * @param targets   linear target-coverage data to be segmented
          * @return          list of the coverages for targets in the segment
          */
-        private static List<Double> calculateCoverages(final SimpleInterval segment,
-                                                       final TargetCollection<TargetCoverage> targets) {
-            return targets.targets(segment).stream().map(t -> Math.pow(2., t.getCoverage()))
-                    .collect(Collectors.toList());
+        private static List<Double> makeCoverageList(final SimpleInterval segment,
+                                                     final TargetCollection<TargetCoverage> targets) {
+            return targets.targets(segment).stream().map(t -> t.getCoverage()).collect(Collectors.toList());
         }
 
         /**
@@ -461,7 +461,7 @@ public final class SegmentMergeUtils {
          * the sum of the scores will be unity. All segments are assumed to be on the same chromosome.
          * If any of the three segments is missing targets, both scores are Double.NEGATIVE_INFINITY.
          * @param segments  list of segments
-         * @param targets   log_2 target-coverage data to be segmented
+         * @param targets   linear target-coverage data to be segmented
          * @param index     index of the center segment to consider
          * @return          scores for adjacent segments based on Hodges-Lehmann estimators
          */
@@ -478,9 +478,9 @@ public final class SegmentMergeUtils {
                 return Pair.of(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
             }
 
-            final double[] leftCoverages = Doubles.toArray(calculateCoverages(leftSegment, targets));
-            final double[] centerCoverages = Doubles.toArray(calculateCoverages(centerSegment, targets));
-            final double[] rightCoverages = Doubles.toArray(calculateCoverages(rightSegment, targets));
+            final double[] leftCoverages = Doubles.toArray(makeCoverageList(leftSegment, targets));
+            final double[] centerCoverages = Doubles.toArray(makeCoverageList(centerSegment, targets));
+            final double[] rightCoverages = Doubles.toArray(makeCoverageList(rightSegment, targets));
 
             return calculateHodgesLehmannScores(leftCoverages, centerCoverages, rightCoverages);
         }
@@ -489,7 +489,7 @@ public final class SegmentMergeUtils {
          * Given a segment specified by an index, returns the small-segment merge scores for merging with adjacent
          * segments.
          * @param segments  list of segments
-         * @param genome    target-coverage and SNP-allele-count data to be segmented
+         * @param genome    linear target-coverage and SNP-allele-count data to be segmented
          * @param index     index of the center segment to consider
          * @return          pair of small-segment merge scores for merging with adjacent segments
          *                  (Double.NEGATIVE_INFINITY for adjacent segments that are on different chromosomes)
@@ -534,7 +534,7 @@ public final class SegmentMergeUtils {
          * If both adjacent segments are on different chromosomes than the specified segment, returns
          * MergeDirection.NONE.
          * @param segments  list of segments
-         * @param genome    target-coverage and SNP-allele-count data to be segmented
+         * @param genome    linear target-coverage and SNP-allele-count data to be segmented
          * @param index     index of the center segment to consider
          * @return          direction of the adjacent segment with higher small-segment merge score
          *                  (MergeDirection.NONE if both adjacent segments are on different chromosomes)
@@ -555,7 +555,7 @@ public final class SegmentMergeUtils {
             }
             if (Math.abs(scores.getLeft() - scores.getRight()) <= DOUBLE_EQUALITY_EPSILON) {
                 //in the unlikely event that all scores are equal, merge randomly
-                final boolean isLeftScoreHigher = RANDOM_GENERATOR.nextBoolean();
+                final boolean isLeftScoreHigher = randomGenerator.nextBoolean();
                 return isLeftScoreHigher ? MergeDirection.LEFT : MergeDirection.RIGHT;
             }
             throw new GATKException.ShouldNeverReachHereException("Something went wrong during small-segment merging.");

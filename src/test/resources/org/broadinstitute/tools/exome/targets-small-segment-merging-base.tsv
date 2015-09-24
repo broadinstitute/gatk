@@ -1,4 +1,4 @@
-name	contig	start	stop	TCGA-02-0001-01C-01D-0182-01
+name	contig	start	stop	test
 target	1	141	154	0.424586307669585
 target	1	165	199	0.37681431551643
 target	1	226	239	0.292595836824456

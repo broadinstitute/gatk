@@ -27,7 +27,8 @@ public final class SNPSegmenter {
         final File targetsFromSNPCountsFile = File.createTempFile("targets-from-snps", ".tsv");
 
         List<TargetCoverage> targetsFromSNPCounts = snpCounts.stream()
-                .map(count -> count.toLog2MinorAlleleFractionTargetCoverage("snp-target")).collect(Collectors.toList());
+                .map(count -> count.toMinorAlleleFractionTargetCoverage("snp-target" + count.getContig() + ":" +
+                        count.getStart() + "_" + count.getEnd())).collect(Collectors.toList());
 
         TargetCoverageUtils.writeTargetsWithCoverage(targetsFromSNPCountsFile, sampleName, targetsFromSNPCounts);
 

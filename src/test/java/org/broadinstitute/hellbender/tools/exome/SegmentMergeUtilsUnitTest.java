@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.log4testng.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,15 +33,15 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         Assert.assertEquals(SegmentMergeUtils.mergeSegments(segment5, segment4), new SimpleInterval("chr2", 1, 10));
     }
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testJoinWithRuntimeException() {
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testJoinWithIllegalArgumentException() {
         SegmentMergeUtils.mergeSegments(segment1, segment4);
     }
 
     /**
      * Tests for small-segment merging, along with methods for constructing test data.
      */
-    public static final class SmallSegments {
+    public static final class SmallSegmentsTestHelper {
         //segment is small if number of targets it contains is strictly less than SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD
         private static final int SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD = 3;
 
@@ -965,7 +966,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                                             final List<List<TargetCoverage>> targetCoverages,
                                             final List<List<AllelicCount>> snpCounts,
                                             final List<SimpleInterval> expectedMergedSegments) {
-            org.testng.log4testng.Logger.getLogger(getClass()).info("Testing case: " + caseDescription);
+            Logger.getLogger(getClass()).info("Testing case: " + caseDescription);
             final Genome genome = makeGenome(targetCoverages, snpCounts);
             final List<SimpleInterval> resultMergedSegments =
                     SegmentMergeUtils.mergeSmallSegments(segments, genome, SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);

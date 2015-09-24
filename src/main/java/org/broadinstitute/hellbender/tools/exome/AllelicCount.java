@@ -60,9 +60,9 @@ public final class AllelicCount implements Locatable {
     }
 
     /**
-     * Returns a TargetCoverage with coverage given by log_2 minor allele fraction.
+     * Returns a TargetCoverage with coverage given by minor allele fraction.
      * @param name  target name
-     * @return      TargetCoverage with coverage given by log_2 minor allele fraction
+     * @return      TargetCoverage with coverage given by minor allele fraction
      */
     public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name) {
         return new TargetCoverage(name, new SimpleInterval(interval), toMinorAlleleFraction());

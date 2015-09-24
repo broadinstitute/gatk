@@ -17,8 +17,8 @@ public final class Genome {
     private final String sampleName;
 
     /**
-     * Constructs a genome from lists containing log_2 target-coverage and SNP-allele-count data.
-     * @param targets       list of log_2 target coverages
+     * Constructs a genome from lists containing linear target-coverage and SNP-allele-count data.
+     * @param targets       list of linear target coverages
      * @param snps          list of SNP allele counts
      * @param sampleName    name of the sample
      */
@@ -30,8 +30,8 @@ public final class Genome {
     }
 
     /**
-     * Constructs a genome from files containing log_2 target-coverage and SNP-allele-count data.
-     * @param targetFile    log_2 target-coverage file
+     * Constructs a genome from files containing linear target-coverage and SNP-allele-count data.
+     * @param targetFile    linear target-coverage file
      * @param snpFile       SNP-allele-count file
      * @param sampleName    name of the sample
      */

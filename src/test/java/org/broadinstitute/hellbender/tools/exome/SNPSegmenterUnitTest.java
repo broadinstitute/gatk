@@ -19,11 +19,14 @@ import java.util.stream.Collectors;
 public final class SNPSegmenterUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/tools/exome/";
 
-    //Tests that segments are correctly determined using allelic counts from SNP sites.
-    //Segment-mean and target-number columns from expected segment file are not checked.
+    /**
+     * Tests that segments are correctly determined using allelic counts from SNP sites.
+     //Segment-mean and target-number columns from expected segment file are not checked.
+     * @throws IOException  if temporary target file cannot be created by {@link SNPSegmenter#writeSegmentFile}
+     */
     @Test
     public void testAllelicFractionBasedSegmentation() throws IOException {
-        final String sampleName = "TCGA-02-0001-01C-01D-0182-01";
+        final String sampleName = "test";
 
         final File snpFile = new File(TEST_SUB_DIR + "snps-simplified-for-allelic-fraction-segmentation.tsv");
         final List<AllelicCount> snpCounts = new AllelicCountCollection(snpFile).getCounts();
@@ -41,7 +44,9 @@ public final class SNPSegmenterUnitTest extends BaseTest {
         Assert.assertEquals(result, expected);
     }
 
-    //Tests that AllelicCounts are correctly transformed to alternate-allele fractions.
+    /**
+     * Tests that AllelicCounts are correctly transformed to alternate-allele fractions.
+     */
     @Test
     public void testTransformAllelicCountsToAltAlleleFractions() {
 
@@ -79,7 +84,9 @@ public final class SNPSegmenterUnitTest extends BaseTest {
         }
     }
 
-    //Tests that AllelicCounts are correctly transformed to target coverages with log_2 minor-allele fractions.
+    /**
+     * Tests that AllelicCounts are correctly transformed to target coverages with minor-allele fractions.
+     */
     @Test
     public void testTransformAllelicCountsToLog2MinorAlleleFractionTargetCoverages() {
 
