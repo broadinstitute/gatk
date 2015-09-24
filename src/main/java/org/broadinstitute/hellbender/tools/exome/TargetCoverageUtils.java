@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.collections4.set.UnmodifiableSet;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -11,7 +13,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public final class TargetCoverageUtils {
@@ -20,16 +24,25 @@ public final class TargetCoverageUtils {
     public static final String START_COLUMN = "start";
     public static final String END_COLUMN = "stop";
 
+    private static final String [] COLUMN_NAMES = {TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN};
+
     /**
      * read a list of targets with coverage from a tab-separated file with header line:
      * name contig  start   stop    <sample name>
-     * where the final column is numerical data, generally coverage or normalized coverage
+     * where the final column is numerical data, generally coverage or normalized coverage.
+     *
+     * There can only be one sample in the file.
+     *
+     * NOTE:  For now, the sample name must be the fifth column (index = 4).
      */
     public static List<TargetCoverage> readTargetsWithCoverage(final File targetsFile) {
         try (final TableReader<TargetCoverage> reader = TableUtils.reader(targetsFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN))
+                    if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN) || (columns.columnCount() < 5))
                         throw formatExceptionFactory.apply("Bad header");
+                    if (columns.columnCount() > 5)
+                        throw formatExceptionFactory.apply("Bad header -- more than one sample included in the input file.");
+
                     //return the lambda to translate dataLines into targets
                     return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
                             new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.getDouble(4));
@@ -40,39 +53,41 @@ public final class TargetCoverageUtils {
         }
     }
 
-    /**
-     * read a list of targets with coverage from a file into a TargetCollection
-     */
-    public static TargetCollection<TargetCoverage> readTargetsWithCoverageIntoTargetCollection(final File file) throws IOException {
-        final List<TargetCoverage> targetList = readTargetsWithCoverage(file);
-        return new HashedListTargetCollection<>(targetList);
-    }
-
     public static TargetCollection<TargetCoverage> readModeledTargetFileIntoTargetCollection(final File file) {
-        try (final TableReader<TargetCoverage> reader = TableUtils.reader(file,
-                (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN) || (columns.columnCount() < 5))
-                        throw formatExceptionFactory.apply("Bad header");
-                    if (columns.columnCount() > 5)
-                        throw formatExceptionFactory.apply("Bad header -- more than one sample in the input file.");
-                    //return the lambda to translate dataLines into targets
-                    //coverage is fifth column w/ header = <sample name>, so we use the column index.
-                    return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
-                            new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)),
-                            dataLine.getDouble(4));
-                })) {
-            return new HashedListTargetCollection<>(reader.stream().collect(Collectors.toList()));
-        } catch (final IOException | UncheckedIOException e) {
+        try {
+            final List<TargetCoverage> targetCoverages = readTargetsWithCoverage(file);
+            return new HashedListTargetCollection<>(targetCoverages);
+        } catch (final UncheckedIOException e) {
             throw new UserException.CouldNotReadInputFile(file, e);
         }
     }
 
-
     /**
-     * write a list of targets with coverage to file
+     * write a list of targets with coverage to file, without specifying any comments
+     *
      */
     public static void writeTargetsWithCoverage(final File outFile, final String sampleName,
                                                 final List<TargetCoverage> targets) {
+        writeTargetsWithCoverage(outFile, sampleName, targets, new String [0]);
+    }
+
+    /**
+     * write a list of targets with coverage to file
+     *
+     */
+    public static void writeTargetsWithCoverage(final File outFile, final String sampleName,
+                                                final List<TargetCoverage> targets, final String[] comments) {
+
+        Utils.nonNull(outFile, "Output file cannot be null.");
+        Utils.nonNull(sampleName, "Sample name cannot be null.");
+        Utils.nonNull(targets, "Targets cannot be null.");
+        Utils.nonNull(comments, "Comments cannot be null.");
+
+        final boolean areTargetIntervalsAllPopulated = targets.stream().allMatch(t -> t.getInterval() != null);
+        if (!areTargetIntervalsAllPopulated) {
+            throw new UserException("Cannot write target coverage file with any null intervals.");
+        }
+
         try (final TableWriter<TargetCoverage> writer = TableUtils.writer(outFile,
                 new TableColumnCollection(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, sampleName),
                 //lambda for filling an initially empty DataLine
@@ -85,6 +100,10 @@ public final class TargetCoverageUtils {
                     final double coverage = target.getCoverage();
                     dataLine.append(name, contig).append(start, end).append(coverage);
                 })) {
+
+            for (String comment : comments) {
+                writer.writeComment(comment);
+            }
             for (final TargetCoverage target : targets) {
                 writer.writeRecord(target);
             }
@@ -92,5 +111,4 @@ public final class TargetCoverageUtils {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
     }
-
 }

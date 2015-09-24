@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 enum TargetColumns {
-    NAME("name"), CONTIG("contig"), START("start"), END("stop");
+    NAME("NAME"), CONTIG("CONTIG"), START("START"), END("END");
 
     private String columnName;  //store the column names
 

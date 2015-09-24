@@ -122,7 +122,6 @@ public final class CoverageDropoutResult {
             for (CoverageDropoutResult coverageDropoutResult: coverageDropoutResults) {
                 writer.writeRecord(coverageDropoutResult);
             }
-            writer.close();
         } catch (final IOException ioe) {
             throw new UserException.CouldNotCreateOutputFile(outFile, ioe.getMessage());
         }

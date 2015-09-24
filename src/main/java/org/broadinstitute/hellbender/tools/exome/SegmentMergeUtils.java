@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import com.google.appengine.repackaged.com.google.common.primitives.Doubles;
+import com.google.common.primitives.Doubles;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
