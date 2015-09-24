@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents a segmented copy-number model of target-coverage and SNP allele-count data.
+ * Represents a segmented copy-number model of target-coverage and SNP-allele-count data.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -51,13 +51,13 @@ public final class SegmentedModel {
     }
 
     /**
-     * Returns a new SegmentedModel with the segments merged, using the algorithm implemented in
+     * Returns a new SegmentedModel with the small segments merged, using the algorithm implemented in
      * {@link SegmentMergeUtils}.
      * @param targetNumberThreshold number of targets below which a segment is considered small
-     * @return                      a new SegmentedModel with the segments merged
+     * @return                      a new SegmentedModel with the small segments merged
      */
     public SegmentedModel mergeSmallSegments(final int targetNumberThreshold) {
-        final List<SimpleInterval> mergedSegments = SegmentMergeUtils.mergeSmallSegments(segments, genome.getTargets(),
+        final List<SimpleInterval> mergedSegments = SegmentMergeUtils.mergeSmallSegments(segments, genome,
                 targetNumberThreshold);
         return new SegmentedModel(mergedSegments, genome);
     }

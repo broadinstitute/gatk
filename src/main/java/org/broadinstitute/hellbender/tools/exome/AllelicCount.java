@@ -19,6 +19,9 @@ public final class AllelicCount implements Locatable {
         if (refReadCount < 0 || altReadCount < 0) {
             throw new IllegalArgumentException("Can't construct AllelicCount with negative read counts.");
         }
+        if (refReadCount + altReadCount == 0) {
+            throw new IllegalArgumentException("Can't construct AllelicCount with zero total counts.");
+        }
         this.interval = interval;
         this.refReadCount = refReadCount;
         this.altReadCount = altReadCount;
@@ -40,16 +43,29 @@ public final class AllelicCount implements Locatable {
     public int getAltReadCount() {  return altReadCount;        }
 
     /**
-     * Returns a TargetCoverage with coverage given by log_2 minor allele fraction.
-     * @param name                  target name
-     * @return                      TargetCoverage with coverage given by log_2 minor allele fraction
+     * Returns the alternate-allele fraction.
+     * @return      alternate-allele fraction
      */
-    public TargetCoverage toTargetCoverage(final String name) {
-        final double minorAlleleFraction = Math.min(
-                (double) refReadCount / (refReadCount + altReadCount),
-                (double) altReadCount / (refReadCount + altReadCount));
-        final TargetCoverage target = new TargetCoverage(name, new SimpleInterval(interval), minorAlleleFraction);
-        return target;
+    public double toAltAlleleFraction() {
+        return (double) altReadCount / (refReadCount + altReadCount);
+    }
+
+    /**
+     * Returns the minor-allele fraction.
+     * @return      alternate-allele fraction
+     */
+    public double toMinorAlleleFraction() {
+        return Math.min((double) refReadCount / (refReadCount + altReadCount),
+                        (double) altReadCount / (refReadCount + altReadCount));
+    }
+
+    /**
+     * Returns a TargetCoverage with coverage given by minor allele fraction.
+     * @param name  target name
+     * @return      TargetCoverage with coverage given by minor allele fraction
+     */
+    public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name) {
+        return new TargetCoverage(name, new SimpleInterval(interval), toMinorAlleleFraction());
     }
 
     @Override

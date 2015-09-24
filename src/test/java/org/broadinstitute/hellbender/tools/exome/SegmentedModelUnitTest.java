@@ -26,29 +26,10 @@ public final class SegmentedModelUnitTest extends BaseTest {
             = new File(TEST_SUB_DIR + "segments-small-segment-merging-base.tsv");
     private static final File SEGMENT_FILE_SMALL_SEGMENT_MERGING_NO_SMALL
             = new File(TEST_SUB_DIR + "segments-small-segment-merging-no-small.tsv");
-    private static final String SAMPLE_NAME = "TCGA-02-0001-01C-01D-0182-01";
+    private static final String SAMPLE_NAME = "test";
 
     //a segment is small if number of targets it contains is strictly less than SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD
     private static final int SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD = 3;
-
-    private static final SimpleInterval segment1 = new SimpleInterval("chr1", 1, 4);
-    private static final SimpleInterval segment2 = new SimpleInterval("chr1", 5, 12);
-    private static final SimpleInterval segment3 = new SimpleInterval("chr1", 11, 20);
-    private static final SimpleInterval segment4 = new SimpleInterval("chr2", 1, 10);
-    private static final SimpleInterval segment5 = new SimpleInterval("chr2", 2, 9);
-
-    @Test
-    public void testMergeSegments() {
-        Assert.assertEquals(SegmentMergeUtils.mergeSegments(segment1, segment2), new SimpleInterval("chr1", 1, 12));
-        Assert.assertEquals(SegmentMergeUtils.mergeSegments(segment2, segment1), new SimpleInterval("chr1", 1, 12));
-        Assert.assertEquals(SegmentMergeUtils.mergeSegments(segment2, segment3), new SimpleInterval("chr1", 5, 20));
-        Assert.assertEquals(SegmentMergeUtils.mergeSegments(segment5, segment4), new SimpleInterval("chr2", 1, 10));
-    }
-
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testJoinWithRuntimeException() {
-        SegmentMergeUtils.mergeSegments(segment1, segment4);
-    }
 
     //the base test case starts with identical sets of 10 segments on chromosomes 1 & 3 (with 7 small segments each)
     //and a single small segment (containing only a single target) on chromosome 2

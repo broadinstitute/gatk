@@ -19,11 +19,14 @@ import java.util.stream.Collectors;
 public final class SNPSegmenterUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/tools/exome/";
 
-    //Tests that segments are correctly determined using allelic counts from SNP sites.
-    //Segment-mean and target-number columns from expected segment file are not checked.
+    /**
+     * Tests that segments are correctly determined using allelic counts from SNP sites.
+     //Segment-mean and target-number columns from expected segment file are not checked.
+     * @throws IOException  if temporary target file cannot be created by {@link SNPSegmenter#writeSegmentFile}
+     */
     @Test
     public void testAllelicFractionBasedSegmentation() throws IOException {
-        final String sampleName = "TCGA-02-0001-01C-01D-0182-01";
+        final String sampleName = "test";
 
         final File snpFile = new File(TEST_SUB_DIR + "snps-simplified-for-allelic-fraction-segmentation.tsv");
         final List<AllelicCount> snpCounts = new AllelicCountCollection(snpFile).getCounts();
@@ -41,19 +44,61 @@ public final class SNPSegmenterUnitTest extends BaseTest {
         Assert.assertEquals(result, expected);
     }
 
-    //Tests that AllelicCounts are correctly transformed.
+    /**
+     * Tests that AllelicCounts are correctly transformed to alternate-allele fractions.
+     */
     @Test
-    public void testTransformAllelicCounts() {
+    public void testTransformAllelicCountsToAltAlleleFractions() {
+
+        final File snpFile = new File(TEST_SUB_DIR + "snps-simplified-for-allelic-fraction-transformation.tsv");
+        final List<AllelicCount> snpCounts = new AllelicCountCollection(snpFile).getCounts();
+
+        final List<Double> resultFractions = snpCounts.stream().map(count -> count.toAltAlleleFraction())
+                .collect(Collectors.toList());
+
+        final List<Double> expectedFractions = Arrays.asList(
+                1.0000000000,
+                0.0000000000,
+                0.5172413793,
+                0.8181818182,
+                0.9668049793,
+                0.3064516129,
+                0.1590909091,
+                0.6050955414,
+                0.1818181818,
+                0.2767295597,
+                0.6521739130,
+                0.9166666667,
+                0.6470588235,
+                0.4687500000,
+                0.0512820513,
+                0.5964912281,
+                0.2608695652,
+                0.4856115108,
+                0.0202020202
+        );
+
+        Assert.assertEquals(resultFractions.size(), expectedFractions.size());
+        for (int index = 0; index < expectedFractions.size(); index++) {
+            Assert.assertEquals(resultFractions.get(index), expectedFractions.get(index), 0.0000000001);
+        }
+    }
+
+    /**
+     * Tests that AllelicCounts are correctly transformed to target coverages with minor-allele fractions.
+     */
+    @Test
+    public void testTransformAllelicCountsToLog2MinorAlleleFractionTargetCoverages() {
 
         final File snpFile = new File(TEST_SUB_DIR + "snps-simplified-for-allelic-fraction-transformation.tsv");
         final List<AllelicCount> snpCounts = new AllelicCountCollection(snpFile).getCounts();
 
         final List<TargetCoverage> resultTargets = snpCounts.stream()
-                .map(count -> count.toTargetCoverage("snp-target")).collect(Collectors.toList());
+                .map(count -> count.toMinorAlleleFractionTargetCoverage("snp-target")).collect(Collectors.toList());
 
         final List<TargetCoverage> expectedTargets = Arrays.asList(
-                new TargetCoverage("snp-target", new SimpleInterval("1", 212360, 212360), 0.12408759),
-                new TargetCoverage("snp-target", new SimpleInterval("1", 241501, 241501), 0.34020619),
+                new TargetCoverage("snp-target", new SimpleInterval("1", 212360, 212360), 0.00000000),
+                new TargetCoverage("snp-target", new SimpleInterval("1", 241501, 241501), 0.00000000),
                 new TargetCoverage("snp-target", new SimpleInterval("1", 242173, 242173), 0.48275862),
                 new TargetCoverage("snp-target", new SimpleInterval("1", 256641, 256641), 0.18181818),
                 new TargetCoverage("snp-target", new SimpleInterval("1", 261164, 261164), 0.03319502),
