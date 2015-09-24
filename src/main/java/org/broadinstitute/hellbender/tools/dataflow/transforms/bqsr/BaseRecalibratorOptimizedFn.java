@@ -1,13 +1,15 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr;
 
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
+import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ContextShard;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -21,12 +23,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
 
 /**
  * DoFn for BaseRecalibrator.
  * Takes in reads + contextual data (overlapping reference bases and variants), spits out RecalibrationTables.
  */
-public final class BaseRecalibratorOptimizedFn extends DoFnWLog<AddContextDataToReadOptimized.ContextShard, RecalibrationTables> {
+public final class BaseRecalibratorOptimizedFn extends DoFnWLog<ContextShard, RecalibrationTables> {
     private static final long serialVersionUID = 1L;
 
     private PCollectionView<SAMFileHeader> headerView;
@@ -92,7 +95,7 @@ public final class BaseRecalibratorOptimizedFn extends DoFnWLog<AddContextDataTo
             firstInBundle = false;
         }
 
-        AddContextDataToReadOptimized.ContextShard shard = c.element();
+        ContextShard shard = c.element();
 
         for (int i=0; i<shard.reads.size(); i++) {
             GATKRead read = shard.reads.get(i);

@@ -141,6 +141,10 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
          fullName = "workerMachineType", optional=true)
     protected String workerMachineType = "n1-standard-4";
 
+    @Argument(doc = "Dataflow endpoint to use",
+            fullName = "dataflowEndpoint", optional=true)
+    protected String dataflowEndpoint = null;
+
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster;
 
@@ -165,7 +169,7 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
         return null;
     }
 
-    private PipelineOptions buildPipelineOptions() {
+    protected PipelineOptions buildPipelineOptions() {
         if (sparkMaster == null) {
             // We create HellbenderDataflowOptions instead of DataflowPipelineOptions to keep track of the secrets
             // so we can read data from buckets.
@@ -174,6 +178,9 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             options.setStagingLocation(stagingLocation);
             options.setRunner(this.runnerType.runner);
             options.setWorkerMachineType(workerMachineType);
+            if (null!=dataflowEndpoint) {
+                options.setDataflowEndpoint(dataflowEndpoint);
+            }
             // this is new code. If there's a problem, odds are it's our fault and retrying won't help.
             options.setNumberOfRetries(0);
             if (numWorkers!=0) {

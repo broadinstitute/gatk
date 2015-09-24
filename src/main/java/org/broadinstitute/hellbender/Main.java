@@ -51,7 +51,7 @@ public class Main {
      */
     protected static List<String> getPackageList() {
         final List<String> packageList = new ArrayList<>();
-        packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
+        packageList.addAll(Arrays.asList("org.broadinstitute.hellbender", "local"));
         return packageList;
     }
 

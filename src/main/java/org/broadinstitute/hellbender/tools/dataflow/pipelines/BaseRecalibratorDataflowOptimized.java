@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ContextShard;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
@@ -127,6 +128,9 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String outputTablesPath = null;
 
+    @Argument(fullName="jobNameExtra", optional=true)
+    public String jobNameExtra = null;
+
     // ------------------------------------------
 
     private SAMFileHeader readsHeader;
@@ -135,7 +139,9 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
 
     @Override
     protected String jobName() {
-        return "BaseRecalibratorDataflowOptimized-"+ (100+new Random().nextInt(900));
+        String s = "";
+        if (jobNameExtra!=null) s = jobNameExtra+"-";
+        return "BRDFOpt-" + s + (100+new Random().nextInt(900));
     }
 
     @Override
@@ -186,14 +192,14 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
             List<Variant> variants = VariantsDataflowSource.getVariantsList(knownVariants);
 
             bunny.stepEnd("load variants");
-            ArrayList<AddContextDataToReadOptimized.ContextShard> shards = AddContextDataToReadOptimized.fillVariants(shardedIntervals, variants, margin);
+            ArrayList<ContextShard> shards = AddContextDataToReadOptimized.fillVariants(shardedIntervals, variants, margin);
             bunny.stepEnd("sharding variants");
 
             logger.info("Shipping "+shards.size()+" big shards.");
 
-            PCollection<AddContextDataToReadOptimized.ContextShard> shardsPCol = pipeline.apply(Create.of(shards));
+            PCollection<ContextShard> shardsPCol = pipeline.apply(Create.of(shards));
 
-            PCollection<AddContextDataToReadOptimized.ContextShard> shardsWithContext = shardsPCol
+            PCollection<ContextShard> shardsWithContext = shardsPCol
                 // big shards of variants -> smaller shards with variants, reads. We take the opportunity to filter the reads as close to the source as possible.
                 .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, readFilterToApply)))
                 // add ref bases to the shards.

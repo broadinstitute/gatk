@@ -47,7 +47,7 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
     }
 
 
-    static class LazyBAMRecordFactory implements SAMRecordFactory {
+    public static class LazyBAMRecordFactory implements SAMRecordFactory {
         @Override public SAMRecord createSAMRecord(SAMFileHeader hdr) {
             throw new UnsupportedOperationException(
                     "LazyBAMRecordFactory can only create BAM records");
@@ -93,5 +93,6 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
         public void setMateReferenceIndex(final int referenceIndex) {
             mMateReferenceIndex = referenceIndex;
         }
+
     }
 }
