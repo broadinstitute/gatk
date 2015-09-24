@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -28,10 +27,12 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
                      .set("spark.executor.userClassPathFirst", "true")
                      .set("spark.io.compression.codec", "lzf");
 
-        runPipeline(ctx);
-        afterPipeline(ctx);
-
-        return null;
+        try{
+            runPipeline(ctx);
+            return null;
+        } finally {
+            afterPipeline(ctx);
+        }
     }
 
     /**
@@ -51,17 +52,18 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     // ---------------------------------------------------
     // Functions meant for overriding
 
+    /**
+     * Runs the pipeline.
+     */
     protected abstract void runPipeline(final JavaSparkContext ctx);
 
     /**
-     * Override this to run code after the pipeline returns.
+     * Extend this method to run code after the pipeline returns.
+     * This method is called whether or not the runPipeline call succeeded.
      */
     protected void afterPipeline(final JavaSparkContext ctx) {
         SparkContextFactory.stopSparkContext(ctx);
     }
 
     protected abstract String getProgramName();
-    // ---------------------------------------------------
-    // Helpers
-
 }
