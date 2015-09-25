@@ -145,6 +145,11 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             fullName = "dataflowEndpoint", optional=true)
     protected String dataflowEndpoint = null;
 
+    @Argument(doc = "GCE availability zone for launching Dataflow workers",
+            fullName = "zone", optional=true)
+    protected String zone = null;
+
+
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster;
 
@@ -180,6 +185,9 @@ public abstract class DataflowCommandLineProgram extends CommandLineProgram impl
             options.setWorkerMachineType(workerMachineType);
             if (null!=dataflowEndpoint) {
                 options.setDataflowEndpoint(dataflowEndpoint);
+            }
+            if (null!=zone) {
+                options.setZone(zone);
             }
             // this is new code. If there's a problem, odds are it's our fault and retrying won't help.
             options.setNumberOfRetries(0);
