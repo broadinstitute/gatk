@@ -124,7 +124,7 @@ public final class CollectWgsMetrics extends PicardCommandLineProgram {
         // Setup all the inputs
         final ProgressLogger progress = new ProgressLogger(logger, 10000000, "Processed", "loci");
         final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
-        final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
+        final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).validationStringency(VALIDATION_STRINGENCY).open(INPUT);
 
         final SamLocusIterator iterator = new SamLocusIterator(in);
         final List<SamRecordFilter> filters = new ArrayList<>();
