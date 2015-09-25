@@ -27,7 +27,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
-import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
+import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -154,7 +154,7 @@ public class AddContextDataToReadOptimizedUnitTest extends BaseTest implements S
 
     private ArrayList<Variant> makeTestVariant(int begin, int end) {
         return Lists.newArrayList(
-                new SkeletonVariant(new SimpleInterval("17", begin, end), true, false, new UUID(begin, end))
+                new MinimalVariant(new SimpleInterval("17", begin, end), true, false, new UUID(begin, end))
         );
     }
 

@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -27,7 +28,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * RefAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works

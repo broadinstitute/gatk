@@ -154,11 +154,18 @@ public class ReadsSparkSink {
             return new IteratorIterable<>(tuple2Iterator);
         }).mapToPair(t -> t);
 
+        deleteHadoopFile(outputFile);
         finalOut.saveAsNewAPIHadoopFile(outputFile, GATKRead.class, SAMRecordWritable.class, SparkBAMOutputFormat.class);
-        RenameHadoopSingleShard(outputFile);
+        renameHadoopSingleShard(outputFile);
     }
 
-    private static void RenameHadoopSingleShard(String outputFile) throws IOException {
+    private static void deleteHadoopFile(String fileToObliterate) throws IOException {
+        Configuration conf = new Configuration();
+        FileSystem fs = FileSystem.get(conf);
+        fs.delete(new Path(fileToObliterate),true);
+    }
+
+    private static void renameHadoopSingleShard(String outputFile) throws IOException {
         // At this point, the file is in outputFile/part-r-0000. We move it out of that dir and into it's own well-named
         // file.  This will not work if the last step was a merge (assuming saveAsNewAPIHadoopFile doesn't cause the
         // last step to be a reduce).

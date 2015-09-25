@@ -31,12 +31,15 @@ public final class VariantsSparkSource {
      * @return JavaRDD<Variant> of variants from all files.
      */
     public JavaRDD<Variant> getParallelVariants(final List<String> vcfs) {
+        throw new GATKException("This method does not currently work (issue with union()");
+        /*
         JavaRDD<Variant> rddVariants = ctx.emptyRDD();
         for (String vcf : vcfs) {
             JavaRDD<Variant> variants = getParallelVariants(vcf);
             rddVariants.union(variants);
         }
         return rddVariants;
+        */
     }
 
     /**

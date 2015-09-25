@@ -6,6 +6,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -13,7 +14,6 @@ import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
@@ -21,6 +21,8 @@ import java.util.NoSuchElementException;
  * The variants are obtained from a local file (later a GCS Bucket). The reference bases come from the Google Genomics API.
  *
  * This transform is intended for direct use in pipelines.
+ *
+ * This transform will filter out any unmapped reads.
  *
  * The reference bases paired with each read can be customized by passing in a reference window function
  * inside the {@link ReferenceDataflowSource} argument to {@link #add}. See
@@ -30,9 +32,13 @@ public class AddContextDataToReadSpark {
     public static JavaPairRDD<GATKRead, ReadContextData> add(
             final JavaRDD<GATKRead> reads, final ReferenceDataflowSource referenceDataflowSource,
             final JavaRDD<Variant> variants) {
+
+        // This transform can currently only handle mapped reads
+        JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
+
         // Join Reads and Variants, Reads and ReferenceBases
-        JavaPairRDD<GATKRead, Iterable<Variant>> readiVariants = JoinReadsWithVariants.join(reads, variants);
-        JavaPairRDD<GATKRead, ReferenceBases> readRefBases = JoinReadsWithRefBases.addBases(referenceDataflowSource, reads);
+        JavaPairRDD<GATKRead, Iterable<Variant>> readiVariants = JoinReadsWithVariants.join(mappedReads, variants);
+        JavaPairRDD<GATKRead, ReferenceBases> readRefBases = JoinReadsWithRefBases.addBases(referenceDataflowSource, mappedReads);
 
         // For testing we want to know that the reads from the KVs coming back from JoinReadsWithVariants.Join
         // and JoinReadsWithRefBases.Pair are the same reads from "reads".
@@ -40,7 +46,7 @@ public class AddContextDataToReadSpark {
         assert assertsEnabled = true; // Intentional side-effect!!!
         // Now assertsEnabled is set to the correct value
         if (assertsEnabled) {
-            assertSameReads(reads, readRefBases, readiVariants);
+            assertSameReads(mappedReads, readRefBases, readiVariants);
         }
 
         JavaPairRDD<GATKRead, Tuple2<Iterable<Iterable<Variant>>, Iterable<ReferenceBases>>> cogroup = readiVariants.cogroup(readRefBases);
@@ -78,7 +84,7 @@ public class AddContextDataToReadSpark {
                                         final JavaPairRDD<GATKRead, ReferenceBases> readRefBases,
                                         final JavaPairRDD<GATKRead, Iterable<Variant>> readiVariants) {
 
-        // We want to verify that the reads are teh same for each collection and that there are no duplicates
+        // We want to verify that the reads are the same for each collection and that there are no duplicates
         // in any collection.
 
         // Collect all reads (with potential duplicates) in allReads. We expect there to be 3x the unique reads.

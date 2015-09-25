@@ -28,7 +28,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.SkeletonVariant;
+import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
@@ -38,7 +38,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.UUID;
 
@@ -73,7 +72,7 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(UUID.class, UUIDCoder.CODER);
         p.getCoderRegistry().registerCoder(Variant.class, new VariantCoder());
         p.getCoderRegistry().registerCoder(VariantContextVariantAdapter.class, SerializableCoder.of(VariantContextVariantAdapter.class));
-        p.getCoderRegistry().registerCoder(SkeletonVariant.class, SerializableCoder.of(SkeletonVariant.class));
+        p.getCoderRegistry().registerCoder(MinimalVariant.class, SerializableCoder.of(MinimalVariant.class));
         p.getCoderRegistry().registerCoder(RefAPISource.class, SerializableCoder.of(RefAPISource.class));
         p.getCoderRegistry().registerCoder(ReferenceDataflowSource.class, SerializableCoder.of(ReferenceDataflowSource.class));
         p.getCoderRegistry().registerCoder(ReferenceBases.class, SerializableCoder.of(ReferenceBases.class));

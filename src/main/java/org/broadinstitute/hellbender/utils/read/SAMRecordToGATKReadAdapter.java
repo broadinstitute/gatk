@@ -2,7 +2,11 @@ package org.broadinstitute.hellbender.utils.read;
 
 
 import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -41,6 +45,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
      * @return adapted Read
      */
     public static GATKRead sparkReadAdapter(final SAMRecord samRecord) {
+        samRecord.setHeader(null);
         return new SAMRecordToGATKReadAdapter(samRecord, new UUID(0L, 0L));
     }
 
@@ -554,6 +559,10 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
             return Objects.toString(samRecord);
         }
         return "SAMRecord with no bases";
+    }
+
+    public boolean hasHeader() {
+        return samRecord.getHeader() != null;
     }
 
     public void setHeader(SAMFileHeader header) {

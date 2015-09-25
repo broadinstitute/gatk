@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -22,10 +24,28 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     @Override
     protected Object doWork() {
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkMaster);
+        ctx.getConf().set("spark.driver.userClassPathFirst", "true")
+                     .set("spark.executor.userClassPathFirst", "true")
+                     .set("spark.io.compression.codec", "lzf");
+
         runPipeline(ctx);
         afterPipeline(ctx);
 
         return null;
+    }
+
+    /**
+     * @return a GCSOptions object authenticated with apiKey suitable for accessing files in GCS,
+     *         or null if no apiKey is present.
+     */
+    protected GCSOptions getAuthenticatedGCSOptions() {
+        if ( apiKey == null ) {
+            return null;
+        }
+
+        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+        options.setApiKey(apiKey);
+        return options;
     }
 
     // ---------------------------------------------------

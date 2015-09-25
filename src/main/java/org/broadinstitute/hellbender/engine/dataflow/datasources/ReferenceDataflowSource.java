@@ -5,6 +5,7 @@ import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
@@ -79,7 +80,12 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
      * @return sequence dictionary for the reference
      */
     @Override
-    public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-        return referenceSource.getReferenceSequenceDictionary(optReadSequenceDictionaryToMatch);
+    public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) {
+        try {
+            return referenceSource.getReferenceSequenceDictionary(optReadSequenceDictionaryToMatch);
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Error getting reference sequence dictionary");
+        }
     }
 }
