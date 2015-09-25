@@ -67,7 +67,7 @@ public final class HDF5PoN implements PoN {
     /**
      * Create a new PoN interface to a HDF5 file.
      * @param file the underlying HDF5 file.
-     * @thrwos IllegalArgumentException if {@code file} is {@code null}.
+     * @throws IllegalArgumentException if {@code file} is {@code null}.
      */
     public HDF5PoN(final HDF5File file) {
         Utils.nonNull(file, "the input file must not be null");
@@ -152,13 +152,13 @@ public final class HDF5PoN implements PoN {
     }
 
     @Override
-    public RealMatrix getNormalCounts() {
+    public RealMatrix getNormalizedCounts() {
         return readMatrixAndCheckDimensions(NORMALIZED_PCOV_PATH, targetNames.get().size(),
                 sampleNames.get().size());
     }
 
     @Override
-    public RealMatrix getLogNormalCounts() {
+    public RealMatrix getLogNormalizedCounts() {
         return readMatrixAndCheckDimensions(LOG_NORMALS_PATH, getPanelTargetNames().size(),
                 getPanelSampleNames().size());
     }
@@ -249,7 +249,7 @@ public final class HDF5PoN implements PoN {
      * a HDF5 double, so we are keeping the tradition here.
      *
      * @param version the new version value.
-     * @thorws UnsupportedOperationException if this PoN instance is read-only access.
+     * @throws UnsupportedOperationException if this PoN instance is read-only access.
      */
     public void setVersion(final double version) {
         file.makeDouble(VERSION_PATH, version);

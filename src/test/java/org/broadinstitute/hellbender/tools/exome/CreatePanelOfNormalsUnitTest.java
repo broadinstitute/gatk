@@ -4,6 +4,7 @@ import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.SingularValueDecomposition;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
@@ -13,14 +14,12 @@ import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.spi.AbstractLogger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -36,7 +35,7 @@ public class CreatePanelOfNormalsUnitTest {
     @Test(dataProvider="normalizeReadCountByTargetFactorsData")
     public void testNormalizeReadCountByTargetFactors(final ReadCountCollection readCount, final double[] targetFactors) {
         final RealMatrix before = readCount.counts().copy();
-        CreatePanelOfNormals.normalizeReadCountByTargetFactors(readCount, targetFactors);
+        CreatePanelOfNormals.normalizeReadCountsByTargetFactors(readCount, targetFactors);
         final RealMatrix after = readCount.counts();
         Assert.assertEquals(before.getColumnDimension(), after.getColumnDimension());
         Assert.assertEquals(before.getRowDimension(), after.getRowDimension());
@@ -69,21 +68,21 @@ public class CreatePanelOfNormalsUnitTest {
             }
             final ReadCountCollection rc = CreatePanelOfNormals.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
             Assert.assertEquals(rc.columnNames().size(), expectedRemainingCount);
-            final int[] newIndeces = new int[expectedRemainingCount];
+            final int[] newIndices = new int[expectedRemainingCount];
             int nextIndex = 0;
             for (int i = 0; i < readCount.columnNames().size(); i++) {
                 final String name = readCount.columnNames().get(i);
                 final int newIndex = rc.columnNames().indexOf(name);
                 if (numberOfZeros[i] <= maxZeros) {
                     Assert.assertTrue(newIndex >= 0);
-                    newIndeces[nextIndex++] = i;
+                    newIndices[nextIndex++] = i;
                 } else {
                     Assert.assertEquals(newIndex, -1);
                 }
             }
             Assert.assertEquals(nextIndex, expectedRemainingCount);
-            for (int i = 1; i < newIndeces.length; i++) {
-                Assert.assertTrue(newIndeces[i - 1] < newIndeces[i]);
+            for (int i = 1; i < newIndices.length; i++) {
+                Assert.assertTrue(newIndices[i - 1] < newIndices[i]);
             }
         }
     }
@@ -292,8 +291,8 @@ public class CreatePanelOfNormalsUnitTest {
         Assert.assertEquals(result.reduced.getRowDimension(), counts.getRowDimension());
         final int eigenSamples = result.reduced.getColumnDimension();
         final Mean mean = new Mean();
-        final double meanSingleValue = mean.evaluate(result.allSingularValues);
-        final double threshold = CreatePanelOfNormals.JOLLIFES_RULE_MEAN_FACTOR * meanSingleValue;
+        final double meanSingularValue = mean.evaluate(result.allSingularValues);
+        final double threshold = CreatePanelOfNormals.JOLLIFES_RULE_MEAN_FACTOR * meanSingularValue;
         final int expectedEigenSamples = (int) DoubleStream.of(result.allSingularValues).filter(d -> d >= threshold).count();
         Assert.assertTrue(eigenSamples <= counts.getColumnDimension());
         Assert.assertEquals(eigenSamples, expectedEigenSamples);
@@ -500,6 +499,49 @@ public class CreatePanelOfNormalsUnitTest {
                            new double[] { 11.1, 22.2, 33.3 } }, false))
         , new double[] { 100.0, 200.0, 300.0 }});
         return result.toArray(new Object[1][]);
+    }
+
+    @DataProvider(name="singleEigenExample")
+    public Object[][] simpleEigenExampleData() {
+        final List<Object[]> result = new ArrayList<>();
+        final int NUM_TARGETS = 10;
+        final int NUM_SAMPLES = 5;
+        final List<Target> targets = IntStream.range(0, NUM_TARGETS).boxed()
+                .map(i -> new Target("target_" + i, new SimpleInterval("1", 100*i + 1, 100*i + 5)))
+                .collect(Collectors.toList());
+        final List<String> columnNames = IntStream.range(0, NUM_SAMPLES).boxed()
+                .map(i -> "sample_" + i)
+                .collect(Collectors.toList());
+
+        double [][] countsArray = new double[NUM_TARGETS][NUM_SAMPLES];
+        final RealMatrix counts = new Array2DRowRealMatrix(countsArray);
+
+        // All row data is the same
+        final double [] rowData = IntStream.range(0, NUM_SAMPLES).boxed()
+                .mapToDouble(i -> i).toArray();
+        for (int i =0; i < NUM_TARGETS; i ++) {
+            counts.setRow(i, rowData);
+        }
+
+        new ReadCountCollection(
+                SetUniqueList.setUniqueList(targets),
+                SetUniqueList.setUniqueList(columnNames),
+                counts);
+
+        result.add(new Object[] {new ReadCountCollection(
+                SetUniqueList.setUniqueList(targets),
+                SetUniqueList.setUniqueList(columnNames),
+                counts)});
+        return result.toArray(new Object[result.size()][]);
+    }
+
+    @Test(dataProvider = "singleEigenExample" )
+    public void testDetermineNumberOfEigenSamples(final ReadCountCollection logNormals){
+
+        final SingularValueDecomposition logNormalsSVD = new SingularValueDecomposition(logNormals.counts());
+
+        final int actualNumber = CreatePanelOfNormals.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
+        Assert.assertEquals(actualNumber, 1);
     }
 
     @SuppressWarnings("serial")

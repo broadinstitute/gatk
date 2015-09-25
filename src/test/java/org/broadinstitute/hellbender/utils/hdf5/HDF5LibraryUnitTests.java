@@ -130,7 +130,7 @@ public final class HDF5LibraryUnitTests {
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.getTargetNames();
         final List<String> samples = pon.getSampleNames();
-        final RealMatrix actual = pon.getNormalCounts();
+        final RealMatrix actual = pon.getNormalizedCounts();
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertEquals(actual.getColumnDimension(), samples.size());
@@ -144,7 +144,7 @@ public final class HDF5LibraryUnitTests {
         final PoN pon = new HDF5PoN(reader);
         final List<String> targets = pon.getTargetNames();
         final List<String> samples = pon.getPanelSampleNames();
-        final RealMatrix actual = pon.getLogNormalCounts();
+        final RealMatrix actual = pon.getLogNormalizedCounts();
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertEquals(actual.getColumnDimension(), samples.size());

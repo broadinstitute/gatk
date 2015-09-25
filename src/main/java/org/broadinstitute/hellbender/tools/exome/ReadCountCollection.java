@@ -86,10 +86,10 @@ public final class ReadCountCollection {
     }
 
     /**
-     * Creates a new collection without verifying field values.
+     * Creates a new collection without verifying field values and without copying inputs.
      *
      * <p>
-     * The field values a supposed to be compatible with a consistent state.
+     * The field values are supposed to be compatible with a consistent state.
      * </p>
      * @param targets target list, not a {@code null}, does not contain any {@code null}, does not contain repeats.
      * @param columnNames column name list, not a {@code null}, does not contain any {@code null}, does not contain repeats.
@@ -163,14 +163,15 @@ public final class ReadCountCollection {
         if (targetsToKeep.isEmpty()) {
             throw new IllegalArgumentException("the input target subset size must be greater than 0");
         }
+        if (targetsToKeep.size() > targets.size()) {
+            throw unknownTargetsToKeep(targetsToKeep);
+        }
         if (targetsToKeep.size() == targets.size())  {
             if (targets.stream().anyMatch(name -> !targetsToKeep.contains(name))) {
                 throw unknownTargetsToKeep(targetsToKeep);
             } else {
                 return new ReadCountCollection(targets, columnNames, counts.copy());
             }
-        } else if (targetsToKeep.size() > targets.size()) {
-            throw unknownTargetsToKeep(targetsToKeep);
         }
         final int[] targetsToKeepIndices = new int[targetsToKeep.size()];
         int nextIndex = 0;
@@ -179,14 +180,16 @@ public final class ReadCountCollection {
             final Target target = targets.get(i);
             if (!targetsToKeep.contains(target)) {
                 continue;
-            } else if (nextIndex >= targetsToKeepIndices.length) {
+            }
+
+            if (nextIndex >= targetsToKeepIndices.length) {
                 throw unknownTargetsToKeep(targetsToKeep);
             } else {
                 targetsToKeepIndices[nextIndex++] = i;
                 resultTargets.add(target);
             }
         }
-        // check that are targets to be kept where found in this collection:
+        // check that all targets to be kept where found in this collection:
         if (nextIndex < targetsToKeep.size()) {
             throw unknownTargetsToKeep(targetsToKeep);
         }
@@ -209,9 +212,12 @@ public final class ReadCountCollection {
      * @return never {@code null}.
      */
     public ReadCountCollection subsetColumns(final Set<String> columnsToKeep) {
-        Utils.nonNull(columnsToKeep, "the input columns to keep set cannot be null");
+        Utils.nonNull(columnsToKeep, "the set of input columns to keep cannot be null.");
         if (columnsToKeep.isEmpty()) {
             throw new IllegalArgumentException("the number of columns to keep must be greater than 0");
+        }
+        if (columnsToKeep.size() > columnNames.size()) {
+            throw unknownColumnToKeepNames(columnsToKeep);
         }
         if (columnsToKeep.size() == columnNames.size())  {
             if (columnNames.stream().anyMatch(name -> !columnsToKeep.contains(name))) {
@@ -219,8 +225,6 @@ public final class ReadCountCollection {
             } else {
                 return new ReadCountCollection(targets, columnNames, counts.copy());
             }
-        } else if (columnsToKeep.size() > columnNames.size()) {
-            throw unknownColumnToKeepNames(columnsToKeep);
         }
         final int[] columnsToKeepIndices = new int[columnsToKeep.size()];
         int nextIndex = 0;
@@ -229,7 +233,8 @@ public final class ReadCountCollection {
             final String column = columnNames.get(i);
             if (!columnsToKeep.contains(column)) {
                 continue;
-            } else if (nextIndex >= columnsToKeepIndices.length) {
+            }
+            if (nextIndex >= columnsToKeepIndices.length) {
                 throw unknownColumnToKeepNames(columnsToKeep);
             } else {
                 columnsToKeepIndices[nextIndex++] = i;

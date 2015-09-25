@@ -105,7 +105,7 @@ public interface PoN {
      * @return never {@code null}. A matrix with {@code TxS} dimensions where {@code T}
      * is the number of targets and {@code S} the number of samples in this PoN.
      */
-    RealMatrix getNormalCounts();
+    RealMatrix getNormalizedCounts();
 
     /**
      * Returns the PoN version.
@@ -135,7 +135,7 @@ public interface PoN {
      * @return never {@code null}, a matrix with dimensions {@code SxT} where {@code T} is the number of targets and
      * {@code S} the number of samples considered for the log-normal.
      */
-    RealMatrix getLogNormalCounts();
+    RealMatrix getLogNormalizedCounts();
 
     /**
      * Returns the log-normal pseudo-inverse matrix.
@@ -255,7 +255,7 @@ public interface PoN {
         if (input.getColumnDimension() != betaHats.getColumnDimension()) {
             throw new IllegalArgumentException(String.format("the input count column count (%d) does not match the number of columns in the beta-hats (%d)", input.getColumnDimension(), betaHats.getColumnDimension()));
         }
-        final RealMatrix normals = useReduced ? getReducedPanelCounts() : getLogNormalCounts();
+        final RealMatrix normals = useReduced ? getReducedPanelCounts() : getLogNormalizedCounts();
         if (normals.getColumnDimension() != betaHats.getRowDimension()) {
             throw new IllegalArgumentException(String.format("beta-hats component count (%d) does not match the number of samples in the PoN (%d)", normals.getRowDimension(), normals.getColumnDimension()));
         }

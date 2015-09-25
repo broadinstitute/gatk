@@ -33,6 +33,7 @@ counts = noise.factor * noise.dispersion * noise.scale + noise.scale +
       rep.int(sample.factor * sample.scale * sample.dispersion + sample.scale, target.n) +
   unlist(lapply(1:target.n, function(i) rep.int(target.factor[i] * target.scale * target.dispersion + target.scale , sample.n)))
 
+# Normalize by sample totals
 counts.mat = matrix(counts, nrow=target.n, ncol=sample.n, byrow=T)
 col.sums = colSums(counts.mat)
 col.sums.mat = matrix(rep.int(col.sums, nrow(counts.mat)), byrow=T, nrow=nrow(counts.mat))

@@ -215,9 +215,9 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             Assert.assertEquals(leftPoN.getSampleNames(), rightPoN.getSampleNames());
             Assert.assertEquals(new LinkedHashSet<>(leftPoN.getTargetNames()), new LinkedHashSet<>(rightPoN.getTargetNames()));
             assertEqualsMatrix(leftPoN.getTargetFactors(), rightPoN.getTargetFactors());
-            assertEqualsMatrix(leftPoN.getLogNormalCounts(), rightPoN.getLogNormalCounts());
+            assertEqualsMatrix(leftPoN.getLogNormalizedCounts(), rightPoN.getLogNormalizedCounts());
             assertEqualsMatrix(leftPoN.getLogNormalPInverseCounts(), rightPoN.getLogNormalPInverseCounts());
-            assertEqualsMatrix(leftPoN.getNormalCounts(), rightPoN.getNormalCounts());
+            assertEqualsMatrix(leftPoN.getNormalizedCounts(), rightPoN.getNormalizedCounts());
             assertEqualsMatrix(leftPoN.getReducedPanelCounts(), rightPoN.getReducedPanelCounts());
             assertEqualsMatrix(leftPoN.getReducedPanelPInverseCounts(), rightPoN.getReducedPanelPInverseCounts());
             Assert.assertEquals(leftPoN.getPanelSampleNames(), rightPoN.getPanelSampleNames());

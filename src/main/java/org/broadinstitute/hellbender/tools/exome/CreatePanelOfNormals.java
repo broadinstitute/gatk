@@ -181,7 +181,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
 
 
     // This option is useful to test performance when the HDF5 lib is not
-    // present for what-ever reason.
+    // present for whatever reason.
     @Argument(
             doc = "Dry-run, skip the creation of the HDF5 output file.",
             shortName = DRY_RUN_SHORT_NAME,
@@ -196,7 +196,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
         final OptionalInt numberOfEigenSamples = calculatePreferredNumberOfEigenSamples();
 
         final double targetFactorPercentileThreshold = calculateTargetFactorsPercentileThreshold();
-        final double extremeColumnMedianCountPercentileThreshold = calculateExtremeColumnMedianCountPercentileThreshold();
+        final double extremeColumnMedianCountPercentileThreshold = calculateExtremeColumnMedianCountsPercentileThreshold();
         final double countTruncatePercentile = checkCountTruncatePercentile();
 
         // Remove low coverage targets:
@@ -206,7 +206,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
         final double[] targetFactors = inputSubsetByUsableTargets.getRight();
 
         // Normalize read-counts by removing the target factor component:
-        normalizeReadCountByTargetFactors(readCounts, targetFactors);
+        normalizeReadCountsByTargetFactors(readCounts, targetFactors);
 
         // Create and write the first part of the PoN HDF5 file.
         if (!dryRun) {
@@ -221,7 +221,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
         readCounts = removeTargetsWithTooManyZeros(readCounts, maximumTargetZeros, logger);
         readCounts = removeColumnsWithExtremeMedianCounts(readCounts, extremeColumnMedianCountPercentileThreshold, logger);
 
-        // Impute zero counts to be sames as the median for the same target.
+        // Impute zero counts to be same as the median for the same target.
         // This happens in-place.
         imputeZerosCounts(readCounts, logger);
 
@@ -358,7 +358,8 @@ public class CreatePanelOfNormals extends CommandLineProgram {
      * @param logNormalsSVD SVD results on the log-normal counts.
      * @return always greater than 0.
      */
-    private static int determineNumberOfEigenSamples(final OptionalInt requestedNumberOfEigenSamples, final int numberOfCountColumns, final SingularValueDecomposition logNormalsSVD, final Logger logger) {
+    @VisibleForTesting
+    static int determineNumberOfEigenSamples(final OptionalInt requestedNumberOfEigenSamples, final int numberOfCountColumns, final SingularValueDecomposition logNormalsSVD, final Logger logger) {
         final int numberOfEigenSamples;
         if (requestedNumberOfEigenSamples.isPresent()) {
             if (requestedNumberOfEigenSamples.getAsInt() > numberOfCountColumns) {
@@ -729,7 +730,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
      * @param targetFactors the target factors
      */
     @VisibleForTesting
-    static void normalizeReadCountByTargetFactors(final ReadCountCollection readCounts, final double[] targetFactors) {
+    static void normalizeReadCountsByTargetFactors(final ReadCountCollection readCounts, final double[] targetFactors) {
         final RealMatrix counts = readCounts.counts();
         final int targetCount = counts.getRowDimension();
         final int columnCount = counts.getColumnDimension();
@@ -742,7 +743,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
         }
     }
 
-    private double calculateExtremeColumnMedianCountPercentileThreshold() {
+    private double calculateExtremeColumnMedianCountsPercentileThreshold() {
         if (columnExtremeThresholdPercentile < 0 || columnExtremeThresholdPercentile > 50 || Double.isNaN(columnExtremeThresholdPercentile)) {
             throw new UserException.BadArgumentValue(COLUMN_EXTREME_THRESHOLD_PERCENTILE_FULL_NAME, "the value must be in the range [0, 50]");
         }
