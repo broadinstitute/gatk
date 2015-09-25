@@ -15,8 +15,7 @@ public class ApplyBQSRSparkFn {
         return reads.map(read -> {
             RecalibrationReport report = reportBroadcast.getValue();
             BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, args);
-            // TODO: remove protective copy?
-            return transformer.apply(read.copy());
+            return transformer.apply(read);
         });
     }
 }

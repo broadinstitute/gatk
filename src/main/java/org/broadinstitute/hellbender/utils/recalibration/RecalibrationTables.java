@@ -149,6 +149,13 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
         return this;
     }
 
+    /**
+     * Combines the two tables into a new table (allocating a new table in the process)
+     *
+     * @param left first table to combine
+     * @param right second table to combine
+     * @return a new table with the merged contents of left and right
+     */
     public static RecalibrationTables safeCombine(final RecalibrationTables left, final RecalibrationTables right){
         Utils.nonNull(left);
         Utils.nonNull(right);
@@ -157,6 +164,20 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
         newTable.combine(left);
         newTable.combine(right);
         return newTable;
+    }
+
+    /**
+     * Combines the right table into the left table, in-place (without making a copy)
+     *
+     * @param left first table to combine
+     * @param right second table to combine
+     * @return modified version of left with the contents of right incorporated into it
+     */
+    public static RecalibrationTables inPlaceCombine(final RecalibrationTables left, final RecalibrationTables right){
+        Utils.nonNull(left);
+        Utils.nonNull(right);
+
+        return left.combine(right);
     }
 
     //XXX this should not be accessible by index
