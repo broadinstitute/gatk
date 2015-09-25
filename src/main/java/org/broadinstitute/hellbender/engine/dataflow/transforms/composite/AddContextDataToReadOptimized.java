@@ -133,6 +133,7 @@ public class AddContextDataToReadOptimized {
 
             @Override
             public void processElement(ProcessContext c) throws Exception {
+                int maxReadsPerShard = 10_000;
                 ContextShard shard = c.element();
                 ArrayList<SimpleInterval> ints =new ArrayList<>();
                 ints.add(shard.interval);
@@ -179,6 +180,18 @@ public class AddContextDataToReadOptimized {
                         // the header slows serialization too much
                         g.setHeader(null);
                         readsSoFar.add(g);
+                        if (readsSoFar.size()>=maxReadsPerShard) {
+                            log.info("Too many reads in this shard, splitting it."+readsSoFar.size());
+                            // ship this one.
+                            SimpleInterval thisInterval = new SimpleInterval(currentSubShard.getContig(), currentSubShard.getStart(), g.getStart()+margin);
+                            // we grow the interval by "margin" to make sure we get all the variants we need.
+                            // Since we already assume that margin has that property, we're good to go.
+                            ContextShard ret = shard.split(thisInterval).withReads(readsSoFar);
+                            c.output(ret);
+                            readsSoFar = new ArrayList<>();
+                            // do not advance currentSubShard, we're still technically in the same one.
+                        }
+
                     }
                     // done reading, ship what we have
                     if (!readsSoFar.isEmpty()) {

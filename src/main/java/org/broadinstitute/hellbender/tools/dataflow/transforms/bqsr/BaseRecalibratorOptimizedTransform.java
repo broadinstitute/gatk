@@ -71,7 +71,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
     private static PCollection<RecalibrationTables> aggregateStatistics(final PCollection<RecalibrationTables> tables) {
         return tables
             // aggregate
-            .apply(Combine.globally(new RecalibrationTablesMerger()))
+            .apply(Combine.globally(new RecalibrationTablesMerger()).withoutDefaults())
                 // call finalize on the result
             .apply(ParDo
                 .named("finalizeRecalTables")
