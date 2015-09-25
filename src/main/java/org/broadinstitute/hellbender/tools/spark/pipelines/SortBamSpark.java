@@ -31,7 +31,8 @@ public final class SortBamSpark extends SparkCommandLineProgram {
             optional = false)
     protected String bam;
 
-    @Argument(doc="the output parallelism, sets the number of reducers", shortName = "P", fullName = "parallelism", optional = true)
+    @Argument(doc="The output parallelism, sets the number of reducers. Defaults to the number of partitions in the input.",
+            shortName = "P", fullName = "parallelism", optional = true)
     protected int parallelism = 0;
 
     @Override
@@ -39,7 +40,7 @@ public final class SortBamSpark extends SparkCommandLineProgram {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam);
         JavaRDD<GATKRead> reads = readSource.getParallelReads(bam, null);
-        if (parallelism == 0) {
+        if (parallelism == 0) { // use the number of partitions in the input
             parallelism = reads.partitions().size();
         }
         System.out.println("Using parallelism of " + parallelism);

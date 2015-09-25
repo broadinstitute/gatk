@@ -50,7 +50,8 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
-    @Argument(doc="the output parallelism, sets the number of reducers", shortName = "P", fullName = "parallelism", optional = true)
+    @Argument(doc="The output parallelism, sets the number of reducers. Defaults to the number of partitions in the input.",
+            shortName = "P", fullName = "parallelism", optional = true)
     protected int parallelism = 0;
 
     @ArgumentCollection
@@ -78,7 +79,7 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         JavaRDD<GATKRead> reads = readSource.getParallelReads(bam, intervals);
-        if (parallelism == 0) {
+        if (parallelism == 0) { // use the number of partitions in the input
             parallelism = reads.partitions().size();
         }
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
