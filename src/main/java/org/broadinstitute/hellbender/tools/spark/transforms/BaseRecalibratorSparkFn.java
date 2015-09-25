@@ -45,7 +45,7 @@ public class BaseRecalibratorSparkFn {
             return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTables()));
         });
 
-        final RecalibrationTables combinedTables = unmergedTables.reduce(RecalibrationTables::safeCombine);
+        final RecalibrationTables combinedTables = unmergedTables.reduce(RecalibrationTables::inPlaceCombine);
         BaseRecalibrationEngine.finalizeRecalibrationTables(combinedTables);
 
         try {
