@@ -9,7 +9,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
@@ -23,7 +22,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;

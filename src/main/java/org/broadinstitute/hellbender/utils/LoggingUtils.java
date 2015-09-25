@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.samtools.util.Log;
+import com.google.common.collect.BiMap;
 import com.google.common.collect.EnumHashBiMap;
+import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Logger;
 
 /**
  * Logging utilities.
@@ -17,54 +21,88 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
  * proper built-in enum that is compatible with the command line argument framework). Therefore we use the
  * Picard enum as the Hellbender currency and convert back and forth between that and the log4j namespace
  * as necessary. Note that the two namespaces have very similar, but not identical level names, and log4j
- * has a wider set of level values than those supported by the Picard enum.
+ * has a wider set of level values than those supported by the Picard enum.  Likewise the java built in logger has
+ * a different set of level values which we chose a mapping to.
  */
- public class LoggingUtils {
+public class LoggingUtils {
 
     // Map between the logging level used throughout Hellbender code (which is the Picard Log.LogLevel enum),
     // and the log4j log Level values.
-    private static EnumHashBiMap<Log.LogLevel, Level> loggingLevelNamespaceMap = null;
-    private static String badLevelValue = "Unrecognized verbosity level. Must be one of (DEBUG/ERROR/INFO/WARNING)";
-
-    private static EnumHashBiMap<Log.LogLevel, Level> getLoggingLevelNamespaceMap() {
-        if (null == loggingLevelNamespaceMap) {
-            loggingLevelNamespaceMap = EnumHashBiMap.create(Log.LogLevel.class);
-
-            loggingLevelNamespaceMap.put(Log.LogLevel.DEBUG, Level.DEBUG);
-            loggingLevelNamespaceMap.put(Log.LogLevel.ERROR, Level.ERROR);
-            loggingLevelNamespaceMap.put(Log.LogLevel.WARNING, Level.WARN);
-            loggingLevelNamespaceMap.put(Log.LogLevel.INFO, Level.INFO);
-        }
-        return loggingLevelNamespaceMap;
+    private static BiMap<Log.LogLevel, Level> loggingLevelNamespaceMap;
+    static {
+        loggingLevelNamespaceMap = EnumHashBiMap.create(Log.LogLevel.class);
+        loggingLevelNamespaceMap.put(Log.LogLevel.ERROR, Level.ERROR);
+        loggingLevelNamespaceMap.put(Log.LogLevel.WARNING, Level.WARN);
+        loggingLevelNamespaceMap.put(Log.LogLevel.INFO, Level.INFO);
+        loggingLevelNamespaceMap.put(Log.LogLevel.DEBUG, Level.DEBUG);
     }
+
+    private static BiMap<Log.LogLevel, java.util.logging.Level> javaUtilLevelNamespaceMap;
+    static {
+        javaUtilLevelNamespaceMap = EnumHashBiMap.create(Log.LogLevel.class);
+        javaUtilLevelNamespaceMap.put(Log.LogLevel.ERROR, java.util.logging.Level.SEVERE);
+        javaUtilLevelNamespaceMap.put(Log.LogLevel.WARNING, java.util.logging.Level.WARNING);
+        javaUtilLevelNamespaceMap.put(Log.LogLevel.INFO, java.util.logging.Level.INFO);
+        javaUtilLevelNamespaceMap.put(Log.LogLevel.DEBUG, java.util.logging.Level.FINEST);
+    }
+
 
     // Package-private for unit test access
     static Log.LogLevel levelFromLog4jLevel(Level log4jLevel) {
-        try {
-            return getLoggingLevelNamespaceMap().inverse().get(log4jLevel);
-        }
-        catch (IllegalArgumentException e) {
-            throw new GATKException.ShouldNeverReachHereException(badLevelValue, e);
-        }
+        return loggingLevelNamespaceMap.inverse().get(log4jLevel);
     }
 
     private static Level levelToLog4jLevel(Log.LogLevel picardLevel) {
-        try {
-            return getLoggingLevelNamespaceMap().get(picardLevel);
+        return loggingLevelNamespaceMap.get(picardLevel);
+    }
+
+
+    /**
+     * Set the java.util.logging level since some of our dependencies write messages using it.
+     *
+     * Taken with modifications from a post by michel.iamit
+     * http://stackoverflow.com/users/369060/michel-iamit
+     * from http://stackoverflow.com/questions/470430/java-util-logging-logger-doesnt-respect-java-util-logging-level
+     */
+    private static void setJavaUtilLoggingLevel(final Log.LogLevel verbosity) {
+        Logger topLogger = java.util.logging.Logger.getLogger("");
+
+        Handler consoleHandler = null;
+        for (Handler handler : topLogger.getHandlers()) {
+            if (handler instanceof ConsoleHandler) {
+                consoleHandler = handler;
+                break;
+            }
         }
-        catch (IllegalArgumentException e) {
-            throw new GATKException.ShouldNeverReachHereException(badLevelValue, e);
+
+        if (consoleHandler == null) {
+            consoleHandler = new ConsoleHandler();
+            topLogger.addHandler(consoleHandler);
         }
+        consoleHandler.setLevel(levelToJavaUtilLevel(verbosity));
+    }
+
+    private static java.util.logging.Level levelToJavaUtilLevel(Log.LogLevel picardLevel) {
+        return javaUtilLevelNamespaceMap.get(picardLevel);
     }
 
     /**
-     * Propagate the verbosity level to both Picard and log4j.
+     * Propagate the verbosity level to Picard, log4j, and the java built in logger
      */
-    public static void setLoggingLevel(final Log.LogLevel VERBOSITY) {
+    public static void setLoggingLevel(final Log.LogLevel verbosity) {
 
         // Call the Picard API to establish the logging level used by Picard
-        Log.setGlobalLogLevel(VERBOSITY);
+        Log.setGlobalLogLevel(verbosity);
 
+        // set the Log4JLoggingLevel
+        setLog4JLoggingLevel(verbosity);
+
+        // set the java.util.logging Level
+        setJavaUtilLoggingLevel(verbosity);
+
+    }
+
+    private static void setLog4JLoggingLevel(Log.LogLevel verbosity) {
         // Now establish the logging level used by log4j by propagating the requested
         // logging level to all loggers associated with our logging configuration.
         final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
@@ -72,7 +110,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
         final String contextClassName = LoggingUtils.class.getName();
         final LoggerConfig loggerConfig = loggerContextConfig.getLoggerConfig(contextClassName);
 
-        loggerConfig.setLevel(levelToLog4jLevel(VERBOSITY));
+        loggerConfig.setLevel(levelToLog4jLevel(verbosity));
         loggerContext.updateLoggers();
     }
 }
