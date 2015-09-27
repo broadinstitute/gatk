@@ -300,7 +300,22 @@ configurations {
         exclude module: 'spark-core_2.10'
         exclude group: 'org.slf4j'
     }
-}
+    localSparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.10'
+        exclude group: 'org.slf4j'
+        // We need to exclude the following additional dependencies because they can conflict with the versions
+        // on the local Spark cluster.
+        exclude module: 'netty'
+        exclude module: 'netty-transport'
+        exclude module: 'netty-buffer'
+        exclude module: 'netty-common'
+        exclude module: 'netty-handler'
+    }}
+
 
 task sparkJar(type: ShadowJar) {
     manifest {
@@ -316,6 +331,13 @@ task sparkJar(type: ShadowJar) {
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
     exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
+}
+
+task copyDeps(type: Copy) {
+    // copyDeps is used to copy the dependencies that are needed for Hellbender but missing from the dependencies
+    // Spark already has.
+    from configurations.localSparkConfiguration
+    into 'build/deps'
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
