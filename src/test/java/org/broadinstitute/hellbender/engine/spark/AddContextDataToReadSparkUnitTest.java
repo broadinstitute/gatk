@@ -80,4 +80,14 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
 
         ctx.close();
     }
+
+    @Test
+    public void toyTest() {
+        JavaSparkContext ctx = SparkTestUtils.getTestContext();
+        List<Integer> ints = Arrays.asList(1, 2, 3, 4);
+        JavaRDD<Integer> rddInts = ctx.parallelize(ints);
+        JavaRDD<String> rddStrings = rddInts.map(v1 -> Integer.toString(v1));
+        List<String> strings = rddStrings.collect();
+        strings.forEach(System.out::println);
+    }
 }

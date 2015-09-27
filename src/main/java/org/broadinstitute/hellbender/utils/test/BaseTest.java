@@ -114,6 +114,19 @@ public abstract class BaseTest {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
     }
 
+    /**
+     *  The path to the Spark Master, e.g., spark://myMachine:7077
+     *  @return SPARK_MASTER_URL env. var if defined, throws otherwise.
+     */
+    public static String getSparkMasterURL() {
+        return getNonNullEnvironmentVariable("SPARK_MASTER_URL");
+    }
+
+    public static String getGoogleSparkCluster() {
+        return getNonNullEnvironmentVariable("GOOGLE_SPARK_CLUSTER");
+    }
+
+
     private static String getNonNullEnvironmentVariable(String envVarName) {
         String value = System.getenv(envVarName);
         if (null == value) {
