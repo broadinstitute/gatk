@@ -69,7 +69,7 @@ public final class FlagStat extends ReadWalker {
                        + with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 + " with mate mapped to a different chr (mapQ>=5)";
         }
 
-        public void merge(final FlagStatus that){
+        public FlagStatus merge(final FlagStatus that){
             this.readCount += that.readCount;
             this.QC_failure += that.QC_failure;
             this.duplicates += that.duplicates;
@@ -82,7 +82,7 @@ public final class FlagStat extends ReadWalker {
             this.singletons += that.singletons;
             this.with_mate_mapped_to_a_different_chr += that.with_mate_mapped_to_a_different_chr;
             this.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5 += that.with_mate_mapped_to_a_different_chr_maq_greaterequal_than_5;
-
+            return this;
         }
 
         public FlagStatus add( final GATKRead read ) {
