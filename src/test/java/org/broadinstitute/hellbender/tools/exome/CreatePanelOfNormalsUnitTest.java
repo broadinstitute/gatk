@@ -516,10 +516,10 @@ public class CreatePanelOfNormalsUnitTest {
         double [][] countsArray = new double[NUM_TARGETS][NUM_SAMPLES];
         final RealMatrix counts = new Array2DRowRealMatrix(countsArray);
 
-        // All row data is the same
+        // All row data is the same (0,1,2,3,4...)
         final double [] rowData = IntStream.range(0, NUM_SAMPLES).boxed()
                 .mapToDouble(i -> i).toArray();
-        for (int i =0; i < NUM_TARGETS; i ++) {
+        for (int i = 0; i < NUM_TARGETS; i++) {
             counts.setRow(i, rowData);
         }
 

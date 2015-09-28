@@ -148,7 +148,7 @@ public interface PoN {
      * @return never {@code null}, a matrix with dimensions {@code TxS} where {@code T} is the number of targets and
      * {@code S} the number of samples considered for the log-normal.
      */
-    RealMatrix getLogNormalPInverseCounts();
+    RealMatrix getLogNormalizedPInverseCounts();
 
     /**
      * Returns the reduced PoN matrix.
@@ -220,7 +220,7 @@ public interface PoN {
         if (Double.isNaN(epsilon) || epsilon <= 0) {
             throw new IllegalArgumentException(String.format("invalid epsilon value must be > 0: %f", epsilon));
         }
-        final RealMatrix normalsInverse = useReduced ? getReducedPanelPInverseCounts() : getLogNormalPInverseCounts();
+        final RealMatrix normalsInverse = useReduced ? getReducedPanelPInverseCounts() : getLogNormalizedPInverseCounts();
         final double relevantTargetThreshold = (Math.log(epsilon) / Math.log(2)) + 1;
         final RealMatrix normalsInverseTranspose = normalsInverse.transpose();
         final RealMatrix result = new Array2DRowRealMatrix(normalsInverse.getRowDimension(),input.getColumnDimension());

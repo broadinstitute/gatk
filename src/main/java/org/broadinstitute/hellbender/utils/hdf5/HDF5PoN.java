@@ -74,17 +74,17 @@ public final class HDF5PoN implements PoN {
         this.file = file;
         targetNames = new Lazy<>(() -> readTargetNames(file));
         sampleNames = new Lazy<>(() -> readSampleNames(file));
-        logNormalSampleNames = new Lazy<>(() -> readLogNormalSampleNames(file));
+        logNormalSampleNames = new Lazy<>(() -> readLogNormalizedSampleNames(file));
         reducedTargetNames = new Lazy<>(() -> Collections.unmodifiableList(Arrays.asList(file.readStringArray(REDUCED_PON_TARGET_PATH))));
     }
 
         /**
-     * Reads the log-normal sample names sub-set.
+     * Reads the log-normalized sample names sub-set.
      * @param reader the source HDF5 reader.
      * @return never {@code null}.
      * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
      */
-    private static List<String> readLogNormalSampleNames(final HDF5File reader) {
+    private static List<String> readLogNormalizedSampleNames(final HDF5File reader) {
         final String[] values = reader.readStringArray(LOG_NORMALS_SAMPLE_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
@@ -164,7 +164,7 @@ public final class HDF5PoN implements PoN {
     }
 
     @Override
-    public RealMatrix getLogNormalPInverseCounts() {
+    public RealMatrix getLogNormalizedPInverseCounts() {
         return readMatrixAndCheckDimensions(LOG_NORMALS_PINV_PATH, getPanelSampleNames().size(),
                 getPanelTargetNames().size());
     }
@@ -277,10 +277,10 @@ public final class HDF5PoN implements PoN {
 
     /**
      * Set the normalized read counts.
-     * @param normalCounts the normalized read counts.
+     * @param normalizedCounts the normalized read counts.
      */
-    public void setNormalCounts(final RealMatrix normalCounts) {
-        file.makeDoubleMatrix(NORMALIZED_PCOV_PATH, normalCounts.getData());
+    public void setNormalCounts(final RealMatrix normalizedCounts) {
+        file.makeDoubleMatrix(NORMALIZED_PCOV_PATH, normalizedCounts.getData());
     }
 
     public void setReducedPanelCounts(final RealMatrix counts) {

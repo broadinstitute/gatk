@@ -189,7 +189,7 @@ public final class ReadCountCollection {
                 resultTargets.add(target);
             }
         }
-        // check that all targets to be kept where found in this collection:
+        // check that all targets to be kept were found in this collection:
         if (nextIndex < targetsToKeep.size()) {
             throw unknownTargetsToKeep(targetsToKeep);
         }
