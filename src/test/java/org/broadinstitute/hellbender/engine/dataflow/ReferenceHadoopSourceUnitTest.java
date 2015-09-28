@@ -10,9 +10,13 @@ import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceHadoopSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -27,16 +31,31 @@ public class ReferenceHadoopSourceUnitTest extends BaseTest implements Serializa
 
     @Test
     public void testReferenceSourceQuery() throws IOException {
-        // test ReferenceHadoopSource by reading a reference from a local file (not HDFS)
-        final String referencePath = hg19MiniReference;
+        MiniDFSCluster cluster = null;
+        try {
+            cluster = new MiniDFSCluster.Builder(new Configuration()).build();
+            String staging = cluster.getFileSystem().getWorkingDirectory().toString();
 
-        final ReferenceHadoopSource refSource = new ReferenceHadoopSource(referencePath);
-        final ReferenceBases bases = refSource.getReferenceBases(PipelineOptionsFactory.create(),
-                new SimpleInterval("2", 10001, 10010));
+            String fasta = new Path(staging, hg19MiniReference).toString();
+            String fai = new Path(staging, hg19MiniReference + ".fai").toString();
+            String dict = new Path(staging, hg19MiniReference.replaceFirst("\\.fasta$", ".dict")).toString();
+            BucketUtils.copyFile(hg19MiniReference, null, fasta);
+            BucketUtils.copyFile(hg19MiniReference + ".fai", null, fai);
+            BucketUtils.copyFile(hg19MiniReference.replaceFirst("\\.fasta$", ".dict"), null, dict);
 
-        Assert.assertNotNull(bases);
-        Assert.assertEquals(bases.getBases().length, 10, "Wrong number of bases returned");
-        Assert.assertEquals(new String(bases.getBases()), "CGTATCCCAC", "Wrong bases returned");
+            final ReferenceHadoopSource refSource = new ReferenceHadoopSource(fasta);
+            final ReferenceBases bases = refSource.getReferenceBases(PipelineOptionsFactory.create(),
+                    new SimpleInterval("2", 10001, 10010));
+
+            Assert.assertNotNull(bases);
+            Assert.assertEquals(bases.getBases().length, 10, "Wrong number of bases returned");
+            Assert.assertEquals(new String(bases.getBases()), "CGTATCCCAC", "Wrong bases returned");
+            Assert.assertNotNull(refSource.getReferenceSequenceDictionary(null));
+        } finally {
+            if (cluster != null) {
+                cluster.shutdown();
+            }
+        }
     }
 
     @Test

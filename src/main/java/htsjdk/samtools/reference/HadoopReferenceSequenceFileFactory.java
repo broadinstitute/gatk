@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,15 +21,21 @@ public class HadoopReferenceSequenceFileFactory {
 
     public static ReferenceSequenceFile getReferenceSequenceFile(Path fastaFile) throws IOException {
         Path fastaIndexFile = getFastaIndexFileName(fastaFile);
+        Path fastaDictFile = getFastaDictFileName(fastaFile);
 
         File tempDir = Files.createTempDir();
         File localFakeFastaFile = new File(tempDir, fastaFile.getName());
         File localFastaIndexFile = new File(tempDir, fastaIndexFile.getName());
+        File localFastaDictFile = new File(tempDir, fastaDictFile.getName());
 
         localFakeFastaFile.createNewFile(); // create empty file to satisfy IndexedFastaSequenceFile; we'll actually read from HDFS
 
         FileSystem fs = fastaFile.getFileSystem(new Configuration());
         fs.copyToLocalFile(fastaIndexFile, new Path(localFastaIndexFile.toString()));
+        if (!fs.exists(fastaDictFile)) {
+            throw new UserException("Missing dictionary file for FASTA: " + fastaFile);
+        }
+        fs.copyToLocalFile(fastaDictFile, new Path(localFastaDictFile.toString()));
 
         HadoopFastaSequenceIndex index = new HadoopFastaSequenceIndex(localFastaIndexFile);
         FastaSequenceIndex indexCopy = new FastaSequenceIndex(localFastaIndexFile);
@@ -37,6 +44,10 @@ public class HadoopReferenceSequenceFileFactory {
 
     private static Path getFastaIndexFileName(Path fastaFile) {
         return new Path(fastaFile.toUri().toString() + ".fai");
+    }
+
+    private static Path getFastaDictFileName(Path fastaFile) {
+        return new Path(fastaFile.toUri().toString().replaceFirst(".fasta$", ".dict"));
     }
 
     static class HadoopIndexedFastaSequenceFile extends IndexedFastaSequenceFile {
