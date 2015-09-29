@@ -9,7 +9,8 @@ library(optparse)
 option_list <- list(
     make_option(c("--sample_name", "-sample_name"), dest="sample_name", action="store"),
     make_option(c("--targets_file", "-targets_file"), dest="targets_file", action="store"),
-    make_option(c("--output_file", "-output_file"), dest="output_file", action="store"))
+    make_option(c("--output_file", "-output_file"), dest="output_file", action="store"),
+    make_option(c("--log2_input", "-log"), dest="log2_input", action="store"))
 
 opt <- parse_args(OptionParser(option_list=option_list))
 print(opt)
@@ -18,14 +19,20 @@ save(opt, file="debug.RData")
 sample_name=opt[["sample_name"]]
 tn_file=opt[["targets_file"]]
 output_file=opt[["output_file"]]
+log_input=as.logical(opt[["log2_input"]])
 
 # Use a function for debugging purposes
-segment_data = function(sample_name, tn_file, output_file) {
+segment_data = function(sample_name, tn_file, output_file, log_input) {
 	# Read in file and extract needed data
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	contig = tn[,"contig"]
 	pos = tn[,"stop"]
-	dat = log2(tn[,sample_name])
+	# Ability to switch between copy-ratio and log2 copy-ratio
+	if (log_input) {
+	    dat = tn[,sample_name]
+	} else {
+	    dat = log2(tn[,sample_name])
+	}
 
 	# Create CNA object
 	cna_dat = CNA(dat, contig, pos, data.type="logratio", sampleid=sample_name)
@@ -54,4 +61,4 @@ segment_data = function(sample_name, tn_file, output_file) {
 	write.table(segmented, file=output_file, sep="\t", quote=FALSE, row.names=FALSE)
 }
 
-segment_data(sample_name, tn_file, output_file)
+segment_data(sample_name, tn_file, output_file, log_input)

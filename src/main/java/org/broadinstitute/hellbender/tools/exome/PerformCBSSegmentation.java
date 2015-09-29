@@ -23,6 +23,9 @@ public final class PerformCBSSegmentation extends CommandLineProgram {
     public static final String SEGMENT_FILE_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
     public static final String SEGMENT_FILE_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
 
+    public static final String LOG2_LONG_NAME= "log2Input";
+    public static final String LOG2_SHORT_NAME = "log";
+
     @Argument(
             doc = "Name of the sample being segmented",
             shortName = SAMPLE_NAME_SHORT_NAME,
@@ -47,6 +50,14 @@ public final class PerformCBSSegmentation extends CommandLineProgram {
     )
     protected String outFile;
 
+    @Argument(
+            doc = "If input data has had a log2 transform applied",
+            shortName = LOG2_SHORT_NAME,
+            fullName = LOG2_LONG_NAME,
+            optional = true
+    )
+    protected Boolean log = false;
+
     @Override
     protected Object doWork() {
         applySegmentation(sampleName, tangentFile, outFile);
@@ -54,6 +65,6 @@ public final class PerformCBSSegmentation extends CommandLineProgram {
     }
 
     private void applySegmentation(String sampleName, String tangentFile, String outFile){
-        RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile, log);
     }
 }

@@ -33,6 +33,6 @@ public final class SNPSegmenter {
         TargetCoverageUtils.writeTargetsWithCoverage(targetsFromSNPCountsFile, sampleName, targetsFromSNPCounts);
 
         RCBSSegmenter.writeSegmentFile(sampleName, targetsFromSNPCountsFile.getAbsolutePath(),
-                outputFile.getAbsolutePath());
+                outputFile.getAbsolutePath(), false);
     }
 }
