@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
@@ -32,10 +33,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransformOptimized;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorFn;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalibratorOptimizedTransform;
-import org.broadinstitute.hellbender.tools.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -46,6 +46,7 @@ import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.File;
@@ -89,17 +90,33 @@ public class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram implement
      * all the command line arguments for BQSR and its covariates
      */
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
-    private transient final BaseRecalibrationArgumentCollection BRAC = new BaseRecalibrationArgumentCollection();
+    private transient final RecalibrationArgumentCollection BRAC = new RecalibrationArgumentCollection();
 
-    @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = false)
-    protected List<String> baseRecalibrationKnownVariants;
+    @ArgumentCollection
+    private final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
+
+    @ArgumentCollection
+    private final IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
+
+    @ArgumentCollection
+    private final ReferenceInputArgumentCollection referenceArguments = new RequiredReferenceInputArgumentCollection();
+
+    @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
+    private List<String> baseRecalibrationKnownVariants;
 
     /**
-     * Path to save the serialized tables to. Local or GCS.
+     * Path to save the final recalibration tables to. Local.
      */
-    @Argument(doc = "Path to save the serialized recalibrationTables to. If running on the cloud, either leave outputTablesPath unset or point it to a GCS location.",
-            shortName = "otp", fullName = "outputTablesPath", optional = true)
+    @Argument(doc = "Path to save the recalibrationTables to.",
+            fullName = "RECAL_TABLE_FILE", optional = true)
     protected String outputTablesPath = null;
+
+    /**
+     * Path to save the temporary serialized recalibration tables to. Local or GCS.
+     */
+    @Argument(doc = "Path to save the serialized recalibrationTables to. If running on the cloud, either leave serializedOutputTablesPath unset or point it to a GCS location.",
+            shortName = "sotp", fullName = "serializedOutputTablesPath", optional = true)
+    protected String serializedOutputTablesPath = null;
 
     private transient final ApplyBQSRArgumentCollection ABAC = new ApplyBQSRArgumentCollection();
 
@@ -139,12 +156,12 @@ public class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram implement
             // no saving for now.
             saveTextualTables = false;
 
-            String referenceURL = BRAC.referenceArguments.getReferenceFileName();
+            String referenceURL = referenceArguments.getReferenceFileName();
 
-            if (BRAC.readArguments.getReadFilesNames().size()!=1) {
+            if (readArguments.getReadFilesNames().size()!=1) {
                 throw new UserException("Sorry, we only support a single reads input for now.");
             }
-            String bam = BRAC.readArguments.getReadFilesNames().get(0);
+            String bam = readArguments.getReadFilesNames().get(0);
 
             if (!BucketUtils.isCloudStorageUrl(bam) && isRemote()) {
                 throw new UserException("Sorry, for remote execution the BAM must be stored remotely.");
@@ -154,7 +171,7 @@ public class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram implement
             final ReadsDataflowSource readsDataflowSource = new ReadsDataflowSource(bam, pipeline);
             readsHeader = readsDataflowSource.getHeader();
             final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
-            final List<SimpleInterval> intervals = BRAC.intervalArgumentCollection.intervalsSpecified() ? BRAC.intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
+            final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
             final PCollectionView<SAMFileHeader> headerSingleton = ReadsDataflowSource.getHeaderView(pipeline, readsHeader);
             CountingReadFilter filterToApply = ApplyWholeBQSRDataflow.readFilter(readsHeader);
@@ -193,12 +210,12 @@ public class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram implement
 
             PCollection<ContextShard> shardsNoContext = shardsPCol
                 // big shards of variants -> smaller shards with variants, reads. We take the opportunity to filter the reads as close to the source as possible.
-                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, filterToApply)));
+                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, null)));
             PCollection<ReadsShard> shardsReadOnly = shardsNoContext
                 .apply(ParDo.named("extract reads").of(AddContextDataToReadOptimized.extractReads()));
             PCollection<ContextShard> shardsWithContext = shardsNoContext
                 // add ref bases to the shards
-                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(referenceDataflowSource))
+                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(referenceDataflowSource, filterToApply))
                         .withSideInputs(refDictionaryView));
 
             BaseRecalibratorOptimizedTransform baseRecal = new BaseRecalibratorOptimizedTransform(headerSingleton, refDictionaryView, BRAC);
@@ -219,7 +236,7 @@ public class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram implement
             /*
             // If saving textual output then we need to make sure we can get to the output
             if (saveTextualTables) {
-                if (null == outputTablesPath) {
+                if (null == serializedOutputTablesPath) {
                     // we need those, so let's pick a temporary location for them.
                     outputTablesPath = pickTemporaryRecaltablesPath(isRemote(), stagingLocation);
                 }
@@ -242,13 +259,13 @@ public class ApplyWholeBQSRDataflow extends DataflowCommandLineProgram implement
         bunny.stepEnd("dataflow");
 
         if (saveTextualTables) {
-            logger.info("Saving recalibration report to "+BRAC.RAC.RECAL_TABLE_FILE.getName());
+            logger.info("Saving recalibration report to "+outputTablesPath);
             //  Get the table back and output it in text form to RAC.RECAL_TABLE.
             // TODO: if running on the cloud and the output destination is on the cloud, then it's faster to have a worker do it directly, without the file roundtrip.
-            try (ObjectInputStream oin = new ObjectInputStream(BucketUtils.openFile(outputTablesPath, p.getOptions()))) {
+            try (ObjectInputStream oin = new ObjectInputStream(BucketUtils.openFile(serializedOutputTablesPath, p.getOptions()))) {
                 Object o = oin.readObject();
                 RecalibrationTables rt = (RecalibrationTables) o;
-                BaseRecalibratorFn.saveTextualReport(BRAC.RAC.RECAL_TABLE_FILE, readsHeader, rt, BRAC);
+                BaseRecalibratorFn.saveTextualReport(new File(outputTablesPath), readsHeader, rt, BRAC);
                 bunny.stepEnd("repatriate_report");
             } catch (Exception e) {
                 throw new GATKException("Unexpected: unable to read results file. (bug?)", e);

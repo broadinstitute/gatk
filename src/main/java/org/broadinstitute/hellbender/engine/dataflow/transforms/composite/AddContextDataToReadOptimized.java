@@ -81,10 +81,10 @@ public class AddContextDataToReadOptimized {
         ArrayList<ContextShard> shards = AddContextDataToReadOptimized.fillVariants(shardedIntervals, variants, margin);
         PCollection<ContextShard> shardsPCol = pipeline.apply(Create.of(shards));
         return shardsPCol
-                // big shards of variants -> smaller shards with variants, reads. We take the opportunity to filter the reads as close to the source as possible.
-                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, outputShardSize, margin, optFilter)))
+                // big shards of variants -> smaller shards with variants, reads.
+                .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, outputShardSize, margin, null)))
                         // add ref bases to the shards.
-                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(refSource)));
+                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(refSource, optFilter)));
 
     }
 
@@ -151,10 +151,11 @@ public class AddContextDataToReadOptimized {
                         SAMRecordToGATKReadAdapter g = new SAMRecordToGATKReadAdapter(r);
                         // yes, it'd be a tad faster to check before the wrapping.
                         // But this keeps the code a tad simpler.
-                        if (!accept(g, shard.interval)) continue;
-                        if (null!=optFilter) {
-                            // skip reads that don't pass the filter
-                            if (!optFilter.test(g)) continue;
+                        if (!accept(g, shard.interval)) {
+                            continue;
+                        }
+                        if (null!=optFilter && !optFilter.test(g)) {
+                            continue;
                         }
                         if (!g.isUnmapped()) {
                             // error out if we accept a read that sticks out too far
@@ -177,13 +178,23 @@ public class AddContextDataToReadOptimized {
                             // move to the next shard
                             currentSubShard = subshards.get(++currentSubShardIndex);
                         }
+                        int currentSubShardEnd;
+                        if (g.isUnmapped()) {
+                            if (!g.mateIsUnmapped()) {
+                                currentSubShardEnd = g.getMateStart() + margin;
+                            } else {
+                                throw new GATKException.ShouldNeverReachHereException("How did an unmapped read make it to here? "+g.toString());
+                            }
+                        } else {
+                            currentSubShardEnd = g.getStart() + margin;
+                        }
                         // the header slows serialization too much
                         g.setHeader(null);
                         readsSoFar.add(g);
                         if (readsSoFar.size()>=maxReadsPerShard) {
                             log.info("Too many reads in this shard, splitting it."+readsSoFar.size());
                             // ship this one.
-                            SimpleInterval thisInterval = new SimpleInterval(currentSubShard.getContig(), currentSubShard.getStart(), g.getStart()+margin);
+                            SimpleInterval thisInterval = new SimpleInterval(currentSubShard.getContig(), currentSubShard.getStart(), currentSubShardEnd);
                             // we grow the interval by "margin" to make sure we get all the variants we need.
                             // Since we already assume that margin has that property, we're good to go.
                             ContextShard ret = shard.split(thisInterval).withReads(readsSoFar);
@@ -240,20 +251,31 @@ public class AddContextDataToReadOptimized {
     /**
      * Given a shard that has reads and variants, query Google Genomics' Reference server and get reference info
      * (including an extra margin on either side), and fill that and the correct variants into readContext.
+     * @param optFilter if specified, only reads that satisfy this will be included.
      */
-    public static DoFn<ContextShard, ContextShard> fillContext(final ReferenceDataflowSource refSource) throws IOException {
+    public static DoFn<ContextShard, ContextShard> fillContext(final ReferenceDataflowSource refSource, final ReadFilter optFilter) throws IOException {
         return new DoFnWLog<ContextShard, ContextShard>("fillContext") {
             private static final long serialVersionUID = 1L;
 
             @Override
             public void processElement(ProcessContext c) throws Exception {
                 ContextShard shard = c.element();
+                ArrayList<GATKRead> filteredReads;
+                if (null==optFilter) filteredReads = shard.reads;
+                else filteredReads = new ArrayList<>();
 
                 // use the function to make sure we get the exact correct amount of reference bases
                 int start = Integer.MAX_VALUE;
                 int end = Integer.MIN_VALUE;
                 SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction = refSource.getReferenceWindowFunction();
                 for (GATKRead r : shard.reads) {
+                    if (null!=optFilter) {
+                        if (optFilter.test(r)) {
+                            filteredReads.add(r);
+                        } else {
+                            continue;
+                        }
+                    }
                     SimpleInterval readRefs = referenceWindowFunction.apply(r);
                     start = Math.min(readRefs.getStart(), start);
                     end = Math.max(readRefs.getEnd(), end);
@@ -268,7 +290,7 @@ public class AddContextDataToReadOptimized {
                 ReferenceBases refBases = refSource.getReferenceBases(c.getPipelineOptions(), refInterval);
 
                 ArrayList<ReadContextData> readContext = new ArrayList<>();
-                for (GATKRead r : shard.reads) {
+                for (GATKRead r : filteredReads) {
                     SimpleInterval readInterval = new SimpleInterval(r);
                     ArrayList<Variant> variantsOverlappingThisRead = shard.variantsOverlapping(readInterval);
                     // we pass all the bases. That's better because this way it's just a shared
@@ -276,7 +298,7 @@ public class AddContextDataToReadOptimized {
                     // extra bases (it expects a few, actually).
                     readContext.add(new ReadContextData(refBases, variantsOverlappingThisRead));
                 }
-                ContextShard ret = shard.withReadContext(readContext);
+                ContextShard ret = shard.withReads(filteredReads).withReadContext(readContext);
                 c.output(ret);
             }
         };

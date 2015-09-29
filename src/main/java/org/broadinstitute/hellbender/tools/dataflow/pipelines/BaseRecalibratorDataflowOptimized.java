@@ -203,7 +203,7 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
                 // big shards of variants -> smaller shards with variants, reads. We take the opportunity to filter the reads as close to the source as possible.
                 .apply(ParDo.named("subdivideAndFillReads").of(AddContextDataToReadOptimized.subdivideAndFillReads(bam, smallShardSize, margin, readFilterToApply)))
                 // add ref bases to the shards.
-                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(referenceDataflowSource)));
+                .apply(ParDo.named("fillContext").of(AddContextDataToReadOptimized.fillContext(referenceDataflowSource, null)));
 
             final PCollection<RecalibrationTables> recalibrationTable = shardsWithContext.apply(new BaseRecalibratorOptimizedTransform(headerSingleton, refDictionaryView, recalArgs));
 

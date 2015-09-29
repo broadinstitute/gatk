@@ -112,7 +112,7 @@ public class AddContextDataToReadOptimizedUnitTest extends BaseTest implements S
         when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(refInterval))).thenReturn(FakeReferenceSource.bases(refInterval));
         when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
 
-        pShards.apply(ParDo.of(AddContextDataToReadOptimized.fillContext(mockSource)))
+        pShards.apply(ParDo.of(AddContextDataToReadOptimized.fillContext(mockSource, null)))
                 .apply(ParDo.of(new DoFn<ContextShard, Void>() {
                     private static final long serialVersionUID = 1L;
                     @Override
