@@ -46,7 +46,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
         Assert.assertEquals(gatkReadIterableMap.size(), kvReadiVariant.size());
         for (KV<GATKRead, Iterable<Variant>> kv : kvReadiVariant) {
             List<Variant> variants = Lists.newArrayList(gatkReadIterableMap.get(kv.getKey()));
-            Assert.assertTrue(!variants.isEmpty());
+            Assert.assertTrue(variants.stream().noneMatch( v -> v == null));
             HashSet<Variant> hashVariants = new HashSet<>(variants);
             final Iterable<Variant> iVariants = kv.getValue();
             HashSet<Variant> expectedHashVariants = Sets.newHashSet(iVariants);

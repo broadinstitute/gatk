@@ -3,21 +3,22 @@ package org.broadinstitute.hellbender.engine.spark;
 import com.google.common.collect.Lists;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * PairReadsAndVariants takes two RDDs (GATKRead and Variant) and returns an RDD with a
  * (GATKRead,Iterable<Variant>) for every read and all the variants that overlap. We do this by first
  * Making Tuple2s of GATKRead,Variant, which means that a read or variant may be present
  * multiple times in the output. Also, there may be duplicate (GATKRead,Variant) pairs in the output.
- * Currently, all reads must be mapped. We then dedup (distinct) then group by key.
+ * Currently, all reads must be mapped. We then aggregrate by key to remove duplicate variants.
  *
  * The function works by creating a single RDD of Tuple2 where GATKRead is the key and Variant is the value.
  * We do this join by sharding both collections by "variant shard" and checking for overlap on each "shard."
@@ -52,7 +53,7 @@ import java.util.List;
  * Tuple2<read b, variant 3> // from shard 2
  * Tuple2<read b, variant 3> // from shard 3
  *
- * step 4: distinct and group by key
+ * step 4: aggregate by key
  * Tuple2<read a, <variant 1, variant2>>
  * Tuple2<read b, <variant 3>>
  */
@@ -66,7 +67,21 @@ public class JoinReadsWithVariants {
 
         JavaPairRDD<GATKRead, Variant> allPairs = pairReadsWithVariants(readsWShards, variantsWShards);
 
-        return allPairs.distinct().groupByKey();
+
+        final JavaPairRDD<GATKRead, ? extends Iterable<Variant>> gatkReadHashSetJavaPairRDD = allPairs.aggregateByKey(new HashSet<>(), (Set<Variant> vs, Variant v) -> {
+            if (v != null) { // pairReadsWithVariants can produce null variant
+                vs.add(v);
+            }
+            return vs;
+        }, (Set<Variant> vs1, Set<Variant> vs2) -> {
+            vs1.addAll(vs2);
+            return vs1;
+        });
+
+        @SuppressWarnings("unchecked")
+        final JavaPairRDD<GATKRead, Iterable<Variant>> gatkReadIterableJavaPairRDD = (JavaPairRDD<GATKRead, Iterable<Variant>>)gatkReadHashSetJavaPairRDD;
+        return gatkReadIterableJavaPairRDD;
+
     }
 
     private static JavaPairRDD<VariantShard, GATKRead> pairReadsWithVariantShards(final JavaRDD<GATKRead> reads) {

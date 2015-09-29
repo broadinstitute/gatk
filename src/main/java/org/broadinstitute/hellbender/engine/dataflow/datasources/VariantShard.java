@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
-import com.google.cloud.dataflow.sdk.coders.*;
+import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
+import com.google.cloud.dataflow.sdk.coders.KvCoder;
+import com.google.cloud.dataflow.sdk.coders.StringUtf8Coder;
+import com.google.cloud.dataflow.sdk.coders.VarIntCoder;
 import com.google.cloud.dataflow.sdk.values.KV;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +41,8 @@ public final class VariantShard {
     @Override
     public int hashCode() {
         int result = getShardNumber();
-        result = 31 * result + getContig().hashCode();
+        //using a 4 digit prime because we found empirically that 31 ended up with badly dispersed values in spark
+        result = 5779 * result + getContig().hashCode();
         return result;
     }
 

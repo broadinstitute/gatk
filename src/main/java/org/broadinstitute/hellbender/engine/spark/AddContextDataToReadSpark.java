@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 import scala.Tuple2;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -57,7 +58,7 @@ public class AddContextDataToReadSpark {
 
                 ReferenceBases refBases = Iterables.getOnlyElement(in._2()._2());
                 readContextData = new ReadContextData(refBases, lVariants);
-            } catch(NoSuchElementException e) {
+            } catch (NoSuchElementException e) {
                 throw new GATKException.ShouldNeverReachHereException(e);
             }
             return new Tuple2<>(in._1(), readContextData);
@@ -71,14 +72,17 @@ public class AddContextDataToReadSpark {
             final Iterable<T> iterableT = Iterables.getOnlyElement(iterables);
             // It's possible for the iterableT to contain only a null T, we don't
             // want to include that.
-            final T next = iterableT.iterator().next();
-            if (next != null) {
-                listT = Lists.newArrayList(iterableT);
+            final Iterator<T> iterator = iterableT.iterator();
+            if (iterator.hasNext()) {
+                final T next = iterator.next();
+                if (next != null) {
+                    listT = Lists.newArrayList(iterableT);
+                }
             }
         }
         return listT;
-
     }
+
 
     private static void assertSameReads(final JavaRDD<GATKRead> reads,
                                         final JavaPairRDD<GATKRead, ReferenceBases> readRefBases,
@@ -98,7 +102,7 @@ public class AddContextDataToReadSpark {
         long allReadsCount = allReads.count();
         long distinctReads = allReads.distinct().count();
 
-        assert 3*distinctReads == allReadsCount;
+        assert 3 * distinctReads == allReadsCount;
         assert distinctReads == reads.count();
         assert distinctReads == refBasesReads.count();
         assert distinctReads == variantsReads.count();

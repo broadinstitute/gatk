@@ -40,7 +40,8 @@ public final class ReferenceShard implements Serializable {
     @Override
     public int hashCode() {
         int result = getShardNumber();
-        result = 31 * result + getContig().hashCode();
+        //using a 4 digit prime because we found empirically that 31 ended up with badly dispersed values in spark
+        result = 5779 * result + getContig().hashCode();
         return result;
     }
 
