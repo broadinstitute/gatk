@@ -27,7 +27,7 @@ public final class WellformedReadFilter implements ReadFilter {
 
 
     @Override
-    public boolean test( GATKRead read ) {
+    public boolean test( final GATKRead read ) {
         return wellFormedFilter.test(read);
     }
 }

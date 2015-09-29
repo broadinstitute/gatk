@@ -78,8 +78,20 @@ public final class ExomeReadCounts extends ReadWalker {
     protected static final String AVERAGE_DOUBLE_FORMAT = "%.4f";
     protected static final String TRANSFORM_FULL_NAME = "transform";
     protected static final String TRANSFORM_SHORT_NAME = TRANSFORM_FULL_NAME;
-    protected static final String EXOME_FILE_FULL_NAME = "exome";
-    protected static final String EXOME_FILE_SHORT_NAME = EXOME_FILE_FULL_NAME;
+
+    /**
+     * Exome file argument full name.
+     */
+    public static final String EXOME_FILE_FULL_NAME = "exome";
+
+    /**
+     * Exome file argument short name.
+     */
+    public static final String EXOME_FILE_SHORT_NAME = EXOME_FILE_FULL_NAME;
+
+    /**
+     * Exon output info argument full name
+     */
     protected static final String EXON_OUT_INFO_FULL_NAME = "exonInformationColumns";
     protected static final String EXON_OUT_INFO_SHORT_NAME = "exonInfo";
     protected static final String KEEP_DUPLICATE_READS_FULL_NAME = "keepduplicatereads";

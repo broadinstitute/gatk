@@ -4,7 +4,7 @@ import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Objects;
+import java.io.Serializable;
 import java.util.function.Predicate;
 
 /**
@@ -14,7 +14,7 @@ import java.util.function.Predicate;
  * implmenting class's implementation of test().
  */
 @FunctionalInterface
-public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GATKRead, Boolean> {
+public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GATKRead, Boolean>, Serializable {
 
     // It turns out, this is necessary. Please don't remove it.
     // Without this line, we see the following error:
@@ -48,7 +48,7 @@ public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GA
     }
 
     @Override
-    default Boolean apply( GATKRead read ) {
+    default Boolean apply( final GATKRead read ) {
         return test(read);
     }
 

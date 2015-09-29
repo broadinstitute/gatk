@@ -1,17 +1,13 @@
 package org.broadinstitute.hellbender.utils.collections;
 
-import com.google.common.collect.Lists;
-
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Holds many intervals in memory, with an efficient operation to get
@@ -22,7 +18,7 @@ import java.util.List;
 public final class IntervalsSkipList<T extends Locatable> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final Hashtable<String, IntervalsSkipListOneContig<T>> intervals;
+    private final Map<String, IntervalsSkipListOneContig<T>> intervals;
 
     /**
      * Creates an IntervalsSkipList that holds a copy of the given intervals, sorted
@@ -30,8 +26,8 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
      *
      * @param loc Locatables, not necessarily sorted. Will be iterated over exactly once.
      */
-    public IntervalsSkipList(Iterable<T> loc) {
-        Hashtable<String,ArrayList<T>> variantsPerContig = new Hashtable<>();
+    public IntervalsSkipList(final Iterable<T> loc) {
+        final Map<String,ArrayList<T>> variantsPerContig = new HashMap<>();
         for (T v : loc) {
             String k = v.getContig();
             ArrayList<T> l;
@@ -43,8 +39,8 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
             }
             l.add(v);
         }
-        intervals = new Hashtable<>();
-        for (String k : variantsPerContig.keySet()) {
+        intervals = new HashMap<>();
+        for (final String k : variantsPerContig.keySet()) {
             intervals.put(k, new IntervalsSkipListOneContig<>(variantsPerContig.get(k)));
         }
     }
@@ -55,9 +51,9 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
      * hold, but of course if it isn't you'll get an empty result.
      * You may modify the returned list.
      */
-    public ArrayList<T> getOverlapping(SimpleInterval query) {
-        String k = query.getContig();
-        if (!intervals.containsKey(k)) return new ArrayList<T>();
+    public List<T> getOverlapping(final SimpleInterval query) {
+        final String k = query.getContig();
+        if (!intervals.containsKey(k)) return new ArrayList<>();
         return intervals.get(k).getOverlapping(query);
     }
 
