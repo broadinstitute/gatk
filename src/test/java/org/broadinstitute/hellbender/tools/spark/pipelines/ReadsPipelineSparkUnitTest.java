@@ -1,27 +1,21 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
-public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
+public class ReadsPipelineSparkUnitTest extends BaseTest {
     private String getResourceDir(){
-        return getTestDataDir() + "/" + "BQSR" + "/";
+        return "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/";
     }
 
     @DataProvider(name = "EndToEndTestData")
