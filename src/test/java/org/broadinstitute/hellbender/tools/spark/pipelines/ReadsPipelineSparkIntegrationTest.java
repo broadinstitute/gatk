@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -31,21 +35,16 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 { HiSeqBam, GRCh37Ref, dbSNPb37, new File(HiSeqBam) }
         };
     }
-
+    
     @Test(dataProvider = "EndToEndTestData")
-    public void testPipelineEndToEnd( final String inputBam, final String reference, final String knownSites, final File expectedOutput ) throws IOException, InterruptedException {
+    void dummyTest( final String inputBam, final String reference, final String knownSites, final File expectedOutput ) throws IOException {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         File outFile = new File("output.bam");
         IOUtils.deleteRecursivelyOnExit(outFile);
         String output = "file:///" + outFile.getCanonicalPath();
 
-        List<String> argv = new ArrayList<>();
-
-        argv.addAll(Arrays.asList("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, inputBam,
-                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, RefAPISource.URL_PREFIX + reference,
-                "-BQSRKnownVariants", knownSites,
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output,
-                "--apiKey", getDataflowTestApiKey()));
-        int returnCode = runLocalSpark(argv);
-        Assert.assertEquals(returnCode, 0);
+        ReadsPipelineSpark readsPipelineSpark = new ReadsPipelineSpark();
+        readsPipelineSpark.run(ctx, inputBam, new OptionalIntervalArgumentCollection(), Arrays.asList(knownSites),
+                RefAPISource.URL_PREFIX + reference, output, false, getDataflowTestApiKey());
     }
 }

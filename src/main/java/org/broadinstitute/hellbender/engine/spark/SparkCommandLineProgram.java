@@ -35,11 +35,7 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
         }
     }
 
-    /**
-     * @return a GCSOptions object authenticated with apiKey suitable for accessing files in GCS,
-     *         or null if no apiKey is present.
-     */
-    protected GCSOptions getAuthenticatedGCSOptions() {
+    protected GCSOptions getAuthenticatedGCSOptions(String apiKey) {
         if ( apiKey == null ) {
             return null;
         }
@@ -47,6 +43,13 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
         GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setApiKey(apiKey);
         return options;
+    }
+    /**
+     * @return a GCSOptions object authenticated with apiKey suitable for accessing files in GCS,
+     *         or null if no apiKey is present.
+     */
+    protected GCSOptions getAuthenticatedGCSOptions() {
+        return getAuthenticatedGCSOptions(apiKey);
     }
 
     // ---------------------------------------------------

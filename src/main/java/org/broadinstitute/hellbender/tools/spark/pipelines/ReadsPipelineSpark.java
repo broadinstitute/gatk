@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
@@ -80,8 +81,9 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
     @Argument(doc = "If specified, shard the output bam", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
     private boolean shardedOutput = false;
 
-    @Override
-    protected void runPipeline(final JavaSparkContext ctx) {
+    protected void run(final JavaSparkContext ctx, String bam, IntervalArgumentCollection intervalArgumentCollection,
+                       List<String> baseRecalibrationKnownVariants, String referenceURL, String output,
+                       boolean shardedOutput, String apiKey) {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam);
         final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
@@ -94,11 +96,11 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         // TODO: workaround for known bug in List version of getParallelVariants
         if ( baseRecalibrationKnownVariants.size() > 1 ) {
             throw new GATKException("Cannot currently handle more than one known sites file, " +
-                                    "as getParallelVariants(List) is broken");
+                    "as getParallelVariants(List) is broken");
         }
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
+        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(apiKey); // null if we have no api key
         final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(gcsOptions, referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
         final SAMSequenceDictionary referenceDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsHeader.getSequenceDictionary());
         checkSequenceDictionaries(referenceDictionary, readsHeader.getSequenceDictionary());
@@ -117,6 +119,11 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }
+
+    }
+    @Override
+    protected void runPipeline(final JavaSparkContext ctx) {
+        run(ctx, bam, intervalArgumentCollection, baseRecalibrationKnownVariants, referenceURL, output, shardedOutput, apiKey);
     }
 
     @Override
