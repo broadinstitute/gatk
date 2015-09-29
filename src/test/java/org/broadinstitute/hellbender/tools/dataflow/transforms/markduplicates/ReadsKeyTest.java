@@ -21,7 +21,7 @@ public final class ReadsKeyTest {
         final boolean reverseStrand = false;
         read.setIsReverseStrand(reverseStrand);
         final String strandStr = reverseStrand ? "r": "f";
-        final String key = "-" + "|" + refIndex + "|" + alignmentStart + "|" + strandStr;
+        final String key = ReadsKey.FRAGMENT_PREFIX + "-" + "|" + refIndex + "|" + alignmentStart + "|" + strandStr;
 
         return new Object[][]{
                 new Object[]{header, read, key},

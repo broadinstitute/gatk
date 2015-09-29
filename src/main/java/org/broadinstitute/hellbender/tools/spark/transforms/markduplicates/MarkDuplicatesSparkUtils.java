@@ -34,53 +34,6 @@ public class MarkDuplicatesSparkUtils {
     private static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
 
     /**
-     * Takes the reads,
-     * group them by library, contig, position and orientation,
-     * within each group
-     *   (a) if there are only fragments, mark all but the highest scoring as duplicates, or,
-     *   (b) if at least one is marked as paired, mark all fragments as duplicates.
-     *  Note: Emit only the fragments, as the paired reads are handled separately.
-     */
-    static JavaRDD<GATKRead> transformFragments(final SAMFileHeader header, final JavaRDD<GATKRead> fragments, final int parallelism) {
-        //
-        // Groups reads by keys - keys are tuples of (library, contig, position, orientation).
-        //
-
-        JavaPairRDD<String, Iterable<GATKRead>> groupedReads = fragments.mapToPair(read -> {
-            read.setIsDuplicate(false);
-            return new Tuple2<>(ReadsKey.keyForFragment(header, read), read);
-        }).groupByKey(parallelism);
-
-        return groupedReads.flatMap(v1 -> {
-            List<GATKRead> reads = Lists.newArrayList();
-            Iterable<GATKRead> readsCopy = Iterables.transform(v1._2(), GATKRead::copy);
-            final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
-                    read -> ReadUtils.readHasMappedMate(read)
-            ));
-            // Note the we emit only fragments from this mapper.
-            if (byPairing.get(true).isEmpty()) {
-                // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> score(read)).immutableSortedCopy(byPairing.get(false));
-                if (!frags.isEmpty()) {
-                    reads.add(frags.get(0));                        //highest score - just emit
-                    for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
-                        record.setIsDuplicate(true);
-                        reads.add(record);
-                    }
-                }
-            } else {
-                // There are paired ends so we mark all fragments as duplicates.
-                for (final GATKRead record : byPairing.get(false)) {
-                    record.setIsDuplicate(true);
-                    reads.add(record);
-                }
-            }
-            return reads;
-        });
-    }
-
-
-    /**
      * How to assign a score to the read in MarkDuplicates (so that we pick the best one to be the non-duplicate).
      */
     //Note: copied from htsjdk.samtools.DuplicateScoringStrategy
@@ -117,14 +70,21 @@ public class MarkDuplicatesSparkUtils {
      *       highest scoring as duplicates.
      *   (b) Determine which duplicates are optical duplicates and increase the overall count.
      */
-    static JavaRDD<GATKRead> transformReads(final SAMFileHeader header, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> pairs, final int parallelism) {
+    static JavaRDD<GATKRead> transformReads(final SAMFileHeader header, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> reads, final int parallelism) {
 
         JavaPairRDD<String, Iterable<GATKRead>> keyedReads =
-                pairs.filter(ReadUtils::readHasMappedMate).mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read)).groupByKey(parallelism);
+                reads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read)).groupByKey(parallelism);
 
         JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
             List<Tuple2<String, PairedEnds>> out = Lists.newArrayList();
-            final List<GATKRead> sorted = Lists.newArrayList(keyedRead._2());
+            // Write each read out as a pair with only the first slot filled
+            for (GATKRead read : keyedRead._2()) {
+                read.setIsDuplicate(false);
+                final PairedEnds pair = PairedEnds.of(read);
+                out.add(new Tuple2<>(pair.keyForFragment(header), pair));
+            }
+            // Write each paired read with a mapped mate as a pair
+            final List<GATKRead> sorted = Lists.newArrayList(Iterables.filter(keyedRead._2(), read -> ReadUtils.readHasMappedMate(read)));
             sorted.sort(new GATKOrder(header));
             PairedEnds pair = null;
             //Records are sorted, we iterate over them and pair them up.
@@ -149,10 +109,16 @@ public class MarkDuplicatesSparkUtils {
     static JavaRDD<GATKRead> markPairedEnds(final JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs,
                                             final OpticalDuplicateFinder finder) {
         return keyedPairs.flatMap(keyedPair -> {
-            List<GATKRead> out = Lists.newArrayList();
-
             Iterable<PairedEnds> pairedEnds = keyedPair._2();
             final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEnds, pair -> pair.second() != null);
+
+            // Each key corresponds to either fragments or paired ends, not a mixture of both.
+
+            if (ReadsKey.isFragment(keyedPair._1())) { // fragments
+                return handleFragments(pairedEnds);
+            }
+
+            List<GATKRead> out = Lists.newArrayList();
 
             // As in Picard, unpaired ends left alone.
             for (final PairedEnds pair : paired.get(false)) {
@@ -198,6 +164,36 @@ public class MarkDuplicatesSparkUtils {
             return out;
         });
     }
+
+    private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds) {
+        List<GATKRead> reads = Lists.newArrayList();
+
+        final Iterable<GATKRead> transform = Iterables.transform(pairedEnds, pair -> pair.first());
+        Iterable<GATKRead> readsCopy = Iterables.transform(transform, GATKRead::copy);
+        final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
+                read -> ReadUtils.readHasMappedMate(read)
+        ));
+        // Note the we emit only fragments from this mapper.
+        if (byPairing.get(true).isEmpty()) {
+            // There are no paired reads, mark all but the highest scoring fragment as duplicate.
+            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> score(read)).immutableSortedCopy(byPairing.get(false));
+            if (!frags.isEmpty()) {
+                reads.add(frags.get(0));                        //highest score - just emit
+                for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
+                    record.setIsDuplicate(true);
+                    reads.add(record);
+                }
+            }
+        } else {
+            // There are paired ends so we mark all fragments as duplicates.
+            for (final GATKRead record : byPairing.get(false)) {
+                record.setIsDuplicate(true);
+                reads.add(record);
+            }
+        }
+        return reads;
+    }
+
 
     static JavaPairRDD<String, DuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
         return reads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment())
