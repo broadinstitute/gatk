@@ -70,9 +70,4 @@ public final class CountReadsSpark extends SparkCommandLineProgram {
             }
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
-    }
 }

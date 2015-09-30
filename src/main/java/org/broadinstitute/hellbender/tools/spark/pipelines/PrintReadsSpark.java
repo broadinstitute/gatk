@@ -76,9 +76,4 @@ public final class PrintReadsSpark extends SparkCommandLineProgram {
             throw new GATKException("unable to write bam: " + e);
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
-    }
 }

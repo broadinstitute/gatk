@@ -57,9 +57,4 @@ public final class SortBamSpark extends SparkCommandLineProgram {
             throw new GATKException("unable to write bam: " + e);
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
-    }
 }

@@ -20,12 +20,20 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster = "local[2]";
 
+    @Argument(
+            doc = "Name of the program running",
+            shortName = "N",
+            fullName = "programName",
+            optional = true
+    )
+    public String programName;
+
     @Override
     protected Object doWork() {
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkMaster);
         ctx.getConf().set("spark.driver.userClassPathFirst", "true")
-                     .set("spark.executor.userClassPathFirst", "true")
-                     .set("spark.io.compression.codec", "lzf");
+                .set("spark.executor.userClassPathFirst", "true")
+                .set("spark.io.compression.codec", "lzf");
 
         try{
             runPipeline(ctx);
@@ -65,5 +73,13 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
         SparkContextFactory.stopSparkContext(ctx);
     }
 
-    protected abstract String getProgramName();
+    /**
+     * Returns the program's name.
+     * If programName argument is provided, returns that. Otherwise, returns the simple name of the class.
+     *
+     * Subclasses can override if desired.
+     */
+    protected String getProgramName(){
+        return programName == null ? getClass().getSimpleName() : programName;
+    }
 }

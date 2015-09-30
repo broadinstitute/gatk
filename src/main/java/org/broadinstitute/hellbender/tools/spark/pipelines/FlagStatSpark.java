@@ -71,9 +71,4 @@ public final class FlagStatSpark extends SparkCommandLineProgram {
             throw new UserException.CouldNotCreateOutputFile(file, e);
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
-    }
 }
