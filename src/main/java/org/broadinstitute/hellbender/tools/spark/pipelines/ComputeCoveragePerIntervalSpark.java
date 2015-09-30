@@ -89,19 +89,11 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
         //NOTE: we hit some serialization error with lambdas in WellformedReadFilter
         //so for now we'll write some filters out explicitly.
 //        final ReadFilter readFilter = ctx.broadcast(new WellformedReadFilter(readsHeader));
-        final JavaRDD<GATKRead> reads = readSource.getParallelReads(bam, intervals).filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd());//.filter(read -> readFilter.getValue().test(read));
-        final JavaPairRDD<Locatable, GATKRead> intervalReadPairs = reads.flatMapToPair((GATKRead read) -> {
-            final List<Locatable> overlapping = islBroad.getValue().getOverlapping(new SimpleInterval(read));
-            final List<Tuple2<Locatable, GATKRead>> paired = new ArrayList<>();
-            for (Locatable locatable : overlapping) {
-                final Tuple2<Locatable, GATKRead> tup = new Tuple2<>(locatable, read);
-                paired.add(tup);
-            }
-            return paired;
-        });
+        final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, intervals);
+        final JavaRDD<GATKRead> reads = rawReads.filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd());//.filter(read -> readFilter.getValue().test(read));
+        final Map<Locatable, Long> byKey = reads.flatMap(read -> islBroad.getValue().getOverlapping(new SimpleInterval(read))).countByValue();
 
         final SortedMap<Locatable, Object> byKeySorted = new TreeMap<>(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
-        final Map<Locatable, Object> byKey= intervalReadPairs.countByKey();
         byKeySorted.putAll(byKey);
 
         print(byKeySorted, System.out);
