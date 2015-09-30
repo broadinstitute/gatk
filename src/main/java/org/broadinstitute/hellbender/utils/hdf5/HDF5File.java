@@ -4,6 +4,7 @@ import ncsa.hdf.hdf5lib.H5;
 import ncsa.hdf.hdf5lib.HDF5Constants;
 import ncsa.hdf.hdf5lib.exceptions.HDF5Exception;
 import ncsa.hdf.hdf5lib.exceptions.HDF5LibraryException;
+import ncsa.hdf.hdf5lib.structs.H5G_info_t;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -406,7 +407,7 @@ public final class HDF5File implements AutoCloseable {
      * @throws GATKException if the HDF5 library returned a invalid dataSet id indicating some kind of issue.
      */
     private int openDataset(final String fullPath) throws HDF5LibraryException {
-        final int dataSetId = H5.H5Dopen(fileId, fullPath);
+        final int dataSetId = H5.H5Dopen(fileId, fullPath, HDF5Constants.H5P_DEFAULT);
         if (dataSetId <= 0) {
             throw new GATKException(
                     String.format("opening string data-set '%s' in file '%s' failed with code: %d", fullPath, file, dataSetId));
@@ -518,7 +519,7 @@ public final class HDF5File implements AutoCloseable {
         final ArrayList<Integer> groupIds = new ArrayList<>(pathElements.size() + 1);
         final List<String> pathSoFar = new ArrayList<>(pathElements.size());
         try {
-            final int rootId = H5.H5Gopen(fileId, PATH_ELEMENT_SEPARATOR);
+            final int rootId = H5.H5Gopen(fileId, PATH_ELEMENT_SEPARATOR, HDF5Constants.H5P_DEFAULT);
             if (rootId < 0) {
                 throw new GATKException(String.format("there was a problem to find a group (%s) in file %s", path, file));
             }
@@ -530,7 +531,7 @@ public final class HDF5File implements AutoCloseable {
                 final int childType = findOutGroupChildType(parentId, childName, path);
                 if (childType == HDF5Constants.H5G_UNKNOWN) {
                     modified = true;
-                    int nextGroupId = H5.H5Gcreate(parentId, childName, -1);
+                    int nextGroupId = H5.H5Gcreate(parentId, childName, HDF5Constants.H5P_DEFAULT, HDF5Constants.H5P_DEFAULT, HDF5Constants.H5P_DEFAULT);
                     if (nextGroupId < 0) {
                         throw new GATKException(String.format("there was a problem to make group (%s) in file %s", path, file));
                     }
@@ -538,7 +539,7 @@ public final class HDF5File implements AutoCloseable {
                 } else if (childType != HDF5Constants.H5G_GROUP) {
                     throw new GATKException(String.format("there is a non-group object with type (%d) on the way to the requested group name (%s) in file %s", childType, path, file));
                 } else {
-                    final int nextGroupId = H5.H5Gopen(parentId, childName);
+                    final int nextGroupId = H5.H5Gopen(parentId, childName, HDF5Constants.H5P_DEFAULT);
                     if (nextGroupId < 0) {
                         throw new GATKException(String.format("problem trying to find a group (%s) in file %s", path, file));
                     }
@@ -552,7 +553,7 @@ public final class HDF5File implements AutoCloseable {
         } finally {
             // we need to do our best to close all the groups we have opened.
             for (final int groupId : groupIds) {
-                try { H5.H5Gclose(groupId); } catch (final HDF5LibraryException ex) { };
+                try { H5.H5Gclose(groupId); } catch (final HDF5LibraryException ex) { }
             }
         }
         return modified;
@@ -580,17 +581,21 @@ public final class HDF5File implements AutoCloseable {
 
         // Use an single position array to return a value is kinda inefficient but that is the way it is:
         final long[] numObjsResult = new long[1];
-        if (H5.H5Gget_num_objs(groupId, numObjsResult) < 0) {
-            throw new GATKException(String.format("problem trying to find a group (%s) in file %s", fullPath, file));
-        }
+        H5G_info_t result = H5.H5Gget_info(groupId);
+        numObjsResult[0] = result.nlinks;
+
         final int childCount = (int) numObjsResult[0];
         if (childCount == 0) { // this is no premature optimization: get_obj_info_all really cannot handle length 0 arrays.
             return HDF5Constants.H5G_UNKNOWN;
         } else {
             final String[] childNames = new String[childCount];
             final int[] childTypes = new int[childCount];
+            final int[] lTypes = new int[childCount];
             final long[] childRefs = new long[childCount];
-            if (H5.H5Gget_obj_info_all(groupId, ".", childNames, childTypes, childRefs) < 0) {
+
+            // Example call in HDF docs (https://www.hdfgroup.org/HDF5/examples/api18-java.html .... H5_Ex_G_Iterate.java Line 71):
+            //  H5.H5Gget_obj_info_all(file_id, DATASETNAME, oname, otype, ltype, orefs, HDF5Constants.H5_INDEX_NAME);
+            if (H5.H5Gget_obj_info_all(groupId, ".", childNames, childTypes, lTypes, childRefs, HDF5Constants.H5_INDEX_NAME) < 0) {
                 throw new GATKException(String.format("problem trying to find a group (%s) in file %s", fullPath, file));
             }
             final int childIndex = ArrayUtils.indexOf(childNames, name);
@@ -662,7 +667,7 @@ public final class HDF5File implements AutoCloseable {
      * @param fullPath the full path of the dataset inside the HDF5 file.
      * @param values the string array to write in the file.
      * @return {@code true} if a new data-set need to be created.
-     * @return IllegalArgumentException if {@code values} is {@code null} or contains {@code null}.
+     * @throws IllegalArgumentException if {@code values} is {@code null} or contains {@code null}.
      * @throws GATKException if there was any low-level issue accessing the HDF5 file.
      */
     public boolean makeStringArray(final String fullPath, final String ... values) {
@@ -727,7 +732,7 @@ public final class HDF5File implements AutoCloseable {
               }
             } catch (final GATKException ex) {
                 // if we fail somewhere after creating the type, we need to close it if we can:
-                if (result != -1) { try { H5.H5Tclose(result); } catch (final HDF5Exception ex2) {} };
+                if (result != -1) { try { H5.H5Tclose(result); } catch (final HDF5Exception ex2) {} }
                 throw ex;
             }
         };
@@ -779,14 +784,14 @@ public final class HDF5File implements AutoCloseable {
     private int findOutGroupChildType(final String groupPath, final String name, final String fullPath) {
         int groupId = -1;
         try {
-            groupId = H5.H5Gopen(fileId, groupPath);
+            groupId = H5.H5Gopen(fileId, groupPath, HDF5Constants.H5P_DEFAULT);
             final int childType = findOutGroupChildType(groupId, name, fullPath);
             return childType;
         } catch (final HDF5Exception ex) {
             throw new GATKException(String.format("problem when trying to resolve element %s type in file %s", fullPath, file));
         } finally {
             if (groupId != -1) {
-                try { H5.H5Gclose(groupId); } catch (final HDF5Exception ex) { } };
+                try { H5.H5Gclose(groupId); } catch (final HDF5Exception ex) { } }
         }
     }
 
@@ -802,7 +807,8 @@ public final class HDF5File implements AutoCloseable {
         try {
             dataSpaceId = checkH5Result(H5.H5Screate_simple(dimensions.length, dimensions, null),
                     () -> String.format("problem trying to create dataset %s in file %s", fullPath, file));
-            dataSetId = checkH5Result(H5.H5Dcreate(fileId, fullPath, typeId, dataSpaceId, HDF5Constants.H5P_DEFAULT),
+            dataSetId = checkH5Result(H5.H5Dcreate(fileId, fullPath, typeId, dataSpaceId,
+                            HDF5Constants.H5P_DEFAULT, HDF5Constants.H5P_DEFAULT, HDF5Constants.H5P_DEFAULT),
                     () -> String.format("problem trying to create dataset %s in file %s", fullPath, file));
         } catch (final HDF5Exception ex) {
             throw new GATKException(String.format("problem trying to create dataset %s in file %s", fullPath, file), ex);
@@ -822,10 +828,10 @@ public final class HDF5File implements AutoCloseable {
         int dataSetId = -1;
         int dataTypeId = -1;
         try {
-            dataSetId = checkH5Result(H5.H5Dopen(fileId, fullPath), () -> String.format("problem opening dataset %s in file %s: ", fullPath, file));
+            dataSetId = checkH5Result(H5.H5Dopen(fileId, fullPath, HDF5Constants.H5P_DEFAULT), () -> String.format("problem opening dataset %s in file %s: ", fullPath, file));
             dataTypeId = H5.H5Dget_type(dataSetId);
             if (!H5.H5Tequal(dataTypeId, typeId)) {
-                throw new GATKException(String.format("problem opening existing dataset %s in file %s: as it has an type incompatible with the new value's"));
+                throw new GATKException(String.format("problem opening existing dataset %s : as it has an incompatible type with the new value's", fullPath));
             }
             checkH5Result(H5.H5Dwrite(dataSetId, typeId, HDF5Constants.H5S_ALL, HDF5Constants.H5S_ALL, HDF5Constants.H5P_DEFAULT, data, false),
                     () -> String.format("error trying to write data-set %s in file %s", fullPath, file));
