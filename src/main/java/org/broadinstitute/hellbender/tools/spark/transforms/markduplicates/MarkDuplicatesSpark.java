@@ -58,6 +58,11 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
     protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
+                                         final OpticalDuplicateFinder opticalDuplicateFinder) {
+        return mark(reads, header, opticalDuplicateFinder, reads.partitions().size());
+    }
+
+    public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final OpticalDuplicateFinder opticalDuplicateFinder, final int parallelism) {
 
         JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !isNonPrimary(v1));

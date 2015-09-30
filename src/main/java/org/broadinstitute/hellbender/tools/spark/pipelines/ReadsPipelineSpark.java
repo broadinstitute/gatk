@@ -88,7 +88,7 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         JavaRDD<GATKRead> initialReads = readSource.getParallelReads(bam, intervals);
 
-        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, readsHeader, new OpticalDuplicateFinder(), 0);
+        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, readsHeader, new OpticalDuplicateFinder());
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
 
         // TODO: workaround for known bug in List version of getParallelVariants
