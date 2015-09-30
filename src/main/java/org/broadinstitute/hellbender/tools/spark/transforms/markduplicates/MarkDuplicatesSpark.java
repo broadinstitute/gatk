@@ -97,10 +97,4 @@ public final class MarkDuplicatesSpark extends SparkCommandLineProgram {
             MarkDuplicatesSparkUtils.writeMetricsToFile(metrics, metricsFile);
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
-    }
-
 }

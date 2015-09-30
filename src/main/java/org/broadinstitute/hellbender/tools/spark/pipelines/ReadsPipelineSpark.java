@@ -118,11 +118,6 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         }
     }
 
-    @Override
-    protected String getProgramName() {
-        return "ReadsPipelineSpark";
-    }
-
     private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
         Utils.nonNull(refDictionary);
         Utils.nonNull(readsDictionary);

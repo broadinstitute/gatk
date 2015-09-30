@@ -53,9 +53,4 @@ public final class CountBasesSpark extends SparkCommandLineProgram {
             }
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
-    }
 }

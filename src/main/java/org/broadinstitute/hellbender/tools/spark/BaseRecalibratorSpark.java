@@ -105,11 +105,6 @@ public class BaseRecalibratorSpark extends SparkCommandLineProgram {
         }
     }
 
-    @Override
-    protected String getProgramName() {
-        return "BaseRecalibratorSpark";
-    }
-
     private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
         Utils.nonNull(refDictionary);
         Utils.nonNull(readsDictionary);

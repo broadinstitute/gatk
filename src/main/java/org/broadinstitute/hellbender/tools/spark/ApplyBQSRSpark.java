@@ -84,9 +84,4 @@ public final class ApplyBQSRSpark extends SparkCommandLineProgram{
             throw new GATKException("unable to write bam: " + e);
         }
     }
-
-    @Override
-    protected String getProgramName() {
-        return "ApplyBQSRSpark";
-    }
 }
