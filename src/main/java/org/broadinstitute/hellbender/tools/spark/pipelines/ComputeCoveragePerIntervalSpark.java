@@ -58,7 +58,7 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
     public File targetIntervalFile;
 
     @ArgumentCollection
-    private IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
+    public IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
     @Argument(doc = "uri for the output file: a local file path",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -90,7 +90,7 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
         //so for now we'll write some filters out explicitly.
 //        final ReadFilter readFilter = ctx.broadcast(new WellformedReadFilter(readsHeader));
         final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, intervals);
-        final JavaRDD<GATKRead> reads = rawReads.filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd());//.filter(read -> readFilter.getValue().test(read));
+        final JavaRDD<GATKRead> reads = rawReads.filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd());
         final Map<Locatable, Long> byKey = reads.flatMap(read -> islBroad.getValue().getOverlapping(new SimpleInterval(read))).countByValue();
 
         final SortedMap<Locatable, Object> byKeySorted = new TreeMap<>(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
@@ -133,10 +133,5 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
         //So we do this trick
         final List<Locatable> targets = result.targets().stream().collect(Collectors.toList());
         return new HashedListTargetCollection<>(targets);
-    }
-
-    @Override
-    protected String getProgramName() {
-        return getClass().getSimpleName();
     }
 }
