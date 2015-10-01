@@ -831,7 +831,7 @@ public final class HDF5File implements AutoCloseable {
             dataSetId = checkH5Result(H5.H5Dopen(fileId, fullPath, HDF5Constants.H5P_DEFAULT), () -> String.format("problem opening dataset %s in file %s: ", fullPath, file));
             dataTypeId = H5.H5Dget_type(dataSetId);
             if (!H5.H5Tequal(dataTypeId, typeId)) {
-                throw new GATKException(String.format("problem opening existing dataset %s : as it has an incompatible type with the new value's", fullPath));
+                throw new GATKException(String.format("problem writing new data to existing dataset %s: type is incompatible", fullPath));
             }
             checkH5Result(H5.H5Dwrite(dataSetId, typeId, HDF5Constants.H5S_ALL, HDF5Constants.H5S_ALL, HDF5Constants.H5P_DEFAULT, data, false),
                     () -> String.format("error trying to write data-set %s in file %s", fullPath, file));
