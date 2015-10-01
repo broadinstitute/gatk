@@ -20,7 +20,7 @@ public class SegmenterTest extends BaseTest {
         final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -30,7 +30,7 @@ public class SegmenterTest extends BaseTest {
         final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_short_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -40,7 +40,7 @@ public class SegmenterTest extends BaseTest {
         final File EXPECTED = new File("src/test/resources/segmenter/output/Simple_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "Simple";
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         assertEqualSegments(output,EXPECTED);
     }
 

@@ -21,12 +21,29 @@ public class PerformCBSSegmentationIntegrationTest extends CommandLineProgramTes
     }
 
     @Test(dataProvider = "inputFileData")
-    public void testHCC1143ReducedCommandLine(final File INPUT_FILE, final File EXPECTED, final File output, String sampleName) throws IOException {
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath());
+    public void testUnLoggedCommandLine(final File INPUT_FILE, final File EXPECTED, final File output, String sampleName) throws IOException {
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         final String[] arguments = {
                 "-" + PerformCBSSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
                 "-" + PerformCBSSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + PerformCBSSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
+        };
+        runCommandLine(arguments);
+        SegmenterTest.assertEqualSegments(output, EXPECTED);
+    }
+
+    @Test()
+    public void testUnLoggedCommandLine() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_reduced_log.tsv");
+        final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        final String sampleName = "HCC1143";
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
+        final String[] arguments = {
+                "-" + PerformCBSSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
+                "-" + PerformCBSSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + PerformCBSSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
+                "-" + PerformCBSSegmentation.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
         SegmenterTest.assertEqualSegments(output, EXPECTED);
