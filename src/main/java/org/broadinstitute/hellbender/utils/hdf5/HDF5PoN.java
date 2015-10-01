@@ -4,11 +4,12 @@ import htsjdk.samtools.util.Lazy;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.File;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.IntPredicate;
-import java.util.stream.Collectors;
 
 /**
  * HDF5 File backed Panel of Normals data structure.
@@ -17,11 +18,9 @@ import java.util.stream.Collectors;
  */
 public final class HDF5PoN implements PoN {
 
-    private final static String TARGET_FACTORS_GROUP_NAME = "/target_factors";
+    public final static String TARGET_FACTORS_GROUP_NAME = "/target_factors";
 
     private final static String NORMALIZED_PCOV_GROUP_NAME = "/fnt_control_matrix";
-
-    private final static String MAXIMUM_RATIO_CUTOFF_GROUP_NAME = "/max_ratio_cutoff";
 
     private final static String VERSION_GROUP_NAME = "/version";
 
@@ -31,81 +30,61 @@ public final class HDF5PoN implements PoN {
 
     private final static String REDUCED_PON_GROUP_NAME = "/reduced_pon";
 
-    private final static String REDUCED_PON_PINV_GROUP_NAME = "/reduced_pon_pinv";
+    public final static String REDUCED_PON_PINV_GROUP_NAME = "/reduced_pon_pinv";
 
-    private final static String MAXIMUM_RATIO_CUTOFF_PATH = MAXIMUM_RATIO_CUTOFF_GROUP_NAME + "/values";
+    public final static String TARGET_NAMES_PATH = TARGET_FACTORS_GROUP_NAME + "/index";
 
-    private final static String TARGET_NAMES_PATH = TARGET_FACTORS_GROUP_NAME + "/index";
+    public final static String SAMPLE_NAMES_PATH = NORMALIZED_PCOV_GROUP_NAME + "/axis0";
 
-    private final static String SAMPLE_NAMES_PATH = NORMALIZED_PCOV_GROUP_NAME + "/axis0";
-
-    private final static String TARGET_FACTORS_PATH = TARGET_FACTORS_GROUP_NAME + "/values";
+    public final static String TARGET_FACTORS_PATH = TARGET_FACTORS_GROUP_NAME + "/values";
 
     private final static String NORMALIZED_PCOV_PATH = NORMALIZED_PCOV_GROUP_NAME + "/block0_values";
 
-    private final static String LOG_NORMALS_PATH = LOG_NORMALS_GROUP_NAME + "/block0_values";
+    public final static String LOG_NORMALS_PATH = LOG_NORMALS_GROUP_NAME + "/block0_values";
 
     private final static String LOG_NORMALS_SAMPLE_NAMES_PATH = LOG_NORMALS_GROUP_NAME + "/block0_items";
 
-    private final static String LOG_NORMALS_PINV_PATH = LOG_NORMALS_PINV_GROUP_NAME + "/block0_values";
+    public final static String LOG_NORMALS_PINV_PATH = LOG_NORMALS_PINV_GROUP_NAME + "/block0_values";
 
-    private final static String REDUCED_PON_PATH = REDUCED_PON_GROUP_NAME + "/block0_values";
+    public final static String REDUCED_PON_PATH = REDUCED_PON_GROUP_NAME + "/block0_values";
 
     private final static String REDUCED_PON_TARGET_PATH = REDUCED_PON_GROUP_NAME + "/axis1";
 
-    private final static String REDUCED_PON_PINV_PATH = REDUCED_PON_PINV_GROUP_NAME + "/block0_values";
+    public final static String REDUCED_PON_PINV_PATH = REDUCED_PON_PINV_GROUP_NAME + "/block0_values";
 
     private final static String VERSION_PATH = VERSION_GROUP_NAME + "/values";
 
-    private final HDF5File reader;
+    private final HDF5File file;
 
-    private final List<String> targetNames;
+    private final Lazy<List<String>> targetNames;
 
     private final Lazy<List<String>> reducedTargetNames;
 
-    private final List<String> sampleNames;
+    private final Lazy<List<String>> sampleNames;
 
-    private List<String> logNormalSampleNames;
-
-    public HDF5PoN(final HDF5File reader) {
-        if (reader == null) {
-            throw new IllegalArgumentException("reader is null");
-        }
-        targetNames = readTargetNames(reader);
-        sampleNames = readSampleNames(reader);
-        reducedTargetNames = new Lazy<>(() -> Collections.unmodifiableList(Arrays.asList(reader.readStringArray(REDUCED_PON_TARGET_PATH))));
-        this.reader = reader;
-    }
+    private final Lazy<List<String>> logNormalSampleNames;
 
     /**
-     * Checks that all sample names in {@code logNormalSampleNames} are present in {@code sampleNames}.
-     *
-     * <p>
-     *     If this is not the case a {@link GATKException} is thrown.
-     * </p>
-     *
-     * @param file the original file, used for the exception message if applies.
-     * @param sampleNames the full sample name list.
-     * @param logNormalSampleNames the log-normal sample name sub-set.
-     * @throws GATKException if elements in {@code logNormalSampleNames} are not present in {@code sampleNames}.
+     * Create a new PoN interface to a HDF5 file.
+     * @param file the underlying HDF5 file.
+     * @throws IllegalArgumentException if {@code file} is {@code null}.
      */
-    private static void checkSampleNames(final File file, final List<String> sampleNames, final List<String> logNormalSampleNames) {
-        final Set<String> sampleNamesSet = new HashSet<>(sampleNames);
-        if (logNormalSampleNames.stream().anyMatch(n -> ! sampleNamesSet.contains(n))) {
-            throw new GATKException(
-                    String.format("the log-normal sample subset contains samples that are not present in the full sample set for file '%s'; e.g. %s",file,
-                            logNormalSampleNames.stream().filter(n -> ! sampleNamesSet.contains(n))
-                                    .limit(10).collect(Collectors.joining(", "))));
-        }
+    public HDF5PoN(final HDF5File file) {
+        Utils.nonNull(file, "the input file must not be null");
+        this.file = file;
+        targetNames = new Lazy<>(() -> readTargetNames(file));
+        sampleNames = new Lazy<>(() -> readSampleNames(file));
+        logNormalSampleNames = new Lazy<>(() -> readLogNormalizedSampleNames(file));
+        reducedTargetNames = new Lazy<>(() -> Collections.unmodifiableList(Arrays.asList(file.readStringArray(REDUCED_PON_TARGET_PATH))));
     }
 
-    /**
-     * Reads the log-normal sample names sub-set.
+        /**
+     * Reads the log-normalized sample names sub-set.
      * @param reader the source HDF5 reader.
      * @return never {@code null}.
      * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
      */
-    private static List<String> readLogNormalSampleNames(final HDF5File reader) {
+    private static List<String> readLogNormalizedSampleNames(final HDF5File reader) {
         final String[] values = reader.readStringArray(LOG_NORMALS_SAMPLE_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
@@ -127,84 +106,86 @@ public final class HDF5PoN implements PoN {
      * @return never {@code null}.
      * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
      */
-    private List<String> readSampleNames(final HDF5File reader) {
+    private static List<String> readSampleNames(final HDF5File reader) {
         final String[] values = reader.readStringArray(SAMPLE_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
 
     @Override
-    public List<String> targetNames() {
-        return targetNames;
+    public List<String> getTargetNames() {
+        return targetNames.get();
     }
 
     @Override
-    public List<String> reducedPoNTargetNames() {
+    public List<String> getPanelTargetNames() {
         return reducedTargetNames.get();
     }
 
     @Override
-    public List<String> sampleNames() {
-        return sampleNames;
+    public List<String> getSampleNames() {
+        return sampleNames.get();
     }
 
     @Override
-    public List<String> logNormalSampleNames() {
-        if (logNormalSampleNames == null) {
-            logNormalSampleNames = readLogNormalSampleNames(reader);
-            checkSampleNames(reader.getFile(),sampleNames,logNormalSampleNames);
-        }
-        return logNormalSampleNames;
+    public List<String> getPanelSampleNames() {
+        return logNormalSampleNames.get();
+
     }
 
     @Override
-    public RealMatrix targetFactors() {
-        final double[] values = reader.readDoubleArray(TARGET_FACTORS_PATH);
-        if (values.length != targetNames.size()) {
-            throw new GATKException(String.format("wrong number of elements in the target factors recovered from file '%s': %d != %d",reader.getFile(),values.length,targetNames.size()));
+    public RealMatrix getTargetFactors() {
+        final double[] values = file.readDoubleArray(TARGET_FACTORS_PATH);
+        if (values.length != targetNames.get().size()) {
+            throw new GATKException(String.format("wrong number of elements in the target factors recovered from file '%s': %d != %d", file.getFile(), values.length, targetNames.get().size()));
         }
         return new Array2DRowRealMatrix(values);
     }
 
     @Override
-    public RealMatrix normalizedPercentCoverage() {
-        return readMatrixAndCheckDimensions(NORMALIZED_PCOV_PATH,targetNames.size(),
-                sampleNames.size());
+    public void setTargetFactors(final RealMatrix targetFactors) {
+        Utils.nonNull(targetFactors);
+        if (targetFactors.getColumnDimension() != 1) {
+            throw new IllegalArgumentException("the number of columns in the target factors matrix must be 1 but it is: " + targetFactors.getColumnDimension());
+        }
+        file.makeGroup(TARGET_FACTORS_GROUP_NAME);
+        file.makeDoubleArray(TARGET_FACTORS_PATH, targetFactors.getColumn(0));
     }
 
     @Override
-    public RealMatrix logNormals() {
-        return readMatrixAndCheckDimensions(LOG_NORMALS_PATH,targetNames.size(),
-                sampleNames.size());
+    public RealMatrix getNormalizedCounts() {
+        return readMatrixAndCheckDimensions(NORMALIZED_PCOV_PATH, targetNames.get().size(),
+                sampleNames.get().size());
     }
 
     @Override
-    public RealMatrix logNormalsPseudoInverse() {
-        return readMatrixAndCheckDimensions(LOG_NORMALS_PINV_PATH,sampleNames.size(),
-                targetNames.size());
+    public RealMatrix getLogNormalizedCounts() {
+        return readMatrixAndCheckDimensions(LOG_NORMALS_PATH, getPanelTargetNames().size(),
+                getPanelSampleNames().size());
     }
 
     @Override
-    public RealMatrix reducedPoN() {
+    public RealMatrix getLogNormalizedPInverseCounts() {
+        return readMatrixAndCheckDimensions(LOG_NORMALS_PINV_PATH, getPanelSampleNames().size(),
+                getPanelTargetNames().size());
+    }
+
+    @Override
+    public RealMatrix getReducedPanelCounts() {
         return readMatrixAndCheckDimensions(REDUCED_PON_PATH,
                 r -> r == reducedTargetNames.get().size(),
-                c -> c <= logNormalSampleNames().size());
+                c -> c <= getPanelSampleNames().size());
     }
 
     @Override
-    public RealMatrix reducedPoNPseudoInverse() {
+    public RealMatrix getReducedPanelPInverseCounts() {
         return readMatrixAndCheckDimensions(REDUCED_PON_PINV_PATH,
-                r -> r <= logNormalSampleNames().size(),
+                r -> r <= getPanelSampleNames().size(),
                 c -> c == reducedTargetNames.get().size());
     }
 
     @Override
-    public double maximumRatioCutoff() {
-        return reader.readDouble(MAXIMUM_RATIO_CUTOFF_PATH);
-    }
-
-    @Override
-    public String version() {
-        return String.format("%.1f", reader.readDouble(VERSION_PATH));
+    public double getVersion() {
+        return file.readDouble(VERSION_PATH);
     }
 
     /**
@@ -214,7 +195,7 @@ public final class HDF5PoN implements PoN {
      * @throws GATKException if the matrix does not exist or any other HDF5 level error occurred.
      */
     private RealMatrix readMatrix(final String fullPath) {
-        final double[][] values = reader.readDoubleMatrix(fullPath);
+        final double[][] values = file.readDoubleMatrix(fullPath);
         return new Array2DRowRealMatrix(values,false);
     }
 
@@ -240,14 +221,105 @@ public final class HDF5PoN implements PoN {
      */
     private RealMatrix readMatrixAndCheckDimensions(final String fullPath, final IntPredicate expectedRowCount, final IntPredicate expectedColumnCount) {
         final RealMatrix result = readMatrix(fullPath);
-        if (!expectedRowCount.test(result.getRowDimension())) {
+        if (expectedRowCount.test(result.getRowDimension())
+                && expectedColumnCount.test(result.getColumnDimension())) {
+            return result;
+        }
+        final RealMatrix transpose = result.transpose();
+        if (!expectedRowCount.test(transpose.getRowDimension())) {
             throw new GATKException(String.format("wrong number of rows in '%s' matrix from file '%s': %d",
-                    fullPath, reader.getFile(), result.getRowDimension()));
+                    fullPath, file.getFile(), result.getRowDimension()));
         }
-        if (!expectedColumnCount.test(result.getColumnDimension())) {
+        if (!expectedColumnCount.test(transpose.getColumnDimension())) {
             throw new GATKException(String.format("wrong number of columns in '%s' from file '%s': %d",
-                    fullPath, reader.getFile(), result.getColumnDimension()));
+                    fullPath, file.getFile(), result.getColumnDimension()));
         }
-        return result;
+        return transpose;
     }
+
+    /// Write interface:
+
+    /**
+     * The version number.
+     *
+     * The version number is a float point number (double) where the integer part is the
+     * major and the decimal part is the minor.
+     *
+     * Note: the logic choice is to use a free form string but, the Python version was using
+     * a HDF5 double, so we are keeping the tradition here.
+     *
+     * @param version the new version value.
+     * @throws UnsupportedOperationException if this PoN instance is read-only access.
+     */
+    public void setVersion(final double version) {
+        file.makeDouble(VERSION_PATH, version);
+    }
+
+    /**
+     * Changes the sample names in the PoN.
+     *
+     * @param names the new list of sample names.
+     * @throws IllegalArgumentException if {@code name} is {@code null} or contains
+     *  any {@code null}.
+     */
+    public void setSampleNames(final List<String> names) {
+        checkNameList(names);
+        file.makeStringArray(SAMPLE_NAMES_PATH, names.toArray(new String[names.size()]));
+    }
+
+    /**
+     * Changes the target names in the PoN.
+     */
+    public void setTargetNames(final List<String> names) {
+        checkNameList(names);
+        file.makeStringArray(TARGET_NAMES_PATH, names.toArray(new String[names.size()]));
+    }
+
+    /**
+     * Set the normalized read counts.
+     * @param normalizedCounts the normalized read counts.
+     */
+    public void setNormalCounts(final RealMatrix normalizedCounts) {
+        file.makeDoubleMatrix(NORMALIZED_PCOV_PATH, normalizedCounts.getData());
+    }
+
+    public void setReducedPanelCounts(final RealMatrix counts) {
+        Utils.nonNull(counts);
+        file.makeDoubleMatrix(REDUCED_PON_PATH, counts.getData());
+    }
+
+    public void setLogNormalPInverseCounts(final RealMatrix counts) {
+        Utils.nonNull(counts);
+        file.makeDoubleMatrix(LOG_NORMALS_PINV_PATH, counts.getData());
+    }
+
+    public void setLogNormalCounts(final RealMatrix counts) {
+        Utils.nonNull(counts);
+        file.makeDoubleMatrix(LOG_NORMALS_PATH, counts.getData());
+    }
+
+    public void setReducedPanelPInverseCounts(final RealMatrix counts) {
+        Utils.nonNull(counts);
+        file.makeDoubleMatrix(REDUCED_PON_PINV_PATH, counts.getData());
+    }
+
+    public void setPanelSampleNames(final List<String> names) {
+        checkNameList(names);
+        file.makeStringArray(LOG_NORMALS_SAMPLE_NAMES_PATH, names.toArray(new String[names.size()]));
+    }
+
+    public void setPanelTargetNames(final List<String> names) {
+        checkNameList(names);
+        file.makeStringArray(REDUCED_PON_TARGET_PATH, names.toArray(new String[names.size()]));
+    }
+
+    private void checkNameList(List<String> names) {
+        Utils.nonNull(names, "the input names cannot be null");
+        if (names.contains(null)) {
+            throw new IllegalArgumentException("the input names list cannot contain a null");
+        }
+    }
+
+
+
 }

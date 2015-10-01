@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang.math.Range;
 import org.apache.commons.lang3.ArrayUtils;
@@ -21,6 +20,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -56,7 +56,7 @@ import java.util.stream.IntStream;
  * </p>
  * <p>
  * If the source omits the target name, a exonCollection should be provided in order to resolve the name given its coordinates
- * using {@link #parse(File, TargetCollection)}.
+ * using {@link #parse(File, TargetCollection, boolean)}.
  * </p>
  * <p>
  * This class will check whether the content of the input file is well formatted and consistent
@@ -239,7 +239,7 @@ public final class ReadCountCollectionUtils {
      *                                lack of target names in the source file.
      */
     public static ReadCountCollection parse(final File file) throws IOException {
-        return parse(file, null);
+        return parse(file, null, false);
     }
 
     /**
@@ -250,15 +250,18 @@ public final class ReadCountCollectionUtils {
      * </p>
      *
      * @param file  the source file.
-     * @param exons collection of exons (targets). This parameter can be {@code null}, to indicate that no exon
+     * @param targets collection of exons (targets). This parameter can be {@code null}, to indicate that no exon
      *              collection is to be considered.
+     * @param ignoreMissingTargets whether we ignore read counts that make reference to targets that are not present in
+     *                             the input target collection {@code targets}.
      * @return never {@code null}.
      * @throws IllegalArgumentException if {@code file} is {@code null}.
      * @throws IOException              if there was any problem reading the content of {@code file}.
      * @throws UserException.BadInput   if there is some formatting issue with the file. This includes inability to
-     *                                  resolve a target name based on the input file content and the exon collection provided.
+     *                                  resolve a target name based on the input file content and the target collection provided as long as
+     *                                  {@code ignoreMissingTargets} is {@code false}.
      */
-    public static <E extends BEDFeature> ReadCountCollection parse(final File file, final TargetCollection<E> exons) throws IOException {
+    public static <E> ReadCountCollection parse(final File file, final TargetCollection<E> targets, final boolean ignoreMissingTargets) throws IOException {
         Utils.nonNull(file, "the input file cannot be null");
 
         final List<String> countColumnNames = new ArrayList<>();
@@ -277,29 +280,79 @@ public final class ReadCountCollectionUtils {
                 @SuppressWarnings("all")
                 final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns, (message) -> formatException(message));
                 final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns);
-                if (targetNameExtractor == null && exons == null) {
-                    throw formatException("the input files does not contain a target name column and no target file was provided");
-                }
-
-                final Function<DataLine, Target> targetExtractor = targetExtractor(exons, targetNameExtractor, intervalExtractor);
                 final Function<DataLine, double[]> countExtractor = countExtractor(columns);
-                recordExtractor = (v) -> new ReadCountRecord(targetExtractor.apply(v), countExtractor.apply(v));
+                recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
+            }
+
+            private Function<DataLine, ReadCountRecord> composeRecordExtractor(final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor, final TargetCollection<E> targets) {
+                if (targetNameExtractor == null && (targets == null || intervalExtractor == null)) {
+                    throw formatException("the input files does not contain a target name column and no target file was provided");
+                } else if (targetNameExtractor != null && intervalExtractor != null) {
+                    if (targets == null) {
+                        return (v) -> new ReadCountRecord(new Target(targetNameExtractor.apply(v), intervalExtractor.apply(v)), countExtractor.apply(v));
+                    } else {
+                        return (v) -> extractRecordWithTargetNameAndIntervalExtractorsAndTargetCollection(v, intervalExtractor, targetNameExtractor, countExtractor);
+                    }
+                } else if (targetNameExtractor != null) {
+                    if (targets == null) {
+                        return (v) -> new ReadCountRecord(new Target(targetNameExtractor.apply(v), null), countExtractor.apply(v));
+                    } else {
+                        return (v) -> extractRecordWithTargetNameExtractorAndTargetCollection(v, targetNameExtractor, countExtractor);
+                    }
+                } else { // at this point targets != null && intervalExtractor != null.
+                    return (v) -> extractRecordWithIntervalExtractorAndTargetCollection(v, intervalExtractor, countExtractor);
+                }
+            }
+
+            private ReadCountRecord extractRecordWithTargetNameExtractorAndTargetCollection(final DataLine v, Function<DataLine, String> targetNameExtractor, Function<DataLine, double[]> countExtractor) {
+                final String name = targetNameExtractor.apply(v);
+                final E nameTarget = targets.target(name);
+                if (nameTarget == null) {
+                    if (ignoreMissingTargets) {
+                        return null;
+                    } else {
+                        throw formatException(String.format("unknown target '%s' not present in the target collection", name));
+                    }
+                } else {
+                    return new ReadCountRecord(new Target(name, targets.location(nameTarget)), countExtractor.apply(v));
+                }
+            }
+
+            private ReadCountRecord extractRecordWithIntervalExtractorAndTargetCollection(final DataLine v, final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, double[]> countExtractor) {
+                final SimpleInterval interval = intervalExtractor.apply(v);
+                final E intervalTarget = targets.target(interval);
+                if (intervalTarget == null) {
+                    if (ignoreMissingTargets) {
+                        return null;
+                    } else {
+                        throw formatException(String.format("unknown target with interval %s", interval));
+                    }
+                } else if (!targets.location(intervalTarget).equals(interval)) {
+                    throw formatException(String.format("mismatching yet overlapping intervals in the input (%s) and the target collection (%s)", interval, targets.location(intervalTarget)));
+                } else {
+                    return new ReadCountRecord(new Target(targets.name(intervalTarget), interval), countExtractor.apply(v));
+                }
+            }
+
+            private ReadCountRecord extractRecordWithTargetNameAndIntervalExtractorsAndTargetCollection(final DataLine data, final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor) {
+                    final String name = targetNameExtractor.apply(data);
+                    final SimpleInterval interval = intervalExtractor.apply(data);
+                    final E nameTarget = targets.target(name);
+                    final E intervalTarget = targets.target(interval);
+                    if (!Objects.equals(nameTarget, intervalTarget)) {
+                        throw formatException(String.format("conflicting target resolution from the name (%s) and interval (%s) provided", name, interval));
+                    } else if (nameTarget == null) {
+                        return ignoreMissingTargets ? null : new ReadCountRecord(new Target(name, interval), countExtractor.apply(data));
+                    } else if (!targets.location(intervalTarget).equals(interval)) {
+                        throw formatException(String.format("mismatch interval from input (%s) and target collection (%s) for target '%s'", interval, targets.location(intervalTarget), name));
+                    } else {
+                        return new ReadCountRecord(new Target(name, interval), countExtractor.apply(data));
+                    }
             }
 
             @Override
             protected ReadCountRecord createRecord(final DataLine dataLine) {
                 return recordExtractor.apply(dataLine);
-            }
-
-            protected Function<DataLine, Target> targetExtractor(final TargetCollection<E> targets, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, SimpleInterval> intervalExtractor) {
-                return (values) -> {
-                    final SimpleInterval interval = intervalExtractor == null ? null : intervalExtractor.apply(values);
-                    final String name = targetNameExtractor == null ? targets.name(targets.target(interval)) : targetNameExtractor.apply(values);
-                    if (name == null) {
-                        throw formatException("cannot resolve the target name for interval " + interval);
-                    }
-                    return new Target(name, interval);
-                };
             }
 
             private Function<DataLine, double[]> countExtractor(final TableColumnCollection columns) {
@@ -345,7 +398,14 @@ public final class ReadCountCollectionUtils {
             throw new UserException.BadInput("there is no counts (zero targets) in the input file " + file);
         }
         return new ReadCountCollection(buffer.getTargets(), SetUniqueList.setUniqueList(columnNames),
-                new Array2DRowRealMatrix(buffer.getCounts()));
+                new Array2DRowRealMatrix(buffer.getCounts(),false));
+    }
+
+    private static Target resolveTargetCheckInterval(final ReadCountRecord record, final String name , final SimpleInterval interval) {
+        if (!record.target.getInterval().equals(interval)) {
+            throw new UserException.BadInput(String.format("the target %s seems to make reference to different intervals %s and %s.", record.target.getName(), record.target.getInterval(), interval));
+        }
+        return new Target(name, interval);
     }
 
     /**

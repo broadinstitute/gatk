@@ -79,6 +79,39 @@ public final class TableColumnCollection {
     }
 
     /**
+     * Creates a new table-column collection from a set of enum constants.
+     *
+     * <p>
+     * The new instance will have one column for enum value in {@code enumClass}, in their
+     * ordinal order.
+     * </p>
+     *
+     * <p>
+     * The {@link Object#toString() toString} transformation of each constant is used
+     * as the column name. Notice that this might differ from the constant name if
+     * this method is overloaded by the enum.
+     * </p>
+     * @param enumClass the input enum class.
+     * @throws IllegalArgumentException if {@code enumClass} is {@code null} or is actually
+     *  not an enum class or the corresponding names are illegal.
+     */
+    public TableColumnCollection(final Class<? extends Enum<?>> enumClass) {
+        Utils.nonNull(enumClass);
+        // Despite the generic annotation, due to erasure this might not be a enum class
+        // in run-time.
+        if (!enumClass.isEnum()) {
+            throw new IllegalArgumentException("the input class must be an enum class");
+        }
+        names = Collections.unmodifiableList(
+                Stream.of(enumClass.getEnumConstants())
+                .map(Object::toString)
+                .collect(Collectors.toList()));
+        checkNames(names.toArray(new String[names.size()]), IllegalArgumentException::new);
+        indexByName = IntStream.range(0, names.size()).boxed()
+                .collect(Collectors.toMap(names::get, Function.identity()));
+    }
+
+    /**
      * Returns the column names ordered by column index.
      *
      * @return never {@code null}, a unmodifiable view to this collection column names.
@@ -133,6 +166,22 @@ public final class TableColumnCollection {
      */
     public boolean containsAll(final String... names) {
         return Stream.of(Utils.nonNull(names, "names cannot be null")).allMatch(this::contains);
+    }
+
+    /**
+     * Checks whether columns contain all the names in an array.
+     *
+     * @param names the names to test.
+     * @return {@code true} iff all the names in {@code names} correspond to columns in this collection.
+     * @throws IllegalArgumentException if {@code names} is {@code null} or contains any {@code null}.
+     */
+    public boolean containsAll(final Iterable<String> names) {
+        for (final String name : Utils.nonNull(names, "names cannot be null")) {
+            if (!contains(name)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

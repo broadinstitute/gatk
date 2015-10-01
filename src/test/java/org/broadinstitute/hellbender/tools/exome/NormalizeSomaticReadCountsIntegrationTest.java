@@ -244,9 +244,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-        final ReadCountCollection input = ReadCountCollectionUtils.parse(FULL_READ_COUNTS_INPUT_ONE_SAMPLE, null);
-        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, null);
-        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput, null);
+        final ReadCountCollection input = ReadCountCollectionUtils.parse(FULL_READ_COUNTS_INPUT_ONE_SAMPLE);
+        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput);
+        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput);
         final RealMatrix betaHats = readBetaHats(betaHatsOutput, input);
 
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
@@ -332,10 +332,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-        final ReadCountCollection input = ReadCountCollectionUtils.parse(TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE, null);
-        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, null);
-        final ReadCountCollection tangentNormalized = ReadCountCollectionUtils.parse(tangentNormalizationOutput, null);
-        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput, null);
+        final ReadCountCollection input = ReadCountCollectionUtils.parse(TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE);
+        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput);
+        final ReadCountCollection tangentNormalized = ReadCountCollectionUtils.parse(tangentNormalizationOutput);
+        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput);
         final RealMatrix betaHats = readBetaHats(betaHatsOutput, input);
         Assert.assertFalse(factorNormalized.targets().stream().anyMatch(t -> t.getInterval() != null));
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
@@ -362,7 +362,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                     return (dataLine) -> IntStream.range(0, input.columnNames().size())
                             .mapToDouble(i -> dataLine.getDouble(input.columnNames().get(i))).toArray();
                 })) {
-          betaHats = reader.stream().toArray(i -> new double[i][]);
+          betaHats = reader.stream().toArray(double[][]::new);
         }
         return new Array2DRowRealMatrix(betaHats,false);
     }
@@ -399,9 +399,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-        final TargetCollection<? extends BEDFeature> exons = TargetCollections.fromBEDFeatureFile(TEST_TARGETS,new BEDCodec());
-        final ReadCountCollection input = ReadCountCollectionUtils.parse(COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE,exons);
-        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, exons);
+        final TargetCollection<? extends BEDFeature> exons = TargetCollections.fromBEDFeatureFile(TEST_TARGETS, new BEDCodec());
+        final ReadCountCollection input = ReadCountCollectionUtils.parse(COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE, exons, false);
+        final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, exons, false);
 
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
         Assert.assertFalse(factorNormalized.targets().stream().anyMatch(t -> t.getInterval() == null));
@@ -437,8 +437,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private void assertFactorNormalizedValues(final ReadCountCollection input, final ReadCountCollection factorNormalized) {
         try (final HDF5File ponReader = new HDF5File(TEST_PON)) {
             final PoN pon = new HDF5PoN(ponReader);
-            final RealMatrix targetFactors = pon.targetFactors();
-            final List<String> ponTargets = pon.targetNames();
+            final RealMatrix targetFactors = pon.getTargetFactors();
+            final List<String> ponTargets = pon.getTargetNames();
             final Map<String,Integer> ponTargetIndexes = new HashMap<>(ponTargets.size());
             for (int i = 0; i < ponTargets.size(); i++) {
                 ponTargetIndexes.put(ponTargets.get(i),i);
@@ -516,7 +516,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
-            final List<String> ponTargets = pon.reducedPoNTargetNames();
+            final List<String> ponTargets = pon.getPanelTargetNames();
             final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, ponTargets);
 
             // obtain subset of relevant targets to calculate the beta-hats;
@@ -531,7 +531,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                 betaHatTargets[i] = relevantTargets.stream().mapToInt(Integer::intValue).toArray();
             }
             // calculate beta-hats per column and check with actual values.
-            final RealMatrix normalsInv = pon.reducedPoNPseudoInverse();
+            final RealMatrix normalsInv = pon.getReducedPanelPInverseCounts();
             Assert.assertEquals(actual.getRowDimension(), normalsInv.getRowDimension());
             final RealMatrix normalsInvT = normalsInv.transpose();
             for (int i = 0; i < inCounts.getColumnDimension(); i++) {
@@ -549,9 +549,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
-            final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, pon.reducedPoNTargetNames());
-            final RealMatrix actual = reorderTargetsToPoNOrder(actualReadCounts,pon.reducedPoNTargetNames());
-            final RealMatrix ponMat = pon.reducedPoN();
+            final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, pon.getPanelTargetNames());
+            final RealMatrix actual = reorderTargetsToPoNOrder(actualReadCounts,pon.getPanelTargetNames());
+            final RealMatrix ponMat = pon.getReducedPanelCounts();
             final RealMatrix projection = ponMat.multiply(betaHats);
             final RealMatrix expected = inCounts.subtract(projection);
             Assert.assertEquals(actual.getRowDimension(),expected.getRowDimension());
@@ -596,4 +596,3 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                 new Array2DRowRealMatrix(counts));
     }
 }
-

@@ -8,10 +8,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -80,6 +77,93 @@ public final class ReadCountCollectionUnitTest {
             throw ex;
         }
         Assert.fail("Exception not thrown: case " + caseName);
+    }
+
+    @Test(dataProvider="targetSubsetData")
+    public void testSubsetTargets(final ReadCountCollectionInfo info, final Set<String> targetNamesToKeep) {
+        final Set<Target> targetsToKeep = targetNamesToKeep.stream()
+                .map(Target::new).collect(Collectors.toSet());
+        final ReadCountCollection subject = info.newInstance();
+        final ReadCountCollection result = subject.subsetTargets(targetsToKeep);
+        final List<Target> afterTargets = result.targets();
+        Assert.assertEquals(afterTargets.size(),  targetsToKeep.size());
+        Assert.assertFalse(afterTargets.stream().anyMatch(t -> !targetsToKeep.contains(t)));
+        final RealMatrix beforeCounts = subject.counts();
+        final RealMatrix afterCounts = result.counts();
+        Assert.assertEquals(beforeCounts.getColumnDimension(), afterCounts.getColumnDimension());
+        Assert.assertEquals(afterCounts.getRowDimension(), targetNamesToKeep.size());
+        final int[] beforeIndexes = new int[targetsToKeep.size()];
+        final int[] afterIndexes = new int[targetsToKeep.size()];
+        int nextIdx = 0;
+        for (final Target target : targetsToKeep) {
+            final int beforeIndex = subject.targets().indexOf(target);
+            final int afterIndex = result.targets().indexOf(target);
+            beforeIndexes[nextIdx] = beforeIndex;
+            afterIndexes[nextIdx++] = afterIndex;
+        }
+        // check that the order of targets in the output is kept to the original order.
+        for (int i = 0; i < beforeIndexes.length; i++) {
+            for (int j = 0; j < beforeIndexes.length; j++) {
+                Assert.assertEquals(Integer.compare(beforeIndexes[i], beforeIndexes[j]),
+                        Integer.compare(afterIndexes[i], afterIndexes[j]));
+            }
+        }
+        // check that the counts are exactly the same.
+        for (int i = 0; i < beforeIndexes.length; i++) {
+            final double[] before = beforeCounts.getRow(beforeIndexes[i]);
+            final double[] after = afterCounts.getRow(afterIndexes[i]);
+            Assert.assertEquals(before, after);
+        }
+    }
+
+    @Test(dataProvider="wrongTargetSubsetData", expectedExceptions = IllegalArgumentException.class)
+    public void testTargetSubsetColumns(final ReadCountCollectionInfo info, final Set<String> targetNamesToKeep) {
+        if (targetNamesToKeep == null) {
+            info.newInstance().subsetTargets(null);
+        } else {
+            final Set<Target> targets = targetNamesToKeep.stream().map(Target::new).collect(Collectors.toSet());
+            info.newInstance().subsetTargets(targets);
+        }
+    }
+
+    @Test(dataProvider="wrongColumnSubsetData", expectedExceptions = IllegalArgumentException.class)
+    public void testWrongSubsetColumns(final ReadCountCollectionInfo info, final Set<String> columnsToKeep) {
+        info.newInstance().subsetColumns(columnsToKeep);
+    }
+
+    @Test(dataProvider="columnSubsetData")
+    public void testSubsetColumns(final ReadCountCollectionInfo info, final Set<String> columnsToKeep) {
+        final ReadCountCollection subject = info.newInstance();
+        final ReadCountCollection result = subject.subsetColumns(columnsToKeep);
+        final List<String> afterColumns = result.columnNames();
+        Assert.assertEquals(afterColumns.size(),  columnsToKeep.size());
+        Assert.assertFalse(afterColumns.stream().anyMatch(t -> !columnsToKeep.contains(t)));
+        final RealMatrix beforeCounts = subject.counts();
+        final RealMatrix afterCounts = result.counts();
+        Assert.assertEquals(afterCounts.getColumnDimension(), columnsToKeep.size());
+        Assert.assertEquals(afterCounts.getRowDimension(), beforeCounts.getRowDimension());
+        final int[] beforeIndexes = new int[columnsToKeep.size()];
+        final int[] afterIndexes = new int[columnsToKeep.size()];
+        int nextIdx = 0;
+        for (final String column : columnsToKeep) {
+            final int beforeIndex = subject.columnNames().indexOf(column);
+            final int afterIndex = result.columnNames().indexOf(column);
+            beforeIndexes[nextIdx] = beforeIndex;
+            afterIndexes[nextIdx++] = afterIndex;
+        }
+        // check that the order of targets in the output is kept to the original order.
+        for (int i = 0; i < beforeIndexes.length; i++) {
+            for (int j = 0; j < beforeIndexes.length; j++) {
+                Assert.assertEquals(Integer.compare(beforeIndexes[i], beforeIndexes[j]),
+                        Integer.compare(afterIndexes[i], afterIndexes[j]));
+            }
+        }
+        // check that the counts are exactly the same.
+        for (int i = 0; i < beforeIndexes.length; i++) {
+            final double[] before = beforeCounts.getColumn(beforeIndexes[i]);
+            final double[] after = afterCounts.getColumn(afterIndexes[i]);
+            Assert.assertEquals(before, after);
+        }
     }
 
     private static class ReadCountCollectionInfo {
@@ -215,6 +299,82 @@ public final class ReadCountCollectionUnitTest {
         return result;
     }
 
+    @DataProvider(name="targetSubsetData")
+    public Object[][] targetSubsetData() {
+        final Object[][] correctInstantiationData = correctInstantiationData();
+        final List<Object[]> result = new ArrayList<>(correctInstantiationData.length * 4);
+        for (final Object[] params : correctInstantiationData) {
+            final ReadCountCollectionInfo info = (ReadCountCollectionInfo) params[0];
+            final List<String> targetNames = info.targetNames;
+            // no actual sub-setting.
+            result.add(new Object[] { info, new HashSet<>( targetNames ) });
+            if (info.targetNames.size() > 0) {
+                result.add(new Object[]{info, Collections.singleton(targetNames.get(0))});
+                if (info.targetNames.size() > 1) {
+                    result.add(new Object[] { info, Collections.singleton(targetNames.get(targetNames.size() - 1))});
+                    if (info.targetNames.size() > 2) {
+                        result.add(new Object[] { info, Collections.singleton(targetNames.get(targetNames.size() / 2))});
+                        result.add(new Object[] { info,
+                                new HashSet<>(Arrays.asList(targetNames.get(0), targetNames.get(targetNames.size() - 1))) });
+                    }
+                }
+            }
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
 
+    @DataProvider(name="columnSubsetData")
+    public Object[][] columnSubsetData() {
+        final Object[][] correctInstantiationData = correctInstantiationData();
+        final List<Object[]> result = new ArrayList<>(correctInstantiationData.length * 4);
+        for (final Object[] params : correctInstantiationData) {
+            final ReadCountCollectionInfo info = (ReadCountCollectionInfo) params[0];
+            final List<String> columnNames = info.columnNames;
+            // no actual sub-setting.
+            result.add(new Object[] { info, new HashSet<>( columnNames ) });
+            if (info.columnNames.size() > 0) {
+                result.add(new Object[]{info, Collections.singleton(columnNames.get(0))});
+                if (info.columnNames.size() > 1) {
+                    result.add(new Object[] { info, Collections.singleton(columnNames.get(columnNames.size() - 1))});
+                    if (info.columnNames.size() > 2) {
+                        result.add(new Object[] { info, Collections.singleton(columnNames.get(columnNames.size() / 2))});
+                        result.add(new Object[] { info,
+                                new HashSet<>(Arrays.asList(columnNames.get(0), columnNames.get(columnNames.size() - 1))) });
+                    }
+                }
+            }
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
 
+    @DataProvider(name="wrongColumnSubsetData")
+    public Object[][] wrongColumnSubsetData() {
+        final Object[][] correctInstantiationData = correctInstantiationData();
+        final List<Object[]> result = new ArrayList<>(correctInstantiationData.length * 4);
+        for (final Object[] params : correctInstantiationData) {
+            final ReadCountCollectionInfo info = (ReadCountCollectionInfo) params[0];
+            final List<String> columnNames = info.columnNames;
+            // try to remove all columns:
+            result.add(new Object[] { info, new HashSet<>( ) });
+            result.add(new Object[] { info, Collections.singleton("NOT_A_COLUMN")});
+            result.add(new Object[] { info, null });
+            result.add(new Object[] { info, Collections.singleton(null)});
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
+
+    @DataProvider(name="wrongTargetSubsetData")
+    public Object[][] wrongTargetSubsetData() {
+        final Object[][] correctInstantiationData = correctInstantiationData();
+        final List<Object[]> result = new ArrayList<>(correctInstantiationData.length * 4);
+        for (final Object[] params : correctInstantiationData) {
+            final ReadCountCollectionInfo info = (ReadCountCollectionInfo) params[0];
+            // try to remove all columns:
+            result.add(new Object[] { info, new HashSet<>( ) });
+            result.add(new Object[] { info, Collections.singleton("NOT_A_TARGET")});
+            result.add(new Object[] { info, null });
+            result.add(new Object[] { info, Collections.singleton(null)});
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
 }

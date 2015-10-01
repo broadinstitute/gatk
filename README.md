@@ -10,9 +10,11 @@ Requirements
 ------------
 * Java 8
 
-* Gradle 2.2.1
+* Gradle 2.7
 
-* HDF5-Java JNI Libraries Release 2.6
+* HDF5 1.8.13 
+
+* HDF5-Java JNI Libraries Release 2.9 (2.11 for Macs)
 
 
 Read Hellbender's README
@@ -25,31 +27,82 @@ https://github.com/broadinstitute/hellbender/blob/master/README.md
 Get HDF5-Java JNI Libraries Set-up
 ----------------------------------
 
-### Library acquisition
+There are two external libraries needed for HDF5 support in hellbender:
 
-The Java portion of the HDF5 IO library is automatically pulled as a Maven repository dependency (org.hdfgroup:hdf-java:2.6.1).
+1. hdf -- native code only.
+2. hdf-java -- includes both Java (JAR files) and native JNI code (.so/.dynlib files). 
 
-The native JNI C portion however depends on your development environment.
+*The Maven repository (org.hdfgroup:hdf-java:2.6.1) for the HDF5 IO library is out of date and should not be used.*
 
-First you need to download a binary from http://www.hdfgroup.org or build it from source.
+For more information about HDF:  https://www.hdfgroup.org/
 
-#### Ubuntu (Linux) 
+#### Ubuntu (Linux) 12.10 and above (requires sudo)
 
-You should be able to get it from the standard packages. 
+*This may not work with versions of Ubuntu after 15.04.*
+
+You simply need to install the hdfview package, which includes hdf and hdf-java:
 
 ```
    sudo apt-get install hdfview
 ```
 
-At least this works with release 12.04 LTS (Travis-CI images release).
+This will install all of the required HDF5 libraries (hdf and hdf-java).  
 
-#### MacOSX developers:
+By default:
+- The jnilib native files will be installed at: ``/usr/lib/jni/``  This location can be used in the instructions below.
+- The JAR files will be installed in ``/usr/share/java/``.
+  
+Developer note:
 
-Unfortunatelly for MacOSX, their build seems to be broken so one has to rely on the pre-compiled binary:
+The gradle build will handle the Java dependency.  If IntelliJ is configured correctly, it will
+  automatically create the dependency to the JARs in your project.
+
+
+#### MacOSX (requires admin):
+
+You simply need to install hdfview:
+
+1. Download the binary (https://www.hdfgroup.org/ftp/HDF5/hdf-java/current/bin/).  Select the darwin dmg file.
+2. Install the binary.
+
+This will install all of the required HDF5 libraries (hdf and hdf-java).
+
+By default:
+- The jnilib native files will be installed at: ``/Applications/HDFView.app/Contents//Resources/lib/``  This location can be used in the instructions below.
+- The JAR files will be installed in ``/Applications/HDFView.app/Contents/Java/``.
+
+#### Other from binaries
+
+These limited and *mostly untested* instructions must be used when applications and libraries cannot be installed into default locations.
+
+1. Download the hdfview binary from: https://www.hdfgroup.org/ftp/HDF5/releases/HDF-JAVA/hdf-java-2.9/hdfview/
+2. Locate the jar files that were installed.  Use this location in the gradle build command in step 5.
+3. Locate the JNI native files (.so/.dylib) that were installed.  Use this location in the instructions below. 
+4. Rebuild the hellbender-protected.jar and provide the directory that contains jhdf.jar.
+
+See example:
 
 ```
-  curl https://www.hdfgroup.org/ftp/HDF5/releases/HDF-JAVA/HDF-JAVA-2.6/bin/macintel64/hdf-java/lib/macosx/libjhdf5.jnilib > wherever-i-downloaded-the-jnilib/libjhdf5.jnilib
-``` 
+# Linux 64-bit example
+HDF_DIR=/opt/hdf/
+wget "https://www.hdfgroup.org/ftp/HDF5/releases/HDF-JAVA/hdf-java-2.9/hdfview/hdfview_install_linux64.bin" -O ${HDF5_DIR}/hdfview_install_linux64.bin
+chmod +x ${HDF5_DIR}/hdfview_install_linux64.bin
+${HDF5_DIR}/hdfview_install_linux64.bin
+
+# Jar files will be in ${HDF5_DIR}/HDFView/lib
+# JNI lib files will be in ${HDF5_DIR}/HDFView/lib/linux
+
+# When calling gradle commands, you must add: -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib
+#  or put the jar location in your ~/.gradle/gradle.properties
+#  custom.jar.dir=${HDF5_DIR}/HDFView/lib
+
+gradle -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib build.gradle shadowJar
+```
+
+#### Travis CI (Ubuntu (Linux) 12.04 LTS)
+
+``.travis.yml`` implements the installation from binaries as per instructions above.
+
 
 ### Get ```gradle test``` to work.
 
@@ -61,12 +114,12 @@ you will need to tell explicitly to the build process where to look for it.
 
 Here you have a couple of options:
 
-1. set the ```JAVA_LIBRARY_PATH``` enviroment variable to the value you want to set ```java.library.path``` to during testing,
+1. set the ```JAVA_LIBRARY_PATH``` environment variable to the value you want to set ```java.library.path``` to during testing,
 
 2. or define the gradle project property ```testJavaLibraryPath=wherever-i-downloaded-the-jnilib``` in ```~/.gradle/gradle.properties```.
 
 Please refrain from using gradle.properties in the root project directory for this as you don't 
-want to share your set-up with other developers thru the source repo; .gitignore should prevent this from happening for now
+want to share your set-up with other developers through the source repo; .gitignore should prevent this from happening for now
 but is best to avoid it all together as in the future we might want to use gradle.properties for common set-up.
 
 ### Get ```java -jar hellbender.jar``` to work.
