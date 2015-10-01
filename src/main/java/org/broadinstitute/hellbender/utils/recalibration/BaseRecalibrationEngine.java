@@ -97,7 +97,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             return; // skip this read completely
         }
 
-        int[] isSNP = new int[read.getBases().length];
+        int[] isSNP = new int[read.getLength()];
         int[] isInsertion = new int[isSNP.length];
         int[] isDeletion = new int[isSNP.length];
         final int nErrors = calculateIsSNPOrIndel(read, refDS, isSNP, isInsertion, isDeletion);
@@ -212,7 +212,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         final ReadCovariates readCovariates = recalInfo.getCovariatesValues();
         final NestedIntegerArray<RecalDatum> qualityScoreTable = recalTables.getQualityScoreTable();
 
-        for( int offset = 0; offset < read.getBases().length; offset++ ) {
+        for( int offset = 0; offset < read.getLength(); offset++ ) {
             if( ! recalInfo.skip(offset) ) {
 
                 for (final EventType eventType : EventType.values()) {
@@ -296,7 +296,7 @@ public final class BaseRecalibrationEngine implements Serializable {
     }
 
     protected boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
-        final int readLength = read.getBases().length;
+        final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
         for ( final Locatable knownSite : knownSites ) {
             int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), knownSite.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);

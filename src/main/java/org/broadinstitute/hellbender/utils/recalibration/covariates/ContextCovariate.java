@@ -61,7 +61,7 @@ public final class ContextCovariate implements Covariate {
     public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values) {
 
         // store the original bases and then write Ns over low quality ones
-        final byte[] originalBases = Arrays.copyOf(read.getBases(), read.getBases().length);
+        final byte[] originalBases = Arrays.copyOf(read.getBases(), read.getLength());
         final byte[] strandedBases = getStrandedBytes(read, lowQualTail);
 
         final List<Integer> mismatchKeys = contextWith(strandedBases, mismatchesContextSize, mismatchesKeyMask);

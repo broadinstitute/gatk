@@ -291,11 +291,21 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     @Override
     public byte[] getBases() {
         final String basesString = genomicsRead.getAlignedSequence();
-        if ( basesString == null || basesString.isEmpty() || basesString.equals(SAMRecord.NULL_SEQUENCE_STRING) ) {
+        if ( getLength() == 0) {
             return new byte[0];
         }
 
         return StringUtil.stringToBytes(basesString);
+    }
+
+    @Override
+    public int getLength() {
+        final String basesString = genomicsRead.getAlignedSequence();
+        if (basesString == null || basesString.equals(SAMRecord.NULL_SEQUENCE_STRING)){
+            return 0;
+        } else {
+            return basesString.length();
+        }
     }
 
     @Override

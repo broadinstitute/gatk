@@ -138,7 +138,7 @@ public final class BaseRecalibrationEngineUnitTest {
         // Fake reference data, since the indel calculation does not use the reference at all.
         final ReferenceDataSource refSource = new ReferenceMemorySource(new ReferenceBases(Utils.repeatBytes((byte)'A', read.getEnd() - read.getStart() + 1), new SimpleInterval(read)), ArtificialReadUtils.createArtificialSamHeader().getSequenceDictionary());
 
-        int[] isSNP = new int[read.getBases().length];
+        int[] isSNP = new int[read.getLength()];
         int[] isInsertion = new int[isSNP.length];
         int[] isDeletion = new int[isSNP.length];
         BaseRecalibrationEngine.calculateIsSNPOrIndel(read, refSource, isSNP, isInsertion, isDeletion);

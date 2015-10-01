@@ -214,6 +214,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public int getLength() {
+        final byte[] bases = samRecord.getReadBases();
+        return bases == null ? 0 : bases.length;
+    }
+
+    @Override
     public void setBases( final byte[] bases ) {
         samRecord.setReadBases(bases);
     }
