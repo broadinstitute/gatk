@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.variant.Variant;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -107,14 +108,14 @@ public class ReadsPreprocessingPipelineSparkTestData {
         Iterable<Variant> variant2 = Lists.newArrayList(kvReadVariant.get(2).getValue());
         Iterable<Variant> variant3 = Lists.newArrayList(kvReadVariant.get(3).getValue());
         Iterable<Variant> variant4 = Lists.newArrayList(kvReadVariant.get(5).getValue());
-        Iterable<Variant> nullVariant = Lists.newArrayList(readNullVariant.getValue());
+        Iterable<Variant> noVariant = Lists.newArrayList(new ArrayList<>());
 
         kvReadiVariant = Arrays.asList(
                 KV.of(kvReadVariant.get(0).getKey(), variant10),
                 KV.of(kvReadVariant.get(2).getKey(), variant2),
                 KV.of(kvReadVariant.get(3).getKey(), variant3),
                 KV.of(kvReadVariant.get(5).getKey(), variant4),
-                KV.of(reads.get(0), nullVariant)
+                KV.of(reads.get(0), noVariant)
         );
 
         kvReadContextData = Arrays.asList(

@@ -4,11 +4,9 @@ import com.google.api.client.util.ByteStreams;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.tribble.AbstractFeatureReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -110,7 +108,7 @@ public final class BucketUtils {
                 return new FileOutputStream(path);
             }
         } catch (IOException x) {
-            throw new UserException.CouldNotCreateOutputFile(path, x);
+            throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" + path + " due to " + x.getMessage(), x);
         }
     }
 
