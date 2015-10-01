@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(summary = "Counts reads in the input BAM", oneLineSummary = "Counts reads in a BAM file", programGroup = SparkProgramGroup.class)
 public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgram {
 
+    private static final long serialVersionUID = 1l;
+
     @ArgumentCollection
     public ReadInputArgumentCollection readArguments= new RequiredReadInputArgumentCollection();;
 
