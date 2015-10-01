@@ -44,8 +44,6 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(summary = "Counts reads in the input BAM", oneLineSummary = "Counts reads in a BAM file", programGroup = SparkProgramGroup.class)
 public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgram {
 
-    private static final long serialVersionUID = 1L;
-
     @ArgumentCollection
     public ReadInputArgumentCollection readArguments= new RequiredReadInputArgumentCollection();;
 
@@ -61,7 +59,8 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
     public IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
 
     @Argument(doc = "uri for the output file: a local file path",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = true)
     public String out;
 
@@ -90,7 +89,7 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
         //so for now we'll write some filters out explicitly.
 //        final ReadFilter readFilter = ctx.broadcast(new WellformedReadFilter(readsHeader));
         final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, intervals);
-        final JavaRDD<GATKRead> reads = rawReads.filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd());
+        final JavaRDD<GATKRead> reads = rawReads.filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd() && !read.isDuplicate());
         final Map<Locatable, Long> byKey = reads.flatMap(read -> islBroad.getValue().getOverlapping(new SimpleInterval(read))).countByValue();
 
         final SortedMap<Locatable, Object> byKeySorted = new TreeMap<>(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
