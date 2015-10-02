@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -10,21 +8,14 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
-import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
@@ -43,23 +34,19 @@ import java.util.List;
         oneLineSummary = "Generates recalibration table",
         programGroup = SparkProgramGroup.class
 )
-public class BaseRecalibratorSpark extends SparkCommandLineProgram {
+public class BaseRecalibratorSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    /**
-     * all the command line arguments for BQSR and its covariates
-     */
-    @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
-    private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
+    @Override
+    public boolean requiresReads() { return true; }
 
-    @ArgumentCollection
-    private final RequiredReadInputArgumentCollection readArguments = new RequiredReadInputArgumentCollection();
+    @Override
+    public boolean requiresReference() { return true; }
 
-    @ArgumentCollection
-    private final IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
-
-    @ArgumentCollection
-    private final ReferenceInputArgumentCollection referenceArguments = new RequiredReferenceInputArgumentCollection();
+    @Override
+    public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
+        return BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION;
+    }
 
     @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
     private List<String> knownVariants;
@@ -68,21 +55,18 @@ public class BaseRecalibratorSpark extends SparkCommandLineProgram {
     private JoinStrategy joinStrategy = JoinStrategy.SHUFFLE;
 
     @Argument(doc = "Path to save the final recalibration tables to.",
-              shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     private String outputTablesPath = null;
 
-    @Override
-    protected void runPipeline( JavaSparkContext ctx ) {
-        if ( readArguments.getReadFilesNames().size() != 1 ) {
-            throw new UserException("Sorry, we only support a single reads input for now.");
-        }
-        final String bam = readArguments.getReadFilesNames().get(0);
+    /**
+     * all the command line arguments for BQSR and its covariates
+     */
+    @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
+    private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
 
-        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam);
-        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
-                : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
-        JavaRDD<GATKRead> initialReads = readSource.getParallelReads(bam, intervals);
+    @Override
+    protected void runTool( JavaSparkContext ctx ) {
+        JavaRDD<GATKRead> initialReads = getReads();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         if ( knownVariants.size() > 1 ) {
@@ -91,27 +75,14 @@ public class BaseRecalibratorSpark extends SparkCommandLineProgram {
         }
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants.get(0));
 
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
-        final String referenceURL = referenceArguments.getReferenceFileName();
-        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(gcsOptions, referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
-        final SAMSequenceDictionary referenceDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsHeader.getSequenceDictionary());
-        checkSequenceDictionaries(referenceDictionary, readsHeader.getSequenceDictionary());
-
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(
-                initialReads, referenceDataflowSource, bqsrKnownVariants, joinStrategy);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, getReference(), bqsrKnownVariants, joinStrategy);
         // TODO: broadcast the reads header?
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDictionary, bqsrArgs);
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
 
-        try ( final PrintStream reportStream = new PrintStream(BucketUtils.createFile(outputTablesPath, gcsOptions)) ) {
-            RecalUtils.outputRecalibrationReport(reportStream, bqsrArgs, bqsrReport.getQuantizationInfo(), bqsrReport.getRecalibrationTables(), new StandardCovariateList(bqsrArgs, readsHeader), true);
+        try ( final PrintStream reportStream = new PrintStream(BucketUtils.createFile(outputTablesPath, getAuthenticatedGCSOptions())) ) {
+            RecalUtils.outputRecalibrationReport(reportStream, bqsrArgs, bqsrReport.getQuantizationInfo(), bqsrReport.getRecalibrationTables(), new StandardCovariateList(bqsrArgs, getHeaderForReads()), true);
         }
-    }
-
-    private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
-        Utils.nonNull(refDictionary);
-        Utils.nonNull(readsDictionary);
-        SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
     }
 }
