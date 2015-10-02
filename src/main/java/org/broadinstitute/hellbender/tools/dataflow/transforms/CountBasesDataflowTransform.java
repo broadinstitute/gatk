@@ -21,7 +21,7 @@ public final class CountBasesDataflowTransform extends PTransformSAM<Long> {
 
             @Override
             protected void apply(final GATKRead read) {
-                final long bases = read.getBases().length;
+                final long bases = read.getLength();
                 output(bases);
             }
         }))

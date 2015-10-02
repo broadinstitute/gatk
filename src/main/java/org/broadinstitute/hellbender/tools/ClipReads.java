@@ -431,7 +431,7 @@ public final class ClipReads extends ReadWalker {
     private void clipBadQualityScores(ReadClipperWithData clipper) {
         GATKRead read = clipper.getRead();
         ClippingData data = clipper.getData();
-        int readLen = read.getBases().length;
+        int readLen = read.getLength();
         byte[] quals = read.getBaseQualities();
 
 

@@ -47,9 +47,7 @@ public interface GATKRead extends Locatable {
      *
      * Note: This is not necessarily the same as the number of reference bases the read is aligned to.
      */
-    default int getLength() {
-        return getBases().length;
-    }
+    int getLength();
 
     /**
      * @return True if the read has no bases, otherwise false
