@@ -51,7 +51,7 @@ before_install:
 - $GCLOUD/gcloud auth activate-service-account --key servicekey.json
 - R --version
 after_success:
-- gradle jacocoTestReport coveralls
+- ./gradlew jacocoTestReport coveralls
 after_failure:
 - dmesg | tail -100
 after_script:

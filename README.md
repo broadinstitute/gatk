@@ -13,7 +13,7 @@ Requirements
 ------------
 * Java 8
 
-* Gradle 2.2.1
+* Gradle 2.7
 
 * R 3.1.3
 
@@ -26,7 +26,7 @@ Installation
 ------------
 To build and run all tests, run `gradle check`. Test report is in `build/reports/tests/index.html`.
 
-To only build, run `gradle installApp`.
+To only build, run `gradle installDist`.
 
 To run all tests, run `gradle test`. 
 What will happen depends on the value of the `CLOUD` environment variable: if it's `false` or unset then only local tests are run. If it's `mandatory` then it'll run only the cloud tests. 
