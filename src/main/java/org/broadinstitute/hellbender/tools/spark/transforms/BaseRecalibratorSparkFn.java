@@ -46,10 +46,9 @@ public class BaseRecalibratorSparkFn {
         });
 
         final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new StandardCovariateList(recalArgs, header));
-        final RecalibrationTables combinedTables = unmergedTables.treeAggregate(emptyRecalibrationTable,
+        final RecalibrationTables combinedTables = unmergedTables.aggregate(emptyRecalibrationTable,
                 RecalibrationTables::inPlaceCombine,
-                RecalibrationTables::inPlaceCombine,
-                Math.max(1, (int)(Math.log(unmergedTables.partitions().size()) / Math.log(2))));
+                RecalibrationTables::inPlaceCombine);
 
         BaseRecalibrationEngine.finalizeRecalibrationTables(combinedTables);
 

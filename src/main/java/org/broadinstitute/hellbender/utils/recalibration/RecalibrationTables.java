@@ -177,7 +177,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
         Utils.nonNull(left);
         Utils.nonNull(right);
 
-        return left.combine(right);
+        return left; //no-op to measure performance
     }
 
     //XXX this should not be accessible by index
