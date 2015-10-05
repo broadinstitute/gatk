@@ -3,10 +3,16 @@
 
 **This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**  
 
-Hellbender
-================
+GATK 4 (codename Hellbender)
+============================
 
 The public parts of the next generation of GATK/Picard methods engine and tools.
+
+This project is in a pre-alpha development stage and is not yet ready for general use. 
+
+If you are looking for the current version of GATK to use in production work, please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions and receive technical support.
+
+If you are looking for the codebase of the current production version of GATK, please see either the [GATK development framework repository](https://github.com/broadgsa/gatk/) or the [full GATK tools repository](https://github.com/broadgsa/gatk-protected/).
 
 
 Requirements
