@@ -5,7 +5,7 @@ getoptUrl="http://cran.r-project.org/src/contrib/getopt_1.20.0.tar.gz"
 if (!("getopt" %in% rownames(installed.packages))) {
   install.packages(getoptUrl, repos=NULL, type="source")
 }
-optparseUrl="http://cran.r-project.org/src/contrib/optparse_1.3.0.tar.gz"
+optparseUrl="http://cran.r-project.org/src/contrib/optparse_1.3.2.tar.gz"
 if (!("optparse" %in% rownames(installed.packages))) {
   install.packages(optparseUrl, repos=NULL, type="source")
 }
