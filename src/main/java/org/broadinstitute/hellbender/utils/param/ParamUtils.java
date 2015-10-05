@@ -9,6 +9,7 @@ import org.apache.commons.math3.util.MathUtils;
  * Created by lichtens on 8/25/15.
  */
 public class ParamUtils {
+    private ParamUtils () {}
 
     /**
      * Checks that the  input is within range and returns the same value or throws an {@link IllegalArgumentException}

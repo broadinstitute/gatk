@@ -30,6 +30,8 @@ public final class SegmentUtils {
     private static final String CALL_COLUMN = "Segment_Call";
     private static final String MISSING_DATA = "NA";
 
+    private SegmentUtils() {}
+
     /**
      * read a list of intervals without calls from a segfile with header:
      * Sample   Chromosome  Start  End Num_PRobes  Segment_Mean    Segment_Call

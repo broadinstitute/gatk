@@ -36,7 +36,7 @@ public final class SegmentMergeUtils {
     private static final KolmogorovSmirnovTest kolmogorovSmirnovTest =
             new KolmogorovSmirnovTest(kolmogorovSmirnovTestRandomGenerator);
 
-    private SegmentMergeUtils() {};
+    private SegmentMergeUtils() {}
 
     /**
      * Returns a new segment specified by the outermost breakpoints of the two segments to be joined.

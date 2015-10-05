@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.collections4.list.SetUniqueList;
-import org.apache.commons.lang.math.Range;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -73,8 +70,7 @@ import java.util.stream.IntStream;
 public final class ReadCountCollectionUtils {
 
     // Prevents instantiation of the class.
-    private ReadCountCollectionUtils() {
-    }
+    private ReadCountCollectionUtils() {}
 
     /**
      * Writes the content of a collection into a file.
