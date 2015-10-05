@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.collections4.set.UnmodifiableSet;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,9 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 public final class TargetCoverageUtils {
@@ -25,6 +22,8 @@ public final class TargetCoverageUtils {
     public static final String END_COLUMN = "stop";
 
     private static final String [] COLUMN_NAMES = {TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN};
+
+    private TargetCoverageUtils() {}
 
     /**
      * read a list of targets with coverage from a tab-separated file with header line:
