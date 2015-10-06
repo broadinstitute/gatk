@@ -13,7 +13,6 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/GatherBamFiles");
     private static final File ORIG_BAM = new File(TEST_DATA_DIR, "orig.bam");
     private static final List<File> SPLIT_BAMS = Arrays.asList(
-            new File(TEST_DATA_DIR, "indUnknownChrom.bam"),
             new File(TEST_DATA_DIR, "indchr1.bam"),
             new File(TEST_DATA_DIR, "indchr2.bam"),
             new File(TEST_DATA_DIR, "indchr3.bam"),
@@ -21,7 +20,8 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
             new File(TEST_DATA_DIR, "indchr5.bam"),
             new File(TEST_DATA_DIR, "indchr6.bam"),
             new File(TEST_DATA_DIR, "indchr7.bam"),
-            new File(TEST_DATA_DIR, "indchr8.bam")
+            new File(TEST_DATA_DIR, "indchr8.bam"),
+            new File(TEST_DATA_DIR, "indUnknownChrom.bam")
     );
 
     public String getTestedClassName() {

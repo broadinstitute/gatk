@@ -6,8 +6,8 @@
 ##    columnCount = 1
 ##}
 NAME	SUM	AVG.COL.BP
-target_0	47	0.7581
-target_1	39	0.6290
+target_0	50	0.8065
+target_1	41	0.6613
 target_2	38	0.7170
-target_3	82	0.3460
-target_4	31	0.5000
+target_3	86	0.3629
+target_4	32	0.5161

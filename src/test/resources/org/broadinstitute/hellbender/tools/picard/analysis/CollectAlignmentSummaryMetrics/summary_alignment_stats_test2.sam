@@ -1,6 +1,6 @@
 @HD	VN:1.5	GO:none	SO:coordinate
 @SQ	SN:chrM	LN:16571	AS:Homo_sapiens_assembly18.ncx
-@RG	ID:case55GermFrag1	PL:ABI_SOLID	PU:20090129.germfragcase55slide1	LB:case55GermFragLib1	PI:1500	DS:Case55 NF2 Germline Frag Run 1	DT:2009-01-28T19:00:00-0500	SM:case55Germline	CN:HEI
+@RG	ID:case55GermFrag1	PL:ILLUMINA	PU:20090129.germfragcase55slide1	LB:case55GermFragLib1	PI:1500	DS:Case55 NF2 Germline Frag Run 1	DT:2009-01-28T19:00:00-0500	SM:case55Germline	CN:HEI
 @PG	ID:novoalignCS	VN:V1.01.04	CL:novoalignCS -f /scratch1/tmp/kmsquire/Studies/HEI/case55germline/20090129.germfragcase55slide1/novoalign/1-fastq/case55GermFrag1.fastq.gz -d /state/partition1/ref/hg18/novoalign/Homo_sapiens_assembly18.ncx -o SAM @RG\tID:case55GermFrag1\tSM:case55Germline\tLB:case55GermFragLib1\tDT:2009-01-29\tCN:HEI\tPL:ABI_SOLID\tPU:20090129.germfragcase55slide1\tPI:1500\tDS:Case55 NF2 Germline Frag Run 1
 case55GermFrag1:1000_1000_1013	4	*	0	0	*	*	0	0	*	*	LB:Z:case55GermFragLib1	PG:Z:novoalignCS	RG:Z:case55GermFrag1	CQ:Z:!2$#),##*,(#)#'%,$#'*#*,%*,#(,#,##6,$$$4(*+,+'()+#&	CS:Z:T01302331100111301320122002233322310110102221232001	ZS:Z:QC	PU:Z:20090129.germfragcase55slide1
 case55GermFrag1:1000_1000_1095	4	*	0	0	*	*	0	0	*	*	LB:Z:case55GermFragLib1	PG:Z:novoalignCS	RG:Z:case55GermFrag1	CQ:Z:!/'&%$#&'%%''$*%&(&(-&&&&&$,&%&)&&%&'&&(&&)+%)&&$%'	CS:Z:T32233300022101301211011113220202222220231221302110	ZS:Z:QC	PU:Z:20090129.germfragcase55slide1
