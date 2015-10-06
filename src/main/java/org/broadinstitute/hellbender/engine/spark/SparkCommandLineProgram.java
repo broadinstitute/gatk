@@ -31,9 +31,11 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     @Override
     protected Object doWork() {
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkMaster);
-        ctx.getConf().set("spark.driver.userClassPathFirst", "true")
+        ctx.getConf().set("spark.driver.maxResultSize", "0")
+                .set("spark.driver.userClassPathFirst", "true")
                 .set("spark.executor.userClassPathFirst", "true")
-                .set("spark.io.compression.codec", "lzf");
+                .set("spark.io.compression.codec", "lzf")
+                .set("spark.yarn.executor.memoryOverhead", "600");
 
         try{
             runPipeline(ctx);
