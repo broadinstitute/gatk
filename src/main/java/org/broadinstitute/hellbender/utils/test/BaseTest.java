@@ -306,6 +306,22 @@ public abstract class BaseTest {
             Assert.assertEquals(actual[i],expected[i],tolerance,"array position " + i);
     }
 
+    /**
+     * Checks whether two long arrays contain the same values or not.
+     * @param actual actual produced array.
+     * @param expected expected array.
+     */
+    protected static void assertEqualsLongArray(final long[] actual, final long[] expected) {
+        if (expected == null)
+            Assert.assertNull(actual);
+        else {
+            Assert.assertNotNull(actual);
+            Assert.assertEquals(actual.length, expected.length,"array length ");
+        }
+        for (int i = 0; i < actual.length; i++)
+            Assert.assertEquals(actual[i],expected[i],"array position " + i);
+    }
+
     public static void assertEqualsDoubleSmart(final Object actual, final Double expected, final double tolerance) {
         Assert.assertTrue(actual instanceof Double, "Not a double");
         assertEqualsDoubleSmart((double) (Double) actual, (double) expected, tolerance);

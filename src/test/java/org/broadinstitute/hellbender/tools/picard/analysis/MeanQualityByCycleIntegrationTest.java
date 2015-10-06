@@ -39,4 +39,84 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         Assert.assertTrue(pdf.exists());
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
+
+    @Test(groups = {"R"})
+    public void test_PF_READS_ONLY_false() throws IOException {
+        final File input = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
+        final File expectedFile = new File(TEST_DATA_DIR, "pfFailBam.pf.txt");
+        final File outfile = BaseTest.createTempFile("pfFailBam.pf", ".metrics");
+        final File pdf = BaseTest.createTempFile("pfFailBam.pf", ".pdf");
+        outfile.deleteOnExit();
+        pdf.deleteOnExit();
+        final String[] args = new String[]{
+                "--INPUT", input.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--CHART", pdf.getAbsolutePath(),
+                "--PF_READS_ONLY", "false",
+                "--PRODUCE_PLOT", "true",
+        };
+        runCommandLine(args);
+        Assert.assertTrue(pdf.exists());
+        IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test(groups = {"R"})
+    public void test_PF_READS_ONLY_true() throws IOException {
+        final File input = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
+        final File expectedFile = new File(TEST_DATA_DIR, "pfFailBam.pfOnly.txt");
+        final File outfile = BaseTest.createTempFile("pfFailBam.pf", ".metrics");
+        final File pdf = BaseTest.createTempFile("pfFailBam.pf", ".pdf");
+        outfile.deleteOnExit();
+        pdf.deleteOnExit();
+        final String[] args = new String[]{
+                "--INPUT", input.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--CHART", pdf.getAbsolutePath(),
+                "--PF_READS_ONLY", "true",
+                "--PRODUCE_PLOT", "true",
+        };
+        runCommandLine(args);
+        Assert.assertTrue(pdf.exists());
+        IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test(groups = {"R"})
+    public void test_ALIGNED_READS_ONLY_false() throws IOException {
+        final File input = new File(TEST_DATA_DIR, "unmapped.bam");
+        final File expectedFile = new File(TEST_DATA_DIR, "unmappedBam.ALIGNED_READS_ONLY_false.txt");
+        final File outfile = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_false", ".metrics");
+        final File pdf = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_false", ".pdf");
+        outfile.deleteOnExit();
+        pdf.deleteOnExit();
+        final String[] args = new String[]{
+                "--INPUT", input.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--CHART", pdf.getAbsolutePath(),
+                "--ALIGNED_READS_ONLY", "false",
+                "--PRODUCE_PLOT", "true",
+        };
+        runCommandLine(args);
+        Assert.assertTrue(pdf.exists());
+        IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test(groups = {"R"})
+    public void test_ALIGNED_READS_ONLY_true() throws IOException {
+        final File input = new File(TEST_DATA_DIR, "unmapped.bam");
+        final File expectedFile = new File(TEST_DATA_DIR, "unmappedBam.ALIGNED_READS_ONLY_true.txt");
+        final File outfile = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_true", ".metrics");
+        final File pdf = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_true", ".pdf");
+        outfile.deleteOnExit();
+        pdf.deleteOnExit();
+        final String[] args = new String[]{
+                "--INPUT", input.getAbsolutePath(),
+                "--OUTPUT", outfile.getAbsolutePath(),
+                "--CHART", pdf.getAbsolutePath(),
+                "--ALIGNED_READS_ONLY", "true",
+                "--PRODUCE_PLOT", "true",
+        };
+        runCommandLine(args);
+        Assert.assertTrue(pdf.exists());
+        IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
 }
