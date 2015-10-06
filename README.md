@@ -104,6 +104,19 @@ gradle -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib build.gradle shadowJar
 ``.travis.yml`` implements the installation from binaries as per instructions above.
 
 
+#### Broad VMs
+
+Building on a Broad VM is similar to Ubuntu, except that you use a dotkit, instead of installing HDFview.
+
+```
+use .hdfview-2.9
+```
+
+- The jnilib native files will be in:  `` /broad/software/free/Linux/redhat_6_x86_64/pkgs/hdfview_2.9/HDFView/lib/linux/``
+- The JAR files will be in: `` /broad/software/free/Linux/redhat_6_x86_64/pkgs/hdfview_2.9/HDFView/lib/``
+
+The gradle build is already configured to search the JAR directory.
+
 ### Get ```gradle test``` to work.
 
 The VM will search for the JNI library in the path indicated by the ```java.library.path``` system property which
@@ -129,5 +142,5 @@ If you didn't need to indicate the location of ```libjhdf5.jnilib``` explicitly 
 Otherwise you will need to tell the VM each time as well like so:
 
 ```
-java -Djava.library.path=wherever-i-downloaded-the-jnilib -jar hellbender-prorected.jar ...
+java -Djava.library.path=wherever-i-downloaded-the-jnilib -jar hellbender-protected.jar ...
 ```
