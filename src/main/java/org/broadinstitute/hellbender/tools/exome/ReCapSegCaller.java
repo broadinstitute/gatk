@@ -31,11 +31,12 @@ public final class ReCapSegCaller {
     public static final double DEFAULT_Z_SCORE_THRESHOLD = 2.0;
 
     //bounds on coverage we take as non-neutral a priori
-    public static final double NON_NEUTRAL_THRESHOLD_HIGH = 1.25;
-    public static final double NON_NEUTRAL_THRESHOLD_LOW = 0.75;
+    public static final double NON_NEUTRAL_THRESHOLD_HIGH = ParamUtils.log2(1.25);
+    public static final double NON_NEUTRAL_THRESHOLD_LOW = ParamUtils.log2(.75);
 
     //bounds on coverage for high-confidence neutral segments
-    public static final double COPY_NEUTRAL_CUTOFF = 1.1;
+    public static final double COPY_NEUTRAL_CUTOFF_HIGH = ParamUtils.log2(1.1);
+    public static final double COPY_NEUTRAL_CUTOFF_LOW = ParamUtils.log2(.9);
 
     private ReCapSegCaller() {} // prevent instantiation
 
@@ -65,7 +66,7 @@ public final class ReCapSegCaller {
 
         // Get the standard deviation of targets belonging to high-confidence neutral segments
         final double[] nearNeutralCoverage = segments.stream()
-                .filter(s -> SegmentUtils.meanTargetCoverage(s, targets)/neutralCoverage < COPY_NEUTRAL_CUTOFF && SegmentUtils.meanTargetCoverage(s, targets)/neutralCoverage > 1/COPY_NEUTRAL_CUTOFF)
+                .filter(s -> (SegmentUtils.meanTargetCoverage(s, targets) - neutralCoverage) < COPY_NEUTRAL_CUTOFF_HIGH && (SegmentUtils.meanTargetCoverage(s, targets) - neutralCoverage) > COPY_NEUTRAL_CUTOFF_LOW)
                 .flatMap(s -> targets.targets(s).stream())
                 .mapToDouble(TargetCoverage::getCoverage)
                 .toArray();

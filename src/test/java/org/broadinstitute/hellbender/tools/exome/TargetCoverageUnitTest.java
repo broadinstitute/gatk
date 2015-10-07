@@ -42,6 +42,6 @@ public final class TargetCoverageUnitTest extends BaseTest {
         Assert.assertEquals(targets.size(), 52);
         Assert.assertEquals(targets.get(0).getName(), "arbitrary_name");
         Assert.assertEquals(targets.get(1).getInterval().getContig(), "chr");
-        Assert.assertEquals(targets.get(2).getCoverage(), 2.0);
+        Assert.assertEquals(targets.get(2).getCoverage(), 1.0);
     }
 }
