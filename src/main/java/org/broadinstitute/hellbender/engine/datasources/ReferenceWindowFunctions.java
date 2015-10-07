@@ -1,16 +1,15 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 
 /**
- * A library of reference window functions suitable for passing in to transforms such as {@link AddContextDataToRead}.
+ * A library of reference window functions suitable for passing in to transforms such as AddContextDataToRead.
  * These are functions from {@link GATKRead} to {@link SimpleInterval}, with the output interval representing
  * the bases of reference context that should be retrieved for the input read.
  */
-public class RefWindowFunctions {
+public class ReferenceWindowFunctions {
 
     /**
      * A function for requesting only reference bases that directly overlap each read

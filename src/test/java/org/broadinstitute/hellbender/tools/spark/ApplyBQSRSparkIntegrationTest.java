@@ -49,7 +49,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
 
     @DataProvider(name = "ApplyBQSRTestGCS")
     public Object[][] createABQSRTestDataGCS() {
-        final String resourceDirGCS = getDataflowTestInputPath() + THIS_TEST_FOLDER;
+        final String resourceDirGCS = getGCPTestInputPath() + THIS_TEST_FOLDER;
         final String hiSeqBamGCS = resourceDirGCS + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
 
         List<Object[]> tests = new ArrayList<>();
@@ -69,7 +69,6 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
                         params.args +
                         " -O %s";
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
-        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFile));
@@ -82,12 +81,11 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                        " --apiKey " + getDataflowTestApiKey() +
+                        " --apiKey " + getGCPTestApiKey() +
                         " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
                         params.args +
                         " -O %s";
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
-        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFile));
@@ -98,8 +96,8 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                        " --apiKey " + getDataflowTestApiKey() +
-                        " --bqsr_recal_file " + getDataflowTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
+                        " --apiKey " + getGCPTestApiKey() +
+                        " --bqsr_recal_file " + getGCPTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
                         params.args +
                         " -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -114,7 +112,6 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
                 " --bqsr_recal_file " + resourceDir + "HiSeq.1mb.1RG.highMaxCycle.table.gz" +
                 " -O " + createTempFile("ignore",".me");
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
-        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString() ,
                 Arrays.<String>asList());
@@ -127,7 +124,6 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
                 " --bqsr_recal_file " + resourceDir + "HiSeq.1mb.1RG.lowMaxCycle.table.gz" +
                 " -O /dev/null";
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
-        addDataflowRunnerArgs(ab);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 0,

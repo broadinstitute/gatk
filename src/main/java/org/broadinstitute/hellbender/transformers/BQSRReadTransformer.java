@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.BaseRecalOutput;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -34,65 +33,48 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * Constructor using a GATK Report file
      *
      * @param header header for the reads
-     * @param bqsrRecalFile         a GATK Report file containing the recalibration information
-     * @param quantizationLevels number of bins to quantize the quality scores
-     * @param disableIndelQuals  if true, do not emit base indel qualities
-     * @param preserveQLessThan  preserve quality scores less than this value
+     * @param bqsrRecalFile a GATK Report file containing the recalibration information
+     * @param args ApplyBQSR args
      */
-    public BQSRReadTransformer(final SAMFileHeader header, File bqsrRecalFile, int quantizationLevels, boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
-        final RecalibrationReport recalibrationReport = new RecalibrationReport(bqsrRecalFile);
-
-        this.header = header;
-        recalibrationTables = recalibrationReport.getRecalibrationTables();
-        covariates = recalibrationReport.getCovariates();
-        quantizationInfo = recalibrationReport.getQuantizationInfo();
-
-        if (quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
-            quantizationInfo.noQuantization();
-        } else if (quantizationLevels > 0 && quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
-            quantizationInfo.quantizeQualityScores(quantizationLevels);
-        }
-        this.disableIndelQuals = disableIndelQuals;
-        this.preserveQLessThan = preserveQLessThan;
-        this.globalQScorePrior = globalQScorePrior;
-        this.emitOriginalQuals = emitOriginalQuals;
+    public BQSRReadTransformer(final SAMFileHeader header, final File bqsrRecalFile, final ApplyBQSRArgumentCollection args) {
+        this(header, new RecalibrationReport(bqsrRecalFile), args);
     }
 
     /**
-     * Constructor using a GATK Report file
+     * Constructor using separate RecalibrationTables, QuantizationInfo, and StandardCovariateList
      *
      * @param header header for the reads
-     * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
-     * @param quantizationLevels number of bins to quantize the quality scores
-     * @param disableIndelQuals  if true, do not emit base indel qualities
-     * @param preserveQLessThan  preserve quality scores less than this value
+     * @param recalibrationTables recalibration tables output from BQSR
+     * @param quantizationInfo quantization info
+     * @param covariates standard covariate set
+     * @param args ApplyBQSR arguments
      */
-    public BQSRReadTransformer(final SAMFileHeader header, final BaseRecalOutput recalInfo, final int quantizationLevels, final boolean disableIndelQuals, final int preserveQLessThan, final boolean emitOriginalQuals, final double globalQScorePrior) {
+    public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo, final StandardCovariateList covariates, final ApplyBQSRArgumentCollection args) {
         this.header = header;
-        recalibrationTables = recalInfo.getRecalibrationTables();
-        covariates = recalInfo.getCovariates();
-        quantizationInfo = recalInfo.getQuantizationInfo();
+        this.recalibrationTables = recalibrationTables;
+        this.covariates = covariates;
+        this.quantizationInfo = quantizationInfo;
 
-        if (quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
+        if (args.quantizationLevels == 0) { // quantizationLevels == 0 means no quantization, preserve the quality scores
             quantizationInfo.noQuantization();
-        } else if (quantizationLevels > 0 && quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
-            quantizationInfo.quantizeQualityScores(quantizationLevels);
+        } else if (args.quantizationLevels > 0 && args.quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
+            quantizationInfo.quantizeQualityScores(args.quantizationLevels);
         }
-        this.disableIndelQuals = disableIndelQuals;
-        this.preserveQLessThan = preserveQLessThan;
-        this.globalQScorePrior = globalQScorePrior;
-        this.emitOriginalQuals = emitOriginalQuals;
+        this.disableIndelQuals = args.disableIndelQuals;
+        this.preserveQLessThan = args.PRESERVE_QSCORES_LESS_THAN;
+        this.globalQScorePrior = args.globalQScorePrior;
+        this.emitOriginalQuals = args.emitOriginalQuals;
     }
 
     /**
-     * Constructor using a GATK Report file
+     * Constructor using a RecalibrationReport
      *
      * @param header header for the reads
-     * @param recalInfo          the output of BaseRecalibration, containing the recalibration information
+     * @param recalInfo the output of BaseRecalibration, containing the recalibration information
      * @param args a set of arguments to control how bqsr is applied
      */
     public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationReport recalInfo, ApplyBQSRArgumentCollection args) {
-        this(header, new BaseRecalOutput(recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates()), args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
+        this(header, recalInfo.getRecalibrationTables(), recalInfo.getQuantizationInfo(), recalInfo.getCovariates(), args);
     }
 
     /**

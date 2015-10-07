@@ -15,6 +15,9 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.DataFlowProgramGroup;
+import org.broadinstitute.hellbender.engine.ReadContextData;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.bqsr.ApplyBQSRTransform;
 import org.broadinstitute.hellbender.engine.dataflow.*;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
@@ -33,7 +36,6 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateF
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
-import java.io.IOException;
 import java.util.List;
 
 
@@ -60,7 +62,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String output;
 
-    @Argument(doc = "the reference URL, starting with " + RefAPISource.URL_PREFIX, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
+    @Argument(doc = "the reference URL, starting with " + ReferenceAPISource.URL_PREFIX, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
             fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, optional = false)
     protected String referenceURL;
 
@@ -95,7 +97,7 @@ public class ReadsPreprocessingPipeline extends DataflowCommandLineProgram {
         final VariantsDataflowSource variantsDataflowSource = new VariantsDataflowSource(baseRecalibrationKnownVariants, pipeline);
 
         // Use the BQSR_REFERENCE_WINDOW_FUNCTION so that the reference bases required by BQSR for each read are fetched
-        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
+        final ReferenceMultiSource referenceDataflowSource = new ReferenceMultiSource(pipeline.getOptions(), referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
 
         final PCollection<KV<GATKRead, ReadContextData>> readsWithContext = AddContextDataToRead.add(markedReads, referenceDataflowSource, variantsDataflowSource);
 

@@ -1,11 +1,9 @@
 package org.broadinstitute.hellbender.engine.dataflow.coders;
 
-import com.google.cloud.dataflow.sdk.coders.Coder;
 import com.google.cloud.dataflow.sdk.coders.CoderException;
 import com.google.cloud.dataflow.sdk.coders.CustomCoder;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.PairedEnds;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
 
 import java.io.IOException;
 import java.io.InputStream;

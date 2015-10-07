@@ -7,8 +7,8 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -51,11 +51,11 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
 
-        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
+        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
             when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
-        when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
+        when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         JavaPairRDD<GATKRead, ReferenceBases> rddResult = ShuffleJoinReadsWithRefBases.addBases(mockSource, rddReads);
         Map<GATKRead, ReferenceBases> result = rddResult.collectAsMap();
@@ -74,11 +74,11 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
 
-        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
+        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
             when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
-        when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
+        when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         JavaPairRDD<GATKRead, ReferenceBases> rddResult = BroadcastJoinReadsWithRefBases.addBases(mockSource, rddReads);
         Map<GATKRead, ReferenceBases> result = rddResult.collectAsMap();

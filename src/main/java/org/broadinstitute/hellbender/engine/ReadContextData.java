@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine;
 
 import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;

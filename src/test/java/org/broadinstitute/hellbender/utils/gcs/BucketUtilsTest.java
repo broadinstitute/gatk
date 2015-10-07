@@ -1,7 +1,6 @@
-package org.broadinstitute.hellbender.utils.dataflow;
+package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
@@ -62,7 +61,7 @@ public final class BucketUtilsTest extends BaseTest {
     public void testCopyAndDeleteGCS() throws IOException, GeneralSecurityException {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
-        final String intermediate = BucketUtils.randomRemotePath(getDataflowTestStaging(), "test-copy-empty", ".vcf");
+        final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-copy-empty", ".vcf");
         Assert.assertTrue(BucketUtils.isCloudStorageUrl(intermediate), "!BucketUtils.isCloudStorageUrl(intermediate)");
         PipelineOptions popts = getAuthenticatedPipelineOptions();
         BucketUtils.copyFile(src, popts, intermediate);

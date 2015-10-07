@@ -59,7 +59,7 @@ public final class ApplyBQSRTransform extends PTransform<PCollection<GATKRead>, 
             if (null==transformer) {
                 SAMFileHeader header = c.sideInput(headerView);
                 BaseRecalOutput info = c.sideInput(recalView);
-                transformer = new BQSRReadTransformer(header, info, args.quantizationLevels, args.disableIndelQuals, args.PRESERVE_QSCORES_LESS_THAN, args.emitOriginalQuals, args.globalQScorePrior);
+                transformer = new BQSRReadTransformer(header, info.getRecalibrationTables(), info.getQuantizationInfo(), info.getCovariates(), args);
                 // it's OK if this same object is used for multiple bundles
             }
             GATKRead r = c.element().copy();

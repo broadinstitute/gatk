@@ -29,6 +29,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.seqdoop.hadoop_bam.KeyIgnoringBAMOutputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
@@ -60,7 +61,7 @@ public class SmallBamWriter implements Serializable {
     public static void writeToFile(
             Pipeline pipeline, PCollection<GATKRead> reads, final SAMFileHeader header, final String destPath,
             final boolean parquet) {
-        if (BucketUtils.isHadoopUrl(destPath) ||
+        if ( BucketUtils.isHadoopUrl(destPath) ||
                 pipeline.getRunner().getClass().equals(SparkPipelineRunner.class)) {
             writeToHadoop(pipeline, reads, header, destPath, parquet);
         } else {

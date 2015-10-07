@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
-import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTest {
+public final class ApplyBQSRDataflowIntegrationTest extends DataflowCommandLineProgramTest {
 
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
 
@@ -58,7 +58,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
 
     @DataProvider(name = "ApplyBQSRTestGCS")
     public Object[][] createABQSRTestDataGCS() {
-        final String resourceDirGCS = getDataflowTestInputPath() + THIS_TEST_FOLDER;
+        final String resourceDirGCS = getGCPTestInputPath() + THIS_TEST_FOLDER;
         final String hiSeqBamGCS = resourceDirGCS + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
 
         List<Object[]> tests = new ArrayList<>();
@@ -114,7 +114,7 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                " --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() +
+                " --apiKey " + getGCPTestApiKey() + " --project " + getGCPTestProject() +
                 " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
                 params.args +
                 " -O %s";
@@ -131,8 +131,8 @@ public final class ApplyBQSRDataflowIntegrationTest extends CommandLineProgramTe
         String args =
                 " -I " + params.bam +
                 " --runner BLOCKING " +
-                " --apiKey " + getDataflowTestApiKey() + " --project " + getDataflowTestProject() + " --staging " + getDataflowTestStaging() +
-                " --bqsr_recal_file " + getDataflowTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
+                " --apiKey " + getGCPTestApiKey() + " --project " + getGCPTestProject() + " --staging " + getGCPTestStaging() +
+                " --bqsr_recal_file " + getGCPTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
                 params.args +
                 " -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(

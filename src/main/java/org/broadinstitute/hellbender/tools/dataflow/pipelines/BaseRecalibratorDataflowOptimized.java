@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToRead;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
@@ -35,7 +35,7 @@ import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
@@ -71,7 +71,7 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
     /**
       * Reference window function for BQSR. For each read, returns an interval representing the span of
       * reference bases required by the BQSR algorithm for that read. Should be passed into the
-      * {@link ReferenceDataflowSource} object for the {@link AddContextDataToRead} transform.
+      * {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} object for the {@link AddContextDataToRead} transform.
       */
     public static final SerializableFunction<GATKRead, SimpleInterval> BQSR_REFERENCE_WINDOW_FUNCTION =
             read -> BAQ.getReferenceWindowForRead(read, BAQ.DEFAULT_BANDWIDTH, BAQ.DEFAULT_INCLUDE_CLIPPED_BASES);
@@ -170,7 +170,7 @@ public class BaseRecalibratorDataflowOptimized extends DataflowCommandLineProgra
             bunny.stepEnd("set up bam input");
 
             // Load the Variants and the Reference
-            final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(pipeline.getOptions(), referenceURL, BQSR_REFERENCE_WINDOW_FUNCTION);
+            final ReferenceMultiSource referenceDataflowSource = new ReferenceMultiSource(pipeline.getOptions(), referenceURL, BQSR_REFERENCE_WINDOW_FUNCTION);
             bunny.stepEnd("create referenceDataflowSource");
             final SAMSequenceDictionary refDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsDictionary);
             bunny.stepEnd("load ref sequence dictionary");

@@ -6,7 +6,7 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -47,7 +47,7 @@ public class PairReadWithRefBases extends PTransform<PCollection<KV<ReferenceBas
     private final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction;
 
     public PairReadWithRefBases() {
-        this(RefWindowFunctions.IDENTITY_FUNCTION);
+        this(ReferenceWindowFunctions.IDENTITY_FUNCTION);
     }
 
     /**

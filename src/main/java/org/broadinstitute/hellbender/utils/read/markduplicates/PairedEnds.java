@@ -1,9 +1,8 @@
-package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
+package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
 /**
  * Struct-like class to store information about the paired reads for mark duplicates.
@@ -53,7 +52,7 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
   }
 
   public int score() {
-    return MarkDuplicatesUtils.score(first) + MarkDuplicatesUtils.score(second);
+    return MarkDuplicatesUtils.scoreForRead(first) + MarkDuplicatesUtils.scoreForRead(second);
   }
 
   @Override

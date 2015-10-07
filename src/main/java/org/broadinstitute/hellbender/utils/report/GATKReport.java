@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.BufferedReader;
 import java.io.File;

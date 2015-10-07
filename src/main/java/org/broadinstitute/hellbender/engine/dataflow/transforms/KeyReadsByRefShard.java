@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.engine.dataflow.transforms;
 import com.google.cloud.dataflow.sdk.transforms.*;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -27,7 +27,7 @@ public class KeyReadsByRefShard extends PTransform<PCollection<GATKRead>, PColle
     private final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction;
 
     public KeyReadsByRefShard() {
-        this(RefWindowFunctions.IDENTITY_FUNCTION);
+        this(ReferenceWindowFunctions.IDENTITY_FUNCTION);
     }
 
     /**

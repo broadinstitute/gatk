@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -9,11 +9,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 
-public final class CountBasesDataflowIntegrationTest extends CommandLineProgramTest{
+public final class CountBasesDataflowIntegrationTest extends DataflowCommandLineProgramTest {
 
     @Test(groups = "dataflow")
     public void testCountBasesFilteredIntegrationTestLocal() throws IOException {

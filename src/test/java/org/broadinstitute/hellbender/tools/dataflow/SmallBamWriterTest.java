@@ -18,16 +18,16 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.dataflow.SmallBamWriter;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsDataflowSource;
 import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
+import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
@@ -68,7 +68,7 @@ public class SmallBamWriterTest extends BaseTest {
     public void checkGCSOutput() throws Exception {
         File out = createTempFile("temp",".bam");
         String tempName = out.getName();
-        String outputPath = getDataflowTestStaging() + tempName;
+        String outputPath = getGCPTestStaging() + tempName;
         testReadAndWrite(LOCAL_INPUT, outputPath, true, false);
     }
 
@@ -77,13 +77,13 @@ public class SmallBamWriterTest extends BaseTest {
     public void checkCloud() throws Exception {
         File out = createTempFile("temp",".bam");
         String tempName = out.getName();
-        String outputPath = getDataflowTestStaging() + tempName;
+        String outputPath = getGCPTestStaging() + tempName;
         testReadAndWrite(getCloudInput(), outputPath, true, true);
     }
 
     @Test
     public void checkHDFSOutput() throws Exception {
-        String dataflowRunner = CommandLineProgramTest.getExternallySpecifiedRunner();
+        String dataflowRunner = DataflowCommandLineProgramTest.getExternallySpecifiedRunner();
         if (!SparkPipelineRunner.class.getSimpleName().equals(dataflowRunner)) {
             return; // only run if SparkPipelineRunner specified
         }
@@ -143,10 +143,10 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     private Pipeline setupPipeline(final String inputPath, final String outputPath, boolean enableGcs, boolean enableCloudExec) {
-        final DataflowCommandLineProgram.HellbenderDataflowOptions options = PipelineOptionsFactory.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class);
+        final GATKGCSOptions options = PipelineOptionsFactory.as(GATKGCSOptions.class);
         if (enableCloudExec) {
-            options.setStagingLocation(getDataflowTestStaging());
-            options.setProject(getDataflowTestProject());
+            options.setStagingLocation(getGCPTestStaging());
+            options.setProject(getGCPTestProject());
             options.setRunner(BlockingDataflowPipelineRunner.class);
         } else if (BucketUtils.isHadoopUrl(inputPath) || BucketUtils.isHadoopUrl(outputPath)) {
             options.setRunner(SparkPipelineRunner.class);
@@ -154,7 +154,7 @@ public class SmallBamWriterTest extends BaseTest {
             options.setRunner(DirectPipelineRunner.class);
         }
         if (enableGcs) {
-            options.setApiKey(getDataflowTestApiKey());
+            options.setApiKey(getGCPTestApiKey());
         }
         final Pipeline p = Pipeline.create(options);
         DataflowUtils.registerGATKCoders(p);
@@ -191,6 +191,6 @@ public class SmallBamWriterTest extends BaseTest {
     }
 
     private String getCloudInput() {
-        return getDataflowTestInputPath() + THIS_TEST_FOLDER;
+        return getGCPTestInputPath() + THIS_TEST_FOLDER;
     }
 }

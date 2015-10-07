@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

@@ -5,7 +5,7 @@ import com.google.cloud.dataflow.sdk.transforms.PTransform;
 import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantShard;
+import org.broadinstitute.hellbender.engine.VariantShard;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.util.List;

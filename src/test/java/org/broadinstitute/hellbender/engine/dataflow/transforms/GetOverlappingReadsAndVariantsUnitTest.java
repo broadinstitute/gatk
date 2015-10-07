@@ -7,7 +7,7 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
+import org.broadinstitute.hellbender.tools.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;

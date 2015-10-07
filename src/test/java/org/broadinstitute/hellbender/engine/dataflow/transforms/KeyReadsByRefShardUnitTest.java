@@ -11,10 +11,10 @@ import com.google.cloud.dataflow.sdk.values.PCollection;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
+import org.broadinstitute.hellbender.tools.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -65,17 +65,17 @@ public final class KeyReadsByRefShardUnitTest extends BaseTest {
                 // Test case layout: reads, reference window function to apply, expected shard + reads pairs
 
                 // Identity function, SAM reads
-                { samReads, RefWindowFunctions.IDENTITY_FUNCTION, generateExpectedCustomWindowResult(samReads, 0, 0) },
+                { samReads, ReferenceWindowFunctions.IDENTITY_FUNCTION, generateExpectedCustomWindowResult(samReads, 0, 0) },
                 // Identity function, google reads
-                { googleReads, RefWindowFunctions.IDENTITY_FUNCTION, generateExpectedCustomWindowResult(googleReads, 0, 0) },
+                { googleReads, ReferenceWindowFunctions.IDENTITY_FUNCTION, generateExpectedCustomWindowResult(googleReads, 0, 0) },
                 // Expand reads by 1 base on each side, SAM reads
-                { samReads, new RefWindowFunctions.FixedWindowFunction(1, 1), generateExpectedCustomWindowResult(samReads, 1, 1) },
+                { samReads, new ReferenceWindowFunctions.FixedWindowFunction(1, 1), generateExpectedCustomWindowResult(samReads, 1, 1) },
                 // Expand reads by 1 base on each side, google reads
-                { googleReads, new RefWindowFunctions.FixedWindowFunction(1, 1), generateExpectedCustomWindowResult(googleReads, 1, 1) },
+                { googleReads, new ReferenceWindowFunctions.FixedWindowFunction(1, 1), generateExpectedCustomWindowResult(googleReads, 1, 1) },
                 // Expand reads by 3 bases on the left and 5 bases on the right, SAM reads
-                { samReads, new RefWindowFunctions.FixedWindowFunction(3, 5), generateExpectedCustomWindowResult(samReads, 3, 5) },
+                { samReads, new ReferenceWindowFunctions.FixedWindowFunction(3, 5), generateExpectedCustomWindowResult(samReads, 3, 5) },
                 // Expand reads by 3 bases on the left and 5 bases on the right, google reads
-                { googleReads, new RefWindowFunctions.FixedWindowFunction(3, 5), generateExpectedCustomWindowResult(googleReads, 3, 5) },
+                { googleReads, new ReferenceWindowFunctions.FixedWindowFunction(3, 5), generateExpectedCustomWindowResult(googleReads, 3, 5) },
         };
     }
 

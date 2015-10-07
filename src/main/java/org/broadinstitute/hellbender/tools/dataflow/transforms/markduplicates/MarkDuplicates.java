@@ -41,10 +41,10 @@ public class MarkDuplicates extends PTransform<PCollection<GATKRead>, PCollectio
         final PCollectionList<GATKRead> readsPartitioned = partitionReadsByPrimaryNonPrimaryAlignment(preads);
 
         final PCollection<GATKRead> fragments = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
-        final PCollection<GATKRead> fragmentsTransformed = MarkDuplicatesUtils.transformFragments(header, fragments);
+        final PCollection<GATKRead> fragmentsTransformed = MarkDuplicatesDataflowUtils.transformFragments(header, fragments);
 
         final PCollection<GATKRead> pairs = readsPartitioned.get(ReadsPartition.PRIMARY.ordinal());
-        final PCollection<GATKRead> pairsTransformed = MarkDuplicatesUtils.transformReads(header, opticalDuplicateFinder, pairs);
+        final PCollection<GATKRead> pairsTransformed = MarkDuplicatesDataflowUtils.transformReads(header, opticalDuplicateFinder, pairs);
 
         //no work on those
         final PCollection<GATKRead> not_primary = readsPartitioned.get(ReadsPartition.NOT_PRIMARY.ordinal());
