@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -14,23 +15,23 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
         List<TargetCoverage> targetList = new ArrayList<>();
         //add amplification targets
         for (int i = 0; i < 10; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 100 + 2 * i, 101 + 2 * i), 2.0));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 100 + 2 * i, 101 + 2 * i), ParamUtils.log2(2.0)));
         }
         //add deletion targets
         for (int i = 0; i < 10; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 300 + 2 * i, 301 + 2 * i), 0.5));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 300 + 2 * i, 301 + 2 * i), ParamUtils.log2(0.5)));
         }
         //add targets that don't belong to a segment
         for (int i = 1; i < 10; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 400 + 2 * i, 401 + 2 * i), 1.0));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 400 + 2 * i, 401 + 2 * i), ParamUtils.log2(1.0)));
         }
         //add obviously neutral targets with some small spread
         for (int i = -5; i < 6; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 500 + 2 * i, 501 + 2 * i), 0.01 * i + 1));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 500 + 2 * i, 501 + 2 * i), ParamUtils.log2(0.01 * i + 1)));
         }
         //add spread-out targets to a neutral segment (mean near zero)
         for (int i = -5; i < 6; i++) {
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 700 + 2 * i, 701 + 2 * i), 0.1 * i + 1));
+            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr", 700 + 2 * i, 701 + 2 * i), ParamUtils.log2(0.1 * i + 1)));
         }
 
         HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);

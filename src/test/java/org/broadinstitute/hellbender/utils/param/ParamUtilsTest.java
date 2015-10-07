@@ -80,4 +80,51 @@ public class ParamUtilsTest {
     public void testNegativeIsNotPositive2(){
         ParamUtils.isPositiveOrZero(-4.2, "That is negative!");
     }
+
+    @Test
+    public void testLogB(){
+        Assert.assertEquals(ParamUtils.logb(4, 2), 2.0);
+        Assert.assertEquals(ParamUtils.logb(4.1, 2), 2.0356, 1e-3);
+        Assert.assertEquals(ParamUtils.logb(4.1, 2.1), 1.9018, 1e-3);
+        Assert.assertEquals(ParamUtils.logb(4, 2.1), 1.8685, 1e-3);
+
+    }
+
+    @Test
+    public void testLog2(){
+        Assert.assertEquals(2.0, ParamUtils.log2(4));
+        Assert.assertEquals(10.0, ParamUtils.log2(1024));
+        Assert.assertEquals(-13.2877, ParamUtils.log2(.0001), 1e-3);
+    }
+
+    @Test
+    public void testLogBOfBaseZero(){
+        Assert.assertEquals(-0.0, ParamUtils.logb(337, -0));
+        Assert.assertEquals(-0.0, ParamUtils.logb(337, 0));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(-337, 0)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(-337, -0)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(0, 0)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(-0, -0)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(-0, 0)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(0, -0)));
+    }
+
+    @Test
+    public void testLogBOfZero(){
+        Assert.assertEquals(ParamUtils.logb(0, 337), Double.NEGATIVE_INFINITY);
+        Assert.assertEquals(ParamUtils.logb(-0, 337), Double.NEGATIVE_INFINITY);
+    }
+
+    @Test
+    public void testLogBOfNegativeNumber() {
+        // Note you cannot do Double.NaN == val  see: http://stackoverflow.com/questions/1456566/how-do-you-test-to-see-if-a-double-is-equal-to-nan
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(-4, 5)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.logb(4, -5.1)));
+    }
+
+    @Test
+    public void testLog2OfNegativeNumber() {
+        Assert.assertTrue(Double.isNaN(ParamUtils.log2(-4)));
+        Assert.assertTrue(Double.isNaN(ParamUtils.log2(-5.1)));
+    }
 }
