@@ -19,6 +19,8 @@ import java.util.List;
  * normalized coverages are drawn from a normal distribution defined by the mean from 1)
  * and the variance from 2)
  *
+ * Note:  Assumes that the incoming target file is in log_2(CR)
+ *
  * @author David Benjamin
  */
 public final class ReCapSegCaller {
