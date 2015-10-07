@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithVariants;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -13,7 +14,7 @@ public final class FeatureSupportIntegrationTest extends CommandLineProgramTest 
 
     @Override
     public String getTestedClassName() {
-        return "PrintReadsWithVariants";
+        return ExampleReadWalkerWithVariants.class.getSimpleName();
     }
 
     @Test
