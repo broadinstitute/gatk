@@ -3,14 +3,10 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -21,12 +17,12 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 @CommandLineProgramProperties(summary = "Counts bases in the input BAM", oneLineSummary = "Counts bases in a BAM file", programGroup = SparkProgramGroup.class)
-public final class CountBasesSpark extends SparkCommandLineProgram {
+public final class CountBasesSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    @ArgumentCollection
-    public ReadInputArgumentCollection readArguments= new RequiredReadInputArgumentCollection();
+    @Override
+    public boolean requiresReads() { return true; }
 
     @Argument(doc = "uri for the output file: a local file path",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -34,15 +30,12 @@ public final class CountBasesSpark extends SparkCommandLineProgram {
     public String out;
 
     @Override
-    protected void runPipeline(final JavaSparkContext ctx) {
-        if ( readArguments.getReadFilesNames().size() != 1 ) {
-            throw new UserException("This tool only accepts a single bam/sam/cram as input");
-        }
-        final String bam = readArguments.getReadFilesNames().get(0);
-        final ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        final JavaRDD<GATKRead> reads = readSource.getParallelReads(bam, null);
-        final long count = reads.map( r -> (long)r.getLength()).reduce(Long::sum);
+    protected void runTool(final JavaSparkContext ctx) {
+        final JavaRDD<GATKRead> reads = getReads();
+
+        final long count = reads.map(r -> (long)r.getLength()).reduce(Long::sum);
         System.out.println(count);
+
         if (out != null){
             final File file = new File(out);
             try(final OutputStream outputStream = BucketUtils.createFile(file.getPath(), null);

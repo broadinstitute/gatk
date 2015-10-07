@@ -1,42 +1,32 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
+import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
-import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
-import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.IOException;
@@ -51,46 +41,41 @@ import java.util.List;
 )
 
 /**
- * ReadsPreprocessingPipeline is our standard pipeline that takes aligned reads (likely from BWA) and runs MarkDuplicates
+ * ReadsPipelineSpark is our standard pipeline that takes aligned reads (likely from BWA) and runs MarkDuplicates
  * and BQSR. The final result is analysis-ready reads.
  */
-public class ReadsPipelineSpark extends SparkCommandLineProgram {
+public class ReadsPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "uri for the input bam, either a local file path or a gs:// bucket path",
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            optional = false)
-    protected String bam;
+    @Override
+    public boolean requiresReads() { return true; }
+
+    @Override
+    public boolean requiresReference() { return true; }
+
+    @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
+    protected List<String> baseRecalibrationKnownVariants;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String output;
 
-    @Argument(doc = "the reference name", shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, optional = false)
-    protected String referenceURL;
-
-    @Argument(doc = "the known variants", shortName = "BQSRKnownVariants", fullName = "baseRecalibrationKnownVariants", optional = true)
-    protected List<String> baseRecalibrationKnownVariants;
-
-    @Argument(doc = "the join strategy for reference bases", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
-    private JoinStrategy joinStrategy = JoinStrategy.SHUFFLE;
-
-    @ArgumentCollection
-    protected IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
-
     @Argument(doc = "If specified, shard the output bam", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
     private boolean shardedOutput = false;
 
+    @Argument(doc = "the join strategy for reference bases", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
+    private JoinStrategy joinStrategy = JoinStrategy.SHUFFLE;
+    
     @Override
-    protected void runPipeline(final JavaSparkContext ctx) {
-        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam);
-        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
-                : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
-        JavaRDD<GATKRead> initialReads = readSource.getParallelReads(bam, intervals);
+    public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
+        return BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION;
+    }
 
-        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, readsHeader, new OpticalDuplicateFinder());
+    @Override
+    protected void runTool(final JavaSparkContext ctx) {
+        JavaRDD<GATKRead> initialReads = getReads();
+
+        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), new OpticalDuplicateFinder());
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
 
         // TODO: workaround for known bug in List version of getParallelVariants
@@ -100,29 +85,18 @@ public class ReadsPipelineSpark extends SparkCommandLineProgram {
         }
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
-        final ReferenceDataflowSource referenceDataflowSource = new ReferenceDataflowSource(gcsOptions, referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
-        final SAMSequenceDictionary referenceDictionary = referenceDataflowSource.getReferenceSequenceDictionary(readsHeader.getSequenceDictionary());
-        checkSequenceDictionaries(referenceDictionary, readsHeader.getSequenceDictionary());
-
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, referenceDataflowSource, bqsrKnownVariants, joinStrategy);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedReads, getReference(), bqsrKnownVariants, joinStrategy);
         // TODO: broadcast the reads header?
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, readsHeader, referenceDictionary, new RecalibrationArgumentCollection());
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), new RecalibrationArgumentCollection());
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
-        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, readsHeader, new ApplyBQSRArgumentCollection());
+        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, getHeaderForReads(), new ApplyBQSRArgumentCollection());
 
         try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
+            ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }
-    }
-
-    private void checkSequenceDictionaries(final SAMSequenceDictionary refDictionary, SAMSequenceDictionary readsDictionary) {
-        Utils.nonNull(refDictionary);
-        Utils.nonNull(readsDictionary);
-        SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
     }
 }
