@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine.dataflow.datasources;
 
+import com.cloudera.dataflow.spark.SparkPipelineRunner;
 import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.testing.DataflowAssert;
 import com.google.cloud.dataflow.sdk.transforms.Create;
@@ -67,6 +68,26 @@ public class VariantSourceUnitTest extends BaseTest {
         PCollection<Variant> allVariants2 = allVariants.apply(ParDo.of(new clearUUIDDoFn()));
         DataflowAssert.that(allVariants2).containsInAnyOrder(variants);
         p.run();
+    }
+
+    @Test(dataProvider = "RealVariantData")
+    public void testVariantPCollectionFromHadoop(final List<Variant> variants) {
+        for (int i = 0; i < variants.size(); ++i) {
+            // Update the element with a cleared UUID.
+            variants.set(i, createVariantContextVariantAdapterForTesting(((VariantContextVariantAdapter) variants.get(i)), defaultUUID()));
+        }
+        // Now make a PCollection, to verify that variants can be coded.
+        Pipeline p = GATKTestPipeline.create();
+
+        // Now, we can test that we can get a PCollection from Hadoop
+        String file = FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf";
+        PCollection<Variant> allVariants = VariantsHadoopSource.getAllVariants(file, p);
+
+        // We have to clear the UUIDs to make the comparison.
+        PCollection<Variant> allVariants2 = allVariants.apply(ParDo.of(new clearUUIDDoFn()));
+        DataflowAssert.that(allVariants2).containsInAnyOrder(variants);
+
+        SparkPipelineRunner.create().run(p);
     }
 
     @Test(dataProvider = "VariantDataProvider")

@@ -31,6 +31,7 @@ public class VariantsDataflowSource {
     private final static Logger logger = LogManager.getLogger(VariantsDataflowSource.class);
     private final List<String> variantSources;
     private final Pipeline pipeline;
+    private final boolean hadoopUrl;
 
     /**
      * VariantsDataflowSource sets up source using local files (or eventually GCS buckets).
@@ -38,12 +39,16 @@ public class VariantsDataflowSource {
      * @param pipeline, options to get credentials to access GCS buckets.
      */
     public VariantsDataflowSource(final List<String> variantFiles, final Pipeline pipeline) {
+        boolean hadoop = false;
         for (final String variantSource : variantFiles) {
             if (BucketUtils.isCloudStorageUrl(variantSource)) {
                 // This problem is tracked with issue 632.
                 throw new UnsupportedOperationException("Cloud storage URIs not supported");
+            } else if (BucketUtils.isHadoopUrl(variantSource)) {
+                hadoop = true;
             }
         }
+        this.hadoopUrl = hadoop;
 
         this.variantSources = variantFiles;
         this.pipeline = pipeline;
@@ -54,12 +59,16 @@ public class VariantsDataflowSource {
      * @return a PCollection of variants found in the file.
      */
     public PCollection<Variant> getAllVariants() {
-        final List<Variant> aggregatedResults = getVariantsList(variantSources);
-        if (aggregatedResults.isEmpty()) {
-            // empty list of interval type is something that Dataflow isn't happy with.
-            logger.warn("Warning: variant source is empty, you may see a coder failure.");
+        if (hadoopUrl) {
+            return VariantsHadoopSource.getAllVariants(variantSources, pipeline);
+        } else {
+            final List<Variant> aggregatedResults = getVariantsList(variantSources);
+            if (aggregatedResults.isEmpty()) {
+                // empty list of interval type is something that Dataflow isn't happy with.
+                logger.warn("Warning: variant source is empty, you may see a coder failure.");
+            }
+            return pipeline.apply(Create.of(aggregatedResults)).setName("creatingVariants");
         }
-        return pipeline.apply(Create.of(aggregatedResults)).setName("creatingVariants");
     }
 
     @SuppressWarnings("unchecked")
