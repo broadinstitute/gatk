@@ -51,9 +51,18 @@ import java.util.stream.StreamSupport;
  * The reference bases paired with each read can be customized by passing in a reference window function
  * inside the {@link ReferenceDataflowSource} argument to {@link #addBases}. See {@link org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions} for examples.
  */
-public class JoinReadsWithRefBases {
+public class ShuffleJoinReadsWithRefBases {
+
+    /**
+     * Joins each read of an RDD<GATKRead> with that read's corresponding reference sequence.
+     *
+     * @param referenceDataflowSource The source of the reference sequence information
+     * @param reads The reads for which to extract reference sequence information
+     * @return The JavaPairRDD that contains each read along with the corresponding ReferenceBases object
+     */
     public static JavaPairRDD<GATKRead, ReferenceBases> addBases(final ReferenceDataflowSource referenceDataflowSource,
                                                                  final JavaRDD<GATKRead> reads) {
+        // TODO: reimpl this method by calling out to the more complex version?
         SerializableFunction<GATKRead, SimpleInterval> windowFunction = referenceDataflowSource.getReferenceWindowFunction();
 
         JavaPairRDD<ReferenceShard, GATKRead> shardRead = reads.mapToPair(gatkRead -> {
@@ -76,6 +85,43 @@ public class JoinReadsWithRefBases {
             for (GATKRead r : iReads) {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(r));
                 out.add(new Tuple2<>(r, subset));
+            }
+            return out;
+        });
+    }
+
+    /**
+     * Joins each read of an RDD<GATKRead, T> with key's corresponding reference sequence.
+     *
+     * @param referenceDataflowSource The source of the reference sequence information
+     * @param keyedByRead The read-keyed RDD for which to extract reference sequence information
+     * @return The JavaPairRDD that contains each read along with the corresponding ReferenceBases object and the value
+     */
+    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(final ReferenceDataflowSource referenceDataflowSource,
+                                                                                final JavaPairRDD<GATKRead, T> keyedByRead) {
+        SerializableFunction<GATKRead, SimpleInterval> windowFunction = referenceDataflowSource.getReferenceWindowFunction();
+
+        JavaPairRDD<ReferenceShard, Tuple2<GATKRead, T>> shardRead = keyedByRead.mapToPair(pair -> {
+            ReferenceShard shard = ReferenceShard.getShardNumberFromInterval(windowFunction.apply(pair._1()));
+            return new Tuple2<>(shard, pair);
+        });
+
+        JavaPairRDD<ReferenceShard, Iterable<Tuple2<GATKRead, T>>> shardiRead = shardRead.groupByKey();
+
+        return shardiRead.flatMapToPair(in -> {
+            List<Tuple2<GATKRead, Tuple2<T, ReferenceBases>>> out = Lists.newArrayList();
+            Iterable<Tuple2<GATKRead, T>> iReads = in._2();
+
+            // Apply the reference window function to each read to produce a set of intervals representing
+            // the desired reference bases for each read.
+            final List<SimpleInterval> readWindows = StreamSupport.stream(iReads.spliterator(), false).map(pair -> windowFunction.apply(pair._1())).collect(Collectors.toList());
+
+            SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);
+            // TODO: don't we need to support GCS PipelineOptions?
+            ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
+            for (Tuple2<GATKRead, T> p : iReads) {
+                final ReferenceBases subset = bases.getSubset(windowFunction.apply(p._1()));
+                out.add(new Tuple2<>(p._1(), new Tuple2<>(p._2(), subset)));
             }
             return out;
         });

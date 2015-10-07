@@ -45,8 +45,8 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "bases", groups = "spark")
-    public void refBasesTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
-                             List<SimpleInterval> intervals) throws IOException {
+    public void refBasesShuffleTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
+                                    List<SimpleInterval> intervals) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
@@ -57,7 +57,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReferenceBases> rddResult = JoinReadsWithRefBases.addBases(mockSource, rddReads);
+        JavaPairRDD<GATKRead, ReferenceBases> rddResult = ShuffleJoinReadsWithRefBases.addBases(mockSource, rddReads);
         Map<GATKRead, ReferenceBases> result = rddResult.collectAsMap();
 
         for (KV<GATKRead, ReferenceBases> kv : kvReadRefBases) {
@@ -67,4 +67,26 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
         }
     }
 
+    @Test(dataProvider = "bases", groups = "spark")
+    public void refBasesBroadcastTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
+                                      List<SimpleInterval> intervals) throws IOException {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
+
+        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
+        for (SimpleInterval i : intervals) {
+            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+        }
+        when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
+
+        JavaPairRDD<GATKRead, ReferenceBases> rddResult = BroadcastJoinReadsWithRefBases.addBases(mockSource, rddReads);
+        Map<GATKRead, ReferenceBases> result = rddResult.collectAsMap();
+
+        for (KV<GATKRead, ReferenceBases> kv : kvReadRefBases) {
+            ReferenceBases referenceBases = result.get(kv.getKey());
+            Assert.assertNotNull(referenceBases);
+            Assert.assertEquals(kv.getValue(),referenceBases);
+        }
+    }
 }

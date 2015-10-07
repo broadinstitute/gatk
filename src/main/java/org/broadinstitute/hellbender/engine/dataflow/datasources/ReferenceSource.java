@@ -10,7 +10,7 @@ import java.io.IOException;
 /**
  * Internal interface to load a reference sequence.
  */
-interface ReferenceSource {
+public interface ReferenceSource {
     ReferenceBases getReferenceBases(PipelineOptions pipelineOptions, SimpleInterval interval) throws IOException;
     SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException;
 }

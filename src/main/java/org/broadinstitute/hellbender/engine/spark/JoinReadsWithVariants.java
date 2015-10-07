@@ -65,23 +65,20 @@ public class JoinReadsWithVariants {
 
         JavaPairRDD<VariantShard, Variant> variantsWShards = pairVariantsWithVariantShards(variants);
 
+        // generate read-variant pairs; however, the reads are replicated for each overlapping pair
         JavaPairRDD<GATKRead, Variant> allPairs = pairReadsWithVariants(readsWShards, variantsWShards);
 
-
-        final JavaPairRDD<GATKRead, ? extends Iterable<Variant>> gatkReadHashSetJavaPairRDD = allPairs.aggregateByKey(new HashSet<>(), (Set<Variant> vs, Variant v) -> {
+        // we group together all variants for each unique GATKRead.  As we combine through the Variants, they are added
+        // to a HashSet that get continually merged together
+        return allPairs.aggregateByKey(new HashSet<>(), (vs, v) -> {
             if (v != null) { // pairReadsWithVariants can produce null variant
-                vs.add(v);
+                ((HashSet<Variant>) vs).add(v);
             }
             return vs;
-        }, (Set<Variant> vs1, Set<Variant> vs2) -> {
-            vs1.addAll(vs2);
+        }, (vs1, vs2) -> {
+            ((HashSet<Variant>) vs1).addAll((HashSet<Variant>) vs2);
             return vs1;
         });
-
-        @SuppressWarnings("unchecked")
-        final JavaPairRDD<GATKRead, Iterable<Variant>> gatkReadIterableJavaPairRDD = (JavaPairRDD<GATKRead, Iterable<Variant>>)gatkReadHashSetJavaPairRDD;
-        return gatkReadIterableJavaPairRDD;
-
     }
 
     private static JavaPairRDD<VariantShard, GATKRead> pairReadsWithVariantShards(final JavaRDD<GATKRead> reads) {

@@ -61,7 +61,6 @@ public final class BucketUtils {
      * @param path the GCS, HDFS or local path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
      * @param popts the pipeline's options, with authentication information.
      * @return an InputStream that reads from the specified file.
-
      */
     public static InputStream openFile(String path, PipelineOptions popts) {
         try {
@@ -189,5 +188,25 @@ public final class BucketUtils {
             return MAYBE;
         }
         return true;
+    }
+
+    /**
+     * Returns the file size of a file pointed to by a GCS/HDFS/local path
+     *
+     * @param path The URL to the file whose size to return
+     * @param popts PipelineOptions for GCS (if relevant; otherwise pass null)
+     * @return the file size in bytes
+     * @throws IOException
+     */
+    public static long fileSize(String path, PipelineOptions popts) throws IOException {
+        if (isCloudStorageUrl(path)) {
+            return new GcsUtil.GcsUtilFactory().create(popts).fileSize(GcsPath.fromUri(path));
+        } else if (isHadoopUrl(path)) {
+            Path hadoopPath = new Path(path);
+            FileSystem fs = hadoopPath.getFileSystem(new Configuration());
+            return fs.getFileStatus(hadoopPath).getLen();
+        } else {
+            return new File(path).length();
+        }
     }
 }
