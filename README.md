@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/broadinstitute/hellbender.svg?branch=master)](https://travis-ci.org/broadinstitute/hellbender)
-[![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/hellbender?branch=master)
+[![Build Status](https://travis-ci.org/broadinstitute/gatk.svg?branch=master)](https://travis-ci.org/broadinstitute/gatk)
+[![Coverage Status](https://coveralls.io/repos/broadinstitute/gatk/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/gatk?branch=master)
 
 **This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**  
 
