@@ -29,6 +29,14 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         };
     }
 
+    @DataProvider(name = "loadShardedReads")
+    public Object[][] loadShardedReads() {
+        String dir = "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/";
+        return new Object[][]{
+                {dir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", dir + "HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.sharded.bam"},
+        };
+    }
+
     @Test(dataProvider = "loadReads", groups = "spark")
     public void readsSparkSourceTest(String bam) {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
@@ -36,6 +44,19 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, bam);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(bam);
+
+        List<GATKRead> serialReads = rddSerialReads.collect();
+        List<GATKRead> parallelReads = rddParallelReads.collect();
+        Assert.assertEquals(serialReads.size(), parallelReads.size());
+    }
+
+    @Test(dataProvider = "loadShardedReads", groups = "spark")
+    public void shardedReadsSparkSourceTest(String expectedBam, String shardedBam) {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> rddSerialReads = getSerialReads(ctx, expectedBam);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(shardedBam);
 
         List<GATKRead> serialReads = rddSerialReads.collect();
         List<GATKRead> parallelReads = rddParallelReads.collect();

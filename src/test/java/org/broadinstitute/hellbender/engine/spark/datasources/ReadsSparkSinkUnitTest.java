@@ -26,16 +26,16 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @DataProvider(name = "loadReadsBAM")
     public Object[][] loadReadsBAM() {
         return new Object[][]{
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1.bam"},
-                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", "ReadsSparkSinkUnitTest2.bam"},
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", createTempFile("HiSeq.1mb.1RG.2k_lines", ".bam").getAbsolutePath()},
+                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", createTempFile("HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate", ".bam").getAbsolutePath()},
         };
     }
 
     @DataProvider(name = "loadReadsADAM")
     public Object[][] loadReadsADAM() {
         return new Object[][]{
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1_ADAM"},
-                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", "ReadsSparkSinkUnitTest2_ADAM"},
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", createTempFile("HiSeq.1mb.1RG.2k_lines", ".adam").getAbsolutePath()},
+                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", createTempFile("HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate", ".adam").getAbsolutePath()},
         };
     }
 
@@ -61,6 +61,25 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             final GATKRead larger = writtenReads.get(i + 1);
             Assert.assertTrue(comparator.compare(smaller, larger) < 0);
         }
+        Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
+    }
+
+    @Test(dataProvider = "loadReadsBAM", groups = "spark")
+    public void readsSinkShardedTest(String inputBam, String outputFile) throws IOException {
+        new File(outputFile).deleteOnExit();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
+        rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
+        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam);
+
+        ReadsSparkSink.writeReads(ctx, outputFile, rddParallelReads, header, ReadsWriteFormat.SHARDED);
+        int shards = new File(outputFile).listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
+        Assert.assertEquals(shards, 2);
+
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile);
+        // reads are not globally sorted
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }
 

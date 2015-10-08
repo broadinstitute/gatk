@@ -36,7 +36,6 @@ import java.io.IOException;
  * read writing code as well as from bigdatagenomics/adam.
  */
 public class ReadsSparkSink {
-    // TODO: Make ReadsSparkSink able to also write sharded BAMs (#854).
 
     // We need an output format for saveAsNewAPIHadoopFile.
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
@@ -98,13 +97,14 @@ public class ReadsSparkSink {
         // we are writing the Avro schema to the Configuration as a JSON string. The AvroParquetOutputFormat class knows
         // how to translate objects in the Avro data model to the Parquet primitives that get written.
         AvroParquetOutputFormat.setSchema(job, AlignmentRecord.getClassSchema());
+        deleteHadoopFile(outputFile);
         rddAlignmentRecords.saveAsNewAPIHadoopFile(
                 outputFile, Void.class, AlignmentRecord.class, AvroParquetOutputFormat.class, job.getConfiguration());
     }
 
     private static void writeReadsSharded(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
-            final SAMFileHeader header) {
+            final SAMFileHeader header) throws IOException {
         // Set the header on the main thread.
         SparkBAMOutputFormat.setHeader(header);
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
@@ -123,6 +123,7 @@ public class ReadsSparkSink {
             return new Tuple2<>(gatkRead, samRecordWritable);
         });
 
+        deleteHadoopFile(outputFile);
         rddSamRecordWriteable.saveAsNewAPIHadoopFile(outputFile, GATKRead.class, SAMRecordWritable.class, SparkBAMOutputFormat.class);
     }
 
