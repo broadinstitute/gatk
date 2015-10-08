@@ -4,7 +4,6 @@ import htsjdk.samtools.util.StringUtil;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -15,8 +14,20 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,8 +71,6 @@ public final class CommandLineParser {
     public static final String COMMENT = "#";
     public static final String POSITIONAL_ARGUMENTS_NAME = "Positional Argument";
 
-
-    private final Set<String> argumentsFilesLoadedAlready = new HashSet<>();
 
     /**
      * A typical command line program will call this to get the beginning of the usage message,
@@ -140,7 +149,7 @@ public final class CommandLineParser {
         for (final Field field : getAllFields(callerArguments.getClass())) {
             if (field.getAnnotation(Argument.class) != null && field.getAnnotation(ArgumentCollection.class) != null){
                 throw new GATKException.CommandLineParserInternalException("An Argument cannot be an argument collection: "
-                        +field.getName() + " in " + callerArguments.toString() + " is annotated as both.");
+                        +field.getName() + " in " + callerArguments + " is annotated as both.");
             }
             if (field.getAnnotation(PositionalArguments.class) != null) {
                 handlePositionalArgumentAnnotation(field, callerArguments);
@@ -182,7 +191,7 @@ public final class CommandLineParser {
      */
     public void usage(final PrintStream stream, final boolean printCommon) {
         stream.print(getStandardUsagePreamble(callerArguments.getClass()) + getUsagePreamble());
-        stream.println("\n" + getVersion());
+        stream.println('\n' + getVersion());
 
         // filter on common and partition on optional
         final Map<Boolean, List<ArgumentDefinition>> argMap = argumentDefinitions.stream()
@@ -190,13 +199,13 @@ public final class CommandLineParser {
                 .collect(Collectors.partitioningBy(a -> a.optional));
 
         final List<ArgumentDefinition> reqArgs = argMap.get(false); // required args
-        if (reqArgs != null && reqArgs.size() != 0) {
+        if (reqArgs != null && !reqArgs.isEmpty()) {
             stream.println("\n\nRequired Arguments:\n");
             reqArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
         }
 
         final List<ArgumentDefinition> optArgs = argMap.get(true); // optional args
-        if (optArgs != null && optArgs.size() != 0) {
+        if (optArgs != null && !optArgs.isEmpty()) {
             stream.println("\nOptional Arguments:\n");
             optArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
         }
@@ -213,45 +222,8 @@ public final class CommandLineParser {
     public boolean parseArguments(final PrintStream messageStream, final String[] args) {
         this.argv = args;
 
-        OptionParser parser = new OptionParser();
-
-        for (ArgumentDefinition arg : argumentDefinitions){
-            OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.doc);
-            if (arg.isFlag()) {
-                bld.withOptionalArg().withValuesConvertedBy(new StrictBooleanConverter());
-            } else {
-                bld.withRequiredArg();
-            }
-        }
-        if(positionalArguments != null){
-            parser.nonOptions();
-        }
-
-        OptionSet parsedArguments;
-        try {
-            parsedArguments = parser.parse(args);
-        } catch (final OptionException e) {
-            throw new UserException.CommandLineException(e.getMessage());
-        }
-        //Check for the special arguments file flag
-        //if it's seen, read arguments from that file and recursively call parseArguments()
-        if (parsedArguments.has(SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME)) {
-            List<String> argfiles = parsedArguments.valuesOf(SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME).stream()
-                    .map(f -> (String)f)
-                    .collect(Collectors.toList());
-
-            List<String> newargs = argfiles.stream()
-                    .distinct()
-                    .filter(file -> !argumentsFilesLoadedAlready.contains(file))
-                    .flatMap(file -> loadArgumentsFile(file).stream())
-                    .collect(Collectors.toList());
-            argumentsFilesLoadedAlready.addAll(argfiles);
-
-            if (!newargs.isEmpty()) {
-                newargs.addAll(Arrays.asList(args));
-                return parseArguments(messageStream, newargs.toArray(new String[newargs.size()]));
-            }
-        }
+        final OptionParser optionParser = setupOptionParser(argumentDefinitions, positionalArguments != null);
+        final OptionSet parsedArguments = parseArgumentsIntoOptionSet(args, optionParser);
 
         //check if special short circuiting arguments are set
         if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.HELP_FULLNAME)) {
@@ -262,12 +234,13 @@ public final class CommandLineParser {
             return false;
         }
 
-        for (OptionSpec<?> optSpec : parsedArguments.asMap().keySet()) {
-            if (parsedArguments.has(optSpec)) {
-                ArgumentDefinition argDef = argumentMap.get(optSpec.options().get(0));
-                setArgument(argDef, (List<String>) optSpec.values(parsedArguments));
-            }
-        }
+        parsedArguments.asMap().keySet().stream()
+                .filter(optSpec -> parsedArguments.has(optSpec))
+                .forEach(optSpec -> {
+                    //get the ArgumentDefinitions that corresponds to the name of the OptionParser Opt Spec
+                    final ArgumentDefinition argDef = argumentMap.get(optSpec.options().get(0));
+                    argDef.setArgument((List<String>) optSpec.values(parsedArguments));
+                });
 
         for (Object arg : parsedArguments.nonOptionArguments()) {
             setPositionalArgument((String) arg);
@@ -279,16 +252,78 @@ public final class CommandLineParser {
     }
 
     /**
+     * Parse the arguments from the command line into an {@link OptionSet}
+     * If argument files are specified, this will be recursively invoked until all files are loaded.
+     * @param args arguments from the command line
+     * @param optionParser a parser pre configured with all of the valid OptionSpecs
+     * @return an OptionSet containing a valid parsing of the argument values
+     * @throws UserException.CommandLineException if the the arguments cannot be parsed
+     */
+    private static OptionSet parseArgumentsIntoOptionSet(String[] args, OptionParser optionParser){
+        return parseArgumentsIntoOptionSet(args, optionParser, new HashSet<>());
+    }
+
+    private static OptionSet parseArgumentsIntoOptionSet(String[] args, OptionParser optionParser, Set<String> argumentsFilesLoadedAlready){
+        final OptionSet parsedArguments;
+        try {
+            parsedArguments = optionParser.parse(args);
+        } catch (final OptionException e) {
+            throw new UserException.CommandLineException(e.getMessage(), String.join(" ", Arrays.asList(args)));
+        }
+        //Check for the special arguments file flag
+        //if it's seen, read arguments from that file and recursively call parseArguments()
+        if (parsedArguments.has(SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME)) {
+            final List<String> argfiles = parsedArguments.valuesOf(SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME).stream()
+                    .map(f -> (String)f)
+                    .collect(Collectors.toList());
+
+            final List<String> newargs = argfiles.stream()
+                    .distinct()
+                    .filter(file -> !argumentsFilesLoadedAlready.contains(file))
+                    .flatMap(file -> loadArgumentsFile(file).stream())
+                    .collect(Collectors.toList());
+
+            argumentsFilesLoadedAlready.addAll(argfiles);
+
+            if (!newargs.isEmpty()) {
+                newargs.addAll(Arrays.asList(args));
+                return parseArgumentsIntoOptionSet(newargs.toArray(new String[newargs.size()]), optionParser, argumentsFilesLoadedAlready);
+            }
+        }
+        return parsedArguments;
+    }
+
+    /**
+     * Setup a new {@link OptionParser} by configuring it with the given argumentDefinitions
+     */
+    private static OptionParser setupOptionParser(Collection<ArgumentDefinition> argumentDefinitions, boolean hasPositionalArguments) {
+        final OptionParser parser = new OptionParser();
+
+        for (ArgumentDefinition arg : argumentDefinitions){
+            final OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.doc);
+            if (arg.isFlag()) {
+                bld.withOptionalArg().withValuesConvertedBy(new StrictBooleanConverter());
+            } else {
+                bld.withRequiredArg();
+            }
+        }
+
+        if(hasPositionalArguments){
+            parser.nonOptions();
+        }
+        return parser;
+    }
+
+    /**
      *  helper to deal with the case of special flags that are evaluated before the options are properly set
      */
-    private boolean isSpecialFlagSet(OptionSet parsedArguments, String flagName){
+    private static boolean isSpecialFlagSet(OptionSet parsedArguments, String flagName){
         if (parsedArguments.has(flagName)){
-            Object value = parsedArguments.valueOf(flagName);
+            final Object value = parsedArguments.valueOf(flagName);
             return  (value == null || !value.equals("false"));
         } else{
             return false;
         }
-
     }
 
     /**
@@ -299,40 +334,31 @@ public final class CommandLineParser {
      */
     private void assertArgumentsAreValid() {
         try {
-            for (final ArgumentDefinition argumentDefinition : argumentDefinitions) {
-                final String fullName = argumentDefinition.getLongName();
-                final StringBuilder mutextArgumentNames = new StringBuilder();
-                for (final String mutexArgument : argumentDefinition.mutuallyExclusive) {
-                    final ArgumentDefinition mutextArgumentDef = argumentMap.get(mutexArgument);
-                    if (mutextArgumentDef != null && mutextArgumentDef.hasBeenSet) {
-                        mutextArgumentNames.append(" ").append(mutextArgumentDef.getLongName());
-                    }
-                }
-                if (argumentDefinition.hasBeenSet && mutextArgumentNames.length() > 0) {
-                    throw new UserException.CommandLineException("Argument '" + fullName +
-                            "' cannot be used in conjunction with argument(s)" +
-                            mutextArgumentNames.toString());
-                }
-                if (argumentDefinition.isCollection && !argumentDefinition.optional) {
-                    @SuppressWarnings("rawtypes")
-                    final Collection c = (Collection) argumentDefinition.getFieldValue();
-                    if (c.isEmpty()) {
-                        throw new UserException.MissingArgument(fullName, "Argument '" + fullName + "' must be specified at least once.");
-                    }
-                } else if (!argumentDefinition.optional && !argumentDefinition.hasBeenSet && mutextArgumentNames.length() == 0) {
-                    throw new UserException.MissingArgument(fullName, "Argument '" + fullName + "' is required" +
-                            (argumentDefinition.mutuallyExclusive.isEmpty() ? "." : " unless any of " + argumentDefinition.mutuallyExclusive +
-                                    " are specified."));
-                }
+            final Set<ArgumentDefinition> missingRequiredArguments = new HashSet<>();
 
+            for (final ArgumentDefinition argumentDefinition : argumentDefinitions) {
+                final String name = argumentDefinition.getLongName();
+                final Set<ArgumentDefinition> mutextArguments = getConflictingMutallyExclusiveArguments(argumentDefinition, argumentMap);
+                if (argumentDefinition.hasBeenSet && !mutextArguments.isEmpty()) {
+                    throw new UserException.ConflictingMutuallyExclusiveArguments("Argument '" + name +
+                            "' cannot be used in conjunction with argument(s) " +
+                            mutextArguments.stream().map(ArgumentDefinition::getLongName).collect(Collectors.joining(" ")), getCommandLineAsInput());
+                }
+                if (!argumentDefinition.optional && !argumentDefinition.hasBeenSet && mutextArguments.isEmpty()) {
+                    missingRequiredArguments.add(argumentDefinition);
+                }
             }
+
             if (positionalArguments != null) {
                 @SuppressWarnings("rawtypes")
                 final Collection c = (Collection) positionalArguments.get(positionalArgumentsParent);
                 if (c.size() < minPositionalArguments) {
-                    throw new UserException.MissingArgument(POSITIONAL_ARGUMENTS_NAME,"At least " + minPositionalArguments +
-                            " positional arguments must be specified.");
+                    throw new UserException.MissingArgument(POSITIONAL_ARGUMENTS_NAME + " was missing. At least " + minPositionalArguments +
+                            " positional arguments must be specified.", getCommandLineAsInput());
                 }
+            }
+            if(!missingRequiredArguments.isEmpty()){
+                throw new UserException.MissingArgument(composeMissingArgumentsMessage(missingRequiredArguments), getCommandLineAsInput());
             }
         } catch (final IllegalAccessException e) {
             throw new GATKException.ShouldNeverReachHereException("Should never happen",e);
@@ -341,10 +367,44 @@ public final class CommandLineParser {
 
     }
 
+    private String composeMissingArgumentsMessage(Set<ArgumentDefinition> missingRequiredArguments) {
+        final Set<ArgumentDefinition> alreadyOutput = new HashSet<>();
+
+        //Sort the missing arguments so that single arguments are sorted before mutually exclusive groups, and then alphabetically within group
+        final List<ArgumentDefinition> sortedArgs = missingRequiredArguments.stream()
+                .sorted(Comparator.comparing((ArgumentDefinition arg) -> !arg.mutuallyExclusive.isEmpty())
+                        .thenComparing(ArgumentDefinition::getLongName))
+                .collect(Collectors.toList());
+
+        final List<String> messages = new ArrayList<>();
+        for( ArgumentDefinition arg: sortedArgs) {
+            if(!alreadyOutput.contains(arg)) {
+                messages.add(arg.composeMissingArgumentMessage(argumentMap));
+                alreadyOutput.addAll(arg.getMutuallyExclusiveArguments(argumentMap));
+            }
+        }
+
+        return String.join("\n", messages);
+    }
+
+    /**
+     * Get a Set of other {@link ArgumentDefinition}s that have been set that are mutually exclusive to arg
+     * @param arg any argument, set or unset
+     * @param argumentMap a mapping from argument name to argument
+     * @return a Set of other argument definitions that have been set, that are mutually exclusive with arg
+     */
+    private static Set<ArgumentDefinition> getConflictingMutallyExclusiveArguments(ArgumentDefinition arg, Map<String, ArgumentDefinition> argumentMap) {
+        return arg.mutuallyExclusive.stream()
+                .sorted()
+                .map(argumentMap::get)
+                .filter(mutexArg -> mutexArg != null && mutexArg.hasBeenSet)
+                .collect(Collectors.toSet());
+    }
+
     @SuppressWarnings("unchecked")
     private void setPositionalArgument(final String stringValue) {
         if (positionalArguments == null) {
-            throw new UserException.CommandLineException("Invalid argument '" + stringValue + "'.");
+            throw new UserException.CommandLineException("Invalid argument '" + stringValue + "'.", getCommandLineAsInput());
         }
         final Object value = constructFromString(getUnderlyingType(positionalArguments), stringValue, POSITIONAL_ARGUMENTS_NAME);
         @SuppressWarnings("rawtypes")
@@ -356,53 +416,9 @@ public final class CommandLineParser {
         }
         if (c.size() >= maxPositionalArguments) {  //we're checking if there is space to add another argument
             throw new UserException.CommandLineException("No more than " + maxPositionalArguments +
-                    " positional arguments may be specified on the command line.");
+                    " positional arguments may be specified on the command line.", getCommandLineAsInput());
         }
         c.add(value);
-    }
-
-    @SuppressWarnings("unchecked")
-    private void setArgument(ArgumentDefinition argumentDefinition, final List<String> values) {
-        //special treatment for flags
-        if (argumentDefinition.isFlag() && values.isEmpty()){
-            argumentDefinition.hasBeenSet = true;
-            argumentDefinition.setFieldValue(true);
-            return;
-        }
-
-        if (!argumentDefinition.isCollection && (argumentDefinition.hasBeenSet || values.size() > 1)) {
-                throw new UserException.CommandLineException("Argument '" + argumentDefinition.getNames() + "' cannot be specified more than once.");
-        }
-
-        for (String stringValue: values) {
-            final Object value;
-            if (stringValue.equals(NULL_STRING)) {
-                //"null" is a special value that allows the user to override any default
-                //value set for this arg
-                if (argumentDefinition.optional) {
-                    value = null;
-                } else {
-                    throw new UserException.CommandLineException("Non \"null\" value must be provided for '" + argumentDefinition.getNames() + "'.");
-                }
-            } else {
-                value = constructFromString(getUnderlyingType(argumentDefinition.field), stringValue, argumentDefinition.getLongName());
-            }
-
-            if (argumentDefinition.isCollection) {
-                @SuppressWarnings("rawtypes")
-                final Collection c = (Collection) argumentDefinition.getFieldValue();
-                if (value == null) {
-                    //user specified this arg=null which is interpreted as empty list
-                    c.clear();
-                } else {
-                    c.add(value);
-                }
-                argumentDefinition.hasBeenSet = true;
-            } else {
-                argumentDefinition.setFieldValue(value);
-                argumentDefinition.hasBeenSet = true;
-            }
-        }
     }
 
     /**
@@ -412,12 +428,12 @@ public final class CommandLineParser {
      * @param argumentsFile a text file containing args
      * @return false if a fatal error occurred
      */
-    private List<String> loadArgumentsFile(final String argumentsFile) {
-        List<String> args = new ArrayList<>();
+    private static List<String> loadArgumentsFile(final String argumentsFile) {
+        final List<String> args = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(new FileReader(argumentsFile))){
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (!line.startsWith(COMMENT) && line.trim().length() != 0) {
+                    if (!line.startsWith(COMMENT) && !line.trim().isEmpty()) {
                         args.addAll(Arrays.asList(StringUtils.split(line)));
                     }
                 }
@@ -434,15 +450,17 @@ public final class CommandLineParser {
     }
 
 
-    private void printArgumentParamUsage(final PrintStream stream, final String name, final String shortName,
-                                       final String type, final String argumentDescription) {
+    private static void printArgumentParamUsage(final PrintStream stream, final String name, final String shortName,
+                                                final String type, final String argumentDescription) {
         String argumentLabel = name;
-        if (type != null) argumentLabel = "--"+ argumentLabel;
+        if (type != null) {
+            argumentLabel = "--" + argumentLabel;
+        }
 
-        if (shortName.length() > 0) {
+        if (!shortName.isEmpty()) {
             argumentLabel+=",-" + shortName;
         }
-        argumentLabel += ":" + type;
+        argumentLabel += ':' + type;
         stream.print(argumentLabel);
 
         int numSpaces = ARGUMENT_COLUMN_WIDTH - argumentLabel.length();
@@ -464,7 +482,7 @@ public final class CommandLineParser {
 
     private String makeArgumentDescription(final ArgumentDefinition argumentDefinition) {
         final StringBuilder sb = new StringBuilder();
-        if (argumentDefinition.doc.length() > 0) {
+        if (!argumentDefinition.doc.isEmpty()) {
             sb.append(argumentDefinition.doc);
             sb.append("  ");
         }
@@ -493,9 +511,9 @@ public final class CommandLineParser {
                                                   " doesn't match any known argument.");
                 }
 
-                sb.append(" ").append(mutextArgumentDefinition.fieldName);
-                if (mutextArgumentDefinition.shortName.length() > 0) {
-                    sb.append(" (").append(mutextArgumentDefinition.shortName).append(")");
+                sb.append(' ').append(mutextArgumentDefinition.fieldName);
+                if (!mutextArgumentDefinition.shortName.isEmpty()) {
+                    sb.append(" (").append(mutextArgumentDefinition.shortName).append(')');
                 }
             }
         }
@@ -506,7 +524,7 @@ public final class CommandLineParser {
      * Generates the option help string for a {@code boolean} or {@link Boolean} typed argument.
      * @return never {@code null}.
      */
-    private String getBooleanOptions() {
+    private static String getBooleanOptions() {
         return String.format("%s%s, %s%s", ENUM_OPTION_DOC_PREFIX, Boolean.TRUE, Boolean.FALSE, ENUM_OPTION_DOC_SUFFIX);
     }
 
@@ -519,7 +537,7 @@ public final class CommandLineParser {
      * @throws GATKException if {@code &lt;T&gt;} has no constants.
      * @return never {@code null}.
      */
-    private <T extends Enum<T>,U extends Enum<U> & ClpEnum> String getEnumOptions(final Class<T> clazz) {
+    private static <T extends Enum<T>, U extends Enum<U> & ClpEnum> String getEnumOptions(final Class<T> clazz) {
         // We assume that clazz is guaranteed to be a Class<? extends Enum>, thus
         // getEnumConstants() won't ever return a null.
         final T[] enumConstants = clazz.getEnumConstants();
@@ -542,7 +560,7 @@ public final class CommandLineParser {
      * @param <T> the enum type.
      * @return never {@code null}.
      */
-    private <T extends Enum<T>> String getEnumOptionsWithoutDescription(final T[] enumConstants) {
+    private static <T extends Enum<T>> String getEnumOptionsWithoutDescription(final T[] enumConstants) {
         return Stream.of(enumConstants)
                 .map(T::name)
                 .collect(Collectors.joining(", ",ENUM_OPTION_DOC_PREFIX,ENUM_OPTION_DOC_SUFFIX));
@@ -554,7 +572,7 @@ public final class CommandLineParser {
      * @param <T> the enum type.
      * @return never {@code null}.
      */
-    private <T extends Enum<T> & ClpEnum> String getEnumOptionsWithDescription(final T[] enumConstants) {
+    private static <T extends Enum<T> & ClpEnum> String getEnumOptionsWithDescription(final T[] enumConstants) {
         final String optionsString = Stream.of(enumConstants)
                 .map(c -> String.format("%s (%s)",c.name(),c.getHelpDoc()))
                 .collect(Collectors.joining("\n"));
@@ -573,7 +591,7 @@ public final class CommandLineParser {
      * @return never {@code null}.
      */
     @SuppressWarnings({"unchecked","rawtypes"})
-    private String getOptions(final Class<?> clazz) {
+    private static String getOptions(final Class<?> clazz) {
         if (clazz == Boolean.class) {
             return getBooleanOptions();
         } else if (clazz.isEnum()) {
@@ -584,10 +602,10 @@ public final class CommandLineParser {
         }
     }
 
-    private void printSpaces(final PrintStream stream, final int numSpaces) {
+    private static void printSpaces(final PrintStream stream, final int numSpaces) {
         final StringBuilder sb = new StringBuilder();
         for (int i = 0; i < numSpaces; ++i) {
-            sb.append(" ");
+            sb.append(' ');
         }
         stream.print(sb);
     }
@@ -671,7 +689,7 @@ public final class CommandLineParser {
         }
     }
 
-    private void createCollection(final Field field, final Object callerArguments, final String annotationType)
+    private static void createCollection(final Field field, final Object callerArguments, final String annotationType)
             throws IllegalAccessException {
         try {
             field.set(callerArguments, field.getType().newInstance());
@@ -711,20 +729,20 @@ public final class CommandLineParser {
 
         } else {
             final Class<?> type = field.getType();
-            if (type == Byte.TYPE) return Byte.class;
-            if (type == Short.TYPE) return Short.class;
-            if (type == Integer.TYPE) return Integer.class;
-            if (type == Long.TYPE) return Long.class;
-            if (type == Float.TYPE) return Float.class;
-            if (type == Double.TYPE) return Double.class;
-            if (type == Boolean.TYPE) return Boolean.class;
+            if (type == Byte.TYPE) { return Byte.class; }
+            if (type == Short.TYPE) { return Short.class; }
+            if (type == Integer.TYPE) { return Integer.class; }
+            if (type == Long.TYPE) { return Long.class; }
+            if (type == Float.TYPE) { return Float.class; }
+            if (type == Double.TYPE) { return Double.class; }
+            if (type == Boolean.TYPE) { return Boolean.class; }
 
             return type;
         }
     }
 
     // True if clazz is an enum, or if it has a ctor that takes a single String argument.
-    private boolean canBeMadeFromString(final Class<?> clazz) {
+    private static boolean canBeMadeFromString(final Class<?> clazz) {
         if (clazz.isEnum()) {
             return true;
         }
@@ -739,13 +757,13 @@ public final class CommandLineParser {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Object constructFromString(final Class clazz, final String s, final String argumentName) {
+    private static Object constructFromString(final Class clazz, final String s, final String argumentName) {
         try {
             if (clazz.isEnum()) {
                 try {
                     return Enum.valueOf(clazz, s);
                 } catch (final IllegalArgumentException e) {
-                    throw new UserException.BadArgumentValue(argumentName, s, "'" + s + "' is not a valid value for " +
+                    throw new UserException.BadArgumentValue(argumentName, s, '\'' + s + "' is not a valid value for " +
                             clazz.getSimpleName() + ". "+ getEnumOptions(clazz) );
                 }
             }
@@ -773,7 +791,7 @@ public final class CommandLineParser {
         String getHelpDoc();
     }
 
-    protected static class ArgumentDefinition {
+    private static class ArgumentDefinition {
         final Field field;
         final String fieldName;
         final String fullName;
@@ -804,7 +822,7 @@ public final class CommandLineParser {
 
             this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
 
-            Object tmpDefault = getFieldValue();
+            final Object tmpDefault = getFieldValue();
             if (tmpDefault != null) {
                 if (isCollection && ((Collection) tmpDefault).isEmpty()) {
                     //treat empty collections the same as uninitialized primitive types
@@ -820,6 +838,50 @@ public final class CommandLineParser {
             //null collections have been initialized by createCollection which is called in handleArgumentAnnotation
             //this is optional if it's specified as being optional or if there is a default value specified
             this.optional = annotation.optional() || ! this.defaultValue.equals(NULL_STRING);
+        }
+
+        @SuppressWarnings("unchecked")
+        private void setArgument(final List<String> values) {
+            //special treatment for flags
+            if (isFlag() && values.isEmpty()){
+                hasBeenSet = true;
+                setFieldValue(true);
+                return;
+            }
+
+            if (!isCollection && (hasBeenSet || values.size() > 1)) {
+                    throw new UserException.CommandLineException("Argument '" + getNames() + "' cannot be specified more than once.");
+            }
+
+            for (String stringValue: values) {
+                final Object value;
+                if (stringValue.equals(NULL_STRING)) {
+                    //"null" is a special value that allows the user to override any default
+                    //value set for this arg
+                    if (optional) {
+                        value = null;
+                    } else {
+                        throw new UserException.CommandLineException("Non \"null\" value must be provided for '" + getNames() + "'.");
+                    }
+                } else {
+                    value = constructFromString(getUnderlyingType(field), stringValue, getLongName());
+                }
+
+                if (isCollection) {
+                    @SuppressWarnings("rawtypes")
+                    final Collection c = (Collection) getFieldValue();
+                    if (value == null) {
+                        //user specified this arg=null which is interpreted as empty list
+                        c.clear();
+                    } else {
+                        c.add(value);
+                    }
+                    hasBeenSet = true;
+                } else {
+                    setFieldValue(value);
+                    hasBeenSet = true;
+                }
+            }
         }
 
 
@@ -838,7 +900,7 @@ public final class CommandLineParser {
                 field.set(parent, value);
             } catch (IllegalAccessException e) {
                 throw new GATKException.ShouldNeverReachHereException("BUG: couldn't set field value. For "
-                        + fieldName +" in " + parent.toString() + " with value " + value.toString()
+                        + fieldName +" in " + parent + " with value " + value
                         + " This shouldn't happen since we setAccessible(true)", e);
             }
         }
@@ -848,7 +910,7 @@ public final class CommandLineParser {
         }
 
         public List<String> getNames(){
-            List<String> names = new ArrayList<>();
+            final List<String> names = new ArrayList<>();
             if (!shortName.isEmpty()){
                 names.add(shortName);
             }
@@ -886,15 +948,38 @@ public final class CommandLineParser {
          * back as a command line argument
          */
         public String toCommandLineString(){
-            Object value = getFieldValue();
+            final Object value = getFieldValue();
             if (this.isCollection){
-                Collection<?> collect = (Collection<?>)value;
+                final Collection<?> collect = (Collection<?>)value;
                 return collect.stream()
                         .map(this::prettyNameValue)
                         .collect(Collectors.joining(" "));
 
             } else {
                 return prettyNameValue(value);
+            }
+        }
+
+        /**
+         * @param argumentDefinitionMap a map from argument names to {@link ArgumentDefinition}
+         * @return the set of arguments that this argument is mutually exclusive with (including itself in the set)
+         */
+        public Set<ArgumentDefinition> getMutuallyExclusiveArguments(Map<String,ArgumentDefinition> argumentDefinitionMap){
+            final Set<ArgumentDefinition> mutexArguments = mutuallyExclusive.stream().map(argumentDefinitionMap::get).collect(Collectors.toSet());
+            mutexArguments.add(this);
+            return mutexArguments;
+        }
+
+        public String composeMissingArgumentMessage(Map<String,ArgumentDefinition> argumentDefinitionMap){
+            if(mutuallyExclusive.isEmpty()){
+                return String.format("required argument --%s was not specified", getLongName());
+            } else {
+                final Set<ArgumentDefinition> mutuallyExclusiveArguments = getMutuallyExclusiveArguments(argumentDefinitionMap);
+                return mutuallyExclusiveArguments.stream()
+                        .map(ArgumentDefinition::getLongName)
+                        .sorted()
+                        .map(name -> "--" + name)
+                        .collect(Collectors.joining(", ", "one of the following required arguments must be specified: ", ""));
             }
         }
 
@@ -911,7 +996,7 @@ public final class CommandLineParser {
      * hasn't yet been called, or didn't complete successfully.
      */
     @SuppressWarnings("unchecked")
-    public String getCommandLine() {
+    public String getFullySpecifiedCommandLine() {
         final String toolName = callerArguments.getClass().getName();
         final StringBuilder commandLineString = new StringBuilder();
 
@@ -924,7 +1009,7 @@ public final class CommandLineParser {
                 throw new GATKException.ShouldNeverReachHereException("Should never reach here because we setAccessible(true)", e);
             }
             for (final Object posArg : positionalArgs) {
-                commandLineString.append(" ").append(posArg.toString());
+                commandLineString.append(' ').append(posArg);
             }
         }
 
@@ -940,9 +1025,21 @@ public final class CommandLineParser {
                 .map(ArgumentDefinition::toCommandLineString)
                 .collect(Collectors.joining(" ")));
 
-        return toolName + " " + commandLineString.toString();
+        return toolName + ' ' + commandLineString;
     }
 
+    /**
+     *
+     * This must be called after {@link CommandLineParser#argv} is initialized by {@link CommandLineParser#parseArguments(PrintStream, String[])} or it throw {@link GATKException}
+     * @return what was actually entered as the command line joined into a String
+     */
+    private String getCommandLineAsInput(){
+        if( argv == null){
+            throw new GATKException("No commandline was specified for parsing yet");
+        } else{
+            return String.join(" ", argv);
+        }
+    }
 
     /**
      * Locates and returns the VALUES of all Argument-annotated fields of a specified type in a given object,
@@ -970,7 +1067,7 @@ public final class CommandLineParser {
      *         element will be null for uninitialized fields.
      */
     public static <T> List<Pair<Field, T>> gatherArgumentValuesOfType( final Class<T> type, final Object argumentSource ) {
-        List<Pair<Field, T>> argumentValues = new ArrayList<>();
+        final List<Pair<Field, T>> argumentValues = new ArrayList<>();
 
         // Examine all fields in argumentSource (including superclasses)
         for ( Field field : getAllFields(argumentSource.getClass()) ) {
@@ -983,7 +1080,7 @@ public final class CommandLineParser {
 
                     if ( isCollectionField(field) ) {
                         // Collection arguments are guaranteed by the parsing system to be non-null (at worst, empty)
-                        Collection<?> argumentContainer = (Collection<?>)field.get(argumentSource);
+                        final Collection<?> argumentContainer = (Collection<?>)field.get(argumentSource);
 
                         // Emit a Pair with an explicit null value for empty Collection arguments
                         if ( argumentContainer.isEmpty() ) {
