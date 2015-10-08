@@ -127,7 +127,4 @@ public final class DetectCoverageDropout extends CommandLineProgram {
             throw new UserException.CouldNotCreateOutputFile(outFile, ioe.getMessage());
         }
     }
-
-
-
 }

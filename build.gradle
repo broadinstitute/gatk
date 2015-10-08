@@ -110,7 +110,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:hellbender:GATK.4.alpha-628-g94107b8-SNAPSHOT'
+    compile 'org.broadinstitute:hellbender:4.pre-alpha-4-g7fb783d-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
 
     // HDF5 and HDF-Java jar files
@@ -212,7 +212,7 @@ test {
 
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.2.1'
+    gradleVersion = '2.7'
 }
 
 shadowJar {
