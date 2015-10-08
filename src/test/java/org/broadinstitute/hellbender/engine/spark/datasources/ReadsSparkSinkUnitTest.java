@@ -26,7 +26,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @DataProvider(name = "loadReadsBAM")
     public Object[][] loadReadsBAM() {
         return new Object[][]{
-                {testDataDir + "engine/dataflow/ReadsSource/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1.bam"},
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1.bam"},
                 {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", "ReadsSparkSinkUnitTest2.bam"},
         };
     }
@@ -34,7 +34,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @DataProvider(name = "loadReadsADAM")
     public Object[][] loadReadsADAM() {
         return new Object[][]{
-                {testDataDir + "engine/dataflow/ReadsSource/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1_ADAM"},
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1_ADAM"},
                 {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", "ReadsSparkSinkUnitTest2_ADAM"},
         };
     }
