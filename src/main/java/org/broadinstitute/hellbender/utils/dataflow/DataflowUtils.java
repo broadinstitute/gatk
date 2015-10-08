@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.dataflow;
 
 import com.cloudera.dataflow.hadoop.HadoopIO;
 import com.google.cloud.dataflow.sdk.Pipeline;
+import com.google.cloud.dataflow.sdk.coders.CoderFactories;
 import com.google.cloud.dataflow.sdk.coders.SerializableCoder;
 import com.google.cloud.dataflow.sdk.transforms.Create;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -21,9 +22,16 @@ import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.engine.VariantShard;
-import org.broadinstitute.hellbender.engine.dataflow.coders.*;
+import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.GoogleGenomicsReadToGATKReadAdapterCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.ReadContextDataCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.metrics.HistogramDataflow;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.metrics.MetricsFileDataflow;
+import org.broadinstitute.hellbender.tools.picard.analysis.InsertSizeMetrics;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -81,6 +89,12 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(ReadContextData.class, new ReadContextDataCoder());
         p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
         p.getCoderRegistry().registerCoder(VariantShard.class, VariantShard.CODER);
+
+        //metrics coders
+        p.getCoderRegistry().registerCoder(MetricsFileDataflow.class, CoderFactories.forCoder(SerializableCoder.of(MetricsFileDataflow.class)));
+        p.getCoderRegistry().registerCoder(HistogramDataflow.class, CoderFactories.forCoder(SerializableCoder.of(HistogramDataflow.class)));
+        p.getCoderRegistry().registerCoder(InsertSizeMetrics.class, SerializableCoder.of(InsertSizeMetrics.class));
+
     }
 
     /**
@@ -225,7 +239,6 @@ public final class DataflowUtils {
      */
     public static class LoadReadsFromFileFn extends DoFn<File, GATKRead> {
         private static final long serialVersionUID = 1L;
-        private static final Logger logger = LogManager.getLogger(LoadReadsFromFileFn.class);
 
         private final List<SimpleInterval> intervals;
         private final ValidationStringency stringency;
@@ -256,7 +269,7 @@ public final class DataflowUtils {
      *
      * @param collection A collection with a single serializable object to save.
      * @param fname the name of the destination, starting with "gs://" to save to GCS, or "hdfs://" to save to HDFS.
-     * @returns SaveDestination.CLOUD if saved to GCS, SaveDestination.HDFS if saved to HDFS,
+     * @return SaveDestination.CLOUD if saved to GCS, SaveDestination.HDFS if saved to HDFS,
      * SaveDestination.LOCAL_DISK otherwise.
      */
     public static <T> SaveDestination serializeSingleObject(PCollection<T> collection, String fname) {

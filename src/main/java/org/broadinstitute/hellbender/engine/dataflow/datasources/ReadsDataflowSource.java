@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.GoogleGenomicsReadToGATKRead;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -105,6 +106,13 @@ public final class ReadsDataflowSource {
     }
 
     /**
+     * a singleton view of the header to use as a sideInput
+     */
+    public PCollectionView<SAMFileHeader> getHeaderView(){
+        return getHeaderView(this.pipeline, getHeader());
+    }
+
+    /**
      * Create a {@link PCollection<GATKRead>} containing all the reads overlapping the given intervals.
      * Reads that are malformed or unmapped are ignored.
      * @param intervals a list of SimpleIntervals.  These must be non-overlapping intervals or the results are undefined.
@@ -112,6 +120,15 @@ public final class ReadsDataflowSource {
      */
     public PCollection<GATKRead> getReadPCollection(List<SimpleInterval> intervals) {
         return getReadPCollection(intervals, ValidationStringency.SILENT, false);
+    }
+
+    /**
+     * Create a {@link PCollection<GATKRead>} containing all mapped reads.
+     * @return a PCollection containing all the reads that are mapped and wellformed
+     */
+    public PCollection<GATKRead> getReadPCollection(){
+        final List<SimpleInterval> allIntervals = IntervalUtils.getAllIntervalsForReference(getHeader().getSequenceDictionary());
+        return getReadPCollection(allIntervals);
     }
 
     /**

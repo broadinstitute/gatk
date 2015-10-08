@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * @author jgentry
  */
 public final class RrbsSummaryMetrics extends MultiLevelMetrics {
+	private final static long serialVersionUID = 1l;
 	/** Number of mapped reads processed */
 	public Integer READS_ALIGNED;
 	/** Number of times a non-CpG cytosine was encountered */

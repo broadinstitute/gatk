@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * @author Tim Fennell
  */
 public final class HsMetrics extends MultiLevelMetrics {
+    private final static long serialVersionUID = 1l;
+
     /** The name of the bait set used in the hybrid selection. */
     public String BAIT_SET;
 

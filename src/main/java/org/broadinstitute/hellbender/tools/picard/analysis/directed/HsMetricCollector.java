@@ -17,6 +17,7 @@ import java.util.*;
  * @author Jonathan Burke
  */
 public final class HsMetricCollector extends TargetMetricsCollector<HsMetrics> {
+    private final static long serialVersionUID = 1l;
 
     public HsMetricCollector(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords, final ReferenceSequenceFile refFile, final File perTargetCoverage, final IntervalList targetIntervals, final IntervalList probeIntervals, final String probeSetName) {
         super(accumulationLevels, samRgRecords, refFile, perTargetCoverage, targetIntervals, probeIntervals, probeSetName);

@@ -44,12 +44,15 @@ public final class MultiLevelCollectorTest {
      * to true when FINISHED is called
      */
     class TotalNumberMetric extends MultiLevelMetrics {
+        private final static long serialVersionUID = 1l;
+
         /** The number of these encountered **/
         public Integer TALLY = 0;
         public boolean FINISHED = false;
     }
 
     class RecordCountMultiLevelCollector extends MultiLevelCollector<TotalNumberMetric, Integer, TestArg> {
+        private static final long serialVersionUID = 1l;
 
         public RecordCountMultiLevelCollector(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords) {
             setup(accumulationLevels, samRgRecords);

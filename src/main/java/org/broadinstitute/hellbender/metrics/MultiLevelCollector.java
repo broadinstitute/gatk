@@ -7,7 +7,12 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.*;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * MultiLevelCollector handles accumulating Metrics at different MetricAccumulationLevels(ALL_READS, SAMPLE, LIBRARY, READ_GROUP).
@@ -35,7 +40,8 @@ import java.util.*;
  * @param <HISTOGRAM_KEY> If there is are Histograms related to metrics of type <BEAN> then <HKEY> is the key value to these Histograms
  * @param <ARGTYPE> The type of argument passed to individual PerUnitMetricCollector (see SAMRecordMultilevelCollector and PerUnitMetricCollector)
  */
-public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOGRAM_KEY extends Comparable<HISTOGRAM_KEY>, ARGTYPE>  {
+public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOGRAM_KEY extends Comparable<HISTOGRAM_KEY>, ARGTYPE> implements Serializable {
+    private final static long serialVersionUID = 1l;
 
     public static final String UNKNOWN = "unknown";
     //The collector that will accept all records (allReads is NULL if !calculateAll)
@@ -109,9 +115,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
 
         /** Call finish on each PerUnitMetricCollector in this Aggregate Collector */
         public void finish() {
-            for(final PerUnitMetricCollector<METRIC_TYPE, HISTOGRAM_KEY, ARGTYPE> collector : collectors.values()) {
-                collector.finish();
-            }
+            collectors.values().forEach(PerUnitMetricCollector::finish);
         }
 
         /** Call acceptRecord(args) on the record collector identified by getKey */
@@ -138,18 +142,16 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
         /** Add all records to the MetricsFile passed in, this will happen in the order they were
          * found in the input ReadGroup records */
         public void addToFile(final MetricsFile<METRIC_TYPE, HISTOGRAM_KEY> file) {
-            for(final PerUnitMetricCollector<METRIC_TYPE, HISTOGRAM_KEY, ARGTYPE> collector : collectors.values()) {
-                collector.addMetricsToFile(file);
-            }
+           collectors.values().forEach(c -> c.addMetricsToFile(file));
         }
     }
 
     /** A dummy Distributor to handle the ALL_READS accumulation level.  No distribution is required
      * since there should only ever be one PerUnitMetricCollector for ALL_READS.
      */
-    private class AllReadsDistributor extends Distributor {
+    private final class AllReadsDistributor extends Distributor {
 
-        public AllReadsDistributor(final List<SAMReadGroupRecord> rgRecs) {
+        public AllReadsDistributor() {
             super(new ArrayList<>());
             makeCollector(null);
         }
@@ -186,7 +188,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
     }
 
     //Discriminates between records based on sample name, and calls acceptRecord on the appropriate PerUnitMetricCollectors
-    private class SampleDistributor extends Distributor {
+    private final class SampleDistributor extends Distributor {
         public SampleDistributor(final List<SAMReadGroupRecord> rgRecs) {
             super(rgRecs);
         }
@@ -208,7 +210,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
     }
 
     //Discriminates between records based on library name, and calls acceptRecord on the appropriate PerUnitMetricCollectors
-    private class LibraryDistributor extends Distributor {
+    private final class LibraryDistributor extends Distributor {
         public LibraryDistributor(final List<SAMReadGroupRecord> rgRecs) {
             super(rgRecs);
         }
@@ -230,7 +232,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
     }
 
     //Discriminates between records based on read group name, and calls acceptRecord on the appropriate PerUnitMetricCollectors
-    private class ReadGroupCollector extends Distributor {
+    private final class ReadGroupCollector extends Distributor {
         public ReadGroupCollector(final List<SAMReadGroupRecord> rgRecs) {
             super(rgRecs);
         }
@@ -260,7 +262,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
     protected void setup(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords) {
         outputOrderedDistributors = new ArrayList<>(4);
         if(accumulationLevels.contains(MetricAccumulationLevel.ALL_READS)) {
-            outputOrderedDistributors.add(new AllReadsDistributor(samRgRecords));
+            outputOrderedDistributors.add(new AllReadsDistributor());
         }
         if (accumulationLevels.contains(MetricAccumulationLevel.SAMPLE)) {
             outputOrderedDistributors.add(new SampleDistributor(samRgRecords));
@@ -291,9 +293,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
      * Call finish on all PerUnitMetricCollectors
      */
     public void finish() {
-        for(final Distributor collector : outputOrderedDistributors) {
-            collector.finish();
-        }
+        outputOrderedDistributors.forEach(MultiLevelCollector.Distributor::finish);
     }
 
     /** Get the PerUnitMetricCollector that collects reads for all levels */
@@ -305,8 +305,6 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
      *  ALL_READS, SAMPLE, LIBRARY, READ_GROUP.
      */
     public void addAllLevelsToFile(final MetricsFile<METRIC_TYPE, HISTOGRAM_KEY> file) {
-        for(final Distributor collector : outputOrderedDistributors) {
-            collector.addToFile(file);
-        }
+        outputOrderedDistributors.forEach(c -> c.addToFile(file));
     }
 }

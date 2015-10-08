@@ -23,15 +23,15 @@ public interface PerUnitMetricCollector<BEAN extends MetricBase, HKEY extends Co
      * @param args Contains SAMRecord, SAMReadGroupRecord, ReferenceSequence of current record and any previously
      *             computed values that might be needed for this class
      */
-    public void acceptRecord(final ARGTYPE args);
+    void acceptRecord(final ARGTYPE args);
 
     /** When all records have been collected, compute any final values needed to finish constructing metrics/Histogram */
-    public void finish();
+    void finish();
 
     /**
      * Any metrics collected will be added to the metric file provided.
      * @param file MetricsFile to which all metrics created by this collector should be added
      */
-    public void addMetricsToFile(final MetricsFile<BEAN, HKEY> file);
+    void addMetricsToFile(final MetricsFile<BEAN, HKEY> file);
 }
 

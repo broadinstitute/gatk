@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * how well those regions were targeted.
  */
 public final class TargetMetrics extends MultiLevelMetrics {
+    private final static long serialVersionUID = 1l;
+    
     /**  The name of the PROBE_SET (BAIT SET, AMPLICON SET, ...) used in this metrics collection run */
     public String PROBE_SET;
 

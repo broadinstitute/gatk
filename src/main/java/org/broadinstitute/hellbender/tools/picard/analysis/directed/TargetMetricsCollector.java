@@ -44,6 +44,7 @@ import java.util.*;
  * @author Jonathan Burke
  */
 public abstract class TargetMetricsCollector<METRIC_TYPE extends MultiLevelMetrics> extends SAMRecordMultiLevelCollector<METRIC_TYPE, Integer> {
+    private final static long serialVersionUID = 1l;
 
     // What is considered "near" to the bait
     private static final int NEAR_PROBE_DISTANCE = 250;

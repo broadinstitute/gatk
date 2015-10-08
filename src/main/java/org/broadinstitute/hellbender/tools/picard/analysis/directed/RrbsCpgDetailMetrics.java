@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  * @author jgentry
  */
 public final class RrbsCpgDetailMetrics extends MultiLevelMetrics {
+	private final static long serialVersionUID = 1l;
+
 	/** Sequence the CpG is seen in */
 	public String SEQUENCE_NAME;
 	/** Position within the sequence of the CpG site */
