@@ -181,7 +181,7 @@ public abstract class CommandLineProgram {
 
         commandLineParser = new CommandLineParser(this);
         final boolean ret = commandLineParser.parseArguments(System.err, argv);
-        commandLine = commandLineParser.getCommandLine();
+        commandLine = commandLineParser.getFullySpecifiedCommandLine();
         if (!ret) {
             return false;
         }
