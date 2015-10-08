@@ -35,6 +35,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
         for ( final String outputExtension : Arrays.asList(".sam", ".bam", ".cram") ) {
             // cram, reference, output file extension, expected read names
             testCases.add(new Object[]{new File(TEST_DATA_DIR, "cram_with_bai_index.cram"), ref, outputExtension, Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")});
+            testCases.add(new Object[]{new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), ref, outputExtension, Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")});
         }
         return testCases.toArray(new Object[][]{});
     }
@@ -52,7 +53,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
         checkReadNames(outputFile, reference, expectedReadNames);
     }
 
-    @DataProvider(name = "ReadCramWithIntervalsBAIIndexTestData")
+    @DataProvider(name = "ReadCramWithIntervalsIndexTestData")
     public Object[][] readCramWithIntervalsBAIIndexTestData() {
         final File ref = new File(hg19MiniReference);
         final List<Object[]> testCases = new ArrayList<>();
@@ -63,11 +64,17 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
             testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_bai_index.cram"), ref, outputExtension, Arrays.asList("1:1-200", "1:1000-2000"), Arrays.asList("a", "d", "e") });
             testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_bai_index.cram"), ref, outputExtension, Arrays.asList("1:1000-2000", "3:300-400"), Arrays.asList("d", "e", "i", "j") });
             testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_bai_index.cram"), ref, outputExtension, Arrays.asList("1:1000-2000", "3:300-399"), Arrays.asList("d", "e", "i") });
+
+            testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), ref, outputExtension, Arrays.asList("1:1000-2000"), Arrays.asList("d", "e") });
+            testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), ref, outputExtension, Arrays.asList("1:1000-1099"), Arrays.asList("d") });
+            testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), ref, outputExtension, Arrays.asList("1:1-200", "1:1000-2000"), Arrays.asList("a", "d", "e") });
+            testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), ref, outputExtension, Arrays.asList("1:1000-2000", "3:300-400"), Arrays.asList("d", "e", "i", "j") });
+            testCases.add(new Object[]{ new File(TEST_DATA_DIR, "cram_with_crai_index.cram"), ref, outputExtension, Arrays.asList("1:1000-2000", "3:300-399"), Arrays.asList("d", "e", "i") });
         }
         return testCases.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "ReadCramWithIntervalsBAIIndexTestData")
+    @Test(dataProvider = "ReadCramWithIntervalsIndexTestData")
     public void testReadCramWithIntervalsWithBAIIndex( final File cramFile, final File reference, final String outputExtension,
                                                        final List<String> intervalArgs, final List<String> expectedReadNames ) throws IOException {
         final File outputFile = createTempFile("testReadCramWithIntervalsWithBAIIndex", outputExtension);
