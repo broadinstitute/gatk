@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.read.testers.CleanSamTester;
+import org.broadinstitute.hellbender.utils.test.testers.CleanSamTester;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

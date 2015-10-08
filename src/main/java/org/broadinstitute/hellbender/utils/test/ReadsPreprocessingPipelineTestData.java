@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.utils.test;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.values.KV;

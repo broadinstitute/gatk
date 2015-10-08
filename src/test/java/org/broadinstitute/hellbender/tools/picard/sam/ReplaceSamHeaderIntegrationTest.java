@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 

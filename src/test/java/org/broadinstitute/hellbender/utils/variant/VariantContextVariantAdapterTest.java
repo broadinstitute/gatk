@@ -13,10 +13,6 @@ import java.io.File;
 import java.util.*;
 
 public class VariantContextVariantAdapterTest extends BaseTest {
-    // Clearly, only for testing.
-    public static VariantContextVariantAdapter createVariantContextVariantAdapterForTesting(VariantContextVariantAdapter vc, UUID uuid) {
-        return new VariantContextVariantAdapter(vc, uuid);
-    }
 
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");

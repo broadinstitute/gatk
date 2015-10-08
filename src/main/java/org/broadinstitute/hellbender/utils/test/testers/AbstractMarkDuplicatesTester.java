@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.read.markduplicates;
+package org.broadinstitute.hellbender.utils.test.testers;
 
 import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
 import htsjdk.samtools.SAMRecord;
@@ -11,7 +11,8 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.utils.read.testers.SamFileTester;
+import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.test.testers.SamFileTester;
 import org.testng.Assert;
 
 import java.io.File;

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.read.testers;
+package org.broadinstitute.hellbender.utils.test.testers;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;

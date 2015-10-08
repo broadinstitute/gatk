@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

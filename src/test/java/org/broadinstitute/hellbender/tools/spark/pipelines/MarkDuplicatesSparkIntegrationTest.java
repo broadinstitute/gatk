@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.tools.picard.sam.markduplicates.MarkDuplicatesIntegrationTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
+import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesCommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
