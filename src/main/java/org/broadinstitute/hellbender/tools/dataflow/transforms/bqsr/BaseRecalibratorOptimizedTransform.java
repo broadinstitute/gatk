@@ -10,7 +10,8 @@ import com.google.cloud.dataflow.sdk.values.PCollectionView;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
-import org.broadinstitute.hellbender.engine.dataflow.transforms.composite.AddContextDataToReadOptimized;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ContextShard;
+import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsShard;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
@@ -28,7 +29,7 @@ import java.io.IOException;
  *
  * Unlike the non-optimized version, this one works on a whole shard at a time.
  */
-public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollection<AddContextDataToReadOptimized.ContextShard>, PCollection<RecalibrationTables>> {
+public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollection<ContextShard>, PCollection<RecalibrationTables>> {
     private static final long serialVersionUID = 1L;
     private PCollectionView<SAMFileHeader> headerView;
     private PCollectionView<SAMSequenceDictionary> refDictionary;
@@ -41,7 +42,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
     }
 
     @Override
-    public PCollection<RecalibrationTables> apply( PCollection<AddContextDataToReadOptimized.ContextShard> input ) {
+    public PCollection<RecalibrationTables> apply( PCollection<ContextShard> input ) {
         PCollection<RecalibrationTables> oneStatPerWorker =
             input.apply(ParDo.named("BaseRecalibrator")
                 .withSideInputs(headerView, refDictionary)
@@ -50,7 +51,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
     }
 
     public PTransform<PCollection<RecalibrationTables>,PCollection<BaseRecalOutput>> toBaseRecalOutput() {
-        return new PTransform<PCollection<RecalibrationTables>, PCollection<BaseRecalOutput>>() {
+        return new PTransform<PCollection<RecalibrationTables>, PCollection<BaseRecalOutput>>("toBaseRecalOutput") {
             private static final long serialVersionUID = 1L;
             @Override
             public PCollection<BaseRecalOutput> apply(PCollection<RecalibrationTables> aggregateInput) {
@@ -70,7 +71,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
     private static PCollection<RecalibrationTables> aggregateStatistics(final PCollection<RecalibrationTables> tables) {
         return tables
             // aggregate
-            .apply(Combine.globally(new RecalibrationTablesMerger()))
+            .apply(Combine.globally(new RecalibrationTablesMerger()).withoutDefaults())
                 // call finalize on the result
             .apply(ParDo
                 .named("finalizeRecalTables")

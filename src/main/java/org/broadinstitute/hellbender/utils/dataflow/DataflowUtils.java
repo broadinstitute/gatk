@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.ReadContextDataCoder;
+import org.broadinstitute.hellbender.engine.dataflow.coders.ReadsShardCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
 import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
@@ -79,6 +80,7 @@ public final class DataflowUtils {
         p.getCoderRegistry().registerCoder(ReadContextData.class, new ReadContextDataCoder());
         p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
         p.getCoderRegistry().registerCoder(VariantShard.class, VariantShard.CODER);
+        p.getCoderRegistry().registerCoder(ReadsShard.class, new ReadsShardCoder());
     }
 
     /**
