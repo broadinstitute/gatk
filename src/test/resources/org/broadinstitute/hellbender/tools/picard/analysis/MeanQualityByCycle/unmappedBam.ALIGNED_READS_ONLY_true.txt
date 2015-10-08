@@ -1,0 +1,7 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.MeanQualityByCycle CHART_OUTPUT=foo.pdf ALIGNED_READS_ONLY=true INPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/MeanQualityByCycle/unmapped.bam OUTPUT=MeanQualityByCycle.unmapped.txt    PF_READS_ONLY=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Tue Oct 06 22:35:22 EDT 2015
+
+
+

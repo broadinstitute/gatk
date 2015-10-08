@@ -12,7 +12,6 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Random;
 
-import static java.lang.Math.log10;
 import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 import static org.broadinstitute.hellbender.utils.MathUtils.logToLog10;
 

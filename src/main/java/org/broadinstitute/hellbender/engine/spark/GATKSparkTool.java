@@ -170,6 +170,13 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
+     * Returns the name of the source of reads data. It can be a file name or URL.
+     */
+    protected String getReadSourceName(){
+        return readInput;
+    }
+
+    /**
      * @return our reference source, or null if no reference is present
      */
     public ReferenceDataflowSource getReference() {

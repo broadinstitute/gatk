@@ -34,9 +34,9 @@ import java.util.*;
         programGroup = QCProgramGroup.class
 )
 public final class MeanQualityByCycle extends SinglePassSamProgram {
-    private static final String R_SCRIPT = "meanQualityByCycle.R";
+    public static final String R_SCRIPT = "meanQualityByCycle.R";
 
-    @Argument(shortName="CHART", doc="A file (with .pdf extension) to write the chart to.")
+    @Argument(shortName="CHART", doc="A file (with .pdf extension) to write the chart to.", optional = true)
     public File CHART_OUTPUT;
 
     @Argument(doc="If set to true, calculate mean quality over aligned reads only.")
@@ -132,7 +132,9 @@ public final class MeanQualityByCycle extends SinglePassSamProgram {
 
     @Override
     protected void setup(final SAMFileHeader header, final File samFile) {
-        IOUtil.assertFileIsWritable(CHART_OUTPUT);
+        if (PRODUCE_PLOT) {
+            IOUtil.assertFileIsWritable(CHART_OUTPUT);
+        }
         // If we're working with a single library, assign that library's name
         // as a suffix to the plot title
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
