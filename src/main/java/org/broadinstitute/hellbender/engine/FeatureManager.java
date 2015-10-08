@@ -352,7 +352,7 @@ public final class FeatureManager implements AutoCloseable {
 
         // If no codecs can handle the file, it's a user error (the user provided a file in an unsupported format)
         if ( candidateCodecs.isEmpty() ) {
-            throw new UserException.CouldNotReadInputFile(featureFile, "no suitable codecs found");
+            throw new UserException.NoSuitableCodecs(featureFile);
         }
         // If multiple codecs can handle the file, it's a configuration error on the part of the codec authors
         else if ( candidateCodecs.size() > 1 ) {

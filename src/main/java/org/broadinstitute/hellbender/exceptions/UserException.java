@@ -406,6 +406,14 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
         public Require2BitReferenceForBroadcast() {
             super("Running this tool with BROADCAST strategy requires a 2bit reference. To create a 2bit reference from an existing fasta file, download faToTwoBit from the link on https://genome.ucsc.edu/goldenPath/help/twoBit.html, then run faToTwoBit in.fasta out.2bit");
+	}
+    }
+
+    public static final class NoSuitableCodecs extends  UserException {
+        private static final long serialVersionUID = 0L;
+
+        public NoSuitableCodecs(final File file) {
+            super("Cannot read " + file + " because no suitable codecs found");
         }
     }
 }

@@ -3,6 +3,7 @@ hellbender.iml
 *.ipr
 *.iml
 *.iws
+*.iml
 .gradle
 build/
 .idea/libraries/Gradle__*
