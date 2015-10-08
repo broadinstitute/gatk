@@ -22,11 +22,11 @@ public class UserException extends RuntimeException {
     private static final long serialVersionUID = 0L;
 
     public UserException(final String msg) {
-        super("A USER ERROR has occurred: " + msg);
+        super("A USER ERROR has occurred:\n\n" + msg +"\n\nRerun with --help to see more information on available options");
     }
 
     public UserException(final String message, final Throwable throwable) {
-        super("A USER ERROR has occurred: " + message, throwable);
+        super("A USER ERROR has occurred\n\n: " + message, throwable);
     }
 
     protected static String getMessage(final Throwable t) {
@@ -85,9 +85,22 @@ public class UserException extends RuntimeException {
     public static class CommandLineException extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public CommandLineException(String message) {
-            super(String.format("Invalid command line: %s", message));
+        public CommandLineException(String message){
+            this(message, "");
         }
+
+        public CommandLineException(String message, String commandLine) {
+            super(String.format("Invalid command line: %s\n%s", commandLine, message));
+        }
+    }
+
+    public static class ConflictingMutuallyExclusiveArguments extends CommandLineException {
+        private static final long serialVersionUID = 0L;
+
+        public ConflictingMutuallyExclusiveArguments(String message, String commandLine){
+            super(message, commandLine);
+        }
+
     }
 
     public static class BadArgumentValue extends CommandLineException {
@@ -282,8 +295,8 @@ public class UserException extends RuntimeException {
     public static class MissingArgument extends CommandLineException {
         private static final long serialVersionUID = 0L;
 
-        public MissingArgument(String arg, String message) {
-            super(String.format("Argument %s was missing: %s", arg, message));
+        public MissingArgument(String message, String commandLine){
+            super(message, commandLine);
         }
     }
 
