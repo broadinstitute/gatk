@@ -17,10 +17,7 @@ public final class RCBSSegmenter {
      * @param outputFile Full path to the outputted segment file
      */
     public static void writeSegmentFile(String sample_name, String tnFile, String outputFile, Boolean log) {
-        String logArg = "FALSE";
-        if(log){
-            logArg = "TRUE";
-        }
+        String logArg = log ? "TRUE" : "FALSE";
         final RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new Resource(R_SCRIPT, RCBSSegmenter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/

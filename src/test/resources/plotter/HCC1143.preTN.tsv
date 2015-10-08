@@ -1,0 +1,24 @@
+#fileFormat = tsv
+#commandLine = org.broadinstitute.hellbender.tools.exome.NormalizeSomaticReadCounts  --input /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/cov/HCC1143-coverage.tsv --targets /Users/aaronc/Documents/recapseg-hb-eval/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.targets_germline_copy_number_variants_X_Y_removed.bed --panelOfNormals /Users/aaronc/Documents/recapseg-hb-eval/Mega_PoN_v2.6.pon --factorNormalizedOutput /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.fnt.tsv --output /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.tn.tsv --betaHatsOutput /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.betaHats.tsv --preTangentNormalizationOutput /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.preTN.tsv  --help false --version false --VERBOSITY INFO --QUIET false
+#title = Pre tangent normalized coverage profile
+name	contig	start	stop	HCC1143
+target_1_None	1	30366	30503	-0.5672720283943717
+target_2_None	1	69089	70010	-0.2298798434421816
+target_3_None	1	367657	368599	0.7039505376737094
+target_4_None	1	621094	622036	0.665347832359594
+target_5_SAMD11	1	861320	861395	0.8921246499184046
+target_8_SAMD11	1	871150	871278	1.0284985316528723
+target_16_SAMD11	1	879076	879190	-1.8510021170870103
+target_17_SAMD11	1	879286	879535	0.7464636425099165
+target_93222_TUBB8	10	92995	94056	1.155313890440703
+target_93223_TUBB8	10	94553	94667	1.3783356254250974
+target_93226_ZMYND11	10	225953	226068	0.5504563921501091
+target_93227_ZMYND11	10	255831	255990	0.21900925429963827
+target_93228_ZMYND11	10	267133	267298	0.561341215656323
+target_93231_ZMYND11	10	285376	285467	0.6193791713914771
+target_93232_ZMYND11	10	285994	286053	0.3752965452734599
+target_93233_ZMYND11	10	286831	286912	0.13808645354069
+target_93234_ZMYND11	10	287959	288081	0.2840770688524452
+target_93237_ZMYND11	10	294274	294550	0.5190870159163488
+target_93238_ZMYND11	10	294841	295051	0.3503791571107113
+target_93239_ZMYND11	10	298286	298412	0.8604539364041799
