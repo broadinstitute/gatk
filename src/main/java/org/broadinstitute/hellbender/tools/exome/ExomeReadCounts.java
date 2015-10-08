@@ -43,29 +43,10 @@ import java.util.stream.IntStream;
 )
 public final class ExomeReadCounts extends ReadWalker {
 
-    /**
-     * Default cohort name used unless one is provided using argument {@link #cohortName}.
-     */
     public static final String DEFAULT_COHORT_NAME = "<ALL>";
-
-    /**
-     * Header name for the column that contains the target contig name.
-     */
     public static final String EXON_CONTIG_COLUMN_NAME = "CONTIG";
-
-    /**
-     * Header name for the column that contains the target start position.
-     */
     public static final String EXON_START_COLUMN_NAME = "START";
-
-    /**
-     * Header name for the column that contains the target end position.
-     */
     public static final String EXON_END_COLUMN_NAME = "END";
-
-    /**
-     * Header name for the column that contains the target name.
-     */
     public static final String EXON_NAME_COLUMN_NAME = "NAME";
 
     /**
@@ -83,101 +64,28 @@ public final class ExomeReadCounts extends ReadWalker {
      */
     public static final String AVG_COL_BP_COLUMN_NAME = "AVG.COL.BP";
 
-    /**
-     * Output value separator.
-     */
     public static final String COLUMN_SEPARATOR = "\t";
-
-    /**
-     * Output line separator.
-     */
     public static final String LINE_SEPARATOR = "\n";
-
-    /**
-     * Output no-value string.
-     */
     public static final String NO_VALUE_STRING = ".";
-
-    /**
-     * Full name for the {@link #groupBy} argument.
-     */
     protected static final String GROUP_BY_FULL_NAME = "groupBy";
-
-    /**
-     * Short name for the {@link #groupBy} argument.
-     */
     protected static final String GROUP_BY_SHORT_NAME = GROUP_BY_FULL_NAME;
-
-    /**
-     * Short name for the {@link #columnSummaryOutput} argument.
-     */
     protected static final String COLUMN_SUMMARY_OUTPUT_SHORT_NAME = "CSO";
-
-    /**
-     * Full name for the {@link #columnSummaryOutput} argument.
-     */
     protected static final String COLUMN_SUMMARY_OUTPUT_FULL_NAME = "columnSummaryOutput";
-
-    /**
-     * Short name for the {@link #rowSummaryOutput} argument.
-     */
     protected static final String ROW_SUMMARY_OUTPUT_SHORT_NAME = "RSO";
-
-    /**
-     * Full name for the {@link #rowSummaryOutput} argument.
-     */
     protected static final String ROW_SUMMARY_OUTPUT_FULL_NAME = "rowSummaryOutput";
-
-    /**
-     * Full name for the {@link #cohortName} argument.
-     */
     protected static final String COHORT_FULL_NAME = "cohortName";
-
-    /**
-     * Short name for the {@link #cohortName} argument.
-     */
     protected static final String COHORT_SHORT_NAME = "cohort";
-
-    /**
-     * Format string for the column total average per bp.
-     */
     protected static final String AVERAGE_DOUBLE_FORMAT = "%.4f";
-
-    /**
-     * Format string for the pcov output.
-     */
-    private static final String PCOV_OUTPUT_DOUBLE_FORMAT = "%.4g";
-
-    /**
-     * Transform argument full name.
-     */
     protected static final String TRANSFORM_FULL_NAME = "transform";
-
-    /**
-     * Transform argument short name.
-     */
     protected static final String TRANSFORM_SHORT_NAME = TRANSFORM_FULL_NAME;
-
-    /**
-     * Exome file argument full name.
-     */
     protected static final String EXOME_FILE_FULL_NAME = "exome";
-
-    /**
-     * Exome file argument short name.
-     */
     protected static final String EXOME_FILE_SHORT_NAME = EXOME_FILE_FULL_NAME;
-
-    /**
-     * Exon output info argument full name
-     */
     protected static final String EXON_OUT_INFO_FULL_NAME = "exonInformationColumns";
-
-    /**
-     * Exon output info argument short name
-     */
     protected static final String EXON_OUT_INFO_SHORT_NAME = "exonInfo";
+    protected static final String KEEP_DUPLICATE_READS_FULL_NAME = "filterduplicatereads";
+    protected static final String KEEP_DUPLICATE_READS_SHORT_NAME = "filterdups";
 
+    private static final String PCOV_OUTPUT_DOUBLE_FORMAT = "%.4g";
 
     @Argument(
             doc = "output tabular file with the counts",
@@ -240,6 +148,14 @@ public final class ExomeReadCounts extends ReadWalker {
     )
     protected ExonOutInfo exonOutInfo = ExonOutInfo.COORDS;
 
+    @Argument(
+            doc = "Do not filter duplicate reads",
+            shortName = KEEP_DUPLICATE_READS_SHORT_NAME,
+            fullName = KEEP_DUPLICATE_READS_FULL_NAME,
+            optional = true
+    )
+    protected boolean keepDuplicateReads = false;
+
     /**
      * Writer to the main output file indicated by {@link #output}.
      */
@@ -282,12 +198,14 @@ public final class ExomeReadCounts extends ReadWalker {
 
     @Override
     public CountingReadFilter makeReadFilter() {
-        return super.makeReadFilter()
+        CountingReadFilter mapped = super.makeReadFilter()
                 .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
-                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
                 .and(new CountingReadFilter("Non_Zero_Reference_Length", ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
+        if(!keepDuplicateReads) {
+            mapped = mapped.and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE));
+        }
+        return mapped;
     }
-
 
     @Override
     public void onTraversalStart() {

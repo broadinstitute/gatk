@@ -45,6 +45,12 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
     private final static File[] ALL_BAMS = new File[] {NA12878_BAM,NA12778_BAM,NA12872_BAM};
 
+    private final static File[] DUPREADS_BAM = new File[] {testFile("dupReadsMini.bam")};
+
+    private final static File INTERVALS_LIST_DUPS = testFile("exome-read-counts-intervals_dups.list");
+
+    private final static File INTERVALS_BED_DUPS = testFile("exome-read-counts-intervals_dups.bed");
+
     ////////////////////////
     //  Test output files //
     ////////////////////////
@@ -57,6 +63,9 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
     private final static File COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES =
             testFile("exome-read-counts-cohort-with-BED-names.output");
+
+    private final static File COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES_DUPS =
+            testFile("exome-read-counts-cohort-with-BED-names_dups.output");
 
     private final static File COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_MISSING_NAMES =
             testFile("exome-read-counts-cohort-with-BED-missing-names.output");
@@ -82,6 +91,9 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
     private final static File COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES =
             testFile("exome-read-counts-cohort-with-BED-names.row-output");
 
+    private final static File COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES_DUPS =
+            testFile("exome-read-counts-cohort-with-BED-names_dups.row-output");
+
     private final static File COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_MISSING_NAMES =
             testFile("exome-read-counts-cohort-with-BED-missing-names.row-output");
 
@@ -90,6 +102,9 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
     private final static File COHORT_COUNT_EXPECTED_COLUMN_OUTPUT =
             testFile("exome-read-counts-cohort.column-output");
+
+    private final static File COHORT_COUNT_EXPECTED_COLUMN_OUTPUT_DUPS =
+            testFile("exome-read-counts-cohort_dups.column-output");
 
     private final static File SAMPLE_COUNT_EXPECTED_OUTPUT =
             testFile("exome-read-counts-sample.output");
@@ -255,7 +270,16 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                         ExomeReadCounts.Transform.RAW,
                         ExomeReadCounts.ExonOutInfo.FULL,
                         new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED_MISSING_NAMES.getAbsolutePath() }
-                },
+                },{     DUPREADS_BAM,
+                        INTERVALS_LIST_DUPS,
+                        COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES_DUPS,
+                        COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES_DUPS,
+                        COHORT_COUNT_EXPECTED_COLUMN_OUTPUT_DUPS,
+                        ExomeReadCounts.Transform.RAW,
+                        ExomeReadCounts.ExonOutInfo.FULL,
+                        new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED_DUPS.getAbsolutePath(),
+                                "-" + ExomeReadCounts.KEEP_DUPLICATE_READS_SHORT_NAME},
+                }
         };
     }
 
