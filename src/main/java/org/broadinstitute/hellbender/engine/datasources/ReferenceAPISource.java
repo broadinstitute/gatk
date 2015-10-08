@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.genomics.Genomics;
@@ -16,11 +16,10 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -39,7 +38,7 @@ import java.util.Map;
  * at workers.
  * It also has helper methods for parsing Ref API URLs (intended for the Hellbender command line).
  */
-public class RefAPISource implements ReferenceSource, Serializable {
+public class ReferenceAPISource implements ReferenceSource, Serializable {
 
     // from https://cloud.google.com/genomics/data/references
     public static final String GRCH37_REF_ID = "EOSsjdnTicvzwAE";
@@ -53,7 +52,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
 
     private static final long serialVersionUID = 1L;
     private static final int defaultPageSize = 1_000_000; // The number of results per request
-    private final static Logger logger = LogManager.getLogger(RefAPISource.class);
+    private final static Logger logger = LogManager.getLogger(ReferenceAPISource.class);
 
     // With our current design, there are three steps required (1) Create a map from reference name to Id,
     // (2) instantiate RefAPISource, and (3) call getReferenceBases, which then calls the Google Genomics API.
@@ -67,7 +66,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
     private Map<String, String> referenceNameToIdTable;
     private String apiKey;
 
-    public RefAPISource(final PipelineOptions pipelineOptions, final String referenceURL) {
+    public ReferenceAPISource( final PipelineOptions pipelineOptions, final String referenceURL ) {
         String referenceName = getReferenceSetID(referenceURL);
         this.referenceMap = getReferenceNameToReferenceTable(pipelineOptions, referenceName);
         this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
@@ -82,7 +81,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
     }
 
     @VisibleForTesting
-    public RefAPISource(final Map<String, Reference> referenceMap) {
+    public ReferenceAPISource( final Map<String, Reference> referenceMap ) {
         this.referenceMap = referenceMap;
         this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
     }
@@ -297,7 +296,7 @@ public class RefAPISource implements ReferenceSource, Serializable {
 
     private Genomics createGenomicsService(final PipelineOptions pipelineOptions) {
         try {
-            final GenomicsFactory.OfflineAuth auth = DataflowCommandLineProgram.HellbenderDataflowOptions.Methods.getOfflineAuth(pipelineOptions.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class));
+            final GenomicsFactory.OfflineAuth auth = GATKGCSOptions.Methods.getOfflineAuth(pipelineOptions.as(GATKGCSOptions.class));
             return auth.getGenomics(auth.getDefaultFactory());
         }
         catch ( GeneralSecurityException|ClassNotFoundException e ) {

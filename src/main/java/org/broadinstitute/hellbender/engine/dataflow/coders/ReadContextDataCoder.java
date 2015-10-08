@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine.dataflow.coders;
 
 import com.google.cloud.dataflow.sdk.coders.*;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
+import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 

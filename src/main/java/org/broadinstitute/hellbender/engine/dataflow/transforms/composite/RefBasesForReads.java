@@ -2,12 +2,11 @@ package org.broadinstitute.hellbender.engine.dataflow.transforms.composite;
 
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.KeyReadsByRefShard;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.RefBasesFromAPI;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.PairReadWithRefBases;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -45,10 +44,10 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
  *  KV<read c, ref bases 2c>
  *
  * The reference bases paired with each read can be customized by passing in a reference window function
- * inside the {@link ReferenceDataflowSource} argument to {@link #addBases}. See {@link RefWindowFunctions} for examples.
+ * inside the {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} argument to {@link #addBases}. See {@link org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions} for examples.
  */
 public class RefBasesForReads {
-    public static PCollection<KV<GATKRead, ReferenceBases>> addBases(PCollection<GATKRead> pReads, ReferenceDataflowSource referenceDataflowSource) {
+    public static PCollection<KV<GATKRead, ReferenceBases>> addBases(PCollection<GATKRead> pReads, ReferenceMultiSource referenceDataflowSource) {
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> shardAndRead = pReads.apply(new KeyReadsByRefShard(referenceDataflowSource.getReferenceWindowFunction()));
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> groupedReads =
                 RefBasesFromAPI.getBasesForShard(shardAndRead, referenceDataflowSource);

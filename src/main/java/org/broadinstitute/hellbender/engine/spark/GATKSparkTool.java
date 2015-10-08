@@ -8,8 +8,8 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -61,7 +61,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
-    private ReferenceDataflowSource referenceSource;
+    private ReferenceMultiSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> intervals;
 
@@ -128,7 +128,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return reference window function used to initialize the reference source
      */
     public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
-        return RefWindowFunctions.IDENTITY_FUNCTION;
+        return ReferenceWindowFunctions.IDENTITY_FUNCTION;
     }
 
     /**
@@ -179,7 +179,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * @return our reference source, or null if no reference is present
      */
-    public ReferenceDataflowSource getReference() {
+    public ReferenceMultiSource getReference() {
         return referenceSource;
     }
 
@@ -232,7 +232,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
         final String referenceURL = referenceArguments.getReferenceFileName();
         if ( referenceURL != null ) {
-            referenceSource = new ReferenceDataflowSource(gcsOptions, referenceURL, getReferenceWindowFunction());
+            referenceSource = new ReferenceMultiSource(gcsOptions, referenceURL, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
         }
     }

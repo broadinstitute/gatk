@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine;
 
 import com.google.cloud.dataflow.sdk.coders.DelegateCoder;
 import com.google.cloud.dataflow.sdk.coders.KvCoder;

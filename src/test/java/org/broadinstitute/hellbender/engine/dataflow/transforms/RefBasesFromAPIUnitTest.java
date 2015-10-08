@@ -13,11 +13,13 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.engine.dataflow.DataflowTestUtils;
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
-import org.broadinstitute.hellbender.engine.dataflow.ReadsPreprocessingPipelineTestData;
+import org.broadinstitute.hellbender.tools.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -39,9 +41,9 @@ import static org.mockito.Mockito.*;
 
 public final class RefBasesFromAPIUnitTest extends BaseTest {
 
-    private ReferenceDataflowSource createMockReferenceDataflowSource(final List<SimpleInterval> intervals,
+    private ReferenceMultiSource createMockReferenceDataflowSource(final List<SimpleInterval> intervals,
                                                                       final SerializableFunction<GATKRead, SimpleInterval> referenceWindowingFunction) throws IOException {
-        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
+        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval interval : intervals) {
             when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(interval))).thenReturn(FakeReferenceSource.bases(interval));
         }
@@ -70,7 +72,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
-        final ReferenceDataflowSource mockSource = createMockReferenceDataflowSource(intervals, RefWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource mockSource = createMockReferenceDataflowSource(intervals, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply("pInput.Create", Create.of(kvRefShardiReads).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
 
@@ -87,7 +89,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
         Pipeline p = GATKTestPipeline.create();
         DataflowUtils.registerGATKCoders(p);
 
-        final ReferenceDataflowSource mockSource = createMockReferenceDataflowSource(intervals, RefWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSource mockSource = createMockReferenceDataflowSource(intervals, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         List<KV<ReferenceShard, Iterable<GATKRead>>> noReads = Arrays.asList(
                 KV.of(new ReferenceShard(0, "1"), Lists.newArrayList()));
@@ -119,15 +121,15 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
             // Test case layout: input shard + reads, reference window function to apply, expected reference interval post-transform
 
             // Identity function
-            testCases.add( new Object[]{ KV.of(shard, reads), RefWindowFunctions.IDENTITY_FUNCTION, new SimpleInterval("1", 500, 1149) });
+            testCases.add( new Object[]{ KV.of(shard, reads), ReferenceWindowFunctions.IDENTITY_FUNCTION, new SimpleInterval("1", 500, 1149) });
             // Expand reads by 1 base on each side
-            testCases.add( new Object[]{ KV.of(shard, reads), new RefWindowFunctions.FixedWindowFunction(1, 1), new SimpleInterval("1", 499, 1150) });
+            testCases.add( new Object[]{ KV.of(shard, reads), new ReferenceWindowFunctions.FixedWindowFunction(1, 1), new SimpleInterval("1", 499, 1150) });
             // Expand reads by 3 bases on the left and 5 bases on the right
-            testCases.add( new Object[]{ KV.of(shard, reads), new RefWindowFunctions.FixedWindowFunction(3, 5), new SimpleInterval("1", 497, 1154) });
+            testCases.add( new Object[]{ KV.of(shard, reads), new ReferenceWindowFunctions.FixedWindowFunction(3, 5), new SimpleInterval("1", 497, 1154) });
             // Expand reads by 30 bases on the left and 10 bases on the right
-            testCases.add( new Object[]{ KV.of(shard, reads), new RefWindowFunctions.FixedWindowFunction(30, 10), new SimpleInterval("1", 470, 1159) });
+            testCases.add( new Object[]{ KV.of(shard, reads), new ReferenceWindowFunctions.FixedWindowFunction(30, 10), new SimpleInterval("1", 470, 1159) });
             // Expand reads by 1000 bases on each side (goes off contig bounds)
-            testCases.add( new Object[]{ KV.of(shard, reads), new RefWindowFunctions.FixedWindowFunction(1000, 1000), new SimpleInterval("1", 1, 2149) });
+            testCases.add( new Object[]{ KV.of(shard, reads), new ReferenceWindowFunctions.FixedWindowFunction(1000, 1000), new SimpleInterval("1", 1, 2149) });
         }
         return testCases.toArray(new Object[][]{});
     }
@@ -140,7 +142,7 @@ public final class RefBasesFromAPIUnitTest extends BaseTest {
         // Assuming everything works properly, we only need a mock response to the expected reference interval,
         // since that is what should end up being queried in ReferenceDataflowSource. If we later try to query an
         // unexpected interval, we'll detect it via an Assert.
-        final ReferenceDataflowSource mockSource = createMockReferenceDataflowSource(Arrays.asList(expectedReferenceInterval), referenceWindowFunction);
+        final ReferenceMultiSource mockSource = createMockReferenceDataflowSource(Arrays.asList(expectedReferenceInterval), referenceWindowFunction);
 
         PCollection<KV<ReferenceShard, Iterable<GATKRead>>> pInput = p.apply("pInput.Create", Create.of(inputShard).withCoder(KvCoder.of(ReferenceShard.CODER, IterableCoder.of(new GATKReadCoder()))));
         PCollection<KV<ReferenceBases, Iterable<GATKRead>>> actualResult = RefBasesFromAPI.getBasesForShard(pInput, mockSource);

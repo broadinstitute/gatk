@@ -18,9 +18,9 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.common.collect.Lists;
 
 import org.broadinstitute.hellbender.engine.dataflow.GATKTestPipeline;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.ReadContextData;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -106,10 +106,10 @@ public class AddContextDataToReadOptimizedUnitTest extends BaseTest implements S
         DataflowUtils.registerGATKCoders(p);
         PCollection<AddContextDataToReadOptimized.ContextShard> pShards = p.apply(Create.of(shards));
 
-        ReferenceDataflowSource mockSource = mock(ReferenceDataflowSource.class, withSettings().serializable());
+        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         SimpleInterval refInterval =  new SimpleInterval("17",69000,69002);
         when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(refInterval))).thenReturn(FakeReferenceSource.bases(refInterval));
-        when(mockSource.getReferenceWindowFunction()).thenReturn(RefWindowFunctions.IDENTITY_FUNCTION);
+        when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
         pShards.apply(ParDo.of(AddContextDataToReadOptimized.fillContext(mockSource)))
                 .apply(ParDo.of(new DoFn<AddContextDataToReadOptimized.ContextShard, Void>() {

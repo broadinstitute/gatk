@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
+package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;

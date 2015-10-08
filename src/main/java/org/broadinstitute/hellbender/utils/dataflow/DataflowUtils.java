@@ -17,13 +17,15 @@ import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.dataflow.coders.GATKReadCoder;
-import org.broadinstitute.hellbender.engine.dataflow.coders.ReadContextDataCoder;
-import org.broadinstitute.hellbender.engine.dataflow.coders.UUIDCoder;
-import org.broadinstitute.hellbender.engine.dataflow.coders.VariantCoder;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
+import org.broadinstitute.hellbender.engine.VariantShard;
+import org.broadinstitute.hellbender.engine.dataflow.coders.*;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GoogleGenomicsReadToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -66,15 +68,15 @@ public final class DataflowUtils {
     public static void registerGATKCoders( final Pipeline p ) {
         DataflowWorkarounds.registerGenomicsCoders(p);
         p.getCoderRegistry().registerCoder(GATKRead.class, new GATKReadCoder());
-        p.getCoderRegistry().registerCoder(GoogleGenomicsReadToGATKReadAdapter.class, GoogleGenomicsReadToGATKReadAdapter.CODER);
+        p.getCoderRegistry().registerCoder(GoogleGenomicsReadToGATKReadAdapter.class, GoogleGenomicsReadToGATKReadAdapterCoder.class);
         p.getCoderRegistry().registerCoder(SAMRecordToGATKReadAdapter.class, SerializableCoder.of(SAMRecordToGATKReadAdapter.class));
         p.getCoderRegistry().registerCoder(SimpleInterval.class, SerializableCoder.of(SimpleInterval.class));
         p.getCoderRegistry().registerCoder(UUID.class, UUIDCoder.CODER);
         p.getCoderRegistry().registerCoder(Variant.class, new VariantCoder());
         p.getCoderRegistry().registerCoder(VariantContextVariantAdapter.class, SerializableCoder.of(VariantContextVariantAdapter.class));
         p.getCoderRegistry().registerCoder(MinimalVariant.class, SerializableCoder.of(MinimalVariant.class));
-        p.getCoderRegistry().registerCoder(RefAPISource.class, SerializableCoder.of(RefAPISource.class));
-        p.getCoderRegistry().registerCoder(ReferenceDataflowSource.class, SerializableCoder.of(ReferenceDataflowSource.class));
+        p.getCoderRegistry().registerCoder(ReferenceAPISource.class, SerializableCoder.of(ReferenceAPISource.class));
+        p.getCoderRegistry().registerCoder(ReferenceMultiSource.class, SerializableCoder.of(ReferenceMultiSource.class));
         p.getCoderRegistry().registerCoder(ReferenceBases.class, SerializableCoder.of(ReferenceBases.class));
         p.getCoderRegistry().registerCoder(ReadContextData.class, new ReadContextDataCoder());
         p.getCoderRegistry().registerCoder(ReferenceShard.class, ReferenceShard.CODER);
@@ -258,7 +260,7 @@ public final class DataflowUtils {
      * SaveDestination.LOCAL_DISK otherwise.
      */
     public static <T> SaveDestination serializeSingleObject(PCollection<T> collection, String fname) {
-        if (BucketUtils.isCloudStorageUrl(fname)) {
+        if ( BucketUtils.isCloudStorageUrl(fname)) {
             saveSingleResultToRemoteStorage(collection, fname);
             return SaveDestination.CLOUD;
         } else if (BucketUtils.isHadoopUrl(fname)) {

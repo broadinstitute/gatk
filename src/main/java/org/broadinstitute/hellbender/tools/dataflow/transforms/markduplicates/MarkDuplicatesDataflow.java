@@ -81,8 +81,8 @@ public final class MarkDuplicatesDataflow extends DataflowCommandLineProgram {
         SmallBamWriter.writeToFile(pipeline, results, header, outputFile);
 
         if (metricsFile != null) {
-            final PCollection<KV<String,DuplicationMetrics>> metrics = results.apply(new MarkDuplicatesUtils.GenerateMetricsTransform(headerPcolView));
-            MarkDuplicatesUtils.writeMetricsToFile(pipeline, metrics, header, metricsFile);
+            final PCollection<KV<String,DuplicationMetrics>> metrics = results.apply(new MarkDuplicatesDataflowUtils.GenerateMetricsTransform(headerPcolView));
+            MarkDuplicatesDataflowUtils.writeMetricsToFile(pipeline, metrics, header, metricsFile);
         }
     }
 }

@@ -7,8 +7,8 @@ import com.google.cloud.dataflow.sdk.transforms.View;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceShard;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -32,13 +32,13 @@ import java.util.stream.StreamSupport;
  *
  * If a custom reference window function is being used to map each read to arbitrary reference bases
  * (and not just the bases that overlap each read), that function should be passed in via the
- * {@link ReferenceDataflowSource} parameter to {@link #getBasesForShard}.
+ * {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} parameter to {@link #getBasesForShard}.
  */
 public class RefBasesFromAPI {
     public static PCollection<KV<ReferenceBases, Iterable<GATKRead>>> getBasesForShard(PCollection<KV<ReferenceShard, Iterable<GATKRead>>> reads,
-                                                                                       ReferenceDataflowSource referenceDataflowSource) {
-        PCollectionView<ReferenceDataflowSource> refView = reads.getPipeline().apply("apply create of referenceDataflowSource",
-                Create.of(referenceDataflowSource)).apply("View ReferenceDataflowSource as singleton",View.<ReferenceDataflowSource>asSingleton());
+                                                                                       ReferenceMultiSource referenceDataflowSource) {
+        PCollectionView<ReferenceMultiSource> refView = reads.getPipeline().apply("apply create of referenceDataflowSource",
+                Create.of(referenceDataflowSource)).apply("View ReferenceDataflowSource as singleton",View.<ReferenceMultiSource>asSingleton());
         return reads.apply(ParDo.withSideInputs(refView).of(
                 new DoFn<KV<ReferenceShard, Iterable<GATKRead>>, KV<ReferenceBases, Iterable<GATKRead>>>() {
                     private static final long serialVersionUID = 1L;

@@ -1,10 +1,12 @@
-package org.broadinstitute.hellbender.engine.dataflow;
+package org.broadinstitute.hellbender.tools;
 
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.*;
+import org.broadinstitute.hellbender.engine.ReadContextData;
+import org.broadinstitute.hellbender.engine.ReferenceShard;
+import org.broadinstitute.hellbender.engine.VariantShard;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;

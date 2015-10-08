@@ -3,16 +3,15 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.SAMReadGroupRecord;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.picard.sam.markduplicates.MarkDuplicatesIntegrationTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractMarkDuplicatesTester;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesDataflowTester;
+import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.MarkDuplicatesDataflowTester;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -26,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public class MarkDuplicatesDataflowIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest{
+public class MarkDuplicatesDataflowIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
 
     protected AbstractMarkDuplicatesTester getTester() {
         return new MarkDuplicatesDataflowTester();
@@ -117,7 +116,7 @@ public class MarkDuplicatesDataflowIntegrationTest extends AbstractMarkDuplicate
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 
-        addDataflowRunnerArgs(args);
+        DataflowCommandLineProgramTest.addDataflowRunnerArgs(args);
 
         runCommandLine(args.getArgsArray());
 
@@ -174,7 +173,7 @@ public class MarkDuplicatesDataflowIntegrationTest extends AbstractMarkDuplicate
       args.add(metricsFile.getAbsolutePath());
       args.add("--READ_NAME_REGEX");
       args.add(null);
-      addDataflowRunnerArgs(args);
+      DataflowCommandLineProgramTest.addDataflowRunnerArgs(args);
       runCommandLine(args.getArgsArray());
     }
 }

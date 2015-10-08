@@ -15,17 +15,17 @@ import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.ReadContextData;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipListOneContig;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -141,7 +141,7 @@ public class AddContextDataToReadOptimized {
             Pipeline pipeline,
             List<SimpleInterval> intervalsOfInterest, List<Variant> variants,
             String bam, final ReadFilter optFilter,
-            final ReferenceDataflowSource refSource) throws IOException {
+            final ReferenceMultiSource refSource) throws IOException {
 
         return AddContextDataToReadOptimized.add(pipeline, intervalsOfInterest, 1_000_000, variants,
                 bam, 5000, 1000, optFilter,
@@ -156,7 +156,7 @@ public class AddContextDataToReadOptimized {
             Pipeline pipeline,
             List<SimpleInterval> intervalsOfInterest, int bigShardSize, List<Variant> variants,
             String bam, int outputShardSize, int margin, final ReadFilter optFilter,
-            final ReferenceDataflowSource refSource
+            final ReferenceMultiSource refSource
     ) throws IOException {
 
         List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervalsOfInterest, bigShardSize);
@@ -203,7 +203,7 @@ public class AddContextDataToReadOptimized {
             public void startBundle(Context c) throws Exception {
                 super.startBundle(c);
                 if (BucketUtils.isCloudStorageUrl(bam)) {
-                    storageClient = DataflowCommandLineProgram.HellbenderDataflowOptions.Methods.createStorageClient(c.getPipelineOptions().as(DataflowCommandLineProgram.HellbenderDataflowOptions.class));
+                    storageClient = GATKGCSOptions.Methods.createStorageClient(c.getPipelineOptions().as(GATKGCSOptions.class));
                     reader = BAMIO.openBAM(storageClient, bam, ValidationStringency.SILENT);
                 } else if (BucketUtils.isHadoopUrl(bam)) {
                     throw new RuntimeException("Sorry, Hadoop paths aren't yet supported");
@@ -295,7 +295,7 @@ public class AddContextDataToReadOptimized {
      * Given a shard that has reads and variants, query Google Genomics' Reference server and get reference info
      * (including an extra margin on either side), and fill that and the correct variants into readContext.
      */
-    public static DoFn<ContextShard, ContextShard> fillContext(final ReferenceDataflowSource refSource) throws IOException {
+    public static DoFn<ContextShard, ContextShard> fillContext(final ReferenceMultiSource refSource) throws IOException {
         return new DoFnWLog<ContextShard, ContextShard>("fillContext") {
             private static final long serialVersionUID = 1L;
 

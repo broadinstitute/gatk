@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceFileSource;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;

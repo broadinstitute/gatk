@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMSequenceDictionary;

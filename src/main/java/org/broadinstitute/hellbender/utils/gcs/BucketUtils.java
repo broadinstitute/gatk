@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.dataflow;
+package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.client.util.ByteStreams;
 import com.google.api.services.storage.Storage;

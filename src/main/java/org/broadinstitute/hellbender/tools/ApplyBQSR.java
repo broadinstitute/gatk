@@ -50,7 +50,7 @@ public final class ApplyBQSR extends ReadWalker{
     public void onTraversalStart() {
         final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
         outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
-        transform = new BQSRReadTransformer(outputHeader, BQSR_RECAL_FILE, bqsrArgs.quantizationLevels, bqsrArgs.disableIndelQuals, bqsrArgs.PRESERVE_QSCORES_LESS_THAN, bqsrArgs.emitOriginalQuals, bqsrArgs.globalQScorePrior);
+        transform = new BQSRReadTransformer(outputHeader, BQSR_RECAL_FILE, bqsrArgs);
     }
 
     @Override

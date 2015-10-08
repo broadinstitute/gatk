@@ -3,9 +3,9 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public final class PrintReadsDataflowIntegrationTest extends CommandLineProgramTest {
+public final class PrintReadsDataflowIntegrationTest extends DataflowCommandLineProgramTest {
 
     @Test(groups = {"dataflow"})
     public void testPrintReadsDataflowIntegrationTest() throws IOException {

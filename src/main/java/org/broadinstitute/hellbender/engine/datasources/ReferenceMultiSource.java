@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSou
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -21,7 +21,7 @@ import java.io.Serializable;
  *
  * This class needs to be mocked, so it cannot be declared final.
  */
-public class ReferenceDataflowSource implements ReferenceSource, Serializable {
+public class ReferenceMultiSource implements ReferenceSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     private ReferenceSource referenceSource;
@@ -32,8 +32,8 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
      * @param referenceURL the name of the reference (if using the Google Genomics API), or a path to the reference file
      * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
      */
-    public ReferenceDataflowSource(final PipelineOptions pipelineOptions, final String referenceURL,
-                                   final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
+    public ReferenceMultiSource( final PipelineOptions pipelineOptions, final String referenceURL,
+                                 final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction ) {
         Utils.nonNull(referenceWindowFunction);
         if (ReferenceTwoBitSource.isTwoBit(referenceURL)) {
             try {
@@ -48,7 +48,7 @@ public class ReferenceDataflowSource implements ReferenceSource, Serializable {
                 referenceSource = new ReferenceFileSource(referenceURL);
             }
         } else { // use the Google Genomics API
-            referenceSource = new RefAPISource(pipelineOptions, referenceURL);
+            referenceSource = new ReferenceAPISource(pipelineOptions, referenceURL);
         }
         this.referenceWindowFunction = referenceWindowFunction;
     }

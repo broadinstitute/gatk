@@ -1,8 +1,8 @@
-package org.broadinstitute.hellbender.utils.read.markduplicates;
+package org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates;
 
-import htsjdk.samtools.DuplicateScoringStrategy;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.MarkDuplicatesDataflow;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractMarkDuplicatesTester;
 
 /**
  * This class is an extension of AbstractMarkDuplicatesCommandLineProgramTester used to test MarkDuplicates with SAM files generated on the fly.
@@ -16,6 +16,6 @@ public final class MarkDuplicatesDataflowTester extends AbstractMarkDuplicatesTe
     @Override
     protected void addArgs() {
         super.addArgs();
-        addDataflowRunnerArgs(args);
+        DataflowCommandLineProgramTest.addDataflowRunnerArgs(args);
     }
 }

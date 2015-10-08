@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.dataflow.datasources;
+package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.api.services.genomics.model.Reference;
 import com.google.cloud.dataflow.sdk.Pipeline;
@@ -11,11 +11,10 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgram;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefAPISource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.GATKGCSOptions;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -25,33 +24,33 @@ import org.testng.annotations.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RefAPISourceUnitTest extends BaseTest {
+public class ReferenceAPISourceUnitTest extends BaseTest {
 
     private ReferenceBases queryReferenceAPI( final String referenceName, final SimpleInterval interval, int pageSize ) {
         final Pipeline p = setupPipeline();
 
-        RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
+        ReferenceAPISource refAPISource = new ReferenceAPISource(p.getOptions(), ReferenceAPISource.URL_PREFIX + referenceName);
         return refAPISource.getReferenceBases(p.getOptions(), interval, pageSize);
     }
 
     private ReferenceBases queryReferenceAPI( final String referenceName, final SimpleInterval interval ) {
         final Pipeline p = setupPipeline();
 
-        RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
+        ReferenceAPISource refAPISource = new ReferenceAPISource(p.getOptions(), ReferenceAPISource.URL_PREFIX + referenceName);
         return refAPISource.getReferenceBases(p.getOptions(), interval);
     }
 
     private Pipeline setupPipeline() {
-        // We create HellbenderDataflowOptions instead of DataflowPipelineOptions to keep track of the secrets
+        // We create GATKGCSOptions instead of DataflowPipelineOptions to keep track of the secrets
         // so we can read the reference.
-        final DataflowCommandLineProgram.HellbenderDataflowOptions options = PipelineOptionsFactory.as(DataflowCommandLineProgram.HellbenderDataflowOptions.class);
-        options.setProject(getDataflowTestProject());
-        if (getDataflowTestApiKey() != null) {
-            options.setApiKey(getDataflowTestApiKey());
+        final GATKGCSOptions options = PipelineOptionsFactory.as(GATKGCSOptions.class);
+        options.setProject(getGCPTestProject());
+        if ( getGCPTestApiKey() != null) {
+            options.setApiKey(getGCPTestApiKey());
             // put a serialized version of the credentials in the pipelineOptions, so we can get to it later.
             try {
                 GenomicsFactory.OfflineAuth auth = GCSOptions.Methods.createGCSAuth(options);
-                DataflowCommandLineProgram.HellbenderDataflowOptions.Methods.setOfflineAuth(options, auth);
+                GATKGCSOptions.Methods.setOfflineAuth(options, auth);
             } catch (Exception x) {
                 throw new GATKException("Error with credentials",x);
             }
@@ -85,7 +84,7 @@ public class RefAPISourceUnitTest extends BaseTest {
     public void testSequenceDictionarySorting(String inputs, String outputs) {
         final String[] input = inputs.split(",");
         final String[] expected = outputs.split(",");
-        final RefAPISource ref = new RefAPISource(createDummyReferenceMap(input));
+        final ReferenceAPISource ref = new ReferenceAPISource(createDummyReferenceMap(input));
         final SAMSequenceDictionary seq = ref.getReferenceSequenceDictionary(null);
         checkSequenceDictionary(seq, expected);
     }
@@ -98,14 +97,14 @@ public class RefAPISourceUnitTest extends BaseTest {
         final String expected = "AAACAGGTTA";
         // -1 because we're using closed intervals
         SimpleInterval interval = new SimpleInterval("1", 50001, 50001 + expected.length() - 1);
-        Logger logger = LogManager.getLogger(RefAPISourceUnitTest.class);
+        Logger logger = LogManager.getLogger(ReferenceAPISourceUnitTest.class);
 
         GenomicsOptions options = PipelineOptionsFactory.create().as(GenomicsOptions.class);
-        options.setApiKey(getDataflowTestApiKey());
-        options.setProject(getDataflowTestProject());
+        options.setApiKey(getGCPTestApiKey());
+        options.setProject(getGCPTestProject());
 
         final Pipeline p = TestPipeline.create(options); // We don't use GATKTestPipeline because we need specific options.
-        RefAPISource refAPISource = new RefAPISource(p.getOptions(), RefAPISource.URL_PREFIX + referenceName);
+        ReferenceAPISource refAPISource = new ReferenceAPISource(p.getOptions(), ReferenceAPISource.URL_PREFIX + referenceName);
         ReferenceBases bases = refAPISource.getReferenceBases(p.getOptions(), interval);
         final String actual = new String(bases.getBases());
         Assert.assertEquals(actual, expected, "Wrong bases returned");
@@ -126,8 +125,8 @@ public class RefAPISourceUnitTest extends BaseTest {
     @Test(groups = "cloud")
     public void testReferenceSourceMultiPageQuery() {
         final int mio = 1_000_000;
-        final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 50000 + mio + 50));
-        final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50025 + mio + 50));
+        final ReferenceBases bases1 = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 50000 + mio + 50));
+        final ReferenceBases bases2 = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50025 + mio + 50));
 
         Assert.assertNotNull(bases1);
         Assert.assertNotNull(bases1.getBases());
@@ -149,9 +148,9 @@ public class RefAPISourceUnitTest extends BaseTest {
     public void testReferenceSourceMultiSmallPagesQuery() {
         int pageSize = 300;
         // not a multiple of pageSize (testing the fetching of a partial page)
-        final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 51000), pageSize);
+        final ReferenceBases bases1 = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50000, 51000), pageSize);
         // multiple of pageSize (testing ending on an exact page boundary)
-        final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50924), pageSize);
+        final ReferenceBases bases2 = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, new SimpleInterval("1", 50025, 50924), pageSize);
 
         Assert.assertNotNull(bases1);
         Assert.assertNotNull(bases1.getBases());
@@ -172,8 +171,8 @@ public class RefAPISourceUnitTest extends BaseTest {
     public void testReferenceSourceVaryingPageSizeQuery() {
 
         SimpleInterval interval = new SimpleInterval("1", 50000, 50050);
-        final ReferenceBases bases1 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval);
-        final ReferenceBases bases2 = queryReferenceAPI(RefAPISource.HS37D5_REF_ID, interval, 10);
+        final ReferenceBases bases1 = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, interval);
+        final ReferenceBases bases2 = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, interval, 10);
 
         Assert.assertNotNull(bases1);
         Assert.assertNotNull(bases1.getBases());

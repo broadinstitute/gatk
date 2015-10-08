@@ -6,13 +6,9 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.PairedEnds;
-import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.ReadsKey;
+import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.io.File;
@@ -27,30 +23,9 @@ import java.util.stream.StreamSupport;
  * Utility classes and functions for Mark Duplicates.
  */
 public class MarkDuplicatesSparkUtils {
-    //Bases below this quality will not be included in picking the best read from a set of duplicates.
-    public static final int MIN_BASE_QUAL = 15;
 
     // Used to set an attribute on the GATKRead marking this read as an optical duplicate.
     private static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
-
-    /**
-     * How to assign a score to the read in MarkDuplicates (so that we pick the best one to be the non-duplicate).
-     */
-    //Note: copied from htsjdk.samtools.DuplicateScoringStrategy
-    static int score(final GATKRead record) {
-        if (record == null) {
-            return 0;
-        } else {
-            int sum = 0;
-            for ( byte b : record.getBaseQualities() ) {
-                int i = (int)b;
-                if ( i >= MIN_BASE_QUAL ) {
-                    sum += i;
-                }
-            }
-            return sum;
-        }
-    }
 
     /**
      * (0) filter: remove unpaired reads and reads with an unmapped mate.
@@ -176,7 +151,7 @@ public class MarkDuplicatesSparkUtils {
         // Note the we emit only fragments from this mapper.
         if (byPairing.get(true).isEmpty()) {
             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> score(read)).immutableSortedCopy(byPairing.get(false));
+            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.scoreForRead(read)).immutableSortedCopy(byPairing.get(false));
             if (!frags.isEmpty()) {
                 reads.add(frags.get(0));                        //highest score - just emit
                 for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.dataflow.pipelines;
 import com.google.common.base.Strings;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.dataflow.DataflowCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -11,7 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public final class CountReadsDataflowIntegrationTest extends CommandLineProgramTest{
+public final class CountReadsDataflowIntegrationTest extends DataflowCommandLineProgramTest {
 
     @DataProvider(name="intervals")
     public Object[][] intervals(){

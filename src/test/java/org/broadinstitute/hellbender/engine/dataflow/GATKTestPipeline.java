@@ -4,7 +4,6 @@ import com.google.cloud.dataflow.sdk.Pipeline;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.common.base.Strings;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 
 
 /**
@@ -29,7 +28,7 @@ public class GATKTestPipeline {
      * either a local runner or a cloud runner.
      */
     public static Pipeline create() {
-        String dataflowRunner = CommandLineProgramTest.getExternallySpecifiedRunner();
+        String dataflowRunner = DataflowCommandLineProgramTest.getExternallySpecifiedRunner();
         if (!Strings.isNullOrEmpty(dataflowRunner)) {
             PipelineOptions options = PipelineOptionsFactory.fromArgs(
                 new String[] { "--runner=" + dataflowRunner }).create();

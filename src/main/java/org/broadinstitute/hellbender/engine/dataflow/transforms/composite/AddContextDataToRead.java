@@ -7,9 +7,8 @@ import com.google.cloud.dataflow.sdk.transforms.join.KeyedPCollectionTuple;
 import com.google.cloud.dataflow.sdk.values.*;
 import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadContextData;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.RefWindowFunctions;
-import org.broadinstitute.hellbender.engine.dataflow.datasources.ReferenceDataflowSource;
+import org.broadinstitute.hellbender.engine.ReadContextData;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.VariantsDataflowSource;
 import org.broadinstitute.hellbender.engine.dataflow.transforms.KeyReadsByUUID;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -28,11 +27,11 @@ import java.util.UUID;
  * This transform is intended for direct use in pipelines.
  *
  * The reference bases paired with each read can be customized by passing in a reference window function
- * inside the {@link ReferenceDataflowSource} argument to {@link #add}. See {@link RefWindowFunctions} for examples.
+ * inside the {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} argument to {@link #add}. See {@link org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions} for examples.
  */
 public class AddContextDataToRead {
 
-    public static PCollection<KV<GATKRead, ReadContextData>> add(PCollection<GATKRead> pReads, ReferenceDataflowSource referenceDataflowSource, VariantsDataflowSource variantsDataflowSource) {
+    public static PCollection<KV<GATKRead, ReadContextData>> add(PCollection<GATKRead> pReads, ReferenceMultiSource referenceDataflowSource, VariantsDataflowSource variantsDataflowSource) {
         PCollection<Variant> pVariants = variantsDataflowSource.getAllVariants();
         PCollection<KV<GATKRead, Iterable<Variant>>> kvReadVariants = KeyVariantsByRead.key(pVariants, pReads);
         PCollection<KV<GATKRead, ReferenceBases>> kvReadRefBases =

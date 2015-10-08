@@ -23,14 +23,9 @@ import org.broadinstitute.hellbender.engine.dataflow.coders.PairedEndsCoder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 
 import java.io.File;
-import java.io.InputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.List;
@@ -39,11 +34,9 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * Utility classes and functions for Mark Duplicates.
+ * Utility classes and functions for the dataflow version of Mark Duplicates.
  */
-final class MarkDuplicatesUtils {
-    //Bases below this quality will not be included in picking the best read from a set of duplicates.
-    public static final int MIN_BASE_QUAL = 15;
+final class MarkDuplicatesDataflowUtils {
 
     // Used to set an attribute on the GATKRead marking this read as an optical duplicate.
     private static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
@@ -228,7 +221,7 @@ final class MarkDuplicatesUtils {
                         // Note the we emit only fragments from this mapper.
                         if (byPairing.get(true).isEmpty()) {
                             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-                            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.score(read)).immutableSortedCopy(byPairing.get(false));
+                            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.scoreForRead(read)).immutableSortedCopy(byPairing.get(false));
                             if (!frags.isEmpty()) {
                                 context.output(frags.get(0));                        //highest score - just emit
                                 for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
@@ -432,25 +425,6 @@ final class MarkDuplicatesUtils {
             }
             // Should we add a histogram?
             file.write(dest);
-        }
-    }
-
-    /**
-     * How to assign a score to the read in MarkDuplicates (so that we pick the best one to be the non-duplicate).
-     */
-    //Note: copied from htsjdk.samtools.DuplicateScoringStrategy
-    static int score(final GATKRead record) {
-        if (record == null) {
-            return 0;
-        } else {
-            int sum = 0;
-            for ( byte b : record.getBaseQualities() ) {
-                int i = (int)b;
-                if ( i >= MIN_BASE_QUAL ) {
-                    sum += i;
-                }
-            }
-            return sum;
         }
     }
 

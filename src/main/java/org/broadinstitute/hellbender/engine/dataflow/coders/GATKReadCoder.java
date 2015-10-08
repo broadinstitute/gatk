@@ -32,7 +32,7 @@ public final class GATKReadCoder extends CustomCoder<GATKRead> {
         SerializableCoder.of(Class.class).encode(value.getClass(), outStream, context);
 
         if ( value.getClass() == GoogleGenomicsReadToGATKReadAdapter.class ) {
-            GoogleGenomicsReadToGATKReadAdapter.CODER.encode((GoogleGenomicsReadToGATKReadAdapter)value, outStream, context);
+            GoogleGenomicsReadToGATKReadAdapterCoder.of().encode((GoogleGenomicsReadToGATKReadAdapter)value, outStream, context);
         }
         else if ( value.getClass() == SAMRecordToGATKReadAdapter.class ) {
             SerializableCoder.of(SAMRecordToGATKReadAdapter.class).encode(((SAMRecordToGATKReadAdapter)value), outStream, context);
@@ -48,7 +48,7 @@ public final class GATKReadCoder extends CustomCoder<GATKRead> {
         final Class<?> readClass = SerializableCoder.of(Class.class).decode(inStream, context);
 
         if ( readClass == GoogleGenomicsReadToGATKReadAdapter.class ) {
-            return GoogleGenomicsReadToGATKReadAdapter.CODER.decode(inStream, context);
+            return GoogleGenomicsReadToGATKReadAdapterCoder.of().decode(inStream, context);
         }
         else if ( readClass == SAMRecordToGATKReadAdapter.class ) {
             return SerializableCoder.of(SAMRecordToGATKReadAdapter.class).decode(inStream, context);
