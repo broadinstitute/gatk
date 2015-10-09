@@ -22,27 +22,16 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     // We always use the same covariates. The field is retained for compatibility with GATK3 reports.
     public static final boolean DO_NOT_USE_STANDARD_COVARIATES = false;
 
+    //We don't support SOLID. The field is retained for compatibility with GATK3 reports.
+    public static final String SOLID_RECAL_MODE = "SET_Q_ZERO";
+    public static final String SOLID_NOCALL_STRATEGY = "THROW_EXCEPTION";
+
     /**
      * This calculation is critically dependent on being able to skip over known polymorphic sites. Please be sure that you know what you are doing if you use this option.
      */
     @AdvancedOption
     @Argument(fullName = "run_without_dbsnp_potentially_ruining_quality", shortName = "run_without_dbsnp_potentially_ruining_quality", optional = true, doc = "If specified, allows the recalibrator to be used without a dbsnp database. Very unsafe and for expert users only.")
     public boolean RUN_WITHOUT_DBSNP = false;
-
-    /**
-     * BaseRecalibrator accepts a --solid_recal_mode <MODE> flag which governs how the recalibrator handles the
-     * reads which have had the reference inserted because of color space inconsistencies.
-     */
-    @Argument(fullName = "solid_recal_mode", shortName = "sMode", optional = true, doc = "How should we recalibrate solid bases in which the reference was inserted? Options = DO_NOTHING, SET_Q_ZERO, SET_Q_ZERO_BASE_N, or REMOVE_REF_BIAS")
-    public RecalUtils.SOLID_RECAL_MODE SOLID_RECAL_MODE = RecalUtils.SOLID_RECAL_MODE.SET_Q_ZERO;
-
-    /**
-     * BaseRecalibrator accepts a --solid_nocall_strategy <MODE> flag which governs how the recalibrator handles
-     * no calls in the color space tag. Unfortunately because of the reference inserted bases mentioned above, reads with no calls in
-     * their color space tag can not be recalibrated.
-     */
-    @Argument(fullName = "solid_nocall_strategy", shortName = "solid_nocall_strategy", doc = "Defines the behavior of the recalibrator when it encounters no calls in the color space. Options = THROW_EXCEPTION, LEAVE_READ_UNRECALIBRATED, or PURGE_READ", optional = true)
-    public RecalUtils.SOLID_NOCALL_STRATEGY SOLID_NOCALL_STRATEGY = RecalUtils.SOLID_NOCALL_STRATEGY.THROW_EXCEPTION;
 
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base mismatches. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
@@ -225,8 +214,8 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
         final Map<String,String> result = new LinkedHashMap<>(15);
         compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
         compareSimpleReportArgument(result,"run_without_dbsnp",RUN_WITHOUT_DBSNP,other.RUN_WITHOUT_DBSNP,thisRole,otherRole);
-        compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, other.SOLID_RECAL_MODE,thisRole,otherRole);
-        compareSimpleReportArgument(result,"solid_nocall_strategy", SOLID_NOCALL_STRATEGY, other.SOLID_NOCALL_STRATEGY,thisRole,otherRole);
+        compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, SOLID_RECAL_MODE,thisRole,otherRole);
+        compareSimpleReportArgument(result,"solid_nocall_strategy", SOLID_NOCALL_STRATEGY, SOLID_NOCALL_STRATEGY,thisRole,otherRole);
         compareSimpleReportArgument(result,"mismatches_context_size", MISMATCHES_CONTEXT_SIZE,other.MISMATCHES_CONTEXT_SIZE,thisRole,otherRole);
         compareSimpleReportArgument(result,"mismatches_default_quality", MISMATCHES_DEFAULT_QUALITY, other.MISMATCHES_DEFAULT_QUALITY,thisRole,otherRole);
         compareSimpleReportArgument(result,"deletions_default_quality", DELETIONS_DEFAULT_QUALITY, other.DELETIONS_DEFAULT_QUALITY,thisRole,otherRole);

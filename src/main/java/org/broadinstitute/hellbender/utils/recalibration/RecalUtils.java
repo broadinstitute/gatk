@@ -7,18 +7,17 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.*;
 import java.util.*;
@@ -49,8 +48,6 @@ public final class RecalUtils {
     public static final String NUMBER_OBSERVATIONS_COLUMN_NAME = "Observations";
     public static final String NUMBER_ERRORS_COLUMN_NAME = "Errors";
 
-    private static final String COLOR_SPACE_ATTRIBUTE_TAG = "CS"; // The tag that holds the color space for SOLID bams
-    private static final String COLOR_SPACE_INCONSISTENCY_TAG = "ZC"; // A new tag made up for the recalibrator which will hold an array of ints which say if this base is inconsistent with its color
     private static boolean warnUserNullPlatform = false;
 
     private static final String SCRIPT_FILE = "BQSR.R";
@@ -186,64 +183,6 @@ public final class RecalUtils {
             p.print(e.getValue(),e.getKey());
         }
         p.close();
-    }
-
-    public enum SOLID_RECAL_MODE {
-        /**
-         * Treat reference inserted bases as reference matching bases. Very unsafe!
-         */
-        DO_NOTHING,
-        /**
-         * Set reference inserted bases and the previous base (because of color space alignment details) to Q0. This is the default option.
-         */
-        SET_Q_ZERO,
-        /**
-         * In addition to setting the quality scores to zero, also set the base itself to 'N'. This is useful to visualize in IGV.
-         */
-        SET_Q_ZERO_BASE_N,
-        /**
-         * Look at the color quality scores and probabilistically decide to change the reference inserted base to be the base which is implied by the original color space instead of the reference.
-         */
-        REMOVE_REF_BIAS;
-        
-        public static SOLID_RECAL_MODE recalModeFromString(String recalMode) {
-            if (recalMode.equals("DO_NOTHING"))
-                return SOLID_RECAL_MODE.DO_NOTHING;
-            if (recalMode.equals("SET_Q_ZERO"))
-                return SOLID_RECAL_MODE.SET_Q_ZERO;
-            if (recalMode.equals("SET_Q_ZERO_BASE_N"))
-                return SOLID_RECAL_MODE.SET_Q_ZERO_BASE_N;
-            if (recalMode.equals("REMOVE_REF_BIAS"))
-                return SOLID_RECAL_MODE.REMOVE_REF_BIAS;
-
-            throw new UserException.BadArgumentValue(recalMode, "is not a valid SOLID_RECAL_MODE value");
-        }
-    }
-
-    public enum SOLID_NOCALL_STRATEGY {
-        /**
-         * When a no call is detected throw an exception to alert the user that recalibrating this SOLiD data is unsafe. This is the default option.
-         */
-        THROW_EXCEPTION,
-        /**
-         * Leave the read in the output bam completely untouched. This mode is only okay if the no calls are very rare.
-         */
-        LEAVE_READ_UNRECALIBRATED,
-        /**
-         * Mark these reads as failing vendor quality checks so they can be filtered out by downstream analyses.
-         */
-        PURGE_READ;
-
-        public static SOLID_NOCALL_STRATEGY nocallStrategyFromString(String nocallStrategy) {
-            if (nocallStrategy.equals("THROW_EXCEPTION"))
-                return SOLID_NOCALL_STRATEGY.THROW_EXCEPTION;
-            if (nocallStrategy.equals("LEAVE_READ_UNRECALIBRATED"))
-                return SOLID_NOCALL_STRATEGY.LEAVE_READ_UNRECALIBRATED;
-            if (nocallStrategy.equals("PURGE_READ"))
-                return SOLID_NOCALL_STRATEGY.PURGE_READ;
-
-            throw new UserException.BadArgumentValue(nocallStrategy, "is not a valid SOLID_NOCALL_STRATEGY value");
-        }
     }
 
     private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
@@ -557,135 +496,6 @@ public final class RecalUtils {
         }
     }
 
-    private static boolean hasNoCallInColorSpace(final byte[] colorSpace) {
-        final int length = colorSpace.length;
-        for (int i = 1; i < length; i++) {  // skip the sentinal
-            final byte color = colorSpace[i];
-            if (color != (byte) '0' && color != (byte) '1' && color != (byte) '2' && color != (byte) '3') {
-                return true; // There is a bad color in this SOLiD read
-            }
-        }
-
-        return false; // There aren't any color no calls in this SOLiD read
-    }
-
-    /**
-     * Given the base and the color calculate the next base in the sequence
-     *
-     * @param read     the read
-     * @param prevBase The base
-     * @param color    The color
-     * @return The next base in the sequence
-     */
-    private static byte getNextBaseFromColor(GATKRead read, final byte prevBase, final byte color) {
-        switch (color) {
-            case '0':
-                return prevBase;
-            case '1':
-                return performColorOne(prevBase);
-            case '2':
-                return performColorTwo(prevBase);
-            case '3':
-                return performColorThree(prevBase);
-            default:
-                throw new UserException.MalformedRead(read, "Unrecognized color space in SOLID read, color = " + (char) color +
-                        " Unfortunately this bam file can not be recalibrated without full color space information because of potential reference bias.");
-        }
-    }
-
-    /**
-     * Parse through the color space of the read and add a new tag to the read that says which bases are
-     * inconsistent with the color space. If there is a no call in the color space, this method returns false meaning
-     * this read should be skipped
-     *
-     * @param strategy the strategy used for SOLID no calls
-     * @param read     The GATKRead to parse
-     * @param header   SAM header for the read
-     * @return true if this read is consistent or false if this read should be skipped
-     */
-    public static boolean isColorSpaceConsistent(final SOLID_NOCALL_STRATEGY strategy, final GATKRead read, final SAMFileHeader header) {
-        if (!ReadUtils.isSOLiDRead(read, header)) // If this is a SOLID read then we have to check if the color space is inconsistent. This is our only sign that SOLID has inserted the reference base
-            return true;
-
-        // Haven't calculated the inconsistency array yet for this read
-        if (! read.hasAttribute(RecalUtils.COLOR_SPACE_INCONSISTENCY_TAG)) {
-            if (read.hasAttribute(RecalUtils.COLOR_SPACE_ATTRIBUTE_TAG)) {
-                byte[] colorSpace = read.getAttributeAsString(RecalUtils.COLOR_SPACE_ATTRIBUTE_TAG).getBytes();
-
-                final boolean badColor = hasNoCallInColorSpace(colorSpace);
-                if (badColor) {
-                    if (strategy == SOLID_NOCALL_STRATEGY.LEAVE_READ_UNRECALIBRATED) {
-                        return false; // can't recalibrate a SOLiD read with no calls in the color space, and the user wants to skip over them
-                    }
-                    else if (strategy == SOLID_NOCALL_STRATEGY.PURGE_READ) {
-                        read.setFailsVendorQualityCheck(true);
-                        return false;
-                    }
-                }
-
-                byte[] readBases = read.getBases(); // Loop over the read and calculate first the inferred bases from the color and then check if it is consistent with the read
-                if (read.isReverseStrand())
-                    readBases = BaseUtils.simpleReverseComplement(read.getBases());
-
-                final byte[] inconsistency = new byte[readBases.length];
-                int i;
-                byte prevBase = colorSpace[0]; // The sentinel
-                for (i = 0; i < readBases.length; i++) {
-                    final byte thisBase = getNextBaseFromColor(read, prevBase, colorSpace[i + 1]);
-                    inconsistency[i] = (byte) (thisBase == readBases[i] ? 0 : 1);
-                    prevBase = readBases[i];
-                }
-                read.setAttribute(RecalUtils.COLOR_SPACE_INCONSISTENCY_TAG, inconsistency);
-            }
-            else if (strategy == SOLID_NOCALL_STRATEGY.THROW_EXCEPTION) // if the strategy calls for an exception, throw it
-                throw new UserException.MalformedRead(read, "Unable to find color space information in SOLiD read. First observed at read with name = " + read.getName() + " Unfortunately this .bam file can not be recalibrated without color space information because of potential reference bias.");
-
-            else
-                return false; // otherwise, just skip the read
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if this base is inconsistent with its color space. If it is then SOLID inserted the reference here and we should reduce the quality
-     *
-     * @param read   The read which contains the color space to check against
-     * @param offset The offset in the read at which to check
-     * @return Returns true if the base was inconsistent with the color space
-     */
-    public static boolean isColorSpaceConsistent(final GATKRead read, final int offset) {
-        if (read.hasAttribute(RecalUtils.COLOR_SPACE_INCONSISTENCY_TAG)) {
-            final byte[] inconsistency = read.getAttributeAsByteArray(RecalUtils.COLOR_SPACE_INCONSISTENCY_TAG);
-            // NOTE: The inconsistency array is in the direction of the read, not aligned to the reference!
-            if (read.isReverseStrand()) { // Negative direction
-                return inconsistency[inconsistency.length - offset - 1] == (byte) 0;
-            }
-            else { // Forward direction
-                return inconsistency[offset] == (byte) 0;
-            }
-
-            // This block of code is for if you want to check both the offset and the next base for color space inconsistency
-            //if( read.isReverseStrand() ) { // Negative direction
-            //    if( offset == 0 ) {
-            //        return inconsistency[0] != 0;
-            //    } else {
-            //        return (inconsistency[inconsistency.length - offset - 1] != 0) || (inconsistency[inconsistency.length - offset] != 0);
-            //    }
-            //} else { // Forward direction
-            //    if( offset == inconsistency.length - 1 ) {
-            //        return inconsistency[inconsistency.length - 1] != 0;
-            //    } else {
-            //        return (inconsistency[offset] != 0) || (inconsistency[offset + 1] != 0);
-            //    }
-            //}
-
-        }
-        else { // No inconsistency array, so nothing is inconsistent
-            return true;
-        }
-    }
-
     /**
      * Computes all requested covariates for every offset in the given read
      * by calling covariate.getValues(..).
@@ -720,81 +530,6 @@ public final class RecalUtils {
      */
     public static void computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final ReadCovariates resultsStorage) {
         covariates.recordAllValuesInStorage(read, header, resultsStorage);
-    }
-
-    /**
-     * Perform a certain transversion (A <-> C or G <-> T) on the base.
-     *
-     * @param base the base [AaCcGgTt]
-     * @return the transversion of the base, or the input base if it's not one of the understood ones
-     */
-    private static byte performColorOne(byte base) {
-        switch (base) {
-            case 'A':
-            case 'a':
-                return 'C';
-            case 'C':
-            case 'c':
-                return 'A';
-            case 'G':
-            case 'g':
-                return 'T';
-            case 'T':
-            case 't':
-                return 'G';
-            default:
-                return base;
-        }
-    }
-
-    /**
-     * Perform a transition (A <-> G or C <-> T) on the base.
-     *
-     * @param base the base [AaCcGgTt]
-     * @return the transition of the base, or the input base if it's not one of the understood ones
-     */
-    private static byte performColorTwo(byte base) {
-        switch (base) {
-            case 'A':
-            case 'a':
-                return 'G';
-            case 'C':
-            case 'c':
-                return 'T';
-            case 'G':
-            case 'g':
-                return 'A';
-            case 'T':
-            case 't':
-                return 'C';
-            default:
-                return base;
-        }
-    }
-
-    /**
-     * Return the complement (A <-> T or C <-> G) of a base.
-     *
-     * @param base the base [AaCcGgTt]
-     * @return the complementary base, or the input base if it's not one of the understood ones
-     */
-    private static byte performColorThree(byte base) {
-        switch (base) {
-            case 'A':
-            case 'a':
-                return 'T';
-            case 'C':
-            case 'c':
-                return 'G';
-            case 'G':
-            case 'g':
-                return 'C';
-            case 'T':
-            case 't':
-                return 'A';
-            default:
-                return base;
-        }
     }
 
     /**

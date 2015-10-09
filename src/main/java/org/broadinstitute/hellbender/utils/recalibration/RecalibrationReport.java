@@ -276,12 +276,18 @@ public final class RecalibrationReport {
                 if (no_standard_covs){
                     throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but no_standard_covs was true");
                 }
-            } else if (argument.equals("solid_recal_mode"))
-                RAC.SOLID_RECAL_MODE = RecalUtils.SOLID_RECAL_MODE.recalModeFromString((String) value);
-
-            else if (argument.equals("solid_nocall_strategy"))
-                RAC.SOLID_NOCALL_STRATEGY = RecalUtils.SOLID_NOCALL_STRATEGY.nocallStrategyFromString((String) value);
-
+            } else if (argument.equals("solid_recal_mode")) {
+                final String solid_recal_mode = (String) value;
+                if (!RecalibrationArgumentCollection.SOLID_RECAL_MODE.equals(solid_recal_mode)){
+                    throw new UserException("Solid is not supported. Only " + RecalibrationArgumentCollection.SOLID_RECAL_MODE + " is allowed as value for solid_recal_mode");
+                }
+            }
+            else if (argument.equals("solid_nocall_strategy")) {
+                final String solid_nocall_strategy = (String) value;
+                if (!RecalibrationArgumentCollection.SOLID_NOCALL_STRATEGY.equals(solid_nocall_strategy)){
+                    throw new UserException("Solid is not supported. Only " + RecalibrationArgumentCollection.SOLID_NOCALL_STRATEGY + " is allowed as value for solid_nocall_strategy");
+                }
+            }
             else if (argument.equals("mismatches_context_size"))
                 RAC.MISMATCHES_CONTEXT_SIZE = Integer.parseInt((String) value);
 
