@@ -82,8 +82,8 @@ public final class ExomeReadCounts extends ReadWalker {
     protected static final String EXOME_FILE_SHORT_NAME = EXOME_FILE_FULL_NAME;
     protected static final String EXON_OUT_INFO_FULL_NAME = "exonInformationColumns";
     protected static final String EXON_OUT_INFO_SHORT_NAME = "exonInfo";
-    protected static final String KEEP_DUPLICATE_READS_FULL_NAME = "filterduplicatereads";
-    protected static final String KEEP_DUPLICATE_READS_SHORT_NAME = "filterdups";
+    protected static final String KEEP_DUPLICATE_READS_FULL_NAME = "keepduplicatereads";
+    protected static final String KEEP_DUPLICATE_READS_SHORT_NAME = "keepdups";
 
     private static final String PCOV_OUTPUT_DOUBLE_FORMAT = "%.4g";
 
@@ -149,7 +149,7 @@ public final class ExomeReadCounts extends ReadWalker {
     protected ExonOutInfo exonOutInfo = ExonOutInfo.COORDS;
 
     @Argument(
-            doc = "Do not filter duplicate reads",
+            doc = "Flag to retain duplicate reads",
             shortName = KEEP_DUPLICATE_READS_SHORT_NAME,
             fullName = KEEP_DUPLICATE_READS_FULL_NAME,
             optional = true
