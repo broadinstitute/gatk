@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.read.testers;
+package org.broadinstitute.hellbender.utils.test.testers;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
@@ -12,13 +12,13 @@ import java.util.*;
 /**
  * This class is the extension of the SamFileTester to test CleanSam with SAM files generated on the fly.
  */
-public final class CleanSamTester extends SamFileTester {
+public final class CleanSamIntegrationTest extends SamFileTester {
     private final String expectedCigar;
 
     @Override
     public String getTestedClassName() { return CleanSam.class.getSimpleName(); }
 
-    public CleanSamTester(final String expectedCigar, final int readLength, final int defaultChromosomeLength) {
+    public CleanSamIntegrationTest(final String expectedCigar, final int readLength, final int defaultChromosomeLength) {
         super(readLength, true, defaultChromosomeLength);
         this.expectedCigar = expectedCigar;
     }

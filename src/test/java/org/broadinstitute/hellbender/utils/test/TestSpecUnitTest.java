@@ -1,6 +1,5 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.utils.test;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

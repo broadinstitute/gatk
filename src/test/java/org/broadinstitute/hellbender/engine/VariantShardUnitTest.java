@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.api.services.genomics.model.Read;
-import org.broadinstitute.hellbender.tools.ReadsPreprocessingPipelineTestData;
+import org.broadinstitute.hellbender.utils.test.ReadsPreprocessingPipelineTestData;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

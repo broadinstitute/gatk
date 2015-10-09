@@ -1,10 +1,11 @@
-package org.broadinstitute.hellbender.utils.read;
+package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.SAMValidationError;
 import htsjdk.samtools.SamFileValidator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.hellbender.utils.read.SamComparison;
 import org.testng.Assert;
 
 import java.io.File;

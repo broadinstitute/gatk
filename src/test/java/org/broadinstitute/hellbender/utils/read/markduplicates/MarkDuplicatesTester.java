@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
 import htsjdk.samtools.DuplicateScoringStrategy;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.tools.picard.sam.markduplicates.MarkDuplicates;
+import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
 
 /**
  * This class is an extension of AbstractMarkDuplicatesCommandLineProgramTester used to test MarkDuplicates with SAM files generated on the fly.

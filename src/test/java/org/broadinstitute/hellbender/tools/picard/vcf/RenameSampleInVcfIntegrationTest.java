@@ -1,19 +1,12 @@
 package org.broadinstitute.hellbender.tools.picard.vcf;
 
-import com.jcraft.jsch.UserInfo;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
 
 public final class RenameSampleInVcfIntegrationTest extends CommandLineProgramTest {
 

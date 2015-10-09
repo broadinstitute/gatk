@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.read.mergealignment.BestMapqPrimaryAlignmentSelectionStrategy;
 import org.broadinstitute.hellbender.utils.read.mergealignment.SamAlignmentMerger;
 import org.broadinstitute.hellbender.utils.test.BaseTest;

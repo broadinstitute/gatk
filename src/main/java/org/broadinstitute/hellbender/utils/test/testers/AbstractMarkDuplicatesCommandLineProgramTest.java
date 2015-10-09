@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.read.markduplicates;
+package org.broadinstitute.hellbender.utils.test.testers;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;

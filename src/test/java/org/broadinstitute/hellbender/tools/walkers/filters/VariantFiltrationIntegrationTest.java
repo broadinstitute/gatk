@@ -2,16 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.filters;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
-
-import static org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants.ValidationType.ALL;
 
 public final class VariantFiltrationIntegrationTest extends CommandLineProgramTest {
 
