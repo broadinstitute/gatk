@@ -41,7 +41,7 @@ To run a single test class, run something like this, `gradle test -Dtest.single=
 
 To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`. (IntelliJ 14 has a good coverage tool that is preferable for development).
 
-To run the main program, run `build/install/hellbender/bin/hellbender`.
+To run the main program, run `build/install/gatk/bin/gatk`.
 
 Note: for faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.  This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.  
 
