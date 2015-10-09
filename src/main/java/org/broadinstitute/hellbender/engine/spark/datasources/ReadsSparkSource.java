@@ -23,6 +23,7 @@ import org.seqdoop.hadoop_bam.AnySAMInputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
@@ -111,8 +112,14 @@ public class ReadsSparkSource implements Serializable {
      */
     public static SAMFileHeader getHeader(final JavaSparkContext ctx, final String filePath) {
         final SAMFileHeader samFileHeader;
+        Path path = new Path(filePath);
+        File file = new File(filePath); // not hdfs...
+
+        if (file.isDirectory()) {
+            path = new Path(filePath + "/part-r-00000");
+        }
         try {
-             samFileHeader = SAMHeaderReader.readSAMHeaderFrom(new Path(filePath), ctx.hadoopConfiguration());
+             samFileHeader = SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
         } catch (IOException e) {
             throw new GATKException("unable to loader header: " + e);
         }

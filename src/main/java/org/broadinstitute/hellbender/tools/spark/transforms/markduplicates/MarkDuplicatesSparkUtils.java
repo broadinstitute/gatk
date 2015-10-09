@@ -113,7 +113,6 @@ public class MarkDuplicatesSparkUtils {
             final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEnds, pair -> pair.second() != null);
 
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
-
             if (ReadsKey.isFragment(keyedPair._1())) { // fragments
                 return handleFragments(pairedEnds);
             }
