@@ -142,4 +142,22 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                 UserException.IncompatibleSequenceDictionaries.class);
         spec.executeTest("testBQSRFailWithIncompatibleReference", this);
     }
+
+    @Test
+    public void testBQSRFailWithUnsupportedPlatforms() throws IOException {
+        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
+
+        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
+
+        final String HiSeqBam = resourceDir + "solid.bam";
+
+        final String  NO_ARGS = "";
+        final BQSRTest params = new BQSRTest(hg19MiniReference, HiSeqBam, dbSNPb37, NO_ARGS, resourceDir + "expected.txt");
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                params.getCommandLine(),
+                1,
+                UserException.BadInput.class);
+        spec.executeTest("testBQSRFailWithUnsupportedPlatforms", this);
+    }
+
 }
