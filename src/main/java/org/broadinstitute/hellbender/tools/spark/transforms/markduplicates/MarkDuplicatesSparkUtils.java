@@ -37,7 +37,7 @@ public class MarkDuplicatesSparkUtils {
      * How to assign a score to the read in MarkDuplicates (so that we pick the best one to be the non-duplicate).
      */
     //Note: copied from htsjdk.samtools.DuplicateScoringStrategy
-    static int score(final GATKRead record) {
+    public static int score(final GATKRead record) {
         if (record == null) {
             return 0;
         } else {
