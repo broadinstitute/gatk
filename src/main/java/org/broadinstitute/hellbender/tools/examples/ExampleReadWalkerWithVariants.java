@@ -26,16 +26,16 @@ import java.util.List;
         oneLineSummary = "Print reads with overlapping variants",
         programGroup = VariantProgramGroup.class
 )
-public final class PrintReadsWithVariants extends ReadWalker {
+public final class ExampleReadWalkerWithVariants extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more VCF/BCF files", optional = true)
-    List<FeatureInput<VariantContext>> variants;
+    private List<FeatureInput<VariantContext>> variants;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    public File outputFile;
+    private File outputFile;
 
     @Argument(fullName = "groupVariantsBySource", shortName = "groupVariantsBySource", doc = "If true, group overlapping variants by their source when outputting them", optional = true)
-    public boolean groupVariantsBySource = false;
+    private boolean groupVariantsBySource = false;
 
     private PrintStream outputStream = null;
 

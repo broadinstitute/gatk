@@ -1,13 +1,10 @@
 package org.broadinstitute.hellbender.tools.examples;
 
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalVariantInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -17,21 +14,21 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 
 /**
- * Example/toy program that shows how to implement the IntervalWalker interface. Prints supplied intervals
+ * Example/toy program that shows how to implement the VariantWalker interface. Prints supplied variants
  * along with overlapping reads/reference bases/variants (if present).
  */
 @CommandLineProgramProperties(
-        summary = "Prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
-        oneLineSummary = "Print intervals with optional contextual data",
-        programGroup = IntervalProgramGroup.class
+        summary = "Prints variants supplied to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
+        oneLineSummary = "Print variants with optional contextual data",
+        programGroup = VariantProgramGroup.class
 )
-public final class ExampleIntervalWalker extends IntervalWalker {
-
-    @ArgumentCollection
-    private OptionalVariantInputArgumentCollection optionalVariants = new OptionalVariantInputArgumentCollection();
+public final class ExampleVariantWalker extends VariantWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
     private File outputFile = null;
+
+    @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
+    private FeatureInput<VariantContext> auxiliaryVariants;
 
     private PrintStream outputStream = null;
 
@@ -46,8 +43,8 @@ public final class ExampleIntervalWalker extends IntervalWalker {
     }
 
     @Override
-    public void apply( final SimpleInterval interval, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        outputStream.println("Current interval: " + interval);
+    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+        outputStream.println("Current variant: " + variant);
 
         if ( referenceContext.hasBackingDataSource() ) {
             printReferenceBases(referenceContext);
@@ -74,7 +71,7 @@ public final class ExampleIntervalWalker extends IntervalWalker {
     }
 
     private void printVariants( final FeatureContext featureContext ) {
-        for ( final VariantContext variant : featureContext.getValues(optionalVariants.variantFiles) ) {
+        for ( final VariantContext variant : featureContext.getValues(auxiliaryVariants) ) {
             outputStream.printf("\tOverlapping variant at %s:%d-%d. Ref: %s Alt(s): %s\n",
                     variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(), variant.getAlternateAlleles());
         }
@@ -89,5 +86,4 @@ public final class ExampleIntervalWalker extends IntervalWalker {
 
         return null;
     }
-
 }

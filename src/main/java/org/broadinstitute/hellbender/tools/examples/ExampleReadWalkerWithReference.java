@@ -23,10 +23,10 @@ import java.io.PrintStream;
         oneLineSummary = "Print reads with reference context",
         programGroup = ReadProgramGroup.class
 )
-public final class PrintReadsWithReference extends ReadWalker {
+public final class ExampleReadWalkerWithReference extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    public File OUTPUT_FILE = null;
+    private File OUTPUT_FILE = null;
 
     private PrintStream outputStream = null;
 

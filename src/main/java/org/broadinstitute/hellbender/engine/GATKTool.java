@@ -261,9 +261,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeReads(); // Must be initialized after reference, in case we are dealing with CRAM and a reference is required
 
-        initializeFeatures();
+        initializeIntervals(); // Must be initialized after reference and reads, since intervals currently require a sequence dictionary from another data source
 
-        initializeIntervals(); // Must be initialized last, since intervals currently require a sequence dictionary from another data source
+        initializeFeatures();
 
         validateSequenceDictionaries();
 

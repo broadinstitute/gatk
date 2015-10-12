@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.walkers.CountVariants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -8,6 +9,11 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
+
+    @Override
+    public String getTestedClassName() {
+        return CountVariants.class.getSimpleName();
+    }
 
     @Test(dataProvider = "filenames")
     public void testCountBases(String fileIn) throws Exception {
