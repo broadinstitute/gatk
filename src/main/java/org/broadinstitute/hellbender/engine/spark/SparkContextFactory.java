@@ -16,11 +16,12 @@ import java.util.Map;
 public final class SparkContextFactory {
 
     public static final String DEFAULT_SPARK_MASTER = "local[*]";
+    private static final boolean SPARK_DEBUG_ENABLED = Boolean.getBoolean("gatk.spark.debug");
 
     public static final Map<String, String> TEST_ATTRIBUTES = ImmutableMap.<String, String>builder()
             .put("spark.serializer", KryoSerializer.class.getCanonicalName())
             .put("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
-            .put("spark.ui.enabled", "false")
+            .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
             .build();
 
     public static final Map<String, String> CMDLINE_ATTRIBUTES = ImmutableMap.<String, String>builder()
