@@ -5,10 +5,11 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -825,17 +826,6 @@ public final class ReadUtils {
             default:
                 throw new GATKException("Unrecognized Base Recalibration type: " + errorModel );
         }
-    }
-
-    /**
-     * is the read a SOLiD read?
-     *
-     * @param read the read to test
-     * @param header SAM header for the read
-     * @return checks the read group tag PL for the default SOLiD tag
-     */
-    public static boolean isSOLiDRead(final GATKRead read, final SAMFileHeader header) {
-        return NGSPlatform.fromReadGroupPL(ReadUtils.getPlatform(read, header)) == NGSPlatform.SOLID;
     }
 
     /**

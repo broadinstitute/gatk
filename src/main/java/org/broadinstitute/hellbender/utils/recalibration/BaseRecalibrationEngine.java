@@ -92,10 +92,6 @@ public final class BaseRecalibrationEngine implements Serializable {
         }
 
         RecalUtils.parsePlatformForRead(read, readsHeader, recalArgs);
-        // parse the solid color space and check for color no-calls
-        if ( ! RecalUtils.isColorSpaceConsistent(recalArgs.SOLID_NOCALL_STRATEGY, read, readsHeader)) {
-            return; // skip this read completely
-        }
 
         int[] isSNP = new int[read.getLength()];
         int[] isInsertion = new int[isSNP.length];
@@ -286,13 +282,9 @@ public final class BaseRecalibrationEngine implements Serializable {
         final boolean[] skip = new boolean[bases.length];
         final boolean[] knownSitesArray = calculateKnownSites(read, knownSites);
         for( int iii = 0; iii < bases.length; iii++ ) {
-            skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSitesArray[iii] || badSolidOffset(read, iii);
+            skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSitesArray[iii];
         }
         return skip;
-    }
-
-    protected boolean badSolidOffset( final GATKRead read, final int offset ) {
-        return ReadUtils.isSOLiDRead(read, readsHeader) && recalArgs.SOLID_RECAL_MODE != RecalUtils.SOLID_RECAL_MODE.DO_NOTHING && !RecalUtils.isColorSpaceConsistent(read, offset);
     }
 
     protected boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
