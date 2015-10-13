@@ -234,13 +234,10 @@ test {
             excludeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
         }
         if (SPARK == "false") {
-            // exclude Spark (but not Spark Dataflow, see DATAFLOW_RUNNER env variable) if explicitly requested
+            // exclude Spark tests
             excludeGroups 'spark'
         }
     }
-
-    // ensure dataflowRunner is passed to the test VM if specified on the command line
-    systemProperty "dataflowRunner", System.getProperty("dataflowRunner")
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
