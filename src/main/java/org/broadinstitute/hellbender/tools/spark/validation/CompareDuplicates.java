@@ -8,8 +8,6 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -19,11 +17,16 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import scala.Tuple2;
 import scala.Tuple3;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @CommandLineProgramProperties(summary = "Compares two BAMs", oneLineSummary = "Compares two BAMs",
         programGroup = SparkProgramGroup.class)
@@ -85,7 +88,7 @@ public final class CompareDuplicates extends GATKSparkTool {
         for (Map.Entry<String, Tuple3<String, Iterable<GATKRead>, Iterable<GATKRead>>> entry : dupesMismatch.entrySet()) {
             Tuple3<String, Iterable<GATKRead>, Iterable<GATKRead>> item = entry.getValue();
             GATKRead first = Iterables.getFirst(item._2(), null); // the item must be non-null
-            if (!ReadUtils.readHasMappedMate(first)) {
+            if (ReadUtils.readHasMappedMate(first)) {
                 joinedPairedReads.add(new Tuple2<>(item._2(), item._3()));
             } else {
                 joinedUpairedReads.add(new Tuple2<>(item._2(), item._3()));
@@ -127,6 +130,58 @@ public final class CompareDuplicates extends GATKSparkTool {
         }).groupBy(GATKRead::getName).collectAsMap();
 
 
+        int samePairedScore = 0;
+        int differentPairedScore = 0;
+        // Look at paired dupes scores
+        for (Tuple2<Iterable<GATKRead>, Iterable<GATKRead>> entry : joinedPairedReads) {
+            int firstScore = -1;
+            for (GATKRead first : entry._1()) {
+                if (!first.isDuplicate()) {
+                    if (firstScore == -1) {
+                        Iterable<GATKRead> pair = firstDupPairsMap.get(first.getName());
+                        List<GATKRead> lPair = Lists.newArrayList(pair);
+                        if (lPair.size() != 2) {
+                            throw new GATKException("expected to find two reads from mate map, found " + lPair.size());
+                        }
+                        firstScore = MarkDuplicatesSparkUtils.score(lPair.get(0)) + MarkDuplicatesSparkUtils.score(lPair.get(1));
+                    } else {
+                        System.out.println("...there should only be one paired non-duplicate (1), " + first);
+                        for (GATKRead f : entry._1()) {
+                            System.out.println("read: " + f + ", " + f.isDuplicate());
+                        }
+                    }
+                }
+            }
+            int secondScore = -1;
+            for (GATKRead second : entry._2()) {
+                if (!second.isDuplicate()) {
+                    if (secondScore == -1) {
+                        Iterable<GATKRead> pair = secondDupPairsMap.get(second.getName());
+                        List<GATKRead> lPair = Lists.newArrayList(pair);
+                        if (lPair.size() != 2) {
+                            throw new GATKException("expected to find two reads from mate map, found " + lPair.size());
+                        }
+                        secondScore = MarkDuplicatesSparkUtils.score(lPair.get(0)) + MarkDuplicatesSparkUtils.score(lPair.get(1));
+                    } else {
+                        System.out.println("...there should only be one paired non-duplicate (2), " + second);
+                    }
+                }
+            }
+
+            if (firstScore == -1) {
+                throw new GATKException("there should be at least one non-duplicate from the first bam");
+            }
+            if (secondScore == -1) {
+                throw new GATKException("there should be at least one non-duplicate from the second bam, exiting...");
+            }
+            if (firstScore == secondScore) {
+                samePairedScore++;
+            } else {
+                differentPairedScore++;
+            }
+        }
+
+
 
         JavaRDD < GATKRead > firstDupes = firstReads.filter(GATKRead::isDuplicate);
         JavaRDD<GATKRead> secondDupes = secondReads.filter(GATKRead::isDuplicate);
@@ -158,6 +213,8 @@ public final class CompareDuplicates extends GATKSparkTool {
 
 
         System.out.println("same score, different score: " + sameScore + "," + differentScore);
+        System.out.println("same paired score, different paired score: " + samePairedScore + "," + differentPairedScore);
+
         /*
         for (Map.Entry<String, Tuple3<String, Iterable<GATKRead>, Iterable<GATKRead>>> entry : diffNumDupesMap.entrySet()) {
             System.out.println("**************************************");
@@ -198,7 +255,7 @@ class Utils {
             List<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> joinedUpairedReads) {
         // For unpaired, calculate the scores.
         int sameScore = 0;
-        int differnetScore = 0;
+        int differentScore = 0;
         for (Tuple2<Iterable<GATKRead>, Iterable<GATKRead>> entry : joinedUpairedReads) {
             // Find the score of the non-duplicate in the first BAM
             //System.out.println("********** Starting new location **********");
@@ -233,10 +290,10 @@ class Utils {
             if (firstScore == secondScore) {
                 sameScore++;
             } else {
-                differnetScore++;
+                differentScore++;
             }
         }
-        return new Tuple2<>(sameScore, differnetScore);
+        return new Tuple2<>(sameScore, differentScore);
     }
 
     static String getDupes(Iterable<GATKRead> f, Iterable<GATKRead> s, SAMFileHeader header) {
