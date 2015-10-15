@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.dataflow.DoFnWLog;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ContextShard;
 import org.broadinstitute.hellbender.engine.dataflow.datasources.ReadsShard;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.recalibration.QuantizationInfo;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
@@ -109,7 +110,10 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
                 public void processElement(ProcessContext c) throws IOException {
                     RecalibrationTables rt = c.element();
                     SAMFileHeader header = c.sideInput(headerView);
-                    //BaseRecalOutput ret = new BaseRecalOutput(rt, baseRecalibratorWorker.getQuantizationInfo(rt), baseRecalibratorWorker.getRequestedCovariates());
+                    BaseRecalibrationEngine recalibrationEngine = new BaseRecalibrationEngine(recalArgs, header);
+                    QuantizationInfo qi = new QuantizationInfo(rt, recalArgs.QUANTIZING_LEVELS);
+                    BaseRecalOutput ret = new BaseRecalOutput(rt, qi, recalibrationEngine.getCovariates());
+                    /*
                     // Saving and loading back the report actually changes it. So we have to do it.
                     // TODO(issue#799): Figure out what it changes, and just do that instead of doing the whole rigamarole.
                     File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
@@ -129,6 +133,7 @@ public final class BaseRecalibratorOptimizedTransform extends PTransform<PCollec
                     } catch (IOException e) {
                         throw new GATKException("unable to save temporary report to " + temp.getPath(), e);
                     }
+                    */
                 }
             }));
     }

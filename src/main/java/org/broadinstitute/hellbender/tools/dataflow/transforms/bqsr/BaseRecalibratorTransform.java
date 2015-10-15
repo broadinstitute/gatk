@@ -108,7 +108,9 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
                 public void processElement(ProcessContext c) throws IOException {
                     RecalibrationTables rt = c.element();
                     SAMFileHeader header = c.sideInput(headerView);
-                    //BaseRecalOutput ret = new BaseRecalOutput(rt, baseRecalibratorWorker.getQuantizationInfo(rt), baseRecalibratorWorker.getRequestedCovariates());
+//                    BaseRecalibrationEngine recalibrationEngine = new BaseRecalibrationEngine(recalArgs, header)
+//                    BaseRecalOutput ret = new BaseRecalOutput(rt, recalibrationEngine.getQuantizationInfo(rt), recalibrationEngine.getCovariates());
+
                     // Saving and loading back the report actually changes it. So we have to do it.
                     // TODO(issue#799): Figure out what it changes, and just do that instead of doing the whole rigamarole.
                     File temp = IOUtils.createTempFile("temp-recalibrationtable-", ".tmp");
@@ -128,6 +130,7 @@ public final class BaseRecalibratorTransform extends PTransform<PCollection<KV<G
                     } catch (IOException e) {
                         throw new GATKException("unable to save temporary report to " + temp.getPath(), e);
                     }
+
                 }
             }));
     }
