@@ -129,6 +129,7 @@ public final class CompareDuplicates extends GATKSparkTool {
             return secondDupes.contains(v1.getName());
         }).groupBy(GATKRead::getName).collectAsMap();
 
+        /*
 
         int samePairedScore = 0;
         int differentPairedScore = 0;
@@ -141,7 +142,7 @@ public final class CompareDuplicates extends GATKSparkTool {
                         Iterable<GATKRead> pair = firstDupPairsMap.get(first.getName());
                         List<GATKRead> lPair = Lists.newArrayList(pair);
                         if (lPair.size() != 2) {
-                            throw new GATKException("expected to find two reads from mate map, found " + lPair.size());
+                            throw new GATKException("expected to find two reads srom mate map, found " + lPair.size());
                         }
                         firstScore = MarkDuplicatesSparkUtils.score(lPair.get(0)) + MarkDuplicatesSparkUtils.score(lPair.get(1));
                     } else {
@@ -180,7 +181,7 @@ public final class CompareDuplicates extends GATKSparkTool {
                 differentPairedScore++;
             }
         }
-
+        */
 
 
         JavaRDD < GATKRead > firstDupes = firstReads.filter(GATKRead::isDuplicate);
@@ -213,7 +214,7 @@ public final class CompareDuplicates extends GATKSparkTool {
 
 
         System.out.println("same score, different score: " + sameScore + "," + differentScore);
-        System.out.println("same paired score, different paired score: " + samePairedScore + "," + differentPairedScore);
+        //System.out.println("same paired score, different paired score: " + samePairedScore + "," + differentPairedScore);
 
         /*
         for (Map.Entry<String, Tuple3<String, Iterable<GATKRead>, Iterable<GATKRead>>> entry : diffNumDupesMap.entrySet()) {
@@ -242,7 +243,7 @@ public final class CompareDuplicates extends GATKSparkTool {
 }
 
 class GroupKey implements Function<GATKRead, String> {
-
+    private static final long serialVersionUID = 1L;
     @Override
     public String call(GATKRead v1) throws Exception {
         return v1.getContig() + "," + ReadUtils.getStrandedUnclippedStart(v1) + "," + ReadUtils.readHasMappedMate(v1);

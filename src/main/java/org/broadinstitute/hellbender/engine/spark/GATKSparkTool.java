@@ -57,7 +57,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
-    private JavaSparkContext sparkContext;
+    private transient JavaSparkContext sparkContext;
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
