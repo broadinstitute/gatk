@@ -57,7 +57,6 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
-    private JavaSparkContext sparkContext;
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
@@ -192,8 +191,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     @Override
     protected void runPipeline( JavaSparkContext sparkContext ) {
-        this.sparkContext = sparkContext;
-        initializeToolInputs();
+        initializeToolInputs(sparkContext);
         validateToolInputs();
         runTool(sparkContext);
     }
@@ -201,8 +199,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Initialize standard tool inputs.
      */
-    private void initializeToolInputs() {
-        initializeReads();
+    private void initializeToolInputs(JavaSparkContext sparkContext) {
+        initializeReads(sparkContext);
         initializeReference();
         initializeIntervals();
     }
@@ -211,7 +209,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Initializes our reads source (but does not yet load the reads into a {@link JavaRDD}).
      * Does nothing if no reads inputs are present.
      */
-    private void initializeReads() {
+    private void initializeReads(JavaSparkContext sparkContext) {
         if ( readArguments.getReadFilesNames().isEmpty() ) {
             return;
         }
