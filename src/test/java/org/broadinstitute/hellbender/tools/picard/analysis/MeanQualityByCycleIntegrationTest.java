@@ -22,7 +22,7 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         final File pdf = BaseTest.createTempFile("testMeanQualityByCycle", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
-        final String[] args = new String[]{
+        final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
@@ -48,7 +48,7 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         final File pdf = BaseTest.createTempFile("pfFailBam.pf", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
-        final String[] args = new String[]{
+        final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
@@ -68,7 +68,7 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         final File pdf = BaseTest.createTempFile("pfFailBam.pf", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
-        final String[] args = new String[]{
+        final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
@@ -88,7 +88,7 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         final File pdf = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_false", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
-        final String[] args = new String[]{
+        final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
@@ -108,7 +108,7 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         final File pdf = BaseTest.createTempFile("unmappedBam.ALIGNED_READS_ONLY_true", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
-        final String[] args = new String[]{
+        final String[] args = {
                 "--INPUT", input.getAbsolutePath(),
                 "--OUTPUT", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),

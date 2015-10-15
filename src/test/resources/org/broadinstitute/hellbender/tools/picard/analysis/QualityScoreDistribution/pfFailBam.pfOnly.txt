@@ -1,0 +1,32 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.QualityScoreDistribution CHART_OUTPUT=pfFailBam.pfOnly.txt.pdf PF_READS_ONLY=true INPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/QualityScoreDistribution/example_pfFail_reads.bam OUTPUT=pfFailBam.pfOnly.txt    ALIGNED_READS_ONLY=false INCLUDE_NO_CALLS=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Wed Oct 14 13:50:48 EDT 2015
+
+
+## HISTOGRAM	java.lang.Byte
+QUALITY	COUNT_OF_Q
+5	127
+6	69
+7	27
+8	72
+9	51
+10	35
+11	53
+12	71
+13	100
+14	116
+15	68
+16	46
+17	73
+18	57
+19	54
+20	89
+21	78
+22	60
+23	69
+24	44
+25	51
+26	12
+27	8
+

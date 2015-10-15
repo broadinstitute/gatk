@@ -1,40 +1,66 @@
 package org.broadinstitute.hellbender.tools.picard.analysis;
 
-import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class QualityScoreDistributionIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/QualityScoreDistribution");
 
-    @Test(groups = {"R"})
-    public void test() throws IOException {
-        final File input = new File(TEST_DATA_DIR, "first5000a.bam");
-        final File expectedFile = new File(TEST_DATA_DIR, "qualscoredist.txt");
-        final File outfile = BaseTest.createTempFile("testQualityScoreDistribution", ".metrics");
-        final File pdf = BaseTest.createTempFile("testQualityScoreDistribution", ".pdf");
-        final String[] args = new String[]{
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
-                "--CHART", pdf.getAbsolutePath(),
-                "--PRODUCE_PLOT", "true",
-        };
-        runCommandLine(args);
+    //Note: the 'expected' results in this test come from running picard 1.130
 
-        try (final FileReader actualReader = new FileReader(outfile);) {
-            final MetricsFile<?, Integer> output = new MetricsFile<>();
-            output.read(actualReader);
-            Assert.assertEquals(output.getAllHistograms().size(), 1);
-            Assert.assertEquals(output.getHistogram().size(), 41);
-        }
-        Assert.assertTrue(pdf.exists());
+    //Note: we don't test the contents of the chart pdf
+
+    @DataProvider(name = "QualityScoreDistribution")
+    private Iterator<Object[]> makeQualityScoreDistributionData(){
+        final List<Object[]> list= new ArrayList<>();
+        list.add(new Object[]{"first5000a.bam", "qualscoredist.txt", true, false, false});
+        list.add(new Object[]{"originalQuals.chr1.1-1K.bam", "originalQuals.chr1.1-1K.QualityScoreDistribution.txt", true, false, false});
+
+        list.add(new Object[]{"example_pfFail_reads.bam", "pfFailBam.pf.txt", true, false, false});
+        list.add(new Object[]{"example_pfFail_reads.bam", "pfFailBam.pfOnly.txt", true, true, false});
+
+        list.add(new Object[]{"unmapped.bam", "unmappedBam.ALIGNED_READS_ONLY_false.txt", true, false, false});
+        list.add(new Object[]{"unmapped.bam", "unmappedBam.ALIGNED_READS_ONLY_true.txt", false, false, true});
+
+        return list.iterator();
+    }
+
+    @Test(dataProvider = "QualityScoreDistribution", groups = {"R"})
+    public void test(final String unsortedBamName, final String expectedFileName, final boolean makePdf, final boolean pfReadsOnly, final boolean alignedReadsOnly) throws IOException {
+        final File unsortedBam = new File(TEST_DATA_DIR, unsortedBamName);
+        final File expectedFile = new File(TEST_DATA_DIR, expectedFileName);
+
+        //Note we compare to non-spark outputs
+        final File outfile = BaseTest.createTempFile("test", ".metrics");
+        final File pdf = BaseTest.createTempFile("test", ".pdf");
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + "INPUT");
+        args.add(unsortedBam.getCanonicalPath());
+        args.add("--" + "OUTPUT");
+        args.add(outfile.getCanonicalPath());
+        args.add("--" + "CHART_OUTPUT");
+        args.add(pdf.getCanonicalPath());
+        args.add("--" + "PRODUCE_PLOT");
+        args.add(makePdf);
+
+        args.add("--" + "PF_READS_ONLY");
+        args.add(pfReadsOnly);
+        args.add("--" + "ALIGNED_READS_ONLY");
+        args.add(alignedReadsOnly);
+
+        this.runCommandLine(args.getArgsArray());
+
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 }
