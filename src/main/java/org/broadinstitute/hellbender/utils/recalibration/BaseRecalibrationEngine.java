@@ -174,6 +174,21 @@ public final class BaseRecalibrationEngine implements Serializable {
                 rgDatum.combine(qualDatum);
             }
         }
+
+        /* To replicate the results of BQSR whether or not we save tables to disk (which we need in Spark),
+         * we need to trim the numbers to a few decimal placed (that's what writing and reading does).
+         */
+        roundTableValues(tables);
+    }
+
+    private static void roundTableValues(final RecalibrationTables rt) {
+        for (int i = 0; i < rt.numTables(); i++) {
+            for (final NestedIntegerArray.Leaf<RecalDatum> leaf : rt.getTable(i).getAllLeaves()) {
+                leaf.value.setNumMismatches(MathUtils.roundToNDecimalPlaces(leaf.value.getNumMismatches(), RecalUtils.NUMBER_ERRORS_DECIMAL_PLACES));
+                leaf.value.setEmpiricalQuality(MathUtils.roundToNDecimalPlaces(leaf.value.getEmpiricalQuality(), RecalUtils.EMPIRICAL_QUAL_DECIMAL_PLACES));
+                leaf.value.setEstimatedQReported(MathUtils.roundToNDecimalPlaces(leaf.value.getEstimatedQReported(), RecalUtils.EMPIRICAL_Q_REPORTED_DECIMAL_PLACES));
+            }
+        }
     }
 
     /**

@@ -98,7 +98,7 @@ public final class BaseRecalibrator extends ReadWalker {
      * use -XL my.interval.list to skip over processing those sites. Please note however that the statistics reported by the tool will not accurately
      * reflected those sites skipped by the -XL argument.
      */
-    @Argument(fullName = "knownSites", shortName = "knownSites", doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = true)
+    @Argument(fullName = "knownSites", shortName = "knownSites", doc = "One or more databases of known polymorphic sites used to exclude regions around known polymorphisms from analysis.", optional = false)
     private List<FeatureInput<Feature>> knownSites;
 
     /**
@@ -119,9 +119,6 @@ public final class BaseRecalibrator extends ReadWalker {
      */
     private QuantizationInfo quantizationInfo = null;
 
-    private static final String NO_DBSNP_EXCEPTION = "This calculation is critically dependent on being able to skip over known variant sites. Please provide a VCF file containing known sites of genetic variation.";
-
-
     @Override
     public boolean requiresReference() {
         return true;
@@ -138,10 +135,6 @@ public final class BaseRecalibrator extends ReadWalker {
         }
 
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
-
-        if ( knownSites.isEmpty() && ! recalArgs.RUN_WITHOUT_DBSNP ) { // Warn the user if no dbSNP file or other variant mask was specified
-            throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
-        }
 
         recalibrationEngine = new BaseRecalibrationEngine(recalArgs, getHeaderForReads());
         recalibrationEngine.logCovariatesUsed();

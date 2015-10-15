@@ -721,4 +721,18 @@ public final class MathUtils {
         for (int i = 0; i < is.length; ++i) ds[i] = is[i];
         return ds;
     }
+
+    /**
+     * Rounds the double to the given number of decimal places.
+     * For example, rounding 3.1415926 to 3 places would give 3.142.
+     * The requirement is that it works exactly as writing a number down with string.format and reading back in.
+     */
+    public static double roundToNDecimalPlaces(final double in, final int n) {
+        if (n < 1) {
+            throw new IllegalArgumentException("cannot round to " + n + " decimal places");
+        }
+
+         final double mult = Math.pow(10,n);
+         return Math.round( (in+Math.ulp(in))*mult )/mult;
+    }
 }
