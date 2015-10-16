@@ -6,8 +6,6 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -133,10 +131,10 @@ public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
         /** The number of bases in PF reads that achieve quality score 20 or higher */
         public long PF_Q20_BASES = 0;
 
-        /** The number of bases in all reads that achieve quality score 20 or higher */
+        /** The number of bases in all reads that achieve quality score 30 or higher */
         public long Q30_BASES = 0;
 
-        /** The number of bases in PF reads that achieve quality score 20 or higher */
+        /** The number of bases in PF reads that achieve quality score 30 or higher */
         public long PF_Q30_BASES = 0;
 
         /** The sum of quality scores of all bases divided by 20 */

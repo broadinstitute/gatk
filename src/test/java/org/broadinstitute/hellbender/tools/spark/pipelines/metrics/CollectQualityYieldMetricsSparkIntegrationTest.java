@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.analysis;
+package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -12,11 +12,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public final class CollectQualityYieldMetricsIntegrationTest extends CommandLineProgramTest {
+public final class CollectQualityYieldMetricsSparkIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectQualityYieldMetrics");
 
     //Note: the 'expected' results in this test come from running picard 1.130
     //Note: we don't test the contents of the chart pdf
+    //NOTE: these tests use the same data and results as the non-spark ones, by design
 
     @DataProvider(name = "CollectQualityYieldMetrics")
     private Iterator<Object[]> makeCollectQualityYieldMetricsData(){
