@@ -1,92 +1,100 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 /**
- * Simple caller that
- * 1) estimates the value of normalized coverage corresponding to copy neutral segments
- * This value is not necessarily equal to zero.  For example, a large amplification on one segment
- * depresses the proportional coverage of all other segments.
- * 2) estimates the variance of targets' normalized coverage within a segment, assuming that
- * this variance is globally shared by all segments
- * 3) calls each segment based on a p-value for the null hypothesis that its targets'
- * normalized coverages are drawn from a normal distribution defined by the mean from 1)
- * and the variance from 2)
+ * <p>This caller mimics the legacy ReCapSeg Caller that was originally implemented in ReCapSeg v1.4.5.0.</p>
  *
- * Note:  Assumes that the incoming target file is in log_2(CR)
+ * <p>There is a small difference.  The python code was using the same algorithm as intersectBed, which was causing it to drop
+ *  the first target of each segment in calculations of the copy neutral targets.  The code here (targets.targets(s)) does
+ *  not do this.  This difference in the two codebases can cause a slight difference in the T calculation.  Hence, the
+ *  results of this code and the python code will not be exactly the same, but will be
+ *  very close.  A fix (to make this code match the python) has been deemed unworthy of our time.</p>
  *
- * @author David Benjamin
  */
 public final class ReCapSegCaller {
-
-    public static String AMPLIFICATION_CALL = "+";
-    public static String DELETION_CALL = "-";
-    public static String NEUTRAL_CALL = "0";
-
-    // default number of standard deviations from mean required to call an amplification or deletion
-    public static final double DEFAULT_Z_SCORE_THRESHOLD = 2.0;
-
-    //bounds on log_2 coverage we take as non-neutral a priori
-    public static final double NON_NEUTRAL_THRESHOLD = 0.3;
+    private static final Logger logger = LogManager.getLogger(ReCapSegCaller.class);
+    public static String AMPLIFICATION_CALL = CnvCaller.AMPLIFICATION_CALL;
+    public static String DELETION_CALL = CnvCaller.DELETION_CALL;
+    public static String NEUTRAL_CALL = CnvCaller.NEUTRAL_CALL;
 
     //bounds on log_2 coverage for high-confidence neutral segments
     public static final double COPY_NEUTRAL_CUTOFF = 0.1;
 
+    // Number of standard deviations before assuming that a target was an outlier in a segment
+    public static final double Z_THRESHOLD = 2;
+
     private ReCapSegCaller() {} // prevent instantiation
+
+    private static double calculateT(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments) {
+
+        //Get the segments that are likely copy neutral.
+        // Math.abs removed to mimic python...
+        final List<ModeledSegment> copyNeutralSegments = segments.stream().filter(s -> s.getSegmentMean() < COPY_NEUTRAL_CUTOFF).collect(Collectors.toList());
+
+        // Get the targets that correspond to the copyNeutralSegments... note that individual targets, due to noise,
+        //  can be far away from copy neutral
+        final List<TargetCoverage> copyNeutralTargets = copyNeutralSegments.stream()
+                .flatMap(s -> targets.targets(s).stream()).collect(Collectors.toList());
+
+        final double [] copyNeutralTargetsCopyRatio = copyNeutralTargets.stream().mapToDouble(TargetCoverage::getCoverage).toArray();
+        final double meanCopyNeutralTargets = new Mean().evaluate(copyNeutralTargetsCopyRatio);
+        final double sigmaCopyNeutralTargets = new StandardDeviation().evaluate(copyNeutralTargetsCopyRatio);
+
+        // Now we filter outliers by only including those w/in 2 standard deviations.
+        final double [] filteredCopyNeutralTargetsCopyRatio = Arrays.stream(copyNeutralTargetsCopyRatio)
+                .filter(c -> Math.abs(c - meanCopyNeutralTargets) < sigmaCopyNeutralTargets * Z_THRESHOLD).toArray();
+
+        return new StandardDeviation().evaluate(filteredCopyNeutralTargetsCopyRatio);
+    }
 
     /**
      * Make calls for a list of segments based on the coverage data in a set of targets.
      *
      * @param targets the collection representing all targets
      * @param segments segments, each of which holds a reference to these same targets
-     * @param zThreshold number of standard deviations from mean required to call an amplification or deletion
      */
-    public static List<ModeledSegment> makeCalls(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments, final double zThreshold) {
+    public static List<ModeledSegment> makeCalls(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments) {
         Utils.nonNull(segments, "Can't make calls on a null list of segments.");
         Utils.nonNull(targets, "Can't make calls on a null list of targets.");
-        ParamUtils.isPositiveOrZero(zThreshold, "zThreshold must be positive or zero.");
 
-        /**
-         * estimate the copy-number neutral log_2 coverage as the median over all targets.
-         * As a precaution we take the median after filtering extreme coverages that are definitely not neutral
-         * i.e. those below -NON_NEUTRAL_COVERAGE or above +NON_NEUTRAL_COVERAGE
-         */
-        final double []  nonExtremeCoverage = targets.targets()
-                .stream()
-                .mapToDouble(TargetCoverage::getCoverage)
-                .filter(c -> Math.abs(c) < NON_NEUTRAL_THRESHOLD)
-                .toArray();
-        final double neutralCoverage = new Median().evaluate(nonExtremeCoverage);
+        final double t = calculateT(targets, segments);
 
-        // Get the standard deviation of targets belonging to high-confidence neutral segments
-        final double[] nearNeutralCoverage = segments.stream()
-                .filter(s -> Math.abs(SegmentUtils.meanTargetCoverage(s, targets) - neutralCoverage) < COPY_NEUTRAL_CUTOFF)
-                .flatMap(s -> targets.targets(s).stream())
-                .mapToDouble(TargetCoverage::getCoverage)
-                .toArray();
-        final double neutralSigma = new StandardDeviation().evaluate(nearNeutralCoverage);
-
+        logger.info("Running caller that mimics the ReCapSeg 1.4.5.0 (python) caller.");
+        logger.info(String.format("T in log2CR: %.4f", t));
 
         for (final ModeledSegment segment : segments) {
-            //Get the number of standard deviations the mean falls from the copy neutral value
-            //we should really use the standard deviation of the mean of segment.numTargets() targets
-            //which is sigma/ sqrt(numTargets).  However, the underlying segment means vary due to noise not
-            //removed by tangent normalization, and such a caller would be too strict.
-            //Thus we just use the population standard deviation of targets, and defer a mathematically
-            //principled treatment for a later caller
-            final double Z = (SegmentUtils.meanTargetCoverage(segment, targets) - neutralCoverage)/neutralSigma;
 
-            final String call = Z < -zThreshold ? DELETION_CALL: (Z > zThreshold ? AMPLIFICATION_CALL : NEUTRAL_CALL);
+            String call = NEUTRAL_CALL;
+            if (segment.getSegmentMean() < -t){
+                call = DELETION_CALL;
+            }
+            if (segment.getSegmentMean() > t){
+                call = AMPLIFICATION_CALL;
+            }
 
             // Attach the call to this modeled segment
             segment.setCall(call);
         }
+
+        // Log some information about thresholds chosen for the segments.
+        logger.info(String.format("Thresholds Hi, Low: %.4f, %.4f", t, -t));
+        logger.info(String.format("Thresholds (CR space) Hi, Low: %.4f, %.4f", Math.pow(2, t), Math.pow(2, -t)));
+
         return segments;
     }
 }

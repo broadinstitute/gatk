@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ReCapSegCallerUnitTest extends BaseTest{
+public final class CnvCallerUnitTest extends BaseTest{
     @Test
     public void testMakeCalls() {
         List<TargetCoverage> targetList = new ArrayList<>();
@@ -42,11 +42,11 @@ public final class ReCapSegCallerUnitTest extends BaseTest{
         segments.add(new ModeledSegment(new SimpleInterval("chr", 450, 550), 100, ParamUtils.log2(1))); //neutral
         segments.add(new ModeledSegment(new SimpleInterval("chr", 650, 750), 100, ParamUtils.log2(1))); //neutral
 
-        List<ModeledSegment> calls = ReCapSegCaller.makeCalls(targets, segments);
+        List<ModeledSegment> calls = CnvCaller.makeCalls(targets, segments, CnvCaller.DEFAULT_Z_SCORE_THRESHOLD);
 
-        Assert.assertEquals(calls.get(0).getCall(), ReCapSegCaller.AMPLIFICATION_CALL);
-        Assert.assertEquals(calls.get(1).getCall(), ReCapSegCaller.DELETION_CALL);
-        Assert.assertEquals(calls.get(2).getCall(), ReCapSegCaller.NEUTRAL_CALL);
-        Assert.assertEquals(calls.get(3).getCall(), ReCapSegCaller.NEUTRAL_CALL);
+        Assert.assertEquals(calls.get(0).getCall(), CnvCaller.AMPLIFICATION_CALL);
+        Assert.assertEquals(calls.get(1).getCall(), CnvCaller.DELETION_CALL);
+        Assert.assertEquals(calls.get(2).getCall(), CnvCaller.NEUTRAL_CALL);
+        Assert.assertEquals(calls.get(3).getCall(), CnvCaller.NEUTRAL_CALL);
     }
 }
