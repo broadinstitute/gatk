@@ -67,7 +67,6 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     @Override
     protected void runTool( JavaSparkContext ctx ) {
         JavaRDD<GATKRead> initialReads = getReads();
-
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         if ( knownVariants.size() > 1 ) {
             throw new GATKException("Cannot currently handle more than one known sites file, " +

@@ -19,6 +19,9 @@ import java.security.GeneralSecurityException;
  * contents of the file, if one was specified) and stash that in the options.
  * This guarantees that anyone can call GATKGCSOptions.Methods.getOfflineAuth and
  * succeed.
+ *
+ * NOTE: We're deprecating those, use AuthHolder instead. It's serializable which makes it easier
+ * to move around, and it can also create a storage client (plus also a Genomics client!)
  */
 public interface GATKGCSOptions extends GCSOptions, DataflowPipelineOptions {
 

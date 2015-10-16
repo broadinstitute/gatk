@@ -11,6 +11,7 @@ import htsjdk.tribble.AbstractFeatureReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -109,6 +110,30 @@ public final class BucketUtils {
         } catch (IOException x) {
             throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" + path + " due to " + x.getMessage(), x);
         }
+    }
+
+    /**
+     * Open a binary file for writing regardless of whether it's on GCS, HDFS or local disk.
+     * For writing to GCS it'll use the application/octet-stream MIME type.
+     *
+     * @param path the GCS , HDFS, or local path to write to. If HDFS, it must start with "hdfs://".
+     *             If GCS, it must start with "gs://" and you must be using API Key authentication.
+     * @param auth authentication information.
+     * @return an OutputStream that writes to the specified file.
+     */
+    public static OutputStream createFile(String path, AuthHolder auth) {
+        PipelineOptions popts = auth.asPipelineOptionsDeprecated();
+        return createFile(path, popts);
+    }
+
+    /**
+     * Open a binary file for writing regardless of whether it's on HDFS or local disk.
+     *
+     * @param path the local path to write to.
+     * @return an OutputStream that writes to the specified file.
+     */
+    public static OutputStream createNonGCSFile(String path) {
+        return createFile(path, (PipelineOptions)null);
     }
 
     /**

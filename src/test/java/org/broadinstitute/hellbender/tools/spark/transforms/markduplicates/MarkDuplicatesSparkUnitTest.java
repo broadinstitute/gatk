@@ -35,7 +35,7 @@ public class MarkDuplicatesSparkUnitTest extends BaseTest {
         JavaRDD<GATKRead> reads = readSource.getParallelReads(input);
         Assert.assertEquals(reads.count(), totalExpected);
 
-        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, input);
+        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, input, null);
         OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;

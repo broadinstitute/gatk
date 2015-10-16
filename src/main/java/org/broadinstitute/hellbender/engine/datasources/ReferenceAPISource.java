@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * RefAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works
+ * ReferenceAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works
  * at workers.
  * It also has helper methods for parsing Ref API URLs (intended for the Hellbender command line).
  */

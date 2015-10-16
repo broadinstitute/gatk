@@ -5,12 +5,14 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.engine.AuthHolder;
 
 import java.io.Serializable;
 
 
 public abstract class SparkCommandLineProgram extends CommandLineProgram implements Serializable {
     private static final long serialVersionUID = 1l;
+
 
     @Argument(doc = "API Key for google cloud authentication",
             shortName = "apiKey", fullName = "apiKey", optional=true)
@@ -57,6 +59,10 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
         GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setApiKey(apiKey);
         return options;
+    }
+
+    protected AuthHolder getAuthHolder() {
+        return new AuthHolder(getClass().getSimpleName(), apiKey);
     }
 
     // ---------------------------------------------------
