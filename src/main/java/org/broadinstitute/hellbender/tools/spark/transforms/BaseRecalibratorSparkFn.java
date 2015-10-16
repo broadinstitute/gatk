@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.transforms;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.logging.log4j.LogManager;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
+import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.*;
@@ -23,8 +25,38 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
 
 public class BaseRecalibratorSparkFn {
+
+    public static Logger log = LogManager.getLogger(BaseRecalibratorSparkFn.class);
+
+    static class ComparisonResult {
+        long matching = 0;
+        long deviate = 0;
+        long bigDeviate = 0;
+        // default: 1% errors are accounted separately.
+        double bigThreshold = 0.01;
+
+        public void addData(double expected, double got) {
+            if (expected==got) {
+                matching++;
+            } else {
+                deviate++;
+                double diffRatio = Math.abs( (expected-got) / ((expected+got)/2.0));
+                if (diffRatio > bigThreshold) bigDeviate++;
+            }
+        }
+
+        public String formatResult() {
+            long total = matching+deviate;
+            double matchingPct = 100.0 * (matching / (double)total);
+            return "Matching: "+matching+"/"+total+" ("+matchingPct+"%). Errors: "+deviate+" Big errors (>"+(100*bigThreshold)+"%): "+bigDeviate;
+        }
+    }
 
     public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final RecalibrationArgumentCollection recalArgs ) {
         final ReadFilter filter = BaseRecalibrator.getStandardBQSRReadFilter(header);
@@ -63,9 +95,37 @@ public class BaseRecalibratorSparkFn {
             try ( PrintStream reportStream = new PrintStream(tempReport) ) {
                 RecalUtils.outputRecalibrationReport(reportStream, recalArgs, quantizationInfo, combinedTables, new StandardCovariateList(recalArgs, header), recalArgs.SORT_BY_ALL_COLUMNS);
             }
-            return new RecalibrationReport(tempReport);
+            RecalibrationReport ret = new RecalibrationReport(tempReport);
+
+            checkForRoundtripDifference(combinedTables, ret.getRecalibrationTables());
+
+            return ret;
         } catch (FileNotFoundException e) {
             throw new GATKException("can't find my own temporary file", e);
         }
+    }
+
+    // if report save/reload is a no-op then this should output "100% matching".
+    private static void checkForRoundtripDifference(RecalibrationTables original, RecalibrationTables ret) {
+
+        ComparisonResult[] comp = new ComparisonResult[3];
+        for (int i=0; i<comp.length; i++) comp[i] = new ComparisonResult();
+
+        for (int i=0; i<original.numTables(); i++) {
+            List<NestedIntegerArray.Leaf<RecalDatum>> l1 = original.getTable(i).getAllLeaves();
+            List<NestedIntegerArray.Leaf<RecalDatum>> l2 = ret.getTable(i).getAllLeaves();
+            for (int j = 0; j<l1.size(); j++) {
+                RecalDatum a = l1.get(j).value;
+                RecalDatum b = l2.get(j).value;
+                comp[0].addData(a.getNumMismatches(), b.getNumMismatches());
+                comp[1].addData(a.getNumObservations(), b.getNumObservations());
+                comp[2].addData(a.getEmpiricalQuality(), b.getEmpiricalQuality());
+            }
+        }
+
+        log.info("RecalibrationTables result. NumMismatches: " + comp[0].formatResult());
+        log.info("RecalibrationTables result. NumObservations: " + comp[1].formatResult());
+        log.info("RecalibrationTables result. Empirical quality: " + comp[2].formatResult());
+
     }
 }
