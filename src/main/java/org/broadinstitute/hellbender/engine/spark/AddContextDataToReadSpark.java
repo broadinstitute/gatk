@@ -29,13 +29,16 @@ public class AddContextDataToReadSpark {
             final JavaRDD<Variant> variants, final JoinStrategy joinStrategy) {
         // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
         JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
-        // Join Reads and Variants
-        JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = JoinReadsWithVariants.join(mappedReads, variants);
-        // Join Reads with ReferenceBases
         JavaPairRDD<GATKRead, Tuple2<Iterable<Variant>, ReferenceBases>> withVariantsWithRef;
         if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
+            // Join Reads and Variants
+            JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
+            // Join Reads with ReferenceBases
             withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
+            // Join Reads and Variants
+            JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);
+            // Join Reads with ReferenceBases
             withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         } else {
             throw new UserException("Unknown JoinStrategy");

@@ -56,7 +56,7 @@ import java.util.List;
  * Tuple2<read a, <variant 1, variant2>>
  * Tuple2<read b, <variant 3>>
  */
-public class JoinReadsWithVariants {
+public class ShuffleJoinReadsWithVariants {
     public static JavaPairRDD<GATKRead, Iterable<Variant>> join(
             final JavaRDD<GATKRead> reads, final JavaRDD<Variant> variants) {
 

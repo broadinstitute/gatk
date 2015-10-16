@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
+public class ShuffleJoinReadsWithVariantsSparkUnitTest extends BaseTest {
     @DataProvider(name = "pairedReadsAndVariants")
     public Object[][] pairedReadsAndVariants(){
         Object[][] data = new Object[2][];
@@ -40,7 +40,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<Variant> rddVariants = ctx.parallelize(variantList);
-        JavaPairRDD<GATKRead, Iterable<Variant>> actual = JoinReadsWithVariants.join(rddReads, rddVariants);
+        JavaPairRDD<GATKRead, Iterable<Variant>> actual = ShuffleJoinReadsWithVariants.join(rddReads, rddVariants);
         Map<GATKRead, Iterable<Variant>> gatkReadIterableMap = actual.collectAsMap();
 
         Assert.assertEquals(gatkReadIterableMap.size(), kvReadiVariant.size());
