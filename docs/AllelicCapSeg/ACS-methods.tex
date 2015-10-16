@@ -4,10 +4,14 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{lmodern}
+\usepackage{graphicx}
 \usepackage{color}
 
 \newcommand{\RCS}{\texttt{ReCapSeg}}
 \newcommand{\ACS}{\texttt{AllelicCapSeg}}
+
+%Put an averaged random variable between brackets
+\newcommand{\ave}[1]{\left\langle #1 \right\rangle}
 
 \newtheorem{lemma}{Lemma}
 \newtheorem{corollary}{Corollary}
@@ -38,7 +42,7 @@ port.
 
 \section{$\RCS$ Overview} \label{recapseg-overview}
 
-We first summarize the portions of the $\RCS$ workflow that are generate the input for $\ACS$.  The below is copied/paraphrased from the documentation at \url{http://gatkforums.broadinstitute.org/discussion/5640/recapseg-overview}.
+We first summarize the portions of the $\RCS$ workflow that generate the input for $\ACS$.  The below is copied/paraphrased from the documentation at \url{http://gatkforums.broadinstitute.org/discussion/5640/recapseg-overview}.
 
 $\RCS$ is a copy-number--variant detector that runs on user-defined target regions, which can correspond to exomes, gene panels, or arbitrary windows. $\RCS$ uses a Panel of Normal (PoN) samples to model noise and normalize the coverage calls of the target sample. These methods were designed for copy-number calling (amplification and deletion) of somatic events with a resolution of two or more targets. $\RCS$ does not need a matched normal, but operates on a panel of normal samples representing similar library preparation to agnostically remove noise. $\RCS$ is the production version of the \texttt{CapSeg} algorithm.
 
@@ -54,104 +58,154 @@ Tangent normalization: This normalization procedure projects the sample proporti
 Segment: The target regions are then merged into continuous segments that represent the same copy-number event. The segmentation is performed by a circular-binary-segmentation (CBS) algorithm described by Olshen et al. 2004 that was originally developed to segment noisy array copy-number data.\footnote{Specifically, the CBS implementation provided by the \texttt{R} package \texttt{DNACopy} is used. Note that even though the \texttt{DNACopy} parameter \texttt{data.type} is set to \texttt{logratio}, the tangent-normalized \emph{linear} copy ratios are used instead.  \SL{Check this?  If true, it is unclear to me how this affects the resulting segmentation, if at all.}} Currently, $\RCS$ considers only segments that include two or more targets (a target usually represents a single exon).
 \end{enumerate}
 
-To summarize, given coverage data for a set of targets, $\RCS$ produces 1) $\log_2$ copy-ratio estimates for each target, and 2) corresponding segments, which are specified by a set of genomic intervals.  The segment files produced by $\RCS$ also contain segment ``means,'' which are given by $\log_2$ of the mean linear copy ratio of all targets contained within each segment.
+To summarize, given coverage data for a set of targets, $\RCS$ produces 1) $\log_2$ copy-ratio estimates for each target, and 2) corresponding segments, which are specified by a set of genomic intervals.  The segment files produced by $\RCS$ also contain segment ``means,'' which are given by the mean linear copy ratio of all targets contained within each segment.
 
-\section{Current $\ACS$ Workflow} \label{current-alleliccapseg-workflow}
+\section{Current Hellbender $\ACS$ Workflow} \label{current-alleliccapseg-workflow}
 
 \subsection{Segmented model} \label{segmented-model}
-
-$\ACS$ uses allele-count data from heterozygous SNP sites to improve upon the segmented copy-number model given by $\RCS$. The $\ACS$ model is characterized by a set of segment intervals and a set of model parameters; a model with $N$ segments is taken to have $2N + 2$ parameters
+We want a generative model for allelic fractions that infers its parameters from the data.  We observe alt and ref read counts for each het site and wish to infer the minor allelic fraction of every segment.  Let's consider what other hidden variables belong in the model.  Read counts obey an overdispersed binomial distribution in which the probability of an alt read is a site-dependent random variable.  Letting $\theta_j$ be the probability that a mapped read at het $j$ is an alt we have
+%
 \begin{equation}
-\{\tau_1, f_1, \dots \tau_N, f_N, \sigma_g, \gamma\}\,.
+P(a_j, r_j | \theta_j) =  \binom{a_j + r_j}{a_j} \theta_j^{a_j} (1-\theta_j)^{r_j} = \binom{n_j}{a_j} \theta_j^{a_j} (1-\theta_j)^{r_j},
 \end{equation}
-Each individual segment labeled by $i$ is specified by its true copy ratio $\tau_i$ and its true minor allele fraction $f_i$ (referred to as the ``minor homologous chromosome fraction'' in the \texttt{python} code), yielding $2N$ parameters. Two additional global parameters $\sigma_g$ and $\gamma$ determine the variance of the copy ratio and the allele-fraction bias (referred to as the ``skew''), respectively, for all segments.
+where $a_j$ and $r_j$ are alt and ref read counts and $n_j = a_j + r_j$ is the total read count at site $j$.  Now we consider $\theta_j$.  Suppose site $j$ belongs to a segment with minor allelic fraction $f$ and is alt minor, such that $P({\rm alt}) = f$ and $P({\rm ref}) = 1 - f$ are the probabilities that a random DNA fragment will contain the alt and ref alleles.  Let $x^{\rm alt (ref)}_j = P({\rm mapped} | {\rm alt (ref)})$ be the probabilities that an alt (ref) DNA fragment at site $j$ eventually gets sequenced and mapped.  Then $\theta_j$ is the conditional probability that a mapped read comes from an alt fragment:
+%
+\begin{align}
+\theta_j  &= P( {\rm alt} | {\rm mapped} ) = \frac { P( {\rm alt} ) P( {\rm mapped} | {\rm alt} ) } { P( {\rm alt} ) P( {\rm mapped} | {\rm alt} ) + P( {\rm ref} ) P( {\rm mapped} | {\rm ref} ) } \\
+ &= \frac{f x^{\rm alt}_j }{fx^{\rm alt} + (1-f) x^{\rm ref}_j } = \frac{f}{f + (1-f) \lambda_j},
+\end{align}
+%
+where $\lambda_j = x^{\rm ref}_j / x^{\rm alt}_j$ is the ``bias ratio'' of ref to alt sequenceability and mappability at site $j$.  A similar result for ref minor sites follows from substituting $f \leftrightarrow 1 - f$.  In addition to the bias ratio $\lambda_j$ we need an indicator variables $z_j$ with three states, alt minor, ref minor, and an outlier state that gives robustness to anomalous events.  For this outlier state we average the binomial likelihood over all $\theta$ to get:
+%
+\begin{align}
+P(a_j, r_j | {\rm outlier}) = \binom{n_j}{a_j} \int_0^1 \theta_j^{a_j} (1-\theta_j)^{r_j} \, d \theta_j 
+= \binom{n_j}{a_j} \frac{a_j! r_j!}{(n_j + 1)!}
+\end{align}
+%
+For notational convenience we give $z_j$ a one-of-$K$ encoding $z_j = (z_{ja}, z_{jr}, z_{jo})$ in which one component equals $1$ and the rest $0$.
 
-Specifically, the variance of the copy ratio for targets in the $i$th segment is assumed to be given by $\sigma_i = \sigma_g \tau_i$. Furthermore, the allele-fraction bias $\gamma$ attempts to correct for a global discrepancy between the measured and true allele fractions, which may be induced by effects such as reference bias during alignment.  It is defined such that a balanced true allele fraction of $f = 1/2$ will yield, on average, an observed minor allele fraction of $\gamma/2$; we shall expand on this definition below.
-
-\subsection{Identifying normal heterozygous SNP sites (het pulldown)} \label{identifying-normal-heterozygous-snp-sites}
-
-The main idea behind $\ACS$ is to use allele-count data at heterozygous SNP sites to infer copy number; these sites should exhibit balanced reference/alternate read counts in the normal sample, but unbalanced copy-number events could measurably alter this balance in the tumor sample. Thus, the first step in the $\ACS$ workflow is to identify the heterozygous SNP sites that will be leveraged in the rest of the analysis.  
-
-We first start with a list of common SNP sites, and consider all reads passing a quality-score filter (taking a default minimum quality of 0).  We examine the allele counts at these sites in the normal sample, and discard those sites that appear to be homozygous by performing a two-tailed binomial test on the counts at each site.
-
-Specifically, for a SNP site labeled by $k$, let the reference and alternate counts be $A_k$ and $B_k$, respectively; also, let the major and minor allele counts be $M_k$ and $m_k$, respectively.  The total counts are denoted by $N_k = A_k + B_k = M_k + m_k$.\footnote{Note that the ``alternate'' and  ``minor'' counts are simply found by subtracting the reference and major counts from the total count, respectively; this lumps stray reads that do not actually match the alternate or minor alleles into both of these categories.  In principle, we could easily take only the largest and second-largest counts and discard the rest, but this is not what is currently implemented.}
-
-For sites above a read-count threshold $N_k \geq 10$, the compatibility of the major allele count $M_k$ and the total count $N_k$ with the null hypothesis of a allele fraction $f$ (assumed to be the same across all sites, with a default value of $f = 1/2$ used) is checked with a two-tailed binomial test; a $p$-value threshold of 0.05 is assumed.  Sites with counts below the threshold or incompatible with the allele fraction $f$ (i.e., likely to be homozygous SNPs) are filtered out.
-
-The remaining sites are assumed to be heterozygous SNPs.  The allele counts $\{A_k, B_k\}$ at these sites are pulled from the tumor sample and stored.
-
-\subsection{Initializing the model} \label{initializing-the-model}
-
-The initial state of the model is based on the result from $\RCS$.  The set of segment intervals is set to those found by $\RCS$, and the $\tau_i$ are set to the median copy ratio of all targets contained within each $i$th segment (note that these differ from the aforementioned segment ``means'' returned by $\RCS$, which are not used by $\ACS$).  Initial values of $\sigma_g = 0.15$ and $\gamma = 2 \times 0.48 = 0.96$ are used for the global parameters.
-
-Initialization of the minor homologous chromosome fractions $f_i$ for each segment is more involved.  This is accomplished on a per segment basis by taking $f_i$ to be the single parameter in a beta-binomial mixture model and selecting the value that maximizes the corresponding likelihood function.  Recall that the beta-binomial distribution gives the probability for the number of successes $k$ out of a number of trials $n$, where the probability of success for each trial is a random variable that follows a beta distribution with parameters $\alpha$ and $\beta$.  The probability distribution is
+The contribution of site $j$ to the likelihood is
+%
 \begin{equation}
-p_{\beta\text{-bin}}(k | n, \alpha, \beta) = {n \choose k} \frac{B(k+\alpha, n-k+\beta)}{B(\alpha, \beta)}\,,
+P(a_j, r_j | f_s, \lambda_j, z_j) =  \binom{n_j}{a_j}  
+\left[ \frac{f_s^{a_j} (1 - f_s)^{r_j} \lambda_j^{r_j}}{ \left( f_s + (1-f_s) \lambda_j \right)^{n_j}} \right]^{z_{ja}}   
+\left[ \frac{(1-f_s)^{a_j} f_s^{r_j} \lambda_j^{r_j}}{ \left( 1 - f_s + f_s \lambda_j \right)^{n_j}} \right]^{z_{jr}}   
+\left[ \frac{a_j! r_j!}{(n_j + 1)!} \right]^{z_{jo}}
+\label{likelihood}
 \end{equation}
-where $B(\alpha, \beta)$ is the Euler beta function.
+%
+where $f_s$ is the minor allele fraction of the segment containing site $j$.  We will consider $f$ to be drawn from a uniform distribution on $[0, 1/2]$ -- that is, we give it a flat prior -- but in the future we can obtain some sort of clustering behavior, representing the fact that events in the same subclone that exhibit the same integer copy numbers will have the same minor allelic fractions, by drawing $f_s$ from a Dirichlet process.
 
-Consider a segment labeled by $i$, and let $D_i = \{A_{k_i}, B_{k_i}, \dots , A_{k_i+K_i}, B_{k_i+K_i}\}$ be the data set of tumor-sample allele counts for the $K_i$ heterozygous SNP sites (i.e., those identified in the het pulldown step) contained within this segment.  The likelihood function for the allele fraction $f_i$ of this segment, given the data set $D_i$, is taken to be
-\begin{equation} \label{allele-frac-ll}
-\mathcal{L}(f_i | D_i) = p(D_i | f_i) = 
-\begin{dcases}
-1\,, & D_i = \{\}\,, \\
-\prod_{k = k_i}^{k_i + K_i} \left\{\frac{1}{2}(1-w)\left[\mathcal{L}_\text{ref}(f_i | A_k, B_k) + \mathcal{L}_\text{alt}(f_i | A_k, B_k)\right] + w\mathcal{L}_\text{out}\right\}\,, & \text{otherwise}\,.
-\end{dcases}
-\end{equation}
-Here, $w$ is a weight parameter that will be later be used to account for outliers via the addition of a uniform-distribution component to the mixture model, which is represented in the likelihood by the $\mathcal{L}_\text{out}$ term; for this initialization stage, $w = 0$ is chosen.\footnote{\SL{Although, strictly speaking, $w=0$ should be used for initialization, the same value of $w = 0.0005$ used in the beta-binomial--uniform mixture model is used instead.  However, this does not have any effect on the resulting initial values of $f_i$, since the weight factor just contributes to an overall multiplicative constant in the likelihood.  Unfortunately, a further complication is that I think the likelihood for the beta-binomial--uniform mixture model is also incorrectly constructed in code; schematically, the quantity appearing under the product is coded as $1/2 (1-w)(\mathcal{L}_\textrm{ref} + \mathcal{L}_\textrm{alt}) + w' \mathcal{L}_\text{out}$, with $w' = 0.005 \neq w$.  Finally, the implementation essentially sets $\mathcal{L}_\text{out} = 1$ (albeit in a very roundabout manner).  I'm not sure if this is the desired behavior, and it also might not be consistent with how targets that are outliers in copy ratio are treated.}}
-
-Furthermore, $\mathcal{L}_\text{ref}(f_i | A_k, B_k)$ is the likelihood of the minor allele fraction $f_i$, given allele counts $\{A_k, B_k\}$ at SNP site $k$, for the case of a reference minor allele (i.e., $A_k \leq B_k$).  It is given by
+We assume that the bias ratios come from a common Gamma distribution with parameters $\alpha, \beta$:
+%
 \begin{equation}
-\mathcal{L}_\text{ref}(f_i | A_k, B_k) =
-\begin{dcases}
-1\,, & f_i = 0~\text{and}~A_i = 0\,, \\
-p_{\beta\text{-bin}}(B_k | A_k+B_k, \alpha_\text{ref}(f_i), \beta_\text{ref}(f_i))\,, & \text{otherwise}\,.
-\end{dcases}
+P(\lambda_j | \alpha, \beta) = \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha-1} e^{-\beta \lambda_j}
 \end{equation}
-Here,
+%
+Note that bias ratios tend to be near $1.0$ and so the choice of distribution is not too important as long as it has adjustable mean and standard deviation.  We choose the Gamma distribution because it is the simplest such distribution on $\mathbb{R}^+$.  We will give the parameters $\alpha$ and $\beta$ a flat prior $P(\alpha, \beta) \propto 1$.
+
+Finally, the indicator $z_j$ is a multinomial random variable distributed according to parameter vector ${\bf \pi}$:
+%
 \begin{equation}
-\alpha_\text{ref}(f_i) = \left(1 - \frac{f_i}{\gamma}\right) \Sigma\,, \qquad
-\beta_\text{ref}(f_i) = \frac{f_i\Sigma}{\gamma}\,,
+P(z_{ja(r,o)} = 1 | {\bf \pi}) = \pi_{a(r,o)}
 \end{equation}
-where the parameter $\Sigma$ accounts for overdispersion and is fit to a panel of normal samples, yielding
+We set the alt and ref minor probabilities equal so that the only free parameter is $\pi_o$, with $\pi_{a(r)} = (1 - \pi_o)/2$.
+%
+The Bayesian network corresponding to this model is shown in Figure \ref{graphical_model}.
+\begin{figure}
+$
+\begin{array}{c}
+\includegraphics[width=0.8\linewidth]{ACS_model.png} 
+\end{array}
+$
+\label{graphical_model}
+\caption{Graphical model for \ACS} 
+\end{figure}
+
+As with the other parameters, we put a flat prior on ${\rm \pi}$.  Putting all the pieces together the complete-data likelihood is
 \begin{equation}
-\Sigma = \exp(s_0 + s_1\gamma/2)\,, \qquad
-s_0 = -33.67232\,,\quad
-s_1 = 82.77464\,.
+P(f, a, r, z, \lambda, \alpha, \beta) = \prod_s \prod_{j \in s} P(a_j, r_j | f_s, \lambda_j, z_j) P(z_j | {\rm \pi}) P(\lambda_j | \alpha, \beta),
 \end{equation}
+%
+where the shorthand $j \in s$ means that het site $j$ belongs to segment $s$.
 
-Similarly, $\mathcal{L}_\text{alt}(f_i | A_k, B_k)$ is the likelihood of $f_i$, given allele counts $\{A_k, B_k\}$ at SNP site $k$, for the case of an alternate minor allele (i.e., $B_k \leq A_k$).  It is given by
+We can read off the conditional probabilities necessary for Gibbs sampling from the model.  Up to constant factors the conditional on the outlier probability is,
+%
+\begin{align}
+P(\pi_o | \{ z_j \}) \propto \pi_o^{N_{\rm o}} (1 - \pi_o)^{N - N_o},
+\label{conditional_on_pi}
+\end{align}
+%
+where $N_o = \sum_j z_{jo}$ is the number of indicator variables in the outlier state.  Thus the conditional distribution on $\pi_o$ given $\{ z_j \}$ is ${\rm Beta}(N_o, N - N_o)$.
+
+The conditional distribution on $f_s$ is the product of likelihoods over sites $j \in s$:
+%
 \begin{equation}
-\mathcal{L}_\text{alt}(f_i | A_k, B_k) =
-p_{\beta\text{-bin}}(B_k | A_k+B_k, \alpha_\text{alt}(f_i), \beta_\text{alt}(f_i))\,,
+P(f_s | a, r, \lambda, z) \propto \prod_{j \in s}
+\left[ \frac{f_s^{a_j} (1 - f_s)^{r_j}}{ \left( f_s + (1-f_s) \lambda_j\right)^{n_j}} \right]^{z_{ja}}   
+\left[ \frac{(1-f_s)^{a_j} f_s^{r_j} }{ \left( 1 - f_s + f_s \lambda_j\right)^{n_j}} \right]^{z_{jr}}   
+\label{conditional_on_f}
 \end{equation}
-with
+%
+Since, in general $\lambda_j \approx 1$, this conditional approximately reduces to ${\rm Beta}(N^s_{\rm AA} + N^s_{\rm RR}, N^s_{\rm AR} + N^s_{\rm RA})$, where e.g. $N_{AR} = \sum_{j \in s} z_{ja} r_j$ is the total number of ref reads in alt minor sites.   This is the posterior distribution of the minor allele fraction given $N^s_{\rm AA} + N^s_{\rm RR}$ observations of minor alleles and $N^s_{\rm AR} + N^s_{\rm RA}$ of non-minor alleles.  Actually using this approximation would defeat the purpose of modeling the allelic bias, but it gives us a good sense of the shape of the posterior -- it is very likely to be unimodal, hence amenable to simple univariate slice sampling.
+
+The conditional distribution on $\lambda_j$ is the product of the likelihood term for site $j$ with ${\rm Gamma}(\alpha, \beta)$.  
+%
+\begin{align}
+P(\lambda_j | a_j, r_j, f_s, z_j) \propto & \left[  \frac{\lambda_j^{r_j}}{ \left( f_s + (1-f_s) \lambda_j \right)^{n_j}} \right]^{z_{ja}}   
+\left[  \frac{\lambda_j^{r_j}}{ \left( 1 - f_s + f_s \lambda_j \right)^{n_j}} \right]^{z_{jr}}   
+\lambda_j^{\alpha-1} e^{- \beta \lambda_j} \\
+= &
+\left( f_s + (1-f_s) \lambda_j \right)^{-n_j  (z_{ja} + z_{jr})} \lambda_j^{r_j (z_{ja} + z_{jr}) + \alpha-1} e^{- \beta \lambda_j} 
+\label{conditional_on_lambda}
+\end{align}
+%
+This conditional distribution is also easily sampled from via univariate slice sampling.
+
+The conditional on $\beta$ is
 \begin{equation}
-\alpha_\text{alt}(f_i) = f_i\gamma\Sigma\,, \qquad
-\beta_\text{alt}(f_i) = \left(1 - f_i\gamma\right) \Sigma\,.
+P(\beta | \alpha, \lambda) \propto \beta^{N \alpha} e^{- \sum_j \lambda_j \beta},
+\label{conditional_on_beta}
 \end{equation}
+which is the gamma distribution $\Gamma(N \alpha + 1, \sum_j \lambda_j)$.
 
-\SL{I'm not sure I fully understand the forms of $\alpha_\text{ref}$, $\beta_\text{ref}$, $\alpha_\text{alt}$, and $\beta_\text{alt}$ yet, but I probably just need to sit down with these equations for a bit.  Will add explanations of these terms and $\gamma$ here once I do.  Also, it would be nice to double check that the overdispersion fit is reasonable for the relevant PoNs; would be even better if we can get rid of this fit!}
-
-In practice, the maximum-likelihood estimate for $f_i$ is found by using the \texttt{scipy} implementation of the L-BFGS-B optimization algorithm to minimize the negative log-likelihood function, requiring convergence to machine precision.  An initial guess of $f_i = 0.25$ is used, with the allowed range taken to be $10^{-10} \leq f_i \leq 0.5$.  \SL{It's not clear to me what value of $f_i$ is actually returned for the case where the segment does not contain any SNPs, $D_i= \{\}$.  It might just be the initial guess of $f_i = 0.25$, but we can check this.  If this is the case, we should check if initialization of meaningless values of $f_i$ for such segments affects things downstream.}
-
-\subsection{Initial optimization of allelic-fraction bias} \label{initial-optimization-of-allelic-fraction-bias}
-
-\subsection{SNP segmentation} \label{snp-segmentation}
-
-Using the initial value of $\gamma$ found in the previous step, SNPs and their corresponding reference/alternate read counts are transformed to targets with corresponding effective ``copy ratios,'' which are then segmented using the \texttt{DNACopy} CBS implementation.  However, these effective copy ratios will not scale with the copy number as would a true copy ratio, and hence should not be thought of as such.
-
-In particular, for a SNP site indexed by $k$ with allele counts $\{A_k, B_k\}$, the effective copy ratio $\tilde\tau_k $ is taken to be 
+The conditional on $\alpha$ is
 \begin{equation}
-\tilde\tau_k =\left |\frac{B_k}{A_k + B_k} - \frac{\gamma}{2}\right|\,.
+P(\alpha | \beta, \lambda) \propto \frac{\exp \left[ \left( N \ln \beta + \sum_j \ln \lambda_j \right) \alpha \right]}{\Gamma(\alpha)^N}
+\label{conditional_on_alpha}
 \end{equation}
-The idea here is that the quantity $B_k / (A_k + B_k) - \gamma / 2$ will be clustered around zero for sites $k$ contained in segments $i$ where the true minor allele fraction is $f_i = 1/2$, but will generally form two clusters centered at $\pm$ \SL{fill in once I understand what is going on with $\gamma$}, with the positive and negative signs corresponding to sites with reference and alternate minor alleles, respectively.  By taking the effective copy ratio passed to CBS to be the absolute value of this quantity, we are simply folding the data vertically before segmenting.  \SL{Does this somehow screw up the statistics of the balanced segments by artificially reducing their variance?  Could this have an effect on CBS?}  As with the segmentation of targets in $\RCS$, the \texttt{DNACopy} parameter \texttt{data.type} is set to \texttt{logratio}.  \SL{Actually, I think that $2^{\tilde\tau_k}$ is being passed to \texttt{DNACopy}, not just $\tilde\tau_k$. Again, I'm not sure if this actually affects the segmentation, but it doesn't seem consistent with how we treat targets.  I think we should try segmenting a quantity that is proportional to copy ratio in either linear or log space for both targets and SNPs.}
+which is not of a standard form but is efficient to compute and thus amenable to univariate slice sampling.
 
+Finally, $z_j$ is a categorical variable with priors given by ${\rm \pi}$, and its posterior can be obtained simply by plugging in its three possible values into the likelihood.
+
+Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACS_MCMC}:
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\State Initialize $z_j$ to be alt minor if $a_j  < r_j$, ref minor otherwise.
+\State Initialize $f_s = \left( N^s_{\rm AA} + N^s_{\rm RR} \right) / \left(N^s_{\rm AR} + N^s_{\rm RA} \right)$
+\State Initialize $\lambda$ randomly and approximately equal to $1$.
+\Repeat
+	\State Slice sample each $f_s$  from the conditional Eq. \ref{conditional_on_f}.
+	\ForAll{sites $j$}
+		\State Slice sample $\lambda_j$ from the conditional Eq. \ref{conditional_on_lambda}.
+		\State Sample $z_j$ from the categorical distribution defined by Eq. \ref{likelihood}.
+	\EndFor
+	\State Sample $\pi_o$ from the beta conditional Eq. \ref{conditional_on_pi}.
+	\State Sample $\beta$ from the gamma conditional Eq. \ref{conditional_on_beta}.
+	\State Slice sample $\alpha$ from the conditional Eq. \ref{conditional_on_alpha}.
+\Until{convergence}
+\end{algorithmic}
+\caption{MCMC algorithm for \ACS}
+\label{ACS_MCMC}
+\end{algorithm}
 \subsection{Target/SNP segment union} \label{targetsnp-segment-union}
 
 \SL{DB can fill this in.}
 
 \subsection{Small-segment merging} \label{small-segment-merging}
+
+\SL{SL to update this to the new method.}
 
 Using CBS to segment the targets in $\RCS$ results in segments that are \SL{always?} larger than $\sim$2--3 targets.  However, after taking the union of target and SNP segments, small segments with less than $\sim$2--3 targets may be introduced.  To be consistent with CBS and $\RCS$, $\ACS$ treats these small segments as spurious, and removes them by merging them with adjacent segments.
 
@@ -261,9 +315,61 @@ The EM algorithm for DMM inference is summarized in Algorithm \ref{DMM}.
 
 Returning to our original task, we obtain three mixture components with Dirichlet parameters $(\alpha_{k1}, \alpha_{k2})$.  The mean proportion of alt reads (WLOG we choose $m = 1$ to be alt and $m=2$ to be ref) are $\alpha_{k1}/(\alpha_{k1} + \alpha_{k2})$, so we can assign mixture labels $k = 1, 2, 3$ to genotypes by comparing these proportions to $0$ (hom ref), $1/2$ (het) and $1$ (hom alt). The posterior probability $\bar{z}_{jk}$ is the probability that site $j$ has genotype $k$, which is exactly what we need for a probabilistic het pulldown.
 
-\DB{We still need to figure out how to use the beta-binomial distribution on het alt and ref counts in \ACS.}
-
-
+\subsection{Improving \ACS ~model sampling} \label{ACS_aux_variable}
+The \ACS model likelihood has thorny factors of the form $\left( f_s + (1 - f_s) \lambda_j \right)^{-n_j}$ (and `` $f \leftrightarrow 1 - f$ '').  Other than these, everything comes from exponential family distributions, is log-concave etc.  If we could rid ourselves of this term and replace it with a standard distribution we could greatly speed our Gibbs sampling.  Consider the identities
+%
+\begin{align}
+\left( f_s + (1 - f_s) \lambda_j \right)^{-n_j} =& \frac{1}{\Gamma(n_j)} \int_0^\infty w_j^{n_j - 1} e^{-\left( f_s + (1 - f_s) \lambda_j \right) w_j} \, dw_j \\
+\left( 1 - f_s + f_s \lambda_j \right)^{-n_j} =& \frac{1}{\Gamma(n_j)} \int_0^\infty w_j^{n_j - 1} e^{-\left(1 -  f_s + f_s \lambda_j \right) w_j} \, dw_j \\
+1 = & \frac{1}{\Gamma(n_j)} \int_0^\infty w_j^{n_j - 1} e^{-w_j} \, dw_j
+\end{align}
+%
+Applying these to the likelihood terms when $z_{ja} = 1$, $z_{zr} = 1$, and $z_{jo} = 1$ respectively we see that if we augment the state space with an auxiliary variable $w_j$ for each het site we may replace the likelihood Eq. \ref{likelihood} with the more tractable
+\begin{equation}
+P(a_j, r_j | f_s, \lambda_j, w_j, z_j) \propto w_j^{n_j - 1}
+\left[ f_s^{a_j} (1 - f_s)^{r_j} \lambda_j^{r_j}  e^{-\left( f_s + (1-f_s) \lambda_j \right)w_j} \right]^{z_{ja}}   
+\left[ (1-f_s)^{a_j} f_s^{r_j} \lambda_j^{r_j} e^{-\left( 1 - f_s + f_s \lambda_j \right)w_j} \right]^{z_{jr}}   
+\left[ \frac{a_j! r_j!}{(n_j + 1)!} e^{-w_j}\right]^{z_{jo}}
+\label{augmented_likelihood}
+\end{equation}
+%
+The complete-data likelihood becomes
+\begin{equation}
+P(f, a, r, z, \lambda, w, \alpha, \beta) = \prod_s \prod_{j \in s} P(a_j, r_j | f_s, \lambda_j, w_j,  z_j) P(z_j | {\rm \pi}) P(\lambda_j | \alpha, \beta),
+\end{equation}
+%
+with the terms $P(z_j | {\rm \pi})$ and $P(\lambda_j | \alpha, \beta)$ unchanged from above.  The virtues of this ``de-marginalization'' are apparent when we consider conditional probabilities.  The conditional on $w_j$ is
+%
+\begin{equation}
+P(w_j | a_j, r_j, f_s, \lambda_j, z_j) \propto w_j^{n_j - 1} e^{- \left[ \left( f_s + (1-f_s) \lambda_j \right) z_{ja} + \left( 1 - f_s + f_s \lambda_j \right) z_{jr} + z_{jo} \right] w_j},
+\label{augmented_conditional_on_w}
+\end{equation}
+%
+which is a gamma distribution.  The conditional on $\lambda_j$ is
+%
+\begin{equation}
+\lambda_j^{ (z_{ja} + z_{jr})r_j + \alpha - 1} e^{-\left[ (1-f_s) w_j z_{ja} + f_s w_j z_{jr} + \beta \right] \lambda_j},
+\label{augmented_conditional_on_lambda}
+\end{equation}
+another gamma distribution.  The conditional on $f_s$ is
+%
+\begin{equation}
+P(f_s | a, r, \lambda, w, z) = f_s^{\sum_{j \in s} (a_j z_{ja} + r_j z_{jr})}  (1-f_s)^{\sum_{j \in s} (a_j z_{jr} + r_j z_{ja})} e^{ \sum_{j \in s} (\lambda_j w_j - 1) (z_{ja} - z_{jr})f_s}.
+\label{augmented_conditional_on_f}
+\end{equation}
+%
+Although this is not a standard distribution, it is the product of only three factors, as opposed to one factor for each $j \in s$, a great improvement.  Furthermore, it is of the form $f^a (1-f)^b e^{c f}$.  It turns out that functions of this form on $[0,1]$ can be approximated extremely well by a beta distribution\footnote{I have an interactive SAGE notebook verifying this claim for a wide range of parameters, but now that I know it empirically to be true an analytic proof shouldn't be too hard.} proportional to $f^\sigma (1-f)^\tau$.  Thus if we use this beta distribution as a proposal distribution for Metropolis-Hastings sampling of the conditional Eq. \ref{augmented_conditional_on_f} we will obtain essentially perfect, uncorrelated samples with a single step.  That is, we can achieve the ideal state of Gibbs sampling.  To obtain the desired approximation, we match first and second derivatives of the log-conditional with the log of the beta approximation at the mode of the log-conditional.  This can all be done analytically.  The mode $f_0$ is given by
+%
+\begin{equation}
+f_0 = \frac{-(a+b) + c + \sqrt{(a+b)^2 + 2(a-b)c + c^2} }{2c}
+\end{equation}
+%
+and the result of matching derivatives is
+\begin{equation}
+\sigma = a + c f_0^2, \, \tau = -c f_0^2 + 2 c f_0 + b - c.
+\end{equation}
+%
+The higher-level parameters $\alpha$, $\beta$, and $\pi_o$, and the indicators $z_j$ are unaffected by this change and are sampled as before.  To summarize what we have accomplished by adding auxiliary variables, we now have perfect, uncorrelated draws from the conditional distribution of every variable using standard distributions (beta, gamma, categorical), the parameters of which are obtained from simple arithmetic.  The only exception is $\alpha$, which we must still slice-sample, but that only occurs once per Gibbs sweep.  The computational savings ought to be enormous.
 
 \subsection{Model-comparison test for segment merging} \label{likelihood-based-segment-merging}
 
