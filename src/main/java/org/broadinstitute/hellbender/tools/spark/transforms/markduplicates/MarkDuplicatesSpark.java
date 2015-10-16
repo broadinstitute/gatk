@@ -68,7 +68,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
-
         if (parallelism == 0) { // use the number of partitions in the input
             parallelism = reads.partitions().size();
         }

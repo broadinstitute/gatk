@@ -48,7 +48,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getSerialReads(final JavaSparkContext ctx, final String bam) {
-        final SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam);
+        final SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam, null);
         List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         final SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
 

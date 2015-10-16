@@ -1,8 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
+import com.google.api.services.storage.Storage;
+import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
+
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -13,9 +18,11 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -77,7 +84,7 @@ public class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String bam) {
-        final SAMFileHeader readsHeader = getHeader(ctx, bam);
+        final SAMFileHeader readsHeader = getHeader(ctx, bam, null);
         List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
         return getParallelReads(bam, intervals);
     }
@@ -107,10 +114,24 @@ public class ReadsSparkSource implements Serializable {
     /**
      * Loads the header using Hadoop-BAM.
      * @param filePath path to the bam.
+     * @param auth authentication information if using GCS.
      * @return the header for the bam.
      */
-    public static SAMFileHeader getHeader(final JavaSparkContext ctx, final String filePath) {
+    public static SAMFileHeader getHeader(final JavaSparkContext ctx, final String filePath, final AuthHolder auth) {
         final SAMFileHeader samFileHeader;
+
+        // GCS case
+        if (BucketUtils.isCloudStorageUrl(filePath)) {
+            try {
+                Storage.Objects storageClient = auth.makeStorageClient();
+                try (final SamReader reader = BAMIO.openBAM(storageClient, filePath, ValidationStringency.DEFAULT_STRINGENCY)) {
+                    return reader.getFileHeader();
+                }
+            } catch (Exception e) {
+                throw new GATKException("Failed to read bams header from " + filePath + ".", e);
+            }
+        }
+
         try {
              samFileHeader = SAMHeaderReader.readSAMHeaderFrom(new Path(filePath), ctx.hadoopConfiguration());
         } catch (IOException e) {

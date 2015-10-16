@@ -228,6 +228,7 @@ public final class SimpleInterval implements Locatable, Serializable {
 
      /**
      * Determines whether this interval contains the entire region represented by other
+     * (in other words, whether it covers it).
      *
      * @param other interval to check
      * @return true if this interval contains all of the bases spanned by other, otherwise false

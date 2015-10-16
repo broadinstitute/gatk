@@ -32,6 +32,7 @@ public class BaseRecalibratorSparkFn {
 
         JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithContextIterator -> {
             final BaseRecalibrationEngine bqsr = new BaseRecalibrationEngine(recalArgs, header);
+            bqsr.logCovariatesUsed();
 
             while ( readWithContextIterator.hasNext() ) {
                 final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();

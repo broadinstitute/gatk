@@ -67,16 +67,18 @@ public final class BaseRecalibrationEngine implements Serializable {
 
         covariates = new StandardCovariateList(recalArgs, readsHeader);
 
-        logger.info("The covariates being used here: ");
-        for (final Covariate cov : covariates) { // list all the covariates being used
-            logger.info('\t' + cov.getClass().getSimpleName());
-        }
-
         final int numReadGroups = readsHeader.getReadGroups().size();
         if ( numReadGroups < 1 ) {
             throw new UserException("Number of read groups must be >= 1, but is " + numReadGroups);
         }
         recalTables = new RecalibrationTables(covariates, numReadGroups);
+    }
+
+    public void logCovariatesUsed() {
+        logger.info("The covariates being used here: ");
+        for (final Covariate cov : covariates) { // list all the covariates being used
+            logger.info('\t' + cov.getClass().getSimpleName());
+        }
     }
 
     /**

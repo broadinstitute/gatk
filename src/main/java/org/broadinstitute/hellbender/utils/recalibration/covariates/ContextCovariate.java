@@ -37,8 +37,7 @@ public final class ContextCovariate implements Covariate {
     public ContextCovariate(final RecalibrationArgumentCollection RAC){
         mismatchesContextSize = RAC.MISMATCHES_CONTEXT_SIZE;
         indelsContextSize = RAC.INDELS_CONTEXT_SIZE;
-
-        logger.info("\t\tContext sizes: base substitution model " + mismatchesContextSize + ", indel substitution model " + indelsContextSize);
+        logger.debug("\t\tContext sizes: base substitution model " + mismatchesContextSize + ", indel substitution model " + indelsContextSize);
 
         if (mismatchesContextSize > MAX_DNA_CONTEXT) {
             throw new UserException.BadArgumentValue("mismatches_context_size", String.format("context size cannot be bigger than %d, but was %d", MAX_DNA_CONTEXT, mismatchesContextSize));

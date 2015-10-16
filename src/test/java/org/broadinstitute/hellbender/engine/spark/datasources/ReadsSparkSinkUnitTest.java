@@ -46,7 +46,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
-        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam);
+        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
         ReadsSparkSink.writeReads(ctx, outputFile, rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
@@ -71,7 +71,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
-        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam);
+        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
         ReadsSparkSink.writeReads(ctx, outputFile, rddParallelReads, header, ReadsWriteFormat.ADAM);
 
