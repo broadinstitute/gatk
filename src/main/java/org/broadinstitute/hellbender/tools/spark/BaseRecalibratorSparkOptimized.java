@@ -107,55 +107,16 @@ public class BaseRecalibratorSparkOptimized extends SparkCommandLineProgram {
         List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
                 : IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
 
-        Stopwatch hacking = Stopwatch.createUnstarted();
         List<String> localVariants = knownVariants;
         localVariants = hackilyCopyFromGCSIfNecessary(localVariants);
-        if (BucketUtils.isCloudStorageUrl(knownVariants.get(0))) {
-            // TODO: fix
-            logger.info("(HACK): copying the GCS file to local just so we can read it back.");
-            hacking.start();
-            localVariants = new ArrayList<>();
-            // this only works with the API_KEY, but then again it's a hack so there's no point in polishing it.
-            PipelineOptions popts = auth.asPipelineOptionsDeprecated();
-            int i=0;
-            for (String s : knownVariants) {
-                // presumably they're all GCS.
-                String d = IOUtils.createTempFile("knownVariants-"+i,".vcf").getAbsolutePath();
-                try {
-                    BucketUtils.copyFile(s, popts, d);
-                } catch (IOException x) {
-                    throw new UserException.CouldNotReadInputFile(s,x);
-                }
-                i++;
-                localVariants.add(d);
-            }
-            hacking.stop();
-            logger.info("Copying the vcf took "+hacking.elapsed(TimeUnit.MILLISECONDS)+" ms.");
-        }
-
         List<Variant> variants = VariantsSource.getVariantsList(localVariants);
 
-        List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, AddContextDataToReadSparkOptimized.bigShardSize);
-        ArrayList<ContextShard> localShards = AddContextDataToReadSparkOptimized.fillVariants(shardedIntervals, variants, AddContextDataToReadSparkOptimized.margin);
-
-        logger.info("Shipping "+localShards.size()+" big shards.");
-        Stopwatch shipping = Stopwatch.createStarted();
-        JavaRDD<ContextShard> shards = ctx.parallelize(localShards);
-        System.out.println("Shipping took: "+shipping.elapsed(TimeUnit.MILLISECONDS) + " ms.");
-
-        JavaRDD<ContextShard> reads;
-        try {
-            reads = shards.flatMap( AddContextDataToReadSparkOptimized.subdivideAndFillReads(bam, auth, AddContextDataToReadSparkOptimized.outputShardSize, AddContextDataToReadSparkOptimized.margin, readFilterToApply) );
-        } catch (IOException x) {
-            throw new GATKException("Couldn't read "+bam+": "+x.getMessage(), x);
-        }
-
-        // fill in reference bases
-        reads = reads.map(s -> AddContextDataToReadSparkOptimized.fillContext(rds, s));
+        // get reads, reference, variants
+        JavaRDD<ContextShard> readsWithContext = AddContextDataToReadSparkOptimized.add(ctx, intervals, bam, variants, auth, readFilterToApply, rds);
 
         // run BaseRecalibratorEngine.
         BaseRecalibratorEngineSparkWrapper recal = new BaseRecalibratorEngineSparkWrapper(readsHeaderBcast, refDictionaryBcast, bqsrArgs);
-        JavaRDD<RecalibrationTables> tables = reads.mapPartitions(s->recal.apply(s));
+        JavaRDD<RecalibrationTables> tables = readsWithContext.mapPartitions(s->recal.apply(s));
 
         final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new StandardCovariateList(bqsrArgs, readsHeader));
         final RecalibrationTables table = tables.treeAggregate(emptyRecalibrationTable,
