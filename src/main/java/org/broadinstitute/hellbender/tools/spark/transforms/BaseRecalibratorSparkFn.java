@@ -97,7 +97,11 @@ public class BaseRecalibratorSparkFn {
             }
             RecalibrationReport ret = new RecalibrationReport(tempReport);
 
-            checkForRoundtripDifference(combinedTables, ret.getRecalibrationTables());
+            checkForRoundtripDifference(combinedTables, ret.getRecalibrationTables(), "");
+
+            RecalibrationTables victim = ret.getRecalibrationTables();
+            roundToTwoDecimalPlaces(victim);
+            checkForRoundtripDifference(combinedTables, victim, "(after rounding) ");
 
             return ret;
         } catch (FileNotFoundException e) {
@@ -106,7 +110,7 @@ public class BaseRecalibratorSparkFn {
     }
 
     // if report save/reload is a no-op then this should output "100% matching".
-    private static void checkForRoundtripDifference(RecalibrationTables original, RecalibrationTables ret) {
+    private static void checkForRoundtripDifference(RecalibrationTables original, RecalibrationTables ret, String msg) {
 
         ComparisonResult[] comp = new ComparisonResult[3];
         for (int i=0; i<comp.length; i++) comp[i] = new ComparisonResult();
@@ -123,9 +127,17 @@ public class BaseRecalibratorSparkFn {
             }
         }
 
-        log.info("RecalibrationTables result. NumMismatches: " + comp[0].formatResult());
-        log.info("RecalibrationTables result. NumObservations: " + comp[1].formatResult());
-        log.info("RecalibrationTables result. Empirical quality: " + comp[2].formatResult());
+        log.info("RecalibrationTables result. "+ msg + "NumMismatches: " + comp[0].formatResult());
+        log.info("RecalibrationTables result. "+ msg + "NumObservations: " + comp[1].formatResult());
+        log.info("RecalibrationTables result. "+ msg + "Empirical quality: " + comp[2].formatResult());
 
+    }
+
+    private static void roundToTwoDecimalPlaces(RecalibrationTables rt) {
+        for (int i=0; i<rt.numTables(); i++) {
+            for (NestedIntegerArray.Leaf<RecalDatum> l : rt.getTable(i).getAllLeaves()) {
+                l.value.setNumMismatches( Math.round(l.value.getNumMismatches()*100)/100.0 );
+            }
+        }
     }
 }
