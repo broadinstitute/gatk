@@ -27,7 +27,7 @@ public class ModeledSegment implements Locatable {
     public ModeledSegment(final SimpleInterval interval, final String call, final long originalProbeCount, final double segmentMeanInLogCR) {
         this.simpleInterval = Utils.nonNull(interval, "The input interval cannot be null");
         this.call = Utils.nonNull(call, String.format("The input call cannot be null.  Use empty string, instead (\"%s\")", NO_CALL));
-        this.segmentMean = ParamUtils.isFinite(segmentMeanInLogCR, "Segment Mean must be a finite.");
+        this.segmentMean = ParamUtils.isFinite(segmentMeanInLogCR, "Segment Mean must be finite.");
         this.originalProbeCount = ParamUtils.isPositiveOrZero(originalProbeCount, "Number of original probes must be positive or zero.");
     }
 

@@ -35,6 +35,9 @@ public final class ReCapSegCaller {
     //bounds on log_2 coverage for high-confidence neutral segments
     public static final double COPY_NEUTRAL_CUTOFF = 0.1;
 
+    // Number of standard deviations before assuming that a target was an outlier in a segment
+    public static final double Z_THRESHOLD = 2;
+
     private ReCapSegCaller() {} // prevent instantiation
 
     private static double calculateT(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments) {
@@ -54,7 +57,7 @@ public final class ReCapSegCaller {
 
         // Now we filter outliers by only including those w/in 2 standard deviations.
         final double [] filteredCopyNeutralTargetsCopyRatio = Arrays.stream(copyNeutralTargetsCopyRatio)
-                .filter(c -> Math.abs(c - meanCopyNeutralTargets) < sigmaCopyNeutralTargets * 2).toArray();
+                .filter(c -> Math.abs(c - meanCopyNeutralTargets) < sigmaCopyNeutralTargets * Z_THRESHOLD).toArray();
 
         return new StandardDeviation().evaluate(filteredCopyNeutralTargetsCopyRatio);
     }

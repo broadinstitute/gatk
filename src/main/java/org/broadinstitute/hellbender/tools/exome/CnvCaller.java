@@ -45,6 +45,10 @@ public final class CnvCaller {
     //bounds on log_2 coverage for high-confidence neutral segments
     public static final double COPY_NEUTRAL_CUTOFF = 0.1;
 
+    // Lower percentile bound before assuming that target is an outlier in copy neutral segment
+    public static final double COPY_NEUTRAL_LOWER_PERCENTILE = 2;
+
+
     private CnvCaller() {} // prevent instantiation
 
     /**
@@ -85,7 +89,7 @@ public final class CnvCaller {
         final double neutralSigma = new StandardDeviation().evaluate(nearNeutralCoverage);
         logger.info(String.format("Neutral Sigma (unfiltered): %.4f", neutralSigma));
 
-        final double filterThreshold = new Percentile(2).evaluate(nearNeutralCoverage);
+        final double filterThreshold = new Percentile(COPY_NEUTRAL_LOWER_PERCENTILE).evaluate(nearNeutralCoverage);
         final double[] nearNeutralCoverageFiltered = Arrays.stream(nearNeutralCoverage)
                 .filter(c -> c > filterThreshold)
                 .toArray();
