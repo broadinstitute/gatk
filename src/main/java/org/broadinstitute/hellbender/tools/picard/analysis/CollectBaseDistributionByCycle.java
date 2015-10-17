@@ -24,7 +24,7 @@ import java.util.*;
         programGroup = QCProgramGroup.class
 )
 public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {
-    private static final String R_SCRIPT = "baseDistributionByCycle.R";
+    public static final String R_SCRIPT = "baseDistributionByCycle.R";
 
     @Argument(shortName = "CHART", doc = "A file (with .pdf extension) to write the chart to.")
     public File CHART_OUTPUT;
