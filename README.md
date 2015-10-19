@@ -41,9 +41,24 @@ To run a single test class, run something like this, `gradle test -Dtest.single=
 
 To run tests and compute coverage reports, run `gradle jacocoTestReport`. The report is then in `build/reports/jacoco/test/html/index.html`. (IntelliJ 14 has a good coverage tool that is preferable for development).
 
-To run the main program, run `build/install/gatk/bin/gatk`.
 
 Note: for faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.  This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.  
+
+
+Running GATK 4
+------------
+To run the main program locally, run `build/install/gatk/bin/gatk`.
+
+For spark tools, first build the Spark jar using `gradle sparkJar`. The jar can be found in `build/libs/` and will have
+a name that matches the pattern `gatk-all-4.pre-alpha-7-*-SNAPSHOT-spark.jar`, where `*` is the
+hash of the current commit.
+
+There are three main ways to run gatk 4 with Spark,
+* Locally, using the regular gatk jar and `--master=local[*]`
+
+* On an on-premises cluster by copying the spark jar to the master and running `spark-submit`
+
+* On Google Cloud Dataproc. For detailed instructions, see our [Clould Dataproc wiki page](https://github.com/broadinstitute/gatk/wiki/Running-GATK-on-Cloud-Dataproc)
 
 General guidelines for Hellbender developers
 ----------------
