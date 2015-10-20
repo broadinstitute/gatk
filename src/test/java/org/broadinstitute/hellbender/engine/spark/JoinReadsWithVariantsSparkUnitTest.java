@@ -17,30 +17,33 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class ShuffleJoinReadsWithVariantsSparkUnitTest extends BaseTest {
+public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
     @DataProvider(name = "pairedReadsAndVariants")
     public Object[][] pairedReadsAndVariants(){
-        Object[][] data = new Object[2][];
-        List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
-        for (int i = 0; i < classes.size(); ++i) {
-            Class<?> c = classes.get(i);
-            ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
+        List<Object[]> testCases = new ArrayList<>();
 
-            List<GATKRead> reads = testData.getReads();
-            List<Variant> variantList = testData.getVariants();
-            List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant = testData.getKvReadiVariant();
-            data[i] = new Object[]{reads, variantList, kvReadiVariant};
+        for ( JoinStrategy joinStrategy : JoinStrategy.values() ) {
+            for ( Class<?> readImplementation : Arrays.asList(Read.class, SAMRecord.class) ) {
+                ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(readImplementation);
+                List<GATKRead> reads = testData.getReads();
+                List<Variant> variantList = testData.getVariants();
+                List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant = testData.getKvReadiVariant();
+
+                testCases.add(new Object[]{reads, variantList, kvReadiVariant, joinStrategy});
+            }
         }
-        return data;
+        return testCases.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "pairedReadsAndVariants", groups = "spark")
-    public void pairReadsAndVariantsTest(List<GATKRead> reads, List<Variant> variantList, List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant) {
+    public void pairReadsAndVariantsTest(List<GATKRead> reads, List<Variant> variantList, List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant, JoinStrategy joinStrategy) {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<Variant> rddVariants = ctx.parallelize(variantList);
-        JavaPairRDD<GATKRead, Iterable<Variant>> actual = ShuffleJoinReadsWithVariants.join(rddReads, rddVariants);
+        JavaPairRDD<GATKRead, Iterable<Variant>> actual = joinStrategy == JoinStrategy.SHUFFLE ?
+                                                          ShuffleJoinReadsWithVariants.join(rddReads, rddVariants) :
+                                                          BroadcastJoinReadsWithVariants.join(rddReads, rddVariants);
         Map<GATKRead, Iterable<Variant>> gatkReadIterableMap = actual.collectAsMap();
 
         Assert.assertEquals(gatkReadIterableMap.size(), kvReadiVariant.size());

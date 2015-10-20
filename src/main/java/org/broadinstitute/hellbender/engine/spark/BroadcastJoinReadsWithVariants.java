@@ -17,8 +17,7 @@ import scala.Tuple2;
  * then mapped over and overlapping variants are added for each read.
  */
 public class BroadcastJoinReadsWithVariants {
-    public static JavaPairRDD<GATKRead, Iterable<Variant>> join(
-            final JavaRDD<GATKRead> reads, final JavaRDD<Variant> variants) {
+    public static JavaPairRDD<GATKRead, Iterable<Variant>> join( final JavaRDD<GATKRead> reads, final JavaRDD<Variant> variants ) {
         JavaSparkContext ctx = new JavaSparkContext(reads.context());
         final IntervalsSkipList<Variant> variantSkipList = new IntervalsSkipList<>(variants.collect());
         Broadcast<IntervalsSkipList<Variant>> variantsBroadcast = ctx.broadcast(variantSkipList);
