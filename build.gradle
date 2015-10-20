@@ -40,9 +40,7 @@ task downloadGsaLibFile(type: Download) {
 repositories {
     mavenCentral()
     jcenter()
-    maven {
-        url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
-    }
+
     maven {
         url "https://oss.sonatype.org/content/repositories/snapshots/" // for http-client
     }
@@ -81,9 +79,9 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror']
 }
 
-installApp.dependsOn downloadGsaLibFile
-build.dependsOn installApp
-check.dependsOn installApp
+installDist.dependsOn downloadGsaLibFile
+build.dependsOn installDist
+check.dependsOn installDist
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
@@ -125,13 +123,8 @@ dependencies {
         exclude module: 'hadoop-bam'
     }
 
-    // we don't need this guy. Plus, it asks for the latest version
-    // of com.google.http-client:google-http-client-jackson2,
-    // which is a problem when we have a SNAPSHOT version.
-    //compile 'com.google.appengine.tools:appengine-gcs-client:0.4.4'
     compile 'org.jgrapht:jgrapht-core:0.9.1'
     compile 'org.testng:testng:6.9.6' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile 'com.cloudera.dataflow.spark:spark-dataflow:0.4.0.1'
     compile('org.seqdoop:hadoop-bam:7.1.0') {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
@@ -272,7 +265,7 @@ test {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.2.1'
+    gradleVersion = '2.7'
 }
 
 
