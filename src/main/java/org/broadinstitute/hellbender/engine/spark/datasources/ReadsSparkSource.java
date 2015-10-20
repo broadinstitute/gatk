@@ -51,7 +51,7 @@ public class ReadsSparkSource implements Serializable {
         Configuration conf = new Configuration();
         // reads take more space in memory than on disk so we need to limit the split size
         // TODO: make this configurable, or tune automatically
-        conf.set("mapred.max.split.size", "10485760");
+       // conf.set("mapred.max.split.size", "10485760");
 
         JavaPairRDD<LongWritable, SAMRecordWritable> rdd2 = ctx.newAPIHadoopFile(
                 bam, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
@@ -113,10 +113,12 @@ public class ReadsSparkSource implements Serializable {
     public static SAMFileHeader getHeader(final JavaSparkContext ctx, final String filePath) {
         final SAMFileHeader samFileHeader;
         Path path = new Path(filePath);
+        /*
         File file = new File(filePath); // not hdfs...
 
-        if (file.isDirectory()) {
-            path = new Path(filePath + "/part-r-00000");
+        if (file.isDirectory()) {*/
+        if (filePath.endsWith("/")) {
+            path = new Path(filePath + "part-r-00000");
         }
         try {
              samFileHeader = SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
