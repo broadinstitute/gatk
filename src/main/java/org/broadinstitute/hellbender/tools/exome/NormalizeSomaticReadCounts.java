@@ -191,22 +191,31 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         // Output the tangent normalized counts.
         final ReadCountCollection tangentNormalized = targetMapper.fromPoNtoCaseCountCollection(tangentNormalizedCounts, originalCounts.columnNames());
         writeTangentNormalizedOutput(tangentNormalized);
-        writePreTangentNormalizationCounts(targetMapper, tangentNormalizationInputCounts, originalCounts.columnNames());
+        final ReadCountCollection preTangentNormalized = targetMapper.fromPoNtoCaseCountCollection(tangentNormalizationInputCounts, originalCounts.columnNames());
+        writePreTangentNormalizationOutput(preTangentNormalized);
         writeTangentBetaHats(tangentBetaHats, originalCounts.columnNames());
     }
 
     /**
      * Writes the pre-tangent-normalization read counts if a file was provided for it.
      *
-     * @param readCountColumns the original read counts.
-     * @param tangentMapper the target mapper to map pre-tangent normalization targets to the order in the original counts.
-     * @param inputCounts the input counts to target-factor normalize.
+     * Please note that this file is written in the target format originally used in recapseg.  In other words, it is
+     *  written as if it was target coverage. If the output file is null, we do not write a file.
+     *
+     * @param preTangentNormalized the read count collection to write.
      */
-    private void writePreTangentNormalizationCounts(final Case2PoNTargetMapper tangentMapper, final RealMatrix inputCounts, final List<String> readCountColumns) {
+    private void writePreTangentNormalizationOutput(final ReadCountCollection preTangentNormalized) {
+        /**
+         * If the output file is null, we do not write a file.
+         */
         if (preTangentNormalizationOutFile != null) {
-            final ReadCountCollection preTangentNormalizationCounts = tangentMapper.fromPoNtoCaseCountCollection(
-                    inputCounts, readCountColumns);
-            writeOutput(preTangentNormalizationOutFile,preTangentNormalizationCounts,"Pre-tangent normalization read count values");
+            try {
+                ReadCountCollectionUtils.writeAsTargetCoverage(preTangentNormalizationOutFile, preTangentNormalized, "fileFormat = tsv",
+                        "commandLine = " + getCommandLine(),
+                        "title = Pre tangent normalized coverage profile");
+            } catch (final IOException ex) {
+                throw new UserException.CouldNotCreateOutputFile(preTangentNormalizationOutFile, ex.getMessage());
+            }
         }
     }
 
