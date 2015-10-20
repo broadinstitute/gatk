@@ -1,0 +1,45 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.QualityScoreDistribution CHART_OUTPUT=oq.pdf INPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/QualityScoreDistribution/originalQuals.chr1.1-1K.bam OUTPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/QualityScoreDistribution/originalQuals.chr1.1-1K.txt    ALIGNED_READS_ONLY=false PF_READS_ONLY=false INCLUDE_NO_CALLS=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Wed Oct 14 22:05:44 EDT 2015
+
+
+## HISTOGRAM	java.lang.Byte
+QUALITY	COUNT_OF_Q	COUNT_OF_OQ
+2	0	1107
+4	0	13
+5	15	10
+6	11	20
+7	22	30
+8	18	14
+9	57	11
+10	165	30
+11	565	21
+12	250	33
+13	79	34
+14	40	63
+15	25	32
+16	30	82
+17	37	90
+18	62	108
+19	86	130
+20	85	146
+21	89	218
+22	107	161
+23	144	152
+24	142	166
+25	213	160
+26	328	197
+27	414	239
+28	499	310
+29	489	258
+30	509	375
+31	477	507
+32	347	543
+33	401	1128
+34	468	299
+35	420	0
+36	79	0
+37	10	0
+38	4	0
+

@@ -51,14 +51,14 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
             optional = true)
     public String out;
 
-    @Argument(shortName="CHART", doc="A file (with .pdf extension) to write the chart to.", optional=true)
-    public File CHART_OUTPUT;
+    @Argument(shortName="C", fullName = "chart", doc="A file (with .pdf extension) to write the chart to.", optional=true)
+    public File chartOutput;
 
-    @Argument(doc="If set to true, calculate mean quality over aligned reads only.")
-    public boolean ALIGNED_READS_ONLY = false;
+    @Argument(shortName="A", fullName = "alignedReadsOnly", doc="If set to true calculate mean quality over aligned reads only.")
+    public boolean alignedReadsOnly = false;
 
-    @Argument(doc="If set to true calculate mean quality over PF reads only.")
-    public boolean PF_READS_ONLY = false;
+    @Argument(shortName="F", fullName = "pfReadsOnly", doc="If set to true calculate mean quality over PF reads only.")
+    public boolean pfReadsOnly = false;
 
     @VisibleForTesting
     static final class HistogramGenerator implements Serializable {
@@ -194,7 +194,7 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
      * Computes the MeanQualityByCycle. Creates a metrics file with relevant histograms.
      */
     public MetricsFile<?, Integer> calculateMeanQualityByCycle(final JavaRDD<GATKRead> reads){
-        final JavaRDD<GATKRead> filteredReads = reads.filter(makeReadFilter(PF_READS_ONLY, ALIGNED_READS_ONLY));
+        final JavaRDD<GATKRead> filteredReads = reads.filter(makeReadFilter(pfReadsOnly, alignedReadsOnly));
         final HistogramGeneratorPair aggregate = filteredReads.aggregate(new HistogramGeneratorPair(),
                 (hgp, read) -> hgp.addRead(read),
                 (hgp1, hgp2) -> hgp1.merge(hgp2));
@@ -228,14 +228,14 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
 
         if (metrics.getAllHistograms().isEmpty()) {
             logger.warn("No valid bases found in input file.");
-        } else if (CHART_OUTPUT != null){
+        } else if (chartOutput != null){
             // Now run R to generate a chart
 
             // If we're working with a single library, assign that library's name
             // as a suffix to the plot title
             final List<SAMReadGroupRecord> readGroups = readsHeader.getReadGroups();
 
-            /**
+            /*
              * A subtitle for the plot, usually corresponding to a library.
              */
             String plotSubtitle = "";
@@ -244,7 +244,7 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
             }
             final RScriptExecutor executor = new RScriptExecutor();
             executor.addScript(new Resource(MeanQualityByCycle.R_SCRIPT, MeanQualityByCycle.class));
-            executor.addArgs(out, CHART_OUTPUT.getAbsolutePath(), inputFileName, plotSubtitle);
+            executor.addArgs(out, chartOutput.getAbsolutePath(), inputFileName, plotSubtitle);
             executor.exec();
         }
     }
