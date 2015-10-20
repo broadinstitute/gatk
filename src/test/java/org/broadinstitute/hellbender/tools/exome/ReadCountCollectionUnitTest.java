@@ -4,6 +4,7 @@ import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ReadCountCollectionUnitTest {
+public final class ReadCountCollectionUnitTest extends BaseTest {
 
     private static final int[] CORRECT_COLUMN_COUNTS = {1, 2, 3, 6, 12};
 
@@ -73,7 +74,7 @@ public final class ReadCountCollectionUnitTest {
         try {
             info.newInstance();
         } catch (final RuntimeException ex) {
-            org.testng.log4testng.Logger.getLogger(getClass()).info("testWrongInstantiation exception message: " + ex.getMessage());
+            logger.info("testWrongInstantiation exception message: " + ex.getMessage());
             throw ex;
         }
         Assert.fail("Exception not thrown: case " + caseName);

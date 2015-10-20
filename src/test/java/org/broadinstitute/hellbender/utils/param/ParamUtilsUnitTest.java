@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 /**
  * Created by lichtens on 8/25/15.
  */
-public class ParamUtilsTest {
+public class ParamUtilsUnitTest {
 
     @Test
     public void testInRangeSuccess(){

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.IntervalList;
-import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -18,8 +17,8 @@ import java.io.File;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample",
-        oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample"
+        summary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample.",
+        oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample."
 )
 public final class GetHetCoverage extends CommandLineProgram {
     protected static final String NORMAL_BAM_FILE_FULL_NAME = "normal";
@@ -72,7 +71,7 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected File snpFile;
 
     @Argument(
-            doc = "Output file for normal sample ref/alt read counts (at heterozygous SNPs).",
+            doc = "Output file for normal-sample ref/alt read counts (at heterozygous SNPs).",
             fullName = NORMAL_HET_REF_ALT_COUNTS_FILE_FULL_NAME,
             shortName = NORMAL_HET_REF_ALT_COUNTS_FILE_SHORT_NAME,
             optional = false
@@ -80,7 +79,7 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected File normalHetOutputFile;
 
     @Argument(
-            doc = "Output file for tumor sample ref/alt read counts (at heterozygous SNPs in normal sample).",
+            doc = "Output file for tumor-sample ref/alt read counts (at heterozygous SNPs in normal sample).",
             fullName = TUMOR_HET_REF_ALT_COUNTS_FILE_FULL_NAME,
             shortName = TUMOR_HET_REF_ALT_COUNTS_FILE_SHORT_NAME,
             optional = false
@@ -113,17 +112,17 @@ public final class GetHetCoverage extends CommandLineProgram {
 
         final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REF_ARGUMENTS.getReferenceFile(), snpFile);
 
-        logger.log(Level.INFO, "Getting normal het pulldown...");
+        logger.info("Getting normal het pulldown...");
         final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, hetAlleleFraction, pvalThreshold);
         normalHetPulldown.write(normalHetOutputFile);
-        logger.log(Level.INFO, "Normal het pulldown written to " + normalHetOutputFile.toString());
+        logger.info("Normal het pulldown written to " + normalHetOutputFile.toString());
 
         final IntervalList normalHetIntervals = normalHetPulldown.getIntervals();
 
-        logger.log(Level.INFO, "Getting tumor het pulldown...");
+        logger.info("Getting tumor het pulldown...");
         final Pulldown tumorHetPulldown = hetPulldown.getTumor(tumorBAMFile, normalHetIntervals);
         tumorHetPulldown.write(tumorHetOutputFile);
-        logger.log(Level.INFO, "Tumor het pulldown written to " + tumorHetOutputFile.toString());
+        logger.info("Tumor het pulldown written to " + tumorHetOutputFile.toString());
 
         return "SUCCESS";
     }

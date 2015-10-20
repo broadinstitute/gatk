@@ -23,7 +23,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HDF5LibraryUnitTests {
+public final class HDF5LibraryUnitTest {
 
     private static File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/utils/hdf5");
     private static File TEST_PON_TARGETS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-targets.txt");
