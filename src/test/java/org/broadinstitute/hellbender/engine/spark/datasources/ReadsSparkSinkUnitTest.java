@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -16,6 +17,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 
@@ -26,8 +28,8 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @DataProvider(name = "loadReadsBAM")
     public Object[][] loadReadsBAM() {
         return new Object[][]{
-                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1.bam"},
-                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", "ReadsSparkSinkUnitTest2.bam"},
+                {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", ".bam"},
+                {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam", "ReadsSparkSinkUnitTest2", ".bam"},
         };
     }
 
@@ -40,17 +42,18 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
-    public void readsSinkTest(String inputBam, String outputFile) throws IOException {
-        new File(outputFile).deleteOnExit();
+    public void readsSinkTest(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
+        final File outputFile = createTempFile(outputFileName, outputFileExtension);
+        outputFile.deleteOnExit();
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
-        ReadsSparkSink.writeReads(ctx, outputFile, rddParallelReads, header, ReadsWriteFormat.SINGLE);
+        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile);
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath());
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
 
         final ReadCoordinateComparator comparator = new ReadCoordinateComparator(header);
@@ -65,17 +68,23 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "loadReadsADAM", groups = "spark")
-    public void readsSinkADAMTest(String inputBam, String outputFile) throws IOException {
-        new File(outputFile).deleteOnExit();
+    public void readsSinkADAMTest(String inputBam, String outputDirectoryName) throws IOException {
+        // Since the test requires that we not create the actual output directory in advance,
+        // we instead create its parent directory and mark it for deletion on exit. This protects
+        // us from naming collisions across multiple instances of the test suite.
+        final File outputParentDirectory = Files.createTempDirectory(outputDirectoryName + "_parent").toFile();
+        IOUtils.deleteRecursivelyOnExit(outputParentDirectory);
+        final File outputDirectory = new File(outputParentDirectory, outputDirectoryName);
+
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
-        ReadsSparkSink.writeReads(ctx, outputFile, rddParallelReads, header, ReadsWriteFormat.ADAM);
+        ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.ADAM);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getADAMReads(outputFile, header);
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getADAMReads(outputDirectory.getAbsolutePath(), header);
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
 
         // Test the round trip
