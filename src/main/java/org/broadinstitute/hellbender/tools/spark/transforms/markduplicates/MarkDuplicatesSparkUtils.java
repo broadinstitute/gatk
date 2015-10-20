@@ -6,6 +6,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -78,11 +79,11 @@ public class MarkDuplicatesSparkUtils {
             return out;
         }).groupByKey();
 
-        return markPairedEnds(keyedPairs, finder);
+        return markPairedEnds(keyedPairs, finder, header);
     }
 
     static JavaRDD<GATKRead> markPairedEnds(final JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs,
-                                            final OpticalDuplicateFinder finder) {
+                                            final OpticalDuplicateFinder finder, final SAMFileHeader header) {
         return keyedPairs.flatMap(keyedPair -> {
             Iterable<PairedEnds> pairedEnds = keyedPair._2();
             final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEnds, pair -> pair.second() != null);
@@ -90,7 +91,7 @@ public class MarkDuplicatesSparkUtils {
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
 
             if (ReadsKey.isFragment(keyedPair._1())) { // fragments
-                return handleFragments(pairedEnds);
+                return handleFragments(pairedEnds, header);
             }
 
             List<GATKRead> out = Lists.newArrayList();
@@ -100,8 +101,10 @@ public class MarkDuplicatesSparkUtils {
                 out.add(pair.first());
             }
 
-            // order by score
-            List<PairedEnds> scored = Ordering.natural().reverse().onResultOf((PairedEnds pair) -> pair.score()).sortedCopy(paired.get(true));
+            // Order by score using ReadCoordinateComparator for tie-breaking.
+            Comparator<PairedEnds> pairedEndsComparator =
+                    Comparator.comparing(PairedEnds::score).reversed()
+                            .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));            List <PairedEnds> scored = paired.get(true).stream().sorted(pairedEndsComparator).collect(Collectors.toList());
 
             final PairedEnds best = Iterables.getFirst(scored, null);
             if (best == null) {
@@ -140,7 +143,7 @@ public class MarkDuplicatesSparkUtils {
         });
     }
 
-    private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds) {
+    private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, final SAMFileHeader header) {
         List<GATKRead> reads = Lists.newArrayList();
 
         final Iterable<GATKRead> transform = Iterables.transform(pairedEnds, pair -> pair.first());
@@ -151,7 +154,8 @@ public class MarkDuplicatesSparkUtils {
         // Note the we emit only fragments from this mapper.
         if (byPairing.get(true).isEmpty()) {
             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-            final List<GATKRead> frags = Ordering.natural().reverse().onResultOf((GATKRead read) -> MarkDuplicatesUtils.scoreForRead(read)).immutableSortedCopy(byPairing.get(false));
+            Comparator<GATKRead> fragmentsComparator = Comparator.comparing((java.util.function.Function<GATKRead, Integer>) (r) -> -MarkDuplicatesUtils.scoreForRead(r)).thenComparing(new ReadCoordinateComparator(header));
+            List <GATKRead> frags = byPairing.get(false).stream().sorted(fragmentsComparator).collect(Collectors.toList());
             if (!frags.isEmpty()) {
                 reads.add(frags.get(0));                        //highest score - just emit
                 for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
