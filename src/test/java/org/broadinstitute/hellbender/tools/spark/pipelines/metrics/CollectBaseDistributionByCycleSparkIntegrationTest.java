@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.analysis;
+package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -13,11 +13,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public final class CollectBaseDistributionByCycleIntegrationTest extends CommandLineProgramTest {
+public final class CollectBaseDistributionByCycleSparkIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectBaseDistributionByCycle");
 
     //Note: the 'expected' results in this test come from running picard 1.130
-
+    //Note: these tests use the same data and results as the non-spark ones, by design
     //Note: we don't test the contents of the chart pdf
 
     @DataProvider(name = "CollectBaseDistributionByCycle")
@@ -44,18 +44,18 @@ public final class CollectBaseDistributionByCycleIntegrationTest extends Command
         final File pdf = BaseTest.createTempFile("test", ".pdf");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + "INPUT");
+        args.add("-" + "I");
         args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + "OUTPUT");
+        args.add("-" + "O");
         args.add(outfile.getCanonicalPath());
-        args.add("--" + "CHART_OUTPUT");
-        args.add(pdf.getCanonicalPath());
-        args.add("--" + "PRODUCE_PLOT");
-        args.add(makePdf);
+        if (makePdf) {
+            args.add("--" + "chart");
+            args.add(pdf.getCanonicalPath());
+        }
 
-        args.add("--" + "PF_READS_ONLY");
+        args.add("--" + "pfReadsOnly");
         args.add(pfReadsOnly);
-        args.add("--" + "ALIGNED_READS_ONLY");
+        args.add("--" + "alignedReadsOnly");
         args.add(alignedReadsOnly);
 
         this.runCommandLine(args.getArgsArray());
