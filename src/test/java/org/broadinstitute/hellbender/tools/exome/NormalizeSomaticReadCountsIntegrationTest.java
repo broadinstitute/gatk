@@ -244,7 +244,6 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
         final ReadCountCollection input = ReadCountCollectionUtils.parse(FULL_READ_COUNTS_INPUT_ONE_SAMPLE);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput);
-        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput);
         final RealMatrix betaHats = readBetaHats(betaHatsOutput, input);
 
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
@@ -255,10 +254,12 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                input.targets().stream().collect(Collectors.toSet()));
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());
 
-        Assert.assertEquals(preTangentNormalized.columnNames(), input.columnNames());
         Assert.assertEquals(factorNormalized.targets().stream().collect(Collectors.toSet()),
                input.targets().stream().collect(Collectors.toSet()));
         assertFactorNormalizedValues(input, factorNormalized);
+
+        final TargetCollection<TargetCoverage> preTangentNormalizedAsTargetCollection = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(preTangentNormalizationOutput);
+        final ReadCountCollection preTangentNormalized = convertToReadCountCollection(preTangentNormalizedAsTargetCollection, "SAMPLE1");
         assertPreTangentNormalizedValues(factorNormalized, preTangentNormalized);
         assertBetaHats(preTangentNormalized, betaHats, TEST_PON);
 
@@ -267,6 +268,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         final ReadCountCollection tangentNormalized = convertToReadCountCollection(tangentNormalizedAsTargetCollection, "SAMPLE1");
         assertTangentNormalized(tangentNormalized, preTangentNormalized, betaHats, TEST_PON);
         Assert.assertEquals(tangentNormalized.columnNames(), input.columnNames());
+        Assert.assertEquals(tangentNormalized.columnNames(), preTangentNormalized.columnNames());
 
         // Make sure that we can read in the tangent normalized targets as a collection of TargetCoverage
         final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(new File(tangentNormalizationOutput.getAbsolutePath()));
@@ -333,7 +335,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         final ReadCountCollection input = ReadCountCollectionUtils.parse(TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput);
         final ReadCountCollection tangentNormalized = ReadCountCollectionUtils.parse(tangentNormalizationOutput);
-        final ReadCountCollection preTangentNormalized = ReadCountCollectionUtils.parse(preTangentNormalizationOutput);
+        final TargetCollection<TargetCoverage> preTangentNormalizedAsTargetCollection = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(preTangentNormalizationOutput);
+        final ReadCountCollection preTangentNormalized = convertToReadCountCollection(preTangentNormalizedAsTargetCollection, "SAMPLE1");
         final RealMatrix betaHats = readBetaHats(betaHatsOutput, input);
         Assert.assertFalse(factorNormalized.targets().stream().anyMatch(t -> t.getInterval() != null));
         Assert.assertEquals(factorNormalized.columnNames(), input.columnNames());

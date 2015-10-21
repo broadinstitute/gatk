@@ -48,3 +48,6 @@ before_install:
 
 after_success:
 - gradle jacocoTestReport coveralls
+
+after_failure:
+- dmesg | tail -100
