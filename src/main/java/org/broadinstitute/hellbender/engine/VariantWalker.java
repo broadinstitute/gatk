@@ -94,6 +94,8 @@ public abstract class VariantWalker extends GATKTool {
                           new ReadsContext(reads, variantInterval),
                           new ReferenceContext(reference, variantInterval),
                           new FeatureContext(features, variantInterval));
+
+                    progressMeter.update(variantInterval);
                 });
     }
 

@@ -55,6 +55,8 @@ public abstract class IntervalWalker extends GATKTool {
                   new ReadsContext(reads, interval),
                   new ReferenceContext(reference, interval),
                   new FeatureContext(features, interval));
+
+            progressMeter.update(interval);
         }
     }
 

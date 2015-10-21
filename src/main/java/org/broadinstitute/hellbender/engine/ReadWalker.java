@@ -66,6 +66,8 @@ public abstract class ReadWalker extends GATKTool {
                     apply(read,
                           new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
                           new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null
+
+                    progressMeter.update(readInterval);
                 });
 
         logger.info(countedFilter.getSummaryLine());
