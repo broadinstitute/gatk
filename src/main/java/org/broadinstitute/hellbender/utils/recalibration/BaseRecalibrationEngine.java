@@ -34,9 +34,18 @@ public final class BaseRecalibrationEngine implements Serializable {
     /**
      * Reference window function for BQSR. For each read, returns an interval representing the span of
      * reference bases required by the BQSR algorithm for that read.
+     *
+     * Implemented as a static class rather than an anonymous class or lambda due to serialization issues in spark.
      */
-    public static final SerializableFunction<GATKRead, SimpleInterval> BQSR_REFERENCE_WINDOW_FUNCTION =
-            read -> BAQ.getReferenceWindowForRead(read, BAQ.DEFAULT_BANDWIDTH, BAQ.DEFAULT_INCLUDE_CLIPPED_BASES);
+    public static final class BQSRReferenceWindowFunction implements SerializableFunction<GATKRead, SimpleInterval> {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public SimpleInterval apply( GATKRead read ) {
+            return BAQ.getReferenceWindowForRead(read, BAQ.DEFAULT_BANDWIDTH, BAQ.DEFAULT_INCLUDE_CLIPPED_BASES);
+        }
+    }
+    public static final SerializableFunction<GATKRead, SimpleInterval> BQSR_REFERENCE_WINDOW_FUNCTION = new BQSRReferenceWindowFunction();
 
     private RecalibrationArgumentCollection recalArgs;
 
