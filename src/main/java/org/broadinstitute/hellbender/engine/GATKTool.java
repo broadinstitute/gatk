@@ -4,9 +4,11 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.io.FilenameUtils;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -31,10 +33,13 @@ public abstract class GATKTool extends CommandLineProgram {
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
     @ArgumentCollection
-    public final ReadInputArgumentCollection readArguments = requiresReads() ? new RequiredReadInputArgumentCollection() : new OptionalReadInputArgumentCollection();
+    protected final ReadInputArgumentCollection readArguments = requiresReads() ? new RequiredReadInputArgumentCollection() : new OptionalReadInputArgumentCollection();
 
     @ArgumentCollection
-    public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
+    protected final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
+
+    @Argument(fullName = "secondsBetweenProgressUpdates", shortName = "secondsBetweenProgressUpdates", doc = "Output traversal statistics every time this many seconds elapse", optional = true)
+    private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -68,6 +73,13 @@ public abstract class GATKTool extends CommandLineProgram {
      * their particular driving data source.
      */
     List<SimpleInterval> intervalsForTraversal;
+
+    /**
+     * Progress meter to print out traversal statistics. Subclasses must invoke
+     * {@link ProgressMeter#update(Locatable)} after each record processed from
+     * the primary input in their {@link #traverse} method.
+     */
+    ProgressMeter progressMeter;
 
     /**
      * Initialize our source of reference data (or set it to null if no reference argument was provided).
@@ -268,6 +280,8 @@ public abstract class GATKTool extends CommandLineProgram {
         validateSequenceDictionaries();
 
         checkToolRequirements();
+
+        progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
     }
 
     /**
@@ -387,7 +401,9 @@ public abstract class GATKTool extends CommandLineProgram {
     @Override
     protected Object doWork() {
         onTraversalStart();
+        progressMeter.start();
         traverse();
+        progressMeter.stop();
         return onTraversalDone();
     }
 }
