@@ -11,6 +11,7 @@ public final class StandardArgumentDefinitions {
     public static final String REFERENCE_LONG_NAME = "reference";
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
+    public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "useOriginalQualities";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";

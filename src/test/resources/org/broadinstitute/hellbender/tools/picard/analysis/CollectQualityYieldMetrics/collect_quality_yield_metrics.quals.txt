@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.CollectQualityYieldMetrics INPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/CollectQualityYieldMetrics/collect_quality_yield_metrics.sam OUTPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/CollectQualityYieldMetrics/collect_quality_yield_metrics.quals.txt USE_ORIGINAL_QUALITIES=false    VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Fri Oct 16 14:40:52 EDT 2015
+
+## METRICS CLASS	picard.analysis.CollectQualityYieldMetrics$QualityYieldMetrics
+TOTAL_READS	PF_READS	READ_LENGTH	TOTAL_BASES	PF_BASES	Q20_BASES	PF_Q20_BASES	Q30_BASES	PF_Q30_BASES	Q20_EQUIVALENT_YIELD	PF_Q20_EQUIVALENT_YIELD
+52	52	101	5252	5252	3034	3034	1414	1414	5090	5090
+
+
