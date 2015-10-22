@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
@@ -10,15 +9,11 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.io.Serializable;
 
 /**
@@ -192,7 +187,7 @@ public final class CollectQualityYieldMetricsSpark extends GATKSparkTool {
                 (hgp1, hgp2) -> hgp1.merge(hgp2))
               .finish();
 
-        saveResults(makeMetricsFile(metrics));
+        MetricsUtils.saveMetrics(makeMetricsFile(metrics), out, getAuthHolder());
     }
 
     private MetricsFile<QualityYieldMetrics,Integer> makeMetricsFile(final QualityYieldMetrics metrics) {
@@ -201,12 +196,4 @@ public final class CollectQualityYieldMetricsSpark extends GATKSparkTool {
         return metricsFile;
     }
 
-    private void saveResults(final MetricsFile<QualityYieldMetrics, Integer> metricsFile) {
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
-        try(OutputStream outputStream = BucketUtils.createFile(out, gcsOptions)) {
-            metricsFile.write(new PrintWriter(outputStream));
-        } catch (final IOException e){
-            throw new GATKException("Could not write metrics to file: " + out, e);
-        }
-    }
 }

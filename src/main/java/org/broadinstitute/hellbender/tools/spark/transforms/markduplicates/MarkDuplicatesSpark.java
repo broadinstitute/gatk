@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
-import java.io.File;
 import java.io.IOException;
 
 @CommandLineProgramProperties(
@@ -35,9 +34,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String output;
 
-    @Argument(doc = "File to write duplication metrics to.", optional=true,
+    @Argument(doc = "Path to write duplication metrics to.", optional=true,
             shortName = "M", fullName = "METRICS_FILE")
-    protected File metricsFile;
+    protected String metricsFile;
 
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
@@ -84,7 +83,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metrics = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReads);
-            MarkDuplicatesSparkUtils.writeMetricsToFile(metrics, metricsFile);
+            MarkDuplicatesSparkUtils.saveMetricsRDD(metrics, metricsFile, getAuthHolder());
         }
     }
 }
