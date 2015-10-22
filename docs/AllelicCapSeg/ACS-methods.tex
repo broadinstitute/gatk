@@ -371,6 +371,27 @@ and the result of matching derivatives is
 %
 The higher-level parameters $\alpha$, $\beta$, and $\pi_o$, and the indicators $z_j$ are unaffected by this change and are sampled as before.  To summarize what we have accomplished by adding auxiliary variables, we now have perfect, uncorrelated draws from the conditional distribution of every variable using standard distributions (beta, gamma, categorical), the parameters of which are obtained from simple arithmetic.  The only exception is $\alpha$, which we must still slice-sample, but that only occurs once per Gibbs sweep.  The computational savings ought to be enormous.
 
+\subsection{\ACS ~hyperparameter sampling} \label{ACS_hyper}
+In general, high-level parameters, such as the hyperparameters $\alpha$ and $\beta$ of our \ACS~model are hard to sample because consecutive MCMC samples tend to be highly correlated leading to low effective sample sizes even with many iterations.  This is seen as follows: at any iteration we have values of $\alpha$ and $\beta$ that define some mean ($\alpha/\beta^2$) of the $\{ \lambda_j \}$.  When we Gibbs sample the $\{ \lambda_j \}$, the sampling mean will then tend to be near $\alpha/\beta^2$.  Then $\alpha$ and $\beta$ will in turn be sampled so as to reproduce this mean and the sampling gets entangled in its current value.  This effect worsens as $N$ increases.
+
+This could be averted if we could sample from the joint conditional $P(\alpha, \beta, \lambda | w, f, z)$, thereby exactly accounting for any correlations.  This is intractable, but we could obtain the same benefits by sampling $\alpha$ and $\beta$ from the \textit{marginalized} conditional 
+%
+\begin{equation}
+P(\alpha, \beta | w, f, z) = \int P(\alpha, \beta, \lambda | w, f, z) \, d^N \lambda.
+\end{equation}
+%
+This approach is called \textit{collapsed Gibbs sampling}.  It is not equivalent to completely marginalizing the $\{ \lambda_j \}$ out of our model, because this would render the conditionals on the $\{ w_j \}$ intractable.  Rather, they are marginalized only for sampling the hyperparameters.  This is made possible by the auxiliary hyperparameters $\{ w_j \}$, which render the $\{ \lambda_j \}$ conditionally gamma and thus easy to integrate out analytically. 
+%
+\begin{align}
+P(\alpha, \beta | w, f, z) =& \int P(\alpha, \beta, \lambda | w, f, z) \, d^N \lambda \\
+=& \prod_j \int \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha_j + \alpha - 1} e^{-(\beta_j + \beta) \lambda_j} \, d \lambda_j \\
+=& \prod_j \frac{\Gamma(\alpha_j + \alpha)}{\Gamma(\alpha)} \frac{\beta^\alpha}{(\beta_j + \beta)^{\alpha_j + \alpha}}
+\end{align}
+%
+where $\alpha_j = (z_{ja} + z_{jr}) r_j$ and $\beta_j = \left( (1-f_s)z_{ja} + f z_{jr} \right) w_j$.
+
+Since $\alpha$ and $\beta$ are correlated, naively alternating Gibbs sampling of $\alpha$ and $\beta$ may be slow.  A natural choice of variables is the mean $\mu$ and standard deviation $\sigma$ (of ${\rm Gamma}(\alpha, \beta)$, in terms of which $\alpha = \mu^2/\sigma^2$ and $\beta = \mu/\sigma^2$.  Intuitively these ought to be weakly-coupled.  Empirically we find that the conditionals on $\mu$ and $\sigma$ are always unimodal\footnote{For $\mu$ this is actually pretty simple to show analytically.} and thus sampling is straightforward.  Slice sampling is a reasonable method to use.
+
 \subsection{Model-comparison test for segment merging} \label{likelihood-based-segment-merging}
 
 \SL{I'll fill this in once it's worked out.}
