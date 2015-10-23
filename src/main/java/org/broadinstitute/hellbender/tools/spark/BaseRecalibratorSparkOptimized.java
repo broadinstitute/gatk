@@ -99,7 +99,7 @@ public class BaseRecalibratorSparkOptimized extends SparkCommandLineProgram {
         final SAMSequenceDictionary refDictionary = rds.getReferenceSequenceDictionary(readsDictionary);
         final CountingReadFilter readFilterToApply = BaseRecalibrator.getStandardBQSRReadFilter(readsHeader);
 
-        SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
+        SequenceDictionaryUtils.validateReferenceDictAgainstReadsDict(refDictionary, readsDictionary);
 
         Broadcast<SAMFileHeader> readsHeaderBcast = ctx.broadcast(readsHeader);
         Broadcast<SAMSequenceDictionary> refDictionaryBcast = ctx.broadcast(refDictionary);

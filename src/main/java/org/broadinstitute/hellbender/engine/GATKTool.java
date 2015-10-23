@@ -295,11 +295,6 @@ public abstract class GATKTool extends CommandLineProgram {
      * and these common contigs must occur in the same relative order (absolute position/index does not matter).
      */
     private void validateSequenceDictionaries() {
-        // We are not requiring common contigs to occur at the same index/absolute position across dictionaries.
-        final boolean checkContigIndices = false;
-        // If there is at least one cram input, we require the reference dictionary to be a superset of the reads dictionary.
-        final boolean requireReferenceIsSupersetOfReads = hasCramInput();
-
         final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
         final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
         List<SAMSequenceDictionary> variantDicts = new ArrayList<>();
@@ -313,24 +308,31 @@ public abstract class GATKTool extends CommandLineProgram {
             }
         }
 
-        //check reference dict against reads dict
-        if (hasReference() && hasReads()) {
-            SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, requireReferenceIsSupersetOfReads, checkContigIndices);
+        // check reference dict against reads dict
+        if ( hasReference() && hasReads() ) {
+            if ( hasCramInput() ) {
+                // If we have a cram input, we need stricter validation (ensure that the reference
+                // dictionary is a superset of the reads dictionary).
+                SequenceDictionaryUtils.validateReferenceDictAgainstReadsDictStrict(refDict, readDict);
+            }
+            else {
+                SequenceDictionaryUtils.validateReferenceDictAgainstReadsDict(refDict, readDict);
+            }
         }
 
-        //check all variants dicts against the ref and/or read dicts, as well as the
+        // check all variants dicts against the ref and/or read dicts, using our laxest validation settings
         //TODO: pass vcf file names associated with each sequence dictionary into validateDictionaries(); issue #660
         for (int k = 0; k < variantDicts.size(); k++){
             String name = "variants" + (k+1);
             if (hasReference()){
-                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false, checkContigIndices);
+                SequenceDictionaryUtils.validateDictionariesLax("reference", refDict, "variants", variantDicts.get(k));
             }
             if (hasReads()) {
-                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false, checkContigIndices);
+                SequenceDictionaryUtils.validateDictionariesLax("reads", readDict, "variants", variantDicts.get(k));
             }
             if (k+1 < variantDicts.size()) {
                 String name2 = "variants" + (k+2);
-                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false, checkContigIndices);
+                SequenceDictionaryUtils.validateDictionariesLax(name, variantDicts.get(k), name2, variantDicts.get(k+1));
             }
         }
 

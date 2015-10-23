@@ -49,113 +49,115 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
 
         return new Object[][]  {
                 // Identical dictionaries:
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, false, false},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, true,  false},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, false, true},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, true,  true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), IDENTICAL, null, false, false},
-                { Arrays.asList(CHR1_B37),                         Arrays.asList(CHR1_B37),                         IDENTICAL, null, false, false},
-                { Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37),    Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37),    IDENTICAL, null, false, false},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, false, false, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, true,  false, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, false, true, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_HG19),                        IDENTICAL, null, true,  true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), IDENTICAL, null, false, false, true},
+                { Arrays.asList(CHR1_B37),                         Arrays.asList(CHR1_B37),                         IDENTICAL, null, false, false, true},
+                { Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37),    Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37),    IDENTICAL, null, false, false, true},
 
                 // Dictionaries with a common subset:
-                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                                   COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                                   COMMON_SUBSET, null, false, true},
+                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                                   COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                                   COMMON_SUBSET, null, false, true, true},
                 // If requireSuperset == true, we should get an exception upon COMMON_SUBSET:
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    Arrays.asList(CHRM_HG19, CHR1_HG19, CHR10_HG19),                              COMMON_SUBSET, UserException.IncompatibleSequenceDictionaries.class, true, false},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                        Arrays.asList(CHR1_HG19, CHR_NONSTANDARD2),                                   COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19),                        Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19),                                   COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19),                        Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19, CHRM_HG19),                        COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD2),            COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19, CHR2_HG19, CHR10_HG19),            COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19, CHR2_HG19, CHR10_HG19, CHRM_HG19), COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37, CHR_NONSTANDARD1),    Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37, CHR_NONSTANDARD2),               COMMON_SUBSET, null, false, false},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    Arrays.asList(CHRM_HG19, CHR1_HG19, CHR10_HG19),                              COMMON_SUBSET, UserException.IncompatibleSequenceDictionaries.class, true, false, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                        Arrays.asList(CHR1_HG19, CHR_NONSTANDARD2),                                   COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19),                        Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19),                                   COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19),                        Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19, CHRM_HG19),                        COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD2),            COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19, CHR2_HG19, CHR10_HG19),            COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR_NONSTANDARD2, CHR1_HG19, CHR2_HG19, CHR10_HG19, CHRM_HG19), COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37, CHR_NONSTANDARD1),    Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37, CHR_NONSTANDARD2),               COMMON_SUBSET, null, false, false, true},
                 // If requireSuperset == true, we should get an exception upon COMMON_SUBSET:
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                              COMMON_SUBSET, UserException.IncompatibleSequenceDictionaries.class, true, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1),            COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                              COMMON_SUBSET, null, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                              COMMON_SUBSET, UserException.IncompatibleSequenceDictionaries.class, true, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1),            COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                              COMMON_SUBSET, null, false, false, true},
 
                 // Dictionaries with no common contigs:
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, true,  false},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, true,  true},
-                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_B37),                      NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37), NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),             Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37), NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, true,  false, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, true,  true, true},
+                { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR1_B37),                      NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37), NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),             Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37), NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false, true},
 
                 // Dictionaries with unequal common contigs:
-                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, true,  false},
-                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, true,  true},
-                { Arrays.asList(CHR1_B36),                                           Arrays.asList(CHR1_B37),                                           UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18),                   UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37),                      Arrays.asList(CHR1_B36, CHR2_B36, CHR10_B36),                      UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1), Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18, CHR_NONSTANDARD2), UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR_NONSTANDARD2, CHR1_HG18, CHR2_HG18, CHR10_HG18), UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18),                   UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
+                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, true,  false, true},
+                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19),                                          Arrays.asList(CHR1_HG18),                                          UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, true,  true, true},
+                { Arrays.asList(CHR1_B36),                                           Arrays.asList(CHR1_B37),                                           UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18),                   UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37),                      Arrays.asList(CHR1_B36, CHR2_B36, CHR10_B36),                      UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1), Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18, CHR_NONSTANDARD2), UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR_NONSTANDARD2, CHR1_HG18, CHR2_HG18, CHR10_HG18), UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18),                   UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false, true},
 
                 // One or both dictionaries in non-canonical human order:
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  false},
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  true},
-                { Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  false, true},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  true, true},
+                { Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false, true},
+                // Test for disabling the non-canonical human order check:
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), IDENTICAL, null, false, false, false},
 
                 // Dictionaries with a common subset, but different relative ordering within that subset
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  true},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19, CHRM_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHRM_HG19, CHR2_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHRM_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B37, CHR2_B37),              Arrays.asList(CHR2_B37, CHR1_B37),                                OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  true, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19, CHRM_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHRM_HG19, CHR2_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHRM_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false, true},
+                { Arrays.asList(CHR1_B37, CHR2_B37),              Arrays.asList(CHR2_B37, CHR1_B37),                                OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false, true},
 
                 // Dictionaries with a common subset in the same relative order, but with different indices.
                 // This will only throw an exception during validation if checkContigIndices is true
 
                 // These have checkContigIndices == true, so we expect DIFFERENT_INDICES and an exception:
-                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
                 // Setting requireSuperset == true should make no difference here (we should still get DIFFERENT_INDICES and an exception):
-                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, true,  true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1),  DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19),  DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19),                               DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19 ),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19),                    DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, true,  true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1),  DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19),  DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19),                               DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19 ),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19),                    DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true, true},
 
                 // Same test cases as above, but these have checkContigIndices == false, so we expect SUPERSET or COMMON_SUBSET instead of DIFFERENT_INDICES, and no exception:
-                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          SUPERSET,      null, false, false},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          SUPERSET,      null, true,  false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1),  COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19),  COMMON_SUBSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19),                               SUPERSET,      null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   SUPERSET,      null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19 ),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19),                    SUPERSET,      null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), SUPERSET,      null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), SUPERSET,      null, false, false},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          SUPERSET,      null, false, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          SUPERSET,      null, true,  false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1),  COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR_NONSTANDARD1, CHR1_HG19, CHR2_HG19),  COMMON_SUBSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19),                               SUPERSET,      null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   SUPERSET,      null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19 ),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19),                    SUPERSET,      null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), SUPERSET,      null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), SUPERSET,      null, false, false, true},
 
                 // tests for SUPERSET
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, false, true},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, true,  false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, true,  true},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                           Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1),    Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                                SUPERSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),    Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                                SUPERSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),    Arrays.asList(CHR1_HG19, CHR2_HG19),                                            SUPERSET, null, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, false, true, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, true,  false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, true,  true, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1),                           Arrays.asList(CHR1_HG19),                                                       SUPERSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1),    Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                                SUPERSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),    Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                                SUPERSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHR10_HG19),    Arrays.asList(CHR1_HG19, CHR2_HG19),                                            SUPERSET, null, false, false, true},
                 // Extended attributes should be ignored when determining whether a superset exists:
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19_WITH_ATTRIBUTES),                                       SUPERSET, null, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHRM_HG19),           Arrays.asList(CHR1_HG19_WITH_ATTRIBUTES, CHR10_HG19),                           SUPERSET, null, false, false}
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                                  Arrays.asList(CHR1_HG19_WITH_ATTRIBUTES),                                       SUPERSET, null, false, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHRM_HG19),           Arrays.asList(CHR1_HG19_WITH_ATTRIBUTES, CHR10_HG19),                           SUPERSET, null, false, false, true}
         };
     }
 
@@ -165,7 +167,8 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                                                   final SequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility, //not needed by this test
                                                   final Class<? extends UserException> expectedExceptionUponValidation,
                                                   final boolean requireSuperset,
-                                                  final boolean checkContigIndices) {
+                                                  final boolean checkContigIndices,
+                                                  final boolean checkForLexicographicSorting) {
         final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
         final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
         final String testDescription = String.format("First dictionary: %s  Second dictionary: %s",
@@ -179,7 +182,8 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                     "secondDictionary",
                     secondDictionary,
                     requireSuperset,
-                    checkContigIndices);
+                    checkContigIndices,
+                    checkForLexicographicSorting);
         }
         catch ( Exception e ) {
             exceptionThrown = e;
@@ -205,7 +209,8 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                                                   final SequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility,
                                                   final Class<? extends UserException> expectedExceptionUponValidation,
                                                   final boolean requireSuperset,
-                                                  final boolean checkContigIndices) {
+                                                  final boolean checkContigIndices,
+                                                  final boolean checkForLexicographicSorting) {
 
         final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
         final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
@@ -214,7 +219,7 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                 SequenceDictionaryUtils.getDictionaryAsString(secondDictionary));
 
         final SequenceDictionaryUtils.SequenceDictionaryCompatibility reportedCompatibility =
-                SequenceDictionaryUtils.compareDictionaries(firstDictionary, secondDictionary, checkContigIndices);
+                SequenceDictionaryUtils.compareDictionaries(firstDictionary, secondDictionary, checkContigIndices, checkForLexicographicSorting);
 
         Assert.assertTrue(reportedCompatibility == dictionaryCompatibility,
                 String.format("Dictionary comparison should have returned %s but instead returned %s. %s",

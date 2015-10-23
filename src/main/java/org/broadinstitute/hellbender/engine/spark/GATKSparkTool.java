@@ -255,7 +255,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     private void validateToolInputs() {
         if ( hasReference() && hasReads() ) {
-            SequenceDictionaryUtils.validateDictionaries("reference", referenceDictionary, "reads", readsHeader.getSequenceDictionary());
+            SequenceDictionaryUtils.validateReferenceDictAgainstReadsDict(referenceDictionary, readsHeader.getSequenceDictionary());
         }
     }
 

@@ -62,25 +62,69 @@ public class SequenceDictionaryUtils {
     }
 
     /**
-     * Tests for compatibility between two sequence dictionaries.  If the dictionaries are incompatible, then
-     * UserExceptions are thrown with detailed error messages.
+     * Validate a sequence dictionary from a reference against a sequence dictionary from the reads
+     * with standard validation settings.
      *
-     * Two sequence dictionaries are compatible if they share a common subset of equivalent contigs,
-     * where equivalent contigs are defined as having the same name and length.
+     * With this validation method:
+     * -the dictionaries MUST share a common subset of equivalent contigs (contigs with the same name and length)
+     * -the dictionaries must NOT be lexicographically-sorted human dictionaries (eg., 1, 10, 2...)
+     * -the reference dictionary does NOT need to be a superset of the reads dictionary
+     * -the indices of shared contigs do NOT need to be the same
      *
-     * This version of validateDictionaries does not check whether common contigs occur at the same absolute
-     * indices, and does not require that dict1 be a superset of dict2.
+     * @param referenceDict sequence dictionary for the reference
+     * @param readsDict sequence dictionary for the reads
+     */
+    public static void validateReferenceDictAgainstReadsDict( final SAMSequenceDictionary referenceDict,
+                                                              final SAMSequenceDictionary readsDict ) {
+        final boolean requireSuperset = false;
+        final boolean checkContigIndices = false;
+        final boolean checkForLexicographicSorting = true;
+        validateDictionaries("reference", referenceDict, "reads", readsDict, requireSuperset, checkContigIndices, checkForLexicographicSorting);
+    }
+
+    /**
+     * Validate a sequence dictionary from a reference against a sequence dictionary from the reads
+     * with stricter validation settings.
+     *
+     * With this validation method:
+     * -the dictionaries MUST share a common subset of equivalent contigs (contigs with the same name and length)
+     * -the dictionaries must NOT be lexicographically-sorted human dictionaries (eg., 1, 10, 2...)
+     * -the reference dictionary DOES need to be a superset of the reads dictionary
+     * -the indices of shared contigs do NOT need to be the same
+     *
+     * @param referenceDict sequence dictionary for the reference
+     * @param readsDict sequence dictionary for the reads
+     */
+    public static void validateReferenceDictAgainstReadsDictStrict( final SAMSequenceDictionary referenceDict,
+                                                                    final SAMSequenceDictionary readsDict ) {
+        final boolean requireSuperset = true;
+        final boolean checkContigIndices = false;
+        final boolean checkForLexicographicSorting = true;
+        validateDictionaries("reference", referenceDict, "reads", readsDict, requireSuperset, checkContigIndices, checkForLexicographicSorting);
+    }
+
+    /**
+     * Validate two sequence dictionaries against each other with lax validation settings.
+     *
+     * With this validation method:
+     * -the dictionaries MUST share a common subset of equivalent contigs (contigs with the same name and length)
+     * -the dictionaries MAY be lexicographically-sorted human dictionaries (eg., 1, 10, 2...)
+     * -the first dictionary does NOT need to be a superset of the second dictionary
+     * -the indices of shared contigs do NOT need to be the same
      *
      * @param name1 name associated with dict1
      * @param dict1 the sequence dictionary dict1
      * @param name2 name associated with dict2
      * @param dict2 the sequence dictionary dict2
      */
-    public static void validateDictionaries( final String name1,
-                                             final SAMSequenceDictionary dict1,
-                                             final String name2,
-                                             final SAMSequenceDictionary dict2 ) {
-        validateDictionaries(name1, dict1, name2, dict2, false, false);
+    public static void validateDictionariesLax( final String name1,
+                                                final SAMSequenceDictionary dict1,
+                                                final String name2,
+                                                final SAMSequenceDictionary dict2 ) {
+        final boolean requireSuperset = false;
+        final boolean checkContigIndices = false;
+        final boolean checkForLexicographicSorting = false;
+        validateDictionaries(name1, dict1, name2, dict2, requireSuperset, checkContigIndices, checkForLexicographicSorting);
     }
 
     /**
@@ -96,15 +140,17 @@ public class SequenceDictionaryUtils {
      * @param dict2 the sequence dictionary dict2
      * @param requireSuperset if true, require that dict1 be a superset of dict2, rather than dict1 and dict2 sharing a common subset
      * @param checkContigIndices if true, check whether common contigs occur at the same absolute indices in each dictionary
+     * @param checkForLexicographicSorting if true, check whether each dictionary is a human dictionary that is lexicographically sorted (eg., 1, 10, 2...)
      */
     public static void validateDictionaries( final String name1,
                                              final SAMSequenceDictionary dict1,
                                              final String name2,
                                              final SAMSequenceDictionary dict2,
                                              final boolean requireSuperset,
-                                             final boolean checkContigIndices ) {
+                                             final boolean checkContigIndices,
+                                             final boolean checkForLexicographicSorting ) {
 
-        final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2, checkContigIndices);
+        final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2, checkContigIndices, checkForLexicographicSorting);
 
         switch ( type ) {
             case IDENTICAL:
@@ -172,27 +218,16 @@ public class SequenceDictionaryUtils {
     /**
      * Workhorse routine that takes two dictionaries and returns their compatibility.
      *
-     * This version does not check whether common contigs occur at the same absolute indices in each dictionary.
-     *
-     * @param dict1 first sequence dictionary
-     * @param dict2 second sequence dictionary
-     * @return A SequenceDictionaryCompatibility enum value describing the compatibility of the two dictionaries
-     */
-    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2 ) {
-        return compareDictionaries(dict1, dict2, false);
-    }
-
-    /**
-     * Workhorse routine that takes two dictionaries and returns their compatibility.
-     *
      * @param dict1 first sequence dictionary
      * @param dict2 second sequence dictionary
      * @param checkContigIndices if true, check whether the common contigs occur at the same absolute indices
+     * @param checkForLexicographicSorting if true, check whether each dictionary is a human dictionary that is lexicographically sorted (eg., 1, 10, 2...)
      * @return A SequenceDictionaryCompatibility enum value describing the compatibility of the two dictionaries
      */
-    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2, final boolean checkContigIndices ) {
-        if ( nonCanonicalHumanContigOrder(dict1) || nonCanonicalHumanContigOrder(dict2) )
+    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2, final boolean checkContigIndices, final boolean checkForLexicographicSorting ) {
+        if ( checkForLexicographicSorting && (nonCanonicalHumanContigOrder(dict1) || nonCanonicalHumanContigOrder(dict2)) ) {
             return SequenceDictionaryCompatibility.NON_CANONICAL_HUMAN_ORDER;
+        }
 
         final Set<String> commonContigs = getCommonContigsByName(dict1, dict2);
 
