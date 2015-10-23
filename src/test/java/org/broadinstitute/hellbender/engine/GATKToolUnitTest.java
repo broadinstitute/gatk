@@ -92,4 +92,17 @@ public final class GATKToolUnitTest extends BaseTest{
         tool.onShutdown();
     }
 
+    @Test
+    public void testAllowLexicographicallySortedVariantHeader() throws Exception {
+        final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
+        final CommandLineParser clp = new CommandLineParser(tool);
+        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/lexicographically_sorted_dict.vcf");
+        final String[] args = {"--mask", vcfFile.getCanonicalPath(),
+                               "--reference", b37_reference_20_21};
+        clp.parseArguments(System.out, args);
+
+        // This method would throw if sequence dictionary validation failed. Here we are testing
+        // that it does not throw despite the lexicographically-sorted sequence dictionary in the vcf.
+        tool.onStartup();
+    }
 }

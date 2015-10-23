@@ -302,19 +302,16 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Validates all sequence dictionaries by checking them against each other.
      *
-     * Currently, read dict is checked against
-     * ref dict, and both are checked against any variant header dicts. No interval dicts are checked at this time.
+     * Currently, the reads dictionary is checked against the reference dictionary,
+     * and both are checked against any variant dictionaries. No interval dictionaries are
+     * checked at this time.
      *
      * The reference dictionary is required to be a superset of the reads dictionary if there is at least
      * one cram input; otherwise, all dictionaries are required to have a common subset of equivalent contigs,
-     * and these common contigs must occur in the same relative order (absolute position/index does not matter).
+     * without respect to relative or absolute ordering (GATKTools use contig names rather than indices,
+     * and so are not sensitive to contig ordering issues).
      */
     private void validateSequenceDictionaries() {
-        // We are not requiring common contigs to occur at the same index/absolute position across dictionaries.
-        final boolean checkContigIndices = false;
-        // If there is at least one cram input, we require the reference dictionary to be a superset of the reads dictionary.
-        final boolean requireReferenceIsSupersetOfReads = hasCramInput();
-
         final SAMSequenceDictionary refDict = hasReference() ? reference.getSequenceDictionary() : null;
         final SAMSequenceDictionary readDict = hasReads() ? reads.getSequenceDictionary() : null;
         List<SAMSequenceDictionary> variantDicts = new ArrayList<>();
@@ -328,24 +325,26 @@ public abstract class GATKTool extends CommandLineProgram {
             }
         }
 
-        //check reference dict against reads dict
-        if (hasReference() && hasReads()) {
-            SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict, requireReferenceIsSupersetOfReads, checkContigIndices);
+        // Check the reference dictionary against the reads dictionary
+        if ( hasReference() && hasReads() ) {
+            if ( hasCramInput() ) {
+                // Use stricter validation for CRAM vs. the reference
+                SequenceDictionaryUtils.validateCRAMDictionaryAgainstReference(refDict, readDict);
+            }
+            else {
+                // Use standard validation settings for non-CRAM reads input vs. the reference
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "reads", readDict);
+            }
         }
 
-        //check all variants dicts against the ref and/or read dicts, as well as the
-        //TODO: pass vcf file names associated with each sequence dictionary into validateDictionaries(); issue #660
-        for (int k = 0; k < variantDicts.size(); k++){
-            String name = "variants" + (k+1);
+        // Check all variants dictionaries against the reference and/or reads dictionaries
+        // TODO: pass file names associated with each sequence dictionary into validateDictionaries(); issue #660
+        for ( SAMSequenceDictionary variantsDict : variantDicts ) {
             if (hasReference()){
-                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantDicts.get(k), false, checkContigIndices);
+                SequenceDictionaryUtils.validateDictionaries("reference", refDict, "variants", variantsDict);
             }
             if (hasReads()) {
-                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantDicts.get(k), false, checkContigIndices);
-            }
-            if (k+1 < variantDicts.size()) {
-                String name2 = "variants" + (k+2);
-                SequenceDictionaryUtils.validateDictionaries(name, variantDicts.get(k), name2, variantDicts.get(k+1), false, checkContigIndices);
+                SequenceDictionaryUtils.validateDictionaries("reads", readDict, "variants", variantsDict);
             }
         }
 
