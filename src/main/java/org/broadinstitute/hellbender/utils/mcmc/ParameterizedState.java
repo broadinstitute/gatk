@@ -10,9 +10,9 @@ import java.util.List;
  */
 public final class ParameterizedState extends AbstractParameterizedState {
     /**
-     * Subclasses of {@link AbstractParameterizedState} must implement the {@link AbstractParameterizedState#copy(Class)}
-     * method, which should return a deep copy.  This boilerplate implementation simply calls the copy constructor
-     * {@link ParameterizedState#ParameterizedState(ParameterizedState)}.
+     * Subclasses of {@link AbstractParameterizedState} must implement the
+     * {@link AbstractParameterizedState#copy(Class)} method.  This boilerplate implementation simply calls the
+     * copy constructor {@link ParameterizedState#ParameterizedState(ParameterizedState)}.
      */
     @Override
     protected <S extends AbstractParameterizedState> S copy(final Class<S> stateClass) {

@@ -94,7 +94,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     private final class SegmentMeans extends AbstractParameterizedState {
         private static final String MEAN_IN_SEGMENT_PREFIX = "meanInSegment";
 
-        //required boilerplate to override copy; must ensure that this creates a deep copy
+        //required boilerplate to override copy; this makes a deep copy
         @Override
         protected <S extends AbstractParameterizedState> S copy(final Class<S> stateClass) {
             return stateClass.cast(new SegmentMeans(this));
@@ -120,12 +120,14 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     //We then create a subclass CopyRatioState.  This is an AbstractParameterizedState with
     //two parameters.  The first parameter is a double for the global variance, while the second parameter is
     //a "parameter block" object named SegmentMeans that holds all of the segment-level means.  We see that we can
-    //easily use such blocks and multiple levels of AbstractParameterizedState to create a hierarchichal model.
+    //easily use such blocks and multiple levels of AbstractParameterizedState to create a hierarchical model.
     private final class CopyRatioState extends AbstractParameterizedState {
         private static final String VARIANCE_NAME = "variance";
         private static final String MEANS_NAME = "means";
 
-        //required boilerplate to override copy; must ensure that this creates a deep copy
+        /**
+         * required boilerplate to override copy; this only makes a shallow copy (see {@link AbstractParameterizedState#copy(Class)})
+         */
         @Override
         protected <S extends AbstractParameterizedState> S copy(final Class<S> stateClass) {
             return stateClass.cast(new CopyRatioState(this));

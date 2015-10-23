@@ -71,12 +71,19 @@ public abstract class AbstractParameterizedState {
     }
 
     /**
-     * Abstract method for making a deep copy; must be overridden appropriately for all subclasses.  In most cases,
-     * this can be boilerplate code; for example, for a subclass ConcreteParameterizedState, the override could read:
-     *      @Override
+     * Abstract method for making a copy (can be shallow); must be overridden appropriately for all subclasses.
+     * This can be boilerplate code; for example, for a subclass ConcreteParameterizedState, the override could read:
+     * <p>{@code
      *      protected <S extends AbstractParameterizedState> S copy(final Class<S> stateClass) {
      *          return stateClass.cast(new ConcreteParameterizedState(this));
      *      }
+     * }</p>
+     * This copy method is primarily used by {@link ParameterizedModel} to create copies of the current state held by
+     * {@link ParameterizedModel}.  These copies are ultimately stored as samples by {@link GibbsSampler}.
+     * For this purpose, a shallow copy suffices if all Samplers pass new instances of parameter values to
+     * {@link AbstractParameterizedState#updateParameter(String, Object)}, so that the samples
+     * are not simply updated in place.  However, if this method will be used for other purposes where a deep copy
+     * is required, it should be overridden accordingly.
      */
     protected abstract <S extends AbstractParameterizedState> S copy(final Class<S> stateClass);
 
@@ -90,7 +97,7 @@ public abstract class AbstractParameterizedState {
     }
 
     /**
-     * Updates the value of a Parameter contained in the collection held by the AbstractParameterizedState
+     * Updates the value of a Parameter contained in the collection held by the AbstractParameterizedState.
      * @param parameterName name of Parameter to update
      * @param value         new Parameter value
      * @param <T>           type of Parameter value

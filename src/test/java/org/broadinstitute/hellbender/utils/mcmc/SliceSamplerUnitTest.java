@@ -37,9 +37,9 @@ public final class SliceSamplerUnitTest {
         final double mean = 5.;
         final double standardDeviation = 0.75;
         final NormalDistribution normalDistribution = new NormalDistribution(mean, standardDeviation);
-        final Function<Double, Double> normalLogPDF = x -> normalDistribution.logDensity(x);
+        final Function<Double, Double> normalLogPDF = normalDistribution::logDensity;
 
-        final double xInitial = 4.5;
+        final double xInitial = 1.;
         final double xMin = Double.NEGATIVE_INFINITY;
         final double xMax = Double.POSITIVE_INFINITY;
         final double width = 0.5;

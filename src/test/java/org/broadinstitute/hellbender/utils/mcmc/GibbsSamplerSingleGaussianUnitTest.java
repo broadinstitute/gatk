@@ -1,16 +1,19 @@
 package org.broadinstitute.hellbender.utils.mcmc;
 
 import com.google.common.primitives.Doubles;
+import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 
 /**
@@ -32,11 +35,8 @@ import java.util.function.Function;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/utils/mcmc/";
-
-    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
-            + "datapoints-for-gibbs-sampler-single-gaussian-test.txt");
     private static final String DATAPOINTS_NAME = "datapoints";
+    private static final int NUM_DATAPOINTS = 10000;
 
     private static final String VARIANCE_NAME = "variance";
     private static final double VARIANCE_MIN = 0.;
@@ -55,6 +55,15 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
     private static final int NUM_SAMPLES = 500;
     private static final int NUM_BURN_IN = 250;
 
+    //Create dataset of 10000 datapoints drawn from a normal distribution Normal(MEAN_TRUTH, VARIANCE_TRUTH)
+    private static final int RANDOM_SEED = 42;
+    private static final RandomGenerator rng =
+            RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
+    private static final NormalDistribution normalDistribution =
+            new NormalDistribution(rng, MEAN_TRUTH, Math.sqrt(VARIANCE_TRUTH));
+    private static final List<Double> datapointsList =
+            Doubles.asList(normalDistribution.sample(NUM_DATAPOINTS));
+
     //Calculates the exponent for a normal distribution; used in log-likelihood calculation below.
     private static double normalTerm(final double quantity, final double mean, final double variance) {
         return (quantity - mean) * (quantity - mean) / (2 * variance);
@@ -66,7 +75,6 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         return Math.abs((x - xTrue) / xTrue);
     }
 
-
     //We create a Modeller helper class to initialize the model state and specify the parameter samplers.
     private final class GaussianModeller {
         //Create fields in the Modeller for the model and samplers.
@@ -75,8 +83,8 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         private final Sampler<Double, ParameterizedState, DataCollection> meanSampler;
 
         //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
-        //(here, the initial variance and the initial mean) and the DataCollection (here, the datapoints file).
-        private GaussianModeller(final double varianceInitial, final double meanInitial, final File datapointsFile) {
+        //(here, the initial variance and the initial mean) and the DataCollection (here, the list of datapoints).
+        private GaussianModeller(final double varianceInitial, final double meanInitial, final List<Double> datapointsList) {
             //Construct the initial ParameterizedState by passing a list of Parameters of mixed type to the constructor.
             //Names and initial value (and, implicitly, types) of each of the parameters are set here.
             //Here, we name the variance parameter "variance" and set its initial value to 5.0,
@@ -88,9 +96,9 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
 
             //Construct the DataCollection by passing a list of Data objects to the constructor.
             //Names, values, and types of each of the Data objects are set here.
-            //Here, we add a single Data object consisting of the 10000 datapoints, which are loaded from a file,
+            //Here, we add a single Data object consisting of the 10000 datapoints, which are generated above,
             //to the DataCollection dataset.
-            final Data<Double> datapoints = new Data<>(DATAPOINTS_NAME, datapointsFile, Double::parseDouble);
+            final Data<Double> datapoints = new Data<>(DATAPOINTS_NAME, datapointsList);
             final DataCollection dataset = new DataCollection(Collections.singletonList(datapoints));
 
             //Implement Samplers for each parameter by overriding sample().  This can be done via a lambda that takes
@@ -150,7 +158,7 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
     @Test
     public void testRunMCMCOnSingleGaussianModel() {
         //Create new instance of the Modeller helper class, passing all quantities needed to initialize state and data.
-        final GaussianModeller modeller = new GaussianModeller(VARIANCE_INITIAL, MEAN_INITIAL, COVERAGES_FILE);
+        final GaussianModeller modeller = new GaussianModeller(VARIANCE_INITIAL, MEAN_INITIAL, datapointsList);
         //Create a GibbsSampler, passing the total number of samples (including burn-in samples)
         //and the model held by the Modeller.
         final GibbsSampler<ParameterizedState, DataCollection> gibbsSampler =

@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 public final class Parameter<T> {
     private final String name;
     private final T value;
-    private final Class cls;
+    private final Class<?> cls;
 
     /**
      * Constructs a Parameter given a name and value.
@@ -47,5 +47,5 @@ public final class Parameter<T> {
      * Returns the parameter class.
      * @return  parameter class
      */
-    public Class cls() {return cls;}
+    public Class<?> cls() {return cls;}
 }

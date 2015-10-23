@@ -118,7 +118,7 @@ public final class ParameterizedModel<S1 extends AbstractParameterizedState, T1 
 
     /**
      * Returns a copy of the {@link AbstractParameterizedState} held internally, as given by the overridden
-     * {@link AbstractParameterizedState#copy(Class)} method (which should return a deep copy).
+     * {@link AbstractParameterizedState#copy(Class)} method.
      * @return  copy of the AbstractParameterizedState held internally
      */
     protected S1 state() {
