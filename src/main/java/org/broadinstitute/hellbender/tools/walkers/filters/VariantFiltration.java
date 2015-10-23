@@ -78,13 +78,13 @@ public final class VariantFiltration extends VariantWalker {
      * --filterName One --filterExpression "X < 1" --filterName Two --filterExpression "X > 2").
      */
     @Argument(fullName="filterExpression", shortName="filter", doc="One or more expression used with INFO fields to filter", optional=true)
-    public ArrayList<String> filterExpressions = new ArrayList<>(); //TODO htsjdk's API is bogus and wants an ArrayList https://github.com/broadinstitute/hellbender/issues/672
+    public List<String> filterExpressions = new ArrayList<>();
 
     /**
      * This name is put in the FILTER field for variants that get filtered.  Note that there must be a 1-to-1 mapping between filter expressions and filter names.
      */
     @Argument(fullName="filterName", shortName="filterName", doc="Names to use for the list of filters", optional=true)
-    public ArrayList<String> filterNames = new ArrayList<>(); //TODO htsjdk's API is bogus and wants an ArrayList https://github.com/broadinstitute/hellbender/issues/672
+    public List<String> filterNames = new ArrayList<>();
 
     /**
      * Similar to the INFO field based expressions, but used on the FORMAT (genotype) fields instead.
@@ -94,13 +94,13 @@ public final class VariantFiltration extends VariantWalker {
      * expressions isCalled, isNoCall, isMixed, and isAvailable, in accordance with the methods of the Genotype object.
      */
     @Argument(fullName="genotypeFilterExpression", shortName="G_filter", doc="One or more expression used with FORMAT (sample/genotype-level) fields to filter (see documentation guide for more info)", optional=true)
-    public ArrayList<String> genotypeFilterExpressions = new ArrayList<>();  //TODO htsjdk's API is bogus and wants an ArrayList https://github.com/broadinstitute/hellbender/issues/672
+    public List<String> genotypeFilterExpressions = new ArrayList<>();
 
     /**
      * Similar to the INFO field based expressions, but used on the FORMAT (genotype) fields instead.
      */
     @Argument(fullName="genotypeFilterName", shortName="G_filterName", doc="Names to use for the list of sample/genotype filters (must be a 1-to-1 mapping); this name is put in the FILTER field for variants that get filtered", optional=true)
-    public ArrayList<String> genotypeFilterNames = new ArrayList<>();   //TODO htsjdk's API is bogus and wants an ArrayList https://github.com/broadinstitute/hellbender/issues/672
+    public List<String> genotypeFilterNames = new ArrayList<>();
 
     /**
      * Works together with the --clusterWindowSize argument.
