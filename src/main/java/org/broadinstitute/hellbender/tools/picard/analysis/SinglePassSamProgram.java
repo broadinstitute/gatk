@@ -25,7 +25,7 @@ import java.util.*;
 /**
  * Super class that is designed to provide some consistent structure between subclasses that
  * simply iterate once over a coordinate sorted BAM and collect information from the records
- * as the go in order to produce some kind of output.
+ * as they go in order to produce some kind of output.
  *
  * @author Tim Fennell
  */
