@@ -1,26 +1,19 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import htsjdk.samtools.SAMFileHeader;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.bed.BEDFeature;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.ExomeReadCounts;
 import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
@@ -30,7 +23,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
-import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -38,16 +31,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Counts reads in the input BAM", oneLineSummary = "Counts reads in a BAM file", programGroup = SparkProgramGroup.class)
-public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgram {
+public final class ComputeCoveragePerIntervalSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1l;
-
-    @ArgumentCollection
-    public ReadInputArgumentCollection readArguments= new RequiredReadInputArgumentCollection();;
 
     @Argument(
             doc = "File containing the targets for analysis",
@@ -57,31 +50,14 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
     )
     public File targetIntervalFile;
 
-    @ArgumentCollection
-    public IntervalArgumentCollection intervalArgumentCollection = new OptionalIntervalArgumentCollection();
-
-    @Argument(doc = "uri for the output file: a local file path",
+        @Argument(doc = "uri for the output file: a local file path",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = true)
     public String out;
 
     @Override
-    protected void runPipeline(final JavaSparkContext ctx) {
-        if ( readArguments.getReadFilesNames().size() != 1 ) {
-            throw new UserException("This tool only accepts a single bam/sam/cram as input");
-        }
-        final String bam = readArguments.getReadFilesNames().get(0);
-        final ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-
-        final SAMFileHeader readsHeader = ReadsSparkSource.getHeader(ctx, bam);
-
-        /**
-         * If no intervals are provided, we want all reads, mapped and unmapped.
-         */
-        final List<SimpleInterval> intervals = intervalArgumentCollection.intervalsSpecified() ? intervalArgumentCollection.getIntervals(readsHeader.getSequenceDictionary())
-                : null;
-
+    protected void runTool(final JavaSparkContext ctx) {
         final TargetCollection<Locatable> result = getTargetCollection();
 
         final IntervalsSkipList<Locatable> isl = new IntervalsSkipList<>(result.targets());
@@ -90,18 +66,24 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
         //NOTE: we hit some serialization error with lambdas in WellformedReadFilter
         //so for now we'll write some filters out explicitly.
 //        final ReadFilter readFilter = ctx.broadcast(new WellformedReadFilter(readsHeader));
-        final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, intervals);
+        final JavaRDD<GATKRead> rawReads = getReads();
         final JavaRDD<GATKRead> reads = rawReads.filter(read -> !read.isUnmapped() && read.getStart() <= read.getEnd() && !read.isDuplicate());
-        final Map<Locatable, Long> byKey = reads.flatMap(read -> islBroad.getValue().getOverlapping(new SimpleInterval(read))).countByValue();
 
-        final SortedMap<Locatable, Object> byKeySorted = new TreeMap<>(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
+        //Bizzarely, this returns nondeterministic values
+//        final Map<Locatable, Long> byKey = reads.flatMap(read -> islBroad.getValue().getOverlapping(new SimpleInterval(read))).countByValue();
+
+        final Map<Locatable, Integer> byKey = reads.flatMapToPair(read ->
+                        islBroad.getValue().getOverlapping(new SimpleInterval(read)).stream().map(over -> new Tuple2<>(over, 1)).collect(Collectors.toList())
+        ).reduceByKey(Integer::sum).collectAsMap();
+
+        final SortedMap<Locatable, Integer> byKeySorted = new TreeMap<>(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
         byKeySorted.putAll(byKey);
 
         print(byKeySorted, System.out);
 
         if (out != null){
             final File file = new File(out);
-            try(final OutputStream outputStream = BucketUtils.createFile(file.getPath(), null);
+            try(final OutputStream outputStream = BucketUtils.createFile(file.getPath(), (PipelineOptions) null);
                 final PrintStream ps = new PrintStream(outputStream)) {
                 print(byKeySorted, ps);
             } catch(final IOException e){
@@ -110,7 +92,7 @@ public final class ComputeCoveragePerIntervalSpark extends SparkCommandLineProgr
         }
     }
 
-    private void print(SortedMap<Locatable, Object> byKeySorted, PrintStream ps) {
+    private void print(SortedMap<Locatable, Integer> byKeySorted, PrintStream ps) {
         ps.println("CONTIG" + "\t" + "START" + "\t" + "END" + "\t" + "<ALL>");
         for (final Locatable loc : byKeySorted.keySet()){
             ps.println(loc.getContig() + "\t" + loc.getStart() + "\t" + loc.getEnd() + "\t" + byKeySorted.get(loc));
