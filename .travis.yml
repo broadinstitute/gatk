@@ -31,28 +31,48 @@ matrix:
   fast_finish: true
   allow_failures:
     - env: CLOUD=todo
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
 cache:
   directories:
-  - ~/.gradle
-  - $HOME/gcloud/
-
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+    - $HOME/gcloud/
 before_install:
-#download large files
-- bash scripts/install_git_lfs.sh
 #setup google stuff
-- openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv
-  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d
-- scripts/install_gcloud.sh
-- printf 'y\n' | $GCLOUD/gcloud components update app
-- $GCLOUD/gcloud config set project broad-dsde-dev
-- $GCLOUD/gcloud auth activate-service-account --key servicekey.json
+- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
+    openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
+    scripts/install_gcloud.sh;
+    printf 'y\n' | $GCLOUD/gcloud components update app;
+    $GCLOUD/gcloud config set project broad-dsde-dev;
+    $GCLOUD/gcloud auth activate-service-account --key servicekey.json;
+  fi
 - R --version
+install:
+- if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
+    echo "Can't run cloud tests without keys so don't bother building";
+  else
+    ./gradlew assemble;
+  fi
+script:
+- if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
+    echo "Can't run cloud tests without keys so don't run tests";
+  else
+   bash scripts/install_git_lfs.sh;
+   ./gradlew test;
+  fi
 after_success:
-- ./gradlew jacocoTestReport coveralls
+- if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
+    echo "Can't run cloud tests without keys so don't try to record coverage tests";
+  else
+   ./gradlew jacocoTestReport coveralls;
+  fi
 after_failure:
 - dmesg | tail -100
 after_script:
-- $GCLOUD/gcloud components -q update gsutil
-- REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER
-- $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/
-- echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/index.html"
+- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
+    $GCLOUD/gcloud components -q update gsutil;
+    REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
+    $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/;
+    echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/index.html";
+  fi
