@@ -54,7 +54,7 @@ a name that matches the pattern `gatk-all-4.pre-alpha-7-*-SNAPSHOT-spark.jar`, w
 hash of the current commit.
 
 There are three main ways to run gatk 4 with Spark,
-* Locally, using the regular gatk jar and `--master=local[*]`
+* Locally, using the regular gatk jar and `--sparkMaster 'local[*]'`
 
 * On an on-premises cluster by copying the spark jar to the master and running `spark-submit`
 
