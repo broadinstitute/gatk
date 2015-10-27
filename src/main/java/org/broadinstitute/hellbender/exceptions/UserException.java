@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -375,6 +375,13 @@ public class UserException extends RuntimeException {
                             + "\nYou can use the ReorderSam utility to fix this problem: " + HelpConstants.forumPost("discussion/58/companion-utilities-reordersam")
                             + "\n  %s contigs = %s",
                     name, name, ReadUtils.prettyPrintSequenceRecords(dict)));
+        }
+    }
+
+    public static final class ReferenceAPIReturnedUnexpectedNumberOfBytes extends UserException {
+        private static final long serialVersionUID = 0L;
+        public ReferenceAPIReturnedUnexpectedNumberOfBytes(final SimpleInterval interval, final byte[] bases) {
+            super("Query to genomics service failed for reference interval " + interval + ". Requested " + interval.size() + " bytes but got " + bases.length + ". Perhaps you're querying outside the edge of the contig.");
         }
     }
 }
