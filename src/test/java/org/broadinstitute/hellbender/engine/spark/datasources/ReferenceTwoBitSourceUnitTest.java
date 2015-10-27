@@ -27,7 +27,7 @@ public class ReferenceTwoBitSourceUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "goodIntervals", enabled = false)
+    @Test(dataProvider = "goodIntervals")
     public void testIntervalConversion(ReferenceSource fastaRef, ReferenceSource twoBitRef, String intervalString) throws IOException {
         SimpleInterval interval = new SimpleInterval(intervalString);
         ReferenceBases expected = fastaRef.getReferenceBases(null, interval);
