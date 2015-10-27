@@ -27,11 +27,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * ReferenceAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works
@@ -145,7 +141,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
               byte[] received = result.getSequence().getBytes();
               byte[] bases = received;
               if (received.length < interval.size()) {
-                  ArrayList<byte[]> blobs = new ArrayList<byte[]>();
+                  final List<byte[]> blobs = new ArrayList<>();
                   blobs.add(received);
                   while (result.getNextPageToken() != null) {
                       listRequest.setPageToken(result.getNextPageToken());
@@ -154,6 +150,9 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
                   }
                   final byte[][] resultsArray = blobs.toArray(new byte[blobs.size()][]);
                   bases = Bytes.concat(resultsArray);
+              }
+              if (bases.length != interval.size()){
+                  throw new UserException("Query to genomics service failed for reference interval " + interval);
               }
               return new ReferenceBases(bases, interval);
           } catch (IOException e) {

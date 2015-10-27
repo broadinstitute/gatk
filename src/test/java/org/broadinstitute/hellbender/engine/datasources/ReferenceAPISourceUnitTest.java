@@ -167,6 +167,19 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
         Assert.assertEquals(seam1.getBases(), seam2.getBases(), "seam doesn't match (paging bug?)");
     }
 
+    @Test(groups = "cloud", expectedExceptions = UserException.class)
+    public void testOffContig() throws Exception {
+        //Test the case of a query that starts before the end of the contig and runs off
+        final int b37Chr1Len = 249250621;
+        final int pageSize = 300;
+
+        final int beforeEnd = 11;
+        final int pastEnd = 12;
+        final int start = b37Chr1Len - beforeEnd;
+        final int end   = b37Chr1Len + pastEnd;
+        final ReferenceBases bases = queryReferenceAPI(ReferenceAPISource.HS37D5_REF_ID, new SimpleInterval("1", start, end), pageSize);
+    }
+
     @Test(groups = "cloud")
     public void testReferenceSourceVaryingPageSizeQuery() {
 
