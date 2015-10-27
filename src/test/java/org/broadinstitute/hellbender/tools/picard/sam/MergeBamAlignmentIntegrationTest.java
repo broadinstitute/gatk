@@ -25,6 +25,8 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MergeBamAlignment");
 
+    private static final File unmappedCram = new File(TEST_DATA_DIR, "unmapped.cram");
+    private static final File alignedCram = new File(TEST_DATA_DIR, "aligned.cram");
     private static final File unmappedBam = new File(TEST_DATA_DIR, "unmapped.sam");
     private static final File alignedBam = new File(TEST_DATA_DIR, "aligned.sam");
     private static final File oneHalfAlignedBam = new File(TEST_DATA_DIR, "onehalfaligned.sam");
@@ -133,11 +135,10 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
     }
 
-    @Test
-    public void testMerger() throws Exception {
-        final File output = BaseTest.createTempFile("mergeTest", ".sam");
+    private void doMergerTest(final File unmappedInputFile,final File alignedInputFile, final String outputExtension) throws Exception {
+        final File output = BaseTest.createTempFile("mergeTest", outputExtension);
 
-        doMergeAlignment(unmappedBam, Collections.singletonList(alignedBam),
+        doMergeAlignment(unmappedInputFile, Collections.singletonList(alignedInputFile),
                 null, null, null, null,
                 false, true, false, 1,
                 "0", "1.0", "align!", "myAligner",
@@ -145,7 +146,7 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                 SamPairUtil.PairOrientation.FR, null, null, null
         );
 
-        SamReader result = SamReaderFactory.makeDefault().open(output);
+        SamReader result = SamReaderFactory.makeDefault().referenceSequence(fasta).open(output);
         Assert.assertEquals(result.getFileHeader().getSequenceDictionary().getSequences().size(), 8,
                 "Number of sequences did not match");
         SAMProgramRecord pg = result.getFileHeader().getProgramRecords().get(0);
@@ -196,33 +197,22 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
             }
 
         }
-
-        // Quick test to make sure the program record gets picked up from the file if not specified
-        // on the command line.
-        doMergeAlignment(unmappedBam, Collections.singletonList(alignedBam),
-                null, null, null, null,
-                false, true, false, 1,
-                null, null, null, null,
-                fasta, output,
-                SamPairUtil.PairOrientation.FR, null, null, null
-        );
-
-        CloserUtil.close(result);
-
-        result = SamReaderFactory.makeDefault().open(output);
-        pg = result.getFileHeader().getProgramRecords().get(0);
-        Assert.assertEquals(pg.getProgramGroupId(), "1",
-                "Program group ID not picked up correctly from aligned BAM");
-        Assert.assertEquals(pg.getProgramVersion(), "2.0",
-                "Program version not picked up correctly from aligned BAM");
-        Assert.assertNull(pg.getCommandLine(),
-                "Program command line not picked up correctly from aligned BAM");
-        Assert.assertEquals(pg.getProgramName(), "Hey!",
-                "Program name not picked up correctly from aligned BAM");
-
-        CloserUtil.close(result);
     }
 
+    @Test
+    public void testCRAMMerger() throws Exception {
+        doMergerTest(unmappedCram, alignedCram, ".cram");
+    }
+
+    @Test
+    public void testBAMMerger() throws Exception {
+        doMergerTest(unmappedBam, alignedBam, ".sam");
+    }
+
+    @Test
+    public void testCRAMAndBAMMerger() throws Exception {
+        doMergerTest(unmappedCram, alignedBam, ".sam");
+    }
 
     @Test
     public void testMergerFromMultipleFiles() throws Exception {
@@ -1390,8 +1380,6 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
         secondUnmappedRead.setMateUnmappedFlag(true);
         secondUnmappedRead.setReadPairedFlag(true);
         secondUnmappedRead.setSecondOfPairFlag(true);
-
-
 
         try (final SAMFileWriter unmappedWriter = factory.makeSAMWriter(header, false, unmappedSam)) {
             unmappedWriter.addAlignment(firstUnmappedRead);

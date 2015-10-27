@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -14,21 +16,38 @@ import java.io.IOException;
 public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/MeanQualityByCycle");
 
-    @Test(groups = {"R"})
-    public void test() throws IOException {
-        final File input = new File(TEST_DATA_DIR, "first5000a.bam");
+    @DataProvider(name="filenames")
+    public Object[][] filenames() {
+        return new String[][]{
+                {"first5000a.bam", null},
+                {"first5000a.cram", b37_reference_20_21}
+        };
+    }
+
+    @Test(dataProvider="filenames", groups = {"R"})
+    public void test(final String inputFile, final String referenceName) throws IOException {
+        final File input = new File(TEST_DATA_DIR, inputFile);
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
         final File outfile = BaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
         final File pdf = BaseTest.createTempFile("testMeanQualityByCycle", ".pdf");
         outfile.deleteOnExit();
         pdf.deleteOnExit();
-        final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
-                "--CHART", pdf.getAbsolutePath(),
-                "--PRODUCE_PLOT", "true",
-        };
-        runCommandLine(args);
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--INPUT");
+        args.add(input.getAbsolutePath());
+        args.add("--OUTPUT");
+        args.add(outfile.getAbsolutePath());
+        args.add("--CHART");
+        args.add(pdf.getAbsolutePath());
+        args.add("--PRODUCE_PLOT");
+        args.add("true");
+        if (null != referenceName) {
+            final File REF = new File(referenceName);
+            args.add("-R");
+            args.add(REF.getAbsolutePath());
+        }
+
+        runCommandLine(args.getArgsArray());
 
         try (final FileReader actualReader = new FileReader(outfile);) {
             final MetricsFile<?,Integer> output = new MetricsFile<>();

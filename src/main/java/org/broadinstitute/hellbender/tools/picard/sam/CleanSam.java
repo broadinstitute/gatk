@@ -21,7 +21,7 @@ import java.io.File;
 )
 public final class CleanSam extends PicardCommandLineProgram {
 
-    static final String USAGE = "Cleans the provided SAM/BAM, soft-clipping beyond-end-of-reference alignments and setting MAPQ to 0 for unmapped reads";
+    static final String USAGE = "Cleans the provided SAM/BAM/CRAM, soft-clipping beyond-end-of-reference alignments and setting MAPQ to 0 for unmapped reads";
 
     @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM to be cleaned.")
     public File INPUT;
@@ -42,7 +42,7 @@ public final class CleanSam extends PicardCommandLineProgram {
             factory.validationStringency(ValidationStringency.LENIENT);
         }
         final SamReader reader = factory.open(INPUT);
-        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), true, OUTPUT);
+        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(reader.getFileHeader(), true, OUTPUT, REFERENCE_SEQUENCE);
              final CloseableIterator<SAMRecord> it = reader.iterator()) {
 
             final ProgressLogger progress = new ProgressLogger(logger);

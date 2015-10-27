@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.BamFileIoUtils;
+import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -23,8 +24,8 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
         return GatherBamFiles.class.getSimpleName();
     }
 
-    @DataProvider(name="gathering")
-    public Object[][] filterTestData() {
+    @DataProvider(name="bamgathering")
+    public Object[][] gatherBAMTestData() {
         final File origBam = new File(TEST_DATA_DIR, "orig.bam");
         final List<File> splitBamsUnmappedLast = Arrays.asList(
                 new File(TEST_DATA_DIR, "indchr1.bam"),
@@ -67,26 +68,96 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
         };
     }
 
-    @Test(dataProvider = "gathering")
-    public void testTheGathering(final List<File> bams, final File original, final boolean expectEqual, final boolean expectEqualLenient) throws IOException {
-        final File outputFile = BaseTest.createTempFile("gatherBamFilesTest.samFile.", BamFileIoUtils.BAM_FILE_EXTENSION);
+    @Test(dataProvider = "bamgathering")
+    public void testBAMGathering(final List<File> bams, final File original, final boolean expectEqual, final boolean expectEqualLenient) throws IOException {
+        testTheGathering(bams, original, null, BamFileIoUtils.BAM_FILE_EXTENSION, expectEqual, expectEqualLenient);
+    }
+
+    private void testTheGathering(
+            final List<File> bams,
+            final File original,
+            final File referenceFile,
+            final String outputExtension,
+            final boolean expectEqual,
+            final boolean expectEqualLenient) throws IOException {
+        final File outputFile = BaseTest.createTempFile("gatherBamFilesTest.samFile.", outputExtension);
         final List<String> args = new ArrayList<>();
         for (final File splitBam : bams) {
             args.add("--INPUT");
             args.add(splitBam.getAbsolutePath());
         }
+        if (null != referenceFile) {
+            args.add("--R");
+            args.add(referenceFile.getAbsolutePath());
+        }
         args.add("--OUTPUT");
         args.add(outputFile.getAbsolutePath());
         runCommandLine(args);
+
         if (expectEqual) {
-            Assert.assertNull(SamAssertionUtils.samsEqualStringent(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, null));
+            Assert.assertNull(SamAssertionUtils.samsEqualStringent(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile));
         } else {
-            Assert.assertNotNull(SamAssertionUtils.samsEqualStringent(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, null));
+            Assert.assertNotNull(SamAssertionUtils.samsEqualStringent(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile));
         }
         if (expectEqualLenient) {
-            Assert.assertNull(SamAssertionUtils.samsEqualLenient(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, null));
+            Assert.assertNull(SamAssertionUtils.samsEqualLenient(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile));
         } else {
-            Assert.assertNotNull(SamAssertionUtils.samsEqualLenient(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, null));
+            Assert.assertNotNull(SamAssertionUtils.samsEqualLenient(original, outputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile));
         }
     }
+
+    @DataProvider(name="cramgathering")
+    public Object[][] gatherCRAMTestData() {
+        final File origCram = new File(TEST_DATA_DIR, "orig.cram");
+        final List<File> splitCramsUnmappedLast = Arrays.asList(
+                new File(TEST_DATA_DIR, "indchr1.cram"),
+                new File(TEST_DATA_DIR, "indchr2.cram"),
+                new File(TEST_DATA_DIR, "indchr3.cram"),
+                new File(TEST_DATA_DIR, "indchr4.cram"),
+                new File(TEST_DATA_DIR, "indchr5.cram"),
+                new File(TEST_DATA_DIR, "indchr6.cram"),
+                new File(TEST_DATA_DIR, "indchr7.cram"),
+                new File(TEST_DATA_DIR, "indchr8.cram"),
+                new File(TEST_DATA_DIR, "indUnknownChrom.cram")
+        );
+
+        final List<File> splitCramsUnmappedFirst = Arrays.asList(
+                new File(TEST_DATA_DIR, "indUnknownChrom.cram"),
+                new File(TEST_DATA_DIR, "indchr1.cram"),
+                new File(TEST_DATA_DIR, "indchr2.cram"),
+                new File(TEST_DATA_DIR, "indchr3.cram"),
+                new File(TEST_DATA_DIR, "indchr4.cram"),
+                new File(TEST_DATA_DIR, "indchr5.cram"),
+                new File(TEST_DATA_DIR, "indchr6.cram"),
+                new File(TEST_DATA_DIR, "indchr7.cram"),
+                new File(TEST_DATA_DIR, "indchr8.cram")
+        );
+
+        final List<File> splitCramsUnmappedMissing = Arrays.asList(
+                new File(TEST_DATA_DIR, "indchr1.cram"),
+                new File(TEST_DATA_DIR, "indchr2.cram"),
+                new File(TEST_DATA_DIR, "indchr3.cram"),
+                new File(TEST_DATA_DIR, "indchr4.cram"),
+                new File(TEST_DATA_DIR, "indchr5.cram"),
+                new File(TEST_DATA_DIR, "indchr6.cram"),
+                new File(TEST_DATA_DIR, "indchr7.cram"),
+                new File(TEST_DATA_DIR, "indchr8.cram")
+        );
+
+        return new Object[][]{
+                // these require the fix to https://github.com/samtools/htsjdk/issues/365
+                // that is in PR https://github.com/samtools/htsjdk/pull/368
+                {splitCramsUnmappedLast, origCram, true, true},
+                {splitCramsUnmappedFirst, origCram, true, true},
+                {splitCramsUnmappedMissing, origCram, false, false}
+        };
+    }
+
+    // These tests require the fix to https://github.com/samtools/htsjdk/issues/365
+    // in PR https://github.com/samtools/htsjdk/pull/368
+    @Test(dataProvider="cramgathering", enabled=false)
+    public void testTheCRAMGathering(final List<File> crams, final File original, final boolean expectEqual, final boolean expectEqualLenient) throws IOException {
+        testTheGathering(crams, original, new File(TEST_DATA_DIR, "basic.fasta"), CramIO.CRAM_FILE_EXTENSION, expectEqual, expectEqualLenient);
+    }
+
 }

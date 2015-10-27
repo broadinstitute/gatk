@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.SAMFormatException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,8 +25,9 @@ public final class CompareSAMsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="testDataValidFormats")
     public Object[][] testDataValid() {
         return new Object[][]{
-                {"NA12878.chr17_69k_70k.dictFix.bam", "NA12878.chr17_69k_70k.dictFix.bam", ValidationStringency.SILENT, true},
-                {"unmapped_first.sam", "unmapped_second.sam", ValidationStringency.SILENT, false},
+                {"multigroup_valid.cram", "multigroup_valid.cram", "basic.fasta", ValidationStringency.SILENT, true},
+                {"NA12878.chr17_69k_70k.dictFix.bam", "NA12878.chr17_69k_70k.dictFix.bam", null, ValidationStringency.SILENT, true},
+                {"unmapped_first.sam", "unmapped_second.sam", null, ValidationStringency.SILENT, false},
         };
     }
 
@@ -37,24 +39,37 @@ public final class CompareSAMsIntegrationTest extends CommandLineProgramTest {
     }
 
     private void compareSAMHelper(
-            String fileName1, String fileName2, ValidationStringency stringency, boolean expectedResult) throws Exception {
+            final String fileName1,
+            final String fileName2,
+            final String referenceFileName,
+            final ValidationStringency stringency,
+            final boolean expectedResult) throws Exception {
         final File testFile1 = new File(TEST_DATA_DIR, fileName1);
         final File testFile2 = new File(TEST_DATA_DIR, fileName2);
-        final String[] args = new String[]{
-                testFile1.getPath(), testFile2.getPath(), "--VALIDATION_STRINGENCY", stringency.name(),
-        };
-        Assert.assertEquals(runCommandLine(args), expectedResult);
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add(testFile1.getPath());
+        args.add(testFile2.getPath());
+        if (null != referenceFileName) {
+            args.add("--R");
+            args.add(new File(TEST_DATA_DIR, referenceFileName).getAbsoluteFile());
+        }
+        args.add("--VALIDATION_STRINGENCY"); args.add(stringency.name());
+        Assert.assertEquals(runCommandLine(args.getArgsArray()), expectedResult);
     }
 
     @Test(dataProvider="testDataValidFormats")
     public void testCompareSAM(
-            String fileName1, String fileName2, ValidationStringency stringency, boolean expectedResult) throws Exception {
-        compareSAMHelper(fileName1,  fileName2,  stringency, expectedResult);
+            final String fileName1,
+            final String fileName2,
+            final String referenceFileName,
+            final ValidationStringency stringency,
+            final boolean expectedResult) throws Exception {
+        compareSAMHelper(fileName1, fileName2, referenceFileName, stringency, expectedResult);
     }
 
      @Test(dataProvider="testDataInvalidFormats", expectedExceptions=SAMFormatException.class)
         public void testCompareInvalidSAMFormats(
                 String fileName1, String fileName2, ValidationStringency stringency, boolean expectedResult) throws Exception {
-         compareSAMHelper(fileName1,  fileName2,  stringency, expectedResult);
+         compareSAMHelper(fileName1,  fileName2,  null, stringency, expectedResult);
     }
 }

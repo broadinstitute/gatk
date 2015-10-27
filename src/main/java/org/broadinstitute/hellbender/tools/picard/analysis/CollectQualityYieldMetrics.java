@@ -55,7 +55,7 @@ public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
 
         logger.info("Reading input file and calculating metrics.");
 
-        final SamReader sam = SamReaderFactory.makeDefault().open(INPUT);
+        final SamReader sam = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
 
         final MetricsFile<QualityYieldMetrics, Integer> metricsFile = getMetricsFile();
         final QualityYieldMetrics metrics = new QualityYieldMetrics();

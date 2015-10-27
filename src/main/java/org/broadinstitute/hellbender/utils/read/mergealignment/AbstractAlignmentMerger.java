@@ -354,7 +354,7 @@ public abstract class AbstractAlignmentMerger {
         // Write the records to the output file in specified sorted order,
         header.setSortOrder(this.sortOrder);
         final boolean presorted = this.sortOrder == SAMFileHeader.SortOrder.coordinate;
-        final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(header, presorted, this.targetBamFile);
+        final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(header, presorted, this.targetBamFile, referenceFasta);
         writer.setProgressLogger(
                 new ProgressLogger(logger, (int) 1e7, "Wrote", "records from a sorting collection"));
         final ProgressLogger finalProgress = new ProgressLogger(logger, 10000000, "Written in coordinate order to output", "records");

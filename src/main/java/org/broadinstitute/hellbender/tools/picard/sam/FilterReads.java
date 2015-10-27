@@ -93,7 +93,7 @@ public final class FilterReads extends PicardCommandLineProgram {
         final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Written");
 
         // create OUTPUT file
-        try (final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, presorted, OUTPUT)) {
+        try (final SAMFileWriter outputWriter = new SAMFileWriterFactory().makeWriter(fileHeader, presorted, OUTPUT, REFERENCE_SEQUENCE)) {
 
            while (filteringIterator.hasNext()) {
                final SAMRecord rec = filteringIterator.next();

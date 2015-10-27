@@ -198,7 +198,10 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
         final List<SamReader> readers = new ArrayList<>(INPUT.size());
 
         for (final File f : INPUT) {
-            final SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(f); // eager decode
+            final SamReader reader = SamReaderFactory.makeDefault()
+                    .enable(SamReaderFactory.Option.EAGERLY_DECODE)
+                    .referenceSequence(REFERENCE_SEQUENCE)
+                    .open(f); // eager decode
             final SAMFileHeader header = reader.getFileHeader();
 
             if (!ASSUME_SORTED && header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {

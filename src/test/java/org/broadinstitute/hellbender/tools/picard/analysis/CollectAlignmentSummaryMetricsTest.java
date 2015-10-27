@@ -4,6 +4,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -22,11 +23,20 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
     public String getTestedClassName() {
         return CollectAlignmentSummaryMetrics.class.getSimpleName();
     }
-    
-    @Test
-    public void test() throws IOException {
-        final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test.sam");
-        final File reference = new File(TEST_DATA_DIR, "summary_alignment_stats_test.fasta");
+
+    @DataProvider(name="metricsfiles")
+    public Object[][] alignmentMetricsFiles() {
+        return new Object[][] {
+                {"summary_alignment_stats_test.sam", "summary_alignment_stats_test.fasta"},
+                {"summary_alignment_stats_test.bam", "summary_alignment_stats_test.fasta"},
+                {"summary_alignment_stats_test.cram", "summary_alignment_stats_test.fasta"}
+        };
+    }
+
+    @Test(dataProvider="metricsfiles")
+    public void test(final String inputFile, final String referenceFile) throws IOException {
+        final File input = new File(TEST_DATA_DIR, inputFile);
+        final File reference = new File(TEST_DATA_DIR, referenceFile);
         final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
                 "--INPUT", input.getAbsolutePath(),

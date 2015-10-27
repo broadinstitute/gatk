@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,22 +21,34 @@ public final class ValidateSamFileIntegrationTest extends CommandLineProgramTest
         return ValidateSamFile.class.getSimpleName();
     }
 
-    @DataProvider(name="testingData")
+    @DataProvider(name="tooltestingData")
     public Object[][] testingData() {
         return new Object[][]{
-            {"valid.sam", "SUMMARY", true},
-            {"valid.sam", "VERBOSE", true},
-            {"invalid_coord_sort_order.sam", "SUMMARY", false},
+          {"valid.sam", "SUMMARY", null, true},
+          {"valid.sam", "VERBOSE", null, true},
+          {"valid.bam", "VERBOSE", null, true},
+          {"valid.bam", "VERBOSE", "valid.fasta", false}, // the NM tags in this sam file don't match the reference deltas
+          {"valid.cram", "VERBOSE", "valid.fasta", true}, // the NM tags in the CRAM file do match the reference (ty samtools)
+          {"invalid_coord_sort_order.sam", "SUMMARY", null, false},
+          {"invalid_coord_sort_order.sam", "SUMMARY", "invalid_coord_sort_order.fasta", false},
+          //{"invalid_coord_sort_order.cram", "SUMMARY", "invalid_coord_sort_order.fasta", false},  // requires htsjdk fix to SamFileValidator
         };
     }
 
-    @Test(dataProvider="testingData")
-    public void testNoOutputFile(String input, String mode, boolean expectedValidity) throws Exception {
+    @Test(dataProvider="tooltestingData")
+    public void testNoOutputFile(final String input, final String mode,  final String referenceName, final boolean expectedValidity) throws Exception {
         final File testFile = new File(TEST_DATA_DIR, input);
-        final String[] args = new String[] {
-            "--INPUT", testFile.getPath(),
-            "--MODE", mode
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--INPUT");
+        args.add(testFile.getPath());
+        args.add("--MODE");
+        args.add(mode);
+        if (null != referenceName) {
+            final File refFile = new File(TEST_DATA_DIR, referenceName);
+            args.add("--R ");
+            args.add(refFile.getAbsoluteFile());
         };
-        Assert.assertEquals(runCommandLine(args), expectedValidity);
+        Assert.assertEquals(runCommandLine(args.getArgsArray()), expectedValidity);
     }
+
 }

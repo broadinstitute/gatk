@@ -152,10 +152,10 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
     }
 
     @Test(dataProvider = "testOpticalDuplicateDetectionDataProvider")
-    public void testOpticalDuplicateDetection(final File sam, final long expectedNumOpticalDuplicates) {
+    public void testOpticalDuplicateDetection(final File sam, final File reference, final String outputExtension, final long expectedNumOpticalDuplicates) {
         final File outputDir = IOUtil.createTempDir(TEST_BASE_NAME + ".", ".tmp");
         outputDir.deleteOnExit();
-        final File outputSam = new File(outputDir, TEST_BASE_NAME + ".sam");
+        final File outputSam = new File(outputDir, TEST_BASE_NAME + outputExtension);
         outputSam.deleteOnExit();
         final File metricsFile = new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics");
         metricsFile.deleteOnExit();
@@ -164,6 +164,9 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
         final MarkDuplicates markDuplicates = new MarkDuplicates();
         markDuplicates.setupOpticalDuplicateFinder();
         markDuplicates.INPUT = CollectionUtil.makeList(sam);
+        if (null != reference) {
+            markDuplicates.REFERENCE_SEQUENCE = reference;
+        }
         markDuplicates.OUTPUT = outputSam;
         markDuplicates.METRICS_FILE = metricsFile;
         markDuplicates.TMP_DIR = CollectionUtil.makeList(outputDir);
@@ -176,8 +179,9 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
     @DataProvider(name="testOpticalDuplicateDetectionDataProvider")
     public Object[][] testOpticalDuplicateDetectionDataProvider() {
         return new Object[][] {
-                {new File(TEST_DATA_DIR, "optical_dupes.sam"), 1L},
-                {new File(TEST_DATA_DIR, "optical_dupes_casava.sam"), 1L},
+                {new File(TEST_DATA_DIR, "optical_dupes.sam"), null, ".sam", 1L},
+                {new File(TEST_DATA_DIR, "optical_dupes.cram"), new File(TEST_DATA_DIR, "optical_dupes.fasta"), ".cram", 1L},
+                {new File(TEST_DATA_DIR, "optical_dupes_casava.sam"), null, ".sam", 1L}
         };
     }
 
