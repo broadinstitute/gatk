@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.primitives.Doubles;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.exception.InsufficientDataException;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -27,14 +28,14 @@ public final class SegmentMergeUtils {
 
     //random generator for breaking ties in small-segment merging
     private static final int RANDOM_SEED = 42;
-    private static final RandomGenerator randomGenerator =
+    private static final RandomGenerator rng =
             RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
     //Kolmogorov-Smirnov test for small-segment merging
     private static final int KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED = 42;
-    private static final RandomGenerator kolmogorovSmirnovTestRandomGenerator =
+    private static final RandomGenerator rngKolmogorovSmirnovTest =
             RandomGeneratorFactory.createRandomGenerator(new Random(KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED));
     private static final KolmogorovSmirnovTest kolmogorovSmirnovTest =
-            new KolmogorovSmirnovTest(kolmogorovSmirnovTestRandomGenerator);
+            new KolmogorovSmirnovTest(rngKolmogorovSmirnovTest);
 
     private SegmentMergeUtils() {}
 
@@ -408,7 +409,7 @@ public final class SegmentMergeUtils {
             try {
                 //if not enough alternate-allele fractions in any segment to use Apache Commons implementation of
                 //kolmogorovSmirnovStatistic, kolmogorovSmirnovDistance will throw an unchecked
-                //InsufficientDataException and the finally block will be executed
+                //InsufficientDataException and the code after the catch block will be executed
                 final double leftKSDistance = kolmogorovSmirnovDistance(leftAAFs, centerAAFs);
                 final double rightKSDistance = kolmogorovSmirnovDistance(centerAAFs, rightAAFs);
 
@@ -419,9 +420,9 @@ public final class SegmentMergeUtils {
                 }
 
                 //if alternate-allele fractions in all segments are too similar or do not overlap appreciably,
-                //will not return anything and the finally block will be executed
-                if (Math.abs(leftKSDistance - rightKSDistance) > SNP_KOLMOGOROV_SMIRNOV_DISTANCE_DIFFERENCE_THRESHOLD ||
-                        (leftKSDistance < SNP_KOLMOGOROV_SMIRNOV_DISTANCE_THRESHOLD &&
+                //will not return anything here and the code after the catch block will be executed
+                if (Math.abs(leftKSDistance - rightKSDistance) > SNP_KOLMOGOROV_SMIRNOV_DISTANCE_DIFFERENCE_THRESHOLD &&
+                        (leftKSDistance < SNP_KOLMOGOROV_SMIRNOV_DISTANCE_THRESHOLD ||
                                 rightKSDistance < SNP_KOLMOGOROV_SMIRNOV_DISTANCE_THRESHOLD)) {
                     final double leftSqrtN = sqrtN(leftAAFs, centerAAFs);
                     final double rightSqrtN = sqrtN(centerAAFs, rightAAFs);
@@ -432,16 +433,18 @@ public final class SegmentMergeUtils {
                             1. - rightKSDistance * rightSqrtN /
                                     (leftKSDistance * leftSqrtN + rightKSDistance * rightSqrtN));
                 }
-            } finally {
-                //use Hodges-Lehmann scores computed using inverse minor-allele fractions
-                //(which, ideally, are proportional to total copy ratio)
-                //no need for a catch block because this should also be executed after an InsufficientDataException
-                final double[] leftInverseMAFs = Doubles.toArray(calculateInverseMAFs(leftSegment, snps));
-                final double[] centerInverseMAFs = Doubles.toArray(calculateInverseMAFs(centerSegment, snps));
-                final double[] rightInverseMAFs = Doubles.toArray(calculateInverseMAFs(rightSegment, snps));
-
-                return calculateHodgesLehmannScores(leftInverseMAFs, centerInverseMAFs, rightInverseMAFs);
+            } catch (final InsufficientDataException e) {
+                //do nothing here, continue below to use Hodges-Lehmann scores instead
             }
+            //use Hodges-Lehmann scores computed using inverse minor-allele fractions
+            //(which, ideally, are proportional to total copy ratio)
+            //will be executed after an InsufficientDataException or alternate-allele fractions in all segments
+            //are too similar or do not overlap appreciably
+            final double[] leftInverseMAFs = Doubles.toArray(calculateInverseMAFs(leftSegment, snps));
+            final double[] centerInverseMAFs = Doubles.toArray(calculateInverseMAFs(centerSegment, snps));
+            final double[] rightInverseMAFs = Doubles.toArray(calculateInverseMAFs(rightSegment, snps));
+
+            return calculateHodgesLehmannScores(leftInverseMAFs, centerInverseMAFs, rightInverseMAFs);
         }
 
         /**
@@ -555,7 +558,7 @@ public final class SegmentMergeUtils {
             }
             if (Math.abs(scores.getLeft() - scores.getRight()) <= DOUBLE_EQUALITY_EPSILON) {
                 //in the unlikely event that all scores are equal, merge randomly
-                final boolean isLeftScoreHigher = randomGenerator.nextBoolean();
+                final boolean isLeftScoreHigher = rng.nextBoolean();
                 return isLeftScoreHigher ? MergeDirection.LEFT : MergeDirection.RIGHT;
             }
             throw new GATKException.ShouldNeverReachHereException("Something went wrong during small-segment merging.");

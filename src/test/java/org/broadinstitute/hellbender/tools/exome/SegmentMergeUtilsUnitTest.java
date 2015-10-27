@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.testng.log4testng.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -597,7 +596,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                     {
                             //case description
                             "same coverages, right closer in AAF but same KS distance, different genomic distance = " +
-                                    "merge right on MAF",
+                                    "merge right on inverse MAF",
                             //original segments
                             makeSegments(leftSegmentCloser, rightSegment),
                             //target coverages
@@ -966,7 +965,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                                             final List<List<TargetCoverage>> targetCoverages,
                                             final List<List<AllelicCount>> snpCounts,
                                             final List<SimpleInterval> expectedMergedSegments) {
-            Logger.getLogger(getClass()).info("Testing case: " + caseDescription);
+            logger.info("Testing case: " + caseDescription);
             final Genome genome = makeGenome(targetCoverages, snpCounts);
             final List<SimpleInterval> resultMergedSegments =
                     SegmentMergeUtils.mergeSmallSegments(segments, genome, SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);

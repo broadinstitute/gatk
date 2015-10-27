@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTests;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTest;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -52,7 +52,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
     private static final File TEST_TARGETS_WITH_BAD_NAME = new File(TEST_DIR,"targets-with-bad-name.bed");
 
-    private static final File TEST_PON = HDF5LibraryUnitTests.TEST_PON;
+    private static final File TEST_PON = HDF5LibraryUnitTest.TEST_PON;
 
 
     @Override

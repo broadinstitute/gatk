@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
-import org.broadinstitute.hellbender.utils.segmenter.SegmenterTest;
+import org.broadinstitute.hellbender.utils.segmenter.SegmenterUnitTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -29,7 +29,7 @@ public class PerformCBSSegmentationIntegrationTest extends CommandLineProgramTes
                 "-" + PerformCBSSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
         };
         runCommandLine(arguments);
-        SegmenterTest.assertEqualSegments(output, EXPECTED);
+        SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
     }
 
     @Test()
@@ -46,6 +46,6 @@ public class PerformCBSSegmentationIntegrationTest extends CommandLineProgramTes
                 "-" + PerformCBSSegmentation.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
-        SegmenterTest.assertEqualSegments(output, EXPECTED);
+        SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
     }
 }

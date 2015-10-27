@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-public class SegmenterTest extends BaseTest {
+public class SegmenterUnitTest extends BaseTest {
 
     @Test
     public void testHCC1143Reduced() throws IOException {
