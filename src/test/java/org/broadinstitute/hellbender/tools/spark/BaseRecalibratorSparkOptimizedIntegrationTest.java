@@ -65,7 +65,7 @@ public class BaseRecalibratorSparkOptimizedIntegrationTest extends CommandLinePr
     @DataProvider(name = "BQSRTest")
     public Object[][] createBQSRTestData() {
         final String localResources =  getResourceDir();
-        final String hg19Ref = "EMWV_ZfLxrDY-wE";
+        final String hg19Ref = ReferenceAPISource.HG19_REF_ID;
         final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
         final String HiSeqBam = localResources + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
@@ -174,7 +174,7 @@ public class BaseRecalibratorSparkOptimizedIntegrationTest extends CommandLinePr
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String hg19Ref = ReferenceAPISource.URL_PREFIX + "EMWV_ZfLxrDY-wE";
+        final String hg19Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.HG19_REF_ID;
         final String HiSeqBam = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";

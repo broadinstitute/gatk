@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.engine.datasources;
 
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.genomics.Genomics;
-import com.google.api.services.genomics.model.ListBasesResponse;
-import com.google.api.services.genomics.model.Reference;
-import com.google.api.services.genomics.model.SearchReferencesRequest;
-import com.google.api.services.genomics.model.SearchReferencesResponse;
+import com.google.api.services.genomics.model.*;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
@@ -28,6 +25,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * ReferenceAPISource makes calls to the Google Genomics API to get ReferenceBases. This is designed so it also works
@@ -38,17 +36,26 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
 
     // from https://cloud.google.com/genomics/data/references
     public static final String GRCH37_REF_ID = "EOSsjdnTicvzwAE";
+    public static final String GRCH37_ASSEMBLY_ID ="GRCh37" ;
+
     // "lite" instead of the correct spelling because that's what its name is.
     public static final String GRCH37_LITE_REF_ID = "EJjur6DxjIa6KQ";
+    public static final String GRCH37_LITE_ASSEMBLY_ID = "GRCh37lite";
+
     public static final String GRCH38_REF_ID = "EMud_c37lKPXTQ";
+    public static final String GRCH38_ASSEMBLY_ID = "GRCh38";
+
     public static final String HG19_REF_ID = "EMWV_ZfLxrDY-wE";
+    public static final String HG19_ASSEMBLY_ID = "hg19";
+
     public static final String HS37D5_REF_ID = "EOSt9JOVhp3jkwE";
+    public static final String HS37D5_ASSEMBLY_ID = "hs37d5";
 
     public static final String URL_PREFIX = "gg://reference/";
 
     private static final long serialVersionUID = 1L;
     private static final int defaultPageSize = 1_000_000; // The number of results per request
-    private final static Logger logger = LogManager.getLogger(ReferenceAPISource.class);
+    private static final Logger logger = LogManager.getLogger(ReferenceAPISource.class);
 
     // With our current design, there are three steps required (1) Create a map from reference name to Id,
     // (2) instantiate RefAPISource, and (3) call getReferenceBases, which then calls the Google Genomics API.
@@ -63,6 +70,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
     private String apiKey;
 
     public ReferenceAPISource( final PipelineOptions pipelineOptions, final String referenceURL ) {
+        Utils.nonNull(pipelineOptions);
         String referenceName = getReferenceSetID(referenceURL);
         this.referenceMap = getReferenceNameToReferenceTable(pipelineOptions, referenceName);
         this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
@@ -72,8 +80,54 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
         // If we go with Spark, we'll end up refactoring this to store all of the secrets
         // directly in this class and get rid of PipelineOptions as an argument to
         // getReferenceBases.
-        Utils.nonNull(pipelineOptions);
         this.apiKey = pipelineOptions.as(GCSOptions.class).getApiKey();
+    }
+
+    private ReferenceAPISource(final PipelineOptions pipelineOptions, final Map<String, Reference> referenceMap){
+        Utils.nonNull(pipelineOptions);
+        this.referenceMap = referenceMap;
+        this.referenceNameToIdTable = getReferenceNameToIdTableFromMap(referenceMap);
+
+        // For Spark, we keep around the apiKey from the PipelineOptions since we don't have
+        // a "context" with PipelineOptions available on each worker.
+        // If we go with Spark, we'll end up refactoring this to store all of the secrets
+        // directly in this class and get rid of PipelineOptions as an argument to
+        // getReferenceBases.
+        this.apiKey = pipelineOptions.as(GCSOptions.class).getApiKey();
+    }
+
+    /**
+     * Creates this ReferenceAPISource from an assembly ID by querying in the cloud APIs.
+     */
+    public static ReferenceAPISource fromReferenceSetAssemblyID(final PipelineOptions pipelineOptions, final String referenceSetAssemblyID){
+        Utils.nonNull(pipelineOptions);
+        Utils.nonNull(referenceSetAssemblyID);
+        final SearchReferenceSetsRequest content = new SearchReferenceSetsRequest();
+        content.setAssemblyId(referenceSetAssemblyID);
+        try {
+            final Genomics genomicsService = createGenomicsService(pipelineOptions);
+            final SearchReferenceSetsResponse found = genomicsService.referencesets().search(content).execute();
+            final Set<String> referenceSetIds = found.getReferenceSets().stream().map(rs -> rs.getId()).collect(Collectors.toSet());
+            if (referenceSetIds.isEmpty()){
+                throw new UserException.UnknownReferenceSet(referenceSetAssemblyID);
+            }
+            if (referenceSetIds.size() > 1){
+                throw new UserException.MultipleReferenceSets(referenceSetAssemblyID, referenceSetIds);
+            }
+            final Map<String, Reference> ret = new HashMap<>();
+            for (final String rId : referenceSetIds) {
+                final SearchReferencesRequest query = new SearchReferencesRequest().setReferenceSetId(rId);
+                ret.putAll(genomicsService.references().search(query).execute().getReferences().stream().collect(Collectors.toMap(r -> r.getName(), r -> r)));
+            }
+            return new ReferenceAPISource(pipelineOptions, ret);
+        } catch (final IOException e) {
+            throw new UserException("Error while looking up reference set " + referenceSetAssemblyID, e);
+        }
+    }
+
+    @VisibleForTesting
+    Map<String, Reference> getReferenceMap() {
+        return Collections.unmodifiableMap(referenceMap);
     }
 
     @VisibleForTesting
@@ -221,7 +275,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
             public int compare(SAMSequenceRecord o1, SAMSequenceRecord o2) {
 
                 // if those are ordered in the readDictionary, then match that order
-                if (null!=optReadSequenceDictionaryToMatchIndex) {
+                if (null != optReadSequenceDictionaryToMatchIndex) {
                     if (optReadSequenceDictionaryToMatchIndex.containsKey(o1.getSequenceName()) && optReadSequenceDictionaryToMatchIndex.containsKey(o2.getSequenceName())) {
                         return optReadSequenceDictionaryToMatchIndex.get(o1.getSequenceName()).compareTo(optReadSequenceDictionaryToMatchIndex.get(o2.getSequenceName()));
                     }
@@ -230,8 +284,8 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
                 // otherwise, order them in karyotypic order.
                 int r1 = getRank(o1.getSequenceName());
                 int r2 = getRank(o2.getSequenceName());
-                if (r1<r2) return -1;
-                if (r2<r1) return 1;
+                if (r1 < r2) return -1;
+                if (r2 < r1) return 1;
                 return o1.getSequenceName().compareTo(o2.getSequenceName());
             }
 
@@ -247,7 +301,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
                     }
                 }
                 String numsOnly = b.toString();
-                if (numsOnly.length()==0) return 0;
+                if (numsOnly.length() == 0) return 0;
                 return Integer.parseInt(numsOnly);
             }
         });
@@ -293,7 +347,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
         if (null==genomicsService) genomicsService = createGenomicsService(pipelineOptions);
     }
 
-    private Genomics createGenomicsService(final PipelineOptions pipelineOptions) {
+    private static Genomics createGenomicsService(final PipelineOptions pipelineOptions) {
         try {
             final GenomicsFactory.OfflineAuth auth = GATKGCSOptions.Methods.getOfflineAuth(pipelineOptions.as(GATKGCSOptions.class));
             return auth.getGenomics(auth.getDefaultFactory());
