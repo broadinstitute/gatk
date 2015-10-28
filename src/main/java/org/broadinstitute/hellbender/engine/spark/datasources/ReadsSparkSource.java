@@ -117,7 +117,7 @@ public class ReadsSparkSource implements Serializable {
      * @param inputPath path to the Parquet data
      * @return RDD of (ADAM-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getADAMReads(final String inputPath, SAMFileHeader header) throws IOException {
+    public JavaRDD<GATKRead> getADAMReads(final String inputPath, final List<SimpleInterval> intervals, final SAMFileHeader header) throws IOException {
         Job job = Job.getInstance(ctx.hadoopConfiguration());
         AvroParquetInputFormat.setAvroReadSchema(job, AlignmentRecord.getClassSchema());
         Broadcast<SAMFileHeader> bHeader;
@@ -131,7 +131,8 @@ public class ReadsSparkSource implements Serializable {
                 inputPath, AvroParquetInputFormat.class, Void.class, AlignmentRecord.class, job.getConfiguration())
                 .values();
         JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
-        return readsRdd;
+        JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), intervals));
+        return filteredRdd;
     }
 
     /**

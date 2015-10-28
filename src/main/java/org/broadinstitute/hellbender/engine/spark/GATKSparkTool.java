@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -178,8 +179,18 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified.
      */
     public JavaRDD<GATKRead> getReads() {
-        // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
-        return readsSource.getParallelReads(readInput, intervals, bamPartitionSplitSize);
+        // TODO: This if statement is a temporary hack until #959 gets resolved.
+        if (readInput.endsWith(".adam")) {
+            try {
+                return readsSource.getADAMReads(readInput, intervals, getHeaderForReads());
+            } catch (IOException e) {
+                throw new UserException("Failed to read ADAM file " + readInput);
+            }
+
+        } else {
+            // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
+            return readsSource.getParallelReads(readInput, intervals, bamPartitionSplitSize);
+        }
     }
 
     /**
