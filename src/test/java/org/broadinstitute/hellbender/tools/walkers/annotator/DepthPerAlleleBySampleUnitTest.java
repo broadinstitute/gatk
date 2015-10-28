@@ -45,20 +45,20 @@ public final class DepthPerAlleleBySampleUnitTest extends BaseTest {
         final double log10PError = -5;
 
         for (int i = 0; i < readDepthAlt; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "readDepthAlt_" + i);
             read.setMappingQuality(20);
             map.add(read, A, -10.0);
             map.add(read, C, -1.0);      //try to fool it - add another likelihood to same read
         }
         for (int i = 0; i < readDepthRef; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "readDepthRef_" + i);
             read.setMappingQuality(20);
             map.add(read, A, -1.0);
             map.add(read, C, -100.0);  //try to fool it - add another likelihood to same read
         }
 
         //throw in one non-informative read
-        final GATKRead badRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+        final GATKRead badRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "non-informative");
         badRead.setMappingQuality(20);
         map.add(badRead, A, -1.0);
         map.add(badRead, C, -1.1); //maybe it's ref, maybe it's alt, too close to call -> not informative

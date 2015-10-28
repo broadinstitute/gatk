@@ -24,7 +24,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
 
     @Test()
     public void testMultiAlleleWithHomLiks() {
-        final ReadPileup pileup = makeArtificialPileup();
+        final ReadPileup pileup = makeArtificialPileup("first");
 
         Allele base_A = Allele.create(BaseUtils.Base.A.base);
         Allele base_C = Allele.create(BaseUtils.Base.C.base);
@@ -57,7 +57,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         Assert.assertEquals(likMap.get(base_A), likA);
         Assert.assertEquals(likMap.get(base_C), likNotA);
 
-        ReadPileup newPileup = makeArtificialPileup();
+        ReadPileup newPileup = makeArtificialPileup("second");
         Assert.assertNull(perReadAlleleLikelihoodMap.getLikelihoods(newPileup.get(0)));
 
         Assert.assertNotNull(perReadAlleleLikelihoodMap.toString()); //checking blowup
@@ -68,7 +68,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         Assert.assertNotNull(perReadAlleleLikelihoodMap.toString()); //checking blowup
     }
 
-    private ReadPileup makeArtificialPileup() {
+    private ReadPileup makeArtificialPileup(final String prefix) {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         final Locatable myLocation = new SimpleInterval("1", 10, 10);
 
@@ -76,7 +76,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         final int readLength = 10;
         final List<GATKRead> reads = new LinkedList<>();
         for ( int i = 0; i < pileupSize; i++ ) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead" + i, 0, 1, readLength);
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, prefix + "_myRead" + i, 0, 1, readLength);
             final byte[] bases = Utils.dupBytes((byte) 'A', readLength);
             bases[0] = (byte)(i % 2 == 0 ? 'A' : 'C'); // every other read the first base is a C
 
@@ -92,7 +92,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadLikelihood(){
-        final ReadPileup pileup = makeArtificialPileup();
+        final ReadPileup pileup = makeArtificialPileup("first");
         PerReadAlleleLikelihoodMap perReadAlleleLikelihoodMap = new PerReadAlleleLikelihoodMap();
         Allele base_A = Allele.create(BaseUtils.Base.A.base);
         final Allele allele = base_A;

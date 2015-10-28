@@ -22,7 +22,6 @@ public final class BaseQualitySumPerAlleleBySampleUnitTest {
     public void testUsableRead() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(5, 1, 10000);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, 76);
-
         read.setMappingQuality(60);
         Assert.assertTrue(BaseQualitySumPerAlleleBySample.isUsableRead(read));
 
@@ -59,14 +58,14 @@ public final class BaseQualitySumPerAlleleBySampleUnitTest {
         final int readLen = 10;
 
         for (int i = 0; i < readDepthAlt; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(readLen + "M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(readLen + "M"), "read1_" + i);
             read.setBaseQualities(Utils.dupBytes(baseQual, readLen));
             read.setMappingQuality(20);
             map.add(read, A, -10.0);
             map.add(read, C, -1.0);      //try to fool it - add another likelihood to same read
         }
         for (int i = 0; i < readDepthRef; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(readLen + "M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(readLen + "M"), "read2_" + i);
             read.setBaseQualities(Utils.dupBytes(baseQual, readLen));
             read.setMappingQuality(20);
             map.add(read, A, -1.0);
@@ -74,7 +73,7 @@ public final class BaseQualitySumPerAlleleBySampleUnitTest {
         }
 
         //throw in one non-informative read
-        final GATKRead badRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(readLen + "M"));
+        final GATKRead badRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(readLen + "M"), "read3");
         badRead.setBaseQualities(Utils.dupBytes(baseQual, readLen));
         badRead.setMappingQuality(20);
         map.add(badRead, A, -1.0);

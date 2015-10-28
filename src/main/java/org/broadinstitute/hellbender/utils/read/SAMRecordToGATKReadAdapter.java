@@ -2,11 +2,7 @@ package org.broadinstitute.hellbender.utils.read;
 
 
 import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
-import htsjdk.samtools.SAMTagUtil;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -14,9 +10,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -27,40 +20,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     private static final long serialVersionUID = 1L;
-    private final static long uuidHighWord = new Random().nextLong();
-    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     private final SAMRecord samRecord;
-    private final UUID uuid;
 
     public SAMRecordToGATKReadAdapter( final SAMRecord samRecord ) {
-        // this is 100x faster than UUID.randomUUID()
-        this(samRecord, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
-    }
-
-    /**
-     * Produces a SAMRecordToGATKReadAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
-     * and loading the reads twice (which can happen when caching is missing) prevents joining.
-     * @param samRecord Read to adapt
-     * @return adapted Read
-     */
-    public static GATKRead sparkReadAdapter(final SAMRecord samRecord) {
-        samRecord.setHeader(null);
-        return new SAMRecordToGATKReadAdapter(samRecord, new UUID(0L, 0L));
-    }
-
-    /**
-     * Constructor that allows an explicit UUID to be passed in -- only meant
-     * for internal use and test class use, which is why it's package protected.
-     */
-    SAMRecordToGATKReadAdapter( final SAMRecord samRecord, final UUID uuid ) {
         this.samRecord = samRecord;
-        this.uuid = uuid;
-    }
-
-    @Override
-    public UUID getUUID() {
-        return uuid;
     }
 
     @Override
@@ -535,26 +499,19 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
-    public boolean equalsIgnoreUUID( final Object other ) {
-        if ( this == other ) return true;
-        if ( other == null || getClass() != other.getClass() ) return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-        SAMRecordToGATKReadAdapter that = (SAMRecordToGATKReadAdapter)other;
+        SAMRecordToGATKReadAdapter that = (SAMRecordToGATKReadAdapter) o;
 
-        return samRecord != null ? samRecord.equals(that.samRecord) : that.samRecord == null;
-    }
+        return !(getSamRecord() != null ? !getSamRecord().equals(that.getSamRecord()) : that.getSamRecord() != null);
 
-    @Override
-    public boolean equals( Object other ) {
-        return equalsIgnoreUUID(other) && uuid.equals(((SAMRecordToGATKReadAdapter)other).uuid);
     }
 
     @Override
     public int hashCode() {
-        int result = samRecord != null ? samRecord.hashCode() : 0;
-        result = 31 * result + uuid.hashCode();
-
-        return result;
+        return getSamRecord() != null ? getSamRecord().hashCode() : 0;
     }
 
     @Override

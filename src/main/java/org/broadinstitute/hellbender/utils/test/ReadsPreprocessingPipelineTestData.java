@@ -7,7 +7,6 @@ import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.engine.VariantShard;
-import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -101,14 +100,14 @@ public class ReadsPreprocessingPipelineTestData {
         );
 
         variants = Lists.newArrayList(
-                new MinimalVariant(new SimpleInterval("1", 170, 180), true, false, new UUID(1001, 1001)),
-                new MinimalVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
+                new MinimalVariant(new SimpleInterval("1", 170, 180), true, false),
+                new MinimalVariant(new SimpleInterval("1", 210, 220), false, true),
                 new MinimalVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
-                        ReferenceShard.REFERENCE_SHARD_SIZE), true, false, new UUID(1003, 1003)),
+                        ReferenceShard.REFERENCE_SHARD_SIZE), true, false),
                 new MinimalVariant(new SimpleInterval("1", 3 * ReferenceShard.REFERENCE_SHARD_SIZE - 2,
-                        3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true, new UUID(1004, 1004)),
+                        3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true),
                 new MinimalVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
-                        ReferenceShard.REFERENCE_SHARD_SIZE), false, true, new UUID(1005, 1005))
+                        ReferenceShard.REFERENCE_SHARD_SIZE), false, true)
         );
 
         kvVariantShardRead = Arrays.asList(
@@ -174,7 +173,7 @@ public class ReadsPreprocessingPipelineTestData {
     /**
      * makeRead creates a read backed by either SAMRecord or Google model Read.
      * @param startLength the key is the start of the read, the value is the length.
-     * @param i name and id (UUID), note that if a different i is used, then two otherwise identical reads are not equal.
+     * @param i name
      * @param clazz either Google model Read or SAMRecord
      * @return a new GAKTRead with either a Google model backed or SAMRecord backed read.
      */
@@ -186,15 +185,15 @@ public class ReadsPreprocessingPipelineTestData {
      * makeRead creates a read backed by either SAMRecord or Google model Read.
      * @param start start position of the read
      * @param length length of the read
-     * @param i name and id (UUID), note that if a different i is used, then two otherwise identical reads are not equal.
+     * @param i name
      * @param clazz either Google model Read or SAMRecord
      * @return a new GAKTRead with either a Google model backed or SAMRecord backed read.
      */
     public static GATKRead makeRead(String contig, int start, int length, int i, Class<?> clazz) {
         if (clazz == Read.class) {
-            return ArtificialReadUtils.createGoogleBackedReadWithUUID(new UUID(0, i), Integer.toString(i), contig, start, length);
+            return ArtificialReadUtils.createGoogleBackedRead(Integer.toString(i), contig, start, length);
         } else if (clazz == SAMRecord.class) {
-            return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, i), Integer.toString(i), contig, start, length);
+            return ArtificialReadUtils.createSamBackedRead(Integer.toString(i), contig, start, length);
         } else {
             throw new GATKException("invalid GATKRead type");
         }
@@ -203,8 +202,7 @@ public class ReadsPreprocessingPipelineTestData {
     /**
      * Generates a List of artificial reads located in significant positions relative to reference shard
      * boundaries. For each reference shard, places a read at the start of the shard, 1 base after the
-     * start, at the middle of the shard, 1 base before the end, and at the end. Each read has a length of 100,
-     * with consecutive UUIDs starting at 1.
+     * start, at the middle of the shard, 1 base before the end, and at the end. Each read has a length of 100.
      *
      * @param numContigs Generate reads for this many contigs (starting at "1" and increasing numerically)
      * @param numShardsPerContig Generate reads for this many reference shards within each contig. Each shard will have 5 reads, as described above.
@@ -213,7 +211,7 @@ public class ReadsPreprocessingPipelineTestData {
      */
     public static List<GATKRead> makeReferenceShardBoundaryReads( final int numContigs, final int numShardsPerContig, final Class<?> readImplementation ) {
         final List<GATKRead> reads = new ArrayList<>();
-        int uuid = 0;
+        int id = 0;
 
         for ( int contig = 1; contig <= numContigs; ++contig ) {
             for ( int shardNum = 0; shardNum < numShardsPerContig; ++shardNum ) {
@@ -223,7 +221,7 @@ public class ReadsPreprocessingPipelineTestData {
                 final int shardMiddle = shardEnd - (ReferenceShard.REFERENCE_SHARD_SIZE / 2);
 
                 for ( int readStart : Arrays.asList(shardStart, shardStart + 1, shardMiddle, shardEnd - 1, shardEnd) ) {
-                    reads.add(makeRead(Integer.toString(contig), readStart, 100, ++uuid, readImplementation));
+                    reads.add(makeRead(Integer.toString(contig), readStart, 100, ++id, readImplementation));
                 }
             }
         }

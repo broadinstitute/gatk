@@ -4,7 +4,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.Serializable;
-import java.util.UUID;
 
 /**
  * VariantContextVariantAdapter wraps the existing htsjdk VariantContext class so it can be
@@ -14,34 +13,14 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final VariantContext variantContext;
-    private final UUID uuid;
 
     public VariantContextVariantAdapter(VariantContext vc) {
         this.variantContext = vc;
-        this.uuid = UUID.randomUUID();
     }
 
-    VariantContextVariantAdapter(VariantContextVariantAdapter vcvc, UUID uuid) {
-        this.variantContext = vcvc.variantContext;
-        this.uuid = uuid;
-    }
-
-    VariantContextVariantAdapter(VariantContext vc, UUID uuid) {
-        this.variantContext = vc;
-        this.uuid = uuid;
-    }
-
-    /**
-     * Produces a VariantContextVariantAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
-     * and loading the variants twice (which can happen when caching is missing) prevents joining.
-     * @param vc VariantContext to adapt
-     * @return adapted VariantContext.
-     */
     public static Variant sparkVariantAdapter(VariantContext vc) {
-        return new MinimalVariant(new SimpleInterval(vc.getContig(),vc.getStart(),vc.getEnd()), vc.isSNP(), vc.isIndel(), new UUID(0L, 0L));
+        return new MinimalVariant(new SimpleInterval(vc.getContig(),vc.getStart(),vc.getEnd()), vc.isSNP(), vc.isIndel());
     }
-
-
 
     @Override
     public String getContig() { return variantContext.getContig(); }
@@ -53,11 +32,6 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
     public boolean isSnp() { return variantContext.isSNP(); }
     @Override
     public boolean isIndel() { return variantContext.isIndel(); }
-
-    @Override
-    public UUID getUUID() {
-        return uuid;
-    }
 
     @Override
     public boolean equals(Object o) {
@@ -79,22 +53,17 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
         if (isSnp() != that.isSnp()) {
             return false;
         }
-        if (isIndel() != that.isIndel()) {
-            return false;
-        }
-        return uuid.equals(that.uuid);
+        return isIndel() != that.isIndel();
     }
 
     @Override
     public int hashCode() {
-        int result = variantContext.hashCode();
-        result = 31 * result + uuid.hashCode();
-        return result;
+        return variantContext.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("VariantContextVariantAdapter -- interval(%s:%d-%d), snp(%b), indel(%b), uuid(%d,%d)",
-                getContig(), getStart(), getEnd(), isSnp(), isIndel(), getUUID().getLeastSignificantBits(), getUUID().getMostSignificantBits());
+        return String.format("VariantContextVariantAdapter -- interval(%s:%d-%d), snp(%b), indel(%b)",
+                getContig(), getStart(), getEnd(), isSnp(), isIndel());
     }
 }

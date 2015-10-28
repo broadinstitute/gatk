@@ -105,7 +105,7 @@ public class QualByDepthUnitTest extends BaseTest {
 
         final int n1A= readDepth;
         for (int i = 0; i < n1A; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1A_" + i);
             read.setMappingQuality(20);
             map.add(read, A, -1.0);
             map.add(read, C, -100.0);  //try to fool it - add another likelihood to same read

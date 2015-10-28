@@ -6,10 +6,6 @@ import org.bdgenomics.adam.converters.AlignmentRecordConverter;
 import org.bdgenomics.adam.models.SAMFileHeaderWritable;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * Implementation of the {@link GATKRead} interface for the {@link AlignmentRecord} class.
  *
@@ -29,42 +25,20 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class BDGAlignmentRecordToGATKReadAdapter extends SAMRecordToGATKReadAdapter {
     private static final long serialVersionUID = 1L;
-    private final static long uuidHighWord = new Random().nextLong();
-    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     private final AlignmentRecord alignmentRecord;
 
-    public BDGAlignmentRecordToGATKReadAdapter( final AlignmentRecord alignmentRecord) {
-        this(alignmentRecord, null);
-    }
-
-    public BDGAlignmentRecordToGATKReadAdapter( final AlignmentRecord alignmentRecord, final SAMFileHeader header) {
-        // this is 100x faster than UUID.randomUUID()
-        this(alignmentRecord, header, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
-    }
-
-    /**
-     * Constructor that allows an explicit UUID to be passed in -- only meant
-     * for internal use and test class use, which is why it's package protected.
-     */
-    BDGAlignmentRecordToGATKReadAdapter( final AlignmentRecord alignmentRecord, final SAMFileHeader header, final UUID uuid ) {
-        super(new AlignmentRecordConverter().convert(alignmentRecord, SAMFileHeaderWritable.apply(header)), uuid);
+    public BDGAlignmentRecordToGATKReadAdapter(final AlignmentRecord alignmentRecord, final SAMFileHeader header) {
+        super(new AlignmentRecordConverter().convert(alignmentRecord, SAMFileHeaderWritable.apply(header)));
         this.alignmentRecord = alignmentRecord;
     }
 
-    /**
-     * Produces a BDGAlignmentRecordToGATKReadAdapter with a 0L,0L UUID. Spark doesn't need the UUIDs
-     * and loading the reads twice (which can happen when caching is missing) prevents joining.
-     * @param record Read to adapt
-     * @param header SAMFileHeaderWritable corresponding to the underlying SAMRecord object
-     * @return adapted Read
-     */
     public static GATKRead sparkReadAdapter(final AlignmentRecord record, final SAMFileHeader header) {
-        return new BDGAlignmentRecordToGATKReadAdapter(record, header, new UUID(0L, 0L));
+        return new BDGAlignmentRecordToGATKReadAdapter(record, header);
     }
 
     public static GATKRead sparkReadAdapter(final AlignmentRecord record) {
-        return new BDGAlignmentRecordToGATKReadAdapter(record, null, new UUID(0L, 0L));
+        return new BDGAlignmentRecordToGATKReadAdapter(record, null);
     }
 
     public AlignmentRecord convertToBDGAlignmentRecord() { return alignmentRecord; }

@@ -21,7 +21,6 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * ReadsPreprocessingPipelineTestData contains coordinated test data that can be used in the many transforms that
@@ -84,14 +83,14 @@ public class ReadsPreprocessingPipelineSparkTestData {
         );
 
         variants = Lists.newArrayList(
-                new MinimalVariant(new SimpleInterval("1", 170, 180), true, false, new UUID(1001, 1001)),
-                new MinimalVariant(new SimpleInterval("1", 210, 220), false, true, new UUID(1002, 1002)),
+                new MinimalVariant(new SimpleInterval("1", 170, 180), true, false),
+                new MinimalVariant(new SimpleInterval("1", 210, 220), false, true),
                 new MinimalVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
-                        ReferenceShard.REFERENCE_SHARD_SIZE), true, false, new UUID(1003, 1003)),
+                        ReferenceShard.REFERENCE_SHARD_SIZE), true, false),
                 new MinimalVariant(new SimpleInterval("1", 3 * ReferenceShard.REFERENCE_SHARD_SIZE - 2,
-                        3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true, new UUID(1004, 1004)),
+                        3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true),
                 new MinimalVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
-                        ReferenceShard.REFERENCE_SHARD_SIZE), false, true, new UUID(1005, 1005))
+                        ReferenceShard.REFERENCE_SHARD_SIZE), false, true)
         );
 
         kvReadVariant = Arrays.asList(
@@ -148,9 +147,9 @@ public class ReadsPreprocessingPipelineSparkTestData {
      */
     public static GATKRead makeRead(String contig, int start, int length, int i, Class<?> clazz) {
         if (clazz == Read.class) {
-            return ArtificialReadUtils.createGoogleBackedReadWithUUID(new UUID(0, 0), Integer.toString(i), contig, start, length);
+            return ArtificialReadUtils.createGoogleBackedRead(Integer.toString(i), contig, start, length);
         } else if (clazz == SAMRecord.class) {
-            return ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, 0), Integer.toString(i), contig, start, length);
+            return ArtificialReadUtils.createSamBackedRead(Integer.toString(i), contig, start, length);
         } else {
             throw new GATKException("invalid GATKRead type");
         }

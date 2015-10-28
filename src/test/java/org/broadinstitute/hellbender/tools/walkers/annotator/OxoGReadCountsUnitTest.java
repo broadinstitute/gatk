@@ -50,8 +50,8 @@ public final class OxoGReadCountsUnitTest {
         );
     }
 
-    private GATKRead makeRead(final Allele ref, final Allele alt, final boolean isRefRead, final boolean isF1R2Read, final PerReadAlleleLikelihoodMap map){
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(10 + "M"));
+    private GATKRead makeRead(final Allele ref, final Allele alt, final boolean isRefRead, final boolean isF1R2Read, final PerReadAlleleLikelihoodMap map, int name){
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(10 + "M"), "random_read_" + isRefRead + "_" + isF1R2Read + "_" + name);
         read.setMappingQuality(20);
         if (isF1R2Read){
             F1R2(read);
@@ -135,16 +135,16 @@ public final class OxoGReadCountsUnitTest {
 
     private VariantContext makeReads(int alt_F1R2, int alt_F2R1, int ref_F1R2, int ref_F2R1, PerReadAlleleLikelihoodMap map, Allele refAllele, Allele altAllele, List<Allele> alleles, Genotype g) {
         for (int i = 0; i < alt_F1R2; i++) {
-            makeRead(refAllele, altAllele, false, true, map);
+            makeRead(refAllele, altAllele, false, true, map, i);
         }
         for (int i = 0; i < alt_F2R1; i++) {
-            makeRead(refAllele, altAllele, false, false, map);
+            makeRead(refAllele, altAllele, false, false, map, i);
         }
         for (int i = 0; i < ref_F1R2; i++) {
-            makeRead(refAllele, altAllele, true, true, map);
+            makeRead(refAllele, altAllele, true, true, map, i);
         }
         for (int i = 0; i < ref_F2R1; i++) {
-            makeRead(refAllele, altAllele, true, false, map);
+            makeRead(refAllele, altAllele, true, false, map, i);
         }
         //throw in one non-informative read
         final GATKRead badRead = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode(10 + "M"));
