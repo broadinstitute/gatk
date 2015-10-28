@@ -6,10 +6,19 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -56,6 +65,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
+
+    @Argument(doc = "maximum number of bytes to read from a file into each partition of reads. " +
+            "Setting this higher will result in fewer partitions. Note that this will not be equal to the size of the partition in memory",
+            fullName = "bamPartitionSize", shortName = "bps", optional = true)
+    protected long bamPartitionSplitSize = ReadsSparkSource.DEFAULT_SPLIT_SIZE;
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
@@ -165,7 +179,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     public JavaRDD<GATKRead> getReads() {
         // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
-        return readsSource.getParallelReads(readInput, intervals);
+        return readsSource.getParallelReads(readInput, intervals, bamPartitionSplitSize);
     }
 
     /**
