@@ -8,6 +8,8 @@ GATK4 development of the license-protected part of the toolkit
 
 Requirements
 ------------
+* R 3.1.3 see additional requirements below: [R package requirements](#r-required-packages)
+
 * Java 8
 
 * Gradle 2.7
@@ -23,6 +25,30 @@ Read Hellbender's README
 Please refer to Hellbender's public repo readme file for general guidelines and how to set-up your development enviroment:
 
 https://github.com/broadinstitute/hellbender/blob/master/README.md
+
+
+#### R Required Packages
+R packages can be installed using the install_R_packages.R script inside the scripts directory. Reproduced below:
+
+```
+source("http://bioconductor.org/biocLite.R")
+biocLite("DNAcopy")
+#Make sure to use http not https as this will give an "unsupported URL scheme" error
+getoptUrl="http://cran.r-project.org/src/contrib/getopt_1.20.0.tar.gz"
+if (!("getopt" %in% rownames(installed.packages))) {
+  install.packages(getoptUrl, repos=NULL, type="source")
+}
+optparseUrl="http://cran.r-project.org/src/contrib/optparse_1.3.2.tar.gz"
+if (!("optparse" %in% rownames(installed.packages))) {
+  install.packages(optparseUrl, repos=NULL, type="source")
+}
+dependencies = c("naturalsort")
+if (!all(dependencies %in% rownames(installed.packages()))) {
+  install.packages(setdiff(dependencies, rownames(installed.packages())), repos="http://cran.cnr.Berkeley.edu")
+}
+q(save="no")
+```
+
 
 Get HDF5-Java JNI Libraries Set-up
 ----------------------------------
