@@ -37,7 +37,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
     @Argument(doc = "File to write duplication metrics to.", optional=true,
             shortName = "M", fullName = "METRICS_FILE")
-    protected File metricsFile;
+    protected String metricsFile;
 
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
@@ -85,7 +85,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metrics = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReads);
-            MarkDuplicatesSparkUtils.writeMetricsToFile(metrics, metricsFile);
+            MarkDuplicatesSparkUtils.writeMetricsToFile(metrics, metricsFile, getAuthenticatedGCSOptions());
         }
     }
 }

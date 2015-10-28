@@ -30,20 +30,20 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     // The following tests are overridden from the base class as they fail for
     // the dataflow version. The failure causes are recorded.
     /** Test failure: No records output */
-    @Test @Override
-    public void testSingleUnmappedFragment() {}
+    //@Test @Override
+    //public void testSingleUnmappedFragment() {}
 
     /** Test failure: No records output */
-    @Test @Override
-    public void testSingleUnmappedPair() {}
+    //@Test @Override
+    //public void testSingleUnmappedPair() {}
 
     /** Test disabled: saw 4 output records, vs. 5 input records expected */
-    @Test @Override
-    public void testTwoMappedPairsAndTerminalUnmappedFragment() {}
+    //@Test @Override
+    //public void testTwoMappedPairsAndTerminalUnmappedFragment() {}
 
     /** Test disabled: saw 4 output records, vs. 6 input records expected */
-    @Test @Override
-    public void testTwoMappedPairsAndTerminalUnmappedPair() {}
+    //@Test @Override
+    //public void testTwoMappedPairsAndTerminalUnmappedPair() {}
 
     /** Test disabled because found 1 optical duplicate when expected 0 */
     @Test @Override
@@ -54,16 +54,16 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicatesWithinPixelDistance() {}
 
     /** Test disabled because GC overhead limit exceeded */
-    @Test @Override
-    public void testBulkFragmentsWithDuplicates() {}
+    //@Test @Override
+    //public void testBulkFragmentsWithDuplicates() {}
 
     /** Test disabled because it missed the duplicate. */
-    @Test @Override
-    public void testStackOverFlowPairSetSwap() {}
+    //@Test @Override
+    //public void testStackOverFlowPairSetSwap() {}
 
     /** Test disabled because it missed the duplicate. */
-    @Test @Override
-    public void testPathologicalOrderingAtTheSamePosition() {}
+    //@Test @Override
+    //public void testPathologicalOrderingAtTheSamePosition() {}
 
     @DataProvider(name = "md")
     public Object[][] md(){

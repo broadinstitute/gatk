@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.common.base.Function;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
@@ -9,6 +10,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.PairedEnds;
 import org.broadinstitute.hellbender.tools.dataflow.transforms.markduplicates.ReadsKey;
+import org.broadinstitute.hellbender.utils.dataflow.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -18,8 +20,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateF
 import scala.Tuple2;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.Serializable;
+import java.io.*;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.List;
@@ -283,13 +284,18 @@ public class MarkDuplicatesSparkUtils {
                 });
     }
 
-    public static void writeMetricsToFile(final JavaPairRDD<String, DuplicationMetrics> metrics, final File dest) {
-        final MetricsFile<DuplicationMetrics, Double> file = new MetricsFile<>();
-        Map<String, DuplicationMetrics> stringDuplicationMetricsMap = metrics.collectAsMap();
+    public static void writeMetricsToFile(final JavaPairRDD<String, DuplicationMetrics> metrics, final String dest,
+                                          final GCSOptions gcsOptions) {
+        final MetricsFile<DuplicationMetrics, Double> metricsFile = new MetricsFile<>();
         for (final Map.Entry<String, DuplicationMetrics> entry : metrics.collectAsMap().entrySet()) {
-            file.addMetric(entry.getValue());
+            metricsFile.addMetric(entry.getValue());
         }
-        file.write(dest);
+
+        try(OutputStream outputStream = BucketUtils.createFile(dest, gcsOptions)) {
+            metricsFile.write(new PrintWriter(outputStream));
+        } catch (final IOException e){
+            throw new GATKException("Could not write metrics to file: " + dest, e);
+        }
     }
 
     /**

@@ -4,7 +4,10 @@ import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.avro.AvroParquetInputFormat;
@@ -14,6 +17,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdapter;
@@ -33,6 +37,7 @@ import java.util.List;
  */
 public class ReadsSparkSource implements Serializable {
     private static final long serialVersionUID = 1L;
+    private static final String HADOOP_PART_PREFIX = "part-";
 
     private transient final JavaSparkContext ctx;
     public ReadsSparkSource(JavaSparkContext ctx) {
@@ -111,12 +116,28 @@ public class ReadsSparkSource implements Serializable {
      * @return the header for the bam.
      */
     public static SAMFileHeader getHeader(final JavaSparkContext ctx, final String filePath) {
+        try {
+            FileSystem fs = FileSystem.get(ctx.hadoopConfiguration());
+            Path path = fs.makeQualified(new Path(filePath));
+            if (fs.isDirectory(path)) {
+                FileStatus[] bamFiles = fs.listStatus(path, new PathFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override
+                    public boolean accept(Path path) {
+                        return path.getName().startsWith(HADOOP_PART_PREFIX);
+                    }
+                });
+                if (bamFiles.length == 0) {
+                    throw new UserException("No BAM files to load header from in: " + path);
+                }
+                path = bamFiles[0].getPath(); // Hadoop-BAM writes the same header to each shard, so use the first one
+            }
+            return SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
+        } catch (IOException e) {
+            throw new UserException("unable to loader header: " + e);
+        }        /*
         final SAMFileHeader samFileHeader;
         Path path = new Path(filePath);
-        /*
-        File file = new File(filePath); // not hdfs...
-
-        if (file.isDirectory()) {*/
         if (filePath.endsWith("/")) {
             path = new Path(filePath + "part-r-00000");
         }
@@ -125,7 +146,7 @@ public class ReadsSparkSource implements Serializable {
         } catch (IOException e) {
             throw new GATKException("unable to loader header: " + e);
         }
-        return samFileHeader;
+        return samFileHeader;*/
     }
 
     /**
