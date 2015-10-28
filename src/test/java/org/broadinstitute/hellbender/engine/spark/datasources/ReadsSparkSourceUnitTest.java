@@ -20,11 +20,9 @@ import java.io.File;
 import java.util.List;
 
 public class ReadsSparkSourceUnitTest extends BaseTest {
-
-    private static final String dir = "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/";
-
     @DataProvider(name = "loadReads")
     public Object[][] loadReads() {
+        String dir = "src/test/resources/org/broadinstitute/hellbender/tools/BQSR/";
         return new Object[][]{
                 {dir + "HiSeq.1mb.1RG.2k_lines.alternate.bam"},
                 {dir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam"},
@@ -42,19 +40,6 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         List<GATKRead> serialReads = rddSerialReads.collect();
         List<GATKRead> parallelReads = rddParallelReads.collect();
         Assert.assertEquals(serialReads.size(), parallelReads.size());
-    }
-
-    @Test
-    public void testPartitionSizing(){
-
-        String bam = dir + "HiSeq.1mb.1RG.2k_lines.alternate.bam"; //file is ~220 kB
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-
-        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> allInOnePartition = readSource.getParallelReads(bam);
-        JavaRDD<GATKRead> smallPartitions = readSource.getParallelReads(bam, ReadsSparkSource.DEFAULT_SPLIT_SIZE / 100);
-        Assert.assertEquals(allInOnePartition.partitions().size(), 1);
-        Assert.assertEquals(smallPartitions.partitions().size(), 2);
     }
 
     /**

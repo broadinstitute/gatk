@@ -39,7 +39,6 @@ import java.util.List;
  */
 public class ReadsSparkSource implements Serializable {
     private static final long serialVersionUID = 1L;
-    public static final int DEFAULT_SPLIT_SIZE = 10485760;
 
     private transient final JavaSparkContext ctx;
     public ReadsSparkSource(JavaSparkContext ctx) {
@@ -55,21 +54,10 @@ public class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String bam, final List<SimpleInterval> intervals) {
-        return getParallelReads(bam, intervals, DEFAULT_SPLIT_SIZE);
-    }
-
-    /**
-     * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
-     * i.e., file:///path/to/bam.bam.
-     * @param bam file to load
-     * @param intervals intervals of reads to include.
-     * @param splitSize size max file size of a partition, increasing this will result in fewer partitions
-     * @return RDD of (SAMRecord-backed) GATKReads from the file.
-     */
-    public JavaRDD<GATKRead> getParallelReads(final String bam, final List<SimpleInterval> intervals, long splitSize) {
         Configuration conf = new Configuration();
         // reads take more space in memory than on disk so we need to limit the split size
-        conf.set("mapreduce.input.fileinputformat.split.maxsize", Long.toString(splitSize));
+        // TODO: make this configurable, or tune automatically
+        conf.set("mapred.max.split.size", "10485760");
 
         JavaPairRDD<LongWritable, SAMRecordWritable> rdd2 = ctx.newAPIHadoopFile(
                 bam, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
@@ -96,20 +84,9 @@ public class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String bam) {
-        return getParallelReads(bam, DEFAULT_SPLIT_SIZE);
-    }
-
-    /**
-     * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
-     * i.e., file:///path/to/bam.bam. This excludes unmapped reads.
-     * @param bam file to load
-     * @param splitSize
-     * @return RDD of (SAMRecord-backed) GATKReads from the file.
-     */
-    public JavaRDD<GATKRead> getParallelReads(final String bam, int splitSize) {
         final SAMFileHeader readsHeader = getHeader(ctx, bam, null);
         List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
-        return getParallelReads(bam, intervals, splitSize);
+        return getParallelReads(bam, intervals);
     }
 
     /**
