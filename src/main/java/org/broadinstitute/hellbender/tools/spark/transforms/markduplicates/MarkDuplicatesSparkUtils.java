@@ -104,7 +104,8 @@ public class MarkDuplicatesSparkUtils {
             // Order by score using ReadCoordinateComparator for tie-breaking.
             Comparator<PairedEnds> pairedEndsComparator =
                     Comparator.comparing(PairedEnds::score).reversed()
-                            .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));            List <PairedEnds> scored = paired.get(true).stream().sorted(pairedEndsComparator).collect(Collectors.toList());
+                            .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
+            List <PairedEnds> scored = paired.get(true).stream().sorted(pairedEndsComparator).collect(Collectors.toList());
 
             final PairedEnds best = Iterables.getFirst(scored, null);
             if (best == null) {
@@ -143,9 +144,10 @@ public class MarkDuplicatesSparkUtils {
         });
     }
 
-    private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, final SAMFileHeader header) {
+    static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, final SAMFileHeader header) {
         List<GATKRead> reads = Lists.newArrayList();
 
+        // TODO?: verify that there isn't a second in the pair
         final Iterable<GATKRead> transform = Iterables.transform(pairedEnds, pair -> pair.first());
         Iterable<GATKRead> readsCopy = Iterables.transform(transform, GATKRead::copy);
         final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
