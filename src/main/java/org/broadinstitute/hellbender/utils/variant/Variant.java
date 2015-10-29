@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.util.Locatable;
 
-import java.util.UUID;
-
 /**
  * Variant is (currently) a minimal variant interface needed by the Hellbender pipeline.
  * This will be expanded as more methods are needed.
@@ -13,5 +11,4 @@ import java.util.UUID;
 public interface Variant extends Locatable {
     boolean isSnp();
     boolean isIndel();
-    UUID getUUID();
 }

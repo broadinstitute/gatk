@@ -87,9 +87,9 @@ public final class StrandOddsRatioUnitTest {
         Assert.assertEquals(Double.valueOf(sor), expectedSOR, 0.001);
     }
 
-    private GATKRead makeRead(final boolean forward) {
+    private GATKRead makeRead(final boolean forward, final String name) {
         Cigar cigar = TextCigarCodec.decode("10M");
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar, name);
         read.setIsReverseStrand(!forward);
         return read;
     }
@@ -116,10 +116,10 @@ public final class StrandOddsRatioUnitTest {
         final int[][] table= {{1, 1},  // alt: one read in each direction,
                               {2, 0}}; //ref: 2 reads fwd, 0 reads back
 
-        final GATKRead read1 = makeRead(true);
-        final GATKRead read2 = makeRead(true);
-        final GATKRead read3 = makeRead(false);
-        final GATKRead read4 = makeRead(true);
+        final GATKRead read1 = makeRead(true, "read1");
+        final GATKRead read2 = makeRead(true, "read2");
+        final GATKRead read3 = makeRead(false, "read3");
+        final GATKRead read4 = makeRead(true, "read4");
         map.add(read1, alleleAlt, -1.0);
         map.add(read1, alleleRef, -100.0);
 

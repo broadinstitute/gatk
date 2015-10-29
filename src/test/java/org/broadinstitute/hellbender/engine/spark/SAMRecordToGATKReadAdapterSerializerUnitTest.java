@@ -10,11 +10,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
-
-import java.util.UUID;
 
 public class SAMRecordToGATKReadAdapterSerializerUnitTest {
 
@@ -34,7 +31,7 @@ public class SAMRecordToGATKReadAdapterSerializerUnitTest {
         SerializerInstance sparkSerializer = kryoSerializer.newInstance();
 
         // check round trip with header set
-        GATKRead read = ArtificialReadUtils.createSamBackedReadWithUUID(new UUID(0, 0), "read1", "1", 100, 50);
+        GATKRead read = ArtificialReadUtils.createSamBackedRead("read1", "1", 100, 50);
         check(sparkSerializer, read);
 
         // check round trip with no header

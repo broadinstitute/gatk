@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.variant;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.Serializable;
-import java.util.UUID;
 
 /**
  * MinimalVariant is a minimal implementation of the Variant interface.
@@ -14,7 +13,6 @@ public class MinimalVariant implements Variant, Serializable {
     private final SimpleInterval interval;
     private final boolean snp;
     private final boolean indel;
-    private final UUID uuid;
 
     @Override
     public boolean equals(Object o) {
@@ -25,25 +23,22 @@ public class MinimalVariant implements Variant, Serializable {
 
         if (isSnp() != that.isSnp()) return false;
         if (isIndel() != that.isIndel()) return false;
-        if (!interval.equals(that.interval)) return false;
-        return uuid.equals(that.uuid);
+        return !(interval != null ? !interval.equals(that.interval) : that.interval != null);
 
     }
 
     @Override
     public int hashCode() {
-        int result = interval.hashCode();
+        int result = interval != null ? interval.hashCode() : 0;
         result = 31 * result + (isSnp() ? 1 : 0);
         result = 31 * result + (isIndel() ? 1 : 0);
-        result = 31 * result + uuid.hashCode();
         return result;
     }
 
-    public MinimalVariant(SimpleInterval interval, boolean isSNP, boolean isIndel, UUID uuid) {
+    public MinimalVariant(SimpleInterval interval, boolean isSNP, boolean isIndel) {
         this.interval = interval;
         this.snp = isSNP;
         this.indel = isIndel;
-        this.uuid = uuid;
     }
 
     @Override
@@ -56,11 +51,6 @@ public class MinimalVariant implements Variant, Serializable {
     public boolean isSnp() { return snp; }
     @Override
     public boolean isIndel() { return indel; }
-
-    @Override
-    public UUID getUUID() {
-        return uuid;
-    }
 
     @Override
     public String toString() {

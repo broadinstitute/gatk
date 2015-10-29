@@ -35,9 +35,9 @@ public final class LikelihoodRankSumTestUnitTest extends BaseTest {
                 .alleles(Arrays.asList(refAllele, altAllele)).chr(contig).start(position).stop(position).genotypes(testGC).make();
     }
 
-    private GATKRead makeRead(final String contig, final int start, final int mq) {
+    private GATKRead makeRead(final String contig, final int start, final int mq, final String name) {
         Cigar cigar = TextCigarCodec.decode("10M");
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar, name);
         read.setMappingQuality(mq);
         read.setPosition(contig, start);
         return read;
@@ -56,10 +56,10 @@ public final class LikelihoodRankSumTestUnitTest extends BaseTest {
 
         final double[] altBadAlleleLL =  {-100.0, -100.0};
         final double[] refBestAlleleLL = {-5.0, -7.0};
-        final GATKRead read1 = makeRead(contig, 1,  30);
-        final GATKRead read2 = makeRead(contig, 1, 30);
-        final GATKRead read3 = makeRead(contig, 1, 30);
-        final GATKRead read4 = makeRead(contig, 1, 30);
+        final GATKRead read1 = makeRead(contig, 1,  30, "read1");
+        final GATKRead read2 = makeRead(contig, 1, 30, "read2");
+        final GATKRead read3 = makeRead(contig, 1, 30, "read3");
+        final GATKRead read4 = makeRead(contig, 1, 30, "read4");
         map.add(read1, alleleAlt, altBestAlleleLL[0]);
         map.add(read1, alleleRef, refBadAlleleLL[0]);
 

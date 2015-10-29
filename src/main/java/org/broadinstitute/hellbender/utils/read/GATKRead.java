@@ -8,8 +8,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.UUID;
-
 /**
  * Unified read interface for use throughout the GATK.
  *
@@ -24,11 +22,6 @@ import java.util.UUID;
  * of the conversion methods {@link #convertToSAMRecord} and {@link #convertToGoogleGenomicsRead}.
  */
 public interface GATKRead extends Locatable {
-
-    /**
-     * @return A globally unique identifier for this read, suitable for use as a key
-     */
-    UUID getUUID();
 
     /**
      * @return The name of the read (equivalent to QNAME in SAM), or {@code null} if the read has no name.
@@ -540,12 +533,6 @@ public interface GATKRead extends Locatable {
      * @return This read as a Google Genomics model read.
      */
     Read convertToGoogleGenomicsRead();
-
-    /**
-     * @param other Object to compare against
-     * @return True if this is the same class as other and the underlying reads are equal, ignoring UUIDs in the comparison
-     */
-    boolean equalsIgnoreUUID( final Object other );
 
 }
 

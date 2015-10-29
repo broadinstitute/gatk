@@ -61,13 +61,13 @@ public final class MappingQualityZeroUnitTest {
         final int n1A= 3;
         final int n1T= 5;
         for (int i = 0; i < n1A; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1A_" + i);
             read.setMappingQuality(10);
             map.add(read, alleleA, lik);
         }
         for (int i = 0; i < n1T; i++) {
             //try to fool it - add 2 alleles for same read
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1T_" + i);
             read.setMappingQuality(0);
             map.add(read, alleleA, lik);
             map.add(read, alleleT, lik);

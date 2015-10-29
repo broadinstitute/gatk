@@ -17,10 +17,6 @@ public class VariantContextVariantAdapterTest extends BaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
 
-    UUID defaultUUID() {
-        return new UUID(0L, 0L);
-    }
-
     @Test(dataProvider = "VariantDataProvider")
     public void testVariantAdapter(final List<Variant> expectedVariantList) {
         // The test suite for reading in VCF files is FeatureDataSourceUnitTest.
@@ -46,35 +42,33 @@ public class VariantContextVariantAdapterTest extends BaseTest {
 
     @DataProvider(name = "VariantDataProvider")
     public Object[][] getVariantData() {
-        // We use the defaultUUID because we want to have be able to use equals (without clearing, we'd see items
-        // aren't the same because of UUIDs).
         List<Variant> variantSet = new ArrayList<>();
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 100, 100), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 199, 200), false, true, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 200, 200), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 203, 206), false, true, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 280, 280), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 284, 286), false, true, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 285, 285), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 286, 286), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 999, 999), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1000, 1000), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1000, 1003), false, true, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1076, 1076), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1150, 1150), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1176, 1176), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("2", 200, 200), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("2", 525, 525), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("2", 548, 550), false, true, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("2", 640, 640), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("2", 700, 700), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("3", 1, 1), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("3", 300, 300), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("3", 300, 303), false, true, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("3", 400, 400), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("4", 600, 600), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("4", 775, 775), true, false, defaultUUID()));
-        variantSet.add(new MinimalVariant(new SimpleInterval("4", 776, 779), false, true, defaultUUID()));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 100, 100), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 199, 200), false, true));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 200, 200), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 203, 206), false, true));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 280, 280), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 284, 286), false, true));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 285, 285), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 286, 286), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 999, 999), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1000, 1000), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1000, 1003), false, true));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1076, 1076), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1150, 1150), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("1", 1176, 1176), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("2", 200, 200), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("2", 525, 525), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("2", 548, 550), false, true));
+        variantSet.add(new MinimalVariant(new SimpleInterval("2", 640, 640), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("2", 700, 700), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("3", 1, 1), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("3", 300, 300), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("3", 300, 303), false, true));
+        variantSet.add(new MinimalVariant(new SimpleInterval("3", 400, 400), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("4", 600, 600), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("4", 775, 775), true, false));
+        variantSet.add(new MinimalVariant(new SimpleInterval("4", 776, 779), false, true));
         return new Object[][]{
                 { variantSet }
         };

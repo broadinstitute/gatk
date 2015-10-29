@@ -116,7 +116,7 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
             readMap.put(nonRefAllele, new ArrayList<>());
             for (int i = 0; i < actualCounts[idx]; i++) {
                 final byte[] readBases = {(byte) bases[idx]};
-                final GATKRead newRead = ArtificialReadUtils.createArtificialRead(header, UUID.randomUUID().toString(), 0, 1, readBases, quals, "1M");
+                final GATKRead newRead = ArtificialReadUtils.createArtificialRead(header, "read" + i, 0, 1, readBases, quals, "1M");
                 readMap.get(nonRefAllele).add(newRead);
             }
         }

@@ -23,24 +23,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Serializable {
     private static final long serialVersionUID = 1L;
-    private final static long uuidHighWord = new Random().nextLong();
-    private final static AtomicLong uuidLowWord = new AtomicLong(0);
 
     private final Read genomicsRead;
-    private final UUID uuid;
 
     public GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead ) {
-        // this is 100x faster than UUID.randomUUID()
-        this(genomicsRead, new UUID(uuidHighWord, uuidLowWord.incrementAndGet()));
-    }
-
-    /**
-     * Constructor that allows an explicit UUID to be passed in -- only meant
-     * for internal use and test class use, which is why it's package protected.
-     */
-    public GoogleGenomicsReadToGATKReadAdapter( final Read genomicsRead, final UUID uuid ) {
         this.genomicsRead = genomicsRead;
-        this.uuid = uuid;
     }
 
     private static <T> T assertFieldValueNotNull( final T fieldValue, final String fieldName ) {
@@ -83,11 +70,6 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         if ( genomicsRead.getNextMatePosition() == null ) {
             genomicsRead.setNextMatePosition(new Position());
         }
-    }
-
-    @Override
-    public UUID getUUID() {
-        return uuid;
     }
 
     @Override
@@ -625,7 +607,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     }
 
     @Override
-    public boolean equalsIgnoreUUID( final Object other ) {
+    public boolean equals( Object other ) {
         if ( this == other ) return true;
         if ( other == null || getClass() != other.getClass() ) return false;
 
@@ -636,16 +618,8 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     }
 
     @Override
-    public boolean equals( Object other ) {
-        return equalsIgnoreUUID(other) && uuid.equals(((GoogleGenomicsReadToGATKReadAdapter)other).uuid);
-    }
-
-    @Override
     public int hashCode() {
-        int result = genomicsRead != null ? genomicsRead.hashCode() : 0;
-        result = 31 * result + uuid.hashCode();
-
-        return result;
+        return genomicsRead != null ? genomicsRead.hashCode() : 0;
     }
 
     // TODO: Remove once https://github.com/broadinstitute/hellbender/issues/650 is solved.

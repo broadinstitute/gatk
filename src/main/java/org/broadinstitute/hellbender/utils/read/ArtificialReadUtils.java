@@ -162,40 +162,42 @@ public final class ArtificialReadUtils {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(cigar));
     }
 
+    public static GATKRead createArtificialRead(final Cigar cigar, final String name) {
+        return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(createArtificialSamHeader(), cigar, name));
+    }
+
     public static GATKRead createArtificialRead(final String cigarString) {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(TextCigarCodec.decode(cigarString)));
     }
 
     /**
-     * Creates an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     * Creates an artificial GATKRead backed by a SAMRecord.
      *
      * The read will consist of the specified number of Q30 'A' bases, and will be
      * mapped to contig "1" at the specified start position.
      *
-     * @param uuid UUID of the new read
      * @param name name of the new read
      * @param start start position of the new read
      * @param length number of bases in the new read
-     * @return an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     * @return an artificial GATKRead backed by a SAMRecord.
      */
-    public static GATKRead createSamBackedReadWithUUID( final UUID uuid, final String name, final int start, final int length ) {
-        return createSamBackedReadWithUUID(uuid, name, "1", start, length);
+    public static GATKRead createSamBackedRead( final String name, final int start, final int length ) {
+        return createSamBackedRead(name, "1", start, length);
     }
 
     /**
-     * Creates an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     * Creates an artificial GATKRead backed by a SAMRecord.
      *
      * The read will consist of the specified number of Q30 'A' bases, and will be
      * mapped to the specified contig at the specified start position.
      *
-     * @param uuid UUID of the new read
      * @param name name of the new read
      * @param contig contig the new read is mapped to
      * @param start start position of the new read
      * @param length number of bases in the new read
-     * @return an artificial GATKRead backed by a SAMRecord, with the specified UUID.
+     * @return an artificial GATKRead backed by a SAMRecord.
      */
-    public static GATKRead createSamBackedReadWithUUID( final UUID uuid, final String name, final String contig, final int start, final int length ) {
+    public static GATKRead createSamBackedRead( final String name, final String contig, final int start, final int length ) {
         final SAMFileHeader header = createArtificialSamHeader();
         final byte[] bases = Utils.dupBytes((byte)'A', length);
         final byte[] quals = Utils.dupBytes((byte) 30, length);
@@ -204,44 +206,27 @@ public final class ArtificialReadUtils {
         sam.setReadName(name);
         sam.setReferenceName(contig);
         sam.setAlignmentStart(start);
-        return new SAMRecordToGATKReadAdapter(sam, uuid);
+        return new SAMRecordToGATKReadAdapter(sam);
     }
 
     /**
-     * Creates an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
-     *
-     * The read will consist of the specified number of Q30 'A' bases, and will be
-     * mapped to contig "1" at the specified start position.
-     *
-     * @param uuid UUID of the new read
-     * @param name name of the new read
-     * @param start start position of the new read
-     * @param length number of bases in the new read
-     * @return an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
-     */
-    public static GATKRead createGoogleBackedReadWithUUID( final UUID uuid, final String name, final int start, final int length ) {
-        return createGoogleBackedReadWithUUID(uuid, name, "1", start, length);
-    }
-
-    /**
-     * Creates an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
+     * Creates an artificial GATKRead backed by a Google Genomics read.
      *
      * The read will consist of the specified number of Q30 'A' bases, and will be
      * mapped to the specified contig at the specified start position.
      *
-     * @param uuid UUID of the new read
      * @param name name of the new read
      * @param contig contig the new read is mapped to
      * @param start start position of the new read
      * @param length number of bases in the new read
-     * @return an artificial GATKRead backed by a Google Genomics read, with the specified UUID.
+     * @return an artificial GATKRead backed by a Google Genomics read.
      */
-    public static GATKRead createGoogleBackedReadWithUUID( final UUID uuid, final String name, final String contig, final int start, final int length ) {
-        final byte[] bases = Utils.dupBytes((byte)'A', length);
+    public static GATKRead createGoogleBackedRead( final String name, final String contig, final int start, final int length ) {
+        final byte[] bases = Utils.dupBytes((byte) 'A', length);
         final byte[] quals = Utils.dupBytes((byte) 30, length);
 
         final Read googleRead = createArtificialGoogleGenomicsRead(name, contig, start, bases, quals, length + "M");
-        return new GoogleGenomicsReadToGATKReadAdapter(googleRead, uuid);
+        return new GoogleGenomicsReadToGATKReadAdapter(googleRead);
     }
 
     /**
@@ -352,18 +337,22 @@ public final class ArtificialReadUtils {
         return createArtificialSAMRecord(header, "default_read", 0, 10000, bases, qual, cigar);
     }
 
-    public static SAMRecord createArtificialSAMRecord(final SAMFileHeader header, final Cigar cigar) {
+    public static SAMRecord createArtificialSAMRecord(final SAMFileHeader header, final Cigar cigar, final String name) {
         int length = cigar.getReadLength();
         byte base = 'A';
         byte qual = 30;
         byte [] bases = Utils.dupBytes(base, length);
         byte [] quals = Utils.dupBytes(qual, length);
-        return createArtificialSAMRecord(header, "default_read", 0, 10000, bases, quals, cigar.toString());
+        return createArtificialSAMRecord(header, name, 0, 10000, bases, quals, cigar.toString());
+    }
+
+    public static SAMRecord createArtificialSAMRecord(final SAMFileHeader header, final Cigar cigar) {
+        return createArtificialSAMRecord(header, cigar, "default_read");
     }
 
     public static SAMRecord createArtificialSAMRecord(final Cigar cigar) {
         final SAMFileHeader header = createArtificialSamHeader();
-        return createArtificialSAMRecord(header, cigar);
+        return createArtificialSAMRecord(header, cigar, "default_read");
     }
 
     public static Read createArtificialGoogleGenomicsRead( final String name, final String contig, final int start, final byte[] bases, final byte[] quals, final String cigar ) {
