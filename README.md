@@ -1,8 +1,8 @@
 [![Build Status](https://travis-ci.org/broadinstitute/hellbender-protected.svg?branch=master)](https://travis-ci.org/broadinstitute/hellbender-protected)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender-protected/badge.svg?branch=master&t=fjUaFR)](https://coveralls.io/r/broadinstitute/hellbender-protected?branch=master)
 
-Hellbender Protected
-====================
+GATK4-Protected (codename Hellbender-protected)
+===============================================
 
 GATK4 development of the license-protected part of the toolkit
 
@@ -17,17 +17,17 @@ Requirements
 * HDF5-Java JNI Libraries Release 2.9 (2.11 for Macs)
 
 
-Read Hellbender's README
+Read GATK 4 README
 ------------------------
 
-Please refer to Hellbender's public repo readme file for general guidelines and how to set-up your development enviroment:
+Please refer to the GATK 4 public repo readme file for general guidelines and how to set-up your development environment:
 
 https://github.com/broadinstitute/hellbender/blob/master/README.md
 
 Get HDF5-Java JNI Libraries Set-up
 ----------------------------------
 
-There are two external libraries needed for HDF5 support in hellbender:
+There are two external libraries needed for HDF5 support in GATK4-protected:
 
 1. hdf -- native code only.
 2. hdf-java -- includes both Java (JAR files) and native JNI code (.so/.dynlib files). 
@@ -38,13 +38,13 @@ For more information about HDF:  https://www.hdfgroup.org/
 
 Developer note:
 
-The gradle build will handle the Java dependency.  If IntelliJ is configured correctly, it will
-  automatically create the dependency to the JARs in your project.  You will still need to note the JNI native files
+The gradle build will handle the Java (hdf-java) dependency, without any intervention from the user, if instructions for your platform are followed (see below).  If IntelliJ is configured correctly, it will
+  automatically create the dependency to the JARs in your project.  You will still need to note the location of the JNI native files
   from the description below for your platform.
 
 #### Ubuntu (Linux) 12.10 and above (requires sudo)
 
-*This may not work with versions of Ubuntu after 15.04.*
+*We do not guarantee that this will work with versions of Ubuntu after 15.04.*
 
 You simply need to install the hdfview package, which includes hdf and hdf-java:
 
@@ -64,7 +64,7 @@ By default:
 You simply need to install hdfview:
 
 1. Download the binary (https://www.hdfgroup.org/ftp/HDF5/hdf-java/current/bin/).  Select the darwin dmg file.
-2. Install the binary.
+2. Launch the installer and follow any instructions.
 
 This will install all of the required HDF5 libraries (hdf and hdf-java).
 
@@ -138,7 +138,7 @@ Please refrain from using gradle.properties in the root project directory for th
 want to share your set-up with other developers through the source repo; .gitignore should prevent this from happening for now
 but is best to avoid it all together as in the future we might want to use gradle.properties for common set-up.
 
-### Get ```java -jar hellbender.jar``` to work.
+### Get ```java -jar hellbender-protected.jar``` to work.
 
 If you didn't need to indicate the location of ```libjhdf5.jnilib``` explicitly to get the testing working then you are all set.
 
@@ -156,8 +156,8 @@ The CNV case and PoN workflows (description and examples)
 2. A functioning GATK4-protected jar (hellbender-protected.jar)
 3. HDF5 1.8.13 
 4. The location of the HDF5-Java JNI Libraries Release 2.9 (2.11 for Macs).  (See platform instructions above for typical locations)  
-5. Reference genome (fasta) with fai and dict indexes.  This can be downloaded as part of the GATK resource bundle: http://www.broadinstitute.org/gatk/guide/article?id=1213
-6. target BED file that was used to create the PoN file.  Format details can be found `here <http://genome.ucsc.edu/FAQ/FAQformat.html#format1>`_ .  **NOTE:**  For the CNV tools, you will need a fourth column for target name, which must be unique across rows.
+5. Reference genome (fasta files) with fai and dict files.  This can be downloaded as part of the GATK resource bundle: http://www.broadinstitute.org/gatk/guide/article?id=1213
+6. Target BED file that was used to create the PoN file.  Format details can be found `here <http://genome.ucsc.edu/FAQ/FAQformat.html#format1>`_ .  **NOTE:**  For the CNV tools, you will need a fourth column for target name, which must be unique across rows.
 ```
 1       12200   12275   target1
 1       13505   13600   target2
@@ -189,7 +189,7 @@ If you do not have a PoN, please skip to the [Create PoN workflow](#create-pon-w
 - reference_sequence (required by GATK) -- fasta file with hg19 reference.  
 
 ###### Outputs
-- Proportional coverage tsv file -- MxN matrix of proportional coverage, where M is the number of targets and N is the target information and sample name.  If the file exists, it will be overwritten.
+- Proportional coverage tsv file -- Mx5 matrix of proportional coverage, where M is the number of targets.  The fifth column will be named for the sample in the bam file (found in the bam file ``SM`` tag).  If the file exists, it will be overwritten.
 
 ```
 ##fileFormat  = tsv
@@ -205,7 +205,7 @@ CONTIG  START   END     NAME    SAMPLE1
 ###### Invocation
 
 ```
- java -Xmx8g -jar <path_to_hellbender_jar> ExomeReadCounts -I <input_bam_file> -O <pcov_output_file_path>  -exome <target_BED> -R <ref_genome> \ 
+ java -Xmx8g -jar <path_to_hellbender_protected_jar> ExomeReadCounts -I <input_bam_file> -O <pcov_output_file_path>  -exome <target_BED> -R <ref_genome> \ 
        -transform PCOV -exonInfo FULL -groupBy SAMPLE -keepdups
 ```
 
@@ -218,7 +218,7 @@ CONTIG  START   END     NAME    SAMPLE1
 - directory containing the HDF5 JNI native libraries
 
 ###### Outputs
-- target file (tsv) -- details each target with chromosome, start, end, and log copy ratio estimate
+- normalized coverage file (tsv) -- details each target with chromosome, start, end, and log copy ratio estimate
 ```
 #fileFormat = tsv
 #commandLine = ....snip....
@@ -229,13 +229,14 @@ target2    1       13505   13600   -0.2855054918109098
 target3    1       31000   31500   -0.11450116047248263
 ....snip....
 ```
-- pre-tangent-normalization target file (tsv) -- same as target file (tsv) above, but copy ratio estimates are before the noise reduction step.  The file format is the same as the target file (tsv).
+- pre-tangent-normalization coverage file (tsv) -- same as normalized coverage file (tsv) above, but copy ratio estimates are before the noise reduction step.  The file format is the same as the normalized coverage file (tsv).
 - fnt file (tsv) -- proportional coverage divided by the target factors contained in the PoN.  The file format is the same as the proportional coverage in step 1.
-- betaHats (tsv) -- used by developers and evaluators, typically, but output location must be specified.
+- betaHats (tsv) -- used by developers and evaluators, typically, but output location must be specified.  These are the 
+ coefficients used in the projection of the case sample into the (reducued) PoN.  This will be a Mx1 matrix where M is the number of targets.
 
 ###### Invocation
 ```
-java -Djava.library.path=<hdf_jni_native_dir> -Xmx8g -jar <path_to_hellbender_jar> NormalizeSomaticReadCounts -I <pcov_input_file_path> -T <target_BED> -pon <pon_file> \
+java -Djava.library.path=<hdf_jni_native_dir> -Xmx8g -jar <path_to_hellbender_protected_jar> NormalizeSomaticReadCounts -I <pcov_input_file_path> -T <target_BED> -pon <pon_file> \
  -O <output_target_cr_file> -FNO <output_target_fnt_file> -BHO <output_beta_hats_file> -PTNO <output_pre_tangent_normalization_cr_file>
 ```
 
@@ -243,7 +244,7 @@ java -Djava.library.path=<hdf_jni_native_dir> -Xmx8g -jar <path_to_hellbender_ja
 ##### Step 3. Segment coverage profile
 
 ###### Inputs
-- target file (tsv) -- from step 2.
+- normalized coverage file (tsv) -- from step 2.
 - sample name
 
 ###### Outputs
@@ -258,14 +259,14 @@ SAMPLE1        1       300600  1630000 337     1.23232323
 ###### Invocation
 
 ```
-java -Xmx8g -jar <path_to_hellbender_jar>  PerformCBSSegmentation  -S <sample_name> -T <target_file_tsv> -O <output_seg_file> -log
+java -Xmx8g -jar <path_to_hellbender_protected_jar>  PerformCBSSegmentation  -S <sample_name> -T <normalized_coverage_file> -O <output_seg_file> -log
 ```
 
 
 ##### Step 4. Call segments
 
 ###### Inputs
-- target file (tsv) -- from step 2.
+- normalized coverage file (tsv) -- from step 2.
 - seg file (tsv) -- from step 3.
 - sample name
 
@@ -280,22 +281,23 @@ SAMPLE1        1       300600  1630000 337     1.23232323     0
 
 ###### Invocation
 ```
-java -Xmx8g -jar <path_to_hellbender_jar> CallSegments -T <target_file_tsv> -S <seg_file> -O <output_called_seg_file> -sample <sample_name> 
+java -Xmx8g -jar <path_to_hellbender_protected_jar> CallSegments -T <normalized_coverage_file> -S <seg_file> -O <output_called_seg_file> -sample <sample_name> 
 ```
 
 #### Create PoN workflow
 
-This workflow can take some time to run depending on how many samples are going into your PoN and the number of targets you are covering.
+This workflow can take some time to run depending on how many samples are going into your PoN and the number of targets you are covering.  Basic time estimates are found in the [Overview of Steps](#overview-of-steps).
 
 ##### Additional requirements
-- Normal sample bam files to be used in the PoN.
-
+- Normal sample bam files to be used in the PoN.  The index files (.bai) must be local to all of the associated bam files.
 
 ##### Overview of steps
 
-- Step 1. Collect proportional coverage
-- Step 2. Combine proportional coverage files
-- Step 3. Create the PoN file
+- Step 1. Collect proportional coverage.  (~20 minutes for mean 150x coverage and 150k targets, per sample)
+- Step 2. Combine proportional coverage files  (< 5 minutes for 150k targets and 300 samples)
+- Step 3. Create the PoN file (~1.75 hours for 150k targets and 300 samples) 
+
+All time estimates are using the internal Broad infrastructure.
 
 ##### Step 1. Collect proportional coverage on each bam file
 
@@ -329,7 +331,7 @@ CONTIG  START   END     NAME    SAMPLE1    SAMPLE2 SAMPLE3 ....snip....
 
 ###### Invocation
 ```
-java -Xmx8g -jar  <path_to_hellbender_jar> CombineReadCounts --inputList <text_file_list_of_proportional_coverage_files> \
+java -Xmx8g -jar  <path_to_hellbender_protected_jar> CombineReadCounts --inputList <text_file_list_of_proportional_coverage_files> \
     -O <output_merged_file> -MOF 200 
 ```
 
@@ -343,7 +345,7 @@ java -Xmx8g -jar  <path_to_hellbender_jar> CombineReadCounts --inputList <text_f
 
 ###### Invocation
 ```
-java -Xmx16g -Djava.library.path=<hdf_jni_native_dir> -jar <path_to_hellbender_jar> CreatePanelOfNormals -I <merged_pcov_file> \
+java -Xmx16g -Djava.library.path=<hdf_jni_native_dir> -jar <path_to_hellbender_protected_jar> CreatePanelOfNormals -I <merged_pcov_file> \
        -O <output_pon_file_full_path>
 ```
 
@@ -359,20 +361,20 @@ Running the CNV case and PoN creation Workflows with premade Queue scripts
 3. HDF5 1.8.13 
 4. The location of the HDF5-Java JNI Libraries Release 2.9 (2.11 for Macs).  (See platform instructions above for typical locations)  
 5. Queue scala scripts (see instructions below)
-6. Reference genome (fasta) with fai and dict indexes. This can be downloaded as part of the GATK resource bundle: http://www.broadinstitute.org/gatk/guide/article?id=1213
-7. target BED file that was used to create the PoN file.
+6. Reference genome (fasta files) with fai and dict files. This can be downloaded as part of the GATK resource bundle: http://www.broadinstitute.org/gatk/guide/article?id=1213
+7. Target BED file that was used to create the PoN file.
 8. PoN file (when running case samples only).  This file should be created using the CreatePoNPipeline workflow (example below).
 
 
 #### Download Queue scala scripts
-Click [https://www.broadinstitute.org/gatk/download/gatk4].
+Navigate to [https://www.broadinstitute.org/gatk/download/gatk4].
 
 Download the following files to the same directory.  This step only needs to be done once.
 - CaseSampleHBExomePipeline.scala
 - CreatePoNPipeline.scala
 - recapseg-hb-eval.jar
 
-#### Test that help can be seen
+#### Test that invoking the help documentation works
 ```
 java -jar recapseg-hb-eval.jar -S CreatePoNPipeline.scala --help
 ```
@@ -397,7 +399,7 @@ INPUT_BAMS=case_bam_list.txt
 OUTDIR=/home/lichtens/evals/out_case/
 
 # Requirement #2 above
-HBJAR=/home/lichtens/hellbender-protected.jar
+GATK4PJAR=/home/lichtens/hellbender-protected.jar
 
 # Requirement #4 above.  Directory of HDF5 JNI shared libraries (.so/.dynlib)
 HDFLOC=/usr/lib/jni/
@@ -422,7 +424,7 @@ OTHER_OPTS=" -keepDups -rawcov "
 #### Do not modify below this line
 
 # Run the sample(s)
-java -jar recapseg-hb-eval.jar -S CaseSampleHBExomePipeline.scala -mem ${MEM} -pon ${PON} -i ${INPUT_BAMS} -o ${OUTDIR} -hbJar ${HBJAR} -r ${REF} -L ${TARGETS} -qsub -run -logDir ${OUTDIR} -hvl ${HDFLOC} ${OTHER_OPTS}
+java -jar recapseg-hb-eval.jar -S CaseSampleHBExomePipeline.scala -mem ${MEM} -pon ${PON} -i ${INPUT_BAMS} -o ${OUTDIR} -hbJar ${GATK4PJAR} -r ${REF} -L ${TARGETS} -qsub -run -logDir ${OUTDIR} -hvl ${HDFLOC} ${OTHER_OPTS}
 
 ```
 
@@ -441,7 +443,7 @@ INPUT_BAMS=blood_normals_bam_list.txt
 OUTDIR=/home/lichtens/evals/out_pon/
 
 # Requirement #2 above
-HBJAR=/home/lichtens/hellbender-protected.jar
+GATK4PJAR=/home/lichtens/hellbender-protected.jar
 
 # Requirement #4 above
 HDFLOC=/usr/lib/jni/
@@ -469,7 +471,7 @@ OTHER_OPTS=" -keepDups -rawcov "
 #### Do not modify below this line
 
 # Run the sample(s)
-java -jar recapseg-hb-eval.jar -S CreatePoNPipeline.scala -pon ${PON_FILENAME} -i ${INPUT_BAMS} -o ${OUTDIR} -hbJar ${HBJAR} -r ${REF} -L ${TARGETS} -qsub -run -logDir ${OUTDIR} -mem ${MEM} -hvl ${HDFLOC} ${OTHER_OPTS}
+java -jar recapseg-hb-eval.jar -S CreatePoNPipeline.scala -pon ${PON_FILENAME} -i ${INPUT_BAMS} -o ${OUTDIR} -hbJar ${GATK4PJAR} -r ${REF} -L ${TARGETS} -qsub -run -logDir ${OUTDIR} -mem ${MEM} -hvl ${HDFLOC} ${OTHER_OPTS}
 
 ```
 
