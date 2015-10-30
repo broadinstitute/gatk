@@ -68,6 +68,7 @@ public final class GibbsSampler<S extends AbstractParameterizedState, T extends 
      * Progress is logged according to {@code numSamplesPerLogEntry}.
      */
     public void runMCMC() {
+        rng.setSeed(RANDOM_SEED);
         logger.info("Starting MCMC sampling.");
         for (int sample = 1; sample < numSamples; sample++) {
             if (sample % numSamplesPerLogEntry == 0) {
