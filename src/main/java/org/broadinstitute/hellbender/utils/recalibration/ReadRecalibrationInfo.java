@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.recalibration.EventType;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
 
 public final class ReadRecalibrationInfo {
     private final GATKRead read;

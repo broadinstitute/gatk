@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriterFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -12,8 +14,9 @@ import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
@@ -24,6 +27,8 @@ import java.io.File;
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyBQSR extends ReadWalker{
+
+    private static final Logger logger = LogManager.getLogger(ApplyBQSR.class);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
@@ -51,6 +56,7 @@ public final class ApplyBQSR extends ReadWalker{
         final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
         outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
         transform = new BQSRReadTransformer(outputHeader, BQSR_RECAL_FILE, bqsrArgs);
+        Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
     }
 
     @Override

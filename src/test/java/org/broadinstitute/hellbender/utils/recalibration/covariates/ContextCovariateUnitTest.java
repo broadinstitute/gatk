@@ -1,15 +1,12 @@
-package org.broadinstitute.hellbender.utils.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -19,7 +16,7 @@ import org.testng.annotations.Test;
 
 import java.util.Random;
 
-import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedBytes;
+import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedClippedBytes;
 import static org.broadinstitute.hellbender.utils.recalibration.covariates.ContextCovariate.getStrandedOffset;
 
 public final class ContextCovariateUnitTest extends BaseTest {
@@ -47,7 +44,7 @@ public final class ContextCovariateUnitTest extends BaseTest {
             read.setIsReverseStrand(rnd.nextBoolean());
             final GATKRead clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
             final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
-            covariate.recordValues(read, header, readCovariates);
+            covariate.recordValues(read, header, readCovariates, true);
 
             verifyCovariateArray(readCovariates.getMismatchesKeySet(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
             verifyCovariateArray(readCovariates.getInsertionsKeySet(), RAC.INDELS_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);
@@ -77,7 +74,7 @@ public final class ContextCovariateUnitTest extends BaseTest {
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(bases, quals, cigar);
         read.setIsReverseStrand(neg);
-        final byte[] strandedBaseArray = getStrandedBytes(read, (byte)lowQTail);   //note the cast is due to TestNG limitation - can't use byte as type for lowQTail
+        final byte[] strandedBaseArray = getStrandedClippedBytes(read, (byte)lowQTail);   //note the cast is due to TestNG limitation - can't use byte as type for lowQTail
         final byte[] expected = expecteBaseStr.getBytes();
         Assert.assertEquals(new String(strandedBaseArray), new String(expected));
     }
@@ -99,7 +96,7 @@ public final class ContextCovariateUnitTest extends BaseTest {
 
 
     public static String expectedContext (final GATKRead originalRead, final int offset, final int contextSize, final byte lowQualTail) {
-        final byte[] strandedBaseArray = getStrandedBytes(originalRead, lowQualTail);
+        final byte[] strandedBaseArray = getStrandedClippedBytes(originalRead, lowQualTail);
         final int strandedOffset = getStrandedOffset(originalRead.isReverseStrand(), offset, strandedBaseArray.length);
 
         final int offsetOfContextStart = strandedOffset - contextSize + 1;

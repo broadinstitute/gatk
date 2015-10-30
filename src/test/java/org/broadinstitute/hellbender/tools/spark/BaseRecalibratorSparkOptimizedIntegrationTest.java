@@ -144,7 +144,7 @@ public class BaseRecalibratorSparkOptimizedIntegrationTest extends CommandLinePr
                 + " -O " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true" + " --apiKey " + getGCPTestApiKey();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
-        final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.bam");
+        final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");
 
         SamAssertionUtils.assertSamsEqual(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated, ValidationStringency.LENIENT);
 

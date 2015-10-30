@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -818,4 +819,14 @@ public final class Utils {
         return output;
     }
 
+    /**
+     * Checks if the read header contains any reads groups from non-Illumina and issue a warning of that's the case.
+     */
+    public static void warnOnNonIlluminaReadGroups(final SAMFileHeader readsHeader, final Logger logger) {
+        Utils.nonNull(readsHeader, "header");
+        Utils.nonNull(logger, "logger");
+        if (readsHeader.getReadGroups().stream().anyMatch(rg -> NGSPlatform.fromReadGroupPL(rg.getPlatform()) !=  NGSPlatform.ILLUMINA)){
+            logger.warn("This tool has only been well tested on ILLUMINA-based sequencing data. For other data use at your own risk.");
+        }
+    }
 }

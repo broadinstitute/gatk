@@ -5,7 +5,6 @@ import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -24,6 +23,8 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
     private final List<Covariate> additionalCovariates;
     private final List<Covariate> allCovariates;
 
+    private final Map<Class<? extends Covariate>, Integer> indexByClass;
+
     /**
      * Creates a new list of standard BQSR covariates and initializes each covariate.
      */
@@ -35,6 +36,12 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
 
         additionalCovariates = Collections.unmodifiableList(Arrays.asList(contextCovariate, cycleCovariate));
         allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate));
+
+        //precompute for faster lookup (shows up on profile)
+        indexByClass = new HashMap<>();
+        for(int i = 0; i < allCovariates.size(); i++){
+            indexByClass.put(allCovariates.get(i).getClass(), i);
+        }
     }
 
     /**
@@ -42,6 +49,13 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      */
     public StandardCovariateList(final RecalibrationArgumentCollection rac, final SAMFileHeader header){
         this(rac, ReadGroupCovariate.getReadGroupIDs(header));
+    }
+
+    /**
+     * Returns 2. ReadGroupCovariate and  QualityScoreCovariate are special
+     */
+    public int numberOfSpecialCovariates() {
+        return 2;
     }
 
     /**
@@ -105,25 +119,21 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * Returns the index of the covariate by class name or -1 if not found.
      */
     public int indexByClass(final Class<? extends Covariate> clazz){
-        for(int i = 0; i < allCovariates.size(); i++){
-            final Covariate cov = allCovariates.get(i);
-            if (cov.getClass().equals(clazz))  {
-                return i;
-            }
-        }
-        return -1;
+        return indexByClass.getOrDefault(clazz, -1);
     }
 
     /**
      * For each covariate compute the values for all positions in this read and
      * record the values in the provided storage object.
       */
-    public void recordAllValuesInStorage(final GATKRead read, final SAMFileHeader header, final ReadCovariates resultsStorage) {
-        forEach(cov -> {
-            final int index = indexByClass(cov.getClass());
-            resultsStorage.setCovariateIndex(index);
-            cov.recordValues(read, header, resultsStorage);
-        });
+    public void recordAllValuesInStorage(final GATKRead read, final SAMFileHeader header, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
+        //Note: extracting the field to a temp because this is a very tight loop and field lookup came up on the profile
+        final List<Covariate> allCovs = allCovariates;
+        for (int i = 0, n = allCovs.size(); i < n; i++) {
+            final Covariate cov = allCovs.get(i);
+            resultsStorage.setCovariateIndex(i);
+            cov.recordValues(read, header, resultsStorage, recordIndelValues);
+        }
     }
 
     /**
@@ -133,4 +143,5 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
     public Covariate getCovariateByParsedName(final String covName) {
         return allCovariates.stream().filter(cov -> cov.parseNameForReport().equals(covName)).findFirst().orElse(null);
     }
+
 }

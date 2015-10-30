@@ -103,7 +103,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String argsPost = "-R " + hg18Reference + " --knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath() + " -O " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argsPost));
 
-        final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.bam");
+        final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");
 
         SamAssertionUtils.assertSamsEqual(actualHiSeqBam_recalibrated, expectedHiSeqBam_recalibrated, ValidationStringency.LENIENT);
 
@@ -142,22 +142,4 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                 UserException.IncompatibleSequenceDictionaries.class);
         spec.executeTest("testBQSRFailWithIncompatibleReference", this);
     }
-
-    @Test
-    public void testBQSRFailWithUnsupportedPlatforms() throws IOException {
-        final String dbSNPb37 =  getResourceDir() + "dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf";
-
-        final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
-
-        final String HiSeqBam = resourceDir + "solid.bam";
-
-        final String  NO_ARGS = "";
-        final BQSRTest params = new BQSRTest(hg19MiniReference, HiSeqBam, dbSNPb37, NO_ARGS, resourceDir + "expected.txt");
-        IntegrationTestSpec spec = new IntegrationTestSpec(
-                params.getCommandLine(),
-                1,
-                UserException.BadInput.class);
-        spec.executeTest("testBQSRFailWithUnsupportedPlatforms", this);
-    }
-
 }

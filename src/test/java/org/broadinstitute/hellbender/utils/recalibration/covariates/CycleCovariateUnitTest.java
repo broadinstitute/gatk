@@ -1,20 +1,19 @@
-package org.broadinstitute.hellbender.utils.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.TextCigarCodec;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.CycleCovariate;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
 import static java.lang.Math.abs;
 
 public final class CycleCovariateUnitTest extends BaseTest {
@@ -46,19 +45,19 @@ public final class CycleCovariateUnitTest extends BaseTest {
         read.setReadGroup(illuminaReadGroup.getReadGroupId());
 
         ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), 1, (short) 1);
 
         read.setIsReverseStrand(true);
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), readLength, -1);
 
         read.setIsSecondOfPair();
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), -readLength, 1);
 
         read.setIsReverseStrand(false);
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), -1, -1);
     }
 
@@ -80,7 +79,7 @@ public final class CycleCovariateUnitTest extends BaseTest {
         read.setReadGroup(illuminaReadGroup.getReadGroupId());
 
         ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
     }
 
     @Test
@@ -93,7 +92,7 @@ public final class CycleCovariateUnitTest extends BaseTest {
         read.setReadGroup(illuminaReadGroup.getReadGroupId());
 
         ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
     }
 
     public static int expectedCycle(GATKRead read, final int baseNumber, final boolean indel, final int maxCycle) {

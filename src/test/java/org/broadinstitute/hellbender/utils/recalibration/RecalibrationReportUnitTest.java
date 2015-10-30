@@ -3,14 +3,14 @@ package org.broadinstitute.hellbender.utils.recalibration;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.recalibration.*;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.CycleCovariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CycleCovariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -75,7 +75,7 @@ public final class RecalibrationReportUnitTest extends BaseTest {
 
         final int expectedKeys = expectedNumberOfKeys(length, RAC.INDELS_CONTEXT_SIZE, RAC.MISMATCHES_CONTEXT_SIZE);
         int nKeys = 0;  // keep track of how many keys were produced
-        final ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariateList);
+        final ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariateList, true);
 
         final RecalibrationTables recalibrationTables = new RecalibrationTables(covariateList);
         final NestedIntegerArray<RecalDatum> rgTable = recalibrationTables.getReadGroupTable();

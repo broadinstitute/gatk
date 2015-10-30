@@ -9,12 +9,10 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -22,6 +20,9 @@ import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -114,7 +115,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read, refDS);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
-            final ReadCovariates covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates);
+            final ReadCovariates covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates, true);
             final boolean[] skip = calculateSkipArray(read, knownSites); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);
@@ -230,7 +231,7 @@ public final class BaseRecalibrationEngine implements Serializable {
 
                     RecalUtils.incrementDatumOrPutIfNecessary(qualityScoreTable, qual, isError, keys[0], keys[1], eventIndex);
 
-                    for (int i = 2; i < covariates.size(); i++) { //XXX the 2 is hard-wired here as the number of special covariates
+                    for (int i = covariates.numberOfSpecialCovariates(); i < covariates.size(); i++) {
                         if (keys[i] < 0) {
                             continue;
                         }

@@ -27,7 +27,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
             throw new IllegalArgumentException("There must be at least one dimension to an NestedIntegerArray");
         this.dimensions = Arrays.copyOf(dimensions, dimensions.length);
 
-        int dimensionsToPreallocate = Math.min(dimensions.length, NUM_DIMENSIONS_TO_PREALLOCATE);
+        final int dimensionsToPreallocate = Math.min(dimensions.length, NUM_DIMENSIONS_TO_PREALLOCATE);
 
         if ( logger.isDebugEnabled() ) logger.debug(String.format("Creating NestedIntegerArray with dimensions %s", Arrays.toString(dimensions)));
         if ( logger.isDebugEnabled() ) logger.debug(String.format("Pre-allocating first %d dimensions", dimensionsToPreallocate));
@@ -54,7 +54,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      * @param dimension current level in the tree
      * @param dimensionsToPreallocate preallocate only this many dimensions (starting from the first)
      */
-    private void preallocateArray( Object[] subarray, int dimension, int dimensionsToPreallocate ) {
+    private void preallocateArray(final Object[] subarray, final int dimension, final int dimensionsToPreallocate ) {
         if ( dimension >= dimensionsToPreallocate - 1 ) {
             return;
         }
@@ -81,6 +81,65 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
 
         return (T)myData[keys[numNestedDimensions]];
     }
+
+    @SuppressWarnings("unchecked")
+    private T leaf(final int key, final Object[] array){
+        return array == null ? null : (T) array[key];
+    }
+
+    private Object[] unroll(final int key, final Object[] array){
+        return array == null ? null : (Object[]) array[key];
+    }
+
+    /**
+     * Specialized version of get for 1 parameter.
+     * Varargs have a large cost because the arg array is allocated every time.
+     * Using a specialized method eliminates that performance problem.
+     */
+    @SuppressWarnings("unchecked")
+    public T get1(final int key0) {
+        return leaf(key0, data);
+    }
+
+    /**
+     * Specialized version of get for 2 parameters.
+     * Varargs have a large cost because the arg array is allocated every time.
+     * Using a specialized method eliminates that performance problem.
+     */
+    @SuppressWarnings("unchecked")
+    public T get2(final int key0, final int key1) {
+        if ( key0 >= dimensions[0] ) {
+            return null;
+        }
+        return leaf(key1, unroll(key0, data));
+    }
+
+    /**
+     * Specialized version of get for 3 parameters.
+     * Varargs have a large cost because the arg array is allocated every time.
+     * Using a specialized method eliminates that performance problem.
+     */
+    @SuppressWarnings("unchecked")
+    public T get3(final int key0, final int key1, final int key2) {
+        if (key0 >= dimensions[0] || key1 >= dimensions[1]) {
+            return null;
+        }
+        return leaf(key2, unroll(key1, unroll(key0, data)));
+    }
+
+    /**
+     * Specialized version of get for 4 parameters.
+     * Varargs have a large cost because the arg array is allocated every time.
+     * Using a specialized method eliminates that performance problem.
+     */
+    @SuppressWarnings("unchecked")
+    public T get4(final int key0, final int key1, final int key2, final int key3) {
+        if (key0 >= dimensions[0] || key1 >= dimensions[1] || key2 >= dimensions[2]) {
+            return null;
+        }
+        return leaf(key3, unroll(key2, unroll(key1, unroll(key0, data))));
+    }
+
 
     /**
      * Insert a value at the position specified by the given keys.
@@ -120,7 +179,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
 
     @SuppressWarnings("unchecked")
     private void fillAllValues(final Object[] array, final List<T> result) {
-        for ( Object value : array ) {
+        for ( final Object value : array ) {
             if ( value == null )
                 continue;
             if ( value instanceof Object[] )

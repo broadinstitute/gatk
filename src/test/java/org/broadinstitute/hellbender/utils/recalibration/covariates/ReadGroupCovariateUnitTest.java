@@ -1,12 +1,10 @@
-package org.broadinstitute.hellbender.utils.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadGroupCovariate;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -83,7 +81,7 @@ public final class ReadGroupCovariateUnitTest {
         read.setReadGroup(rg.getReadGroupId());
 
         ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
-        covariate.recordValues(read, header, readCovariates);
+        covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), expected, covariate);
 
     }

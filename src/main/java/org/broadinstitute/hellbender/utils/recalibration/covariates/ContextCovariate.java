@@ -1,20 +1,18 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
 public final class ContextCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
@@ -28,6 +26,7 @@ public final class ContextCovariate implements Covariate {
 
     private static final int LENGTH_BITS = 4;
     private static final int LENGTH_MASK = 15;
+
 
     // the maximum context size (number of bases) permitted; we need to keep the leftmost base free so that values are
     // not negative and we reserve 4 more bits to represent the length of the context; it takes 2 bits to encode one base.
@@ -57,36 +56,46 @@ public final class ContextCovariate implements Covariate {
     }
 
     @Override
-    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values) {
+    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values, final boolean recordIndelValues) {
+
+        final int originalReadLength = read.getLength();
 
         // store the original bases and then write Ns over low quality ones
-        final byte[] originalBases = Arrays.copyOf(read.getBases(), read.getLength());
-        final byte[] strandedBases = getStrandedBytes(read, lowQualTail);
+        final byte[] strandedClippedBases = getStrandedClippedBytes(read, lowQualTail);  //Note: this makes a copy of the read
 
-        final List<Integer> mismatchKeys = contextWith(strandedBases, mismatchesContextSize, mismatchesKeyMask);
-        final List<Integer> indelKeys = contextWith(strandedBases, indelsContextSize, indelsKeyMask);
+        //Note: we're using a non-standard library here because boxing came up on profiling as taking 20% of time in applyBQSR.
+        //IntList avoids boxing
+        final IntList mismatchKeys = contextWith(strandedClippedBases, mismatchesContextSize, mismatchesKeyMask);
 
-        final int readLength = strandedBases.length;
+        final int readLengthAfterClipping = strandedClippedBases.length;
 
         // this is necessary to ensure that we don't keep historical data in the ReadCovariates values
         // since the context covariate may not span the entire set of values in read covariates
         // due to the clipping of the low quality bases
-        if ( readLength != originalBases.length ) {
-            // don't both zeroing out if we are going to overwrite the whole array
-            for ( int i = 0; i < originalBases.length; i++ )
+        if ( readLengthAfterClipping != originalReadLength) {
+            // don't bother zeroing out if we are going to overwrite the whole array
+            for ( int i = 0; i < originalReadLength; i++ ){
                 // this base has been clipped off, so zero out the covariate values here
                 values.addCovariate(0, 0, 0, i);
+            }
         }
 
         final boolean negativeStrand = read.isReverseStrand();
-        for (int i = 0; i < readLength; i++) {
-            final int readOffset = getStrandedOffset(negativeStrand, i, readLength);
-            final int indelKey = indelKeys.get(i);
-            values.addCovariate(mismatchKeys.get(i), indelKey, indelKey, readOffset);
-        }
 
-        // put the original bases back in
-        read.setBases(originalBases);
+        //Note: duplicated the loop to avoid checking recordIndelValues on each iteration
+        if (recordIndelValues) {
+            final IntList indelKeys = contextWith(strandedClippedBases, indelsContextSize, indelsKeyMask);
+            for (int i = 0; i < readLengthAfterClipping; i++) {
+                final int readOffset = getStrandedOffset(negativeStrand, i, readLengthAfterClipping);
+                final int indelKey = indelKeys.getInt(i);
+                values.addCovariate(mismatchKeys.getInt(i), indelKey, indelKey, readOffset);
+            }
+        } else {
+            for (int i = 0; i < readLengthAfterClipping; i++) {
+                final int readOffset = getStrandedOffset(negativeStrand, i, readLengthAfterClipping);
+                values.addCovariate(mismatchKeys.getInt(i), 0, 0, readOffset);
+            }
+        }
     }
 
     /**
@@ -107,7 +116,8 @@ public final class ContextCovariate implements Covariate {
      * @param lowQTail every base quality lower than or equal to this in the tail of the read will be replaced with N.
      * @return bases of the read.
      */
-    public static byte[] getStrandedBytes(final GATKRead read, final byte lowQTail) {
+    @VisibleForTesting
+    static byte[] getStrandedClippedBytes(final GATKRead read, final byte lowQTail) {
 
         // Write N's over the low quality tail of the reads to avoid adding them into the context
         final GATKRead clippedRead = ReadClipper.clipLowQualEnds(read, lowQTail, ClippingRepresentation.WRITE_NS);
@@ -150,10 +160,10 @@ public final class ContextCovariate implements Covariate {
      * @param contextSize context size to use building the context
      * @param mask        mask for pulling out just the context bits
      */
-    private static List<Integer> contextWith(final byte[] bases, final int contextSize, final int mask) {
+    private static IntList contextWith(final byte[] bases, final int contextSize, final int mask) {
 
         final int readLength = bases.length;
-        final List<Integer> keys = new ArrayList<>(readLength);
+        final IntList keys = new IntArrayList(readLength);
 
         // the first contextSize-1 bases will not have enough previous context
         for (int i = 1; i < contextSize && i <= readLength; i++) {

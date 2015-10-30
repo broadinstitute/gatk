@@ -4,9 +4,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 
-import java.io.Serializable;
-
-public class ApplyBQSRArgumentCollection implements ArgumentCollectionDefinition {
+public final class ApplyBQSRArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -18,13 +16,6 @@ public class ApplyBQSRArgumentCollection implements ArgumentCollectionDefinition
      */
     @Argument(fullName="quantize_quals", shortName = "qq", doc = "Quantize quality scores to a given number of levels", optional=true)
     public int quantizationLevels = 0;
-
-    /**
-     * Turns off printing of the base insertion and base deletion tags.
-     * Only the base substitution qualities will be produced.
-     */
-    @Argument(fullName="disable_indel_quals", shortName = "DIQ", doc = "Disable printing of base insertion and deletion tags", optional=true)
-    public boolean disableIndelQuals = false;
 
     /**
      * By default, the OQ tag in not emitted. Use this flag to include OQ tags in the output BAM file.
