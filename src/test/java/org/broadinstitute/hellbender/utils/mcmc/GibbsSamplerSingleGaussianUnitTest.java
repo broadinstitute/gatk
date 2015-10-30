@@ -10,15 +10,12 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Function;
 
 /**
  * Unit test for {@link GibbsSampler}.  Demonstrates application of {@link GibbsSampler} to a {@link ParameterizedModel}
- * that is specified using {@link ParameterizedState} and {@link DataCollection}.
+ * that is specified using {@link ParameterizedState} and a class that implements {@link DataCollection}.
  * <p>
  *     Test performs Bayesian inference of a Gaussian model with 2 global parameters specifying the variance and the mean.
  * </p>
@@ -35,7 +32,6 @@ import java.util.function.Function;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
-    private static final String DATAPOINTS_NAME = "datapoints";
     private static final int NUM_DATAPOINTS = 10000;
 
     private static final String VARIANCE_NAME = "variance";
@@ -75,16 +71,29 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         return Math.abs((x - xTrue) / xTrue);
     }
 
+    //The datapoints used by the samplers must be contained in a class that implements DataCollection.
+    private final class GaussianDataCollection implements DataCollection {
+        private final List<Double> datapoints;
+
+        public GaussianDataCollection(final List<Double> datapoints) {
+            this.datapoints = new ArrayList<>(datapoints);
+        }
+
+        public List<Double> getDatapoints() {
+            return Collections.unmodifiableList(datapoints);
+        }
+    }
+
     //We create a Modeller helper class to initialize the model state and specify the parameter samplers.
     private final class GaussianModeller {
         //Create fields in the Modeller for the model and samplers.
-        private final ParameterizedModel<ParameterizedState, DataCollection> model;
-        private final Sampler<Double, ParameterizedState, DataCollection> varianceSampler;
-        private final Sampler<Double, ParameterizedState, DataCollection> meanSampler;
+        private final ParameterizedModel<ParameterizedState, GaussianDataCollection> model;
+        private final Sampler<Double, ParameterizedState, GaussianDataCollection> varianceSampler;
+        private final Sampler<Double, ParameterizedState, GaussianDataCollection> meanSampler;
 
         //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
         //(here, the initial variance and the initial mean) and the DataCollection (here, the list of datapoints).
-        private GaussianModeller(final double varianceInitial, final double meanInitial, final List<Double> datapointsList) {
+        private GaussianModeller(final double varianceInitial, final double meanInitial, final List<Double> datapoints) {
             //Construct the initial ParameterizedState by passing a list of Parameters of mixed type to the constructor.
             //Names and initial value (and, implicitly, types) of each of the parameters are set here.
             //Here, we name the variance parameter "variance" and set its initial value to 5.0,
@@ -94,12 +103,9 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
                     Arrays.asList(new Parameter<>(VARIANCE_NAME, varianceInitial), new Parameter<>(MEAN_NAME, meanInitial));
             final ParameterizedState initialState = new ParameterizedState(initialParameters);
 
-            //Construct the DataCollection by passing a list of Data objects to the constructor.
-            //Names, values, and types of each of the Data objects are set here.
-            //Here, we add a single Data object consisting of the 10000 datapoints, which are generated above,
-            //to the DataCollection dataset.
-            final Data<Double> datapoints = new Data<>(DATAPOINTS_NAME, datapointsList);
-            final DataCollection dataset = new DataCollection(Collections.singletonList(datapoints));
+            //Construct the GaussianDataCollection by passing a list of datapoints to the constructor.
+            //Here, we pass 10000 datapoints, which are generated above,
+            final GaussianDataCollection dataset = new GaussianDataCollection(datapoints);
 
             //Implement Samplers for each parameter by overriding sample().  This can be done via a lambda that takes
             //(rng, state, dataCollection) and returns a new sample of the parameter with type identical to that
@@ -113,8 +119,8 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
             //one can simply sample directly from the corresponding Distribution from Apache Commons.
             varianceSampler = (rng, state, dataCollection) -> {
                 final Function<Double, Double> logConditionalPDF =
-                        newVariance -> -0.5 * Math.log(newVariance) * dataCollection.<Double>get(DATAPOINTS_NAME).size() +
-                                dataCollection.<Double>get(DATAPOINTS_NAME).stream()
+                        newVariance -> -0.5 * Math.log(newVariance) * dataCollection.getDatapoints().size() +
+                                dataCollection.getDatapoints().stream()
                                         .mapToDouble(c -> -normalTerm(c, state.get(MEAN_NAME, Double.class), newVariance))
                                         .sum();
 
@@ -130,7 +136,7 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
             //which reduces to the form in code below.
             meanSampler = (rng, state, dataCollection) -> {
                 final Function<Double, Double> logConditionalPDF =
-                        newMean -> dataCollection.<Double>get(DATAPOINTS_NAME).stream()
+                        newMean -> dataCollection.getDatapoints().stream()
                                 .mapToDouble(c -> -normalTerm(c, newMean, state.get(VARIANCE_NAME, Double.class)))
                                 .sum();
 
@@ -161,7 +167,7 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         final GaussianModeller modeller = new GaussianModeller(VARIANCE_INITIAL, MEAN_INITIAL, datapointsList);
         //Create a GibbsSampler, passing the total number of samples (including burn-in samples)
         //and the model held by the Modeller.
-        final GibbsSampler<ParameterizedState, DataCollection> gibbsSampler =
+        final GibbsSampler<ParameterizedState, GaussianDataCollection> gibbsSampler =
                 new GibbsSampler<>(NUM_SAMPLES, modeller.model);
         //Run the MCMC.
         gibbsSampler.runMCMC();

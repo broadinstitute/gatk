@@ -41,6 +41,12 @@ public final class SegmentedModel {
     public List<SimpleInterval> getSegments() {    return segments;    }
 
     /**
+     * Returns the Genome held internally.
+     * @return  the Genome held internally
+     */
+    public Genome getGenome() { return genome;  }
+
+    /**
      * Returns the number of small segments (i.e., those containing less than a specified number of targets) in
      * the list of segments held internally.
      * @param targetNumberThreshold number of targets below which a segment is considered small
