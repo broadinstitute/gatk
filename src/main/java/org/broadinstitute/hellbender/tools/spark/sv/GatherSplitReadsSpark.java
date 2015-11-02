@@ -38,21 +38,25 @@ public class GatherSplitReadsSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(getHeaderForReads().getSequenceDictionary());
         final JavaRDD<GATKRead> reads = getReads();
+
+        // todo: group by key is really slow on large data, figure out another way
         final JavaRDD<GATKRead> clusteredSplitReads =
                 reads.flatMapToPair(read -> {
                     final List<Tuple2<GenomeLoc, GATKRead>> out = new ArrayList<>();
                     if (shouldConsiderRead(read)) {
                         final Cigar cigar = read.getCigar();
+                        final GenomeLocParser genomeLocParser = new GenomeLocParser(getHeaderForReads().getSequenceDictionary());
                         final int firstCigarElement = cigar.getCigarElement(0).getOperator() == CigarOperator.HARD_CLIP ? 1 : 0;
-                        if (cigar.getCigarElement(firstCigarElement).getOperator() == CigarOperator.SOFT_CLIP) {
-                            final GenomeLoc leftClipLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getStart(), read.getEnd());
+                        if (cigar.getCigarElement(firstCigarElement).getOperator() == CigarOperator.SOFT_CLIP &&
+                                cigar.getCigarElement(firstCigarElement).getLength() >= 30) {
+                            final GenomeLoc leftClipLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getStart(), read.getStart());
                             out.add(new Tuple2<>(leftClipLoc, read));
                         }
                         final int lastCigarElement = cigar.getCigarElement(cigar.numCigarElements() - 1).getOperator() == CigarOperator.HARD_CLIP ? cigar.numCigarElements() - 2 : cigar.numCigarElements() - 1;
-                        if (cigar.getCigarElement(lastCigarElement).getOperator() == CigarOperator.SOFT_CLIP) {
-                            final GenomeLoc leftClipLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getStart(), read.getEnd());
+                        if (cigar.getCigarElement(lastCigarElement).getOperator() == CigarOperator.SOFT_CLIP &&
+                                cigar.getCigarElement(firstCigarElement).getLength() >= 30) {
+                            final GenomeLoc leftClipLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getEnd(), read.getEnd());
                             out.add(new Tuple2<>(leftClipLoc, read));
                         }
 
