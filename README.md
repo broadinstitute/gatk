@@ -212,7 +212,7 @@ If you do not have a PoN, please skip to the [Create PoN workflow](#create-pon-w
 ###### Inputs
 - bam file
 - target bed file -- must be the same that was used for the PoN
-- reference_sequence (required by GATK) -- fasta file with hg19 reference.  
+- reference_sequence (required by GATK) -- fasta file with b37 reference.  
 
 ###### Outputs
 - Proportional coverage tsv file -- Mx5 matrix of proportional coverage, where M is the number of targets.  The fifth column will be named for the sample in the bam file (found in the bam file ``SM`` tag).  If the file exists, it will be overwritten.
@@ -430,7 +430,7 @@ GATK4PJAR=/home/lichtens/hellbender-protected.jar
 # Requirement #4 above.  Directory of HDF5 JNI shared libraries (.so/.dynlib)
 HDFLOC=/usr/lib/jni/
 
-# Requirement #6 above
+# Requirement #6 above (This is b37 at the Broad Institute)
 REF=/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
 
 # Requirement #7 above.  Must be the same as was used to create the PoN.
@@ -474,7 +474,7 @@ GATK4PJAR=/home/lichtens/hellbender-protected.jar
 # Requirement #4 above
 HDFLOC=/usr/lib/jni/
 
-# Requirement #6 above
+# Requirement #6 above (This is b37 at the Broad Institute)
 REF=/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
 
 # Requirement #7 above.  PoN file must be created with the same target file (below) and settings.

@@ -8,8 +8,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramG
 import org.broadinstitute.hellbender.utils.plotter.CopyRatioSegmentedPlotter;
 
 @CommandLineProgramProperties(
-        summary = "Create plots of genomic data",
-        oneLineSummary = "Create plots of genomic data",
+        summary = "Create plots of copy number variant data.  Please note that this tool is only supported for hg19 and b37 references.  All other references may fail.",
+        oneLineSummary = "Create plots of copy number variant data.",
         programGroup = ExomeAnalysisProgramGroup.class
 )
 public final class PlotSegmentedCopyRatio extends CommandLineProgram {
