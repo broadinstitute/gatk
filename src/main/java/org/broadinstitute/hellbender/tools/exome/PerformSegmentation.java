@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
         oneLineSummary = "Segment genomic data into regions of constant copy-ratio",
         programGroup = ExomeAnalysisProgramGroup.class
 )
-public final class PerformCBSSegmentation extends CommandLineProgram {
+public final class PerformSegmentation extends CommandLineProgram {
 
     public static final String SAMPLE_NAME_LONG_NAME = "sampleName";
     public static final String SAMPLE_NAME_SHORT_NAME = "S";

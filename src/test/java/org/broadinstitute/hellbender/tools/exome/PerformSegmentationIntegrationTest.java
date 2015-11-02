@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class PerformCBSSegmentationIntegrationTest extends CommandLineProgramTest{
+public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
     @DataProvider(name="inputFileData")
     public Object[][] inputFileData() {
@@ -24,9 +24,9 @@ public class PerformCBSSegmentationIntegrationTest extends CommandLineProgramTes
     public void testUnLoggedCommandLine(final File INPUT_FILE, final File EXPECTED, final File output, String sampleName) throws IOException {
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         final String[] arguments = {
-                "-" + PerformCBSSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
-                "-" + PerformCBSSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
-                "-" + PerformCBSSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
+                "-" + PerformSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
+                "-" + PerformSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + PerformSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
         };
         runCommandLine(arguments);
         SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
@@ -40,10 +40,10 @@ public class PerformCBSSegmentationIntegrationTest extends CommandLineProgramTes
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + PerformCBSSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
-                "-" + PerformCBSSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
-                "-" + PerformCBSSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
-                "-" + PerformCBSSegmentation.LOG2_SHORT_NAME,
+                "-" + PerformSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
+                "-" + PerformSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + PerformSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
+                "-" + PerformSegmentation.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
         SegmenterUnitTest.assertEqualSegments(output, EXPECTED);

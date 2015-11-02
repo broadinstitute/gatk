@@ -54,7 +54,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
     protected String preTangentFile;
 
     @Argument(
-            doc = "File of segmented regions of the genome based on copy-ratio produced by CBS",
+            doc = "File of segmented regions of the genome",
             shortName = SEGMENT_FILE_SHORT_NAME,
             fullName =  SEGMENT_FILE_LONG_NAME,
             optional = false

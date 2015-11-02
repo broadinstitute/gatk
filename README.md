@@ -285,7 +285,7 @@ SAMPLE1        1       300600  1630000 337     1.23232323
 ###### Invocation
 
 ```
-java -Xmx8g -jar <path_to_hellbender_protected_jar>  PerformCBSSegmentation  -S <sample_name> -T <normalized_coverage_file> -O <output_seg_file> -log
+java -Xmx8g -jar <path_to_hellbender_protected_jar>  PerformSegmentation  -S <sample_name> -T <normalized_coverage_file> -O <output_seg_file> -log
 ```
 
 
