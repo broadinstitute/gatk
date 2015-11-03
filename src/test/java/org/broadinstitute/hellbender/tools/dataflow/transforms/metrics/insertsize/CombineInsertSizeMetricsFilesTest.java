@@ -16,9 +16,6 @@ import org.broadinstitute.hellbender.utils.dataflow.DataflowUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-/**
- * Created by louisb on 8/12/15.
- */
 public class CombineInsertSizeMetricsFilesTest {
 
     @Test

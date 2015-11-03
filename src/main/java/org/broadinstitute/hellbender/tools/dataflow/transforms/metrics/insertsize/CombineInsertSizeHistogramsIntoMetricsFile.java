@@ -140,7 +140,7 @@ final class CombineInsertSizeHistogramsIntoMetricsFile
 
     @Override
     public CombineInsertSizeHistogramsIntoMetricsFile createAccumulator() {
-        return new CombineInsertSizeHistogramsIntoMetricsFile(this.DEVIATIONS, this.HISTOGRAM_WIDTH, this.MINIMUM_PERCENT);
+        return new CombineInsertSizeHistogramsIntoMetricsFile(DEVIATIONS, HISTOGRAM_WIDTH, MINIMUM_PERCENT);
     }
 
     @Override
@@ -158,7 +158,7 @@ final class CombineInsertSizeHistogramsIntoMetricsFile
     public CombineInsertSizeHistogramsIntoMetricsFile mergeAccumulators(Iterable<CombineInsertSizeHistogramsIntoMetricsFile> accumulators) {
         Map<InsertSizeAggregationLevel, HistogramDataflow<Integer>> histograms = StreamSupport.stream(accumulators.spliterator(), false)
                 .flatMap(a -> a.histograms.entrySet().stream())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)); //duplicate keys are not allowed and will cause an IllegalStateException
 
         CombineInsertSizeHistogramsIntoMetricsFile accum = createAccumulator();
         accum.histograms.putAll(histograms);

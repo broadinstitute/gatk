@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.dataflow.transforms.metrics.insertsize;
 
-import com.google.cloud.dataflow.sdk.coders.BigEndianIntegerCoder;
-import com.google.cloud.dataflow.sdk.coders.KvCoder;
 import com.google.cloud.dataflow.sdk.transforms.Combine;
 import com.google.cloud.dataflow.sdk.transforms.Combine.CombineFn;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -11,7 +9,6 @@ import com.google.cloud.dataflow.sdk.transforms.ParDo;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.cloud.dataflow.sdk.values.PCollection;
 import com.google.cloud.dataflow.sdk.values.PCollectionView;
-import com.google.cloud.genomics.dataflow.coders.GenericJsonCoder;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.Header;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -31,7 +28,7 @@ import java.util.List;
 import java.util.Set;
 
 public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>, PCollection<MetricsFileDataflow<InsertSizeMetrics, Integer>>> {
-    public static final long serialVersionUID = 1l;
+    public static final long serialVersionUID = 1L;
 
     private final Arguments args;
     private final PCollectionView<List<Header>> metricHeaders;
@@ -50,7 +47,7 @@ public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>
             r.getFragmentLength() != 0;
 
     public static class Arguments implements ArgumentCollectionDefinition, Serializable {
-        public final static long serialVersionUID = 1l;
+        public final static long serialVersionUID = 1L;
 
         @Argument(doc = "Generate mean, sd and plots by trimming the data down to MEDIAN + DEVIATIONS*MEDIAN_ABSOLUTE_DEVIATION. " +
                 "This is done because insert size data typically includes enough anomalous values from chimeras and other " +
@@ -90,7 +87,7 @@ public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>
         PCollection<KV<InsertSizeAggregationLevel, Integer>> kvPairs = filtered.apply(ParDo.named("Calculate metric and key")
                 .withSideInputs(samHeader)
                 .of(new DoFn<GATKRead, KV<InsertSizeAggregationLevel, Integer>>() {
-                    private final static long serialVersionUID = 1l;
+                    private final static long serialVersionUID = 1L;
 
                     @Override
                     public void processElement(ProcessContext c) throws Exception {
@@ -101,7 +98,7 @@ public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>
 
                         aggregationLevels.stream().forEach(k -> c.output(KV.of(k, metric)));
                     }
-                })).setCoder(KvCoder.of(GenericJsonCoder.of(InsertSizeAggregationLevel.class), BigEndianIntegerCoder.of()));
+                }));
 
         CombineFn<Integer, HistogramDataflow<Integer>, HistogramDataflow<Integer>> combiner = new HistogramCombinerDataflow<>();
         PCollection<KV<InsertSizeAggregationLevel, HistogramDataflow<Integer>>> histograms = kvPairs.apply("Add reads to histograms",
@@ -109,7 +106,7 @@ public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>
 
         PCollection<KV<InsertSizeAggregationLevel, KV<InsertSizeAggregationLevel, HistogramDataflow<Integer>>>> reKeyedHistograms = histograms.apply(ParDo.named("Re-key histograms").
                 of(new DoFn<KV<InsertSizeAggregationLevel, HistogramDataflow<Integer>>, KV<InsertSizeAggregationLevel, KV<InsertSizeAggregationLevel, HistogramDataflow<Integer>>>>() {
-                    public final static long serialVersionUID = 1l;
+                    public final static long serialVersionUID = 1L;
 
                     @Override
                     public void processElement(ProcessContext c) throws Exception {
@@ -125,7 +122,7 @@ public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>
 
         PCollection<MetricsFileDataflow<InsertSizeMetrics, Integer>> metricsFilesNoKeys = metricsFiles.apply(ParDo.named("Drop keys")
                 .of(new DoFn<KV<?, MetricsFileDataflow<InsertSizeMetrics, Integer>>, MetricsFileDataflow<InsertSizeMetrics, Integer>>() {
-                    public final static long serialVersionUID = 1l;
+                    public final static long serialVersionUID = 1L;
 
                     @Override
                     public void processElement(ProcessContext c) throws Exception {
@@ -149,7 +146,7 @@ public class InsertSizeMetricsTransform extends PTransform<PCollection<GATKRead>
     }
 
     private static class AddHeadersToMetricsFile extends DoFn<MetricsFileDataflow<InsertSizeMetrics, Integer>, MetricsFileDataflow<InsertSizeMetrics, Integer>> {
-        private final static long serialVersionUID = 1l;
+        private final static long serialVersionUID = 1L;
         private PCollectionView<List<Header>> metricHeaders;
 
         private AddHeadersToMetricsFile(PCollectionView<List<Header>> metricHeaders) {
