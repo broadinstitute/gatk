@@ -7,6 +7,8 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -22,10 +24,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import scala.Tuple2;
 import scala.Tuple3;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @CommandLineProgramProperties(summary = "Compares two BAMs", oneLineSummary = "Compares two BAMs",
         programGroup = SparkProgramGroup.class)
@@ -59,7 +58,6 @@ public final class CompareDuplicates extends GATKSparkTool {
         System.out.println("processing bams with " + firstBamSize + " reads");
 
 
-
         JavaRDD<GATKRead> firstDupes = firstReads.filter(GATKRead::isDuplicate);
         JavaRDD<GATKRead> secondDupes = secondReads.filter(GATKRead::isDuplicate);
         long firstDupesCount = firstDupes.count();
@@ -68,25 +66,35 @@ public final class CompareDuplicates extends GATKSparkTool {
         if (firstDupesCount != secondDupesCount) {
             throw new GATKException("BAMs have different number of total duplicates: " + firstDupesCount + "," + secondDupesCount);
         }
-        JavaPairRDD<GATKRead, GATKRead> zip = firstReads.zip(secondReads);
 
 
         Broadcast<SAMFileHeader> broadcastHeader = ctx.broadcast(getHeaderForReads());
 
-        JavaPairRDD<String, Iterable<GATKRead>> firstKeyed = firstReads.groupBy(new GroupKey());
-        JavaPairRDD<String, Iterable<GATKRead>> secondKeyed = secondReads.groupBy(new GroupKey());
 
-                JavaPairRDD < String, Tuple2 < Iterable < GATKRead >, Iterable < GATKRead >>> join = firstKeyed.join(secondKeyed);
-        JavaPairRDD<String, Tuple3<String, Iterable<GATKRead>, Iterable<GATKRead>>> tagged = join.mapToPair(v1 -> {
+        JavaPairRDD<String, GATKRead> firstKeyed = firstReads.mapToPair(read -> new Tuple2<>(Utils.groupKey(read), read));
+        JavaPairRDD<String, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(Utils.groupKey(read), read));
+
+        JavaPairRDD<String, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed);
+
+        JavaRDD<String> tagged = cogroup.map(v1 -> {
             SAMFileHeader header = broadcastHeader.getValue();
+
             Iterable<GATKRead> firstReads1 = v1._2()._1();
             Iterable<GATKRead> secondReads1 = v1._2()._2();
-            String str = Utils.getDupes(firstReads1, secondReads1, header); //new Dup().call(new Tuple3<>(firstReads1, secondReads1, header));
-            return new Tuple2<>(v1._1(), new Tuple3<>(str, firstReads1, secondReads1));
+
+            return Utils.getDupes(firstReads1, secondReads1, header);
         });
+        /*JavaPairRDD<String, Tuple3<String, Iterable<GATKRead>, Iterable<GATKRead>>> tagged = cogroup.mapToPair(v1 -> {
+            SAMFileHeader header = broadcastHeader.getValue();
+
+            Iterable<GATKRead> firstReads1 = v1._2()._1();
+            Iterable<GATKRead> secondReads1 = v1._2()._2();
+            String str = Utils.getDupes(firstReads1, secondReads1, header);
+            return new Tuple2<>(v1._1(), new Tuple3<>(str, firstReads1, secondReads1));
+        });*/
 
         Map<String, Integer> tagCountMap = tagged.mapToPair(v1 ->
-                new Tuple2<>(v1._2()._1(), 1)).reduceByKey((v1, v2) -> v1 + v2).collectAsMap();
+                new Tuple2<>(v1, 1)).reduceByKey((v1, v2) -> v1 + v2).collectAsMap();
         Set<String> enums = Sets.newHashSet("EQUAL", "SIZE_UNEQUAL", "READ_MISMATCH", "DIFF_NUM_DUPES", "DUPES_MISMATCH");
         enums.forEach(s -> System.out.println(s + ": " + tagCountMap.getOrDefault(s, 0)));
         System.out.println("*************************");
@@ -107,6 +115,10 @@ class GroupKey implements Function<GATKRead, String> {
 
 
 class Utils {
+    static String groupKey(GATKRead r) {
+        return r.getContig() + "," + ReadUtils.getStrandedUnclippedStart(r) + "," + ReadUtils.readHasMappedMate(r);
+    }
+
     static Tuple2<Integer, Integer> unpairedScoreMatches(
             List<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> joinedUpairedReads) {
         // For unpaired, calculate the scores.
@@ -151,6 +163,32 @@ class Utils {
         }
         return new Tuple2<>(sameScore, differentScore);
     }
+
+    static String getDupes2(Iterable<GATKRead> f) {
+        List<GATKRead> first = Lists.newArrayList(f);
+
+        HashSet<GATKRead> firstDupes = Sets.newHashSet();
+        HashSet<GATKRead> secondDupes = Sets.newHashSet();
+        for (GATKRead r : first) {
+            if (r.hasAttribute("FD")) {
+                firstDupes.add(r);
+            }
+            if (r.hasAttribute("SD")) {
+                secondDupes.add(r);
+            }
+        }
+        if (firstDupes.size() != secondDupes.size()) {
+            return "DIFF_NUM_DUPES";
+        }
+        if (firstDupes.isEmpty()) {
+            return "EQUAL";
+        }
+        if (!firstDupes.containsAll(secondDupes)) {
+            return "DUPES_MISMATCH";
+        }
+        return "EQUAL";
+    }
+
 
     static String getDupes(Iterable<GATKRead> f, Iterable<GATKRead> s, SAMFileHeader header) {
         List<GATKRead> first = Lists.newArrayList(f);
