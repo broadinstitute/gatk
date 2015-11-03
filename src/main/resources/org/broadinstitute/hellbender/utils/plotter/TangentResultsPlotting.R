@@ -1,5 +1,5 @@
 # Useful for debugging
-#options(error = quote({dump.frames(dumpto = "CBS_dump", to.file = TRUE); q()}))
+#options(error = quote({dump.frames(dumpto = "plotting_dump", to.file = TRUE); q()}))
 
 library(optparse)
 
