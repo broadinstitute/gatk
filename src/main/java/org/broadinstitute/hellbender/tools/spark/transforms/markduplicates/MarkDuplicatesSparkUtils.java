@@ -153,6 +153,7 @@ public class MarkDuplicatesSparkUtils {
         final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
                 read -> ReadUtils.readHasMappedMate(read)
         ));
+
         // Note the we emit only fragments from this mapper.
         if (byPairing.get(true).isEmpty()) {
             // There are no paired reads, mark all but the highest scoring fragment as duplicate.
