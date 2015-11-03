@@ -255,19 +255,78 @@ public class TableReaderUnitTest extends BaseTest {
                 String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
         );
 
-        final boolean[] tested = new boolean[1];
+        final boolean[] columnNamesAvailableWhenCreatingRecords = new boolean[1];
 
-        new TableReader<String[]>(testFile) {
+
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
             @Override
             protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertNotNull(columns());
                 Assert.assertTrue(columns().matchesExactly("col1", "col2", "col3"));
-                tested[0] = true;
+                columnNamesAvailableWhenCreatingRecords[0] = true;
                 return dataLine.toArray();
             }
         };
 
-        Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
+        final TableColumnCollection columns = reader.columns();
+        Assert.assertTrue(columns.matchesExactly("col1", "col2", "col3"));
+
+        Assert.assertTrue(columnNamesAvailableWhenCreatingRecords[0], "the readDataLine code did not get executed");
+    }
+
+    @Test
+    public void testReadFromString() throws IOException {
+        final File testFile = createTestInput(
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3")
+        );
+
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
+            @Override
+            protected String[] createRecord(final DataLine dataLine) {
+                Assert.assertNotNull(columns());
+                return dataLine.toArray();
+            }
+        };
+
+        final String line = String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3");
+        final String[] record = reader.readRecord(line);
+        Assert.assertEquals(record, new String[]{"1", "2", "3"});
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testReadFromStringTooManyValues() throws IOException {
+        final File testFile = createTestInput(
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3")
+        );
+
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
+            @Override
+            protected String[] createRecord(final DataLine dataLine) {
+                Assert.assertNotNull(columns());
+                return dataLine.toArray();
+            }
+        };
+
+        final String line = String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3", "4");
+        reader.readRecord(line);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testReadFromStringTooFewValues() throws IOException {
+        final File testFile = createTestInput(
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3")
+        );
+
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
+            @Override
+            protected String[] createRecord(final DataLine dataLine) {
+                Assert.assertNotNull(columns());
+                return dataLine.toArray();
+            }
+        };
+
+        final String line = String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2");
+        reader.readRecord(line);
     }
 
     @Test
@@ -453,6 +512,42 @@ public class TableReaderUnitTest extends BaseTest {
         while (reader.readRecord() != null) {
             // eventually will cause the exception.
         }
+    }
+
+    @Test
+    public void testIgnoreHeaderRepetitions() throws IOException {
+        final File testFile = createTestInput(
+                TableUtils.COMMENT_PREFIX + "comment1",
+                "Column1",
+                "",
+                TableUtils.COMMENT_PREFIX + "comment2",
+                "abc",
+                "Column1",
+                "cbb"
+        );
+        final TableReader<String> tableReader = new TableReader<String>(testFile) {
+
+            @Override
+            protected void processColumns(final TableColumnCollection columns) {
+                Assert.assertEquals(columns.columnCount(), 1);
+                Assert.assertEquals(columns.nameAt(0), "Column1");
+            }
+
+            @Override
+            protected String createRecord(final DataLine dataLine) {
+                return dataLine.get(0);
+            }
+        };
+
+        final String record = tableReader.readRecord();
+        final String secondRecord = tableReader.readRecord();
+        final String thirdRecord = tableReader.readRecord();
+        final String forthRecord = tableReader.readRecord();
+        Assert.assertNotNull(record);
+        Assert.assertEquals(record, "");
+        Assert.assertEquals(thirdRecord, "cbb");
+        Assert.assertNotNull(secondRecord,"abc");
+        Assert.assertNull(forthRecord);
     }
 
     @Test

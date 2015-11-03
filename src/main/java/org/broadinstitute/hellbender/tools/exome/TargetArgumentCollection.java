@@ -41,7 +41,6 @@ public final class TargetArgumentCollection {
     )
     protected File targetsFile;
 
-
     /**
      * Holds a reference to a function that provides a default target file in case the user
      * does not specify one explicitly using argument {@link #targetsFile}.
@@ -65,7 +64,7 @@ public final class TargetArgumentCollection {
     /**
      * Creates a new target argument collection without a default target file supplier.
      */
-    protected TargetArgumentCollection() {
+    public TargetArgumentCollection() {
         this(() -> null);
     }
 
@@ -92,7 +91,7 @@ public final class TargetArgumentCollection {
      *   was provided or cannot be resolved otherwise.
      */
     protected TargetCollection<Target> readTargetCollection(final boolean optional) {
-        final File resolveFile = resolveInputFile();
+        final File resolveFile = getTargetsFile();
         if (resolveFile == null) {
             if (optional) {
                 return null;
@@ -105,6 +104,7 @@ public final class TargetArgumentCollection {
         }
     }
 
+
     /**
      * Resolves the name of the target file given the explicit argument {@link #targetsFile} and the
      * default target file supplier {@link #defaultTargetFileSupplier}.
@@ -112,7 +112,7 @@ public final class TargetArgumentCollection {
      * @return {@code null} when neither approach resolves into a target file name. The file returned is not
      * guaranteed to exist or been a readable regular file.
      */
-    private File resolveInputFile() {
+    public File getTargetsFile() {
         return targetsFile != null ? targetsFile
                 : (defaultTargetFileSupplier != null ) ? defaultTargetFileSupplier.get()
                 : null;

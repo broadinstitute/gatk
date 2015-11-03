@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -11,7 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class Target implements Locatable {
+public class Target implements Locatable, Feature {
 
     /**
      * The target name. Always specified; never {@code null}.
@@ -127,6 +128,12 @@ public class Target implements Locatable {
     @Override
     public String toString() {
         return name;
+    }
+
+    @Override
+    @Deprecated
+    public String getChr() {
+        return interval.getContig();
     }
 
 }

@@ -7,15 +7,39 @@ import org.broadinstitute.hellbender.utils.tsv.TableReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * Target table file reader.
  *
+ * <p>
+ * <a href="#format"/>
+ * The minimum content of a target table file consists of 4 columns indicate the target's name, that must be unique across
+ * targets and its coordinates: enclosing contig, start and end positions. The start and end positions are inclusive
+ * and 1-based (the first position index is 1).
+ * </p>
+ * <p>
+ * Example:
+ * <pre>
+ *         CONTIG   START   END     NAME
+ *         1        100     200     target_0
+ *         1        300     400     target_1
+ *         2        100     500     target_2
+ * </pre>
+ * </p>
+ * <p>
+ * There might be additional columns indicating arbitrary target annotations such as per-sample coverage, gc bias
+ * and so forth.
+ * </p>
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class TargetTableReader extends TableReader<Target> {
+
+    public TargetTableReader(final Reader reader) throws IOException {
+        super(reader);
+    }
 
     public TargetTableReader(final File file) throws IOException {
         super(file);

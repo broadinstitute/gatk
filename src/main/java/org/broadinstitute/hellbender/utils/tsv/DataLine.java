@@ -76,7 +76,7 @@ public final class DataLine {
      * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
      * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
      */
-    DataLine(final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
+    public DataLine(final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
         this(new String[Utils.nonNull(columns, "the columns cannot be null").columnCount()], columns, formatErrorFactory);
     }
 
@@ -539,6 +539,23 @@ public final class DataLine {
         return append(Long.toString(value));
     }
 
+    /**
+     * Sets the next long values in the data-line that correspond to next few columns.
+     * <p>
+     * The next column index advances so that the following {@link #append append} will change the value of
+     * the following column and so forth.
+     * </p>
+     *
+     * @param values the new values.
+     * @return reference to this data-line.
+     * @throws IllegalStateException if this operation goes beyond the last column index.
+     */
+    public DataLine append(final long... values) {
+        for (final long l : Utils.nonNull(values, "the values cannot be null")) {
+            append(l);
+        }
+        return this;
+    }
 
     /**
      * Sets the next double value in the data-line that correspond to a column.

@@ -110,7 +110,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:hellbender:4.pre-alpha-4-g7fb783d-SNAPSHOT'
+    compile 'org.broadinstitute:hellbender:4.pre-alpha-65-gda87c5c-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
 
     // HDF5 and HDF-Java jar files
