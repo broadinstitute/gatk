@@ -52,9 +52,7 @@ public final class BucketUtilsTest extends BaseTest {
             fw.write("Goodbye, cruel world!");
         }
         BucketUtils.deleteFile(dest.getPath(), null);
-        if (dest.exists()) {
-            Assert.fail("File '"+dest.getPath()+"' was not properly deleted as it should.");
-        }
+        Assert.assertFalse(dest.exists(), "File '"+dest.getPath()+"' was not properly deleted as it should.");
     }
 
     @Test(groups={"bucket"})
@@ -97,4 +95,5 @@ public final class BucketUtilsTest extends BaseTest {
             }
         }
     }
+
 }

@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -25,7 +26,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 
@@ -150,6 +158,9 @@ public abstract class BaseTest {
         return popts;
     }
 
+    public static AuthHolder getAuthentication(){
+        return new AuthHolder("test-app",getGCPTestApiKey());
+    }
     @BeforeClass
     public void initGenomeLocParser() throws FileNotFoundException {
         hg19ReferenceReader = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));

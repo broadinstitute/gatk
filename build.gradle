@@ -129,7 +129,7 @@ dependencies {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
-    compile('org.apache.hadoop:hadoop-client:2.2.0') // should be a 'provided' dependency
+    compile('org.apache.hadoop:hadoop-client:2.7.1') // should be a 'provided' dependency
 
     compile('org.apache.spark:spark-core_2.10:1.4.1') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
@@ -145,7 +145,7 @@ dependencies {
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
-    testCompile 'org.apache.hadoop:hadoop-minicluster:2.7.1'
+    testCompile 'org.apache.hadoop:hadoop-minicluster:2.7.1' //the version of minicluster should match the version of hadoop
     testCompile "org.mockito:mockito-core:1.10.19"
 }
 

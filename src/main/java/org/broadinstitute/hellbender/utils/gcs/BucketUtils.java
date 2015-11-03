@@ -8,9 +8,13 @@ import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.Tribble;
+import htsjdk.tribble.util.TabixUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -33,6 +37,8 @@ import java.util.UUID;
 public final class BucketUtils {
     public static final String GCS_PREFIX = "gs://";
     public static final String HDFS_PREFIX = "hdfs://";
+
+    public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
     private BucketUtils(){} //private so that no one will instantiate this class
 
@@ -172,6 +178,50 @@ public final class BucketUtils {
             boolean ok = new File(pathToDelete).delete();
             if (!ok) throw new IOException("Unable to delete '"+pathToDelete+"'");
         }
+    }
+
+    /**
+     * Get a temporary file path based on the prefix and extension provided.
+     * This file (and possible indexes associated with it will be scheduled for deleton on shutdown
+     *
+     * @param prefix a prefix for the file name
+     *               for remote paths this should be a valid URI to root the temporary file in (ie. gcs://hellbender/staging/)
+     *               there is no guarantee that this will be used as the root of the tmp file name, a local prefix may be placed in the tmp folder for exapmle
+     * @param extension and extension for the temporary file path, the resulting path will end in this
+     * @param authHolder authentication for remote file paths, may be null
+     * @return a path to use as a temporary file, on remote file systems which don't support an atomic tmp file reservation a path is chosen with a long randomized name
+     *
+     */
+    public static String getTempFilePath(String prefix, String extension, AuthHolder authHolder){
+        if (BucketUtils.isCloudStorageUrl(prefix) || (BucketUtils.isHadoopUrl(prefix))){
+            final String path = randomRemotePath(prefix, "", extension);
+            deleteOnExit(path, authHolder);
+            deleteOnExit(path + Tribble.STANDARD_INDEX_EXTENSION, authHolder);
+            deleteOnExit(path + TabixUtils.STANDARD_INDEX_EXTENSION, authHolder);
+            deleteOnExit(path + ".bai", authHolder);
+            deleteOnExit(path.replaceAll(extension + "$", ".bai"), authHolder); //if path ends with extension, replace it with .bai
+            return path;
+        } else {
+            return IOUtils.createTempFile(prefix, extension).getAbsolutePath();
+        }
+    }
+
+    /**
+     * Schedule a file to be deleted on JVM shutdown.
+     * @param fileToDelete the path to the file to be deleted
+     * @param authHolder authentication for remote files
+     */
+    public static void deleteOnExit(String fileToDelete, AuthHolder authHolder){
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try {
+                    deleteFile(fileToDelete, authHolder.asPipelineOptionsDeprecated());
+                } catch (IOException e) {
+                    logger.warn("Failed to delete file: " + fileToDelete+ ".", e);
+                }
+            }
+        });
     }
 
     /**

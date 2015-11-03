@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
-import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
@@ -15,16 +14,16 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.tools.picard.analysis.MeanQualityByCycle;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -219,12 +218,7 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
     }
 
     private void saveResults(final MetricsFile<?, Integer> metrics, final SAMFileHeader readsHeader, final String inputFileName){
-        final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
-        try(OutputStream outputStream = BucketUtils.createFile(out, gcsOptions)) {
-            metrics.write(new PrintWriter(outputStream));
-        } catch (final IOException e){
-            throw new GATKException("Could not write metrics to file: " + out, e);
-        }
+        MetricsUtils.saveMetrics(metrics, out, getAuthHolder());
 
         if (metrics.getAllHistograms().isEmpty()) {
             logger.warn("No valid bases found in input file.");
