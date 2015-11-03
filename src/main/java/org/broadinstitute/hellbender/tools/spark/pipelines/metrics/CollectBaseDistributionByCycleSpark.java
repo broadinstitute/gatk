@@ -7,7 +7,6 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.StringUtil;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -187,7 +186,8 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
      * Computes the MeanQualityByCycle. Creates a metrics file with relevant histograms.
      */
     public MetricsFile<BaseDistributionByCycleMetrics, Integer> calculateBaseDistributionByCycle(final JavaRDD<GATKRead> reads){
-        final JavaRDD<GATKRead> filteredReads = reads.filter(makeReadFilter(pfReadsOnly, alignedReadsOnly));
+        final JavaRDD<GATKRead> filteredReads = reads.filter(
+                GatkReadFilter.by(pfReadsOnly, alignedReadsOnly));
         final HistogramGenerator hist = filteredReads.aggregate(new HistogramGenerator(),
                 (hgp, read) -> hgp.addRead(read),
                 (hgp1, hgp2) -> hgp1.merge(hgp2));
@@ -195,13 +195,6 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
         final MetricsFile<BaseDistributionByCycleMetrics, Integer> metricsFile = getMetricsFile();
         hist.addToMetricsFile(metricsFile);
         return metricsFile;
-    }
-
-    private static Function<GATKRead, Boolean> makeReadFilter(final boolean pf_read_only, final boolean aligned_reads_only) {
-        return read -> (!pf_read_only || !read.failsVendorQualityCheck()) &&
-                (!aligned_reads_only || !read.isUnmapped()) &&
-                !read.isSecondaryAlignment() &&
-                !read.isSupplementaryAlignment();
     }
 
     protected void saveResults(final MetricsFile<?, Integer> metrics, final SAMFileHeader readsHeader, final String inputFileName) {
