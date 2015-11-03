@@ -21,7 +21,12 @@ public abstract class MultiLevelMetrics extends SerializableMetric{
 
     /**
      * Generates a comparator to sort by Sample, ReadGroup, and then Library.
-     * Intended to be used by subclasses to construct their own comparators.
+     *
+     * By specifying T explicitly, this can be used to generate a comparator for a sub class of MultiLevelMetrics which
+     * can be chained to produce a comparator sorting first by this ordering and then by whatever additional criteria required.
+     *
+     * ex:
+     *  Comparator<InsertSizeMetrics> comparator = MultiLevelMetrics.<InsertSizeMetrics>getMultiLevelMetricsComparator().thenComparing(insertSizeMetricsComparator);
      */
     public static <T extends MultiLevelMetrics> Comparator<T> getMultiLevelMetricsComparator(){
         return Comparator.comparing((T a) -> a.SAMPLE != null ? a.SAMPLE : "")
