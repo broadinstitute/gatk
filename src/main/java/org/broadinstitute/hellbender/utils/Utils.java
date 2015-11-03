@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -9,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -455,8 +457,19 @@ public final class Utils {
             return md5String;
         }
         catch ( final NoSuchAlgorithmException e ) {
-            throw new IllegalStateException("MD5 digest algorithm not present");
+            throw new IllegalStateException("MD5 digest algorithm not present", e);
         }
+    }
+
+    /**
+     * Calculates the MD5 for the specified file and returns it as a String
+     *
+     * @param file file whose MD5 to calculate
+     * @return file's MD5 in String form
+     * @throws IOException if the file could not be read
+     */
+    public static String calculateFileMD5( final File file ) throws IOException{
+        return Utils.calcMD5(FileUtils.readFileToByteArray(file));
     }
 
     /**
@@ -465,7 +478,7 @@ public final class Utils {
      * @return the same object
      * @throws IllegalArgumentException if a {@code o == null}
      */
-    public static <T> T nonNull(final T object) throws IllegalArgumentException {
+    public static <T> T nonNull(final T object) {
         return Utils.nonNull(object, "Null object is not allowed here.");
     }
 
@@ -476,7 +489,7 @@ public final class Utils {
      * @return the same object
      * @throws IllegalArgumentException if a {@code o == null}
      */
-    public static <T> T nonNull(final T object, final String message) throws IllegalArgumentException {
+    public static <T> T nonNull(final T object, final String message) {
         if (object == null) {
             throw new IllegalArgumentException(message);
         }
@@ -487,6 +500,7 @@ public final class Utils {
      * Checks that the collection does not contain a {@code null} value (throws an {@link IllegalArgumentException} if it does).
      * The implementation calls {@code c.contains(null)} to determine the presence of null.
      * @param c collection
+     * @param s the text message that would be pass to the exception thrown when c contains a null.
      * @throws IllegalArgumentException if a {@code o == null}
      */
     public static <T> void containsNoNull(final Collection<?> c, final String s) {

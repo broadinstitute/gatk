@@ -265,6 +265,8 @@ public final class UtilsUnitTest extends BaseTest {
 
         final String sourceString = FileUtils.readFileToString(source);
         Assert.assertEquals(Utils.calcMD5(sourceString), sourceMD5);
+
+        Assert.assertEquals(Utils.calculateFileMD5(source), sourceMD5);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

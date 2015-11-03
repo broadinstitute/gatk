@@ -62,7 +62,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     }
 
     @Test(dataProvider = "ApplyBQSRTest")
-    public void testPR(ABQSRTest params) throws IOException {
+    public void testApplyBQSR(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
                         " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz " +
@@ -72,6 +72,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFile));
+        spec.setCompareBamFilesSorted(true);
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
