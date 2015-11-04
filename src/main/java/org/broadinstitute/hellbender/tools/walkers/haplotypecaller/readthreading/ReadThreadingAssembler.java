@@ -53,6 +53,8 @@ public final class ReadThreadingAssembler {
     private static final byte MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor = 2;
 
+    private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
+
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef, final int numPruningSamples) {
         if ( maxAllowedPathsForReadThreadingAssembler < 1 ) {
             throw new IllegalArgumentException("numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
@@ -263,32 +265,33 @@ public final class ReadThreadingAssembler {
     /**
      * Print graph to file if debugGraphTransformations is enabled
      * @param graph the graph to print
-     * @param file the destination file
+     * @param fileName the name to give the graph file
      */
-    private void printDebugGraphTransform(final BaseGraph<?,?> graph, final File file) {
+    private void printDebugGraphTransform(final BaseGraph<?,?> graph, final String fileName) {
+        File outputFile = new File(debugGraphOutputPath, fileName);
         if ( debugGraphTransformations ) {
             if ( PRINT_FULL_GRAPH_FOR_DEBUGGING ) {
-                graph.printGraph(file, pruneFactor);
+                graph.printGraph(outputFile, pruneFactor);
             } else {
-                graph.subsetToRefSource(10).printGraph(file, pruneFactor);
+                graph.subsetToRefSource(10).printGraph(outputFile, pruneFactor);
             }
         }
     }
 
     private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph) {
-        printDebugGraphTransform(seqGraph, new File("sequenceGraph.1.dot"));
+        printDebugGraphTransform(seqGraph, "sequenceGraph.1.dot");
 
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
         seqGraph.zipLinearChains();
-        printDebugGraphTransform(seqGraph, new File("sequenceGraph.2.zipped.dot"));
+        printDebugGraphTransform(seqGraph, "sequenceGraph.2.zipped.dot");
 
         // now go through and prune the graph, removing vertices no longer connected to the reference chain
         seqGraph.removeSingletonOrphanVertices();
         seqGraph.removeVerticesNotConnectedToRefRegardlessOfEdgeDirection();
 
-        printDebugGraphTransform(seqGraph, new File("sequenceGraph.3.pruned.dot"));
+        printDebugGraphTransform(seqGraph, "sequenceGraph.3.pruned.dot");
         seqGraph.simplifyGraph();
-        printDebugGraphTransform(seqGraph, new File("sequenceGraph.4.merged.dot"));
+        printDebugGraphTransform(seqGraph, "sequenceGraph.4.merged.dot");
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -308,7 +311,7 @@ public final class ReadThreadingAssembler {
             seqGraph.addVertex(dummy);
             seqGraph.addEdge(complete, dummy, new BaseEdge(true, 0));
         }
-        printDebugGraphTransform(seqGraph, new File("sequenceGraph.5.final.dot"));
+        printDebugGraphTransform(seqGraph, "sequenceGraph.5.final.dot");
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
     }
 
@@ -456,7 +459,7 @@ public final class ReadThreadingAssembler {
     }
 
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph) {
-        printDebugGraphTransform(rtgraph, new File(refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot"));
+        printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
         // go through and prune all of the chains where all edges have <= pruneFactor.  This must occur
         // before recoverDanglingTails in the graph, so that we don't spend a ton of time recovering
@@ -475,11 +478,11 @@ public final class ReadThreadingAssembler {
             rtgraph.removePathsNotConnectedToRef();
         }
 
-        printDebugGraphTransform(rtgraph, new File(refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot"));
+        printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
 
         final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
         if (debugGraphTransformations) {
-            initialSeqGraph.printGraph(new File(refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
+            initialSeqGraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
         }
 
         // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
@@ -490,7 +493,7 @@ public final class ReadThreadingAssembler {
         if (DEBUG) {
             logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
         }
-        printDebugGraphTransform(initialSeqGraph, new File(refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot"));
+        printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
         initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
         final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph);
@@ -515,6 +518,13 @@ public final class ReadThreadingAssembler {
 
     public void setDebugGraphTransformations(final boolean debugGraphTransformations) {
         this.debugGraphTransformations = debugGraphTransformations;
+    }
+
+    /**
+     * Set where to write debug graph files if {@link ReadThreadingAssembler#debugGraphTransformations} == true
+     */
+    public void setDebugGraphOutputPath(File debugGraphOutputPath) {
+        this.debugGraphOutputPath = debugGraphOutputPath;
     }
 
     public void setRecoverDanglingBranches(final boolean recoverDanglingBranches) {
