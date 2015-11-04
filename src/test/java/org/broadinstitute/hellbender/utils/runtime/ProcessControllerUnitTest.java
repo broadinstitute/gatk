@@ -4,8 +4,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -69,26 +69,21 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
     @Test
     public void testDirectory() throws IOException {
-        File dir = null;
-        try {
-            dir = IOUtils.tempDir("temp.", "").getCanonicalFile();
+        File dir = createTempDir("temp.").getCanonicalFile();
 
-            ProcessSettings job = new ProcessSettings(new String[] {"pwd"});
-            job.getStdoutSettings().setBufferSize(-1);
-            job.setRedirectErrorStream(true);
-            job.setDirectory(dir);
+        ProcessSettings job = new ProcessSettings(new String[] {"pwd"});
+        job.getStdoutSettings().setBufferSize(-1);
+        job.setRedirectErrorStream(true);
+        job.setDirectory(dir);
 
-            ProcessController controller = new ProcessController();
-            ProcessOutput result = controller.exec(job);
-            int exitValue = result.getExitValue();
+        ProcessController controller = new ProcessController();
+        ProcessOutput result = controller.exec(job);
+        int exitValue = result.getExitValue();
 
-            Assert.assertEquals(exitValue, 0, "Getting working directory failed");
+        Assert.assertEquals(exitValue, 0, "Getting working directory failed");
 
-            Assert.assertEquals(result.getStdout().getBufferString(), dir.getAbsolutePath() + NL,
-                    "Setting/getting working directory returned unexpected output");
-        } finally {
-            FileUtils.deleteQuietly(dir);
-        }
+        Assert.assertEquals(result.getStdout().getBufferString(), dir.getAbsolutePath() + NL,
+                "Setting/getting working directory returned unexpected output");
     }
 
     @Test
