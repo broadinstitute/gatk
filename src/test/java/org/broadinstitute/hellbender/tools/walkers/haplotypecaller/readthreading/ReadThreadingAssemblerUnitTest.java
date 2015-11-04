@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -26,7 +29,13 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 public final class ReadThreadingAssemblerUnitTest extends BaseTest {
 
@@ -250,6 +259,7 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
             assembler.setRemovePathsNotConnectedToRef(false); // needed to pass some of the tests
             assembler.setRecoverDanglingBranches(false); // needed to pass some of the tests
             assembler.setDebugGraphTransformations(true);
+            assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
             final SeqGraph graph = assembler.assemble(reads, refHaplotype, Collections.<Haplotype>emptyList(), header).get(0).getGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;

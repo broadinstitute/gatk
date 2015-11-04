@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
@@ -17,8 +16,11 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class ReadThreadingGraphUnitTest extends BaseTest {
     private final static boolean DEBUG = false;
@@ -111,7 +113,7 @@ public final class ReadThreadingGraphUnitTest extends BaseTest {
         assembler.addSequence(getBytes(alt1), false);
         assembler.addSequence(getBytes(read), false);
         assembler.buildGraphIfNecessary();
-        assembler.printGraph(new File("test.dot"), 0);
+        assembler.printGraph(createTempFile("test",".dot"), 0);
 
         final List<String> oneCountVertices = Arrays.asList("NNN", "NNG", "NNC", "NGT", "NCT");
         final List<String> threeCountVertices = Arrays.asList("CAX", "AXX");
