@@ -8,11 +8,11 @@ import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.tools.picard.analysis.QualityScoreDistribution;
@@ -115,7 +115,9 @@ public final class QualityScoreDistributionSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
-        final JavaRDD<GATKRead> filteredReads = reads.filter(makeReadFilter(pfReadsOnly, alignedReadsOnly));
+        final MetricsReadFilter metricsFilter =
+            new MetricsReadFilter(this.pfReadsOnly, this.alignedReadsOnly);
+        final JavaRDD<GATKRead> filteredReads = reads.filter(read -> metricsFilter.test(read));
         final Counts result = filteredReads.aggregate(new Counts(includeNoCalls),
                 (counts, read) -> counts.addRead(read),
                 (counts1, counts2) -> counts1.merge(counts2));
@@ -142,13 +144,6 @@ public final class QualityScoreDistributionSpark extends GATKSparkTool {
             metrics.addHistogram(oqHisto);
         }
         return metrics;
-    }
-
-    private static Function<GATKRead, Boolean> makeReadFilter(final boolean pfReadOnly, final boolean alignedReadsOnly) {
-        return read -> (!pfReadOnly || !read.failsVendorQualityCheck()) &&
-                (!alignedReadsOnly || !read.isUnmapped()) &&
-                !read.isSecondaryAlignment() &&
-                !read.isSupplementaryAlignment();
     }
 
     private void saveResults(final MetricsFile<?, Byte> metrics,  final SAMFileHeader readsHeader, final String inputFileName) {
