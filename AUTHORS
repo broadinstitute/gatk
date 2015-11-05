@@ -5,12 +5,13 @@
 # because Broad Institute holds the copyright.
 
 # Names should be added to this file as
-# Name or Organization <email address>
-# The email address is not required for organizations.
+# Organization <webpage>
+# Individual Name <email address or website>
 
-# Please keep the list sorted alphabetically.
-Broad Institute, Inc.
-Cloudera Inc.
-Google Inc.
-Intel Corp.
+# Please keep the list sorted alphabetically, companies/organizations first, individuals second.
+Broad Institute, Inc. <www.broadinstitute.org>
+Cloudera Inc. <www.cloudera.com>
+Google Inc. <www.google.com>
+Intel Corp. <www.intel.com>
+Eugene Wolfson <evulfson@gmail.com>
 Nicholas Newell <nenewell@comcast.net>
