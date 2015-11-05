@@ -42,6 +42,12 @@ create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, seg_file
     preTnPos = preTn[,"stop"]
     preQc = QC(preTnDat)
     postQc = QC(tnDat)
+    write.table(round(preQc, 3), file.path( output_dir, paste(sample_name, "_preQc.txt", sep="")), 
+    	quote=FALSE, row.names=FALSE, col.names=FALSE)
+    write.table(round(postQc, 3), file.path( output_dir, paste(sample_name, "_postQc.txt", sep="")),
+    	quote=FALSE, row.names=FALSE, col.names=FALSE)
+    write.table(round(preQc-postQc,3), file.path( output_dir, paste(sample_name, "_dQc.txt", sep="")), 
+    	quote=FALSE, row.names=FALSE, col.names=FALSE)
 
     plot.fn = file.path( output_dir, paste(sample_name, "_FullGenome", ".png", sep=""))
     png(plot.fn, 12, 7, units="in", type="cairo", res=300, bg="white")
