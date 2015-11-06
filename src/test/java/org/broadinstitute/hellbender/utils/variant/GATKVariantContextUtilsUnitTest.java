@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.writer.Options;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -12,6 +15,7 @@ import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -1187,6 +1191,19 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         return tests.toArray(new Object[][]{});
     }
 
+    @Test(dataProvider = "UpdateGenotypeAfterSubsettingData")
+    public void testUpdateGenotypeAfterSubsetting(final GATKVariantContextUtils.GenotypeAssignmentMethod mode,
+                                                  final double[] likelihoods,
+                                                  final List<Allele> originalGT,
+                                                  final List<Allele> allelesToUse,
+                                                  final List<Allele> expectedAlleles) {
+        final GenotypeBuilder gb = new GenotypeBuilder("test");
+        final double[] logLikelhoods = MathUtils.normalizeFromLog(likelihoods, true, false);
+        GATKVariantContextUtils.updateGenotypeAfterSubsetting(originalGT, gb, mode, logLikelhoods, allelesToUse);
+        final Genotype g = gb.make();
+        Assert.assertEquals(new HashSet<>(g.getAlleles()), new HashSet<>(expectedAlleles));
+    }
+
     @Test()
     public void testSubsetToRef() {
         final Map<Genotype, Genotype> tests = new LinkedHashMap<>();
@@ -1306,6 +1323,21 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
                 Arrays.asList(new GenotypeBuilder(base).alleles(AA).PL(new double[]{-20, -40, 0}).AD(new int[]{0, 21}).GQ(100).make())});
 
         return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "updatePLsAndADData")
+    public void testUpdatePLsAndADData(final VariantContext originalVC,
+                                       final VariantContext selectedVC,
+                                       final List<Genotype> expectedGenotypes) {
+        final VariantContext selectedVCwithGTs = new VariantContextBuilder(selectedVC).genotypes(originalVC.getGenotypes()).make();
+        final GenotypesContext actual = GATKVariantContextUtils.updatePLsAndAD(selectedVCwithGTs, originalVC);
+
+        Assert.assertEquals(actual.size(), expectedGenotypes.size());
+        for ( final Genotype expected : expectedGenotypes ) {
+            final Genotype actualGT = actual.get(expected.getSampleName());
+            Assert.assertNotNull(actualGT);
+            assertGenotypesAreEqual(actualGT, expected);
+        }
     }
 
     // --------------------------------------------------------------------------------
@@ -1491,5 +1523,33 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         BaseUtils.fillWithRandomBases(bases, 1, bases.length);
         return bases;
     }
-}
 
+    @Test
+    public void testCreateVariantContextWriterNoOptions() {
+        final File outFile = createTempFile("testVCFWriter", ".vcf");
+        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile, null, true);
+        vcw.close();
+        final File outFileIndex = new File(outFile.getAbsolutePath() + ".idx");
+        Assert.assertTrue(outFile.exists());
+        Assert.assertFalse(outFileIndex.exists());
+    }
+
+    @Test
+    public void testCreateVariantContextWriterWithOptions() {
+        final File outFile = createTempFile("testVCFWriter", ".vcf");
+        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(
+                outFile, new SAMSequenceDictionary(), true, Options.INDEX_ON_THE_FLY, Options.ALLOW_MISSING_FIELDS_IN_HEADER);
+        vcw.close();
+        Assert.assertTrue(outFile.exists());
+        final File outFileIndex = new File(outFile.getAbsolutePath() + ".idx");
+        Assert.assertTrue(outFile.exists());
+        Assert.assertTrue(outFileIndex.exists());
+    }
+
+    @Test(expectedExceptions=IllegalArgumentException.class)
+    public void testNegativeCreateVariantContextWriter() {
+        // should throw due to lack of reference
+        final File outFile = createTempFile("testVCFWriter", ".vcf");
+        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile, null, true, Options.INDEX_ON_THE_FLY);
+    }
+}

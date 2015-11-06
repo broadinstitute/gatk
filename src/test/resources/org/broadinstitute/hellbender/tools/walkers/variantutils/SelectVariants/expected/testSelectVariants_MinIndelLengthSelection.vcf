@@ -1,0 +1,27 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=bar,Description="bar filter">
+##FILTER=<ID=baz,Description="baz filter">
+##FILTER=<ID=foo,Description="foo filter">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AlleleBalance,Number=1,Type=Float,Description="Allele balance (old name)">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DoC,Number=1,Type=Integer,Description="DP (old name)">
+##INFO=<ID=FisherStrand,Number=1,Type=Float,Description="Fisher strand (old name)">
+##INFO=<ID=HomopolymerRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">
+##INFO=<ID=MAPQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of samples">
+##INFO=<ID=OnOffGenotype,Number=1,Type=Float,Description="???">
+##INFO=<ID=RMSMAPQ,Number=1,Type=Float,Description="RMS mapping quality (old name)">
+##INFO=<ID=SB,Number=1,Type=Float,Description="Strand Bias">
+##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="Number of spanning deletions">
+##reference=human_b36_both.fasta
+##source=ArbitrarySource
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA00001	NA00002	NA00003
+1	10045603	.	AAAA	A	40.26	PASS	AF=0.50	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
+1	10045604	.	A	ACAT	41.26	PASS	AF=0.50	GT:DP:GQ	1/1:14:7	0/0:15:8	1/0:15:8

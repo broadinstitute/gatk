@@ -359,7 +359,25 @@ public final class UtilsUnitTest extends BaseTest {
                 new Object[]  { "ABCF".getBytes(), "".getBytes(), 1,0,0, true },
                 new Object[]  { "ABCF".getBytes(), "ACBF".getBytes(), 0,0, 4, false}
         };
+    }
 
+    @DataProvider(name = "booleanOccurrencesData")
+    public Object[][] booleanOccurrencesTestData() {
+        return new Object[][]{
+                new Object[]{ true, new boolean[] { }, 0 },
+                new Object[]{ false, new boolean[] { }, 0 },
+                new Object[]{ true, new boolean[] { true }, 1 },
+                new Object[]{ false, new boolean[] { true }, 0 },
+                new Object[]{ true, new boolean[] { false }, 0 },
+                new Object[]{ true, new boolean[] { true, true, true}, 3},
+                new Object[]{ false, new boolean[] { true, true, true}, 0},
+                new Object[]{ true, new boolean[] { true, true, false}, 2},
+        };
+    }
+
+    @Test(dataProvider = "booleanOccurrencesData")
+    public void testCountBooleanOccurrences(boolean element, boolean[] array, int expected) {
+        Assert.assertEquals(Utils.countBooleanOccurrences(element, array), expected);
     }
 
     /**

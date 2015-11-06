@@ -148,12 +148,12 @@ public final class MendelianViolationUnitTest extends BaseTest {
         alleles.remove(noCallAllele);
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, alleles).genotypes(context).make();
 
-        final MendelianViolation mv = new MendelianViolation(0, false);
+        final MendelianViolation mv = new MendelianViolation(0, false, false);
         final boolean actual = mv.isViolation(sMom, sDad, sChild, vc);
         Assert.assertEquals(expected, actual);
         Assert.assertEquals(gMom.isHomRef() && gDad.isHomRef() && gChild.isHet(), mv.getParentsRefRefChildHet() > 0);
 
-        final boolean actualFiltered = new MendelianViolation(GQ30+1, false).isViolation(sMom, sDad, sChild, vc);
+        final boolean actualFiltered = new MendelianViolation(GQ30+1, false, false).isViolation(sMom, sDad, sChild, vc);
         Assert.assertEquals(false, actualFiltered);
 
     }
