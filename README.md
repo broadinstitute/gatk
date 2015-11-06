@@ -230,7 +230,7 @@ Thank you for getting involved!
 * [GATK forum](http://gatkforums.broadinstitute.org/) for general discussions on how to use the GATK.
 * [Issue tracker](https://github.com/broadinstitute/gatk/issues) to report errors and enhancement ideas. 
 * Discussions also take place in github pull requests
-* For committers, we have a publicly-visible google group [gatk-dev](https://groups.google.com/a/broadinstitute.org/forum/?hl=en#!forum/gatk-dev)
+* For committers, we have a publicly-visible google group [gatk-dev-public](https://groups.google.com/a/broadinstitute.org/forum/?hl=en#!forum/gatk-dev-public)
 * For committers, we have a hipchat room at the Broad called 'Hellbender (aka GATK4)'.
 
 ##Authors
