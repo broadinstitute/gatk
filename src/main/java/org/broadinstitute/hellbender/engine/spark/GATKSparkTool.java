@@ -234,7 +234,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
         readInput = readArguments.getReadFilesNames().get(0);
         readsSource = new ReadsSparkSource(sparkContext);
-        readsHeader = ReadsSparkSource.getHeader(sparkContext, readInput, getAuthHolder());
+        //readsHeader = ReadsSparkSource.getHeader(sparkContext, readInput, getAuthHolder());
     }
 
     /**
