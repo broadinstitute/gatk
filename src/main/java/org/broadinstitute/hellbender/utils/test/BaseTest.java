@@ -279,6 +279,18 @@ public abstract class BaseTest {
     }
 
     /**
+     * Creates an empty temp directory which will be deleted on exit after tests are complete
+     *
+     * @param prefix prefix for the directory name
+     * @return an empty directory starting with prefix which will be deleted after the program exits
+     */
+    public static File createTempDir(final String prefix){
+        final File dir = IOUtils.tempDir(prefix, "");
+        IOUtils.deleteRecursivelyOnExit(dir);
+        return dir;
+    }
+
+    /**
      * Log this message so that it shows up inline during output as well as in html reports
      */
     public static void log(final String message) {
