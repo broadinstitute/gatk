@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 /**
  * Unit test for {@link GibbsSampler}.  Demonstrates application of {@link GibbsSampler} to a hierarchichal
- * {@link ParameterizedModel} that is specified using helper classes that extend from
+ * {@link ParameterizedModel} that is specified using helper classes that extend
  * {@link ParameterizedState} or implement {@link DataCollection}.
  * <p>
  *     Test performs Bayesian inference of a simple copy-ratio model with 1 global and 100 segment-level parameters.

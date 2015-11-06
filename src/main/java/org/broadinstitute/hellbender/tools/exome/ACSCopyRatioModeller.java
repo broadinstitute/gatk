@@ -4,6 +4,7 @@ import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
 import java.util.ArrayList;
@@ -33,9 +34,9 @@ public final class ACSCopyRatioModeller {
     private static final double OUTLIER_PROBABILITY_PRIOR_ALPHA = 5.;
     private static final double OUTLIER_PROBABILITY_PRIOR_BETA = 95.;
 
-    private final double coverageUniformLikelihood;
-    private final double varianceWidth;
-    private final double meanWidth;
+    private final double outlierUniformLogLikelihood;
+    private final double varianceSliceSamplingWidth;
+    private final double meanSliceSamplingWidth;
 
     private final ParameterizedModel<CopyRatioState, CopyRatioDataCollection> model;
 
@@ -58,16 +59,16 @@ public final class ACSCopyRatioModeller {
         //load segmented coverages from SegmentedModel into CopyRatioDataCollection
         final CopyRatioDataCollection data = new CopyRatioDataCollection(segmentedModel);
 
-        //the uniform outlier likelihood is determined by the minimum and maximum coverages in the dataset;
+        //the uniform log-likelihood for outliers is determined by the minimum and maximum coverages in the dataset;
         //the outlier-probability parameter should be interpreted accordingly
-        coverageUniformLikelihood = 1. / data.coverageRange;
+        outlierUniformLogLikelihood = -Math.log(data.coverageRange);
 
         //set widths for slice sampling of variance and segment-mean posteriors using empirical variance estimate.
         //variance posterior is inverse chi-squared, segment-mean posteriors are Gaussian; the below expressions
         //approximate the standard deviations of these distributions.
         final double varianceEstimate = data.estimateVariance();
-        varianceWidth = Math.sqrt(2. * varianceEstimate / data.numTargets);
-        meanWidth = Math.sqrt(varianceEstimate * data.numSegments / data.numTargets);
+        varianceSliceSamplingWidth = Math.sqrt(2. * varianceEstimate / data.numTargets);
+        meanSliceSamplingWidth = Math.sqrt(varianceEstimate * data.numSegments / data.numTargets);
 
         //use empirical segment means and empirical average variance across segments to initialize CopyRatioState
         final CopyRatioState initialState = new CopyRatioState(data);
@@ -80,27 +81,24 @@ public final class ACSCopyRatioModeller {
                 (rng, state, dataCollection) -> {
             final Function<Double, Double> logConditionalPDF = newVariance -> {
                 double ll = 0.;
-                int targetStart = 0;
                 int numNotOutliers = 0;
                 for (int segment = 0; segment < dataCollection.numSegments; segment++) {
                     final int numTargetsInSegment = dataCollection.getNumTargetsInSegment(segment);
+                    final int targetStartInSegment = dataCollection.getStartTargetInSegment(segment);
                     for (int target = 0; target < numTargetsInSegment; target++) {
                         final double coverage = dataCollection.getCoveragesInSegment(segment).get(target);
-                        if (!state.getOutlierIndicator(targetStart + target)) {
+                        if (!state.getOutlierIndicator(targetStartInSegment + target)) {
                             ll -= normalTerm(coverage, state.getMeanInSegment(segment), newVariance);
                             numNotOutliers++;
                         }
                     }
-                    targetStart += numTargetsInSegment;
                 }
                 ll -= 0.5 * Math.log(newVariance) * numNotOutliers;
                 return ll;
             };
 
-            final SliceSampler sampler =
-                    new SliceSampler(rng, logConditionalPDF, state.variance(),
-                            VARIANCE_MIN, VARIANCE_MAX, varianceWidth);
-            return sampler.sample();
+            return new SliceSampler(rng, logConditionalPDF, state.variance(),
+                    VARIANCE_MIN, VARIANCE_MAX, varianceSliceSamplingWidth).sample();
         };
 
         //samples log conditional posterior for the outlier-probability parameter, assuming Beta(alpha, beta) prior;
@@ -125,54 +123,58 @@ public final class ACSCopyRatioModeller {
         //  log[product_{non-outlier t in s} exp(-(coverage_t - mean_s)^2 / (2 * variance))] + constant
         final Sampler<SegmentMeans, CopyRatioState, CopyRatioDataCollection> segmentMeansSampler =
                 (rng, state, dataCollection) -> {
-            final List<Double> means = new ArrayList<>();
-            int j = 0;
+            final List<Double> means = new ArrayList<>(dataCollection.numSegments);
             for (int i = 0; i < dataCollection.numSegments; i++) {
-                //segment, targetStart, and numTargetsInSegment need to be effectively final to be usable in lambda
+                //segment, targetStartInSegment, and numTargetsInSegment need to be effectively final in lambda
                 final int segment = i;
-                final int targetStart = j;
+                final int targetStartInSegment = dataCollection.getStartTargetInSegment(segment);
                 final int numTargetsInSegment = dataCollection.getNumTargetsInSegment(segment);
                 final Function<Double, Double> logConditionalPDF = newMean -> {
                     double ll = 0.;
                     for (int target = 0; target < numTargetsInSegment; target++) {
                         final double coverage = dataCollection.getCoveragesInSegment(segment).get(target);
-                        if (!state.getOutlierIndicator(targetStart + target)) {
+                        if (!state.getOutlierIndicator(targetStartInSegment + target)) {
                             ll -= normalTerm(coverage, newMean, state.variance());
                         }
                     }
                     return ll;
                 };
-                j += numTargetsInSegment;
 
                 final SliceSampler sampler =
-                        new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment), meanWidth);
+                        new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment),
+                                meanSliceSamplingWidth);
                 means.add(sampler.sample());
             }
             return new SegmentMeans(means);
         };
 
         //samples log conditional posteriors for the outlier-indicator parameters; for each target t, this is given by:
-        //          z_t * [log pi_o - log (c_max - c_min)]
-        //  + (1 - z_t) * [log(1 - pi_o) - log(2 * pi * variance)/2 - (coverage_t - mean_t)^2 / (2 * variance)] + const
-        //where z_t is the indicator for target t, and pi_o is the outlier probability.
+        //          z_t * [log outlier_prob + outlierUniformLogLikelihood]
+        //  + (1 - z_t) * [log(1 - outlier_prob) - log(2 * pi * variance)/2 - (coverage_t - mean_t)^2 / (2 * variance)]
+        //  + const
+        //where z_t is the indicator for target t, and outlier_prob is the outlier probability.
         //note that we compute the normalizing constant, so that we can sample a new indicator value by simply sampling
         //uniformly in [0, 1] and checking whether the resulting value is less than the probability of being an outlier
         //(corresponding to the first line in the unnormalized expression above)
         final Sampler<OutlierIndicators, CopyRatioState, CopyRatioDataCollection> outlierIndicatorsSampler =
                 (rng, state, dataCollection) -> {
             final List<Boolean> indicators = new ArrayList<>();
-            final double outlierTerm = state.outlierProbability() * coverageUniformLikelihood;
-            final double notOutlierNormalizationTerm =
-                    (1. - state.outlierProbability()) / Math.sqrt(2 * Math.PI * state.variance());
+            final double outlierUnnormalizedLogProbability =
+                    Math.log(state.outlierProbability()) + outlierUniformLogLikelihood;
+            final double notOutlierUnnormalizedLogProbabilityPrefactor =
+                    Math.log(1. - state.outlierProbability()) - 0.5 * Math.log(2 * Math.PI * state.variance());
             for (int segment = 0; segment < dataCollection.numSegments; segment++) {
                 final int numTargetsInSegment = dataCollection.getNumTargetsInSegment(segment);
                 for (int target = 0; target < numTargetsInSegment; target++) {
                     final double coverage = dataCollection.getCoveragesInSegment(segment).get(target);
-                    final double notOutlierTerm =
-                            notOutlierNormalizationTerm *
-                                    Math.exp(-normalTerm(coverage, state.getMeanInSegment(segment), state.variance()));
-                    final double conditionalProbability = outlierTerm / (outlierTerm + notOutlierTerm);
-                    indicators.add(rng.nextDouble() <= conditionalProbability);
+                    final double notOutlierUnnormalizedLogProbability =
+                            notOutlierUnnormalizedLogProbabilityPrefactor
+                                    - normalTerm(coverage, state.getMeanInSegment(segment), state.variance());
+                    final double conditionalProbability =
+                            MathUtils.normalizeFromLog(new double[]{
+                                    outlierUnnormalizedLogProbability,
+                                    notOutlierUnnormalizedLogProbability})[0];
+                    indicators.add(rng.nextDouble() < conditionalProbability);
                 }
             }
             return new OutlierIndicators(indicators);
@@ -321,6 +323,7 @@ public final class ACSCopyRatioModeller {
 
         private final List<List<Double>> coveragesPerSegment = new ArrayList<>();
         private final List<Integer> numTargetsPerSegment;
+        private final List<Integer> startTargetsPerSegment = new ArrayList<>();
 
         private CopyRatioDataCollection(final SegmentedModel segmentedModel) {
             //construct coverages and number of targets per segment from the segments and Genome in SegmentedModel
@@ -328,7 +331,7 @@ public final class ACSCopyRatioModeller {
             //construct list of coverages (in order corresponding to that of segments in SegmentedModel;
             //this may not be in genomic order, depending on how the segments are sorted in the segment file,
             //so we cannot simply take the list of coverages in the order from TargetCollection.targets()
-            final List<Double> coverages = new ArrayList<>();
+            final List<Double> coverages = new ArrayList<>((int) targetCoverages.exomeSize());
             segmentedModel.getSegments().stream()
                     .map(s -> targetCoverages.targets(s).stream().map(TargetCoverage::getCoverage)
                             .collect(Collectors.toList()))
@@ -342,6 +345,7 @@ public final class ACSCopyRatioModeller {
             //partition coverages by segment
             int startTarget = 0;
             for (int segment = 0; segment < numSegments; segment++) {
+                startTargetsPerSegment.add(startTarget);
                 final int numTargetsInSegment = numTargetsPerSegment.get(segment);
                 coveragesPerSegment.add(coverages.subList(startTarget, startTarget + numTargetsInSegment));
                 startTarget += numTargetsInSegment;
@@ -356,6 +360,10 @@ public final class ACSCopyRatioModeller {
             return numTargetsPerSegment.get(segment);
         }
 
+        private int getStartTargetInSegment(final int segment) {
+            return startTargetsPerSegment.get(segment);
+        }
+
         //estimate global variance empirically by taking average of all per-segment variances
         private double estimateVariance() {
             final double[] variancesPerSegment = new double[numSegments];
@@ -367,7 +375,7 @@ public final class ACSCopyRatioModeller {
 
         //estimate segment means empirically by taking averages of coverages in each segment
         private SegmentMeans estimateSegmentMeans() {
-            final List<Double> means = new ArrayList<>();
+            final List<Double> means = new ArrayList<>(numSegments);
             for (int segment = 0; segment < numSegments; segment++) {
                 means.add(new Mean().evaluate(Doubles.toArray(getCoveragesInSegment(segment))));
             }
