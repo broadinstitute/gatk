@@ -92,7 +92,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
         Assert.assertEquals(getReadCounts(outFile.getAbsolutePath()), 5);
 
         File expectedFile = new File(expectedFilePath, "testBAM.bam");
-        IntegrationTestSpec.assertEqualBamFiles(outFile, expectedFile);
+        IntegrationTestSpec.assertEqualBamFiles(outFile, expectedFile, false);
     }
 
     private void testWriteToFile

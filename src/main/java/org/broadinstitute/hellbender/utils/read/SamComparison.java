@@ -485,6 +485,20 @@ public final class SamComparison {
         return missingRight;
     }
 
+    /**
+     * Returns true if the headers are equal, false otherwise.
+     */
+    public boolean areHeadersEqual(){
+        return headersAreEqual;
+    }
+
+    /**
+     * Returns true if the alignments are equal, false otherwise.
+     */
+    public boolean areAlignmentsEqual(){
+        return alignmentsAreEqual;
+    }
+
     public boolean areEqual() {
         return headersAreEqual && alignmentsAreEqual;
     }

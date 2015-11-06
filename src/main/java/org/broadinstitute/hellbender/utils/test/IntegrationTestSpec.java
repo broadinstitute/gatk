@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -28,11 +30,17 @@ public final class IntegrationTestSpec {
     private final int nOutputFiles;
     private final List<String> expectedFileNames;
 
+    //If this field is set to true, bam files will be compared after they get sorted.
+    //This is needed as a workaround because Spark tools don't respect a pre-ordered BAMs
+    // and so may create BAMs that are sorted differently than the input (though both orders will be valid).
+    private boolean compareBamFilesSorted;
+
     public IntegrationTestSpec(String args, List<String> expectedFileNames) {
         this.args = args;
         this.nOutputFiles = expectedFileNames.size();
         this.expectedException = null;
         this.expectedFileNames = expectedFileNames;
+        this.compareBamFilesSorted = false;
     }
 
     public IntegrationTestSpec(String args, int nOutputFiles, Class<?> expectedException) {
@@ -43,6 +51,7 @@ public final class IntegrationTestSpec {
         this.nOutputFiles = nOutputFiles;
         this.expectedException = expectedException;
         this.expectedFileNames = null;
+        this.compareBamFilesSorted = false;
     }
 
     public boolean expectsException() {
@@ -53,6 +62,10 @@ public final class IntegrationTestSpec {
         if (!expectsException())
             throw new GATKException("Tried to get exception for walker test that doesn't expect one");
         return expectedException;
+    }
+
+    public void setCompareBamFilesSorted(final boolean compareBamFilesSorted){
+        this.compareBamFilesSorted = compareBamFilesSorted;
     }
 
     public String getArgs() {
@@ -102,7 +115,7 @@ public final class IntegrationTestSpec {
         executeTest(testName, testClass, args, expectedException);
 
         if (expectedException == null && !expectedFileNames.isEmpty()) {
-            assertMatchingFiles(tmpFiles, expectedFileNames);
+            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted);
         }
     }
 
@@ -149,14 +162,14 @@ public final class IntegrationTestSpec {
         }
     }
 
-    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles) throws IOException {
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
             final File resultFile = resultFiles.get(i);
             final String expectedFileName = expectedFiles.get(i);
             final File expectedFile = new File(expectedFileName);
             if (expectedFileName.endsWith(".bam")){
-                assertEqualBamFiles(resultFile, expectedFile);
+                assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted);
             } else {
                 assertEqualTextFiles(resultFile, expectedFile);
             }
@@ -183,8 +196,27 @@ public final class IntegrationTestSpec {
         Assert.assertEquals(actualLines.toString(), expectedLines.toString());
     }
 
-    public static void assertEqualBamFiles(final File resultFile, final File expectedFile) throws IOException {
-        SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
+    public static void assertEqualBamFiles(final File resultFile, final File expectedFile, final boolean compareBamFilesSorted) throws IOException {
+
+        if (compareBamFilesSorted) {
+            final File resultFileSorted= BaseTest.createTempFile("resultsFileSorted", ".bam");
+            final File expectedFileSorted = BaseTest.createTempFile("expectedFileSorted", ".bam");
+
+            sortSam(resultFile, resultFileSorted);
+            sortSam(expectedFile, expectedFileSorted);
+
+            SamAssertionUtils.assertSamsEqual(resultFileSorted, expectedFileSorted);
+        } else {
+            SamAssertionUtils.assertSamsEqual(resultFile, expectedFile);
+        }
+    }
+
+    private static void sortSam(final File input, final File output) {
+        final SortSam sort1 = new SortSam();
+        sort1.INPUT = input;
+        sort1.OUTPUT = output;
+        sort1.SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
+        sort1.runTool();
     }
 
 }

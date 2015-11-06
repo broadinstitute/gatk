@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.samples;
 
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
