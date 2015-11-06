@@ -84,7 +84,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.ADAM);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getADAMReads(outputDirectory.getAbsolutePath(), header);
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getADAMReads(outputDirectory.getAbsolutePath(), null, header);
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
 
         // Test the round trip

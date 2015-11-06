@@ -38,6 +38,22 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
     }
 
     @Test
+    public void test_ADAM() throws IOException {
+        //Note we compare to non-spark outputs
+        final File adamFile = new File(TEST_DATA_DIR, "first5000a.adam");
+        final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
+        final File outfile = BaseTest.createTempFile("testMeanQualityByCycleADAM", ".metrics");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(adamFile.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outfile.getCanonicalPath());
+        this.runCommandLine(args.getArgsArray());
+
+        IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
+    }
+
+    @Test
     public void test_PF_READS_ONLY_false() throws IOException {
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
