@@ -23,7 +23,8 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * Git 2.5
 
-* The [git-lfs plugin](https://git-lfs.github.com/). Run `git lfs init` after installing, followed by `git lfs pull` to download the large files.  We recommend v0.6.0 but newer versions may also work.
+* [git-lfs](https://git-lfs.github.com/) 1.0.2 is needed to to download large files for the complete test suite.  
+Run `git lfs init` after installing, followed by `git lfs pull` to download the large files.   (The download is ~500 MB)
 
 
 ##Installation
