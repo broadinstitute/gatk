@@ -6,6 +6,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import scala.Tuple2;
@@ -33,9 +34,13 @@ class Utils implements Serializable {
     private static final long serialVersionUID = 1L;
 
     static String key(GATKRead r) {
-        if (r.isUnmapped()) {
-            return r.getFragmentLength() + "," + r.getName().hashCode();
+        try {
+            if (r.isUnmapped()) {
+                return r.getFragmentLength() + "," + r.getName().hashCode();
+            }
+            return r.getContig() + "," + ReadUtils.getStrandedUnclippedStart(r) + "," + ReadUtils.readHasMappedMate(r);
+        } catch (java.lang.IllegalArgumentException e) {
+            throw new RuntimeException("found the bad record: " + r.getContig() + "," + r.getStart());
         }
-        return r.getContig() + "," + ReadUtils.getStrandedUnclippedStart(r) + "," + ReadUtils.readHasMappedMate(r);
     }
 }
