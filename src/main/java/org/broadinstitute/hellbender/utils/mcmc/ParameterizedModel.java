@@ -58,9 +58,6 @@ public final class ParameterizedModel<S1 extends AbstractParameterizedState, T1 
          * @param stateClass        class of AbstractParameterizedState held by the model
          */
         public GibbsBuilder(final S2 state, final T2 dataCollection, final Class<S2> stateClass) {
-            if (dataCollection.size() == 0) {
-                throw new IllegalArgumentException("The collection of datasets cannot be empty.");
-            }
             this.state = state;
             this.dataCollection = dataCollection;
             this.stateClass = stateClass;

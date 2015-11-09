@@ -4,7 +4,6 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.plotter.CopyRatioSegmentedPlotter;
-
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
