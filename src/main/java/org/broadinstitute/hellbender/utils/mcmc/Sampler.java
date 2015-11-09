@@ -10,6 +10,7 @@ import org.apache.commons.math3.random.RandomGenerator;
  * @param <S>   type of AbstractParameterizedState
  * @param <T>   type of DataCollection
  */
+@FunctionalInterface
 public interface Sampler<U, S extends AbstractParameterizedState, T extends DataCollection> {
     /**
      * Returns a random sample of a quantity that is dependent on an {@link AbstractParameterizedState} and a

@@ -87,9 +87,9 @@ For notational convenience we give $z_j$ a one-of-$K$ encoding $z_j = (z_{ja}, z
 The contribution of site $j$ to the likelihood is
 %
 \begin{equation}
-P(a_j, r_j | f_s, \lambda_j, z_j) =  \binom{n_j}{a_j}  
-\left[ \frac{f_s^{a_j} (1 - f_s)^{r_j} \lambda_j^{r_j}}{ \left( f_s + (1-f_s) \lambda_j \right)^{n_j}} \right]^{z_{ja}}   
-\left[ \frac{(1-f_s)^{a_j} f_s^{r_j} \lambda_j^{r_j}}{ \left( 1 - f_s + f_s \lambda_j \right)^{n_j}} \right]^{z_{jr}}   
+P(a_j, r_j | f_j, \lambda_j, z_j) =  \binom{n_j}{a_j}  
+\left[ \frac{f_j^{a_j} (1 - f_j)^{r_j} \lambda_j^{r_j}}{ \left( f_j + (1-f_j) \lambda_j \right)^{n_j}} \right]^{z_{ja}}   
+\left[ \frac{(1-f_j)^{a_j} f_j^{r_j} \lambda_j^{r_j}}{ \left( 1 - f_j + f_j \lambda_j \right)^{n_j}} \right]^{z_{jr}}   
 \left[ \frac{a_j! r_j!}{(n_j + 1)!} \right]^{z_{jo}}
 \label{likelihood}
 \end{equation}
@@ -109,7 +109,7 @@ Finally, the indicator $z_j$ is a multinomial random variable distributed accord
 \begin{equation}
 P(z_{ja(r,o)} = 1 | {\bf \pi}) = \pi_{a(r,o)}
 \end{equation}
-We set the alt and ref minor probabilities equal so that the only free parameter is $\pi_o$, with $\pi_{a(r)} = (1 - \pi_o)/2$.
+We set the alt and ref minor probabilities equal so that the only free parameter is $\pi = \pi_o$, with $\pi_{a(r)} = (1 - \pi)/2$.
 %
 The Bayesian network corresponding to this model is shown in Figure \ref{graphical_model}.
 \begin{figure}
@@ -122,83 +122,61 @@ $
 \caption{Graphical model for \ACS} 
 \end{figure}
 
-As with the other parameters, we put a flat prior on ${\rm \pi}$.  Putting all the pieces together the complete-data likelihood is
+As with the other parameters, we put a flat prior on ${\rm \pi}$.  Putting all the pieces together the likelihood is
 \begin{equation}
-P(f, a, r, z, \lambda, \alpha, \beta) = \prod_s \prod_{j \in s} P(a_j, r_j | f_s, \lambda_j, z_j) P(z_j | {\rm \pi}) P(\lambda_j | \alpha, \beta),
+\mathbb{L} =\prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha - 1} e^{-\beta \lambda_j}
+\left[ \frac{(1-\pi) f_j^{a_j} (1 - f_j)^{r_j} \lambda_j^{r_j}}{ \left( f_j + (1-f_j) \lambda_j \right)^{n_j}} \right]^{z_{ja}}   
+\left[ \frac{(1-\pi) (1-f_j)^{a_j} f_j^{r_j} \lambda_j^{r_j}}{ \left( 1 - f_j + f_j \lambda_j \right)^{n_j}} \right]^{z_{jr}}   
+\left[ \frac{2 \pi a_j! r_j!}{(n_j + 1)!} \right]^{z_{jo}}.
+\label{likelihood}
 \end{equation}
 %
-where the shorthand $j \in s$ means that het site $j$ belongs to segment $s$.
-
-We can read off the conditional probabilities necessary for Gibbs sampling from the model.  Up to constant factors the conditional on the outlier probability is,
-%
-\begin{align}
-P(\pi_o | \{ z_j \}) \propto \pi_o^{N_{\rm o}} (1 - \pi_o)^{N - N_o},
-\label{conditional_on_pi}
-\end{align}
-%
-where $N_o = \sum_j z_{jo}$ is the number of indicator variables in the outlier state.  Thus the conditional distribution on $\pi_o$ given $\{ z_j \}$ is ${\rm Beta}(N_o, N - N_o)$.
-
-The conditional distribution on $f_s$ is the product of likelihoods over sites $j \in s$:
+The dependence on $\lambda$ for alt minor sites is
 %
 \begin{equation}
-P(f_s | a, r, \lambda, z) \propto \prod_{j \in s}
-\left[ \frac{f_s^{a_j} (1 - f_s)^{r_j}}{ \left( f_s + (1-f_s) \lambda_j\right)^{n_j}} \right]^{z_{ja}}   
-\left[ \frac{(1-f_s)^{a_j} f_s^{r_j} }{ \left( 1 - f_s + f_s \lambda_j\right)^{n_j}} \right]^{z_{jr}}   
-\label{conditional_on_f}
+g(\lambda_j, \alpha, \beta, f_j, a_j, r_j) = \frac{\beta^\alpha}{\Gamma(\alpha)}  \frac{ f_j^{a_j} (1 - f_j)^{r_j}  \lambda_j^{\alpha + r_j - 1} e^{-\beta \lambda_j}}{ \left( f_j + (1-f_j) \lambda_j \right)^{n_j}}.
 \end{equation}
+For ref minor sites the dependence is the same but with $f \leftrightarrow 1 - f$.  We show in show in Appendix \ref{marginalizing} that this function can be integrated analytically, and thus we can marginalize $\lambda$ out of the model to obtain the likelihood
 %
-Since, in general $\lambda_j \approx 1$, this conditional approximately reduces to ${\rm Beta}(N^s_{\rm AA} + N^s_{\rm RR}, N^s_{\rm AR} + N^s_{\rm RA})$, where e.g. $N_{AR} = \sum_{j \in s} z_{ja} r_j$ is the total number of ref reads in alt minor sites.   This is the posterior distribution of the minor allele fraction given $N^s_{\rm AA} + N^s_{\rm RR}$ observations of minor alleles and $N^s_{\rm AR} + N^s_{\rm RA}$ of non-minor alleles.  Actually using this approximation would defeat the purpose of modeling the allelic bias, but it gives us a good sense of the shape of the posterior -- it is very likely to be unimodal, hence amenable to simple univariate slice sampling.
-
-The conditional distribution on $\lambda_j$ is the product of the likelihood term for site $j$ with ${\rm Gamma}(\alpha, \beta)$.  
-%
-\begin{align}
-P(\lambda_j | a_j, r_j, f_s, z_j) \propto & \left[  \frac{\lambda_j^{r_j}}{ \left( f_s + (1-f_s) \lambda_j \right)^{n_j}} \right]^{z_{ja}}   
-\left[  \frac{\lambda_j^{r_j}}{ \left( 1 - f_s + f_s \lambda_j \right)^{n_j}} \right]^{z_{jr}}   
-\lambda_j^{\alpha-1} e^{- \beta \lambda_j} \\
-= &
-\left( f_s + (1-f_s) \lambda_j \right)^{-n_j  (z_{ja} + z_{jr})} \lambda_j^{r_j (z_{ja} + z_{jr}) + \alpha-1} e^{- \beta \lambda_j} 
-\label{conditional_on_lambda}
-\end{align}
-%
-This conditional distribution is also easily sampled from via univariate slice sampling.
-
-The conditional on $\beta$ is
 \begin{equation}
-P(\beta | \alpha, \lambda) \propto \beta^{N \alpha} e^{- \sum_j \lambda_j \beta},
-\label{conditional_on_beta}
+\prod_j 
+\left[ \frac{1-\pi}{2} \phi(\alpha, \beta, f_j, a_j, r_j)  \right]^{z_{ja}}   
+\left[ \frac{1-\pi}{2} \phi(\alpha, \beta, 1 - f_j, a_j, r_j)  \right]^{z_{jr}}   
+\left[ \frac{ \pi a_j! r_j!}{(n_j + 1)!}  \right]^{z_{jo}},
+\label{marginalized}
 \end{equation}
-which is the gamma distribution $\Gamma(N \alpha + 1, \sum_j \lambda_j)$.
-
-The conditional on $\alpha$ is
+%
+where $\phi(\alpha, \beta, f_j, a_j, r_j) = \int_0^\infty g(\lambda, \alpha, \beta, f, a, r) \, d \lambda_j$.  Pseudocode for computing $\phi$ is presented in Appendix \ref{marginalizing}.  Furthermore, marginalizing out $z$ is trivial -- simply sum each term over its three possible states.  We then have a collapsed likelihood
+%
 \begin{equation}
-P(\alpha | \beta, \lambda) \propto \frac{\exp \left[ \left( N \ln \beta + \sum_j \ln \lambda_j \right) \alpha \right]}{\Gamma(\alpha)^N}
-\label{conditional_on_alpha}
+p(f,\alpha, \beta, \pi) \propto \prod_j 
+\left[    \frac{1-\pi}{2} \phi(\alpha, \beta, f_j, a_j, r_j)  +
+\frac{1-\pi}{2} \phi(\alpha, \beta, 1 - f_j, a_j, r_j)  +
+ \frac{ \pi a_j! r_j!}{(n_j + 1)!}    \right]
+ \label{collapsed}
 \end{equation}
-which is not of a standard form but is efficient to compute and thus amenable to univariate slice sampling.
-
-Finally, $z_j$ is a categorical variable with priors given by ${\rm \pi}$, and its posterior can be obtained simply by plugging in its three possible values into the likelihood.
-
-Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACS_MCMC}:
+%
+Integrating out the latent variables removes the strongest correlations from the model -- intuitively, $f$ should not be too sensitive to $\alpha$ and $\beta$, for example -- and significantly improves mixing.  The exception is $\alpha$ and $\beta$, since adjusting one with the other fixed changes the mean of the prior on $\lambda$.  Thus we reparameterize in terms of $\mu$ and $\beta$, where $\alpha = \mu \beta$ ($\mu$ is the mean of ${\rm Gamma}(\alpha, \beta)$.  Due to the weak correlations our MCMC method does not need to be very sophisticated.  We choose to sample each variable with one-dimensional adaptive Metropolis, tuning the proposal step size to achieve some reasonable acceptance rate like $0.4$ or so.  Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACS_MCMC}:
 
 \begin{algorithm}
 \begin{algorithmic}[1]
-\State Initialize $z_j$ to be alt minor if $a_j  < r_j$, ref minor otherwise.
-\State Initialize $f_s = \left( N^s_{\rm AA} + N^s_{\rm RR} \right) / \left(N^s_{\rm AR} + N^s_{\rm RA} \right)$
-\State Initialize $\lambda$ randomly and approximately equal to $1$.
+\ForAll{segments $s$}
+	\State Initialize $f_s = \sum_{j \in s} {\rm min}(a_j, r_j) / \sum_{j \in s} n_j$
+\EndFor
+\State Initialize $\mu = 1$
+\State Initialize $\beta = 10$
+\State Initialize $\pi = 0.01$
 \Repeat
-	\State Slice sample each $f_s$  from the conditional Eq. \ref{conditional_on_f}.
-	\ForAll{sites $j$}
-		\State Slice sample $\lambda_j$ from the conditional Eq. \ref{conditional_on_lambda}.
-		\State Sample $z_j$ from the categorical distribution defined by Eq. \ref{likelihood}.
-	\EndFor
-	\State Sample $\pi_o$ from the beta conditional Eq. \ref{conditional_on_pi}.
-	\State Sample $\beta$ from the gamma conditional Eq. \ref{conditional_on_beta}.
-	\State Slice sample $\alpha$ from the conditional Eq. \ref{conditional_on_alpha}.
+	\State Sample each $f_s$ with adaptive Metropolis
+	\State Sample $\pi$ with adaptive Metropolis
+	\State Sample $\mu$ with adaptive Metropolis
+	\State Sample $\beta$ with adaptive Metropolis
 \Until{convergence}
 \end{algorithmic}
 \caption{MCMC algorithm for \ACS}
 \label{ACS_MCMC}
 \end{algorithm}
+
 \subsection{Target/SNP segment union} \label{targetsnp-segment-union}
 
 \SL{DB can fill this in.}
@@ -315,89 +293,176 @@ The EM algorithm for DMM inference is summarized in Algorithm \ref{DMM}.
 
 Returning to our original task, we obtain three mixture components with Dirichlet parameters $(\alpha_{k1}, \alpha_{k2})$.  The mean proportion of alt reads (WLOG we choose $m = 1$ to be alt and $m=2$ to be ref) are $\alpha_{k1}/(\alpha_{k1} + \alpha_{k2})$, so we can assign mixture labels $k = 1, 2, 3$ to genotypes by comparing these proportions to $0$ (hom ref), $1/2$ (het) and $1$ (hom alt). The posterior probability $\bar{z}_{jk}$ is the probability that site $j$ has genotype $k$, which is exactly what we need for a probabilistic het pulldown.
 
-\subsection{Improving \ACS ~model sampling} \label{ACS_aux_variable}
-The \ACS model likelihood has thorny factors of the form $\left( f_s + (1 - f_s) \lambda_j \right)^{-n_j}$ (and `` $f \leftrightarrow 1 - f$ '').  Other than these, everything comes from exponential family distributions, is log-concave etc.  If we could rid ourselves of this term and replace it with a standard distribution we could greatly speed our Gibbs sampling.  Consider the identities
-%
-\begin{align}
-\left( f_s + (1 - f_s) \lambda_j \right)^{-n_j} =& \frac{1}{\Gamma(n_j)} \int_0^\infty w_j^{n_j - 1} e^{-\left( f_s + (1 - f_s) \lambda_j \right) w_j} \, dw_j \\
-\left( 1 - f_s + f_s \lambda_j \right)^{-n_j} =& \frac{1}{\Gamma(n_j)} \int_0^\infty w_j^{n_j - 1} e^{-\left(1 -  f_s + f_s \lambda_j \right) w_j} \, dw_j \\
-1 = & \frac{1}{\Gamma(n_j)} \int_0^\infty w_j^{n_j - 1} e^{-w_j} \, dw_j
-\end{align}
-%
-Applying these to the likelihood terms when $z_{ja} = 1$, $z_{zr} = 1$, and $z_{jo} = 1$ respectively we see that if we augment the state space with an auxiliary variable $w_j$ for each het site we may replace the likelihood Eq. \ref{likelihood} with the more tractable
-\begin{equation}
-P(a_j, r_j | f_s, \lambda_j, w_j, z_j) \propto w_j^{n_j - 1}
-\left[ f_s^{a_j} (1 - f_s)^{r_j} \lambda_j^{r_j}  e^{-\left( f_s + (1-f_s) \lambda_j \right)w_j} \right]^{z_{ja}}   
-\left[ (1-f_s)^{a_j} f_s^{r_j} \lambda_j^{r_j} e^{-\left( 1 - f_s + f_s \lambda_j \right)w_j} \right]^{z_{jr}}   
-\left[ \frac{a_j! r_j!}{(n_j + 1)!} e^{-w_j}\right]^{z_{jo}}
-\label{augmented_likelihood}
-\end{equation}
-%
-The complete-data likelihood becomes
-\begin{equation}
-P(f, a, r, z, \lambda, w, \alpha, \beta) = \prod_s \prod_{j \in s} P(a_j, r_j | f_s, \lambda_j, w_j,  z_j) P(z_j | {\rm \pi}) P(\lambda_j | \alpha, \beta),
-\end{equation}
-%
-with the terms $P(z_j | {\rm \pi})$ and $P(\lambda_j | \alpha, \beta)$ unchanged from above.  The virtues of this ``de-marginalization'' are apparent when we consider conditional probabilities.  The conditional on $w_j$ is
-%
-\begin{equation}
-P(w_j | a_j, r_j, f_s, \lambda_j, z_j) \propto w_j^{n_j - 1} e^{- \left[ \left( f_s + (1-f_s) \lambda_j \right) z_{ja} + \left( 1 - f_s + f_s \lambda_j \right) z_{jr} + z_{jo} \right] w_j},
-\label{augmented_conditional_on_w}
-\end{equation}
-%
-which is a gamma distribution.  The conditional on $\lambda_j$ is
-%
-\begin{equation}
-\lambda_j^{ (z_{ja} + z_{jr})r_j + \alpha - 1} e^{-\left[ (1-f_s) w_j z_{ja} + f_s w_j z_{jr} + \beta \right] \lambda_j},
-\label{augmented_conditional_on_lambda}
-\end{equation}
-another gamma distribution.  The conditional on $f_s$ is
-%
-\begin{equation}
-P(f_s | a, r, \lambda, w, z) = f_s^{\sum_{j \in s} (a_j z_{ja} + r_j z_{jr})}  (1-f_s)^{\sum_{j \in s} (a_j z_{jr} + r_j z_{ja})} e^{ \sum_{j \in s} (\lambda_j w_j - 1) (z_{ja} - z_{jr})f_s}.
-\label{augmented_conditional_on_f}
-\end{equation}
-%
-Although this is not a standard distribution, it is the product of only three factors, as opposed to one factor for each $j \in s$, a great improvement.  Furthermore, it is of the form $f^a (1-f)^b e^{c f}$.  It turns out that functions of this form on $[0,1]$ can be approximated extremely well by a beta distribution\footnote{I have an interactive SAGE notebook verifying this claim for a wide range of parameters, but now that I know it empirically to be true an analytic proof shouldn't be too hard.} proportional to $f^\sigma (1-f)^\tau$.  Thus if we use this beta distribution as a proposal distribution for Metropolis-Hastings sampling of the conditional Eq. \ref{augmented_conditional_on_f} we will obtain essentially perfect, uncorrelated samples with a single step.  That is, we can achieve the ideal state of Gibbs sampling.  To obtain the desired approximation, we match first and second derivatives of the log-conditional with the log of the beta approximation at the mode of the log-conditional.  This can all be done analytically.  The mode $f_0$ is given by
-%
-\begin{equation}
-f_0 = \frac{-(a+b) + c + \sqrt{(a+b)^2 + 2(a-b)c + c^2} }{2c}
-\end{equation}
-%
-and the result of matching derivatives is
-\begin{equation}
-\sigma = a + c f_0^2, \, \tau = -c f_0^2 + 2 c f_0 + b - c.
-\end{equation}
-%
-The higher-level parameters $\alpha$, $\beta$, and $\pi_o$, and the indicators $z_j$ are unaffected by this change and are sampled as before.  To summarize what we have accomplished by adding auxiliary variables, we now have perfect, uncorrelated draws from the conditional distribution of every variable using standard distributions (beta, gamma, categorical), the parameters of which are obtained from simple arithmetic.  The only exception is $\alpha$, which we must still slice-sample, but that only occurs once per Gibbs sweep.  The computational savings ought to be enormous.
-
-\subsection{\ACS ~hyperparameter sampling} \label{ACS_hyper}
-In general, high-level parameters, such as the hyperparameters $\alpha$ and $\beta$ of our \ACS~model are hard to sample because consecutive MCMC samples tend to be highly correlated leading to low effective sample sizes even with many iterations.  This is seen as follows: at any iteration we have values of $\alpha$ and $\beta$ that define some mean ($\alpha/\beta^2$) of the $\{ \lambda_j \}$.  When we Gibbs sample the $\{ \lambda_j \}$, the sampling mean will then tend to be near $\alpha/\beta^2$.  Then $\alpha$ and $\beta$ will in turn be sampled so as to reproduce this mean and the sampling gets entangled in its current value.  This effect worsens as $N$ increases.
-
-This could be averted if we could sample from the joint conditional $P(\alpha, \beta, \lambda | w, f, z)$, thereby exactly accounting for any correlations.  This is intractable, but we could obtain the same benefits by sampling $\alpha$ and $\beta$ from the \textit{marginalized} conditional 
-%
-\begin{equation}
-P(\alpha, \beta | w, f, z) = \int P(\alpha, \beta, \lambda | w, f, z) \, d^N \lambda.
-\end{equation}
-%
-This approach is called \textit{collapsed Gibbs sampling}.  It is not equivalent to completely marginalizing the $\{ \lambda_j \}$ out of our model, because this would render the conditionals on the $\{ w_j \}$ intractable.  Rather, they are marginalized only for sampling the hyperparameters.  This is made possible by the auxiliary hyperparameters $\{ w_j \}$, which render the $\{ \lambda_j \}$ conditionally gamma and thus easy to integrate out analytically. 
-%
-\begin{align}
-P(\alpha, \beta | w, f, z) =& \int P(\alpha, \beta, \lambda | w, f, z) \, d^N \lambda \\
-=& \prod_j \int \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha_j + \alpha - 1} e^{-(\beta_j + \beta) \lambda_j} \, d \lambda_j \\
-=& \prod_j \frac{\Gamma(\alpha_j + \alpha)}{\Gamma(\alpha)} \frac{\beta^\alpha}{(\beta_j + \beta)^{\alpha_j + \alpha}}
-\end{align}
-%
-where $\alpha_j = (z_{ja} + z_{jr}) r_j$ and $\beta_j = \left( (1-f_s)z_{ja} + f z_{jr} \right) w_j$.
-
-Since $\alpha$ and $\beta$ are correlated, naively alternating Gibbs sampling of $\alpha$ and $\beta$ may be slow.  A natural choice of variables is the mean $\mu$ and standard deviation $\sigma$ (of ${\rm Gamma}(\alpha, \beta)$, in terms of which $\alpha = \mu^2/\sigma^2$ and $\beta = \mu/\sigma^2$.  Intuitively these ought to be weakly-coupled.  Empirically we find that the conditionals on $\mu$ and $\sigma$ are always unimodal\footnote{For $\mu$ this is actually pretty simple to show analytically.} and thus sampling is straightforward.  Slice sampling is a reasonable method to use.
-
 \subsection{Model-comparison test for segment merging} \label{likelihood-based-segment-merging}
 
 \SL{I'll fill this in once it's worked out.}
 
 %%%APPENDICES
 \appendix
+
+\section{Marginalizing out latent variables of the \ACS model} \label{marginalizing}
+We wish to evaluate
+%
+\begin{equation}
+\phi(\alpha, \beta, f, a, r) = \int_0^\infty g(\lambda, \alpha, \beta, f, a, r) \, d \lambda 
+\end{equation}
+%
+where
+%
+\begin{equation}
+g(\lambda, \alpha, \beta, f, a, r) =  \frac{\beta^\alpha}{\Gamma(\alpha)}  \frac{ f_j^{a} (1 - f)^{r}  \lambda^{\alpha + r - 1} e^{-\beta \lambda}}{ \left( f + (1-f) \lambda \right)^{a+r}} 
+\end{equation}
+%
+An extremely good approximation for all values of $f$, $\alpha$, $\beta$, and $a, \, r$ is
+\begin{equation}
+g(\lambda, \alpha, \beta, f, a, r) = \frac{\lambda^{\alpha + r - 1} e^{-\beta \lambda_j}}{ \left( f + (1-f) \lambda \right)^{a+r}} \approx c \lambda^{\rho - 1} e^{-\tau \lambda}.
+\end{equation}
+where $\rho$ and $\tau$ are chosen to reproduce the mode of $g(\lambda, \alpha, \beta, f, a, r)$ and the curvature at its mode.  Having approximated our integrand as a gamma distribution's pdf on $\lambda$, we integrate it analytically
+%
+\begin{equation}
+\phi(\alpha, \beta, f, a, r) = c \int_0^\infty \lambda^{\rho - 1} e^{-\tau \lambda} \, d \lambda = c \frac{\Gamma(\rho)}{\tau^\rho}
+\end{equation}
+%
+
+The mode $\lambda_0$ is found by setting logarithmic derivatives to zero:
+%
+\begin{align}
+\frac{d}{d \lambda} \left[ (\alpha + r - 1) \ln \lambda - \beta \lambda - n \ln \left( f + (1-f) \lambda \right) \right]_{\lambda_0} =&  0 \\
+\frac{\alpha + r - 1}{\lambda_0} - \beta - \frac{n (1-f)}{f_j + (1-f_j) \lambda_0} =& 0
+\end{align}
+%
+Multiplying out the denominators yields a quadratic equation.  Taking the positive root gives
+%
+\begin{equation}
+\lambda_0 = \frac{ \sqrt{w^2 + 4 \beta f (1-f)(r + \alpha - 1} - w}{2 \beta (1-f)}, \quad w = (1-f)(a - \alpha + 1) + \beta f.
+\end{equation}
+%
+The second derivative of $\ln f$ at $\lambda_0$ is
+%
+\begin{equation}
+\kappa = -\frac{r + \alpha - 1}{\lambda_0^2} + \frac{n(1-f)^2}{\left(f + (1-f)\lambda_0 \right)^2}
+\end{equation}
+%
+The mode of the approximating gamma distribution is $(\rho - 1)/\tau$ and the log second derivative is $-(\rho - 1)/\lambda_0^2$.  Equating these, we obtain
+\begin{equation}
+\rho = 1 - \kappa \lambda_0^2, \quad \tau = -\kappa \lambda_0
+\end{equation}
+Finally, we choose $c$ so that the values of $\ln f$ and the approximation match at $\lambda_0$:
+%
+\begin{equation}
+\ln c =  \alpha \ln \beta - \ln \Gamma(\alpha) + a \ln f + r \ln (1-f) +  (r + \alpha - \rho) \ln \lambda_0 + (\tau - \beta) \lambda_0 - n \ln \left( f + (1-f) \lambda_0 \right)
+\end{equation}
+%
+Algorithm \ref{phi_calculation} shows the entire computation.
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\State $n = a + r$
+\State $w = (1-f)(a - \alpha + 1) + \beta f$
+\State $\lambda_0 = \left( \sqrt{w^2 + 4 \beta f (1-f)(r + \alpha - 1} - w\right) / \left(2 \beta (1-f)\right)$
+\State $\kappa = \left( n(1-f)^2 \right) / \left(f + (1-f)\lambda_0 \right)^2 - \left(r + \alpha - 1\right) / \lambda_0^2$
+\State $\rho = 1 - \kappa \lambda_0^2$
+\State $\tau = -\kappa \lambda_0$
+\State $\ln c = \alpha \ln \beta - \ln \Gamma(\alpha) + a \ln f + r \ln (1-f) + (r + \alpha - \rho) \ln \lambda_0 + (\tau - \beta) \lambda_0 - n \ln \left( f + (1-f) \lambda_0 \right)$
+\State \Return $c \Gamma(\rho) / \tau^\rho$
+\end{algorithmic}
+\caption{Calculating $\phi(\alpha, \beta, f, a, r)$}
+\label{phi_calculation}
+\end{algorithm}
+
+\section{Initializing the \ACS ~ Model} \label{initializing}
+A very reasonable way to initialize the model would be to find the mode of the likelihood via the EM algorithm, where in the E step we compute expectations of the posterior on latent variables $z$ and $\lambda$ and in the M step we maximize the log likelihood averaged over the E step posterior.  We know the E step is feasible because it involves the same computations as marginalizing over the latent variables, which we accomplished above.  Although the M step is intractable, we can perform a poor-man's EM in which we employ a heuristically reasonable M step.  This will suffice to significantly reduce burn-in time of our MCMC sampling.
+
+The first E step quantities required are the responsibilities for each locus to be alt minor, ref minor, or outlier, that is, the posteriors $\bar{z}_{ja} = {\rm P}(z_{ja} = 1)$ etc.  These are easily read off from Equation \ref{marginalized}, which contains the unnormalized posteriors.
+%
+\begin{equation}
+\left( \bar{z}_{ja}, \bar{z}_{jr}, \bar{z}_{jo} \right) \propto
+\left(  (1-\pi)\phi(\alpha, \beta, f_j, a_j, r_j) , (1-\pi)\phi(\alpha, \beta, 1-f_j, a_j, r_j) ,  \frac{2 \pi a_j! r_j!}{(n_j + 1)!} \frac{\Gamma(\alpha)}{\beta^\alpha}  \right)
+\label{responsibilities}
+\end{equation}
+%
+To initialize minor allele fractions set $f_S$ to the responsibility-weighted number of minor read alleles divided by the total number of reads in segment $S$:
+%
+\begin{equation}
+f_S = \frac{\sum_{j \in S} \bar{z}_{ja} a_j + \bar{z}_{jr} r_j}{\sum_{j \in S} \bar{z}_{ja} + \bar{z}_{jr}}
+\end{equation}
+%
+In fact, it is easily shown that this is the exact M step when $\lambda_j = 1$ for all $j$.  Similarly, we initialize $\pi$ to the responsibility-weighted proportion of outliers
+\begin{equation}
+\pi = \frac{1}{N} \sum_j \bar{z}_{jo}
+\end{equation}
+%
+This, is, in fact, the exact M step for $\pi$.  Our initialization of $\mu$ and $\beta$ is somewhat more heuristic but is based on moment matching and is probably asymptotically exact as $N \rightarrow \infty$.  We set $\mu$ to the responsibility-weighted posterior sample mean of $\{ \lambda \}$ and $\mu/\beta$ to the sample variance.  Since the outlier distribution is determined by $\mu$ and $\beta$ alone we exclude outliers in order to make our initialization depend more on the data and less on our initial guess.  Thus we have $\mu = \ave{\lambda}$, $\mu/\beta = \ave{\lambda^2} - \ave{\lambda}^2$, where
+%
+\begin{equation}
+\ave{\lambda^k} = \frac{\sum_j \left( \bar{z}_{ja} \ave{\lambda^k_j}_a +  \bar{z}_{jr} \ave{\lambda^k_j}_r \right)}{\sum_j \left( \bar{z}_{ja} +  \bar{z}_{jr} \right)}
+\end{equation}
+and $\ave{\lambda^k_j}_{a(r)}$ is the posterior expectation of $\lambda^k_j$ given $z_{ja(r)} = 1$.  These can be calculated quite easily using our previous work.  Recall that the unnormalized conditional distribution on $\lambda_j$ in the alt minor case was
+%
+\begin{equation}
+g(\lambda_j, \alpha, \beta, f_j, a_j, r_j) = \frac{ f_j^{a_j} (1 - f_j)^{r_j}  \lambda_j^{\alpha + r_j - 1} e^{-\beta \lambda_j}}{ \left( f_j + (1-f_j) \lambda_j \right)^{n_j}},
+\end{equation}
+%
+and that we can efficiently compute $\phi(\alpha, \beta, f_j, a_j, r_j) = \int_0^\infty g(\lambda_j, \alpha, \beta, f_j, a_j, r_j) \, d \lambda$.  The posterior expectation of $\lambda^k_j$ is therefore
+%
+\begin{equation}
+\ave{\lambda^k_j}_a = \frac{\int_0^\infty \lambda^k g(\lambda, \alpha, \beta, f, a, r) \, d \lambda}{ \int_0^\infty g(\lambda, \alpha, \beta, f, a, r) \, d \lambda}
+= \frac{\int_0^\infty \lambda^k g(\lambda, \alpha + k, \beta, f, a, r) \, d \lambda}{ \int_0^\infty g(\lambda, \alpha, \beta, f, a, r) \, d \lambda}
+= \frac{ \phi(\alpha + k, \beta, f, a, r) }{ \phi(\alpha, \beta, f, a, r) }
+\end{equation}
+%
+As before, the ref minor case is obtained from $f \leftrightarrow 1 - f$.  We present the complete initialization process in Algorithm \ref{initialization}.
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+\State Set $\bar{z}_{ja} = 1$ if $a_j < r_j$, else $\bar{z}_{jr} = 1$.
+\State \textproc{initializeAlleleFraction}
+\State Set $\pi = 0.01$
+\State Set $\mu = 1$
+\State Set $\beta = 10$
+
+\Statex
+
+\Repeat
+	\State \textproc{calculateResponsibilities}
+	\State \textproc{initializeAlleleFraction}
+	\State \textproc{initializeOutlierProbability}
+	\State \textproc{initializeGammaHyperparameters}
+\Until{a low standard of convergence}
+
+\Statex
+
+\Procedure{calculateResponsibilities}{}
+  	\State $(p_{ja}, p_{jr}, p_{jo}) = \left(  (1-\pi)\phi(\alpha, \beta, f_j, a_j, r_j) , (1-\pi)\phi(\alpha, \beta, 1-f_j, a_j, r_j) ,  \frac{2 \pi a_j! r_j!}{(n_j + 1)!} \frac{\Gamma(\alpha)}{\beta^\alpha}  \right)$ for each $j$.
+	\State $\left( \bar{z}_{ja}, \bar{z}_{jr}, \bar{z}_{jo} \right) = (p_{ja}, p_{jr}, r_{jo}) / (p_{ja} + p_{jr} + p_{jo}) $ for each $j$
+\EndProcedure
+
+\Statex
+
+\Procedure{initializeAlleleFraction}{}
+  	\State Set $f_S = \sum_{j \in S} \left( \bar{z}_{ja} a_j + \bar{z}_{jr} r_j \right) / \sum_{j \in S} \left( \bar{z}_{ja} + \bar{z}_{jr} \right) $ for each $S$
+\EndProcedure
+
+\Statex
+
+\Procedure{initializeOutlierProbability}{}
+	\State Set $\pi = \sum_j \bar{z}_{jo} / N$
+\EndProcedure
+
+\Statex
+
+\Procedure{initializeGammaHyperparameters}{}
+	\State $\ave{\lambda^k_j}_a = \phi(\alpha + k, \beta, f_j, a_j, r_j) / \phi(\alpha, \beta, f, a, r)$ for $k = 1, \, 2$ for all $j$
+	\State $\ave{\lambda^k_j}_r = \phi(\alpha + k, \beta, 1 - f_j, a_j, r_j) / \phi(\alpha, \beta, 1 - f_j, a_j, r_j)$ for $k = 1, \, 2$ for all $j$
+	\State $\ave{\lambda^k} = \sum_j \left( \bar{z}_{ja} \ave{\lambda^k_j}_a +  \bar{z}_{jr} \ave{\lambda^k_j}_r \right) / \sum_j \left( \bar{z}_{ja} +  \bar{z}_{jr} \right)$ for $k = 1, \, 2$
+	\State Set $\mu = \ave{\lambda}$
+	\State Set $\beta = \ave{\lambda}/ \left(\ave{\lambda^2} - \ave{\lambda}^2 \right)$
+\EndProcedure
+
+\end{algorithmic}
+\caption{Initializing the \ACS ~ Model}
+\label{initialization}
+\end{algorithm}
 
 \section{Finding Tight Lower Bounds on Convex and Non-convex Functions} \label{bounds}
 

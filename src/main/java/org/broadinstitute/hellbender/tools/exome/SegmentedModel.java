@@ -25,11 +25,11 @@ public final class SegmentedModel {
     }
 
     /**
-     * Private constructor that assumes the list of segments is well formed and non-shared.
+     * Constructor that assumes the list of segments is well formed and non-shared.
      * @param segments  list of segments
      * @param genome    genome containing target coverages and SNP allele counts to be segmented
      */
-    private SegmentedModel(final List<SimpleInterval> segments, final Genome genome) {
+    public SegmentedModel(final List<SimpleInterval> segments, final Genome genome) {
         this.segments = Collections.unmodifiableList(segments);
         this.genome = genome;
     }
