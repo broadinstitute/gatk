@@ -11,7 +11,7 @@ import java.io.Serializable;
 
 
 public abstract class SparkCommandLineProgram extends CommandLineProgram implements Serializable {
-    private static final long serialVersionUID = 1l;
+    private static final long serialVersionUID = 1L;
 
 
     @Argument(doc = "API Key for google cloud authentication",
@@ -20,7 +20,7 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
 
 
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
-    protected String sparkMaster = "local[2]";
+    protected String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
 
     @Argument(
             doc = "Name of the program running",
@@ -33,12 +33,6 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     @Override
     protected Object doWork() {
         final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkMaster);
-        ctx.getConf().set("spark.driver.maxResultSize", "0")
-                .set("spark.driver.userClassPathFirst", "true")
-                .set("spark.executor.userClassPathFirst", "true")
-                .set("spark.io.compression.codec", "lzf")
-                .set("spark.yarn.executor.memoryOverhead", "600");
-
         try{
             runPipeline(ctx);
             return null;
@@ -56,7 +50,7 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
             return null;
         }
 
-        GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
+        final GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);
         options.setApiKey(apiKey);
         return options;
     }

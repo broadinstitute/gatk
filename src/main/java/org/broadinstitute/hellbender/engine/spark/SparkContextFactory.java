@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.serializer.KryoSerializer;
+
+import java.util.Map;
 
 /**
  * Manages creation of the Spark context. In particular, for tests a shared global context is used, since Spark does not
@@ -10,6 +14,25 @@ import org.apache.spark.serializer.KryoSerializer;
  * transient errors if contexts are created and stopped in rapid succession.
  */
 public final class SparkContextFactory {
+
+    public static final String DEFAULT_SPARK_MASTER = "local[*]";
+
+    public static final Map<String, String> TEST_ATTRIBUTES = ImmutableMap.<String, String>builder()
+            .put("spark.serializer", KryoSerializer.class.getCanonicalName())
+            .put("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
+            .put("spark.ui.enabled", "false")
+            .build();
+
+    public static final Map<String, String> CMDLINE_ATTRIBUTES = ImmutableMap.<String, String>builder()
+            .put("spark.serializer", KryoSerializer.class.getCanonicalName())
+            .put("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
+            .put("spark.kryoserializer.buffer.max", "512m")
+            .put("spark.driver.maxResultSize", "0")
+            .put("spark.driver.userClassPathFirst", "true")
+            .put("spark.executor.userClassPathFirst", "true")
+            .put("spark.io.compression.codec", "lzf")
+            .put("spark.yarn.executor.memoryOverhead", "600")
+            .build();
 
     private static boolean testContextEnabled;
     private static JavaSparkContext testContext;
@@ -30,9 +53,9 @@ public final class SparkContextFactory {
      * @param appName the name of the application to run
      * @param master the Spark master URL
      */
-    public static synchronized JavaSparkContext getSparkContext(String appName, String master) {
+    public static synchronized JavaSparkContext getSparkContext(final String appName, final String master) {
         if (testContextEnabled) {
-            JavaSparkContext context = getTestSparkContext();
+            final JavaSparkContext context = getTestSparkContext();
             if (!master.equals(context.master())) {
                 throw new IllegalArgumentException(String.format("Cannot reuse spark context " +
                                 "with different spark master URL. Existing: %s, requested: %s.",
@@ -65,30 +88,31 @@ public final class SparkContextFactory {
      *
      * @param context the context to stop
      */
-    public static synchronized void stopSparkContext(JavaSparkContext context) {
+    public static synchronized void stopSparkContext(final JavaSparkContext context) {
         // only call stop for a non-test context
         if (context != testContext) {
             context.stop();
         }
     }
 
-    private static JavaSparkContext createSparkContext(String appName, String master) {
-        SparkConf sparkConf = new SparkConf().setAppName(appName)
-                .setMaster(master)
-                .set("spark.serializer", KryoSerializer.class.getCanonicalName())
-                .set("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
-                .set("spark.kryoserializer.buffer.max", "512m");
 
+    /**
+     * setup a spark context with the given name, master, and settings
+     */
+    @VisibleForTesting
+    static SparkConf setupSparkConf(final String appName, final String master, final Map<String, String> sparkAttributes) {
+        final SparkConf sparkConf = new SparkConf().setAppName(appName).setMaster(master);
+        sparkAttributes.forEach(sparkConf::set);
+        return sparkConf;
+    }
+    
+    private static JavaSparkContext createSparkContext(final String appName, final String master) {
+        final SparkConf sparkConf = setupSparkConf(appName, master, CMDLINE_ATTRIBUTES);
         return new JavaSparkContext(sparkConf);
     }
 
     private static JavaSparkContext createTestSparkContext() {
-        SparkConf sparkConf = new SparkConf().setAppName("TestContext")
-                .setMaster("local[2]")
-                .set("spark.serializer", KryoSerializer.class.getCanonicalName())
-                .set("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
-                .set("spark.ui.enabled", "false");
-
+        final SparkConf sparkConf = setupSparkConf("TestContext", DEFAULT_SPARK_MASTER, TEST_ATTRIBUTES);
         return new JavaSparkContext(sparkConf);
     }
 }
