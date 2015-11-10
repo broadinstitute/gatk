@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -42,6 +43,17 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         List<GATKRead> serialReads = rddSerialReads.collect();
         List<GATKRead> parallelReads = rddParallelReads.collect();
         Assert.assertEquals(serialReads.size(), parallelReads.size());
+    }
+
+    @Test(groups = "spark")
+    public void testHeadersAreStripped() {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        final List<GATKRead> reads = readSource.getParallelReads(dir + "HiSeq.1mb.1RG.2k_lines.alternate.bam").collect();
+
+        for ( final GATKRead read : reads ) {
+            Assert.assertNull(((SAMRecordToGATKReadAdapter)read).getEncapsulatedSamRecord().getHeader(), "ReadSparkSource failed to null out header for read");
+        }
     }
 
     @Test

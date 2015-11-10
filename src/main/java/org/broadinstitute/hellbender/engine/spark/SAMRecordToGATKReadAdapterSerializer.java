@@ -13,7 +13,7 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
 
     @Override
     public void write(Kryo kryo, Output output, SAMRecordToGATKReadAdapter adapter) {
-        SAMRecord record = adapter.getSamRecord();
+        SAMRecord record = adapter.getEncapsulatedSamRecord();
         // serialize reference names to avoid having to have a header at read time
         output.writeString(record.getReferenceName());
         output.writeString(record.getMateReferenceName());
@@ -43,7 +43,7 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
         record.setReferenceIndex(referenceIndex);
         record.setMateReferenceIndex(mateReferenceIndex);
 
-        return new SAMRecordToGATKReadAdapter(record);
+        return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
     }
 
 
