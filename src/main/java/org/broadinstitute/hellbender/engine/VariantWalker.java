@@ -31,6 +31,12 @@ public abstract class VariantWalker extends GATKTool {
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF/BCF file containing variants", common = false, optional = false)
     public File drivingVariantFile;
 
+    /**
+     * This number controls the size of the cache for our primary and auxiliary FeatureInputs
+     * (specifically, the number of additional bases worth of overlapping records to cache when querying feature sources).
+     */
+    public static final int FEATURE_CACHE_LOOKAHEAD = 100_000;
+
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool
     //we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
     private FeatureDataSource<VariantContext> drivingVariants;
@@ -46,7 +52,7 @@ public abstract class VariantWalker extends GATKTool {
     void initializeFeatures() {
         //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
         //This is because we have at least 1 source of features (namely the driving dataset).
-        features = new FeatureManager(this);
+        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD);
         initializeDrivingVariants();
     }
 
@@ -56,7 +62,8 @@ public abstract class VariantWalker extends GATKTool {
         // treating it specially (separate from the other sources of Features in our FeatureManager).
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile);
         if (VariantContext.class.equals(codec.getFeatureType())) {
-            drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec);
+            //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
+            drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec, "drivingVariants", FEATURE_CACHE_LOOKAHEAD);
 
             //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
             //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
