@@ -36,5 +36,11 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After_CR_Lim_4.png").length() > 0);
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After.png").exists());
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After.png").length() > 0);
+        Assert.assertTrue(new File(tDir + "/" + sampleName + "_preQc.txt").exists());
+        Assert.assertTrue(new File(tDir + "/" + sampleName + "_preQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir + "/" + sampleName + "_postQc.txt").exists());
+        Assert.assertTrue(new File(tDir + "/" + sampleName + "_postQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").exists());
+        Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").length() > 0);
     }
 }
