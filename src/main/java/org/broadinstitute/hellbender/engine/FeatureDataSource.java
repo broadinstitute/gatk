@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -37,6 +39,7 @@ import java.util.*;
  * @param <T> The type of Feature returned by this data source
  */
 public final class FeatureDataSource<T extends Feature> implements GATKDataSource<T>, AutoCloseable {
+    private static final Logger logger = LogManager.getLogger(FeatureDataSource.class);
 
     /**
      * File backing this data source. Used mainly for error messages.
@@ -139,6 +142,16 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         private SimpleInterval cachedInterval;
 
         /**
+         * Number of times we called {@link #cacheHit(SimpleInterval)} and it returned true
+         */
+        private int numCacheHits = 0;
+
+        /**
+         * Number of times we called {@link #cacheHit(SimpleInterval)} and it returned false
+         */
+        private int numCacheMisses = 0;
+
+        /**
          * Initial capacity of our cache (will grow by doubling if needed)
          */
         private static final int INITIAL_CAPACITY = 1024;
@@ -194,6 +207,20 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
 
         /**
+         * @return Number of times we called {@link #cacheHit(SimpleInterval)} and it returned true
+         */
+        public int getNumCacheHits() {
+            return numCacheHits;
+        }
+
+        /**
+         * @return Number of times we called {@link #cacheHit(SimpleInterval)} and it returned false
+         */
+        public int getNumCacheMisses() {
+            return numCacheMisses;
+        }
+
+        /**
          * Clear our cache and fill it with the records from the provided iterator, preserving their
          * relative ordering, and update our contig/start/stop to reflect the new interval that all
          * records in our cache overlap.
@@ -221,10 +248,16 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
          * @return true if all records overlapping the provided interval are already contained in our cache, otherwise false
          */
         public boolean cacheHit( final SimpleInterval interval ) {
-            return cachedInterval != null &&
-                   cachedInterval.getContig().equals(interval.getContig()) &&
-                   cachedInterval.getStart() <= interval.getStart() &&
-                   cachedInterval.getEnd() >= interval.getEnd();
+            final boolean cacheHit = cachedInterval != null && cachedInterval.contains(interval);
+
+            if ( cacheHit ) {
+                ++numCacheHits;
+            }
+            else {
+                ++numCacheMisses;
+            }
+
+            return cacheHit;
         }
 
         /**
@@ -538,6 +571,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     @Override
     public void close() {
         closeOpenIterationIfNecessary();
+        printCacheStatistics();
 
         try {
             if ( featureReader != null )
@@ -556,6 +590,18 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             currentIterator.close();
             currentIterator = null;
         }
+    }
+
+    /**
+     * Print statistics about the cache hit rate for debugging
+     */
+    private void printCacheStatistics() {
+        final int totalQueries = queryCache.getNumCacheHits() + queryCache.getNumCacheMisses();
+        logger.debug(String.format("For feature input %s: Cache hit rate was %.2f%% (%d out of %d total queries)",
+                     name != null ? name + " (" + featureFile.getName() + ")" : featureFile.getName(),
+                     totalQueries > 0 ? ((double)queryCache.getNumCacheHits() / totalQueries) * 100.0 : 0.0,
+                     queryCache.getNumCacheHits(),
+                     totalQueries));
     }
 
     /**
