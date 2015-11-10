@@ -35,7 +35,7 @@ public class SAMRecordToGATKReadAdapterSerializerUnitTest {
         check(sparkSerializer, read);
 
         // check round trip with no header
-        ((SAMRecordToGATKReadAdapter) read).getSamRecord().setHeader(null);
+        ((SAMRecordToGATKReadAdapter) read).getEncapsulatedSamRecord().setHeader(null);
         check(sparkSerializer, read);
     }
 

@@ -79,7 +79,7 @@ public class ReadsSparkSource implements Serializable {
             SAMRecord sam = v1._2().get();
             if (samRecordOverlaps(sam, intervals)) {
                 try {
-                    return (GATKRead) new SAMRecordToGATKReadAdapter(sam);
+                    return (GATKRead)SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
                 } catch (SAMException e) {
                     // TODO: add stringency
                 }            
