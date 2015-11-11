@@ -220,23 +220,27 @@ public final class BaseRecalibrationEngine implements Serializable {
         final ReadCovariates readCovariates = recalInfo.getCovariatesValues();
         final NestedIntegerArray<RecalDatum> qualityScoreTable = recalTables.getQualityScoreTable();
 
-        for( int offset = 0; offset < read.getLength(); offset++ ) {
+        final int nCovariates = covariates.size();
+        final int nSpecialCovariates = covariates.numberOfSpecialCovariates();
+        final int readLength = read.getLength();
+        for( int offset = 0; offset < readLength; offset++ ) {
             if( ! recalInfo.skip(offset) ) {
-
                 for (final EventType eventType : EventType.values()) {
                     final int[] keys = readCovariates.getKeySet(offset, eventType);
                     final int eventIndex = eventType.ordinal();
                     final byte qual = recalInfo.getQual(eventType, offset);
                     final double isError = recalInfo.getErrorFraction(eventType, offset);
 
-                    RecalUtils.incrementDatumOrPutIfNecessary(qualityScoreTable, qual, isError, keys[0], keys[1], eventIndex);
+                    final int key0 = keys[0];
+                    final int key1 = keys[1];
 
-                    for (int i = covariates.numberOfSpecialCovariates(); i < covariates.size(); i++) {
-                        if (keys[i] < 0) {
-                            continue;
+                    RecalUtils.incrementDatumOrPutIfNecessary3keys(qualityScoreTable, qual, isError, key0, key1, eventIndex);
+
+                    for (int i = nSpecialCovariates; i < nCovariates; i++) {
+                        final int keyi = keys[i];
+                        if (keyi >= 0) {
+                            RecalUtils.incrementDatumOrPutIfNecessary4keys(recalTables.getTable(i), qual, isError, key0, key1, keyi, eventIndex);
                         }
-
-                        RecalUtils.incrementDatumOrPutIfNecessary(recalTables.getTable(i), qual, isError, keys[0], keys[1], keys[i], eventIndex);
                     }
                 }
             }
@@ -252,10 +256,6 @@ public final class BaseRecalibrationEngine implements Serializable {
                 .andThen(ReadClipper::hardClipSoftClippedBases);
 
         return f;
-    }
-
-    private boolean isLowQualityBase( final GATKRead read, final int offset ) {
-        return read.getBaseQualities()[offset] < recalArgs.PRESERVE_QSCORES_LESS_THAN;
     }
 
     private static GATKRead consolidateCigar( final GATKRead read ) {
@@ -293,8 +293,9 @@ public final class BaseRecalibrationEngine implements Serializable {
         final byte[] bases = read.getBases();
         final boolean[] skip = new boolean[bases.length];
         final boolean[] knownSitesArray = calculateKnownSites(read, knownSites);
-        for( int iii = 0; iii < bases.length; iii++ ) {
-            skip[iii] = !BaseUtils.isRegularBase(bases[iii]) || isLowQualityBase(read, iii) || knownSitesArray[iii];
+        final byte[] baseQualities = read.getBaseQualities();
+        for( int i = 0; i < bases.length; i++ ) {
+            skip[i] = !BaseUtils.isRegularBase(bases[i]) || baseQualities[i] < recalArgs.PRESERVE_QSCORES_LESS_THAN || knownSitesArray[i];
         }
         return skip;
     }
@@ -346,7 +347,7 @@ public final class BaseRecalibrationEngine implements Serializable {
                 case M:
                 case EQ:
                 case X:
-                    for (int iii = 0; iii < elementLength; iii++) {
+                    for (int i = 0; i < elementLength; i++) {
                         int snpInt = (BaseUtils.basesAreEqual(readBases[readPos], refBases[refPos]) ? 0 : 1);
                         snp[readPos] = snpInt;
                         nEvents += snpInt;
@@ -407,23 +408,23 @@ public final class BaseRecalibrationEngine implements Serializable {
         Arrays.fill(fractionalErrors, 0.0);
         boolean inBlock = false;
         int blockStartIndex = BLOCK_START_UNSET;
-        int iii;
-        for( iii = 0; iii < fractionalErrors.length; iii++ ) {
-            if( baqArray[iii] == NO_BAQ_UNCERTAINTY ) {
+        int i;
+        for( i = 0; i < fractionalErrors.length; i++ ) {
+            if( baqArray[i] == NO_BAQ_UNCERTAINTY ) {
                 if( !inBlock ) {
-                    fractionalErrors[iii] = (double) errorArray[iii];
+                    fractionalErrors[i] = (double) errorArray[i];
                 } else {
-                    calculateAndStoreErrorsInBlock(iii, blockStartIndex, errorArray, fractionalErrors);
+                    calculateAndStoreErrorsInBlock(i, blockStartIndex, errorArray, fractionalErrors);
                     inBlock = false; // reset state variables
                     blockStartIndex = BLOCK_START_UNSET; // reset state variables
                 }
             } else {
                 inBlock = true;
-                if( blockStartIndex == BLOCK_START_UNSET ) { blockStartIndex = iii; }
+                if( blockStartIndex == BLOCK_START_UNSET ) { blockStartIndex = i; }
             }
         }
         if( inBlock ) {
-            calculateAndStoreErrorsInBlock(iii-1, blockStartIndex, errorArray, fractionalErrors);
+            calculateAndStoreErrorsInBlock(i-1, blockStartIndex, errorArray, fractionalErrors);
         }
         if( fractionalErrors.length != errorArray.length ) {
             throw new GATKException("Output array length mismatch detected. Malformed read?");
@@ -431,16 +432,16 @@ public final class BaseRecalibrationEngine implements Serializable {
         return fractionalErrors;
     }
 
-    private static void calculateAndStoreErrorsInBlock( final int iii,
+    private static void calculateAndStoreErrorsInBlock( final int i,
                                                         final int blockStartIndex,
                                                         final int[] errorArray,
                                                         final double[] fractionalErrors ) {
         int totalErrors = 0;
-        for( int jjj = Math.max(0, blockStartIndex - 1); jjj <= iii; jjj++ ) {
-            totalErrors += errorArray[jjj];
+        for( int j = Math.max(0, blockStartIndex - 1); j <= i; j++ ) {
+            totalErrors += errorArray[j];
         }
-        for( int jjj = Math.max(0, blockStartIndex - 1); jjj <= iii; jjj++ ) {
-            fractionalErrors[jjj] = ((double) totalErrors) / ((double)(iii - Math.max(0, blockStartIndex - 1) + 1));
+        for( int j = Math.max(0, blockStartIndex - 1); j <= i; j++ ) {
+            fractionalErrors[j] = ((double) totalErrors) / ((double)(i - Math.max(0, blockStartIndex - 1) + 1));
         }
     }
 

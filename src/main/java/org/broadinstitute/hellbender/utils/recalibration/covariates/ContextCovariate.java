@@ -163,6 +163,8 @@ public final class ContextCovariate implements Covariate {
     private static IntList contextWith(final byte[] bases, final int contextSize, final int mask) {
 
         final int readLength = bases.length;
+
+        //Note: we use a specialized collection to avoid the cost of boxing and unboxing that otherwise comes up on the profiler.
         final IntList keys = new IntArrayList(readLength);
 
         // the first contextSize-1 bases will not have enough previous context

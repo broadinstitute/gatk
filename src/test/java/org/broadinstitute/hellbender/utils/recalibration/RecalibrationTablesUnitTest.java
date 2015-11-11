@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.utils.recalibration.*;
+import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -34,13 +33,13 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
             for ( final EventType et : EventType.values() ) {
                 for ( final int rg : combineStates) {
                     final double error = rg % 2 == 0 ? 1 : 0;
-                    RecalUtils.incrementDatumOrPutIfNecessary(tables.getReadGroupTable(), qualByte, error, rg, et.ordinal());
+                    RecalUtils.incrementDatumOrPutIfNecessary2keys(tables.getReadGroupTable(), qualByte, error, rg, et.ordinal());
                     for ( final int qual : combineStates) {
-                        RecalUtils.incrementDatumOrPutIfNecessary(tables.getQualityScoreTable(), qualByte, error, rg, qual, et.ordinal());
+                        RecalUtils.incrementDatumOrPutIfNecessary3keys(tables.getQualityScoreTable(), qualByte, error, rg, qual, et.ordinal());
                         for ( final int cycle : combineStates)
-                            RecalUtils.incrementDatumOrPutIfNecessary(tables.getTable(2), qualByte, error, rg, qual, cycle, et.ordinal());
+                            RecalUtils.incrementDatumOrPutIfNecessary4keys(tables.getTable(2), qualByte, error, rg, qual, cycle, et.ordinal());
                         for ( final int context : combineStates)
-                            RecalUtils.incrementDatumOrPutIfNecessary(tables.getTable(3), qualByte, error, rg, qual, context, et.ordinal());
+                            RecalUtils.incrementDatumOrPutIfNecessary4keys(tables.getTable(3), qualByte, error, rg, qual, context, et.ordinal());
                     }
                 }
             }
@@ -132,7 +131,7 @@ public final class RecalibrationTablesUnitTest extends BaseTest {
     public void testCombinePartial() {
         final RecalibrationTables merged = new RecalibrationTables(covariates, numReadGroups);
         for ( final int rg : combineStates) {
-            RecalUtils.incrementDatumOrPutIfNecessary(merged.getTable(3), qualByte, 1, rg, 0, 0, 0);
+            RecalUtils.incrementDatumOrPutIfNecessary4keys(merged.getTable(3), qualByte, 1, rg, 0, 0, 0);
         }
 
         merged.combine(tables);

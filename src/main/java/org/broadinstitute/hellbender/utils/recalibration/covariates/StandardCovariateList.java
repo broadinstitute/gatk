@@ -52,7 +52,7 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
     }
 
     /**
-     * Returns 2. ReadGroupCovariate and  QualityScoreCovariate are special
+     * Returns 2. ReadGroupCovariate and QualityScoreCovariate are special
      */
     public int numberOfSpecialCovariates() {
         return 2;
@@ -127,10 +127,8 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * record the values in the provided storage object.
       */
     public void recordAllValuesInStorage(final GATKRead read, final SAMFileHeader header, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
-        //Note: extracting the field to a temp because this is a very tight loop and field lookup came up on the profile
-        final List<Covariate> allCovs = allCovariates;
-        for (int i = 0, n = allCovs.size(); i < n; i++) {
-            final Covariate cov = allCovs.get(i);
+        for (int i = 0, n = allCovariates.size(); i < n; i++) {
+            final Covariate cov = allCovariates.get(i);
             resultsStorage.setCovariateIndex(i);
             cov.recordValues(read, header, resultsStorage, recordIndelValues);
         }

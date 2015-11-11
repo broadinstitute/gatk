@@ -51,7 +51,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
     }
 
     @Test
-    public void testPutGet1() throws Exception {
+    public void testPutget1Key() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2);
         arr.put("fred", 0);
         arr.put("bozo", 1);
@@ -60,15 +60,15 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new HashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0));
-        Assert.assertEquals("fred", arr.get1(0));
+        Assert.assertEquals("fred", arr.get1Key(0));
 
         Assert.assertEquals("bozo", arr.get(1));
-        Assert.assertEquals("bozo", arr.get1(1));
+        Assert.assertEquals("bozo", arr.get1Key(1));
 
     }
 
     @Test
-    public void testPutGet2() throws Exception {
+    public void testPutget2Keys() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2, 2);
         arr.put("fred", 0, 1);
         arr.put("bozo", 1, 0);
@@ -77,18 +77,18 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new HashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1));
-        Assert.assertEquals("fred", arr.get2(0, 1));
+        Assert.assertEquals("fred", arr.get2Keys(0, 1));
 
         Assert.assertEquals("bozo", arr.get(1, 0));
-        Assert.assertEquals("bozo", arr.get2(1, 0));
+        Assert.assertEquals("bozo", arr.get2Keys(1, 0));
 
         Assert.assertNull(arr.get(0, 0));
-        Assert.assertNull(arr.get2(0, 0));
+        Assert.assertNull(arr.get2Keys(0, 0));
 
     }
 
     @Test
-    public void testPutGet2null() throws Exception {
+    public void testPutget2Keysnull() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2, 2);
         arr.put("fred", 0, 1);
         arr.put("bozo", 1, 0);
@@ -98,14 +98,14 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new HashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1));
-        Assert.assertEquals("fred", arr.get2(0, 1));
+        Assert.assertEquals("fred", arr.get2Keys(0, 1));
 
         Assert.assertEquals("bozo", arr.get(1, 0));
-        Assert.assertEquals("bozo", arr.get2(1, 0));
+        Assert.assertEquals("bozo", arr.get2Keys(1, 0));
     }
 
     @Test
-    public void testPutGet3() throws Exception {
+    public void testPutget3Keys() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2, 2, 42);
         arr.put("fred", 0, 1, 13);
         arr.put("bozo", 1, 0, 0);
@@ -115,23 +115,23 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         Assert.assertEquals(Sets.newHashSet("fred", "bozo", "mike"), new HashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1, 13));
-        Assert.assertEquals("fred", arr.get3(0, 1, 13));
+        Assert.assertEquals("fred", arr.get3Keys(0, 1, 13));
 
         Assert.assertEquals("bozo", arr.get(1, 0, 0));
-        Assert.assertEquals("bozo", arr.get3(1, 0, 0));
+        Assert.assertEquals("bozo", arr.get3Keys(1, 0, 0));
 
         Assert.assertEquals("mike", arr.get(1, 0, 17));
-        Assert.assertEquals("mike", arr.get3(1, 0, 17));
+        Assert.assertEquals("mike", arr.get3Keys(1, 0, 17));
 
         Assert.assertNull(arr.get(0, 0, 0));
-        Assert.assertNull(arr.get3(0, 0, 0));
+        Assert.assertNull(arr.get3Keys(0, 0, 0));
 
         Assert.assertNull(arr.get(1, 2, 3));
-        Assert.assertNull(arr.get3(1, 2, 3));
+        Assert.assertNull(arr.get3Keys(1, 2, 3));
     }
 
     @Test
-    public void testPutGet4() throws Exception {
+    public void testPutget4Keys() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2, 2, 42, 91);
         arr.put("fred", 0, 1, 13, 41);
         arr.put("bozo", 1, 0, 0, 90);
@@ -141,19 +141,19 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         Assert.assertEquals(Sets.newHashSet("fred", "bozo", "mike"), new HashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1, 13, 41));
-        Assert.assertEquals("fred", arr.get4(0, 1, 13, 41));
+        Assert.assertEquals("fred", arr.get4Keys(0, 1, 13, 41));
 
         Assert.assertEquals("bozo", arr.get(1, 0, 0, 90));
-        Assert.assertEquals("bozo", arr.get4(1, 0, 0, 90));
+        Assert.assertEquals("bozo", arr.get4Keys(1, 0, 0, 90));
 
         Assert.assertEquals("mike", arr.get(1, 0, 17, 0));
-        Assert.assertEquals("mike", arr.get4(1, 0, 17, 0));
+        Assert.assertEquals("mike", arr.get4Keys(1, 0, 17, 0));
 
         Assert.assertNull(arr.get(1, 2, 3, 4));
-        Assert.assertNull(arr.get4(1, 2, 3, 4));
+        Assert.assertNull(arr.get4Keys(1, 2, 3, 4));
 
         Assert.assertNull(arr.get(0, 0, 0, 0));
-        Assert.assertNull(arr.get4(0, 0, 0, 0));
+        Assert.assertNull(arr.get4Keys(0, 0, 0, 0));
 
     }
 }

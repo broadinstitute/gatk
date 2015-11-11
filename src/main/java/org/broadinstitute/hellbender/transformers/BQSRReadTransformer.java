@@ -135,7 +135,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         // the rg key is constant over the whole read, the global deltaQ is too
         final int rgKey = fullReadKeySet[0][0];
 
-        final RecalDatum empiricalQualRG = recalibrationTables.getReadGroupTable().get2(rgKey, BASE_SUBSTITUTION_INDEX);
+        final RecalDatum empiricalQualRG = recalibrationTables.getReadGroupTable().get2Keys(rgKey, BASE_SUBSTITUTION_INDEX);
 
         if (empiricalQualRG == null) {
             return read;
@@ -159,11 +159,11 @@ public final class BQSRReadTransformer implements ReadTransformer {
             final int[] keySet = fullReadKeySet[offset];
 
 
-            final RecalDatum empiricalQualQS = qualityScoreTable.get3(keySet[0], keySet[1], BASE_SUBSTITUTION_INDEX);
+            final RecalDatum empiricalQualQS = qualityScoreTable.get3Keys(keySet[0], keySet[1], BASE_SUBSTITUTION_INDEX);
 
             for (int i = specialCovariateCount; i < totalCovariateCount; i++) {
                 if (keySet[i] >= 0) {
-                    empiricalQualCovsArgs[i - specialCovariateCount] = recalibrationTables.getTable(i).get4(keySet[0], keySet[1], keySet[i], BASE_SUBSTITUTION_INDEX);
+                    empiricalQualCovsArgs[i - specialCovariateCount] = recalibrationTables.getTable(i).get4Keys(keySet[0], keySet[1], keySet[i], BASE_SUBSTITUTION_INDEX);
                 }
             }
             final double recalibratedQualDouble = hierarchicalBayesianQualityEstimate(epsilon, empiricalQualRG, empiricalQualQS, empiricalQualCovsArgs);

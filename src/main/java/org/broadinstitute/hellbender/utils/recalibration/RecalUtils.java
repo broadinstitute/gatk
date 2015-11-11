@@ -563,20 +563,74 @@ public final class RecalUtils {
      * Increments the RecalDatum at the specified position in the specified table, or put a new item there
      * if there isn't already one.
      *
+     * Note: we intentionally do not use varargs here to avoid the performance cost of allocating an array on every call. It showed on the profiler.
+     *
      * @param table the table that holds/will hold our item
      * @param qual qual for this event
      * @param isError error value for this event
-     * @param keys location in table of our item
+     * @param key0, key1 location in table of our item
      */
-    public static void incrementDatumOrPutIfNecessary( final NestedIntegerArray<RecalDatum> table,
-                                                          final byte qual,
-                                                          final double isError,
-                                                          final int... keys ) {
-        final RecalDatum existingDatum = table.get(keys);
+    public static void incrementDatumOrPutIfNecessary2keys( final NestedIntegerArray<RecalDatum> table,
+                                                            final byte qual,
+                                                            final double isError,
+                                                            final int key0, final int key1) {
+        final RecalDatum existingDatum = table.get2Keys(key0, key1);
 
         if ( existingDatum == null ) {
             // No existing item, put a new one
-            table.put(createDatumObject(qual, isError), keys);
+            table.put(createDatumObject(qual, isError), key0, key1);
+        } else {
+            // Easy case: already an item here, so increment it
+            existingDatum.increment(1L, isError);
+        }
+    }
+
+    /**
+     * Increments the RecalDatum at the specified position in the specified table, or put a new item there
+     * if there isn't already one.
+     *
+     * Note: we intentionally do not use varargs here to avoid the performance cost of allocating an array on every call. It showed on the profiler.
+     *
+     * @param table the table that holds/will hold our item
+     * @param qual qual for this event
+     * @param isError error value for this event
+     * @param key0, key1, key2 location in table of our item
+     */
+    public static void incrementDatumOrPutIfNecessary3keys( final NestedIntegerArray<RecalDatum> table,
+                                                            final byte qual,
+                                                            final double isError,
+                                                            final int key0, final int key1, final int key2) {
+        final RecalDatum existingDatum = table.get3Keys(key0, key1, key2);
+
+        if ( existingDatum == null ) {
+            // No existing item, put a new one
+            table.put(createDatumObject(qual, isError), key0, key1, key2);
+        } else {
+            // Easy case: already an item here, so increment it
+            existingDatum.increment(1L, isError);
+        }
+    }
+
+    /**
+     * Increments the RecalDatum at the specified position in the specified table, or put a new item there
+     * if there isn't already one.
+     *
+     * Note: we intentionally do not use varargs here to avoid the performance cost of allocating an array on every call. It showed on the profiler.
+     *
+     * @param table the table that holds/will hold our item
+     * @param qual qual for this event
+     * @param isError error value for this event
+     * @param key0, key1, key2, key3 location in table of our item
+     */
+    public static void incrementDatumOrPutIfNecessary4keys( final NestedIntegerArray<RecalDatum> table,
+                                                            final byte qual,
+                                                            final double isError,
+                                                            final int key0,  final int key1, final int key2, final int key3) {
+        final RecalDatum existingDatum = table.get4Keys(key0, key1, key2, key3);
+
+        if ( existingDatum == null ) {
+            // No existing item, put a new one
+            table.put(createDatumObject(qual, isError), key0, key1, key2, key3);
         } else {
             // Easy case: already an item here, so increment it
             existingDatum.increment(1L, isError);
