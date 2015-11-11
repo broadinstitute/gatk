@@ -125,6 +125,8 @@ public abstract class GATKTool extends CommandLineProgram {
      *
      * Package-private so that engine classes can access it, but concrete tool child classes cannot.
      * May be overridden by traversals that require custom initialization of Feature data sources.
+     *
+     * By default, this method initializes the FeatureManager to use the lookahead cache of {@link FeatureDataSource#DEFAULT_QUERY_LOOKAHEAD_BASES} bases.
      */
     void initializeFeatures() {
         features = new FeatureManager(this);

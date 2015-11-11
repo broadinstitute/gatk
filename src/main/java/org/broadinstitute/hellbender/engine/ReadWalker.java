@@ -29,6 +29,12 @@ public abstract class ReadWalker extends GATKTool {
     }
 
     /**
+     * This number controls the size of the cache for our FeatureInputs
+     * (specifically, the number of additional bases worth of overlapping records to cache when querying feature sources).
+     */
+    public static final int FEATURE_CACHE_LOOKAHEAD = 1_000;
+
+    /**
      * Initialize data sources for traversal.
      *
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
@@ -39,6 +45,15 @@ public abstract class ReadWalker extends GATKTool {
 
         if ( hasIntervals() ) {
             reads.setIntervalsForTraversal(intervalsForTraversal);
+        }
+    }
+
+    @Override
+    void initializeFeatures() {
+        //We override this method to change lookahead of the cache
+        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD);
+        if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
+            features = null;
         }
     }
 
