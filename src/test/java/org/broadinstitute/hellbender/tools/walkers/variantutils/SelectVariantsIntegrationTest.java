@@ -27,7 +27,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 " -R " + hg19MiniReference
                         + " --variant " + testFile
                         + " -sn NA11918 "
-                        + " -sr " // suppress reference file name in output for test differencing
+                        + " -sr " // suppress reference file path in output for test differencing
                         + " -o %s ",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleSelection.vcf")
         );
@@ -43,7 +43,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 " -R " + hg19MiniReference
                         + " --variant " + testFile
                         + " -select 'DP < 7' "
-                        + " -sr " // suppress reference file name in output for test differencing
+                        + " -sr " // suppress reference file path in output for test differencing
                         + " -o %s ",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleExpressionSelection.vcf")
         );
