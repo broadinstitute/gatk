@@ -14,6 +14,8 @@ env:
   global:
   #gradle needs this
   - TERM=dumb
+  #limit gradle jvm memory
+  - GRADLE_OPTS=-Xmx1024m
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 

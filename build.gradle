@@ -198,7 +198,8 @@ task testAll(type: Test){
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
-    maxHeapSize = "2G"
+    maxHeapSize = "1.5G"
+    jvmArgs '-Xmx2G'
 
     // show standard out and standard error of the test JVM(s) on the console
     testLogging.showStandardStreams = true
