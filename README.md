@@ -192,6 +192,7 @@ The CNV case and PoN workflows (description and examples)
 ....snip....
 ```
 7. PoN file (when running case samples only).  This file should be created using the Create PoN workflow (see below).
+<a name="SampleName"/>
 8. Sample name (when running case samples only).  This can be extracted from the input bam file by looking at the ``SM`` tag.  Use ``samtools view -H my_sample.bam | egrep SM``.
 
 #### Case sample workflow
@@ -205,7 +206,8 @@ If you do not have a PoN, please skip to the [Create PoN workflow](#create-pon-w
 - Step 1. Collect proportional coverage
 - Step 2. Create coverage profile
 - Step 3. Segment coverage profile
-- Step 4. Call segments
+- Step 4. Plot coverage profile
+- Step 5. Call segments
 
 ##### Step 1. Collect proportional coverage
 
@@ -289,7 +291,30 @@ java -Xmx8g -jar <path_to_hellbender_protected_jar>  PerformSegmentation  -S <sa
 ```
 
 
-##### Step 4. Call segments
+##### Step 4. Plot coverage profile
+
+###### Inputs
+- normalized coverage file (tsv) -- from step 2.
+- pre-normalized coverage file (tsv) -- from step 2.
+- segmented coverage file (seg) -- from step 3.
+- sample name, [see above](#SampleName)
+
+###### Outputs
+- beforeAfterTangentLimPlot (png) -- Output before/after tangent normalization plot up to copy-ratio 4
+- beforeAfterTangentPlot (png) -- Output before/after tangent normalization plot
+- fullGenomePlot (png) -- Full genome plot after tangent normalization
+- preQc (txt) -- Median absolute differences of targets before normalization
+- postQc (txt) -- Median absolute differences of targets after normalization
+- dQc (txt) -- Difference in median absolute differences of targets before and after normalization
+
+###### Invocation
+
+```
+java -Xmx8g -jar <path_to_hellbender_protected_jar>  PlotSegmentedCopyRatio  -S <sample_name> -T <normalized_coverage_file> -P <pre_normalized_coverage_file> -seg <segmented_coverage_file> -O <output_seg_file> -log
+```
+
+
+##### Step 5. Call segments
 
 ###### Inputs
 - normalized coverage file (tsv) -- from step 2.
