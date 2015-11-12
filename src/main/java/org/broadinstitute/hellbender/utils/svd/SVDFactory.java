@@ -6,11 +6,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 /**
  * Entry point for creating an instance of SVD.  When the object is created, all of the calculation will be done as well.
- *
  */
 public class SVDFactory {
 
-    /** Create a SVD instance using Apache Commons Math.
+    /**
+     * Create a SVD instance using Apache Commons Math.
      *
      * @param m matrix that is not {@code null}
      * @return SVD instance that is never {@code null}
@@ -21,13 +21,14 @@ public class SVDFactory {
     }
 
     /**
-     * Create a SVD instance using A spark context.
+     * Create a SVD instance using a spark context.
      *
      * @param m matrix that is not {@code null}
      * @param ctx JavaSparkContext.  {@code null} is allowed, but will fall back to Apache Commons Math implementation.
      * @return SVD instance that is never {@code null}
      */
     public static SVD createSVD(final RealMatrix m, final JavaSparkContext ctx){
+        Utils.nonNull(m, "Cannot create SVD from a null matrix.");
         if (ctx == null) {
             return ApacheSingularValueDecomposer.createSVD(m);
         }

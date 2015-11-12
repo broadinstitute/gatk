@@ -3,14 +3,11 @@ package org.broadinstitute.hellbender.utils.svd;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.SingularValueDecomposition;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.svd.SVD;
-import org.broadinstitute.hellbender.utils.svd.SimpleSVD;
 
 /**
- * Perform singular value decompoisition (and pseudoinverse calculation) in Pure Java, Apache commons math.
- *
+ * Perform singular value decompoisition (and pseudoinverse calculation) in pure Java, Commons Math.
  */
-public class ApacheSingularValueDecomposer {
+class ApacheSingularValueDecomposer {
 
     /** Create a SVD instance using Apache Commons Math.
      *

@@ -6,13 +6,10 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
-import org.broadinstitute.hellbender.utils.svd.SparkSingularValueDecomposer;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -20,7 +17,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.StreamSupport;
 
 
 @CommandLineProgramProperties(
@@ -70,21 +66,21 @@ public final class DecomposeSingularValues extends SparkToggleCommandLineProgram
 
 
     @Override
-    protected void runPipeline(JavaSparkContext ctx) {
+    protected void runPipeline(final JavaSparkContext ctx) {
         try {
-            ReadCountCollection rcc = ReadCountCollectionUtils.parse(inputFile);
+            final ReadCountCollection rcc = ReadCountCollectionUtils.parse(inputFile);
             final SVD svd = SVDFactory.createSVD(rcc.counts(), ctx);
 
             writeMatrix(svd.getV(), outputFileV);
             writeMatrix(svd.getU(), outputFileU);
             writeMatrix(new DiagonalMatrix(svd.getSingularValues()), outputFileS);
-        } catch (IOException ioe) {
+        } catch (final IOException ioe) {
             throw new UserException.CouldNotReadInputFile(inputFile, ioe.getMessage());
         }
     }
 
     private void writeMatrix(final RealMatrix v, final File outputFilename) throws IOException {
-        List<String []> textTable = new ArrayList<>();
+        final List<String []> textTable = new ArrayList<>();
         for (int i = 0; i < v.getRowDimension(); i ++){
             textTable.add(Arrays.stream(v.getRow(i)).mapToObj(Double :: toString).toArray(String[]::new));
         }

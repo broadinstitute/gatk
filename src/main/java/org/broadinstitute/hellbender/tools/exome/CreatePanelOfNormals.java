@@ -15,10 +15,8 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.svd.ApacheSingularValueDecomposer;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
-import org.broadinstitute.hellbender.utils.svd.SparkSingularValueDecomposer;
 
 import java.io.File;
 import java.io.IOException;
@@ -196,7 +194,7 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
     protected boolean dryRun = false;
 
 
-    protected Object createPoN(JavaSparkContext ctx) {
+    protected Object createPoN(final JavaSparkContext ctx) {
 
         final OptionalInt numberOfEigenSamples = calculatePreferredNumberOfEigenSamples();
 
@@ -335,7 +333,7 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
     static ReductionResult calculateReducedPanelAndPInverses(final ReadCountCollection logNormals, final OptionalInt requestedNumberOfEigenSamples, final Logger logger, final JavaSparkContext ctx) {
 
         if (ctx == null) {
-            logger.warn("No spark context provided, not going to use Spark...");
+            logger.warn("No Spark context provided, not going to use Spark...");
         }
 
         final RealMatrix logNormalCounts = logNormals.counts();
@@ -352,7 +350,6 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
         final RealMatrix logNormalsV = logNormalsSVD.getV();
         final RealMatrix logNormalsEigenV = logNormalsV.getSubMatrix(0, numberOfCountColumns - 1, 0, numberOfEigenSamples - 1);
 
-        // Perhaps we can do this in spark?  It is currently a bottleneck with --sparkMaster "local[2]"
         final RealMatrix reducedCounts = logNormalCounts.multiply(logNormalsEigenV);
 
         // The Pseudo inverse comes nearly for free from having run the SVD decomposition.

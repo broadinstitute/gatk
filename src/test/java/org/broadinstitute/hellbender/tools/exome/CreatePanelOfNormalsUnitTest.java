@@ -17,9 +17,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.svd.ApacheSingularValueDecomposer;
 import org.broadinstitute.hellbender.utils.svd.SVD;
-import org.broadinstitute.hellbender.utils.svd.SparkSingularValueDecomposer;
+import org.broadinstitute.hellbender.utils.svd.SVDFactory;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -548,9 +547,9 @@ public class CreatePanelOfNormalsUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "singleEigenExample" )
-    public void testDetermineNumberOfEigenSamplesApache(final ReadCountCollection logNormals){
+    public void testDetermineNumberOfEigenSamplesNoSpark(final ReadCountCollection logNormals){
 
-        final SVD logNormalsSVD = ApacheSingularValueDecomposer.createSVD(logNormals.counts());//new SingularValueDecomposition(logNormals.counts());
+        final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts());
 
         final int actualNumber = CreatePanelOfNormals.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
         Assert.assertEquals(actualNumber, 1);
@@ -559,7 +558,7 @@ public class CreatePanelOfNormalsUnitTest extends BaseTest {
     @Test(dataProvider = "singleEigenExample" )
     public void testDetermineNumberOfEigenSamplesSpark(final ReadCountCollection logNormals){
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final SVD logNormalsSVD = SparkSingularValueDecomposer.createSVD(ctx, logNormals.counts());//new SingularValueDecomposition(logNormals.counts());
+        final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts(), ctx);
 
         final int actualNumber = CreatePanelOfNormals.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
         Assert.assertEquals(actualNumber, 1);

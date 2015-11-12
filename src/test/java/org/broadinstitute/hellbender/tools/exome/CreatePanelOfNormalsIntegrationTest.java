@@ -43,7 +43,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
     private static final File EXPECTED_SOME_TARGETS_PON = new File(TEST_FILE_DIR, "create-pon-some-targets.pon");
 
     @Test(dataProvider="allTargetsHDF5PoNCreationData")
-    public void testAllTargetsHDF5PoNCreation(final File targetsFile, final File inputFile) {
+    public void testAllTargetsHDF5PoNCreationNoSpark(final File targetsFile, final File inputFile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(inputFile.toString());

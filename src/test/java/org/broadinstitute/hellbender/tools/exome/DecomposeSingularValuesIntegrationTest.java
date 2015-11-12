@@ -5,11 +5,13 @@ import au.com.bytecode.opencsv.CSVWriter;
 import com.opencsv.CSVReader;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DiagonalMatrix;
+import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
+import org.broadinstitute.hellbender.utils.svd.SVDTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -39,9 +41,11 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
         assertOutputFile(outputFileV, 100, 100);
         assertOutputFile(outputFileS, 100, 100);
         assertSVDValues(outputFileV, outputFileS, outputFileU);
+
+        assertSVDValues(outputFileV, outputFileS, outputFileU);
     }
 
-    private List<String> createDefaultArguments(File outputFileV, File outputFileS, File outputFileU) {
+    private List<String> createDefaultArguments(final File outputFileV, final File outputFileS, final File outputFileU) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + DecomposeSingularValues.INPUT_FILE_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.getAbsolutePath());
@@ -79,13 +83,17 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
         assertSVDValues(outputFileV, outputFileS, outputFileU);
     }
 
-    private void assertSVDValues(File outputFileV, File outputFileS, File outputFileU) {
+    private void assertSVDValues(final File outputFileV, final File outputFileS, final File outputFileU) {
         try {
-            ReadCountCollection rcc = ReadCountCollectionUtils.parse(CONTROL_PCOV_FULL_FILE);
+            final ReadCountCollection rcc = ReadCountCollectionUtils.parse(CONTROL_PCOV_FULL_FILE);
             final SVD svd = SVDFactory.createSVD(rcc.counts());
+            final RealMatrix sDiag = new DiagonalMatrix(svd.getSingularValues());
             assertOutputFileValues(outputFileU, svd.getU());
-            assertOutputFileValues(outputFileS, new DiagonalMatrix(svd.getSingularValues()));
+            assertOutputFileValues(outputFileS, sDiag);
             assertOutputFileValues(outputFileV, svd.getV());
+            SVDTestUtils.assertUnitaryMatrix(svd.getV());
+            SVDTestUtils.assertUnitaryMatrix(svd.getU());
+            Assert.assertTrue(MatrixUtils.isSymmetric(sDiag, 1e-32));
 
         } catch (final IOException ioe) {
             Assert.fail("Could not open test file: " + CONTROL_PCOV_FULL_FILE, ioe);
@@ -119,7 +127,7 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
 
         final List<double []> allData = new ArrayList<>();
         try {
-            CSVReader reader = new CSVReader(new FileReader(inputFile), '\t', CSVWriter.NO_QUOTE_CHARACTER);
+            final CSVReader reader = new CSVReader(new FileReader(inputFile), '\t', CSVWriter.NO_QUOTE_CHARACTER);
             String[] nextLine;
             while ((nextLine = reader.readNext()) != null) {
                 allData.add(Arrays.stream(nextLine).map(Double :: parseDouble).mapToDouble(d -> d).toArray());

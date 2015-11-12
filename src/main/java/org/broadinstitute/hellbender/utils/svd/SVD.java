@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.svd;
 import org.apache.commons.math3.linear.RealMatrix;
 
 /**
- * Interface for SVD implementation.  Leverages Apache commons for data fields.
+ * Interface for SVD implementation.  Leverages Apache Commons for data fields.
  */
 public interface SVD {
 

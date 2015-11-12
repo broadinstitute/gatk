@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.utils.svd;
 
-import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.*;
-import org.apache.spark.api.java.*;
 import org.apache.spark.mllib.linalg.distributed.RowMatrix;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 
 
-public class SparkSingularValueDecomposer {
+class SparkSingularValueDecomposer {
 
     private static final double EPS = 1e-32;
 
@@ -29,16 +29,16 @@ public class SparkSingularValueDecomposer {
      * @param realMat the matrix target.  Not {@code null}
      * @return never {@code null}
      */
-    public static SVD createSVD(JavaSparkContext sc, RealMatrix realMat){
+    public static SVD createSVD(final JavaSparkContext sc, final RealMatrix realMat){
 
         Utils.nonNull(sc, "Cannot perform Spark MLLib SVD using a null JavaSparkContext.");
         Utils.nonNull(realMat, "Cannot perform Spark MLLib SVD on a null matrix.");
 
-        logger.info("Converting matrix to distributed spark matrix...");
-        double [][] dataArray = realMat.getData();
-        LinkedList<Vector> rowsList = new LinkedList<>();
+        logger.info("Converting matrix to distributed Spark matrix...");
+        final double [][] dataArray = realMat.getData();
+        final LinkedList<Vector> rowsList = new LinkedList<>();
         for (final double [] i : dataArray) {
-            Vector currentRow = Vectors.dense(i);
+            final Vector currentRow = Vectors.dense(i);
             rowsList.add(currentRow);
         }
 
@@ -46,27 +46,27 @@ public class SparkSingularValueDecomposer {
         // final int totalSpace = realMat.getColumnDimension() * realMat.getRowDimension() * Double.BYTES;
         // // Want the partitions to be ~100KB of space
         // final int slices = totalSpace/100000;
-        JavaRDD<Vector> rows = sc.parallelize(rowsList, NUM_SLICES);
+        final JavaRDD<Vector> rows = sc.parallelize(rowsList, NUM_SLICES);
 
         // Create a RowMatrix from JavaRDD<Vector>.
-        RowMatrix mat = new RowMatrix(rows.rdd());
-        logger.info("Done converting matrix to distributed spark matrix...");
+        final RowMatrix mat = new RowMatrix(rows.rdd());
+        logger.info("Done converting matrix to distributed Spark matrix...");
 
         // Compute all of the singular values and corresponding singular vectors.
-        SingularValueDecomposition<RowMatrix, Matrix> svd = mat.computeSVD((int) mat.numCols(), true, 1.0E-9d);
+        final SingularValueDecomposition<RowMatrix, Matrix> svd = mat.computeSVD((int) mat.numCols(), true, 1.0E-9d);
 
         // Get our distributed results
-        final RowMatrix U = svd.U();
+        final RowMatrix u = svd.U();
         final Vector s = svd.s();
-        final Matrix V = svd.V().transpose();
+        final Matrix v = svd.V().transpose();
 
         // Move the matrices from Spark/distributed space to Apache Commons space
-        logger.info("Converting distributed spark matrix to local matrix...");
-        final RealMatrix uReal = convertSparkRowMatrixToRealMatrix(U, realMat.getRowDimension());
-        logger.info("Done converting distributed matrix to local matrix...");
-        logger.info("Converting spark matrix to local matrix...");
-        final RealMatrix vReal = convertSparkMatrixToRealMatrix(V);
-        logger.info("Done converting spark matrix to local matrix...");
+        logger.info("Converting distributed Spark matrix to local matrix...");
+        final RealMatrix uReal = convertSparkRowMatrixToRealMatrix(u, realMat.getRowDimension());
+        logger.info("Done converting distributed Spark matrix to local matrix...");
+        logger.info("Converting Spark matrix to local matrix...");
+        final RealMatrix vReal = convertSparkMatrixToRealMatrix(v);
+        logger.info("Done converting Spark matrix to local matrix...");
         final double [] singularValues = s.toArray();
 
         logger.info("Calculating the pseudoinverse...");
@@ -79,7 +79,7 @@ public class SparkSingularValueDecomposer {
 
         final Matrix invSMat = Matrices.diag(Vectors.dense(invS));
         logger.info("Pinv: Multiplying V * invS * U' to get the pinv (using pinv transpose = U * invS' * V') ...");
-        final RowMatrix pinvT = (U.multiply(invSMat)).multiply(V);
+        final RowMatrix pinvT = (u.multiply(invSMat)).multiply(v);
         final RealMatrix pinv = convertSparkRowMatrixToRealMatrix(pinvT, realMat.getRowDimension()).transpose();
         logger.info("Done calculating the pseudoinverse and converting it...");
 
@@ -87,8 +87,8 @@ public class SparkSingularValueDecomposer {
     }
 
     private static RealMatrix convertSparkMatrixToRealMatrix(final Matrix r){
-        RealMatrix result = new Array2DRowRealMatrix(r.numRows(), r.numCols());
-        double [] columnMajorMat = r.toArray();
+        final RealMatrix result = new Array2DRowRealMatrix(r.numRows(), r.numCols());
+        final double [] columnMajorMat = r.toArray();
         for (int i = 0; i < r.numRows(); i++) {
             result.setRow(i, Arrays.copyOfRange(columnMajorMat, i * r.numCols(), i * r.numCols() + r.numCols()) );
         }
@@ -110,9 +110,12 @@ public class SparkSingularValueDecomposer {
         }
 
         final int numCols = (int) r.numCols();
+
+        // This cast is required, even though it would not seem necessary, at first.  Exact reason why is unknown.
+        //   Will fail compilation if the cast is removed.
         final Vector [] rowVectors = (Vector []) r.rows().collect();
 
-        RealMatrix result = new Array2DRowRealMatrix(numRows, numCols);
+        final RealMatrix result = new Array2DRowRealMatrix(numRows, numCols);
         for (int i = 0; i < numRows; i++) {
             result.setRow(i, rowVectors[i].toArray() );
         }

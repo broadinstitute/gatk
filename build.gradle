@@ -129,33 +129,35 @@ dependencies {
 
     testCompile 'org.testng:testng:6.8.8'
 
-    // Uncomment the next line to enable native code proxies in Spark MLLib
+    // Comment the next line to disable native code proxies in Spark MLLib
     compile('com.github.fommil.netlib:all:1.1.2')
 
-    // Here is where the dependency hacking began for including MLLib
-
+    // Dependency change for including MLLib
     compile('org.objenesis:objenesis:1.2')
     testCompile('org.objenesis:objenesis:2.1')
 
+    // Dependency change for including MLLib
     compile('de.javakaffee:kryo-serializers:0.26') {
         exclude module: 'kryo' // use Spark's version
     }
 
+    // Dependency change for including MLLib
     compile('com.esotericsoftware:kryo:3.0.3'){
         exclude group: 'com.esotericsoftware', module: 'reflectasm'
         exclude group: 'org.ow2.asm', module: 'asm'
     }
 
+    // Dependency change for including MLLib
     compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 }
 
+// Dependency change for including MLLib
 configurations {
     compile.exclude module: 'jul-to-slf4j'
     compile.exclude module: 'javax.servlet'
     compile.exclude module: 'servlet-api'
     compile.exclude group: 'com.esotericsoftware.kryo'
 }
-// Here is where the dependency hacking ended for including MLLib
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8

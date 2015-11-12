@@ -5,11 +5,11 @@ In this directory lives a simple, *unsupported* docker script.
 
 This doc does not give usage info on Docker and assumes you are already versed in its use.
 
-Please see the excellent docker documentation, if you need info about docker:  https://docs.docker.com/
+Please see the excellent docker documentation if you need info about docker:  https://docs.docker.com/
 
 Notes:
 - Image is built on ``ubuntu:14.04``
-- Once image is built, the hellbender-protected.jar (symlink) is found in ``/root`` (HOME).
+- Once image is built, the hellbender-protected.jar (symlink) is found in ``/root`` (i.e. ``$HOME``).
 - HDF5 jni library is in ``/usr/lib/jni``, since this is the default for Ubuntu 14.04.  This has been added to the ``JAVA_LIBRARY_PATH`` environment variable.
 
 #### Create docker image
@@ -28,4 +28,3 @@ sudo docker run -i -t <image>
 cd hellbender-protected
 gradle test
 ```
-

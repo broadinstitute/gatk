@@ -58,7 +58,7 @@ RUN apt-get install -y --force-yes r-base-core=3.1.3-1trusty
 
 # R setup complete...
 
-# Installing GATK4 protected (hellbender-protected)"
+# Installing GATK4 protected (hellbender-protected)
 #  This Dockerfile is getting the latest from master branch of gatk4 protected (hellbender-protected)"
 #  This Dockerfile generates a jar file that will work without spark or in spark standalone.  Not on a spark cluster."
 #  Unit tests are NOT being run"
@@ -80,8 +80,3 @@ RUN ln -sFv /root/hellbender-protected/build/libs/hellbender-protected.jar
 RUN java -jar hellbender-protected.jar -h
 
 ENV JAVA_LIBRARY_PATH /usr/lib/jni
-
-
-
-
-
