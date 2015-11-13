@@ -390,9 +390,9 @@ public class SelectVariants extends VariantWalker {
     private boolean allowNonOverlappingCommandLineSamples = false;
 
     @HiddenOption
-    @Argument(fullName="SUPPRESS_REFERENCE_NAME", shortName="sr", optional=true,
-            doc="Suppress reference file name in output for test result differencing")
-    private boolean suppressReferenceName = false;
+    @Argument(fullName="SUPPRESS_REFERENCE_PATH", shortName="sr", optional=true,
+            doc="Suppress reference path in output for test result differencing")
+    private boolean suppressReferencePath = false;
 
     private VariantContextWriter vcfWriter = null;
 
@@ -480,12 +480,12 @@ public class SelectVariants extends VariantWalker {
         if (hasReference()) {
             File refFile = referenceArguments.getReferenceFile();
             sequenceDictionary= this.getReferenceDictionary();
-            actualLines = withUpdatedContigsAsLines(headerLines, refFile, sequenceDictionary, suppressReferenceName);
+            actualLines = withUpdatedContigsAsLines(headerLines, refFile, sequenceDictionary, suppressReferencePath);
         }
         else {
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
             if (null != sequenceDictionary) {
-                actualLines = withUpdatedContigsAsLines(headerLines, null, sequenceDictionary, suppressReferenceName);
+                actualLines = withUpdatedContigsAsLines(headerLines, null, sequenceDictionary, suppressReferencePath);
             }
             else {
                 actualLines = headerLines;
@@ -630,7 +630,7 @@ public class SelectVariants extends VariantWalker {
                         "Samples entered on command line (through -sf or -sn) that are not present in the VCF.",
                         "A list of these samples:",
                         Utils.join(",", commandLineUniqueSamples),
-                        "To ignore these samples, run with --allowNonOverlappingCommandLineSamples"));
+                        "To ignore these samples, run with --ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES"));
             }
         }
 
