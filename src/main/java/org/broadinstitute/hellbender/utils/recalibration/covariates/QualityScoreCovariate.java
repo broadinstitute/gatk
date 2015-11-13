@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -18,13 +17,20 @@ public final class QualityScoreCovariate implements Covariate {
     }
 
     @Override
-    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values) {
+    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values, final boolean recordIndelValues) {
         final byte[] baseQualities = read.getBaseQualities();
-        final byte[] baseInsertionQualities = ReadUtils.getBaseInsertionQualities(read);
-        final byte[] baseDeletionQualities = ReadUtils.getBaseDeletionQualities(read);
+        final byte[] baseInsertionQualities = recordIndelValues ? ReadUtils.getBaseInsertionQualities(read) : null;
+        final byte[] baseDeletionQualities = recordIndelValues ? ReadUtils.getBaseDeletionQualities(read) : null;
 
-        for (int i = 0; i < baseQualities.length; i++) {
-            values.addCovariate(baseQualities[i], baseInsertionQualities[i], baseDeletionQualities[i], i);
+        //note: duplicate the loop to avoid checking recordIndelValues on every iteration
+        if (recordIndelValues) {
+            for (int i = 0; i < baseQualities.length; i++) {
+                values.addCovariate(baseQualities[i], baseInsertionQualities[i], baseDeletionQualities[i], i);
+            }
+        } else {
+            for (int i = 0; i < baseQualities.length; i++) {
+                values.addCovariate(baseQualities[i], 0, 0, i);
+            }
         }
     }
 

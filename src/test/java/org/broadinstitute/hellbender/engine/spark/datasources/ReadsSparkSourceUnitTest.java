@@ -28,7 +28,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
     public Object[][] loadReads() {
         return new Object[][]{
                 {dir + "HiSeq.1mb.1RG.2k_lines.alternate.bam"},
-                {dir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate.bam"},
+                {dir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam"},
         };
     }
 

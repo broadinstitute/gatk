@@ -810,25 +810,6 @@ public final class ReadUtils {
     }
 
     /**
-     * Setters and Accessors for base insertion and base deletion quality scores
-     */
-    public static void setBaseQualities( final GATKRead read, final byte[] quals, final EventType errorModel ) {
-        switch( errorModel ) {
-            case BASE_SUBSTITUTION:
-                read.setBaseQualities(quals);
-                break;
-            case BASE_INSERTION:
-                read.setAttribute(BQSR_BASE_INSERTION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals));
-                break;
-            case BASE_DELETION:
-                read.setAttribute(BQSR_BASE_DELETION_QUALITIES, quals == null ? null : SAMUtils.phredToFastq(quals) );
-                break;
-            default:
-                throw new GATKException("Unrecognized Base Recalibration type: " + errorModel );
-        }
-    }
-
-    /**
      * Resets the quality scores of the reads to the orginal (pre-BQSR) ones.
      */
     public static GATKRead resetOriginalBaseQualities(final GATKRead read) {

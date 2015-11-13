@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.utils.recalibration.ReadCovariates;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
@@ -21,8 +20,9 @@ public interface Covariate extends Serializable {
      * @param read   the read to calculate the covariates on.
      * @param header SAM header for the read
      * @param values the object to record the covariate values for every base in the read.
+     * @param recordIndelValues indicates whether values of the covariate are to be recorded for indels
      */
-    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values);
+    public void recordValues(final GATKRead read, final SAMFileHeader header, final ReadCovariates values, final boolean recordIndelValues);
 
     /**
      * Converts the internal representation of the key to String format for file output.

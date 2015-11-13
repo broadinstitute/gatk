@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.recalibration;
+package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
@@ -6,7 +6,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.*;
+import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
+import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -51,7 +52,7 @@ public final class ReadCovariatesUnitTest extends BaseTest {
                 final byte[] mQuals = read.getBaseQualities();
                 final byte[] iQuals = ReadUtils.getBaseInsertionQualities(read);
                 final byte[] dQuals = ReadUtils.getBaseDeletionQualities(read);
-                ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariates);
+                ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariates, true);
 
                 // check that the length is correct
                 Assert.assertEquals(rc.getMismatchesKeySet().length, length);

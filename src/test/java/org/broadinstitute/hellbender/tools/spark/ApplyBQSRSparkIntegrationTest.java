@@ -39,10 +39,9 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public Object[][] createABQSRTestData() {
         List<Object[]> tests = new ArrayList<>();
 
-        tests.add(new Object[]{new ABQSRTest(hiSeqBam, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.alternate_allaligned.bam")});
-        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq -1", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.qq-1.alternate_allaligned.bam")});
-        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq 6", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.qq6.alternate_allaligned.bam")});
-        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -DIQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.DIQ.alternate_allaligned.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq -1", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.qq-1.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq 6", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.qq6.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.bam")});
 
         return tests.toArray(new Object[][]{});
     }
@@ -54,7 +53,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
 
         List<Object[]> tests = new ArrayList<>();
 
-        tests.add(new Object[]{new ABQSRTest(hiSeqBamGCS, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.bqsr.alternate_allaligned.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBamGCS, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.bam")});
 
         // TODO: add test inputs with some unaligned reads
 

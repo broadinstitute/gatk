@@ -20,7 +20,7 @@ import static org.broadinstitute.hellbender.utils.MathUtils.logToLog10;
  */
 public final class MathUtilsUnitTests extends BaseTest {
 
-    private final static Logger logger = LogManager.getLogger(MathUtilsUnitTests.class);
+    private static final Logger logger = LogManager.getLogger(MathUtilsUnitTests.class);
 
     @BeforeClass
     public void init() {

@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.NGSPlatform;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.QuantizationInfo;
@@ -136,7 +137,7 @@ public final class BaseRecalibrator extends ReadWalker {
             recalArgs.DEFAULT_PLATFORM = recalArgs.FORCE_PLATFORM;
         }
 
-        assertNoSOLiDReadGroups(getHeaderForReads());
+        Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
 
         if ( knownSites.isEmpty() && ! recalArgs.RUN_WITHOUT_DBSNP ) { // Warn the user if no dbSNP file or other variant mask was specified
             throw new UserException.CommandLineException(NO_DBSNP_EXCEPTION);
@@ -145,12 +146,6 @@ public final class BaseRecalibrator extends ReadWalker {
         recalibrationEngine = new BaseRecalibrationEngine(recalArgs, getHeaderForReads());
         recalibrationEngine.logCovariatesUsed();
         referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferenceFile());
-    }
-
-    private void assertNoSOLiDReadGroups(final SAMFileHeader readsHeader) {
-        if (readsHeader.getReadGroups().stream().anyMatch(rg -> NGSPlatform.fromReadGroupPL(rg.getPlatform()) ==  NGSPlatform.SOLID)){
-            throw new UserException.BadInput("BQSR does not support SOLiD data but found read group from SOLiD platform.");
-        }
     }
 
     @Override

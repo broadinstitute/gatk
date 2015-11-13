@@ -196,6 +196,10 @@ public final class IntegrationTestSpec {
         Assert.assertEquals(actualLines.toString(), expectedLines.toString());
     }
 
+    /**
+     * Compares the two given bam files, optionally sorting them before comparison.
+     * The sorting is helpful to compare files that are different but equivalent (eg read pairs with same coordinates get reordered).
+     */
     public static void assertEqualBamFiles(final File resultFile, final File expectedFile, final boolean compareBamFilesSorted) throws IOException {
 
         if (compareBamFilesSorted) {
