@@ -219,7 +219,7 @@ public final class RecalibrationReport {
         // the estimatedQreported column only exists in the ReadGroup table
         final double estimatedQReported = hasEstimatedQReportedColumn ?
                 (Double) reportTable.get(row, RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME) : // we get it if we are in the read group table
-                Byte.parseByte((String) reportTable.get(row, RecalUtils.QUALITY_SCORE_COLUMN_NAME)); // or we use the reported quality if we are in any other table
+                decodeByte(reportTable.get(row, RecalUtils.QUALITY_SCORE_COLUMN_NAME)); // or we use the reported quality if we are in any other table
 
         final RecalDatum datum = new RecalDatum(nObservations, nErrors, (byte)1);
         datum.setEstimatedQReported(estimatedQReported);
@@ -272,7 +272,7 @@ public final class RecalibrationReport {
                     throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but was " + covs);
                 }
             } else if (argument.equals("no_standard_covs")) {
-                final boolean no_standard_covs = Boolean.parseBoolean((String) value);
+                final boolean no_standard_covs = decodeBoolean(value);
                 if (no_standard_covs){
                     throw new UserException("Non-standard covariates are not supported. Only the following are supported " + standardCovariateClassNames + " but no_standard_covs was true");
                 }
@@ -289,25 +289,25 @@ public final class RecalibrationReport {
                 }
             }
             else if (argument.equals("mismatches_context_size"))
-                RAC.MISMATCHES_CONTEXT_SIZE = Integer.parseInt((String) value);
+                RAC.MISMATCHES_CONTEXT_SIZE = decodeInteger(value);
 
             else if (argument.equals("indels_context_size"))
-                RAC.INDELS_CONTEXT_SIZE = Integer.parseInt((String) value);
+                RAC.INDELS_CONTEXT_SIZE = decodeInteger(value);
 
             else if (argument.equals("mismatches_default_quality"))
-                RAC.MISMATCHES_DEFAULT_QUALITY = Byte.parseByte((String) value);
+                RAC.MISMATCHES_DEFAULT_QUALITY = decodeByte(value);
 
             else if (argument.equals("insertions_default_quality"))
-                RAC.INSERTIONS_DEFAULT_QUALITY = Byte.parseByte((String) value);
+                RAC.INSERTIONS_DEFAULT_QUALITY = decodeByte(value);
 
             else if (argument.equals("deletions_default_quality"))
-                RAC.DELETIONS_DEFAULT_QUALITY = Byte.parseByte((String) value);
+                RAC.DELETIONS_DEFAULT_QUALITY = decodeByte(value);
 
             else if (argument.equals("maximum_cycle_value"))
-                RAC.MAXIMUM_CYCLE_VALUE = Integer.parseInt((String) value);
+                RAC.MAXIMUM_CYCLE_VALUE = decodeInteger(value);
 
             else if (argument.equals("low_quality_tail"))
-                RAC.LOW_QUAL_TAIL = Byte.parseByte((String) value);
+                RAC.LOW_QUAL_TAIL = decodeByte(value);
 
             else if (argument.equals("default_platform"))
                 RAC.DEFAULT_PLATFORM = (String) value;
@@ -316,7 +316,7 @@ public final class RecalibrationReport {
                 RAC.FORCE_PLATFORM = (String) value;
 
             else if (argument.equals("quantizing_levels"))
-                RAC.QUANTIZING_LEVELS = Integer.parseInt((String) value);
+                RAC.QUANTIZING_LEVELS = decodeInteger(value);
 
             else if (argument.equals("recalibration_report"))
                 RAC.existingRecalibrationReport = (value == null) ? null : new File((String) value);
@@ -325,10 +325,31 @@ public final class RecalibrationReport {
                 RAC.BINARY_TAG_NAME = (value == null) ? null : (String) value;
 
             else if (argument.equals("sort_by_all_columns"))
-                RAC.SORT_BY_ALL_COLUMNS = Boolean.parseBoolean((String) value);
+                RAC.SORT_BY_ALL_COLUMNS = decodeBoolean(value);
         }
 
         return RAC;
+    }
+
+    private byte decodeByte(final Object value) {
+        if (!(value instanceof Byte || value instanceof String)){
+            throw new IllegalArgumentException("expected a Byte or a String but got " + value);
+        }
+        return value instanceof Byte ? (Byte)value: Byte.parseByte((String)value);
+    }
+
+    private int decodeInteger(final Object value) {
+        if (!(value instanceof Integer || value instanceof String)){
+            throw new IllegalArgumentException("expected a Integer or a String but got " + value);
+        }
+        return value instanceof Integer ? (Integer) value: Integer.parseInt((String)value);
+    }
+
+    private boolean decodeBoolean(final Object value) {
+        if (!(value instanceof Boolean || value instanceof String)){
+            throw new IllegalArgumentException("expected a Boolean or a String but got " + value);
+        }
+        return value instanceof Boolean ? (Boolean) value: Boolean.parseBoolean((String) value);
     }
 
     /**

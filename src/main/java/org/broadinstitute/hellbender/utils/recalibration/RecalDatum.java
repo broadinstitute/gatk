@@ -15,7 +15,7 @@ public final class RecalDatum implements Serializable {
     public static final byte MAX_RECALIBRATED_Q_SCORE = SAMUtils.MAX_PHRED_SCORE;
     private static final double UNINITIALIZED = -1.0;
     private static final long serialVersionUID = 1L;
-    private static final double MULTIPLIER = 1000.0;
+    private static final double MULTIPLIER = 100000.0;  //See discussion in numMismatches about what the multiplier is.
 
     /**
      * estimated reported quality score based on combined data's individual q-reporteds and number of observations
@@ -33,10 +33,14 @@ public final class RecalDatum implements Serializable {
     private long numObservations;
 
     /**
-     * number of bases seen that didn't match the reference
+     * Number of bases seen that didn't match the reference
      * (actually sum of the error weights - so not necessarily a whole number)
      * Stored with an internal multiplier to keep it closer to the floating-point sweet spot and avoid numerical error
-     * (see https://github.com/broadinstitute/hellbender/wiki/Numerical-errors ).
+     * (see https://github.com/broadinstitute/gatk/wiki/Numerical-errors ).
+     * However, the value of the multiplier influences the results.
+     * For example, you get different results for 1000.0 and 10000.0
+     * See MathUtilsUnitTest.testAddDoubles for a demonstration.
+     * The value of the MULTIPLIER that we found to give consistent results insensitive to sorting is 10000.0;
      */
     private double numMismatches;
 

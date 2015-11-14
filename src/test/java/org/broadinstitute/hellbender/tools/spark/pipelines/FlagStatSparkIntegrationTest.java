@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -31,7 +31,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
         //the expected output was created using stand-alone hellbender
-        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.txt"), false);
+        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.txt"), false, null);
     }
     @Test
     public void flagStatSparkLocalWithBigInterval() throws IOException {
@@ -54,7 +54,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
         //the expected output was created using stand-alone hellbender
-        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1-chr8.txt"), false);
+        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1-chr8.txt"), false, null);
     }
 
     @Test
@@ -71,6 +71,6 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(outputFile.exists());
         //the expected output was created using stand-alone hellbender
-        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1_1.txt"), false);
+        IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1_1.txt"), false, null);
     }
 }

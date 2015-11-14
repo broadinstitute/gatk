@@ -4,12 +4,12 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
-import org.broadinstitute.hellbender.utils.commandline.AdvancedOption;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * A collection of the arguments that are used for BQSR. Used to be common to both CovariateCounterWalker and TableRecalibrationWalker.
@@ -26,12 +26,8 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public static final String SOLID_RECAL_MODE = "SET_Q_ZERO";
     public static final String SOLID_NOCALL_STRATEGY = "THROW_EXCEPTION";
 
-    /**
-     * This calculation is critically dependent on being able to skip over known polymorphic sites. Please be sure that you know what you are doing if you use this option.
-     */
-    @AdvancedOption
-    @Argument(fullName = "run_without_dbsnp_potentially_ruining_quality", shortName = "run_without_dbsnp_potentially_ruining_quality", optional = true, doc = "If specified, allows the recalibrator to be used without a dbsnp database. Very unsafe and for expert users only.")
-    public boolean RUN_WITHOUT_DBSNP = false;
+    //It makes no sense to run BQSR without sites. so we remove this option.
+    public static final boolean RUN_WITHOUT_DBSNP = false;
 
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base mismatches. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
@@ -213,7 +209,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public Map<String,? extends CharSequence> compareReportArguments(final RecalibrationArgumentCollection other,final String thisRole, final String otherRole) {
         final Map<String,String> result = new LinkedHashMap<>(15);
         compareSimpleReportArgument(result,"no_standard_covs", DO_NOT_USE_STANDARD_COVARIATES, DO_NOT_USE_STANDARD_COVARIATES, thisRole, otherRole);
-        compareSimpleReportArgument(result,"run_without_dbsnp",RUN_WITHOUT_DBSNP,other.RUN_WITHOUT_DBSNP,thisRole,otherRole);
+        compareSimpleReportArgument(result,"run_without_dbsnp",RUN_WITHOUT_DBSNP, RUN_WITHOUT_DBSNP,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, SOLID_RECAL_MODE,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_nocall_strategy", SOLID_NOCALL_STRATEGY, SOLID_NOCALL_STRATEGY,thisRole,otherRole);
         compareSimpleReportArgument(result,"mismatches_context_size", MISMATCHES_CONTEXT_SIZE,other.MISMATCHES_CONTEXT_SIZE,thisRole,otherRole);

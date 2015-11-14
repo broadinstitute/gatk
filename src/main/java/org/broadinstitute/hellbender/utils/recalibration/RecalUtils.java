@@ -52,14 +52,17 @@ public final class RecalUtils {
     private static boolean warnUserNullPlatform = false;
 
     private static final String SCRIPT_FILE = "BQSR.R";
+    public static final int EMPIRICAL_QUAL_DECIMAL_PLACES = 4;
+    public static final int EMPIRICAL_Q_REPORTED_DECIMAL_PLACES = 4;
+    public static final int NUMBER_ERRORS_DECIMAL_PLACES = 2;
 
     private static final Pair<String, String> covariateValue     = new MutablePair<>(RecalUtils.COVARIATE_VALUE_COLUMN_NAME, "%s");
     private static final Pair<String, String> covariateName      = new MutablePair<>(RecalUtils.COVARIATE_NAME_COLUMN_NAME, "%s");
     private static final Pair<String, String> eventType          = new MutablePair<>(RecalUtils.EVENT_TYPE_COLUMN_NAME, "%s");
-    private static final Pair<String, String> empiricalQuality   = new MutablePair<>(RecalUtils.EMPIRICAL_QUALITY_COLUMN_NAME, "%.4f");
-    private static final Pair<String, String> estimatedQReported = new MutablePair<>(RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME, "%.4f");
+    private static final Pair<String, String> empiricalQuality   = new MutablePair<>(RecalUtils.EMPIRICAL_QUALITY_COLUMN_NAME, "%." + EMPIRICAL_QUAL_DECIMAL_PLACES + "f");
+    private static final Pair<String, String> estimatedQReported = new MutablePair<>(RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME, "%." + EMPIRICAL_Q_REPORTED_DECIMAL_PLACES + "f");
     private static final Pair<String, String> nObservations      = new MutablePair<>(RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME, "%d");
-    private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%.2f");
+    private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%." + NUMBER_ERRORS_DECIMAL_PLACES+ "f");
 
     /**
      * Component used to print out csv representation of the reports that can be use to perform analysis in
@@ -186,7 +189,7 @@ public final class RecalUtils {
         p.close();
     }
 
-    private static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
+    public static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
         List<GATKReportTable> result = new LinkedList<>();
         int rowIndex = 0;
 
@@ -303,6 +306,19 @@ public final class RecalUtils {
     }
 
     /**
+     * Creates a consolidated RecalibrationReport report from the tables.
+     *
+     * @param argumentTable Argument table
+     * @param quantizationTable Quantization Table
+     * @param recalTables Other recal tables
+     * @return RecalibrationReport report
+     */
+    public static RecalibrationReport createRecalibrationReport(final GATKReportTable argumentTable, final GATKReportTable quantizationTable, final List<GATKReportTable> recalTables) {
+        final GATKReport report = RecalUtils.createRecalibrationGATKReport(argumentTable, quantizationTable, recalTables);
+        return new RecalibrationReport(report);
+    }
+
+    /**
      * Creates a consolidated GATK report, first generating report tables. Report can then be written to a stream via GATKReport.print(PrintStream).
      *
      * @param argumentTable Argument table
@@ -324,7 +340,7 @@ public final class RecalUtils {
      * @param recalTables Other recal tables
      * @return GATK report
      */
-    private static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final GATKReportTable quantizationTable, final List<GATKReportTable> recalTables) {
+    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final GATKReportTable quantizationTable, final List<GATKReportTable> recalTables) {
         final GATKReport report = new GATKReport();
         report.addTable(argumentTable);
         report.addTable(quantizationTable);

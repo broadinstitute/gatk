@@ -3,9 +3,10 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
@@ -35,7 +36,7 @@ public final class SortSam extends PicardCommandLineProgram {
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
-        final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
+        final SamReader reader = SamReaderFactory.makeDefault().validationStringency(VALIDATION_STRINGENCY).referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
         reader.getFileHeader().setSortOrder(SORT_ORDER);
         try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, OUTPUT)) {
             writer.setProgressLogger(
