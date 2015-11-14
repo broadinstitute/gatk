@@ -107,6 +107,8 @@ import java.io.*;
  */
 public abstract class TableWriter<R> implements Closeable {
 
+    private long lineNumber;
+
     /**
      * Csv writer use to do the actual writing.
      */
@@ -165,6 +167,7 @@ public abstract class TableWriter<R> implements Closeable {
     public final void writeComment(final String comment) throws IOException {
         Utils.nonNull(comment, "the comment cannot be null");
         writer.writeNext(new String[]{TableUtils.COMMENT_PREFIX + comment}, false);
+        lineNumber++;
     }
 
     /**
@@ -180,9 +183,10 @@ public abstract class TableWriter<R> implements Closeable {
     public final void writeRecord(final R record) throws IOException {
         Utils.nonNull(record, "the record cannot be null");
         writeHeaderIfApplies();
-        final DataLine dataLine = new DataLine(columns,IllegalArgumentException::new);
+        final DataLine dataLine = new DataLine(lineNumber + 1, columns,IllegalArgumentException::new);
         composeLine(record,dataLine);
         writer.writeNext(dataLine.unpack(), false);
+        lineNumber++;
     }
 
     /**
@@ -231,6 +235,7 @@ public abstract class TableWriter<R> implements Closeable {
     public void writeHeaderIfApplies() throws IOException {
         if (!headerWritten) {
             writer.writeNext(columns.names().toArray(new String[columns.columnCount()]), false);
+            lineNumber++;
         }
         headerWritten = true;
     }

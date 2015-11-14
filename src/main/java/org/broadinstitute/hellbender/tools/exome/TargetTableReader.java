@@ -30,12 +30,14 @@ import java.util.stream.Stream;
  * </pre>
  * </p>
  * <p>
- * There might be additional columns indicating arbitrary target annotations such as per-sample coverage, gc bias
+ * There might be additional columns indicating arbitrary target annotations such as per-sample coverage, gc content
  * and so forth.
  * </p>
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class TargetTableReader extends TableReader<Target> {
+
+    private TargetTableAnnotationManager annotationCollection;
 
     public TargetTableReader(final Reader reader) throws IOException {
         super(reader);
@@ -47,26 +49,27 @@ public final class TargetTableReader extends TableReader<Target> {
 
     @Override
     protected void processColumns(final TableColumnCollection columns) {
-        if (!columns.containsAll(TargetColumns.COLUMN_NAME_ARRAY)) {
+        if (!columns.containsAll(TargetTableColumn.MANDATORY_COLUMN_NAME_ARRAY)) {
             throw formatException("Bad header: missing required columns: "
-                    + Stream.of(TargetColumns.COLUMN_NAME_ARRAY)
+                    + Stream.of(TargetTableColumn.MANDATORY_COLUMN_NAME_ARRAY)
                             .filter(c -> !columns.contains(c)).collect(Collectors.joining(", ")));
         }
+        annotationCollection = new TargetTableAnnotationManager(getSource(), columns);
     }
 
     @Override
     protected Target createRecord(final DataLine dataLine) {
 
-        final String contig = dataLine.get(TargetColumns.CONTIG);
-        final int start = dataLine.getInt(TargetColumns.START);
-        final int end = dataLine.getInt(TargetColumns.END);
+        final String contig = dataLine.get(TargetTableColumn.CONTIG);
+        final int start = dataLine.getInt(TargetTableColumn.START);
+        final int end = dataLine.getInt(TargetTableColumn.END);
         if (start < 0) {
             throw formatException("the start position must not be negative: " + start);
         } else if (start > end) {
             throw formatException(String.format("the start position %d cannot be greater than the end position %d", start, end));
         }
         final SimpleInterval interval = new SimpleInterval(contig, start, end);
-        final String name = dataLine.get(TargetColumns.NAME);
-        return new Target(name, interval);
+        final String name = dataLine.get(TargetTableColumn.NAME);
+        return new Target(name, interval, annotationCollection.createTargetAnnotationCollection(dataLine));
     }
 }

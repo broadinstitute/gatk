@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TargetArgumentCollection {
+public class TargetArgumentCollection {
 
     public static final String TARGET_FILE_SHORT_NAME = "T";
     public static final String TARGET_FILE_FULL_NAME = "targets";
