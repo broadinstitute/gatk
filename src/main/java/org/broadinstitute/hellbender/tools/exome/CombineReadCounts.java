@@ -10,10 +10,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -303,11 +300,10 @@ public final class CombineReadCounts extends CommandLineProgram {
      */
     private void doMerge(final TargetCollection<Target> targets, final List<File> filesToMerge, final File outputFile) {
         try (final ReadCountReaderCollection readers = new ReadCountReaderCollection(filesToMerge, targets);
-             final ReadCountWriter writer = new ReadCountWriter(outputFile, readers.countColumnNames)) {
-            final ReadCount readCounts = new ReadCount();
+             final TableWriter<ReadCountRecord> writer = ReadCountCollectionUtils.writerWithIntervals(new FileWriter(outputFile), readers.countColumnNames)) {
             for (final Target target : targets.targets()) {
                 final double[] counts = readers.countsFor(target);
-                readCounts.set(target, counts);
+                final ReadCountRecord readCounts = new ReadCountRecord(target, counts);
                 writer.writeRecord(readCounts);
             }
         } catch (final IOException ex) {
@@ -337,69 +333,6 @@ public final class CombineReadCounts extends CommandLineProgram {
         return (int) Math.round(Math.ceil(Math.pow(inputSize, 1.0 / minRoundCounts )));
     }
 
-    private static final class ReadCount {
-        private Target target;
-        private double[] counts;
-
-        /**
-         * Creates a read-count with null target and counts.
-         */
-        private ReadCount() {
-            // nothing to be done here.
-        }
-
-        /**
-         * Creates a read-count giving initial values for the target and counts.
-         * @param target the initial value for the target field.
-         * @param counts the initial value for the counts field.
-         */
-        private ReadCount(final Target target, final double[] counts) {
-            this.target = target;
-            this.counts = counts;
-        }
-
-        /**
-         * Change the values for the target and counts fields.
-         * @param target the new value for the target field.
-         * @param counts the new value for the counts field.
-         */
-        private void set(final Target target, final double[] counts) {
-            this.target = target;
-            this.counts = counts;
-        }
-    }
-
-    private static TableColumnCollection composeOutputColumns(final List<String> countColumns) {
-        final Set<String> columnNames = new LinkedHashSet<>(countColumns.size() + 4);
-        columnNames.add(TargetColumns.CONTIG.toString());
-        columnNames.add(TargetColumns.START.toString());
-        columnNames.add(TargetColumns.END.toString());
-        columnNames.add(TargetColumns.NAME.toString());
-        for (final String countColumn : countColumns) {
-            if (!columnNames.add(countColumn)) {
-                throw new UserException.BadInput(
-                        String.format("the count column named %s appears more than once amongst the input files", countColumn));
-            }
-        }
-        return new TableColumnCollection(columnNames);
-    }
-
-    private static class ReadCountWriter extends TableWriter<ReadCount> implements AutoCloseable {
-
-        public ReadCountWriter(final File file, final List<String> countColumns) throws IOException {
-            super(file, composeOutputColumns(countColumns));
-        }
-
-        @Override
-        protected void composeLine(final ReadCount record, final DataLine dataLine) {
-            dataLine.append(record.target.getContig())
-                    .append(record.target.getStart())
-                    .append(record.target.getEnd())
-                    .append(record.target.getName())
-                    .append(record.counts);
-        }
-    }
-
     /**
      * Returns the list of count column names (no target info related columns)
      * in the order they appear in the table column collection.
@@ -418,10 +351,10 @@ public final class CombineReadCounts extends CommandLineProgram {
      * @param targets the expected targets in the input file.
      * @return never {@code null}.
      */
-    private TableReader<ReadCount> readCountFileReader(final File file, final TargetCollection<Target> targets) {
+    private TableReader<ReadCountRecord> readCountFileReader(final File file, final TargetCollection<Target> targets) {
 
         try {
-            return new TableReader<ReadCount>(file) {
+            return new TableReader<ReadCountRecord>(file) {
 
                 private boolean hasName;
                 private boolean hasCoordinates;
@@ -445,13 +378,13 @@ public final class CombineReadCounts extends CommandLineProgram {
                 }
 
                 @Override
-                protected ReadCount createRecord(final DataLine dataLine) {
+                protected ReadCountRecord createRecord(final DataLine dataLine) {
                     final double[] counts = new double[countColumnCount];
                     final Target target = createTarget(dataLine);
                     for (int i = 0; i < counts.length; i++) {
                         counts[i] = dataLine.getDouble(countColumnIndexes[i]);
                     }
-                    return new ReadCount(target, counts);
+                    return new ReadCountRecord(target, counts);
                 }
 
                 /**
@@ -511,8 +444,8 @@ public final class CombineReadCounts extends CommandLineProgram {
      * </p>
      */
     private final class ReadCountReaderCollection implements AutoCloseable {
-        private final List<TableReader<ReadCount>> readers;
-        private final List<ReadCount> lastReadCounts;
+        private final List<TableReader<ReadCountRecord>> readers;
+        private final List<ReadCountRecord> lastReadCounts;
         private List<String> countColumnNames;
         private int[] countColumnSourceIndexMap;
 
@@ -545,8 +478,11 @@ public final class CombineReadCounts extends CommandLineProgram {
          */
         private void composeCountColumnNamesAndSourceIndexMapping() {
             final List<String> unsortedCountColumnNames = new ArrayList<>();
-            for (final TableReader<ReadCount> reader : readers) {
+            for (final TableReader<ReadCountRecord> reader : readers) {
                 unsortedCountColumnNames.addAll(readCountColumnNames(reader.columns()));
+            }
+            if (unsortedCountColumnNames.size() == 0) {
+                throw new IllegalStateException("there must be at least one count column");
             }
             countColumnSourceIndexMap = IntStream.range(0, unsortedCountColumnNames.size()).boxed()
                     .sorted(Comparator.comparing(unsortedCountColumnNames::get))
@@ -554,6 +490,25 @@ public final class CombineReadCounts extends CommandLineProgram {
             countColumnNames = IntStream.of(countColumnSourceIndexMap)
                     .mapToObj(unsortedCountColumnNames::get)
                     .collect(Collectors.toList());
+            checkForRepeatedSampleNames();
+        }
+
+        /**
+         * Makes sure that there is no repeated sample names in the input.
+         *
+         * <p>
+         *     At this point {@link #countColumnNames} is assumed to have all sample names (more than one) sorted.
+         * </p>
+         */
+        private void checkForRepeatedSampleNames() {
+            String previous = countColumnNames.get(0);
+            for (int i = 1; i < countColumnNames.size(); i++) {
+                final String next = countColumnNames.get(i);
+                if (next.equals(previous)) {
+                    throw new UserException.BadInput("the input contains the sample repeated, e.g.:" + next);
+                }
+                previous = next;
+            }
         }
 
         /**
@@ -566,10 +521,10 @@ public final class CombineReadCounts extends CommandLineProgram {
          */
         private void seekTarget(final Target target) {
             lastReadCounts.clear();
-            for (final TableReader<ReadCount> reader : readers) {
+            for (final TableReader<ReadCountRecord> reader : readers) {
                 boolean targetFound = false;
-                for (final ReadCount counts : reader) {
-                    if (counts.target.equals(target)) {
+                for (final ReadCountRecord counts : reader) {
+                    if (counts.getTarget().equals(target)) {
                         lastReadCounts.add(counts);
                         targetFound = true;
                         break;
@@ -586,7 +541,7 @@ public final class CombineReadCounts extends CommandLineProgram {
 
         @Override
         public void close() {
-            for (final TableReader<ReadCount> reader : readers) {
+            for (final TableReader<ReadCountRecord> reader : readers) {
                 try {
                     reader.close();
                 } catch (final IOException ex) {
@@ -621,10 +576,10 @@ public final class CombineReadCounts extends CommandLineProgram {
         private double[] composeLastTargetCounts() {
             final double[] result = new double[countColumnNames.size()];
             int nextIndex = 0;
-            for (final ReadCount readCount : lastReadCounts) {
-                final int readCountLength = readCount.counts.length;
-                System.arraycopy(readCount.counts, 0, countsBuffer, nextIndex, readCountLength);
-                nextIndex += readCountLength;
+            for (final ReadCountRecord readCount : lastReadCounts) {
+                final int size = readCount.size();
+                readCount.copyCountsTo(countsBuffer, nextIndex);
+                nextIndex += size;
             }
             for (int i = 0; i < result.length; i++) {
                 result[i] = countsBuffer[countColumnSourceIndexMap[i]];

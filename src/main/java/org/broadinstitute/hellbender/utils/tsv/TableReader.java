@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import com.opencsv.CSVReader;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -72,7 +73,7 @@ import java.util.stream.StreamSupport;
  *
  *             // If you don't trust the columns that you are given,
  *             // you can check them here:
- *             &#64Override
+ *             &#64;Override
  *             public void processColumns(final TableColumns columns) {
  *                 if (!columns.containsExactly("name","age","net.worth"))
  *                     throw formatException("invalid column names")
@@ -174,6 +175,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     protected TableReader(final String sourceName, final Reader sourceReader) throws IOException {
         Utils.nonNull(sourceReader, "the reader cannot be null");
+
         this.source = sourceName;
         this.reader = sourceReader instanceof LineNumberReader ? (LineNumberReader) sourceReader : new LineNumberReader(sourceReader);
         this.csvReader = new CSVReader(this.reader, TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
@@ -205,7 +207,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param line input line already split into line-values.
      * @return {@code true} if {@code line} seems to be a comment line.
      */
-    private boolean isCommentLine(final String[] line) {
+    protected boolean isCommentLine(final String[] line) {
         return line.length > 0 && line[0].startsWith(TableUtils.COMMENT_PREFIX);
     }
 
@@ -219,7 +221,20 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @return never {@code null}.
      */
     protected final UserException.BadInput formatException(final String message) {
-        return new UserException.BadInput(formatExceptionMessage(message));
+        return new UserException.BadInput(formatExceptionMessageWithLocationInfo(message));
+    }
+
+    /**
+     * Composes the exception to be thrown due to a formatting error.
+     * <p>
+     * The input {@code message} can be omitted by providing a {@code null} value.
+     * </p>
+     *
+     * @param message custom error message.
+     * @return never {@code null}.
+     */
+    protected final UserException.BadInput formatExceptionWithoutLocation(final String message) {
+        return new UserException.BadInput(formatExceptionMessageWithoutLocationInfo(message));
     }
 
     /**
@@ -231,13 +246,26 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param message custom error message.
      * @return never {@code null}.
      */
-    private String formatExceptionMessage(final String message) {
+    private String formatExceptionMessageWithLocationInfo(final String message) {
         final String explanation = message == null ? "" : ": " + message;
         if (source == null) {
             return String.format("format error at line %d" + explanation, reader.getLineNumber());
         } else {
             return String.format("format error in '%s' at line %d" + explanation, source, reader.getLineNumber());
         }
+    }
+
+    /**
+     * Composes the error exception message string.
+     * <p>
+     * The input {@code message} can be omitted by providing a {@code null} value.
+     * </p>
+     *
+     * @param message custom error message.
+     * @return never {@code null}.
+     */
+    private String formatExceptionMessageWithoutLocationInfo(final String message) {
+        return "format error: " + message;
     }
 
     /**
@@ -278,6 +306,26 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     }
 
     /**
+     * Reads the record from a string rather than from the input reader.
+     *
+     * @return {@code null} for comment or header lines, a non-null record otherwise.
+     */
+    public final R readRecord(final String line) {
+        try {
+            final String[] fields = csvReader.getParser().parseLine(line);
+            if (isCommentLine(fields) || isHeaderLine(fields)) {
+                return null;
+            } else if (fields.length != columns.columnCount()) {
+                throw formatExceptionWithoutLocation("invalid number of columns");
+            } else {
+                return createRecord(new DataLine(fields, columns, this::formatExceptionWithoutLocation));
+            }
+        } catch (final IOException ex) {
+            throw new GATKException("the single line input is in fact a multi-line entry");
+        }
+    }
+
+    /**
      * Fetch the next record from the source.
      *
      * @return {@code null} if there is no more record in the input.
@@ -287,7 +335,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
 
         String[] line;
         while ((line = csvReader.readNext()) != null) {
-            if (isCommentLine(line)) {
+            if (isCommentLine(line) || isHeaderLine(line)) {
                 continue;
             } else if (line.length != columns.columnCount()) {
                 throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
@@ -299,6 +347,10 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
             }
         }
         return null;
+    }
+
+    protected boolean isHeaderLine(final String[] line) {
+        return columns.matchesExactly(line);
     }
 
     /**

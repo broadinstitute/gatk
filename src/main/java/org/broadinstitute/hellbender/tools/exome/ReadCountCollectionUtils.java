@@ -90,7 +90,7 @@ public final class ReadCountCollectionUtils {
         try (final Writer writer = new FileWriter(file)) {
             final boolean withIntervals = collection.targets().stream().anyMatch(t -> t.getInterval() != null);
             final TableWriter<ReadCountRecord> tableWriter = withIntervals
-                    ? writerWithIntervals(writer, collection) : writerWithoutIntervals(writer, collection);
+                    ? writerWithIntervals(writer, collection.columnNames()) : writerWithoutIntervals(writer, collection);
             performWriting(collection, tableWriter, headerComments);
         }
     }
@@ -132,16 +132,40 @@ public final class ReadCountCollectionUtils {
         }
     }
 
+    /**
+     * Creates a new table writer that will output the target intervals.
+     * @param writer where to output the table formatted content.
+     * @param countColumnNames list of count column names.
+     * @return never {@code null}.
+     * @throws IOException if there is some low level IO problem creating the writer.
+     * @throws IllegalArgumentException if {@code countColumnNames} is {@code null}, contains
+     *  {@code null} or a non valid count column name (e.g. a reserved word).
+     */
+    public static TableWriter<ReadCountRecord> writerWithIntervals(final Writer writer, final List<String> countColumnNames) throws IOException {
 
-    private static final class ReadCountRecord {
+        final List<String> columnNames = new ArrayList<>();
 
-        public final Target target;
-        public final double[] counts;
+        columnNames.add(TargetColumns.CONTIG.toString());
+        columnNames.add(TargetColumns.START.toString());
+        columnNames.add(TargetColumns.END.toString());
+        columnNames.add(TargetColumns.NAME.toString());
+        columnNames.addAll(Utils.nonNull(countColumnNames));
+        final TableColumnCollection columns = new TableColumnCollection(columnNames);
 
-        public ReadCountRecord(final Target target, final double[] counts) {
-            this.target = target;
-            this.counts = counts;
-        }
+        return new TableWriter<ReadCountRecord>(writer, columns) {
+            @Override
+            protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
+                final SimpleInterval interval = record.getTarget().getInterval();
+                if (interval == null) {
+                    throw new IllegalStateException("invalid combination of targets with and without intervals defined");
+                }
+                dataLine.append(interval.getContig())
+                        .append(interval.getStart())
+                        .append(interval.getEnd())
+                        .append(record.getTarget().getName());
+                record.appendCountsTo(dataLine);
+            }
+        };
     }
 
     private static TableWriter<ReadCountRecord> writerWithoutIntervals(final Writer writer,
@@ -152,37 +176,6 @@ public final class ReadCountCollectionUtils {
         columnNames.addAll(collection.columnNames());
         return createReadCountRecordTableWriterWithoutIntervals(writer, columnNames);
     }
-
-    private static TableWriter<ReadCountRecord> writerWithIntervals(final Writer writer,
-                                                                    final ReadCountCollection collection) throws IOException {
-        final List<String> columnNames = new ArrayList<>();
-        columnNames.add(TargetColumns.CONTIG.toString());
-        columnNames.add(TargetColumns.START.toString());
-        columnNames.add(TargetColumns.END.toString());
-        columnNames.add(TargetColumns.NAME.toString());
-        columnNames.addAll(collection.columnNames());
-        return createReadCountRecordTableWriterWithIntervals(writer, columnNames);
-    }
-
-    private static TableWriter<ReadCountRecord> createReadCountRecordTableWriterWithIntervals(final Writer writer, List<String> columnNames) throws IOException {
-        final TableColumnCollection columns = new TableColumnCollection(columnNames);
-
-        return new TableWriter<ReadCountRecord>(writer, columns) {
-            @Override
-            protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
-                final SimpleInterval interval = record.target.getInterval();
-                if (interval == null) {
-                    throw new IllegalStateException("invalid combination of targets with and without intervals defined");
-                }
-                dataLine.append(interval.getContig())
-                        .append(interval.getStart())
-                        .append(interval.getEnd())
-                        .append(record.target.getName())
-                        .append(record.counts);
-            }
-        };
-    }
-
 
     /**
      *  Convert a ReadCountCollection into a List of TargetCoverage.
@@ -195,7 +188,7 @@ public final class ReadCountCollectionUtils {
      *  </ul>
      *
      * @param collection -- ReadCountCollection that contains one sample only
-     * @return
+     * @return never {@code null}.
      */
     private static List<TargetCoverage> convertToTargetCoverageList(final ReadCountCollection collection) {
 
@@ -206,11 +199,9 @@ public final class ReadCountCollectionUtils {
         }
 
         // Please note that the "0" in getEntry(i,0) is the assumption of one sample only
-        final List<TargetCoverage> targetCoverages = IntStream.range(0, collection.targets().size())
+        return IntStream.range(0, collection.targets().size())
                 .mapToObj(i -> new TargetCoverage(collection.targets().get(i).getName(), collection.targets().get(i).getInterval(), collection.counts().getEntry(i,0)))
                 .collect(Collectors.toList());
-
-        return targetCoverages;
     }
 
     private static TableWriter<ReadCountRecord> createReadCountRecordTableWriterWithoutIntervals(final Writer writer, List<String> columnNames) throws IOException {
@@ -219,8 +210,8 @@ public final class ReadCountCollectionUtils {
 
             @Override
             protected void composeLine(final ReadCountRecord record, final DataLine dataLine) {
-                dataLine.append(record.target.getName())
-                        .append(record.counts);
+                dataLine.append(record.getTarget().getName());
+                record.appendCountsTo(dataLine);
             }
         };
     }
@@ -384,8 +375,8 @@ public final class ReadCountCollectionUtils {
 
         ReadCountRecord record;
         while ((record = tableReader.readRecord()) != null) {
-            final Target target = record.target;
-            final double[] lineCounts = record.counts;
+            final Target target = record.getTarget();
+            final double[] lineCounts = record.getDoubleCounts();
             if (!buffer.add(target, lineCounts)) {
                 throw new UserException.BadInput(String.format("duplicated target with name %s in file %s", target.getName(), file));
             }
@@ -395,13 +386,6 @@ public final class ReadCountCollectionUtils {
         }
         return new ReadCountCollection(buffer.getTargets(), SetUniqueList.setUniqueList(columnNames),
                 new Array2DRowRealMatrix(buffer.getCounts(),false));
-    }
-
-    private static Target resolveTargetCheckInterval(final ReadCountRecord record, final String name , final SimpleInterval interval) {
-        if (!record.target.getInterval().equals(interval)) {
-            throw new UserException.BadInput(String.format("the target %s seems to make reference to different intervals %s and %s.", record.target.getName(), record.target.getInterval(), interval));
-        }
-        return new Target(name, interval);
     }
 
     /**
