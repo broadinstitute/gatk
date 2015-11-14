@@ -84,10 +84,12 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
 
     @SuppressWarnings("unchecked")
     private T leaf(final int key, final Object[] array){
+        //Note: bounds check is done in the caller
         return array == null ? null : (T) array[key];
     }
 
-    private Object[] unroll(final int key, final Object[] array){
+    private Object[] nextDimension(final int key, final Object[] array){
+        //Note: bounds check is done in the caller
         return array == null ? null : (Object[]) array[key];
     }
 
@@ -97,7 +99,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      * Using a specialized method eliminates that performance problem.
      */
     @SuppressWarnings("unchecked")
-    public T get1(final int key0) {
+    public T get1Key(final int key0) {
         return leaf(key0, data);
     }
 
@@ -107,11 +109,11 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      * Using a specialized method eliminates that performance problem.
      */
     @SuppressWarnings("unchecked")
-    public T get2(final int key0, final int key1) {
-        if ( key0 >= dimensions[0] ) {
+    public T get2Keys(final int key0, final int key1) {
+        if ( key0 >= dimensions[0] || key1 >= dimensions[1] ) {
             return null;
         }
-        return leaf(key1, unroll(key0, data));
+        return leaf(key1, nextDimension(key0, data));
     }
 
     /**
@@ -120,11 +122,11 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      * Using a specialized method eliminates that performance problem.
      */
     @SuppressWarnings("unchecked")
-    public T get3(final int key0, final int key1, final int key2) {
-        if (key0 >= dimensions[0] || key1 >= dimensions[1]) {
+    public T get3Keys(final int key0, final int key1, final int key2) {
+        if (key0 >= dimensions[0] || key1 >= dimensions[1] || key2 >= dimensions[2] ) {
             return null;
         }
-        return leaf(key2, unroll(key1, unroll(key0, data)));
+        return leaf(key2, nextDimension(key1, nextDimension(key0, data)));
     }
 
     /**
@@ -133,13 +135,12 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      * Using a specialized method eliminates that performance problem.
      */
     @SuppressWarnings("unchecked")
-    public T get4(final int key0, final int key1, final int key2, final int key3) {
-        if (key0 >= dimensions[0] || key1 >= dimensions[1] || key2 >= dimensions[2]) {
+    public T get4Keys(final int key0, final int key1, final int key2, final int key3) {
+        if (key0 >= dimensions[0] || key1 >= dimensions[1] || key2 >= dimensions[2] || key3 >= dimensions[3]) {
             return null;
         }
-        return leaf(key3, unroll(key2, unroll(key1, unroll(key0, data))));
+        return leaf(key3, nextDimension(key2, nextDimension(key1, nextDimension(key0, data))));
     }
-
 
     /**
      * Insert a value at the position specified by the given keys.

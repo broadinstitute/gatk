@@ -150,13 +150,13 @@ public final class BaseRecalibrator extends ReadWalker {
 
     @Override
     public CountingReadFilter makeReadFilter() {
-        return super.makeReadFilter()
-                .and(makeBQSRSpecificReadFilters());
+        //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
+        return makeBQSRSpecificReadFilters().and(super.makeReadFilter());
     }
 
     public static CountingReadFilter getStandardBQSRReadFilter( final SAMFileHeader header ) {
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))
-                .and(makeBQSRSpecificReadFilters());
+        //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
+        return makeBQSRSpecificReadFilters().and(new CountingReadFilter("Wellformed", new WellformedReadFilter(header)));
     }
 
     private static CountingReadFilter makeBQSRSpecificReadFilters() {
