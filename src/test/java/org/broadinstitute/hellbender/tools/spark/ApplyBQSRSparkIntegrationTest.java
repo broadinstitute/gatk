@@ -42,7 +42,9 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq -1", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.qq-1.bam")});
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq 6", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.qq6.bam")});
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.bam")});
-        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -DIQ -OQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.OQ.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -OQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.OQ.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -SQQ 10 -SQQ 20 -SQQ 30", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.SQQ102030.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -SQQ 10 -SQQ 20 -SQQ 30 -RDQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.SQQ102030RDQ.bam")});
 
         return tests.toArray(new Object[][]{});
     }
@@ -111,6 +113,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public void testPRNoFailWithHighMaxCycle() throws IOException {
         String args = " -I " + hiSeqBam +
                 " --bqsr_recal_file " + resourceDir + "HiSeq.1mb.1RG.highMaxCycle.table.gz" +
+                "" +
                 " -O " + createTempFile("ignore",".me");
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
         IntegrationTestSpec spec = new IntegrationTestSpec(

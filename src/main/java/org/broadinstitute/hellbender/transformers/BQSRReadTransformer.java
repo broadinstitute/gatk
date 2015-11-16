@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.transformers;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.exceptions.UserException.MalformedRead;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -14,6 +16,7 @@ import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCova
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.broadinstitute.hellbender.utils.MathUtils.fastRound;
@@ -41,6 +44,8 @@ public final class BQSRReadTransformer implements ReadTransformer {
     //Note: varargs allocates a new array every time. We'll pre-allocate one array and reuse it to avoid object allocation for every base of every read.
     private final RecalDatum[] empiricalQualCovsArgs;
     private final boolean useOriginalBaseQualities;
+
+    private byte[] staticQuantizedMapping;
 
     /**
      * Constructor using a GATK Report file
@@ -73,13 +78,20 @@ public final class BQSRReadTransformer implements ReadTransformer {
         } else if (args.quantizationLevels > 0 && args.quantizationLevels != quantizationInfo.getQuantizationLevels()) { // any other positive value means, we want a different quantization than the one pre-calculated in the recalibration report. Negative values mean the user did not provide a quantization argument, and just wants to use what's in the report.
             quantizationInfo.quantizeQualityScores(args.quantizationLevels);
         }
+
         this.preserveQLessThan = args.PRESERVE_QSCORES_LESS_THAN;
         this.globalQScorePrior = args.globalQScorePrior;
         this.emitOriginalQuals = args.emitOriginalQuals;
         this.useOriginalBaseQualities = args.useOriginalBaseQualities;
 
-        this.totalCovariateCount = covariates.size();
-        this.specialCovariateCount = covariates.numberOfSpecialCovariates();
+        // staticQuantizedQuals is entirely separate from the dynamic binning that quantizationLevels, and
+        // staticQuantizedQuals does not make use of quantizationInfo
+        if(args.staticQuantizationQuals != null && !args.staticQuantizationQuals.isEmpty()) {
+            staticQuantizedMapping = constructStaticQuantizedMapping(args.staticQuantizationQuals, args.roundDown);
+        }
+
+        totalCovariateCount = covariates.size();
+        specialCovariateCount = covariates.numberOfSpecialCovariates();
 
         //Note: We pre-create the varargs arrays that will be used in the calls. Otherwise we're spending a lot of time allocating those int[] objects
         empiricalQualCovsArgs = new RecalDatum[totalCovariateCount - specialCovariateCount];
@@ -123,7 +135,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
             try {
                 read.setAttribute(SAMTag.OQ.name(), SAMUtils.phredToFastq(read.getBaseQualities()));
             } catch (final IllegalArgumentException e) {
-                throw new UserException.MalformedRead(read, "illegal base quality encountered; " + e.getMessage());
+                throw new MalformedRead(read, "illegal base quality encountered; " + e.getMessage());
             }
         }
 
@@ -147,7 +159,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         final byte[] quals = read.getBaseQualities();
 
         final int readLength = quals.length;
-        final double epsilon = (globalQScorePrior > 0.0 ? globalQScorePrior : empiricalQualRG.getEstimatedQReported());
+        final double epsilon = globalQScorePrior > 0.0 ? globalQScorePrior : empiricalQualRG.getEstimatedQReported();
 
         final NestedIntegerArray<RecalDatum> qualityScoreTable = recalibrationTables.getQualityScoreTable();
         final List<Byte> quantizedQuals = quantizationInfo.getQuantizedQuals();
@@ -172,7 +184,10 @@ public final class BQSRReadTransformer implements ReadTransformer {
             }
             final double recalibratedQualDouble = hierarchicalBayesianQualityEstimate(epsilon, empiricalQualRG, empiricalQualQS, empiricalQualCovsArgs);
 
-            quals[offset] = quantizedQuals.get(getRecalibratedQual(recalibratedQualDouble));
+            final byte recalibratedQualityScore = quantizedQuals.get(getRecalibratedQual(recalibratedQualDouble));
+
+            // Bin to static quals
+            quals[offset] = staticQuantizedMapping == null ? recalibratedQualityScore : staticQuantizedMapping[recalibratedQualityScore];
         }
         read.setBaseQualities(quals);
         return read;
@@ -187,8 +202,8 @@ public final class BQSRReadTransformer implements ReadTransformer {
                                                               final RecalDatum empiricalQualRG,
                                                               final RecalDatum empiricalQualQS,
                                                               final RecalDatum... empiricalQualCovs ) {
-        final double globalDeltaQ = ( empiricalQualRG == null ? 0.0 : empiricalQualRG.getEmpiricalQuality(epsilon) - epsilon );
-        final double deltaQReported = ( empiricalQualQS == null ? 0.0 : empiricalQualQS.getEmpiricalQuality(globalDeltaQ + epsilon) - (globalDeltaQ + epsilon) );
+        final double globalDeltaQ = empiricalQualRG == null ? 0.0 : empiricalQualRG.getEmpiricalQuality(epsilon) - epsilon;
+        final double deltaQReported = empiricalQualQS == null ? 0.0 : empiricalQualQS.getEmpiricalQuality(globalDeltaQ + epsilon) - (globalDeltaQ + epsilon);
 
         double deltaQCovariates = 0.0;
         final double conditionalPrior2 = deltaQReported + globalDeltaQ + epsilon;
@@ -199,5 +214,65 @@ public final class BQSRReadTransformer implements ReadTransformer {
         }
 
         return conditionalPrior2 + deltaQCovariates;
+    }
+
+    /**
+     * Constructs an array that maps particular quantized values to a rounded value in staticQuantizedQuals
+     *
+     * Rounding is done in probability space.  When roundDown is true, we simply round down to the nearest
+     * available qual in staticQuantizedQuals
+     *
+     * @param staticQuantizedQuals the list of qualities to round to
+     * @param roundDown round down if true, round to nearest (in probability space) otherwise
+     * @return  Array where index representing the quality score to be mapped and the value is the rounded quality score
+     */
+    @VisibleForTesting
+    static byte[] constructStaticQuantizedMapping(final List<Integer> staticQuantizedQuals, final boolean roundDown) {
+        // Create array mapping that maps quals to their rounded value.
+        final byte[] mapping = new byte[QualityUtils.MAX_QUAL];
+
+        Collections.sort(staticQuantizedQuals);
+
+        // Fill mapping with one-to-one mappings for values between 0 and MIN_USABLE_Q_SCORE
+        // This ensures that quals used as special codes will be preserved
+        for(int i = 0 ; i < QualityUtils.MIN_USABLE_Q_SCORE ; i++) {
+            mapping[i] = (byte) i;
+        }
+
+        // If only one staticQuantizedQual is given, fill mappings larger than QualityUtils.MAX_QUAL with that value
+        if(staticQuantizedQuals.size() == 1) {
+            final int onlyQual = staticQuantizedQuals.get(0);
+            for(int i = QualityUtils.MIN_USABLE_Q_SCORE ; i < QualityUtils.MAX_QUAL ; i++) {
+                mapping[i] = (byte) onlyQual;
+            }
+            return mapping;
+        }
+
+        final int firstQual = QualityUtils.MIN_USABLE_Q_SCORE;
+        int previousQual = firstQual;
+        double previousProb = QualityUtils.qualToProb(previousQual);
+        for (final int nextQual : staticQuantizedQuals) {
+            final double nextProb = QualityUtils.qualToProb(nextQual);
+
+            for (int i = previousQual; i < nextQual; i++) {
+                if (roundDown) {
+                    mapping[i] = (byte) previousQual;
+                } else {
+                    final double iProb = QualityUtils.qualToProb(i);
+                    if (iProb - previousProb > nextProb - iProb) {
+                        mapping[i] = (byte) nextQual;
+                    } else {
+                        mapping[i] = (byte) previousQual;
+                    }
+                }
+            }
+            previousQual = nextQual;
+            previousProb = nextProb;
+        }
+        // Round all quals larger than the largest static qual down to the largest static qual
+        for(int i = previousQual; i < QualityUtils.MAX_QUAL ; i++) {
+            mapping[i] = (byte) previousQual;
+        }
+        return mapping;
     }
 }

@@ -39,14 +39,18 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
 
         //Note: these outputs were created using GATK3
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam")});
-        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -DIQ -OQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.OQ.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -OQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.OQ.bam")});
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq -1", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.qq-1.bam")});
         tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -qq 6", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.qq6.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -SQQ 10 -SQQ 20 -SQQ 30", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.SQQ102030.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBam, " -SQQ 10 -SQQ 20 -SQQ 30 -RDQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.SQQ102030RDQ.bam")});
 
         tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, "", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.bam")});
-        tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, " -DIQ -OQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.OQ.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, " -OQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.OQ.bam")});
         tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, " -qq -1", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.qq-1.bam")});
         tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, " -qq 6", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.qq6.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, " -SQQ 10 -SQQ 20 -SQQ 30", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.SQQ102030.bam")});
+        tests.add(new Object[]{new ABQSRTest(hiSeqBamAligned, " -SQQ 10 -SQQ 20 -SQQ 30 -RDQ", resourceDir + "expected.HiSeq.1mb.1RG.2k_lines.alternate_allaligned.recalibrated.DIQ.SQQ102030RDQ.bam")});
 
         return tests.toArray(new Object[][]{});
     }
@@ -81,5 +85,31 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
                 0,
                 UserException.class);
         spec.executeTest("testPRFailWithLowMaxCycle", this);
+    }
+
+    @Test
+    public void testPRWithConflictingArguments_qqAndSQQ() throws IOException {
+        // -qq and -SQQ shouldn't be able to be run in the same command
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -I " + hiSeqBam +
+                        " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz" +
+                        " -SQQ 9 -qq 4 " +
+                        " -O /dev/null",
+                0,
+                UserException.CommandLineException.class);
+        spec.executeTest("testPRWithConflictingArguments_qqAndSQQ", this);
+    }
+
+    @Test
+    public void testPRWithConflictingArguments_qqAndRDQ() throws IOException {
+        // -qq and -SQQ shouldn't be able to be run in the same command
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -I " + hiSeqBam +
+                        " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.gz" +
+                        " -RDQ -qq 4 " +
+                        " -O /dev/null",
+                0,
+                UserException.CommandLineException.class);
+        spec.executeTest("testPRWithConflictingArguments_qqAndSQQ", this);
     }
 }
