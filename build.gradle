@@ -177,11 +177,13 @@ test {
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
-    maxHeapSize = "2G"
-
-    maxParallelForks=2
+    maxHeapSize = "1.5G"
+	  jvmArgs '-Xmx2G'
   
     String CI = "$System.env.CI"
+
+    maxParallelForks = CI == "true" ? 1 : 2
+
     if (CI == "true") {
         int count = 0
         // listen to events in the test execution lifecycle
