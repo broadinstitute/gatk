@@ -40,6 +40,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
     //Note: varargs allocates a new array every time. We'll pre-allocate one array and reuse it to avoid object allocation for every base of every read.
     private final RecalDatum[] empiricalQualCovsArgs;
+    private final boolean useOriginalBaseQualities;
 
     /**
      * Constructor using a GATK Report file
@@ -75,6 +76,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
         this.preserveQLessThan = args.PRESERVE_QSCORES_LESS_THAN;
         this.globalQScorePrior = args.globalQScorePrior;
         this.emitOriginalQuals = args.emitOriginalQuals;
+        this.useOriginalBaseQualities = args.useOriginalBaseQualities;
 
         this.totalCovariateCount = covariates.size();
         this.specialCovariateCount = covariates.numberOfSpecialCovariates();
@@ -111,10 +113,12 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * <p>
      * Qrecal = Qreported + DeltaQ + DeltaQ(pos) + DeltaQ(dinuc) + DeltaQ( ... any other covariate ... )
      *
-     * @param read the read to recalibrate
+     * @param originalRead the read to recalibrate
      */
     @Override
-    public GATKRead apply(final GATKRead read) {
+    public GATKRead apply(final GATKRead originalRead) {
+        final GATKRead read = useOriginalBaseQualities ? ReadUtils.resetOriginalBaseQualities(originalRead) : originalRead;
+
         if (emitOriginalQuals && ! read.hasAttribute(SAMTag.OQ.name())) { // Save the old qualities if the tag isn't already taken in the read
             try {
                 read.setAttribute(SAMTag.OQ.name(), SAMUtils.phredToFastq(read.getBaseQualities()));
