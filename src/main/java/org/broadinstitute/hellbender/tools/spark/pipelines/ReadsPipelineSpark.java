@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
@@ -87,16 +88,21 @@ public class ReadsPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
+        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+            throw new UserException.Require2BitReferenceForBroadcast();
+        }
+
+        // TODO: workaround for known bug in List version of getParallelVariants
+        if ( baseRecalibrationKnownVariants.size() > 1 ) {
+            throw new GATKException("Cannot currently handle more than one known sites file, " +
+                    "as getParallelVariants(List) is broken");
+        }
+
         JavaRDD<GATKRead> initialReads = getReads();
 
         JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), new OpticalDuplicateFinder());
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
 
-        // TODO: workaround for known bug in List version of getParallelVariants
-        if ( baseRecalibrationKnownVariants.size() > 1 ) {
-            throw new GATKException("Cannot currently handle more than one known sites file, " +
-                                    "as getParallelVariants(List) is broken");
-        }
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark

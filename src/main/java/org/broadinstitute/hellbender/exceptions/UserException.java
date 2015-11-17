@@ -401,4 +401,11 @@ public class UserException extends RuntimeException {
             super("There are no known reference set for ID " + referenceSetAssemblyID);
         }
     }
+
+    public static final class Require2BitReferenceForBroadcast extends BadInput {
+        private static final long serialVersionUID = 0L;
+        public Require2BitReferenceForBroadcast() {
+            super("Running this tool with BROADCAST strategy requires a 2bit reference. To create a 2bit reference from an existing fasta file, download faToTwoBit from the link on https://genome.ucsc.edu/goldenPath/help/twoBit.html, then run faToTwoBit in.fasta out.2bit");
+        }
+    }
 }

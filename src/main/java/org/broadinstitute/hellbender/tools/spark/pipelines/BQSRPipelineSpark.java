@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
@@ -80,16 +81,18 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final JavaRDD<GATKRead> initialReads = getReads();
-        final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-
+        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+            throw new UserException.Require2BitReferenceForBroadcast();
+        }
         // TODO: workaround for known bug in List version of getParallelVariants
         if ( baseRecalibrationKnownVariants.size() > 1 ) {
             throw new GATKException("Cannot currently handle more than one known sites file, " +
-                                    "as getParallelVariants(List) is broken");
+                    "as getParallelVariants(List) is broken");
         }
-        final JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
+        final JavaRDD<GATKRead> initialReads = getReads();
+        final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
 
+        final JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
         final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, getReference(), bqsrKnownVariants, joinStrategy);
 
         //note: we use the reference dictionary from the reads themselves.

@@ -12,8 +12,10 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -23,7 +25,6 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.PrintStream;
@@ -66,12 +67,16 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
 
     @Override
     protected void runTool( JavaSparkContext ctx ) {
-        JavaRDD<GATKRead> initialReads = getReads();
-        VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
+        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+            throw new UserException.Require2BitReferenceForBroadcast();
+        }
         if ( knownVariants.size() > 1 ) {
             throw new GATKException("Cannot currently handle more than one known sites file, " +
                     "as getParallelVariants(List) is broken");
         }
+
+        JavaRDD<GATKRead> initialReads = getReads();
+        VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants.get(0));
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
