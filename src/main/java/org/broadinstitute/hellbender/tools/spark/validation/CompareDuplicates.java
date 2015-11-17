@@ -63,26 +63,7 @@ public final class CompareDuplicates extends GATKSparkTool {
         secondReads.foreach(GATKRead::clearAttributes);
         //secondReads.persist(StorageLevel.MEMORY_AND_DISK());
 
-        /*
-        HashSet<String> pathologicalKeys = Utils.getPathologicalKeys(firstReads, sampleRate, pathologicalThreshold);
-
-        Map<String, Tuple2<Iterable<GATKRead>, Integer>> firstPathologicalResults = Utils.getPathologicalData(firstReads, pathologicalKeys);
-        Map<String, Tuple2<Iterable<GATKRead>, Integer>> secondPathologicalResults = Utils.getPathologicalData(secondReads, pathologicalKeys);
-
-        Map<String, Integer> pathologicalTagCounts = Utils.getPathologicalTagCounts(firstPathologicalResults, secondPathologicalResults);
-
-        for(Map.Entry<String, Integer> e : pathologicalTagCounts.entrySet()) {
-            System.out.println("pathological: " + e.getKey() + "," + e.getValue());
-        }*/
-
-
-        /*
-        ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, getIntervals()).map(v1 -> {
-            v1.clearAttributes();
-            return v1;
-        });*/
-
+        
         long firstBamSize = firstReads.count();
         JavaRDD<GATKRead> firstDupes = firstReads.filter(GATKRead::isDuplicate);
         long firstDupesCount = firstDupes.count();
