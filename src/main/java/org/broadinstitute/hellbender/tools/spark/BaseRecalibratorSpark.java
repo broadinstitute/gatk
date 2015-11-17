@@ -52,7 +52,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     private List<String> knownVariants;
 
     @Argument(doc = "the join strategy for reference bases", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
-    private JoinStrategy joinStrategy = JoinStrategy.SHUFFLE;
+    private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     @Argument(doc = "Path to save the final recalibration tables to.",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)

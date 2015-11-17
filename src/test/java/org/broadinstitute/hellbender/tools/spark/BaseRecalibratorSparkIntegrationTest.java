@@ -78,16 +78,16 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
                 // See RecalDatum for explanation of why the multiplier is needed.
 
                 // local computation and files (except for the reference)
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
 
                 // Currently disabled because BaseRecalibratorSpark can't handle more than 1 knownSites file: https://github.com/broadinstitute/gatk/issues/1085
                 // Re-enable once this is fixed.
                 //{new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37, "-knownSites " + moreSites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
 
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--indels_context_size 4",  localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.indels_context_size_4.recal.txt")},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--low_quality_tail 5",     localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.low_quality_tail_5.recal.txt")},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--quantizing_levels 6",    localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.quantizing_levels_6.recal.txt")},
-                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--mismatches_context_size 4", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.mismatches_context_size_4.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE --indels_context_size 4",  localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.indels_context_size_4.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE --low_quality_tail 5",     localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.low_quality_tail_5.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE --quantizing_levels 6",    localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.quantizing_levels_6.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE --mismatches_context_size 4", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.mismatches_context_size_4.recal.txt")},
                 //// //{new BQSRTest(b36Reference, origQualsBam, dbSNPb36, "-OQ", getResourceDir() + "expected.originalQuals.1kg.chr1.1-1K.1RG.dictFix.OQ.txt")},
         };
     }
@@ -101,7 +101,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
 
         return new Object[][]{
                 // input in cloud, computation local.
-                {new BQSRTest(GRCh37Ref, HiSeqBamCloud_chr20, dbSNPb37_chr20, "", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
+                {new BQSRTest(GRCh37Ref, HiSeqBamCloud_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE", localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt")},
         };
     }
 
