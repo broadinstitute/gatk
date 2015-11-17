@@ -72,6 +72,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             fullName = "bamPartitionSize", shortName = "bps", optional = true)
     protected long bamPartitionSplitSize = ReadsSparkSource.DEFAULT_SPLIT_SIZE;
 
+    @Argument(fullName = "disableSequenceDictionaryValidation", shortName = "disableSequenceDictionaryValidation", doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
+    private boolean disableSequenceDictionaryValidation = false;
+
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
@@ -279,8 +282,10 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Validates standard tool inputs against each other.
      */
     private void validateToolInputs() {
-        if ( hasReference() && hasReads() ) {
-            SequenceDictionaryUtils.validateDictionaries("reference", referenceDictionary, "reads", readsHeader.getSequenceDictionary());
+        if ( ! disableSequenceDictionaryValidation ) {
+            if ( hasReference() && hasReads() ) {
+                SequenceDictionaryUtils.validateDictionaries("reference", referenceDictionary, "reads", readsHeader.getSequenceDictionary());
+            }
         }
     }
 
