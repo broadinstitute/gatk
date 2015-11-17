@@ -210,6 +210,24 @@ public final class ArtificialReadUtils {
     }
 
     /**
+     * Creates an artificial GATKRead backed by a SAMRecord with no header.
+     *
+     * The read will consist of the specified number of Q30 'A' bases, and will be
+     * mapped to the specified contig at the specified start position.
+     *
+     * @param name name of the new read
+     * @param contig contig the new read is mapped to
+     * @param start start position of the new read
+     * @param length number of bases in the new read
+     * @return an artificial GATKRead backed by a SAMRecord.
+     */
+    public static GATKRead createHeaderlessSamBackedRead( final String name, final String contig, final int start, final int length ) {
+        GATKRead read = createSamBackedRead(name, contig, start, length);
+        ((SAMRecordToGATKReadAdapter) read).getEncapsulatedSamRecord().setHeader(null);
+        return read;
+    }
+
+    /**
      * Creates an artificial GATKRead backed by a Google Genomics read.
      *
      * The read will consist of the specified number of Q30 'A' bases, and will be

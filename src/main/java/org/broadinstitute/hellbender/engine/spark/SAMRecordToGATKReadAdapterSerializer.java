@@ -9,11 +9,12 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordToGATKReadAdapter> {
 
-    private BAMRecordCodec lazyCodec = new BAMRecordCodec(null, new LazyBAMRecordFactory());
+    private GATKReadSparkCodec lazyCodec = new GATKReadSparkCodec(null, new LazyBAMRecordFactory());
 
     @Override
     public void write(Kryo kryo, Output output, SAMRecordToGATKReadAdapter adapter) {
         SAMRecord record = adapter.getEncapsulatedSamRecord();
+
         // serialize reference names to avoid having to have a header at read time
         output.writeString(record.getReferenceName());
         output.writeString(record.getMateReferenceName());
@@ -34,14 +35,9 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
         // clear indexing bin after decoding to ensure all SAMRecords compare properly
         record.setFlags(record.getFlags());
 
-        final int referenceIndex = record.getReferenceIndex();
-        final int mateReferenceIndex = record.getMateReferenceIndex();
+        // set reference names (and indexes to null)
         record.setReferenceName(referenceName);
         record.setMateReferenceName(mateReferenceName);
-
-        // set reference indexes again since setting reference names without a header will unset indexes
-        record.setReferenceIndex(referenceIndex);
-        record.setMateReferenceIndex(mateReferenceIndex);
 
         return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
     }
@@ -86,12 +82,12 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
 
         @Override
         public void setReferenceIndex(final int referenceIndex) {
-            mReferenceIndex = referenceIndex;
+            mReferenceIndex = null; // null out
         }
 
         @Override
         public void setMateReferenceIndex(final int referenceIndex) {
-            mMateReferenceIndex = referenceIndex;
+            mMateReferenceIndex = null; // null out
         }
     }
 }

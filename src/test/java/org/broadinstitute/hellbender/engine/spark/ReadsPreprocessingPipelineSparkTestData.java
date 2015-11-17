@@ -149,7 +149,7 @@ public class ReadsPreprocessingPipelineSparkTestData {
         if (clazz == Read.class) {
             return ArtificialReadUtils.createGoogleBackedRead(Integer.toString(i), contig, start, length);
         } else if (clazz == SAMRecord.class) {
-            return ArtificialReadUtils.createSamBackedRead(Integer.toString(i), contig, start, length);
+            return ArtificialReadUtils.createHeaderlessSamBackedRead(Integer.toString(i), contig, start, length);
         } else {
             throw new GATKException("invalid GATKRead type");
         }
