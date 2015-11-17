@@ -65,7 +65,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     private boolean shardedOutput = false;
 
     @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
-    private JoinStrategy joinStrategy = JoinStrategy.SHUFFLE;
+    private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     /**
      * all the command line arguments for BQSR and its covariates
