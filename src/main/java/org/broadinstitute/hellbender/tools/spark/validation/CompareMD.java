@@ -61,12 +61,21 @@ public final class CompareMD extends GATKSparkTool {
         }
         System.out.println("processing bams with " + firstBamSize + " reads");
 
-        JavaRDD<GATKRead> firstPrimary = firstReads.filter(v1 -> !isNonPrimary(v1));
-        JavaRDD<GATKRead> secondPrimary = secondReads.filter(v1 -> !isNonPrimary(v1));
-        // TODO: Verify all non-primary are non-duplicates.
-        long firstNonPrimaryDupes = firstReads.filter(v1 -> isNonPrimary(v1) && v1.isDuplicate()).count();
-        long secondNonPrimaryDupes = secondReads.filter(v1 -> isNonPrimary(v1) && v1.isDuplicate()).count();
-        System.out.println("firstNonPrimaryDupes, secondNonPrimaryDupes: " + firstNonPrimaryDupes + "," + secondNonPrimaryDupes);
+        JavaRDD<GATKRead> firstPrimary = firstReads.filter(v1 -> {
+            if (isNonPrimary(v1) && v1.isDuplicate()) {
+                throw new RuntimeException("found a non-primary read marked as a duplicate in the first bam (this shouldn't happen)");
+            }
+            return !isNonPrimary(v1);
+        });
+        JavaRDD<GATKRead> secondPrimary = secondReads.filter(v1 -> {
+            if (isNonPrimary(v1) && v1.isDuplicate()) {
+                throw new RuntimeException("found a non-primary read marked as a duplicate in the first bam (this shouldn't happen)");
+            }
+            return !isNonPrimary(v1);
+        });
+        //long firstNonPrimaryDupes = firstReads.filter(v1 -> isNonPrimary(v1) && v1.isDuplicate()).count();
+        //long secondNonPrimaryDupes = secondReads.filter(v1 -> isNonPrimary(v1) && v1.isDuplicate()).count();
+        //System.out.println("firstNonPrimaryDupes, secondNonPrimaryDupes: " + firstNonPrimaryDupes + "," + secondNonPrimaryDupes);
 
         // Group the reads together and add tags for first and second bam duplicates
         JavaPairRDD < String, GATKRead > firstNamed = firstPrimary.mapToPair(read -> new Tuple2<>(read.toString(), read));
@@ -108,8 +117,6 @@ public final class CompareMD extends GATKSparkTool {
 
         JavaRDD<String> stats = groupedPairs.map(v1 -> {
             Iterable<PairedEnds> pairedEnds = v1._2();
-
-
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
             if (ReadsKey.isFragment(v1._1())) { // fragments
                 return compareDuplicateFragments(pairedEnds);
@@ -122,6 +129,7 @@ public final class CompareMD extends GATKSparkTool {
         }
 
     }
+
     private static boolean isNonPrimary(GATKRead read) {
         return read.isSecondaryAlignment() || read.isSupplementaryAlignment() || read.isUnmapped();
     }
