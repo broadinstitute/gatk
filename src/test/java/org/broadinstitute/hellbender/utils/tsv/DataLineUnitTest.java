@@ -105,7 +105,7 @@ public class DataLineUnitTest extends BaseTest {
         }
         final String[] array = subject.toArray();
         for (int i = 0; i < columns.columnCount(); i++) {
-            Assert.assertEquals(array[i], "" + (double) i);
+            Assert.assertEquals(Double.parseDouble(array[i]), (double) i);
         }
     }
 
