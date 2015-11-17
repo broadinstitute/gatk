@@ -41,6 +41,9 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = "secondsBetweenProgressUpdates", shortName = "secondsBetweenProgressUpdates", doc = "Output traversal statistics every time this many seconds elapse", optional = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
+    @Argument(fullName = "disableSequenceDictionaryValidation", shortName = "disableSequenceDictionaryValidation", doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
+    private boolean disableSequenceDictionaryValidation = false;
+
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
      * TODO: Perhaps we should eventually do the same auto-discovery for all input arguments (reads, reference, etc.)
@@ -287,7 +290,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeFeatures();
 
-        validateSequenceDictionaries();
+        if ( ! disableSequenceDictionaryValidation ) {
+            validateSequenceDictionaries();
+        }
 
         checkToolRequirements();
 
