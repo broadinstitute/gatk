@@ -13,8 +13,13 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.spi.AbstractLogger;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.svd.SVD;
+import org.broadinstitute.hellbender.utils.svd.SVDFactory;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -33,7 +38,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class CreatePanelOfNormalsUnitTest {
+public class CreatePanelOfNormalsUnitTest extends BaseTest {
 
     @Test(dataProvider="normalizeReadCountByTargetFactorsData")
     public void testNormalizeReadCountByTargetFactors(final ReadCountCollection readCount, final double[] targetFactors) {
@@ -283,7 +288,8 @@ public class CreatePanelOfNormalsUnitTest {
 
     @Test(dataProvider = "readCountOnlyWithDiverseShapeData")
     public void testCalculateReducedPanelAndPInversesUsingJollifesRule(final ReadCountCollection readCounts) {
-        final CreatePanelOfNormals.ReductionResult result = CreatePanelOfNormals.calculateReducedPanelAndPInverses(readCounts, OptionalInt.empty(), NULL_LOGGER);
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final CreatePanelOfNormals.ReductionResult result = CreatePanelOfNormals.calculateReducedPanelAndPInverses(readCounts, OptionalInt.empty(), NULL_LOGGER, ctx);
         final RealMatrix counts = readCounts.counts();
         Assert.assertNotNull(result);
         Assert.assertNotNull(result.pseudoInverse);
@@ -305,7 +311,8 @@ public class CreatePanelOfNormalsUnitTest {
 
     @Test(dataProvider = "readCountOnlyWithDiverseShapeData")
     public void testCalculateReducedPanelAndPInversesKeepingHalfOfAllColumns(final ReadCountCollection readCounts) {
-        final CreatePanelOfNormals.ReductionResult result = CreatePanelOfNormals.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size() / 2), NULL_LOGGER);
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final CreatePanelOfNormals.ReductionResult result = CreatePanelOfNormals.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size() / 2), NULL_LOGGER, ctx);
         final RealMatrix counts = readCounts.counts();
         Assert.assertNotNull(result);
         Assert.assertNotNull(result.pseudoInverse);
@@ -323,7 +330,8 @@ public class CreatePanelOfNormalsUnitTest {
 
     @Test(dataProvider = "readCountOnlyWithDiverseShapeData")
     public void testCalculateReducedPanelAndPInversesKeepingAllColumns(final ReadCountCollection readCounts) {
-        final CreatePanelOfNormals.ReductionResult result = CreatePanelOfNormals.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size()), NULL_LOGGER);
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final CreatePanelOfNormals.ReductionResult result = CreatePanelOfNormals.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size()), NULL_LOGGER, ctx);
         final RealMatrix counts = readCounts.counts();
         Assert.assertNotNull(result);
         Assert.assertNotNull(result.pseudoInverse);
@@ -539,9 +547,18 @@ public class CreatePanelOfNormalsUnitTest {
     }
 
     @Test(dataProvider = "singleEigenExample" )
-    public void testDetermineNumberOfEigenSamples(final ReadCountCollection logNormals){
+    public void testDetermineNumberOfEigenSamplesNoSpark(final ReadCountCollection logNormals){
 
-        final SingularValueDecomposition logNormalsSVD = new SingularValueDecomposition(logNormals.counts());
+        final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts());
+
+        final int actualNumber = CreatePanelOfNormals.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
+        Assert.assertEquals(actualNumber, 1);
+    }
+
+    @Test(dataProvider = "singleEigenExample" )
+    public void testDetermineNumberOfEigenSamplesSpark(final ReadCountCollection logNormals){
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts(), ctx);
 
         final int actualNumber = CreatePanelOfNormals.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
         Assert.assertEquals(actualNumber, 1);

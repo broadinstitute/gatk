@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Log;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.testng.Assert;
@@ -41,7 +43,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
     private static final File EXPECTED_SOME_TARGETS_PON = new File(TEST_FILE_DIR, "create-pon-some-targets.pon");
 
     @Test(dataProvider="allTargetsHDF5PoNCreationData")
-    public void testAllTargetsHDF5PoNCreation(final File targetsFile, final File inputFile) {
+    public void testAllTargetsHDF5PoNCreationNoSpark(final File targetsFile, final File inputFile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(inputFile.toString());
@@ -52,9 +54,33 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         final File outputFile = createTempFile("pon-",".hd5");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
+        arguments.add("--VERBOSITY");
+        arguments.add("INFO");
+        arguments.add("-ds");
+
         runCommandLine(arguments);
         assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
     }
+
+    @Test(dataProvider="allTargetsHDF5PoNCreationData")
+    public void testAllTargetsHDF5PoNCreationSpark(final File targetsFile, final File inputFile) {
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        arguments.add(inputFile.toString());
+        if (targetsFile != null) {
+            arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
+            arguments.add(targetsFile.toString());
+        }
+        final File outputFile = createTempFile("pon-",".hd5");
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.toString());
+        arguments.add("--VERBOSITY");
+        arguments.add("INFO");
+
+        runCommandLine(arguments);
+        assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+    }
+
 
     @Test()
     public void testDryRun() {
@@ -214,25 +240,29 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             final HDF5PoN rightPoN = new HDF5PoN(rightFile);
             Assert.assertEquals(leftPoN.getSampleNames(), rightPoN.getSampleNames());
             Assert.assertEquals(new LinkedHashSet<>(leftPoN.getTargetNames()), new LinkedHashSet<>(rightPoN.getTargetNames()));
-            assertEqualsMatrix(leftPoN.getTargetFactors(), rightPoN.getTargetFactors());
-            assertEqualsMatrix(leftPoN.getLogNormalizedCounts(), rightPoN.getLogNormalizedCounts());
-            assertEqualsMatrix(leftPoN.getLogNormalizedPInverseCounts(), rightPoN.getLogNormalizedPInverseCounts());
-            assertEqualsMatrix(leftPoN.getNormalizedCounts(), rightPoN.getNormalizedCounts());
-            assertEqualsMatrix(leftPoN.getReducedPanelCounts(), rightPoN.getReducedPanelCounts());
-            assertEqualsMatrix(leftPoN.getReducedPanelPInverseCounts(), rightPoN.getReducedPanelPInverseCounts());
+            assertEqualsMatrix(leftPoN.getTargetFactors(), rightPoN.getTargetFactors(), true);
+            assertEqualsMatrix(leftPoN.getLogNormalizedCounts(), rightPoN.getLogNormalizedCounts(), true);
+            assertEqualsMatrix(leftPoN.getLogNormalizedPInverseCounts(), rightPoN.getLogNormalizedPInverseCounts(), true);
+            assertEqualsMatrix(leftPoN.getNormalizedCounts(), rightPoN.getNormalizedCounts(), true);
+            assertEqualsMatrix(leftPoN.getReducedPanelCounts(), rightPoN.getReducedPanelCounts(), true);
+            assertEqualsMatrix(leftPoN.getReducedPanelPInverseCounts(), rightPoN.getReducedPanelPInverseCounts(), true);
             Assert.assertEquals(leftPoN.getPanelSampleNames(), rightPoN.getPanelSampleNames());
             Assert.assertEquals(leftPoN.getPanelTargetNames(), rightPoN.getPanelTargetNames());
         }
     }
 
-    private void assertEqualsMatrix(final RealMatrix left, final RealMatrix right) {
+    private void assertEqualsMatrix(final RealMatrix left, final RealMatrix right, final boolean isAllowNegatedValues) {
         Assert.assertEquals(left.getRowDimension(), right.getRowDimension());
         Assert.assertEquals(left.getColumnDimension(), right.getColumnDimension());
         for (int i = 0; i < left.getRowDimension(); i++) {
             final double[] leftRow = left.getRow(i);
             final double[] rightRow = right.getRow(i);
             for (int j = 0; j < leftRow.length; j++) {
-                Assert.assertEquals(leftRow[j], rightRow[j], 0.0001);
+                if (isAllowNegatedValues) {
+                    Assert.assertEquals(Math.abs(leftRow[j]), Math.abs(rightRow[j]), 0.0001);
+                } else {
+                    Assert.assertEquals(leftRow[j], rightRow[j], 0.0001);
+                }
             }
         }
     }

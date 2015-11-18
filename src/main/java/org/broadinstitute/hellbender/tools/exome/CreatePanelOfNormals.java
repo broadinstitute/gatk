@@ -3,19 +3,20 @@ package org.broadinstitute.hellbender.tools.exome;
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.SingularValueDecomposition;
+import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
+import org.broadinstitute.hellbender.utils.svd.SVD;
+import org.broadinstitute.hellbender.utils.svd.SVDFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,11 +43,13 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Creates a Panel of Normals (PoN) given the proportional read counts for the samples that are part of the panel.",
+        summary = "Creates a Panel of Normals (PoN) given the proportional read counts for the samples that are part of the panel.  Supports Apache Spark for some operations.",
         oneLineSummary = "Creates a Panel of Normals.",
         programGroup = ExomeAnalysisProgramGroup.class
 )
-public class CreatePanelOfNormals extends CommandLineProgram {
+public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
+
+    static final long serialVersionUID = 42123132L;
 
     private static final double INV_LN_2 = 1.0 / Math.log(2);
 
@@ -190,8 +193,8 @@ public class CreatePanelOfNormals extends CommandLineProgram {
     )
     protected boolean dryRun = false;
 
-    @Override
-    protected Object doWork() {
+
+    protected Object createPoN(final JavaSparkContext ctx) {
 
         final OptionalInt numberOfEigenSamples = calculatePreferredNumberOfEigenSamples();
 
@@ -233,13 +236,18 @@ public class CreatePanelOfNormals extends CommandLineProgram {
         normalizeAndLogReadCounts(readCounts, logger);
         subtractBGSCenter(readCounts, logger);
 
-        final ReductionResult reduction = calculateReducedPanelAndPInverses(readCounts, numberOfEigenSamples, logger);
+        final ReductionResult reduction = calculateReducedPanelAndPInverses(readCounts, numberOfEigenSamples, logger, ctx);
 
         // Write the log-normals and reduced panel matrices.
         if (!dryRun) {
             writeLogNormalsReducedPanel(outFile, readCounts, reduction);
         }
         return "SUCCESS";
+    }
+
+    @Override
+    protected void runPipeline(JavaSparkContext ctx) {
+        createPoN(ctx);
     }
 
     // Writes normalized and reduced panel matrices to the output HDF5 file.
@@ -322,13 +330,18 @@ public class CreatePanelOfNormals extends CommandLineProgram {
      * @return never {@code null}.
      */
     @VisibleForTesting
-    static ReductionResult calculateReducedPanelAndPInverses(final ReadCountCollection logNormals, final OptionalInt requestedNumberOfEigenSamples, final Logger logger) {
+    static ReductionResult calculateReducedPanelAndPInverses(final ReadCountCollection logNormals, final OptionalInt requestedNumberOfEigenSamples, final Logger logger, final JavaSparkContext ctx) {
+
+        if (ctx == null) {
+            logger.warn("No Spark context provided, not going to use Spark...");
+        }
+
         final RealMatrix logNormalCounts = logNormals.counts();
         final int numberOfCountColumns = logNormalCounts.getColumnDimension();
 
         logger.info("Starting the SVD decomposition of the log-normal counts ...");
         final long svdStartTime = System.currentTimeMillis();
-        final SingularValueDecomposition logNormalsSVD = new SingularValueDecomposition(logNormals.counts());
+        final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts(), ctx);
         final long svdEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished the SVD decomposition of the log-normal counts. Elapse of %d seconds", (svdEndTime - svdStartTime) / 1000));
 
@@ -336,14 +349,15 @@ public class CreatePanelOfNormals extends CommandLineProgram {
         logger.info(String.format("Including %d eigen samples in the reduced PoN", numberOfEigenSamples));
         final RealMatrix logNormalsV = logNormalsSVD.getV();
         final RealMatrix logNormalsEigenV = logNormalsV.getSubMatrix(0, numberOfCountColumns - 1, 0, numberOfEigenSamples - 1);
+
         final RealMatrix reducedCounts = logNormalCounts.multiply(logNormalsEigenV);
 
         // The Pseudo inverse comes nearly for free from having run the SVD decomposition.
-        final RealMatrix logNormalsPseudoInverse = logNormalsSVD.getSolver().getInverse();
+        final RealMatrix logNormalsPseudoInverse = logNormalsSVD.getPinv();
 
         logger.info("Calculating the reduced PoN inverse matrix...");
         final long riStartTime = System.currentTimeMillis();
-        final RealMatrix reducedCountsInverse = new SingularValueDecomposition(reducedCounts).getSolver().getInverse();
+        final RealMatrix reducedCountsInverse = SVDFactory.createSVD(reducedCounts, ctx).getPinv();
         final long riEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished calculating the reduced PoN inverse matrix. Elapse of %d seconds", (riEndTime - riStartTime) / 1000));
         return new ReductionResult(logNormalsPseudoInverse, reducedCounts, reducedCountsInverse, logNormalsSVD.getSingularValues());
@@ -359,7 +373,7 @@ public class CreatePanelOfNormals extends CommandLineProgram {
      * @return always greater than 0.
      */
     @VisibleForTesting
-    static int determineNumberOfEigenSamples(final OptionalInt requestedNumberOfEigenSamples, final int numberOfCountColumns, final SingularValueDecomposition logNormalsSVD, final Logger logger) {
+    static int determineNumberOfEigenSamples(final OptionalInt requestedNumberOfEigenSamples, final int numberOfCountColumns, final SVD logNormalsSVD, final Logger logger) {
         final int numberOfEigenSamples;
         if (requestedNumberOfEigenSamples.isPresent()) {
             if (requestedNumberOfEigenSamples.getAsInt() > numberOfCountColumns) {

@@ -110,8 +110,14 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:hellbender:4.pre-alpha-65-gda87c5c-SNAPSHOT'
+    compile 'org.broadinstitute:hellbender:4.pre-alpha-94-g7a9ca05-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
+    compile ('org.apache.spark:spark-mllib_2.10:1.4.1') {
+        // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+    }
 
     // HDF5 and HDF-Java jar files
     if (isMacOsX) {
@@ -122,6 +128,35 @@ dependencies {
     }
 
     testCompile 'org.testng:testng:6.8.8'
+
+    // Comment the next line to disable native code proxies in Spark MLLib
+    compile('com.github.fommil.netlib:all:1.1.2')
+
+    // Dependency change for including MLLib
+    compile('org.objenesis:objenesis:1.2')
+    testCompile('org.objenesis:objenesis:2.1')
+
+    // Dependency change for including MLLib
+    compile('de.javakaffee:kryo-serializers:0.26') {
+        exclude module: 'kryo' // use Spark's version
+    }
+
+    // Dependency change for including MLLib
+    compile('com.esotericsoftware:kryo:3.0.3'){
+        exclude group: 'com.esotericsoftware', module: 'reflectasm'
+        exclude group: 'org.ow2.asm', module: 'asm'
+    }
+
+    // Dependency change for including MLLib
+    compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
+}
+
+// Dependency change for including MLLib
+configurations {
+    compile.exclude module: 'jul-to-slf4j'
+    compile.exclude module: 'javax.servlet'
+    compile.exclude module: 'servlet-api'
+    compile.exclude group: 'com.esotericsoftware.kryo'
 }
 
 sourceCompatibility = 1.8
@@ -194,7 +229,7 @@ test {
 
         beforeTest { descriptor ->
             count++
-            if( count % 10000 == 0) {
+            if( count % 100 == 0) {
                 logger.lifecycle("Finished "+ Integer.toString(count++) + " tests")
             }
         }
@@ -217,6 +252,29 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.7'
 }
 
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Hellbender',
+                'Implementation-Version': version,
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+    baseName = project.name + '-all'
+    zip64 true
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be hellbender-protected-fat.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        def symlinkLocation = destinationDir.toString() + "/hellbender-protected-fat.jar"
+        exec {
+            commandLine 'ln', '-fs', archivePath, symlinkLocation
+            ignoreExitValue = false
+        }
+    }
+}
+
 shadowJar {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
@@ -228,6 +286,12 @@ shadowJar {
     classifier = 'spark'
     mergeServiceFiles()
     zip64 true
+
+    // Suggested by the akka devs to make sure that we do not get the spark configuration error.
+    // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
+        resource = 'reference.conf'
+    }
 
     doLast {
         // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
