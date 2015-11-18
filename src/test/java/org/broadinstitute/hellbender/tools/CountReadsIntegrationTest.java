@@ -9,23 +9,31 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public final class CountReadsIntegrationTest extends CommandLineProgramTest {
+
     @Test(dataProvider = "filenames")
-    public void testCountBases(String fileIn) throws Exception {
+    public void testCountReads(final String fileIn, final String referenceName) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
-        final String[] args = new String[]{
-                "--input",  ORIG_BAM.getAbsolutePath(),
-        };
-        final Object res = this.runCommandLine(args);
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--input");
+        args.add(ORIG_BAM.getAbsolutePath());
+        if (null != referenceName) {
+            final File REF = new File(getTestDataDir(), referenceName);
+            args.add("-R");
+            args.add(REF.getAbsolutePath());
+        }
+        final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, 8l);
     }
 
     @DataProvider(name="filenames")
     public Object[][] filenames() {
         return new String[][]{
-                {"count_reads.sam"},
-                {"count_reads.bam"},
-                {"count_reads_sorted.sam"},
-                {"count_reads_sorted.bam"}
+                {"count_reads.sam", null},
+                {"count_reads.bam", null},
+                {"count_reads.cram", "count_reads.fasta"},
+                {"count_reads_sorted.sam", null},
+                {"count_reads_sorted.bam", null},
+                {"count_reads_sorted.cram", "count_reads.fasta"},
         };
     }
 
@@ -47,18 +55,29 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    @Test(dataProvider = "intervals")
+    public void testCountBAMReadsWithIntervals(final String interval_args, final long count) throws Exception {
+        countReads(interval_args, "count_reads_sorted.bam", null, count);
+    }
 
     @Test(dataProvider = "intervals")
-    public void testCountBasesWithIntervals(String interval_args, long count) throws Exception {
-        final File ORIG_BAM = new File(getTestDataDir(), "count_reads_sorted.bam");
-        ArgumentsBuilder args = new ArgumentsBuilder();
+    public void testCountCRAMReadsWithIntervals(final String interval_args, final long count) throws Exception {
+        countReads(interval_args, "count_reads_sorted.cram", "count_reads.fasta", count);
+    }
+
+    private void countReads(final String interval_args, final String fileName, final String referenceName, final long count) {
+        final File ORIG_BAM = new File(getTestDataDir(), fileName);
+        final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--input");
         args.add(ORIG_BAM.getAbsolutePath());
+        if (null != referenceName) {
+            final File REF = new File(getTestDataDir(), referenceName);
+            args.add("-R");
+            args.add(REF.getAbsolutePath());
+        }
         args.add(interval_args);
 
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, count);
     }
-
-
 }
