@@ -67,6 +67,26 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }
 
+    @Test(dataProvider = "loadReadsBAM", groups = "spark")
+    public void readsSinkShardedTest(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
+        final File outputFile = createTempFile(outputFileName, outputFileExtension);
+        outputFile.deleteOnExit();
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
+        rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
+        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
+
+        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.SHARDED);
+        int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
+        Assert.assertEquals(shards, 2);
+
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath());
+        // reads are not globally sorted, so don't test that
+        Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
+    }
+
     @Test(dataProvider = "loadReadsADAM", groups = "spark")
     public void readsSinkADAMTest(String inputBam, String outputDirectoryName) throws IOException {
         // Since the test requires that we not create the actual output directory in advance,
