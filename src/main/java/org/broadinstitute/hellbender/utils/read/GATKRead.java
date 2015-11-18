@@ -541,5 +541,21 @@ public interface GATKRead extends Locatable {
      */
     String getSAMString();
 
+    /**
+     * A human-digestable representation of the read.
+     * NOTE: java will not let us have a default method override toString so we need this dance. Subclasses should override toString
+     * and call commonToString to get the same toString representation regardless of the underlying adaptee object.
+     */
+    default String commonToString() {
+        //Note: SAMRecord blows up on getAlignmentEnd when cigar is null.
+        // That would result in a blow up here so we work around this bug
+        // by checking for empty cigar (nulls get converted to empty cigars in SAMRecordToGATKReadAdapter)
+        if (isUnmapped() || getCigar().isEmpty()){
+            return String.format("%s UNMAPPED", getName());
+        } else {
+            return String.format("%s %s:%d-%d", getName(), getContig(), getStart(), getEnd());
+        }
+    }
+
 }
 

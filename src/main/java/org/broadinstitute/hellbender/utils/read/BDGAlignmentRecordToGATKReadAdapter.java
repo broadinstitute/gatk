@@ -42,4 +42,9 @@ public final class BDGAlignmentRecordToGATKReadAdapter extends SAMRecordToGATKRe
     }
 
     public AlignmentRecord convertToBDGAlignmentRecord() { return alignmentRecord; }
+
+    @Override
+    public String toString() {
+        return commonToString();
+    }
 }

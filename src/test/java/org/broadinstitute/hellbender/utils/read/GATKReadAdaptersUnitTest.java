@@ -4,6 +4,8 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
+import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.bdgenomics.formats.avro.Contig;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -11,11 +13,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,11 +26,12 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
     public static final byte[] BASIC_READ_BASES = {'A', 'C', 'G', 'T'};
     public static final byte[] BASIC_READ_BASE_QUALITIES = {30, 40, 30, 50};
     public static final String BASIC_READ_CIGAR = "1M1I2M";
-    public static final String BASIC_READ_GROUP = "FOO";
+    public static final String BASIC_READ_GROUP = "Foo";
     public static final String BASIC_PROGRAM = "x";
     public static final int BASIC_READ_END = BASIC_READ_START + TextCigarCodec.decode(BASIC_READ_CIGAR).getReferenceLength() - 1;
     public static final String BASIC_READ_MATE_CONTIG = "1";
     public static final int BASIC_READ_MATE_START = 125;
+    private static final String BASIC_SAMPLE_NAME = "Sample1";
 
     private static GATKRead basicReadBackedBySam() {
         return new SAMRecordToGATKReadAdapter(basicSAMRecord());
@@ -42,9 +41,60 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         return new GoogleGenomicsReadToGATKReadAdapter(basicGoogleGenomicsRead());
     }
 
+    @DataProvider(name = "readPairsForToString")
+    public Object[][] readPairsForToString() {
+        List<Object[]> testCases = new ArrayList<>();
+
+        final SAMRecord samRecord = basicSAMRecord();
+        final GATKRead basicSamRead = new SAMRecordToGATKReadAdapter(samRecord);
+
+        final SAMRecord samRecordUnmapped = basicSAMRecord();
+        samRecordUnmapped.setReadUnmappedFlag(true);
+        final GATKRead basicSamReadUnmapped = new SAMRecordToGATKReadAdapter(samRecordUnmapped);
+
+        final GATKRead googleRead = basicReadBackedByGoogle();
+        final GATKRead googleReadUnmapped = basicReadBackedByGoogle();
+        googleReadUnmapped.setIsUnmapped();
+
+        testCases.add(new GATKRead[]{basicSamRead, googleRead});
+        testCases.add(new GATKRead[]{basicSamRead, basicReadBackedByADAMRecord(samRecord)});
+        testCases.add(new GATKRead[]{googleRead, basicReadBackedByADAMRecord(samRecord)});
+
+        testCases.add(new GATKRead[]{basicSamReadUnmapped, googleReadUnmapped});
+        testCases.add(new GATKRead[]{basicSamReadUnmapped, basicReadBackedByADAMRecord(samRecordUnmapped)});
+        testCases.add(new GATKRead[]{googleReadUnmapped, basicReadBackedByADAMRecord(samRecordUnmapped)});
+        return testCases.toArray(new Object[][]{});
+    }
+
+    private static GATKRead basicReadBackedByADAMRecord(final SAMRecord sam) {
+        final AlignmentRecord record = new AlignmentRecord();
+
+        final Contig contig= new Contig();
+        contig.setContigName(sam.getContig());
+        record.setContig(contig);
+
+        record.setContig(contig);
+        record.setRecordGroupSample(sam.getReadGroup().getSample());
+        record.setReadName(sam.getReadName());
+        record.setSequence(new String(sam.getReadBases()));
+        record.setStart((long)sam.getAlignmentStart()-1); //ADAM records are 0-based
+        record.setEnd((long)sam.getAlignmentEnd()-1);     //ADAM records are 0-based
+        record.setReadMapped(!sam.getReadUnmappedFlag());
+        record.setCigar(sam.getCigarString());
+        return new BDGAlignmentRecordToGATKReadAdapter(record, getSAMHeader());
+    }
+
+    @Test(dataProvider = "readPairsForToString")
+    public void testToString(final GATKRead read1, final GATKRead read2){
+        Assert.assertNotEquals(read1, read2);
+        Assert.assertEquals(read1.toString(), read2.toString());
+    }
+
     private static SAMFileHeader getSAMHeader() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 1000000);
-        header.addReadGroup(new SAMReadGroupRecord(BASIC_READ_GROUP));
+        final SAMReadGroupRecord readGroupRecord = new SAMReadGroupRecord(BASIC_READ_GROUP);
+        readGroupRecord.setSample(BASIC_SAMPLE_NAME);
+        header.addReadGroup(readGroupRecord);
         return header;
     }
 

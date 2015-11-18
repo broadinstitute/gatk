@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -535,12 +534,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public String toString() {
-        //SAMRecord.toString blows up when there are no bases: https://github.com/samtools/htsjdk/issues/297
-        //The workaround is to not call it then
-        if (samRecord == null || samRecord.getReadBases() != null) {
-            return Objects.toString(samRecord);
-        }
-        return "SAMRecord with no bases";
+        return commonToString();
     }
 
     public boolean hasHeader() {
