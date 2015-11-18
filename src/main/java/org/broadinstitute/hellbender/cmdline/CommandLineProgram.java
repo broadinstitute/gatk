@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.parser.CommandLineParser;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 
 import java.io.File;

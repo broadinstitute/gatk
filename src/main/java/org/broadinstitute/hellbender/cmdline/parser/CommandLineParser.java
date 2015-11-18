@@ -1,12 +1,17 @@
-package org.broadinstitute.hellbender.cmdline;
+package org.broadinstitute.hellbender.cmdline.parser;
 
-import htsjdk.samtools.util.StringUtil;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpecBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PositionalArguments;
+import org.broadinstitute.hellbender.cmdline.SpecialArgumentsCollection;
+import org.broadinstitute.hellbender.cmdline.StrictBooleanConverter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -57,8 +62,8 @@ import java.util.stream.Stream;
  */
 public final class CommandLineParser {
     // For formatting argument section of usage message.
-    private static final int ARGUMENT_COLUMN_WIDTH = 30;
-    private static final int DESCRIPTION_COLUMN_WIDTH = 90;
+    static final int ARGUMENT_COLUMN_WIDTH = 30;
+    static final int DESCRIPTION_COLUMN_WIDTH = 90;
 
     private static final String ENUM_OPTION_DOC_PREFIX = "Possible values: {";
     private static final String ENUM_OPTION_DOC_SUFFIX = "} ";
@@ -67,7 +72,7 @@ public final class CommandLineParser {
     private static final String defaultUsagePreamble = "Usage: program [arguments...]\n";
     private static final String defaultUsagePreambleWithPositionalArguments =
             "Usage: program [arguments...] [positional-arguments...]\n";
-    private static final String NULL_STRING = "null";
+    static final String NULL_STRING = "null";
     public static final String COMMENT = "#";
     public static final String POSITIONAL_ARGUMENTS_NAME = "Positional Argument";
 
@@ -195,8 +200,8 @@ public final class CommandLineParser {
 
         // filter on common and partition on optional
         final Map<Boolean, List<ArgumentDefinition>> argMap = argumentDefinitions.stream()
-                .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon)
-                .collect(Collectors.partitioningBy(a -> a.optional));
+                .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon())
+                .collect(Collectors.partitioningBy(a -> a.isOptional()));
 
         final List<ArgumentDefinition> reqArgs = argMap.get(false); // required args
         if (reqArgs != null && !reqArgs.isEmpty()) {
@@ -300,7 +305,7 @@ public final class CommandLineParser {
         final OptionParser parser = new OptionParser();
 
         for (ArgumentDefinition arg : argumentDefinitions){
-            final OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.doc);
+            final OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.getDoc());
             if (arg.isFlag()) {
                 bld.withOptionalArg().withValuesConvertedBy(new StrictBooleanConverter());
             } else {
@@ -339,12 +344,12 @@ public final class CommandLineParser {
             for (final ArgumentDefinition argumentDefinition : argumentDefinitions) {
                 final String name = argumentDefinition.getLongName();
                 final Set<ArgumentDefinition> mutextArguments = getConflictingMutallyExclusiveArguments(argumentDefinition, argumentMap);
-                if (argumentDefinition.hasBeenSet && !mutextArguments.isEmpty()) {
+                if (argumentDefinition.hasBeenSet() && !mutextArguments.isEmpty()) {
                     throw new UserException.ConflictingMutuallyExclusiveArguments("Argument '" + name +
                             "' cannot be used in conjunction with argument(s) " +
                             mutextArguments.stream().map(ArgumentDefinition::getLongName).collect(Collectors.joining(" ")), getCommandLineAsInput());
                 }
-                if (!argumentDefinition.optional && !argumentDefinition.hasBeenSet && mutextArguments.isEmpty()) {
+                if (!argumentDefinition.isOptional() && !argumentDefinition.hasBeenSet() && mutextArguments.isEmpty()) {
                     missingRequiredArguments.add(argumentDefinition);
                 }
             }
@@ -372,7 +377,7 @@ public final class CommandLineParser {
 
         //Sort the missing arguments so that single arguments are sorted before mutually exclusive groups, and then alphabetically within group
         final List<ArgumentDefinition> sortedArgs = missingRequiredArguments.stream()
-                .sorted(Comparator.comparing((ArgumentDefinition arg) -> !arg.mutuallyExclusive.isEmpty())
+                .sorted(Comparator.comparing((ArgumentDefinition arg) -> !arg.getMutuallyExclusive().isEmpty())
                         .thenComparing(ArgumentDefinition::getLongName))
                 .collect(Collectors.toList());
 
@@ -394,10 +399,10 @@ public final class CommandLineParser {
      * @return a Set of other argument definitions that have been set, that are mutually exclusive with arg
      */
     private static Set<ArgumentDefinition> getConflictingMutallyExclusiveArguments(ArgumentDefinition arg, Map<String, ArgumentDefinition> argumentMap) {
-        return arg.mutuallyExclusive.stream()
+        return arg.getMutuallyExclusive().stream()
                 .sorted()
                 .map(argumentMap::get)
-                .filter(mutexArg -> mutexArg != null && mutexArg.hasBeenSet)
+                .filter(mutexArg -> mutexArg != null && mutexArg.hasBeenSet())
                 .collect(Collectors.toSet());
     }
 
@@ -444,80 +449,7 @@ public final class CommandLineParser {
     }
 
     private void printArgumentUsage(final PrintStream stream, final ArgumentDefinition argumentDefinition) {
-        printArgumentParamUsage(stream, argumentDefinition.getLongName(), argumentDefinition.shortName,
-                getUnderlyingType(argumentDefinition.field).getSimpleName(),
-                makeArgumentDescription(argumentDefinition));
-    }
-
-
-    private static void printArgumentParamUsage(final PrintStream stream, final String name, final String shortName,
-                                                final String type, final String argumentDescription) {
-        String argumentLabel = name;
-        if (type != null) {
-            argumentLabel = "--" + argumentLabel;
-        }
-
-        if (!shortName.isEmpty()) {
-            argumentLabel+=",-" + shortName;
-        }
-        argumentLabel += ':' + type;
-        stream.print(argumentLabel);
-
-        int numSpaces = ARGUMENT_COLUMN_WIDTH - argumentLabel.length();
-        if (argumentLabel.length() > ARGUMENT_COLUMN_WIDTH) {
-            stream.println();
-            numSpaces = ARGUMENT_COLUMN_WIDTH;
-        }
-        printSpaces(stream, numSpaces);
-        final String wrappedDescription = StringUtil.wordWrap(argumentDescription, DESCRIPTION_COLUMN_WIDTH);
-        final String[] descriptionLines = wrappedDescription.split("\n");
-        for (int i = 0; i < descriptionLines.length; ++i) {
-            if (i > 0) {
-                printSpaces(stream, ARGUMENT_COLUMN_WIDTH);
-            }
-            stream.println(descriptionLines[i]);
-        }
-        stream.println();
-    }
-
-    private String makeArgumentDescription(final ArgumentDefinition argumentDefinition) {
-        final StringBuilder sb = new StringBuilder();
-        if (!argumentDefinition.doc.isEmpty()) {
-            sb.append(argumentDefinition.doc);
-            sb.append("  ");
-        }
-        if (argumentDefinition.isCollection) {
-            if (argumentDefinition.optional) {
-                sb.append("This argument may be specified 0 or more times. ");
-            } else {
-                sb.append("This argument must be specified at least once. ");
-            }
-        }
-        if (argumentDefinition.optional) {
-            sb.append("Default value: ");
-            sb.append(argumentDefinition.defaultValue);
-            sb.append(". ");
-        } else {
-            sb.append("Required. ");
-        }
-        sb.append(getOptions(getUnderlyingType(argumentDefinition.field)));
-        if (!argumentDefinition.mutuallyExclusive.isEmpty()) {
-            sb.append(" Cannot be used in conjuction with argument(s)");
-            for (final String argument : argumentDefinition.mutuallyExclusive) {
-                final ArgumentDefinition mutextArgumentDefinition = argumentMap.get(argument);
-
-                if (mutextArgumentDefinition == null) {
-                    throw new GATKException("Invalid argument definition in source code.  " + argument +
-                                                  " doesn't match any known argument.");
-                }
-
-                sb.append(' ').append(mutextArgumentDefinition.fieldName);
-                if (!mutextArgumentDefinition.shortName.isEmpty()) {
-                    sb.append(" (").append(mutextArgumentDefinition.shortName).append(')');
-                }
-            }
-        }
-        return sb.toString();
+        stream.print(argumentDefinition.getArgumentParamUsage(argumentMap));
     }
 
     /**
@@ -591,7 +523,7 @@ public final class CommandLineParser {
      * @return never {@code null}.
      */
     @SuppressWarnings({"unchecked","rawtypes"})
-    private static String getOptions(final Class<?> clazz) {
+    static String getOptions(final Class<?> clazz) {
         if (clazz == Boolean.class) {
             return getBooleanOptions();
         } else if (clazz.isEnum()) {
@@ -600,14 +532,6 @@ public final class CommandLineParser {
         } else {
             return "";
         }
-    }
-
-    private static void printSpaces(final PrintStream stream, final int numSpaces) {
-        final StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < numSpaces; ++i) {
-            sb.append(' ');
-        }
-        stream.print(sb);
     }
 
     private void handleArgumentAnnotation(final Field field, final Object parent) {
@@ -631,7 +555,7 @@ public final class CommandLineParser {
             for (final String argument : argumentAnnotation.mutex()) {
                 final ArgumentDefinition mutextArgumentDef = argumentMap.get(argument);
                 if (mutextArgumentDef != null) {
-                    mutextArgumentDef.mutuallyExclusive.add(field.getName());
+                    mutextArgumentDef.getMutuallyExclusive().add(field.getName());
                 }
             }
             if (inArgumentMap(argumentDefinition)) {
@@ -711,7 +635,7 @@ public final class CommandLineParser {
      * the case of primitive fields it will return the wrapper type so that String
      * constructors can be found.
      */
-    private static Class<?> getUnderlyingType(final Field field) {
+    static Class<?> getUnderlyingType(final Field field) {
         if (isCollectionField(field)) {
             final ParameterizedType clazz = (ParameterizedType) (field.getGenericType());
             final Type[] genericTypes = clazz.getActualTypeArguments();
@@ -757,7 +681,7 @@ public final class CommandLineParser {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object constructFromString(final Class clazz, final String s, final String argumentName) {
+    static Object constructFromString(final Class clazz, final String s, final String argumentName) {
         try {
             if (clazz.isEnum()) {
                 try {
@@ -791,200 +715,6 @@ public final class CommandLineParser {
         String getHelpDoc();
     }
 
-    private static class ArgumentDefinition {
-        final Field field;
-        final String fieldName;
-        final String fullName;
-        final String shortName;
-        final String doc;
-        final boolean optional;
-        final boolean isCollection;
-        final String defaultValue;
-        final boolean isCommon;
-        boolean hasBeenSet = false;
-        final Set<String> mutuallyExclusive;
-        final Object parent;
-        final boolean isSpecial;
-        final boolean isSensitive;
-
-        public ArgumentDefinition(final Field field, final Argument annotation, final Object parent){
-            this.field = field;
-            this.fieldName = field.getName();
-            this.parent = parent;
-            this.fullName = annotation.fullName();
-            this.shortName = annotation.shortName();
-            this.doc = annotation.doc();
-            this.isCollection = isCollectionField(field);
-
-            this.isCommon = annotation.common();
-            this.isSpecial = annotation.special();
-            this.isSensitive = annotation.sensitive();
-
-            this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
-
-            final Object tmpDefault = getFieldValue();
-            if (tmpDefault != null) {
-                if (isCollection && ((Collection) tmpDefault).isEmpty()) {
-                    //treat empty collections the same as uninitialized primitive types
-                    this.defaultValue = NULL_STRING;
-                } else {
-                    //this is an initialized primitive type or a non-empty collection
-                    this.defaultValue = tmpDefault.toString();
-                }
-            } else {
-                this.defaultValue = NULL_STRING;
-            }
-
-            //null collections have been initialized by createCollection which is called in handleArgumentAnnotation
-            //this is optional if it's specified as being optional or if there is a default value specified
-            this.optional = annotation.optional() || ! this.defaultValue.equals(NULL_STRING);
-        }
-
-        @SuppressWarnings("unchecked")
-        private void setArgument(final List<String> values) {
-            //special treatment for flags
-            if (isFlag() && values.isEmpty()){
-                hasBeenSet = true;
-                setFieldValue(true);
-                return;
-            }
-
-            if (!isCollection && (hasBeenSet || values.size() > 1)) {
-                    throw new UserException.CommandLineException("Argument '" + getNames() + "' cannot be specified more than once.");
-            }
-
-            for (String stringValue: values) {
-                final Object value;
-                if (stringValue.equals(NULL_STRING)) {
-                    //"null" is a special value that allows the user to override any default
-                    //value set for this arg
-                    if (optional) {
-                        value = null;
-                    } else {
-                        throw new UserException.CommandLineException("Non \"null\" value must be provided for '" + getNames() + "'.");
-                    }
-                } else {
-                    value = constructFromString(getUnderlyingType(field), stringValue, getLongName());
-                }
-
-                if (isCollection) {
-                    @SuppressWarnings("rawtypes")
-                    final Collection c = (Collection) getFieldValue();
-                    if (value == null) {
-                        //user specified this arg=null which is interpreted as empty list
-                        c.clear();
-                    } else {
-                        c.add(value);
-                    }
-                    hasBeenSet = true;
-                } else {
-                    setFieldValue(value);
-                    hasBeenSet = true;
-                }
-            }
-        }
-
-
-        public Object getFieldValue(){
-            try {
-                field.setAccessible(true);
-                return field.get(parent);
-            } catch (IllegalAccessException e) {
-                throw new GATKException.ShouldNeverReachHereException("This shouldn't happen since we setAccessible(true).", e);
-            }
-        }
-
-        public void setFieldValue(final Object value){
-            try {
-                field.setAccessible(true);
-                field.set(parent, value);
-            } catch (IllegalAccessException e) {
-                throw new GATKException.ShouldNeverReachHereException("BUG: couldn't set field value. For "
-                        + fieldName +" in " + parent + " with value " + value
-                        + " This shouldn't happen since we setAccessible(true)", e);
-            }
-        }
-
-        public boolean isFlag(){
-            return field.getType().equals(boolean.class) || field.getType().equals(Boolean.class);
-        }
-
-        public List<String> getNames(){
-            final List<String> names = new ArrayList<>();
-            if (!shortName.isEmpty()){
-                names.add(shortName);
-            }
-            if (!fullName.isEmpty()){
-                names.add(fullName);
-            } else {
-                names.add(fieldName);
-            }
-            return names;
-        }
-
-        public String getLongName(){
-            return !fullName.isEmpty() ? fullName : fieldName;
-        }
-
-        /**
-         * Helper for pretty printing this option.
-         * @param value A value this argument was given
-         * @return a string
-         *
-         */
-        private String prettyNameValue(Object value) {
-            if(value != null){
-                if (isSensitive){
-                    return String.format("--%s ***********", getLongName());
-                } else {
-                    return String.format("--%s %s", getLongName(), value);
-                }
-            }
-            return "";
-        }
-
-        /**
-         * @return A string representation of this argument and it's value(s) which would be valid if copied and pasted
-         * back as a command line argument
-         */
-        public String toCommandLineString(){
-            final Object value = getFieldValue();
-            if (this.isCollection){
-                final Collection<?> collect = (Collection<?>)value;
-                return collect.stream()
-                        .map(this::prettyNameValue)
-                        .collect(Collectors.joining(" "));
-
-            } else {
-                return prettyNameValue(value);
-            }
-        }
-
-        /**
-         * @param argumentDefinitionMap a map from argument names to {@link ArgumentDefinition}
-         * @return the set of arguments that this argument is mutually exclusive with (including itself in the set)
-         */
-        public Set<ArgumentDefinition> getMutuallyExclusiveArguments(Map<String,ArgumentDefinition> argumentDefinitionMap){
-            final Set<ArgumentDefinition> mutexArguments = mutuallyExclusive.stream().map(argumentDefinitionMap::get).collect(Collectors.toSet());
-            mutexArguments.add(this);
-            return mutexArguments;
-        }
-
-        public String composeMissingArgumentMessage(Map<String,ArgumentDefinition> argumentDefinitionMap){
-            if(mutuallyExclusive.isEmpty()){
-                return String.format("required argument --%s was not specified", getLongName());
-            } else {
-                final Set<ArgumentDefinition> mutuallyExclusiveArguments = getMutuallyExclusiveArguments(argumentDefinitionMap);
-                return mutuallyExclusiveArguments.stream()
-                        .map(ArgumentDefinition::getLongName)
-                        .sorted()
-                        .map(name -> "--" + name)
-                        .collect(Collectors.joining(", ", "one of the following required arguments must be specified: ", ""));
-            }
-        }
-
-    }
-
     /**
      * The commandline used to run this program, including any default args that
      * weren't necessarily specified. This is used for logging and debugging.
@@ -1015,13 +745,13 @@ public final class CommandLineParser {
 
         //first, append args that were explicitly set
         commandLineString.append(argumentDefinitions.stream()
-                .filter(argumentDefinition -> argumentDefinition.hasBeenSet)
+                .filter(argumentDefinition -> argumentDefinition.hasBeenSet())
                 .map(ArgumentDefinition::toCommandLineString)
                 .collect(Collectors.joining(" "," ","  ")));
 
         //next, append args that weren't explicitly set, but have a default value
         commandLineString.append(argumentDefinitions.stream()
-                .filter(argumentDefinition -> !argumentDefinition.hasBeenSet && !argumentDefinition.defaultValue.equals(NULL_STRING))
+                .filter(argumentDefinition -> !argumentDefinition.hasBeenSet() && !argumentDefinition.getDefaultValue().equals(NULL_STRING))
                 .map(ArgumentDefinition::toCommandLineString)
                 .collect(Collectors.joining(" ")));
 
