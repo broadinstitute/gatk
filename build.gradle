@@ -44,6 +44,10 @@ repositories {
     maven {
         url "https://oss.sonatype.org/content/repositories/snapshots/" // for http-client
     }
+
+    maven {
+        url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
+    }
 }
 
 configurations.all {
@@ -88,7 +92,7 @@ dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
     compile 'com.google.guava:guava:18.0'
-    compile 'com.github.samtools:htsjdk:1.141'
+    compile 'com.github.samtools:htsjdk:1.141-6dceff7-SNAPSHOT'
     compile ('com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15') {
         // an upstream dependency includes guava-jdk5, but we want the newer version instead.
         exclude module: 'guava-jdk5'
