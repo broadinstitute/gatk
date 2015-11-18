@@ -1,4 +1,6 @@
 language: java
+sudo: required
+dist: trusty
 jdk:
 - oraclejdk8
 env:
@@ -6,6 +8,12 @@ env:
   - TERM=dumb
   global:
   - JAVA_LIBRARY_PATH=/usr/lib/jni
+
+  #needed to avoid a bug in the hdf5 installer
+  - PS1=">"
+
+  #limit gradle jvm memory usage
+  - GRADLE_OPTS=-Xmx512m
 
   # If this changes, you will need to update the gradle build
   - HDF5_DIR=/hdf/
@@ -40,10 +48,10 @@ before_install:
 - sudo mkdir -p site-library
 - sudo ln -sFv ~/site-library /usr/local/lib/R/site-library
 - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
-- sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu precise/"
+- sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/"
 - sudo apt-get update
-- sudo apt-get install -y --force-yes r-base-dev=3.1.3-1precise2
-- sudo apt-get install -y --force-yes r-base-core=3.1.3-1precise2
+- sudo apt-get install -y --force-yes r-base-dev=3.1.3-1trusty
+- sudo apt-get install -y --force-yes r-base-core=3.1.3-1trusty
 - sudo Rscript scripts/install_R_packages.R
 
 after_success:
