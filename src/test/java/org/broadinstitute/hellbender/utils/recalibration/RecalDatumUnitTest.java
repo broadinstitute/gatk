@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
 
-import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -224,32 +223,5 @@ public final class RecalDatumUnitTest extends BaseTest {
         Assert.assertTrue(loglikelihood < 0.0);
         Assert.assertFalse(Double.isInfinite(loglikelihood));
         Assert.assertFalse(Double.isNaN(loglikelihood));
-    }
-
-    @Test
-    public void basicHierarchicalBayesianQualityEstimateTest() {
-
-        for( double epsilon = 15.0; epsilon <= 60.0; epsilon += 2.0 ) {
-            double RG_Q = 45.0;
-            RecalDatum RG = new RecalDatum( (long)100000000, (long) (100000000 * 1.0 / (Math.pow(10.0, RG_Q / 10.0))), (byte)RG_Q);
-            double Q = 30.0;
-            RecalDatum QS = new RecalDatum( (long)100000000, (long) (100000000 * 1.0 / (Math.pow(10.0, Q / 10.0))), (byte)Q);
-            RecalDatum COV = new RecalDatum( (long)15, (long) 1, (byte)45.0); // no data here so Bayesian prior has a huge effect on the empirical quality
-
-            // initial epsilon condition shouldn't matter when there are a lot of observations
-            Assert.assertEquals(BQSRReadTransformer.hierarchicalBayesianQualityEstimate(epsilon, RG, QS, COV), Q, 1E-4);
-        }
-
-        for( double epsilon = 15.0; epsilon <= 60.0; epsilon += 2.0 ) {
-            double RG_Q = 45.0;
-            RecalDatum RG = new RecalDatum( (long)10, (long) (10 * 1.0 / (Math.pow(10.0, RG_Q / 10.0))), (byte)RG_Q);
-            double Q = 30.0;
-            RecalDatum QS = new RecalDatum( (long)10, (long) (10 * 1.0 / (Math.pow(10.0, Q / 10.0))), (byte)Q);
-            RecalDatum COV = new RecalDatum( (long)15, (long) 1, (byte)45.0); // no data here so Bayesian prior has a huge effect on the empirical quality
-
-            // initial epsilon condition dominates when there is no data
-            Assert.assertEquals(BQSRReadTransformer.hierarchicalBayesianQualityEstimate(epsilon, RG, QS, COV), epsilon, 1E-4);
-        }
-
     }
 }

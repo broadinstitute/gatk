@@ -140,7 +140,7 @@ public class BaseRecalibratorSparkOptimizedIntegrationTest extends CommandLinePr
                 + " -O " + tablePre + " --sort_by_all_columns true" + " --apiKey " + getGCPTestApiKey();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
-        final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre + "  -O " + actualHiSeqBam_recalibrated.getAbsolutePath() + " --apiKey " + getGCPTestApiKey();
+        final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath() + " --apiKey " + getGCPTestApiKey();
         new ApplyBQSRSpark().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");

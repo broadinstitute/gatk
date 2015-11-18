@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The collection of those arguments for ApplyBQSR that are not already defined in RecalibrationArgumentCollection.
@@ -19,12 +23,24 @@ public class ApplyBQSRUniqueArgumentCollection implements ArgumentCollectionDefi
     @Argument(fullName="quantize_quals", shortName = "qq", doc = "Quantize quality scores to a given number of levels", optional=true)
     public int quantizationLevels = 0;
 
+
     /**
-     * Turns off printing of the base insertion and base deletion tags.
-     * Only the base substitution qualities will be produced.
+     * Static quantized quals are entirely separate from the quantize_qual option which uses dynamic binning.
+     * The two types of binning should not be used together.
      */
-    @Argument(fullName="disable_indel_quals", shortName = "DIQ", doc = "Disable printing of base insertion and deletion tags", optional=true)
-    public boolean disableIndelQuals = false;
+    @Advanced
+    @Argument(fullName="static_quantized_quals", shortName = "SQQ", doc = "Use static quantized quality scores to a given number of levels (with -BQSR)", optional=true, mutex = "quantize_quals")
+    public List<Integer> staticQuantizationQuals = new ArrayList<>();
+
+    /**
+     * Round down quantized only works with the static_quantized_quals option, and should not be used with
+     * the dynamic binning option provided by quantize_quals.  When roundDown = false, rounding is done in
+     * probability space to the nearest bin.  When roundDown = true, the value is rounded to the nearest bin
+     * that is smaller than the current bin.
+     */
+    @Advanced
+    @Argument(fullName="round_down_quantized", shortName = "RDQ", doc = "Round quals down to nearest quantized qual", optional=true, mutex = "quantize_quals")
+    public boolean roundDown = false;
 
     /**
      * By default, the OQ tag in not emitted. Use this flag to include OQ tags in the output BAM file.
@@ -42,7 +58,6 @@ public class ApplyBQSRUniqueArgumentCollection implements ArgumentCollectionDefi
     public ApplyBQSRArgumentCollection toApplyBQSRArgumentCollection(int PRESERVE_QSCORES_LESS_THAN) {
         ApplyBQSRArgumentCollection ret = new ApplyBQSRArgumentCollection();
         ret.quantizationLevels = this.quantizationLevels;
-        ret.disableIndelQuals = this.disableIndelQuals;
         ret.emitOriginalQuals = this.emitOriginalQuals;
         ret.PRESERVE_QSCORES_LESS_THAN = PRESERVE_QSCORES_LESS_THAN;
         ret.globalQScorePrior = this.globalQScorePrior;
