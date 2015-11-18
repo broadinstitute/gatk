@@ -5,28 +5,13 @@ import com.google.api.services.genomics.model.LinearAlignment;
 import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
 import com.google.cloud.genomics.gatk.common.GenomicsConverter;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
-import htsjdk.samtools.SAMUtils;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.*;
 
 /**
  * Implementation of the {@link GATKRead} interface for the Google Genomics {@link Read} class.
@@ -761,4 +746,8 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         return attributeValue;
     }
 
+    @Override
+    public String toString() {
+        return commonToString();
+    }
 }
