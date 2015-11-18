@@ -128,6 +128,22 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
         spec.executeTest("testBQSR-" + params.args, this);
     }
 
+    @Test
+    public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
+        //this should blow up because broadcast requires a 2bit reference
+        final String hiSeqBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
+        final String dbSNPb37_chr20 = getResourceDir() + "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
+
+        BQSRTest params = new BQSRTest(b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt");
+
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                ab.getString(),
+                1,
+                UserException.Require2BitReferenceForBroadcast.class);
+        spec.executeTest("testBQSR-" + params.args, this);
+    }
+
     // "local", but we're still getting the reference from the cloud.
     @Test(dataProvider = "BQSRTest", groups = {"cloud"})
     public void testBQSRLocal(BQSRTest params) throws IOException {
