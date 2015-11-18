@@ -143,7 +143,7 @@ public final class RevertSam extends PicardCommandLineProgram {
             outHeader.setProgramRecords(inHeader.getProgramRecords());
         }
 
-        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, presorted, OUTPUT);
+        final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outHeader, presorted);
 
         ////////////////////////////////////////////////////////////////////////////
         // Build a sorting collection to use if we are sanitizing

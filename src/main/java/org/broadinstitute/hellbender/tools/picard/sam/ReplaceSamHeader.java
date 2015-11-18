@@ -62,7 +62,7 @@ public final class ReplaceSamHeader extends PicardCommandLineProgram {
             throw new UserException("Sort orders of INPUT (" + recordReader.getFileHeader().getSortOrder().name() +
                     ") and HEADER (" + replacementHeader.getSortOrder().name() + ") do not agree.");
         }
-        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(replacementHeader, true, OUTPUT)) {
+        try (final SAMFileWriter writer = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, replacementHeader, true)) {
 
             final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord rec : recordReader) {

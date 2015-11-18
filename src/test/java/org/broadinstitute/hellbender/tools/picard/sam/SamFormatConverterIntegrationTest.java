@@ -15,6 +15,7 @@ public final class SamFormatConverterIntegrationTest extends CommandLineProgramT
     private static final File unmappedSam = new File(TEST_DATA_DIR, "unmapped.sam");
     private static final File unmappedBam = new File(TEST_DATA_DIR, "unmapped.bam");
     private static final File unmappedCram = new File(TEST_DATA_DIR, "unmapped.cram");
+    private static final File referenceFile = new File(TEST_DATA_DIR, "basic.fasta");
 
     public String getTestedClassName() {
         return SamFormatConverter.class.getSimpleName();
@@ -22,41 +23,45 @@ public final class SamFormatConverterIntegrationTest extends CommandLineProgramT
 
     @Test
     public void testSAMToBAM() throws IOException {
-        convertFile(unmappedSam, unmappedBam, ".bam");
+        convertFile(unmappedSam, unmappedBam, ".bam", null);
     }
 
     @Test
     public void testSAMToCRAM() throws IOException {
-        convertFile(unmappedSam, unmappedCram, ".cram");
+        convertFile(unmappedSam, unmappedCram, ".cram", referenceFile);
     }
 
     @Test
     public void testBAMToCRAM() throws IOException {
-        convertFile(unmappedBam, unmappedCram, ".cram");
+        convertFile(unmappedBam, unmappedCram, ".cram", referenceFile);
     }
 
     @Test
     public void testBAMToSAM() throws IOException {
-        convertFile(unmappedBam, unmappedSam, ".sam");
+        convertFile(unmappedBam, unmappedSam, ".sam", null);
     }
 
     @Test
     public void testCRAMToBAM() throws IOException {
-        convertFile(unmappedCram, unmappedBam, ".bam");
+        convertFile(unmappedCram, unmappedBam, ".bam", null);
     }
 
     @Test
     public void testCRAMToSAM() throws IOException {
-        convertFile(unmappedCram, unmappedSam, ".sam");
+        convertFile(unmappedCram, unmappedSam, ".sam", null);
     }
 
-    private void convertFile(final File inputFile, final File fileToCompare, final String extension) throws IOException {
+    private void convertFile(final File inputFile, final File fileToCompare, final String extension, final File referenceFile) throws IOException {
         final List<String> samFileConverterArgs = new ArrayList<>();
         samFileConverterArgs.add("--INPUT");
         samFileConverterArgs.add(inputFile.getAbsolutePath());
         final File converterOutput = BaseTest.createTempFile("SamFileConverterTest." + inputFile.getName(), extension);
         samFileConverterArgs.add("--OUTPUT");
         samFileConverterArgs.add(converterOutput.getAbsolutePath());
+        if (null != referenceFile) {
+            samFileConverterArgs.add("--R");
+            samFileConverterArgs.add(referenceFile.getAbsolutePath());
+        }
         runCommandLine(samFileConverterArgs);
         SamAssertionUtils.assertSamValid(converterOutput);
         SamAssertionUtils.assertSamsEqual(converterOutput, fileToCompare);

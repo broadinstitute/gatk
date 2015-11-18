@@ -42,7 +42,7 @@ public final class CleanSam extends PicardCommandLineProgram {
             factory.validationStringency(ValidationStringency.LENIENT);
         }
         final SamReader reader = factory.open(INPUT);
-        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(reader.getFileHeader(), true, OUTPUT, REFERENCE_SEQUENCE);
+        try (final SAMFileWriter writer = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, reader.getFileHeader(), true);
              final CloseableIterator<SAMRecord> it = reader.iterator()) {
 
             final ProgressLogger progress = new ProgressLogger(logger);

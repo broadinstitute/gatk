@@ -108,7 +108,7 @@ public final class MergeSamFiles extends PicardCommandLineProgram {
         if (USE_THREADING) {
             samFileWriterFactory.setUseAsyncIo(true);
         }
-        try (final SAMFileWriter out = samFileWriterFactory.makeWriter(header, presorted, OUTPUT, REFERENCE_SEQUENCE)) {
+        try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, header, presorted)) {
 
             // Lastly loop through and write out the records
             final ProgressLogger progress = new ProgressLogger(logger, PROGRESS_INTERVAL);

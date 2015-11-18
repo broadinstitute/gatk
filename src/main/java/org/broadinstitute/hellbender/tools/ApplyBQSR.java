@@ -53,9 +53,8 @@ public final class ApplyBQSR extends ReadWalker{
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
-        outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
-        transform = new BQSRReadTransformer(outputHeader, BQSR_RECAL_FILE, bqsrArgs);
+        outputWriter = createSAMWriter(OUTPUT, true);
+        transform = new BQSRReadTransformer(getHeaderForReads(), BQSR_RECAL_FILE, bqsrArgs);
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
     }
 

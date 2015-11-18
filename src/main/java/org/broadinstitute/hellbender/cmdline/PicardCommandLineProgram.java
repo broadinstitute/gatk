@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.cmdline;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockCompressedStreamConstants;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 
@@ -42,6 +43,7 @@ public abstract class PicardCommandLineProgram extends CommandLineProgram {
         }
         // set general SAM/BAM parameters
         SamReaderFactory.setDefaultValidationStringency(VALIDATION_STRINGENCY);
+
         BlockCompressedOutputStream.setDefaultCompressionLevel(COMPRESSION_LEVEL);
 
         if (MAX_RECORDS_IN_RAM != null) {
@@ -58,4 +60,31 @@ public abstract class PicardCommandLineProgram extends CommandLineProgram {
         return instanceMainPostParseArgs();
     }
 
+    /**
+     * Create a common SAMFileWriter for use with Picard tools.
+     *
+     * @param outputFile    - if this file has a .cram extension then a reference is required. Can not be null.
+     * @param referenceFile - the reference source to use. Can not be null if a output file has a .cram extension.
+     * @param header        - header to be used for the output writer
+     * @param preSorted     - if true then the records must already be sorted to match the header sort order
+     * @return SAMFileWriter
+     */
+    public SAMFileWriter createSAMWriter(
+            final File outputFile,
+            final File referenceFile,
+            final SAMFileHeader header,
+            final boolean preSorted)
+    {
+        BlockCompressedOutputStream.setDefaultCompressionLevel(COMPRESSION_LEVEL);
+
+        SAMFileWriterFactory factory = new SAMFileWriterFactory()
+                .setCreateIndex(CREATE_INDEX)
+                .setCreateMd5File(CREATE_MD5_FILE);
+
+        if (MAX_RECORDS_IN_RAM != null) {
+            factory = factory.setMaxRecordsInRam(MAX_RECORDS_IN_RAM);
+        }
+
+        return ReadUtils.createCommonSAMWriterFromFactory(factory, outputFile, referenceFile, header, preSorted);
+    }
 }

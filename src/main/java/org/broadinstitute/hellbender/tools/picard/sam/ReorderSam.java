@@ -73,7 +73,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
 
         logger.info("Writing reads...");
         if (in.hasIndex()) {
-            try (final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, true, OUTPUT)) {
+            try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outHeader, true)) {
 
                 // write the reads in contig order
                 for (final SAMSequenceRecord contig : refDict.getSequences()) {
@@ -84,7 +84,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
                 writeReads(out, in.queryUnmapped(), newOrder, "unmapped");
             }
         } else {
-            try (SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, false, OUTPUT)) {
+            try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outHeader, false)) {
                 writeReads(out, in.iterator(), newOrder, "All reads");
             }
         }

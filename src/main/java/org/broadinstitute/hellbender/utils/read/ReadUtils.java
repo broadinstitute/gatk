@@ -1,13 +1,16 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.cram.build.CramIO;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -868,4 +871,62 @@ public final class ReadUtils {
         return read.isUnmapped() || read.getStart() <= contigHeader.getSequenceLength();
     }
 
+    /**
+     * Create a common SAMFileWriter for use with GATK tools.
+     *
+     * @param outputFile - if this file has a .cram extension then a reference is required. Can not be null.
+     * @param referenceFile - the reference source to use. Can not be null if a output file has a .cram extension.
+     * @param header - header to be used for the output writer
+     * @param preSorted - if true then the records must already be sorted to match the header sort order
+     * @param createIndex - if true an index will be created for .BAM and .CRAM files
+     * @param createMD5 - if true an MD5 file will be created
+     *
+     * @return SAMFileWriter
+     */
+    public static SAMFileWriter createCommonSAMWriter(
+            final File outputFile,
+            final File referenceFile,
+            final SAMFileHeader header,
+            final boolean preSorted,
+            boolean createIndex,
+            boolean createMD5)
+    {
+        Utils.nonNull(outputFile);
+        Utils.nonNull(header);
+
+        if (createIndex && header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
+            throw new UserException("Sort order must be coordinate to allow creation of an output index");
+        }
+
+        final SAMFileWriterFactory factory = new SAMFileWriterFactory().setCreateIndex(createIndex).setCreateMd5File(createMD5);
+        return ReadUtils.createCommonSAMWriterFromFactory(factory, outputFile, referenceFile, header, preSorted);
+    }
+
+    /**
+     * Create a common SAMFileWriter from a factory for use with GATK tools. Assumes that if the factory has been set
+     * to create an index, the header must be set to coordinate sorted.
+     *
+     * @param outputFile if this file has a .cram extension then a reference is required. Can not be null.
+     * @param referenceFile the reference source to use. Can not be null if a output file has a .cram extension.
+     * @param header header to be used for the output writer
+     * @param preSorted if true then records must already be sorted to match the header sort order
+     * @param factory SAMFileWriterFactory factory to use
+     * @return SAMFileWriter
+     */
+    public static SAMFileWriter createCommonSAMWriterFromFactory(
+            final SAMFileWriterFactory factory,
+            final File outputFile,
+            final File referenceFile,
+            final SAMFileHeader header,
+            final boolean preSorted)
+    {
+        Utils.nonNull(outputFile);
+        Utils.nonNull(header);
+
+        if (null == referenceFile && outputFile.getName().endsWith(CramIO.CRAM_FILE_EXTENSION)) {
+            throw new UserException("A reference file is required for writing CRAM files");
+        }
+
+        return factory.makeWriter(header, preSorted, outputFile, referenceFile);
+    }
 }

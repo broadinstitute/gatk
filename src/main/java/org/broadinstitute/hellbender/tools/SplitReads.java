@@ -112,8 +112,7 @@ public final class SplitReads extends ReadWalker {
         final String base = FilenameUtils.getBaseName(readArguments.getReadFiles().get(0).getName());
         final String extension = "." + FilenameUtils.getExtension(readArguments.getReadFiles().get(0).getName());
         final File outFile = new File(OUTPUT_DIRECTORY, base + keyName + extension);
-        final SAMFileHeader samFileHeaderOut = ReadUtils.cloneSAMFileHeader(samFileHeaderIn);
-        return new SAMFileGATKReadWriter(samFileWriterFactory.makeWriter(samFileHeaderOut, true, outFile, referenceArguments.getReferenceFile()));
+        return createSAMWriter(outFile, true);
     }
 
     /**

@@ -33,11 +33,7 @@ public final class SamFormatConverter extends PicardCommandLineProgram {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
         final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
-        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(reader.getFileHeader(), true, OUTPUT, REFERENCE_SEQUENCE)) {
-
-            if (CREATE_INDEX && writer.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
-                throw new UserException("Can't CREATE_INDEX unless sort order is coordinate");
-            }
+        try (final SAMFileWriter writer = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, reader.getFileHeader(), true)) {
 
             final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord rec : reader) {

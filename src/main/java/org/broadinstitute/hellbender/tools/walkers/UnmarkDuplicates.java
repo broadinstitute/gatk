@@ -32,8 +32,7 @@ public class UnmarkDuplicates extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(getHeaderForReads());
-        outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, referenceArguments.getReferenceFile()));
+        outputWriter = createSAMWriter(OUTPUT, true);
     }
 
     @Override

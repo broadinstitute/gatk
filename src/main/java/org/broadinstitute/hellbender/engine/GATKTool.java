@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.vcf.VCFHeader;
@@ -16,6 +17,8 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -43,6 +46,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName = "disableSequenceDictionaryValidation", shortName = "disableSequenceDictionaryValidation", doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
     private boolean disableSequenceDictionaryValidation = false;
+
+    @Argument(fullName="createOutputBamIndex", shortName="createOutputBamIndex", doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true)
+    public boolean createOutputBamIndex = false;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -363,6 +369,32 @@ public abstract class GATKTool extends CommandLineProgram {
             throw new UserException("Tool " + getClass().getSimpleName() + " requires features, but none were provided");
         }
 
+    }
+
+    /*
+     * Create a common SAMFileWriter using the reference and read header for this tool.
+     *
+     * @param outputFile    - if this file has a .cram extension then a reference is required. Can not be null.
+     * @param preSorted     - if true then the records must already be sorted to match the header sort order
+     *
+     * @throws UserException if outputFile ends with ".cram" and no reference is provided
+     * @return SAMFileWriter
+     */
+    public SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
+        if (!hasReference() && FilenameUtils.getExtension(outputFile.getName()).equals(CramIO.CRAM_FILE_EXTENSION)) {
+            throw new UserException("A reference file is required for writing CRAM files");
+        }
+
+        return new SAMFileGATKReadWriter(
+                        ReadUtils.createCommonSAMWriter(
+                                outputFile,
+                                referenceArguments.getReferenceFile(),
+                                getHeaderForReads(),
+                                preSorted,
+                                createOutputBamIndex,
+                                false
+                        )
+        );
     }
 
     /**
