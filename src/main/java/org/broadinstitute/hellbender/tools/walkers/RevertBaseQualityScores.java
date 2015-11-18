@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
@@ -25,7 +26,7 @@ import java.io.File;
         programGroup = ReadProgramGroup.class
 )
 
-public class RevertQualityScores extends ReadWalker {
+public class RevertBaseQualityScores extends ReadWalker {
 
     @Argument(fullName = "output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
@@ -49,7 +50,8 @@ public class RevertQualityScores extends ReadWalker {
         if ( originalQuals != null ){
             read.setBaseQualities(originalQuals);
         } else {
-            throw new GATKException("RevertQualityScores can only be applied to SAM/BAM files with original quality scores");
+            throw new UserException("RevertQualityScores can only be applied to SAM/BAM files with original quality scores, "
+                    + "caused by read: " + read.getName());
         }
         outputWriter.addRead(read);
     }
