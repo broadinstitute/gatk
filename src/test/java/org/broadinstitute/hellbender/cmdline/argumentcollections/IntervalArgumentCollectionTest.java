@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.CommandLineParser;
+import org.broadinstitute.hellbender.cmdline.parser.CommandLineParser;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;

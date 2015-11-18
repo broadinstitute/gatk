@@ -1,7 +1,13 @@
-package org.broadinstitute.hellbender.cmdline;
+package org.broadinstitute.hellbender.cmdline.parser;
 
 import htsjdk.samtools.util.CollectionUtil;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PositionalArguments;
+import org.broadinstitute.hellbender.cmdline.SpecialArgumentsCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -13,7 +19,13 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class CommandLineParserTest {
     enum FrobnicationFlavor {
@@ -201,7 +213,7 @@ public final class CommandLineParserTest {
         final CommandLineParser clp = new CommandLineParser(fo);
         Assert.assertTrue(clp.parseArguments(System.err, args));
         Assert.assertEquals(clp.getFullySpecifiedCommandLine(),
-                "org.broadinstitute.hellbender.cmdline.CommandLineParserTest$FrobnicateArguments  " +
+                "org.broadinstitute.hellbender.cmdline.parser.CommandLineParserTest$FrobnicateArguments  " +
                         "positional1 positional2 --FROBNICATION_THRESHOLD 17 --FROBNICATION_FLAVOR BAR " +
                         "--SHMIGGLE_TYPE shmiggle1 --SHMIGGLE_TYPE shmiggle2 --TRUTHINESS true  --help false " +
                         "--version false");
@@ -942,6 +954,7 @@ public final class CommandLineParserTest {
                             "One or more gathered argument values not correct");
 
     }
+
 
     /**
      * Nonsensical parameterized class, just to ensure that CommandLineParser.gatherArgumentValuesOfType()
