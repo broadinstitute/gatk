@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 
 final class ArgumentDefinition {
+    private static final int MINIMUM_VISUAL_SEPARATION = 2;
     private final Field field;
     private final String fieldName;
     private final String fullName;
@@ -49,22 +50,21 @@ final class ArgumentDefinition {
 
         this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
 
-        this.defaultValue = getDefaultValueString(isCollection);
+        this.defaultValue = getDefaultValueString(isCollection, getFieldValue());
 
         //null collections have been initialized by createCollection which is called in handleArgumentAnnotation
         //this is optional if it's specified as being optional or if there is a default value specified
         this.optional = annotation.optional() || !this.defaultValue.equals(CommandLineParser.NULL_STRING);
     }
 
-    private String getDefaultValueString(boolean isCollection) {
-        final Object tmpDefault = getFieldValue();
-        if (tmpDefault != null) {
-            if (isCollection && ((Collection) tmpDefault).isEmpty()) {
+    private static String getDefaultValueString(boolean isCollection, Object defaultValue) {
+        if (defaultValue != null) {
+            if (isCollection && ((Collection) defaultValue).isEmpty()) {
                 //treat empty collections the same as uninitialized primitive types
                 return CommandLineParser.NULL_STRING;
             } else {
                 //this is an initialized primitive type or a non-empty collection
-                return tmpDefault.toString();
+                return defaultValue.toString();
             }
         } else {
             return CommandLineParser.NULL_STRING;
@@ -79,20 +79,16 @@ final class ArgumentDefinition {
         output.append(argumentLabel);
 
         int numSpaces = CommandLineParser.ARGUMENT_COLUMN_WIDTH - argumentLabel.length();
-        if (argumentLabel.length() > CommandLineParser.ARGUMENT_COLUMN_WIDTH) {
+        if (argumentLabel.length() > CommandLineParser.ARGUMENT_COLUMN_WIDTH - MINIMUM_VISUAL_SEPARATION) {
             output.append(System.lineSeparator());
             numSpaces = CommandLineParser.ARGUMENT_COLUMN_WIDTH;
         }
         output.append(StringUtils.repeat(' ', numSpaces));
         final String wrappedDescription = StringUtil.wordWrap(makeArgumentDescription(argumentMap), CommandLineParser.DESCRIPTION_COLUMN_WIDTH);
         final String[] descriptionLines = wrappedDescription.split("\n");
-        for (int i = 0; i < descriptionLines.length; ++i) {
-            if (i > 0) {
-                output.append(StringUtils.repeat(' ', CommandLineParser.ARGUMENT_COLUMN_WIDTH));
-            }
-            output.append(descriptionLines[i]).append(System.lineSeparator());
-        }
-        output.append(System.lineSeparator());
+
+        final String offset = System.lineSeparator() + StringUtils.repeat(' ', CommandLineParser.ARGUMENT_COLUMN_WIDTH);
+        output.append(String.join(offset, Arrays.asList(descriptionLines)));
         return output.toString();
     }
 
@@ -104,6 +100,9 @@ final class ArgumentDefinition {
             output.append(",-").append(shortName);
         }
         output.append(':').append(CommandLineParser.getUnderlyingType(field).getSimpleName());
+        if (isCollection) {
+            output.append("[]");
+        }
         return output.toString();
     }
 
@@ -113,20 +112,14 @@ final class ArgumentDefinition {
             sb.append(doc);
             sb.append("  ");
         }
-        if (isCollection) {
-            if (optional) {
-                sb.append("This argument may be specified 0 or more times. ");
-            } else {
-                sb.append("This argument must be specified at least once. ");
-            }
-        }
         if (optional) {
             sb.append("Default: ");
             sb.append(defaultValue);
+            sb.append(". ");
         }
         sb.append(CommandLineParser.getOptions(CommandLineParser.getUnderlyingType(field)));
         if (!mutuallyExclusive.isEmpty()) {
-            sb.append(" Cannot be used in conjuction with argument(s)");
+            sb.append(" Cannot be used with argument(s)");
             for (final String argument : mutuallyExclusive) {
                 final ArgumentDefinition mutextArgumentDefinition = argumentMap.get(argument);
 
@@ -276,14 +269,13 @@ final class ArgumentDefinition {
 
     public String composeMissingArgumentMessage(Map<String, ArgumentDefinition> argumentDefinitionMap) {
         if (mutuallyExclusive.isEmpty()) {
-            return String.format("required argument --%s was not specified", getLongName());
+            return "the following required argument was missing:\n" + getArgumentParamUsage(argumentDefinitionMap) + '\n';
         } else {
             final Set<ArgumentDefinition> mutuallyExclusiveArguments = getMutuallyExclusiveArguments(argumentDefinitionMap);
             return mutuallyExclusiveArguments.stream()
-                    .map(ArgumentDefinition::getLongName)
+                    .map(arg -> arg.getArgumentParamUsage(argumentDefinitionMap))
                     .sorted()
-                    .map(name -> "--" + name)
-                    .collect(Collectors.joining(", ", "one of the following required arguments must be specified: ", ""));
+                    .collect(Collectors.joining("\n", "one of the following required arguments must be specified:\n", "\n"));
         }
     }
 

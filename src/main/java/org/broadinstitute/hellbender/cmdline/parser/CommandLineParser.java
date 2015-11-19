@@ -201,7 +201,7 @@ public final class CommandLineParser {
         // filter on common and partition on optional
         final Map<Boolean, List<ArgumentDefinition>> argMap = argumentDefinitions.stream()
                 .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon())
-                .collect(Collectors.partitioningBy(a -> a.isOptional()));
+                .collect(Collectors.partitioningBy(ArgumentDefinition::isOptional));
 
         final List<ArgumentDefinition> reqArgs = argMap.get(false); // required args
         if (reqArgs != null && !reqArgs.isEmpty()) {
@@ -382,6 +382,7 @@ public final class CommandLineParser {
                 .collect(Collectors.toList());
 
         final List<String> messages = new ArrayList<>();
+
         for( ArgumentDefinition arg: sortedArgs) {
             if(!alreadyOutput.contains(arg)) {
                 messages.add(arg.composeMissingArgumentMessage(argumentMap));
@@ -450,6 +451,7 @@ public final class CommandLineParser {
 
     private void printArgumentUsage(final PrintStream stream, final ArgumentDefinition argumentDefinition) {
         stream.print(argumentDefinition.getArgumentParamUsage(argumentMap));
+        stream.println();
     }
 
     /**
@@ -745,7 +747,7 @@ public final class CommandLineParser {
 
         //first, append args that were explicitly set
         commandLineString.append(argumentDefinitions.stream()
-                .filter(argumentDefinition -> argumentDefinition.hasBeenSet())
+                .filter(ArgumentDefinition::hasBeenSet)
                 .map(ArgumentDefinition::toCommandLineString)
                 .collect(Collectors.joining(" "," ","  ")));
 
