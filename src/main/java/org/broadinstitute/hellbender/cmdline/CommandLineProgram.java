@@ -102,12 +102,7 @@ public abstract class CommandLineProgram {
         }
     }
 
-    public Object instanceMain(final String[] argv) {
-        if (!parseArgs(argv)) {
-            //an information only argument like help or version was specified, just exit
-            return 0;
-        }
-
+    public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
         if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
         if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtil.getDefaultTmpDir());
@@ -135,14 +130,14 @@ public abstract class CommandLineProgram {
 
             // Output a one liner about who/where and what software/os we're running on
             try {
-            System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
-                                    "] Executing as " +
-                                    System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
-                                    " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
-                                    " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
-                                    " " + System.getProperty("java.runtime.version") +
-                                    "; Version: " + commandLineParser.getVersion() +
-            " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
+                System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
+                        "] Executing as " +
+                        System.getProperty("user.name") + "@" + InetAddress.getLocalHost().getHostName() +
+                        " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
+                        " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
+                        " " + System.getProperty("java.runtime.version") +
+                        "; Version: " + commandLineParser.getVersion() +
+                        " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
             catch (Exception e) { /* Unpossible! */ }
         }
@@ -160,6 +155,15 @@ public abstract class CommandLineProgram {
                 System.err.println("Runtime.totalMemory()=" + Runtime.getRuntime().totalMemory());
             }
         }
+    }
+
+    public Object instanceMain(final String[] argv) {
+        if (!parseArgs(argv)) {
+            //an information only argument like help or version was specified, just exit
+            return 0;
+        }
+        return instanceMainPostParseArgs();
+
     }
 
     /**

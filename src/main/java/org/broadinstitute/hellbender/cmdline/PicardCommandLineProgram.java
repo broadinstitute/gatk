@@ -33,6 +33,13 @@ public abstract class PicardCommandLineProgram extends CommandLineProgram {
 
     @Override
     public Object instanceMain(final String[] argv) {
+        // First, we parse the commandline arguments, then we set important statics like VALIDATION_STRINGENCY, and
+        // finally, we call into the normal instance main (post arg-parsing). If don't start with the argument parsing
+        // we always get default values for VALIDATION_STRINGENCY, COMPRESSION_LEVEL, etc.
+        if (!parseArgs(argv)) {
+            //an information only argument like help or version was specified, just exit
+            return 0;
+        }
         // set general SAM/BAM parameters
         SamReaderFactory.setDefaultValidationStringency(VALIDATION_STRINGENCY);
         BlockCompressedOutputStream.setDefaultCompressionLevel(COMPRESSION_LEVEL);
@@ -47,8 +54,8 @@ public abstract class PicardCommandLineProgram extends CommandLineProgram {
 
         SAMFileWriterFactory.setDefaultCreateMd5File(CREATE_MD5_FILE);
 
-        // defer to parent
-        return super.instanceMain(argv);
+        // defer to parent to finish the initialization and starting the program.
+        return instanceMainPostParseArgs();
     }
 
 }
