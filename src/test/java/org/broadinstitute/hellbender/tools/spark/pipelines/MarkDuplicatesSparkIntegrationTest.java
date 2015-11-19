@@ -50,10 +50,6 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     @Test @Override
     public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicatesWithinPixelDistance() {}
 
-    /** Test disabled because it missed the duplicate. */
-    @Test @Override
-    public void testStackOverFlowPairSetSwap() {}
-
     @DataProvider(name = "md")
     public Object[][] md(){
         return new Object[][]{

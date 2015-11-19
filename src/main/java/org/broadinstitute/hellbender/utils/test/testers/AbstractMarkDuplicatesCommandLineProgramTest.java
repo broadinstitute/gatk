@@ -34,8 +34,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     // ELIGIBLE_BASE_QUALITY is the minimum quality considered by the dataflow version
     // for marking a specific pair as best. We use it to ensure that the expected
     // pair wins the tie so that the tie is not broken randomly.
-    protected final static int DEFAULT_BASE_QUALITY = 10;
-    protected final static int ELIGIBLE_BASE_QUALITY = 15;
+    protected static final int DEFAULT_BASE_QUALITY = 10;
+    protected static final int ELIGIBLE_BASE_QUALITY = 15;
 
     @Test
     public void testSingleUnmappedFragment() {

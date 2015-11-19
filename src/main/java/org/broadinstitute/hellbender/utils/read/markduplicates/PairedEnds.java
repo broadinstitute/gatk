@@ -51,8 +51,8 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     return second;
   }
 
-  public int score() {
-    return MarkDuplicatesUtils.scoreForRead(first) + MarkDuplicatesUtils.scoreForRead(second);
+  public int score(final MarkDuplicatesScoringStrategy scoringStrategy) {
+    return scoringStrategy.score(first) + scoringStrategy.score(second);
   }
 
   @Override
