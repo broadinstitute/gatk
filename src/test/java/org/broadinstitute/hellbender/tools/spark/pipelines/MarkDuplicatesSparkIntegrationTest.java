@@ -39,17 +39,6 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         return new MarkDuplicatesSpark();
     }
 
-
-    // The following tests are overridden from the base class as they fail for
-    // the spark version. The failure causes are recorded.
-    /** Test disabled because found 1 optical duplicate when expected 0 */
-    @Test @Override
-    public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicates() {}
-
-    /** Test disabled because found 1 optical duplicate when expected 0 */
-    @Test @Override
-    public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicatesWithinPixelDistance() {}
-
     @DataProvider(name = "md")
     public Object[][] md(){
         return new Object[][]{

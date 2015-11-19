@@ -129,14 +129,15 @@ public class MarkDuplicatesSparkUtils {
             }
 
             // This must happen last, as findOpticalDuplicates mutates the list.
-            // We do not need to split the list by orientation as the keys for the pairs already
-            // include directionality information and a FR pair would not be grouped with an RF pair.
-            final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
-            int numOpticalDuplicates = 0;
-            for (final boolean b : opticalDuplicateFlags) {
-                if (b) {
-                    numOpticalDuplicates++;
-                }
+            // Split by orientation and count duplicates in each group separately.
+            final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, pe -> pe.getOrientationForOpticalDuplicates());
+            final int numOpticalDuplicates;
+            if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)){
+                final List<PairedEnds> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
+                final List<PairedEnds> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
+                numOpticalDuplicates = countOpticalDuplicates(finder, peFR) +  countOpticalDuplicates(finder, peRF);
+            } else {
+                numOpticalDuplicates = countOpticalDuplicates(finder, scored);
             }
             best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
 
@@ -146,6 +147,17 @@ public class MarkDuplicatesSparkUtils {
             }
             return out;
         });
+    }
+
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<PairedEnds> scored) {
+        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
+        int numOpticalDuplicates = 0;
+        for (final boolean b : opticalDuplicateFlags) {
+            if (b) {
+                numOpticalDuplicates++;
+            }
+        }
+        return numOpticalDuplicates;
     }
 
     private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, final MarkDuplicatesScoringStrategy scoringStrategy, final SAMFileHeader header) {
@@ -300,7 +312,9 @@ public class MarkDuplicatesSparkUtils {
             final int res6 = Boolean.compare(lhs.isProperlyPaired(), rhs.isProperlyPaired());
             if (res6 != 0) return res6;
 
-            final int res7 = Boolean.compare(lhs.isFirstOfPair(), rhs.isFirstOfPair());
+            //Note: negate the result because we want first-of-pair to be before second
+            //ie, want 'second' to be sorted after first, so want to return -1 for (true, false)
+            final int res7 = -Boolean.compare(lhs.isFirstOfPair(), rhs.isFirstOfPair());
             if (res7 != 0) return res7;
 
             final int res8 = Boolean.compare(lhs.isSecondaryAlignment(), rhs.isSecondaryAlignment());
