@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -30,6 +32,11 @@ public final class SortBamSpark extends GATKSparkTool {
     @Argument(doc="The output parallelism, sets the number of reducers. Defaults to the number of partitions in the input.",
             shortName = "P", fullName = "parallelism", optional = true)
     protected int parallelism = 0;
+
+    @Override
+    public ReadFilter makeReadFilter() {
+        return ReadFilterLibrary.ALLOW_ALL_READS;
+    }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
