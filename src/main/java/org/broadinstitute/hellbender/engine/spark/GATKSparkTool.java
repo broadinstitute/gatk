@@ -19,6 +19,9 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInp
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -176,12 +179,28 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * Loads the reads into a {@link JavaRDD} using the intervals specified. If no intervals
-     * were specified, returns all the reads (both mapped and unmapped).
+     * Loads the reads into a {@link JavaRDD} using the intervals specified, and filters them using
+     * the filter returned by {@link #makeReadFilter}.
      *
-     * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified.
+     * If no intervals were specified, returns all the reads (both mapped and unmapped).
+     *
+     * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified,
+     *         and filtered using the filter from {@link #makeReadFilter}.
      */
     public JavaRDD<GATKRead> getReads() {
+        final ReadFilter filter = makeReadFilter();
+        return getUnfilteredReads().filter(read -> filter.test(read));
+    }
+
+    /**
+     * Loads the reads into a {@link JavaRDD} using the intervals specified, and returns them
+     * without applying any filtering.
+     *
+     * If no intervals were specified, returns all the reads (both mapped and unmapped).
+     *
+     * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified, and unfiltered.
+     */
+    public JavaRDD<GATKRead> getUnfilteredReads() {
         // TODO: This if statement is a temporary hack until #959 gets resolved.
         if (readInput.endsWith(".adam")) {
             try {
@@ -194,6 +213,17 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
             return readsSource.getParallelReads(readInput, intervals, bamPartitionSplitSize);
         }
+    }
+
+    /**
+     * Returns the read filter (simple or composite) that will be applied to the reads returned from {@link #getReads}
+     * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.WellformedReadFilter} filter with all default options.
+     *
+     * Subclasses can extend to provide their own filters (ie., override and optionally call super).
+     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
+     */
+    public ReadFilter makeReadFilter() {
+        return new WellformedReadFilter(getHeaderForReads());
     }
 
     /**

@@ -22,10 +22,7 @@ import java.util.Arrays;
 public final class BaseRecalibratorSparkFn {
 
     public static RecalibrationReport apply( final JavaPairRDD<GATKRead, ReadContextData> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final RecalibrationArgumentCollection recalArgs ) {
-        final ReadFilter filter = BaseRecalibrator.getStandardBQSRReadFilter(header);
-        final JavaPairRDD<GATKRead, ReadContextData> filtered = readsWithContext.filter(readWithContext -> filter.apply(readWithContext._1()));
-
-        JavaRDD<RecalibrationTables> unmergedTables = filtered.mapPartitions(readWithContextIterator -> {
+        JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(readWithContextIterator -> {
             final BaseRecalibrationEngine bqsr = new BaseRecalibrationEngine(recalArgs, header);
             bqsr.logCovariatesUsed();
 

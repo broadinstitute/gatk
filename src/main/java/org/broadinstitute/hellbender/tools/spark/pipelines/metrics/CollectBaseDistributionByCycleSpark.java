@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.tools.picard.analysis.BaseDistributionByCycleMetrics;
@@ -47,6 +49,11 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
 
     @Argument(shortName="F", fullName = "pfReadsOnly", doc="If set to true calculate the base distribution over PF reads only.")
     public boolean pfReadsOnly = false;
+
+    @Override
+    public ReadFilter makeReadFilter() {
+        return ReadFilterLibrary.ALLOW_ALL_READS;
+    }
 
     private static final class HistogramGenerator implements Serializable{
         private static final long serialVersionUID = 1L;

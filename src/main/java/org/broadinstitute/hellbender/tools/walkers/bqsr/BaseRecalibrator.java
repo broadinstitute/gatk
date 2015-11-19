@@ -152,7 +152,7 @@ public final class BaseRecalibrator extends ReadWalker {
         return makeBQSRSpecificReadFilters().and(new CountingReadFilter("Wellformed", new WellformedReadFilter(header)));
     }
 
-    private static CountingReadFilter makeBQSRSpecificReadFilters() {
+    public static CountingReadFilter makeBQSRSpecificReadFilters() {
         return new CountingReadFilter("Mapping_Quality_Not_Zero", MAPPING_QUALITY_NOT_ZERO)
                 .and(new CountingReadFilter("Mapping_Quality_Available", MAPPING_QUALITY_AVAILABLE))
                 .and(new CountingReadFilter("Mapped", MAPPED))

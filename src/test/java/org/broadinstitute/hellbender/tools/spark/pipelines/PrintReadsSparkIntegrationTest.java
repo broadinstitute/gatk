@@ -3,11 +3,14 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 
 public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -63,4 +66,21 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outBam, inBam);
     }
 
+    /**
+     * Test that PrintReadsSpark is correctly applying the WellformedReadFilter
+     */
+    @Test
+    public void testReadFiltering() throws IOException {
+        final File samWithOneMalformedRead = new File(getTestDataDir(), "print_reads_one_malformed_read.sam");
+        final File outBam = createTempFile("print_reads_testReadFiltering", ".bam");
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(samWithOneMalformedRead.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outBam.getCanonicalPath());
+
+        runCommandLine(args.getArgsArray());
+        SamAssertionUtils.assertSamsEqual(outBam, new File(getTestDataDir(), "expected.print_reads_one_malformed_read.bam"));
+    }
 }

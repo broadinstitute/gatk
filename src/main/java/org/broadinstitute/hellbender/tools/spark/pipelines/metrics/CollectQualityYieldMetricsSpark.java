@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -42,6 +44,10 @@ public final class CollectQualityYieldMetricsSpark extends GATKSparkTool {
                     "as inputs instead of the quality scores in the QUAL field.")
     public boolean useOriginalQualities = false;
 
+    @Override
+    public ReadFilter makeReadFilter() {
+        return ReadFilterLibrary.ALLOW_ALL_READS;
+    }
 
     /** A set of metrics used to describe the general quality of a BAM file */
     public static final class QualityYieldMetrics extends MetricBase implements Serializable{
