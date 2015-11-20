@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
+import htsjdk.samtools.SAMRecord;
 import org.apache.spark.SparkConf;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.apache.spark.serializer.KryoSerializer;
@@ -23,19 +24,28 @@ public class SAMRecordToGATKReadAdapterSerializerUnitTest {
         }
     }
 
-    @Test(enabled = false)
-    public void test() {
+    @Test
+    public void testSerializerRoundTripHeaderlessRead() {
         SparkConf conf = new SparkConf().set("spark.kryo.registrator",
                 "org.broadinstitute.hellbender.engine.spark.SAMRecordToGATKReadAdapterSerializerUnitTest$TestGATKRegistrator");
         KryoSerializer kryoSerializer = new KryoSerializer(conf);
         SerializerInstance sparkSerializer = kryoSerializer.newInstance();
 
-        // check round trip with header set
-        GATKRead read = ArtificialReadUtils.createSamBackedRead("read1", "1", 100, 50);
+        // check round trip with no header
+        GATKRead read = ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50);
+        check(sparkSerializer, read);
+    }
+
+    @Test
+    public void testChangingContigsOnHeaderlessGATKRead(){
+        final SparkConf conf = new SparkConf().set("spark.kryo.registrator",
+                "org.broadinstitute.hellbender.engine.spark.SAMRecordToGATKReadAdapterSerializerUnitTest$TestGATKRegistrator");
+        final KryoSerializer kryoSerializer = new KryoSerializer(conf);
+        final SerializerInstance sparkSerializer = kryoSerializer.newInstance();
+        final GATKRead read = ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50);
         check(sparkSerializer, read);
 
-        // check round trip with no header
-        ((SAMRecordToGATKReadAdapter) read).getEncapsulatedSamRecord().setHeader(null);
+        read.setPosition("2", 1);
         check(sparkSerializer, read);
     }
 

@@ -9,11 +9,12 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordToGATKReadAdapter> {
 
-    private BAMRecordCodec lazyCodec = new BAMRecordCodec(null, new LazyBAMRecordFactory());
+    private SAMRecordSparkCodec lazyCodec = new SAMRecordSparkCodec();
 
     @Override
     public void write(Kryo kryo, Output output, SAMRecordToGATKReadAdapter adapter) {
         SAMRecord record = adapter.getEncapsulatedSamRecord();
+
         // serialize reference names to avoid having to have a header at read time
         output.writeString(record.getReferenceName());
         output.writeString(record.getMateReferenceName());
@@ -34,64 +35,10 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
         // clear indexing bin after decoding to ensure all SAMRecords compare properly
         record.setFlags(record.getFlags());
 
-        final int referenceIndex = record.getReferenceIndex();
-        final int mateReferenceIndex = record.getMateReferenceIndex();
+        // set reference names (and indexes to null)
         record.setReferenceName(referenceName);
         record.setMateReferenceName(mateReferenceName);
 
-        // set reference indexes again since setting reference names without a header will unset indexes
-        record.setReferenceIndex(referenceIndex);
-        record.setMateReferenceIndex(mateReferenceIndex);
-
         return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
-    }
-
-
-    static class LazyBAMRecordFactory implements SAMRecordFactory {
-        @Override public SAMRecord createSAMRecord(SAMFileHeader hdr) {
-            throw new UnsupportedOperationException(
-                    "LazyBAMRecordFactory can only create BAM records");
-        }
-
-        @Override public BAMRecord createBAMRecord(
-                SAMFileHeader hdr,
-                int referenceSequenceIndex, int alignmentStart,
-                short readNameLength, short mappingQuality,
-                int indexingBin, int cigarLen, int flags, int readLen,
-                int mateReferenceSequenceIndex, int mateAlignmentStart,
-                int insertSize, byte[] variableLengthBlock)
-        {
-            return new LazyBAMRecord(
-                    hdr, referenceSequenceIndex, alignmentStart, readNameLength,
-                    mappingQuality, indexingBin, cigarLen, flags, readLen,
-                    mateReferenceSequenceIndex, mateAlignmentStart, insertSize,
-                    variableLengthBlock);
-        }
-    }
-
-    static class LazyBAMRecord extends BAMRecord {
-        private static final long serialVersionUID = 1L;
-
-        public LazyBAMRecord(
-                SAMFileHeader hdr, int referenceID, int coordinate, short readNameLength,
-                short mappingQuality, int indexingBin, int cigarLen, int flags,
-                int readLen, int mateReferenceID, int mateCoordinate, int insertSize,
-                byte[] restOfData)
-        {
-            super(
-                    hdr, referenceID, coordinate, readNameLength, mappingQuality,
-                    indexingBin, cigarLen, flags, readLen, mateReferenceID,
-                    mateCoordinate, insertSize, restOfData);
-        }
-
-        @Override
-        public void setReferenceIndex(final int referenceIndex) {
-            mReferenceIndex = referenceIndex;
-        }
-
-        @Override
-        public void setMateReferenceIndex(final int referenceIndex) {
-            mMateReferenceIndex = referenceIndex;
-        }
     }
 }
