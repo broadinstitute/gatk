@@ -3,20 +3,99 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
 public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest {
+
+    private static final File TEST_DATA_DIR = getTestDataDir();
 
     @Override
     public String getTestedClassName() {
         return PrintReadsSpark.class.getSimpleName();
+    }
+
+    @DataProvider(name="testingData")
+    public Object[][] testingData() {
+        return new String[][]{
+                {"print_reads.sorted.cram", ".sam", "print_reads.fasta"},
+                {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
+                {"print_reads.sorted.sam", ".sam", null},
+                {"print_reads.sorted.sam", ".bam", null},
+                {"print_reads.sorted.bam", ".sam", null},
+                {"print_reads.sorted.bam", ".bam", null},
+
+                //Writing cram on spark is not supported https://github.com/broadinstitute/gatk/issues/1270
+//                {"print_reads.sorted.cram", ".cram", "print_reads.fasta"},
+//                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
+//                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"}
+        };
+    }
+
+    @Test(dataProvider="testingData")
+    public void testFileToFile(String fileIn, String extOut, String reference) throws Exception {
+        final File outFile = File.createTempFile(fileIn + ".", extOut);
+        outFile.deleteOnExit();
+        final File originalFile = new File(TEST_DATA_DIR, fileIn);
+        final File refFile;
+        final String[] args;
+        if (reference == null) {
+            refFile = null;
+            args = new String[]{
+                "--input", originalFile.getAbsolutePath(),
+                "--output", outFile.getAbsolutePath(),
+            };
+        } else {
+            refFile = new File(TEST_DATA_DIR, reference);
+            args = new String[]{
+                    "--input", originalFile.getAbsolutePath(),
+                    "--output", outFile.getAbsolutePath(),
+                    "-R", refFile.getAbsolutePath()
+            };
+        }
+        runCommandLine(args);
+        SamAssertionUtils.assertSamsEqual(originalFile, outFile, refFile);
+    }
+
+    @DataProvider(name="testingDataWriteCram")
+    public Object[][] testingDataWriteCram() {
+        return new String[][]{
+                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.cram", ".cram", "print_reads.fasta"},
+        };
+    }
+
+    //Note: this test will be deleted and cases moved to testingData when
+    // https://github.com/broadinstitute/gatk/issues/1270 is done
+    @Test(dataProvider="testingDataWriteCram", expectedExceptions = UserException.class)
+    public void testFileToFileCram(String fileIn, String extOut, String reference) throws Exception {
+        final File outFile = File.createTempFile(fileIn + ".", extOut);
+        outFile.deleteOnExit();
+        final File originalFile = new File(TEST_DATA_DIR, fileIn);
+        final File refFile;
+        final String[] args;
+        if (reference == null) {
+            refFile = null;
+            args = new String[]{
+                    "--input", originalFile.getAbsolutePath(),
+                    "--output", outFile.getAbsolutePath(),
+            };
+        } else {
+            refFile = new File(TEST_DATA_DIR, reference);
+            args = new String[]{
+                    "--input", originalFile.getAbsolutePath(),
+                    "--output", outFile.getAbsolutePath(),
+                    "-R", refFile.getAbsolutePath()
+            };
+        }
+        runCommandLine(args);
+        SamAssertionUtils.assertSamsEqual(originalFile, outFile, refFile);
     }
 
     @Test
@@ -49,6 +128,48 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(outBam, expectedBam);
+    }
+
+    @DataProvider(name="testFileToFile_queryNameSorted")
+    public Object[][] testFileToFile_queryNameSorted() {
+        return new String[][]{
+                {"print_reads.sorted.queryname.sam", ".sam", null},
+                {"print_reads.sorted.queryname.sam", ".bam", null},
+                {"print_reads.sorted.queryname.bam", ".sam", null},
+                {"print_reads.sorted.queryname.bam", ".bam", null},
+                {"print_reads.sorted.queryname.cram", ".sam", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.cram", ".bam", "print_reads.fasta"},
+
+                //comparing queryname sorted cram files blows up: https://github.com/broadinstitute/gatk/issues/1271
+//                {"print_reads.sorted.queryname.cram", ".cram", "print_reads.fasta"},
+//                {"print_reads.sorted.queryname.sam", ".cram", "print_reads.fasta"},
+//                {"print_reads.sorted.queryname.bam", ".cram", "print_reads.fasta"}
+        };
+    }
+
+    @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class)
+    public void testFileToFile_queryNameSorted(String fileIn, String extOut, String reference) throws Exception {
+        final File outFile = File.createTempFile(fileIn + ".", extOut);
+        outFile.deleteOnExit();
+        final File originalFile = new File(TEST_DATA_DIR, fileIn);
+        final File refFile;
+        final String[] args;
+        if (reference == null) {
+            refFile = null;
+            args = new String[]{
+                    "--input", originalFile.getAbsolutePath(),
+                    "--output", outFile.getAbsolutePath(),
+            };
+        } else {
+            refFile = new File(TEST_DATA_DIR, reference);
+            args = new String[]{
+                    "--input", originalFile.getAbsolutePath(),
+                    "--output", outFile.getAbsolutePath(),
+                    "-R", refFile.getAbsolutePath()
+            };
+        }
+        runCommandLine(args);
+        SamAssertionUtils.assertSamsEqual(originalFile, outFile, refFile);
     }
 
     @Test(expectedExceptions = UserException.class)

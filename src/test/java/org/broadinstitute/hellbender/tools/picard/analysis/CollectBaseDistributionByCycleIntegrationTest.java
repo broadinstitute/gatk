@@ -23,6 +23,10 @@ public final class CollectBaseDistributionByCycleIntegrationTest extends Command
     @DataProvider(name = "CollectBaseDistributionByCycle")
     private Iterator<Object[]> makeCollectBaseDistributionByCycleData() {
         final List<Object[]> list = new ArrayList<>();
+
+        list.add(new Object[]{"valid.bam",  "valid.CollectBaseDistributionByCycle.txt", null, true, false, false});
+        list.add(new Object[]{"valid.cram", "valid.CollectBaseDistributionByCycle.txt", getTestDataDir() + "/picard/analysis/CollectBaseDistributionByCycle/" + "valid.fasta", true, false, false});
+
         list.add(new Object[]{"first5000a.bam", "CollectBaseDistributionByCycle.txt", null, true, false, false});
         list.add(new Object[]{"first5000a.cram", "CollectBaseDistributionByCycle.txt", b37_reference_20_21, true, false, false});
         list.add(new Object[]{"originalQuals.chr1.1-1K.bam", "CollectBaseDistributionByCycle.origQuals.txt", null, true, false, false});

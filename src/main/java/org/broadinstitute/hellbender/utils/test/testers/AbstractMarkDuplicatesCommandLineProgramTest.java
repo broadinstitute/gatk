@@ -42,6 +42,18 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     protected static final int ELIGIBLE_BASE_QUALITY = 15;
 
     @Test
+    public void testTwoMappedPairsWithSoftClippingFirstOfPairOnly() {
+        final AbstractMarkDuplicatesTester tester = getTester();
+        // NB: no duplicates
+        // 5'1: 2, 5'2:46+73M=118
+        // 5'1: 2, 5'2:51+68M=118
+        tester.addMappedPair(0, 12, 46, false, false, "6S42M28S", "3S73M", true, 50); // only add the first one
+        // NB: this next record should not be a duplicate in MarkDuplicates
+        tester.addMappedPair(0, 12, 51, false, false, "6S42M28S", "8S68M", true, 50); // only add the first one
+        tester.runTest();
+    }
+
+    @Test
     public void testSingleUnmappedFragment() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.addUnmappedFragment(-1, DEFAULT_BASE_QUALITY);

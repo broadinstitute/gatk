@@ -23,21 +23,28 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
     @DataProvider(name = "CollectBaseDistributionByCycle")
     private Iterator<Object[]> makeCollectBaseDistributionByCycleData() {
         final List<Object[]> list = new ArrayList<>();
-        list.add(new Object[]{"first5000a.bam", "CollectBaseDistributionByCycle.txt", true, false, false});
-        list.add(new Object[]{"originalQuals.chr1.1-1K.bam", "CollectBaseDistributionByCycle.origQuals.txt", true, false, false});
 
-        list.add(new Object[]{"example_pfFail_reads.bam", "CollectBaseDistributionByCycle.pfReads.txt", true, false, false});
-        list.add(new Object[]{"example_pfFail_reads.bam", "CollectBaseDistributionByCycle.pfOnly.txt", true, true, false});
+        list.add(new Object[]{"valid.bam",  null, "valid.CollectBaseDistributionByCycle.txt", true, false, false});
+        list.add(new Object[]{"valid.cram", new File(TEST_DATA_DIR, "valid.fasta").getAbsolutePath(), "valid.CollectBaseDistributionByCycle.txt", true, false, false});
 
-        list.add(new Object[]{"unmapped.bam", "CollectBaseDistributionByCycle.unmapped.ALIGNED_READS_ONLY_false.txt", true, false, false});
-        list.add(new Object[]{"unmapped.bam", "CollectBaseDistributionByCycle.unmapped.ALIGNED_READS_ONLY_true.txt", false, false, true});
+        list.add(new Object[]{"first5000a.bam", null, "CollectBaseDistributionByCycle.txt", true, false, false});
+        list.add(new Object[]{"first5000a.cram", b37_reference_20_21, "CollectBaseDistributionByCycle.txt", true, false, false});
+
+        list.add(new Object[]{"originalQuals.chr1.1-1K.bam", null, "CollectBaseDistributionByCycle.origQuals.txt", true, false, false});
+
+        list.add(new Object[]{"example_pfFail_reads.bam", null, "CollectBaseDistributionByCycle.pfReads.txt", true, false, false});
+        list.add(new Object[]{"example_pfFail_reads.bam", null, "CollectBaseDistributionByCycle.pfOnly.txt", true, true, false});
+
+        list.add(new Object[]{"unmapped.bam", null, "CollectBaseDistributionByCycle.unmapped.ALIGNED_READS_ONLY_false.txt", true, false, false});
+        list.add(new Object[]{"unmapped.bam", null, "CollectBaseDistributionByCycle.unmapped.ALIGNED_READS_ONLY_true.txt", false, false, true});
 
         return list.iterator();
     }
 
     @Test(dataProvider = "CollectBaseDistributionByCycle", groups = {"R"})
-    public void test(final String unsortedBamName, final String expectedFileName, final boolean makePdf, final boolean pfReadsOnly, final boolean alignedReadsOnly) throws IOException {
+    public void test(final String unsortedBamName, final String referenceName, final String expectedFileName, final boolean makePdf, final boolean pfReadsOnly, final boolean alignedReadsOnly) throws IOException {
         final File unsortedBam = new File(TEST_DATA_DIR, unsortedBamName);
+        final File reference = referenceName == null ? null : new File(referenceName);
         final File expectedFile = new File(TEST_DATA_DIR, expectedFileName);
 
         final File outfile = BaseTest.createTempFile("test", ".metrics");
@@ -52,7 +59,10 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
             args.add("--" + "chart");
             args.add(pdf.getCanonicalPath());
         }
-
+        if (reference != null){
+            args.add("-" + "R");
+            args.add(reference.getCanonicalPath());
+        }
         args.add("--" + "pfReadsOnly");
         args.add(pfReadsOnly);
         args.add("--" + "alignedReadsOnly");

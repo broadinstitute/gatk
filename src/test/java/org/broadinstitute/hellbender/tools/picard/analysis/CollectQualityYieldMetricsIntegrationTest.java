@@ -22,6 +22,10 @@ public final class CollectQualityYieldMetricsIntegrationTest extends CommandLine
     @DataProvider(name = "CollectQualityYieldMetrics")
     private Iterator<Object[]> makeCollectQualityYieldMetricsData(){
         final List<Object[]> list= new ArrayList<>();
+
+        list.add(new Object[]{"valid.bam", "valid.CollectQualityYieldMetrics.txt", null, true});
+        list.add(new Object[]{"valid.cram", "valid.CollectQualityYieldMetrics.txt", new File(TEST_DATA_DIR, "valid.fasta").getAbsolutePath(), true});
+
         list.add(new Object[]{"collect_quality_yield_metrics.sam", "collect_quality_yield_metrics.originalquals.txt", null, true});
         list.add(new Object[]{"collect_quality_yield_metrics.sam", "collect_quality_yield_metrics.quals.txt", null, false});
         list.add(new Object[]{"collect_quality_yield_metrics.bam", "collect_quality_yield_metrics.originalquals.txt", null, true});

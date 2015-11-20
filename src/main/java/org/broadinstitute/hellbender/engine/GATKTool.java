@@ -4,11 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -16,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
@@ -119,12 +118,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        for (File inputFile : readArguments.getReadFiles()) {
-            if (FilenameUtils.getExtension(inputFile.getName()).equalsIgnoreCase("cram")) {
-                return true;
-            }
-        }
-        return false;
+        return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
     }
 
     /**
@@ -379,8 +373,8 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
-        if (!hasReference() && FilenameUtils.getExtension(outputFile.getName()).equals(CramIO.CRAM_FILE_EXTENSION)) {
-            throw new UserException("A reference file is required for writing CRAM files");
+        if (!hasReference() && IOUtils.isCramFile(outputFile)) {
+            throw new UserException.MissingReference("A reference file is required for writing CRAM files");
         }
 
         return new SAMFileGATKReadWriter(

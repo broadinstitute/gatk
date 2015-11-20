@@ -2,11 +2,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,10 +21,12 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
+import org.seqdoop.hadoop_bam.CRAMInputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
@@ -39,7 +37,7 @@ import java.util.List;
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
  */
-public class ReadsSparkSource implements Serializable {
+public final class ReadsSparkSource implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final String HADOOP_PART_PREFIX = "part-";
     public static final int DEFAULT_SPLIT_SIZE = 10485760;
@@ -51,32 +49,50 @@ public class ReadsSparkSource implements Serializable {
 
 
     /**
-     * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
+     * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
-     * @param bam file to load
+     * @param readFileName file to load
+     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @param intervals intervals of reads to include.
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String bam, final List<SimpleInterval> intervals) {
-        return getParallelReads(bam, intervals, DEFAULT_SPLIT_SIZE);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals) {
+        return getParallelReads(readFileName, referencePath, intervals, DEFAULT_SPLIT_SIZE);
     }
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
-     * @param bam file to load
+     * @param readFileName file to load
+     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @param intervals intervals of reads to include.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String bam, final List<SimpleInterval> intervals, long splitSize) {
-        Configuration conf = new Configuration();
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals, long splitSize) {
+        final Configuration conf = new Configuration();
         // reads take more space in memory than on disk so we need to limit the split size
         conf.set("mapreduce.input.fileinputformat.split.maxsize", Long.toString(splitSize));
 
-        JavaPairRDD<LongWritable, SAMRecordWritable> rdd2 = ctx.newAPIHadoopFile(
-                bam, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
-                conf);
+        final JavaPairRDD<LongWritable, SAMRecordWritable> rdd2;
+
+        //Note: in Hadoop-bam AnySAMInputFormat does not support CRAM https://github.com/HadoopGenomics/Hadoop-BAM/issues/35
+        //The workaround is to use CRAMInputFormat
+        if (IOUtils.isCramFileName(readFileName)) {
+            if (referencePath == null){
+                throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+            }
+            //Note: cram input requires a reference and reference is passed by this property.
+            conf.set(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY, referencePath);
+
+            rdd2 = ctx.newAPIHadoopFile(
+                    readFileName, CRAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
+                    conf);
+        } else {
+            rdd2 = ctx.newAPIHadoopFile(
+                    readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
+                    conf);
+        }
 
         return rdd2.map(v1 -> {
             SAMRecord sam = v1._2().get();
@@ -93,26 +109,28 @@ public class ReadsSparkSource implements Serializable {
     }
 
     /**
-     * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
+     * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam. This excludes unmapped reads.
-     * @param bam file to load
+     * @param readFileName file to load
+     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String bam) {
-        return getParallelReads(bam, DEFAULT_SPLIT_SIZE);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath) {
+        return getParallelReads(readFileName, referencePath, DEFAULT_SPLIT_SIZE);
     }
 
     /**
-     * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
+     * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam. This excludes unmapped reads.
-     * @param bam file to load
+     * @param readFileName file to load
+     * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String bam, int splitSize) {
-        final SAMFileHeader readsHeader = getHeader(ctx, bam, null);
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, int splitSize) {
+        final SAMFileHeader readsHeader = getHeader(ctx, readFileName, null);
         List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
-        return getParallelReads(bam, intervals, splitSize);
+        return getParallelReads(readFileName, referencePath, intervals, splitSize);
     }
 
     /**

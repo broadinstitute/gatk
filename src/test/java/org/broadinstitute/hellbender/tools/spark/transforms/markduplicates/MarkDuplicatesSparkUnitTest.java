@@ -33,7 +33,7 @@ public class MarkDuplicatesSparkUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> reads = readSource.getParallelReads(input);
+        JavaRDD<GATKRead> reads = readSource.getParallelReads(input, null);
         Assert.assertEquals(reads.count(), totalExpected);
 
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, input, null);

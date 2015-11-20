@@ -18,6 +18,40 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         return CountReadsSpark.class.getSimpleName();
     }
 
+
+    @DataProvider(name="filenames")
+    public Object[][] filenames() {
+        return new Object[][]{
+                {"count_reads.sam", null, 8L},
+                {"count_reads.bam", null, 8L},
+                {"count_reads.cram", "count_reads.fasta", 8L},
+                {"count_reads_sorted.sam", null, 8L},
+                {"count_reads_sorted.bam", null, 8L},
+                {"count_reads_sorted.cram", "count_reads.fasta", 8L},
+        };
+    }
+
+    @Test(dataProvider = "filenames")
+    public void testCountReads(final String fileIn, final String referenceName, final long expectedCount) throws Exception {
+        final File ORIG_BAM = new File(getTestDataDir(), fileIn);
+        final File outputTxt = createTempFile("count_reads", ".txt");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--input");
+        args.add(ORIG_BAM.getAbsolutePath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outputTxt.getCanonicalPath());
+        if (null != referenceName) {
+            final File REF = new File(getTestDataDir(), referenceName);
+            args.add("-R");
+            args.add(REF.getAbsolutePath());
+        }
+        this.runCommandLine(args.getArgsArray());
+        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+        Assert.assertEquals((long)Long.valueOf(readIn), expectedCount);
+
+    }
+
     @Test
     public void test() throws Exception {
         final File unsortedBam = new File(getTestDataDir(), "count_reads.bam");

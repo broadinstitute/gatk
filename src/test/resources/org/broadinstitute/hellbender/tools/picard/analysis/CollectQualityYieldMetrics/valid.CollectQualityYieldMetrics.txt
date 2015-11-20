@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.CollectQualityYieldMetrics INPUT=src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/CollectQualityYieldMetrics/valid.bam OUTPUT=valid.CollectQualityYieldMetrics.txt    USE_ORIGINAL_QUALITIES=true VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Fri Dec 04 22:56:45 EST 2015
+
+## METRICS CLASS	picard.analysis.CollectQualityYieldMetrics$QualityYieldMetrics
+TOTAL_READS	PF_READS	READ_LENGTH	TOTAL_BASES	PF_BASES	Q20_BASES	PF_Q20_BASES	Q30_BASES	PF_Q30_BASES	Q20_EQUIVALENT_YIELD	PF_Q20_EQUIVALENT_YIELD
+8	8	101	808	808	20	20	0	0	630	630
+
+

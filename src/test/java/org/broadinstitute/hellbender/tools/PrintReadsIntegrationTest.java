@@ -44,8 +44,8 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 "-R", refFile.getAbsolutePath()
         };
         runCommandLine(args);
+
         //TODO: Make this comparison non-lenient in all cases: https://github.com/broadinstitute/gatk/issues/1087
-        // Waits on https://github.com/samtools/htsjdk/issues/364
         if (extOut.equals(".cram")){
             SamAssertionUtils.assertSamsEqualLenient(ORIG_BAM, outFile, refFile);
         } else {
@@ -60,6 +60,11 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 {"print_reads.sam", ".bam"},
                 {"print_reads.bam", ".sam"},
                 {"print_reads.bam", ".bam"},
+                {"print_reads.sorted.queryname.sam", ".sam"},
+                {"print_reads.sorted.queryname.sam", ".bam"},
+                {"print_reads.sorted.queryname.bam", ".sam"},
+                {"print_reads.sorted.queryname.bam", ".bam"},
+
         };
     }
 
@@ -70,7 +75,14 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
                 {"print_reads.sorted.cram", ".cram", "print_reads.fasta"},
                 {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
-                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"}
+                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.cram", ".sam", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.cram", ".bam", "print_reads.fasta"},
+
+                //comparing queryname sorted cram files blows up: https://github.com/broadinstitute/gatk/issues/1271
+//                {"print_reads.sorted.queryname.cram", ".cram", "print_reads.fasta"},
+//                {"print_reads.sorted.queryname.sam", ".cram", "print_reads.fasta"},
+//                {"print_reads.sorted.queryname.bam", ".cram", "print_reads.fasta"}
         };
     }
 
