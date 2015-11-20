@@ -24,8 +24,8 @@ public class SAMRecordToGATKReadAdapterSerializerUnitTest {
         }
     }
 
-    @Test(enabled = false)
-    public void test() {
+    @Test
+    public void testSerializerRoundTripHeaderlessRead() {
         SparkConf conf = new SparkConf().set("spark.kryo.registrator",
                 "org.broadinstitute.hellbender.engine.spark.SAMRecordToGATKReadAdapterSerializerUnitTest$TestGATKRegistrator");
         KryoSerializer kryoSerializer = new KryoSerializer(conf);

@@ -1,26 +1,3 @@
-/*
- * The MIT License
- *
- * Copyright (c) 2009 The Broad Institute
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 package htsjdk.samtools;
 
 import htsjdk.samtools.util.BinaryCodec;
@@ -32,28 +9,27 @@ import java.io.OutputStream;
 import java.util.Arrays;
 
 /**
- * Class for translating between in-memory and disk representation of BAMRecord.
- * <b>GATK: Renamed copy of BAMRecordCodec, changed to remove calls to SAMRecord#getReferenceIndex and
- * SAMRecord#getMateReferenceIndex, since they throw exceptions for headerless records.</b>
+ * A class that uses a slightly adapted version of BAMRecordCodec for serialization/deserialization of SAMRecords.
+ * This version is safe for headerless records, since it does not access (and does not attempt to preserve) the
+ * reference indices that depend on having a header. Performance tests show this is much faster than standard Java
+ * serialization on Spark.
  */
-public class GATKReadSparkCodec implements SortingCollection.Codec<SAMRecord> {
-    private final SAMFileHeader header;
+public class SAMRecordSparkCodec implements SortingCollection.Codec<SAMRecord> {
     private final BinaryCodec binaryCodec = new BinaryCodec();
     private final BinaryTagCodec binaryTagCodec = new BinaryTagCodec(binaryCodec);
     private final SAMRecordFactory samRecordFactory;
 
-    public GATKReadSparkCodec(final SAMFileHeader header) {
-        this(header, new DefaultSAMRecordFactory());
+    public SAMRecordSparkCodec() {
+        this(new DefaultSAMRecordFactory());
     }
 
-    public GATKReadSparkCodec(final SAMFileHeader header, final SAMRecordFactory factory) {
-        this.header = header;
+    public SAMRecordSparkCodec(final SAMRecordFactory factory ) {
         this.samRecordFactory = factory;
     }
 
-    public BAMRecordCodec clone() {
+    public SAMRecordSparkCodec clone() {
         // Do not clone the references to codecs, as they must be distinct for each instance.
-        return new BAMRecordCodec(this.header, this.samRecordFactory);
+        return new SAMRecordSparkCodec(this.samRecordFactory);
     }
 
 
@@ -188,9 +164,8 @@ public class GATKReadSparkCodec implements SortingCollection.Codec<SAMRecord> {
         final byte[] restOfRecord = new byte[recordLength - BAMFileConstants.FIXED_BLOCK_SIZE];
         this.binaryCodec.readBytes(restOfRecord);
         final BAMRecord ret = this.samRecordFactory.createBAMRecord(
-                header, referenceID, coordinate, readNameLength, mappingQuality,
+                null, referenceID, coordinate, readNameLength, mappingQuality,
                 bin, cigarLen, flags, readLen, mateReferenceID, mateCoordinate, insertSize, restOfRecord);
-        ret.setHeader(header); 
         return ret;
     }
 }

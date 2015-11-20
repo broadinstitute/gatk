@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordToGATKReadAdapter> {
 
-    private GATKReadSparkCodec lazyCodec = new GATKReadSparkCodec(null, new LazyBAMRecordFactory());
+    private SAMRecordSparkCodec lazyCodec = new SAMRecordSparkCodec();
 
     @Override
     public void write(Kryo kryo, Output output, SAMRecordToGATKReadAdapter adapter) {
@@ -40,54 +40,5 @@ public class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordTo
         record.setMateReferenceName(mateReferenceName);
 
         return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
-    }
-
-
-    static class LazyBAMRecordFactory implements SAMRecordFactory {
-        @Override public SAMRecord createSAMRecord(SAMFileHeader hdr) {
-            throw new UnsupportedOperationException(
-                    "LazyBAMRecordFactory can only create BAM records");
-        }
-
-        @Override public BAMRecord createBAMRecord(
-                SAMFileHeader hdr,
-                int referenceSequenceIndex, int alignmentStart,
-                short readNameLength, short mappingQuality,
-                int indexingBin, int cigarLen, int flags, int readLen,
-                int mateReferenceSequenceIndex, int mateAlignmentStart,
-                int insertSize, byte[] variableLengthBlock)
-        {
-            return new LazyBAMRecord(
-                    hdr, referenceSequenceIndex, alignmentStart, readNameLength,
-                    mappingQuality, indexingBin, cigarLen, flags, readLen,
-                    mateReferenceSequenceIndex, mateAlignmentStart, insertSize,
-                    variableLengthBlock);
-        }
-    }
-
-    static class LazyBAMRecord extends BAMRecord {
-        private static final long serialVersionUID = 1L;
-
-        public LazyBAMRecord(
-                SAMFileHeader hdr, int referenceID, int coordinate, short readNameLength,
-                short mappingQuality, int indexingBin, int cigarLen, int flags,
-                int readLen, int mateReferenceID, int mateCoordinate, int insertSize,
-                byte[] restOfData)
-        {
-            super(
-                    hdr, referenceID, coordinate, readNameLength, mappingQuality,
-                    indexingBin, cigarLen, flags, readLen, mateReferenceID,
-                    mateCoordinate, insertSize, restOfData);
-        }
-
-        @Override
-        public void setReferenceIndex(final int referenceIndex) {
-            mReferenceIndex = null; // null out
-        }
-
-        @Override
-        public void setMateReferenceIndex(final int referenceIndex) {
-            mMateReferenceIndex = null; // null out
-        }
     }
 }
