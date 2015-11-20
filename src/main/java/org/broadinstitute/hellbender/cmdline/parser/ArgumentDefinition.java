@@ -137,7 +137,10 @@ final class ArgumentDefinition {
     }
 
     @SuppressWarnings("unchecked")
-    protected void setArgument(final List<String> values) {
+    /**
+     * Sets the value of the field associated to this argument definition
+     */
+    public void setArgument(final List<String> values) {
         //special treatment for flags
         if (isFlag() && values.isEmpty()) {
             hasBeenSet = true;
