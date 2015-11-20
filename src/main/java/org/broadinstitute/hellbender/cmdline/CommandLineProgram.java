@@ -53,7 +53,6 @@ public abstract class CommandLineProgram {
 
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
-    private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
 
     /**
     * Initialized in parseArgs.  Subclasses may want to access this to do their
@@ -209,10 +208,6 @@ public abstract class CommandLineProgram {
         }
 
         return file;
-    }
-
-    public String getStandardUsagePreamble() {
-        return standardUsagePreamble;
     }
 
     public CommandLineParser getCommandLineParser() {
