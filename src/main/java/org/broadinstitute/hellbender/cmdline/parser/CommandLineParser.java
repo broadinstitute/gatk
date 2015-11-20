@@ -174,7 +174,6 @@ public final class CommandLineParser {
         return null;
     }
 
-
     private static List<Field> getAllFields(Class<?> clazz) {
         final List<Field> ret = new ArrayList<>();
         do {
@@ -850,5 +849,4 @@ public final class CommandLineParser {
 
         return argumentValues;
     }
-
 }

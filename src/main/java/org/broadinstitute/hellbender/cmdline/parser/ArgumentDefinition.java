@@ -71,7 +71,6 @@ final class ArgumentDefinition {
         }
     }
 
-
     public String getArgumentParamUsage(final Map<String, ArgumentDefinition> argumentMap) {
         final StringBuilder output = new StringBuilder();
 
