@@ -5,6 +5,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.TestUtil;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesTester;
@@ -31,6 +32,13 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
 
     protected AbstractMarkDuplicatesTester getTester() {
         return new MarkDuplicatesTester();
+    }
+
+    @DataProvider(name="strictlyBadBams")
+    public Object[][] strictlyBadBams() {
+        return new Object[][] {
+                {new File(getTestDataDir(), "non_strict.bam")},
+        };
     }
 
     // NB: this test should return different results than MarkDuplicatesWithMateCigar
@@ -174,6 +182,51 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
         markDuplicates.PROGRAM_RECORD_ID = null;
         Assert.assertEquals(markDuplicates.doWork(), null);
         Assert.assertEquals(markDuplicates.numOpticalDuplicates(), expectedNumOpticalDuplicates);
+    }
+
+    @Test(dataProvider = "strictlyBadBams")
+    public void testLenientStringency(File input) {
+        // TODO: This test should really be a PicardCommandLineProgramTest, not here (see #1170).
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--"+StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.add(input.getPath());
+        args.add("--"+"VALIDATION_STRINGENCY");
+        args.add(ValidationStringency.LENIENT);
+        args.add("--"+StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+
+        File outputFile = createTempFile("markdups", ".bam");
+        outputFile.delete();
+        args.add(outputFile.getAbsolutePath());
+
+        args.add("--METRICS_FILE");
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.add(metricsFile.getAbsolutePath());
+
+        runCommandLine(args.getArgsArray());
+        // We don't care about the results, only that the program doesn't crash because of stringency.
+    }
+
+    @Test(dataProvider = "strictlyBadBams", expectedExceptions = SAMFormatException.class)
+    public void testStrictStringency(File input) {
+        // TODO: This test should really be a PicardCommandLineProgramTest, not here (see #1170).
+        // For these inputs, we expect an expection to be thrown because the bams have some issues.
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--"+StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.add(input.getPath());
+        args.add("--"+"VALIDATION_STRINGENCY");
+        args.add(ValidationStringency.STRICT);
+        args.add("--"+StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+
+        File outputFile = createTempFile("markdups", ".bam");
+        outputFile.delete();
+        args.add(outputFile.getAbsolutePath());
+
+        args.add("--METRICS_FILE");
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.add(metricsFile.getAbsolutePath());
+
+        runCommandLine(args.getArgsArray());
+        // We don't care about the results, only that the program it throws an exception because of stringency.
     }
 
     @DataProvider(name="testOpticalDuplicateDetectionDataProvider")
