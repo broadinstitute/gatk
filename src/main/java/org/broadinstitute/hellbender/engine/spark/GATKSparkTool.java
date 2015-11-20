@@ -313,6 +313,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     private void validateToolInputs() {
         if ( ! disableSequenceDictionaryValidation ) {
+            // Validate the reference sequence dictionary against the reads sequence dictionary, if both are present,
+            // using standard GATK validation settings (requiring a common subset of equivalent contigs without respect
+            // to ordering).
             if ( hasReference() && hasReads() ) {
                 SequenceDictionaryUtils.validateDictionaries("reference", referenceDictionary, "reads", readsHeader.getSequenceDictionary());
             }

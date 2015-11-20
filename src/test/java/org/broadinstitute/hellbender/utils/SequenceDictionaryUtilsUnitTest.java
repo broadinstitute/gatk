@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
@@ -73,6 +72,10 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                              COMMON_SUBSET, UserException.IncompatibleSequenceDictionaries.class, true, false},
                 { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                   Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19, CHR_NONSTANDARD1),            COMMON_SUBSET, null, false, false},
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19),                              COMMON_SUBSET, null, false, false},
+                // If checkContigOrdering == false, ordering of the common contigs should not matter:
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR2_HG19, CHR1_HG19, CHR10_HG19),                              COMMON_SUBSET, null, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR10_HG19, CHR2_HG19, CHR1_HG19),                              COMMON_SUBSET, null, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR2_HG19, CHR10_HG19, CHR1_HG19),                              COMMON_SUBSET, null, false, false},
 
                 // Dictionaries with no common contigs:
                 { Arrays.asList(CHR1_HG19),                        Arrays.asList(CHR2_HG19),                     NO_COMMON_CONTIGS, NO_COMMON_CONTIGS_EXCEPTION, false, false},
@@ -96,30 +99,36 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),                               Arrays.asList(CHR1_HG18, CHR2_HG18, CHR10_HG18),                   UNEQUAL_COMMON_CONTIGS, UNEQUAL_COMMON_CONTIGS_EXCEPTION, false, false},
 
                 // One or both dictionaries in non-canonical human order:
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  false},
                 { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
                 { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  true},
-                { Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, false},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, true,  true},
+                { Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), Arrays.asList(CHR1_HG18, CHR10_HG18, CHR2_HG18), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR10_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    Arrays.asList(CHR1_B37, CHR10_B37, CHR2_B37),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    Arrays.asList(CHR1_B36, CHR10_B36, CHR2_B36),    NON_CANONICAL_HUMAN_ORDER, NON_CANONICAL_HUMAN_ORDER_EXCEPTION, false, true},
+                // If checkContigOrdering == false, we should not get NON_CANONICAL_HUMAN_ORDER:
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), IDENTICAL, null, false, false},
+                { Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19), Arrays.asList(CHR1_HG19, CHR10_HG19, CHR2_HG19, CHR_NONSTANDARD1), COMMON_SUBSET, null, false, false},
 
                 // Dictionaries with a common subset, but different relative ordering within that subset
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  false},
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  true},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19, CHRM_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHRM_HG19, CHR2_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHRM_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
-                { Arrays.asList(CHR1_B37, CHR2_B37),              Arrays.asList(CHR2_B37, CHR1_B37),                                OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, true,  true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19, CHRM_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHRM_HG19, CHR2_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHRM_HG19, CHR1_HG19),                   OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
+                { Arrays.asList(CHR1_B37, CHR2_B37),              Arrays.asList(CHR2_B37, CHR1_B37),                                OUT_OF_ORDER, OUT_OF_ORDER_EXCEPTION, false, true},
+                // If checkContigOrdering == false, we should not get OUT_OF_ORDER:
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19),                              SUPERSET,      null, false, false},
+                { Arrays.asList(CHR1_HG19, CHR2_HG19),            Arrays.asList(CHR2_HG19, CHR1_HG19, CHR_NONSTANDARD1),            COMMON_SUBSET, null, false, false},
 
                 // Dictionaries with a common subset in the same relative order, but with different indices.
-                // This will only throw an exception during validation if checkContigIndices is true
+                // This will only throw an exception during validation if checkContigOrdering is true
 
-                // These have checkContigIndices == true, so we expect DIFFERENT_INDICES and an exception:
+                // These have checkContigOrdering == true, so we expect DIFFERENT_INDICES and an exception:
                 { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
                 // Setting requireSuperset == true should make no difference here (we should still get DIFFERENT_INDICES and an exception):
                 { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, true,  true},
@@ -132,7 +141,7 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                 { Arrays.asList(CHR1_HG19, CHR2_HG19, CHR_NONSTANDARD1, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
                 { Arrays.asList(CHR1_HG19, CHR_NONSTANDARD1, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), Arrays.asList(CHR1_HG19, CHR2_HG19, CHRM_HG19, CHR_NONSTANDARD2 ), DIFFERENT_INDICES, DIFFERENT_INDICES_EXCEPTION, false, true},
 
-                // Same test cases as above, but these have checkContigIndices == false, so we expect SUPERSET or COMMON_SUBSET instead of DIFFERENT_INDICES, and no exception:
+                // Same test cases as above, but these have checkContigOrdering == false, so we expect SUPERSET or COMMON_SUBSET instead of DIFFERENT_INDICES, and no exception:
                 { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          SUPERSET,      null, false, false},
                 { Arrays.asList(CHRM_HG19, CHR1_HG19),                                                 Arrays.asList(CHR1_HG19),                                          SUPERSET,      null, true,  false},
                 { Arrays.asList(CHR1_HG19, CHR2_HG19),                                                 Arrays.asList(CHRM_HG19, CHR1_HG19, CHR2_HG19),                    COMMON_SUBSET, null, false, false},
@@ -165,7 +174,7 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                                                   final SequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility, //not needed by this test
                                                   final Class<? extends UserException> expectedExceptionUponValidation,
                                                   final boolean requireSuperset,
-                                                  final boolean checkContigIndices) {
+                                                  final boolean checkContigOrdering) {
         final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
         final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
         final String testDescription = String.format("First dictionary: %s  Second dictionary: %s",
@@ -179,7 +188,7 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                     "secondDictionary",
                     secondDictionary,
                     requireSuperset,
-                    checkContigIndices);
+                    checkContigOrdering);
         }
         catch ( Exception e ) {
             exceptionThrown = e;
@@ -205,7 +214,7 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                                                   final SequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility,
                                                   final Class<? extends UserException> expectedExceptionUponValidation,
                                                   final boolean requireSuperset,
-                                                  final boolean checkContigIndices) {
+                                                  final boolean checkContigOrdering) {
 
         final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
         final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
@@ -214,11 +223,60 @@ public class SequenceDictionaryUtilsUnitTest extends BaseTest {
                 SequenceDictionaryUtils.getDictionaryAsString(secondDictionary));
 
         final SequenceDictionaryUtils.SequenceDictionaryCompatibility reportedCompatibility =
-                SequenceDictionaryUtils.compareDictionaries(firstDictionary, secondDictionary, checkContigIndices);
+                SequenceDictionaryUtils.compareDictionaries(firstDictionary, secondDictionary, checkContigOrdering);
 
         Assert.assertTrue(reportedCompatibility == dictionaryCompatibility,
                 String.format("Dictionary comparison should have returned %s but instead returned %s. %s",
                         dictionaryCompatibility, reportedCompatibility, testDescription));
+    }
+
+    @DataProvider(name = "StandardValidationIgnoresContigOrderData")
+    public Object[][] getStandardValidationIgnoresContigOrderData() {
+        return new Object[][] {
+                { Arrays.asList(CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19) },
+                { Arrays.asList(CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19, CHR10_HG19) },
+                { Arrays.asList(CHR1_HG19, CHR2_HG19), Arrays.asList(CHR10_HG19, CHR2_HG19, CHR1_HG19) },
+                { Arrays.asList(CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR10_HG19, CHR1_HG19) },
+
+        };
+    }
+
+    @Test(dataProvider = "StandardValidationIgnoresContigOrderData")
+    public void testStandardValidationIgnoresContigOrder( final List<SAMSequenceRecord> firstDictionaryContigs, final List<SAMSequenceRecord> secondDictionaryContigs ) {
+        final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
+        final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
+
+        // Standard validation (the overload of validateDictionaries() that doesn't take any boolean args)
+        // should ignore differences in ordering of common contigs, so we shouldn't get an exception here
+        SequenceDictionaryUtils.validateDictionaries("first", firstDictionary, "second", secondDictionary);
+    }
+
+    @DataProvider(name = "NonSupersetData")
+    public Object[][] getNonSupersetData() {
+        return new Object[][] {
+                { Arrays.asList(CHR1_HG19, CHR2_HG19), Arrays.asList(CHR2_HG19, CHR1_HG19, CHR10_HG19) },
+                { Arrays.asList(CHR1_HG19),            Arrays.asList(CHR10_HG19, CHR2_HG19, CHR1_HG19) }
+        };
+    }
+
+    @Test(dataProvider = "NonSupersetData")
+    public void testStandardValidationDoesNotRequireSuperset( final List<SAMSequenceRecord> firstDictionaryContigs, final List<SAMSequenceRecord> secondDictionaryContigs ) {
+        final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
+        final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
+
+        // Standard validation (the overload of validateDictionaries() that doesn't take any boolean args)
+        // should not require a superset relationship, so we shouldn't get an exception here
+        SequenceDictionaryUtils.validateDictionaries("first", firstDictionary, "second", secondDictionary);
+    }
+
+    @Test(dataProvider = "NonSupersetData", expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
+    public void testCRAMValidationDoesRequireSuperset( final List<SAMSequenceRecord> firstDictionaryContigs, final List<SAMSequenceRecord> secondDictionaryContigs ) {
+        final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
+        final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
+
+        // CRAM validation against the reference SHOULD require a superset relationship, so we should
+        // get an exception here
+        SequenceDictionaryUtils.validateCRAMDictionaryAgainstReference(firstDictionary, secondDictionary);
     }
 
     private SAMSequenceDictionary createSequenceDictionary( final List<SAMSequenceRecord> contigs ) {

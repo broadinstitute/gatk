@@ -166,17 +166,6 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testComplexEventsDictError() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(false, "complexEvents_lexDict.vcf", false, ALL),
-                0,
-                UserException.LexicographicallySortedSequenceDictionary.class
-        );
-
-        spec.executeTest("test validating complex events", this);
-    }
-
-    @Test
-    public void testComplexEventsDictError2() throws IOException {
-        IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(false, "complexEvents_incompatibleDict.vcf", false, ALL),
                 0,
                 UserException.IncompatibleSequenceDictionaries.class

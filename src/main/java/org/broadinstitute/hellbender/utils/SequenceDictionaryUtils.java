@@ -18,10 +18,6 @@ import java.util.*;
  * if available.
  */
 public class SequenceDictionaryUtils {
-    //
-    // for detecting lexicographically sorted human references
-    //
-    private static final boolean ENABLE_LEXICOGRAPHIC_REQUIREMENT_FOR_HUMAN = true;
 
     // The following sets of contig records are used to perform the non-canonical human ordering check.
     // This check ensures that the order is 1,2,3... instead of 1, 10, 11, 12...2, 20, 21...
@@ -62,14 +58,22 @@ public class SequenceDictionaryUtils {
     }
 
     /**
-     * Tests for compatibility between two sequence dictionaries.  If the dictionaries are incompatible, then
-     * UserExceptions are thrown with detailed error messages.
+     * Tests for compatibility between two sequence dictionaries, using standard validation settings appropriate
+     * for the GATK. If the dictionaries are incompatible, then UserExceptions are thrown with detailed error messages.
      *
-     * Two sequence dictionaries are compatible if they share a common subset of equivalent contigs,
-     * where equivalent contigs are defined as having the same name and length.
+     * The standard validation settings used by this method are:
      *
-     * This version of validateDictionaries does not check whether common contigs occur at the same absolute
-     * indices, and does not require that dict1 be a superset of dict2.
+     * -Require the dictionaries to share a common subset of equivalent contigs
+     *
+     * -Do not require dict1 to be a superset of dict2.
+     *
+     * -Do not perform checks related to contig ordering: don't throw if the common contigs are in
+     *  different orders with respect to each other, occur at different absolute indices, or are
+     *  lexicographically sorted human dictionaries. GATK uses contig names rather than contig
+     *  indices, and so should not be sensitive to contig ordering issues.
+     *
+     * For comparing a CRAM dictionary against a reference dictionary, call
+     * {@link #validateCRAMDictionaryAgainstReference(SAMSequenceDictionary, SAMSequenceDictionary)} instead.
      *
      * @param name1 name associated with dict1
      * @param dict1 the sequence dictionary dict1
@@ -79,9 +83,39 @@ public class SequenceDictionaryUtils {
     public static void validateDictionaries( final String name1,
                                              final SAMSequenceDictionary dict1,
                                              final String name2,
-                                             final SAMSequenceDictionary dict2 ) {
-        validateDictionaries(name1, dict1, name2, dict2, false, false);
+                                             final SAMSequenceDictionary dict2) {
+        final boolean requireSuperset = false;
+        final boolean checkContigOrdering = false;
+
+        validateDictionaries(name1, dict1, name2, dict2, requireSuperset, checkContigOrdering);
     }
+
+    /**
+     * Tests for compatibility between a reference dictionary and a CRAM dictionary, using appropriate
+     * validation settings. If the dictionaries are incompatible, then UserExceptions are thrown with
+     * detailed error messages.
+     *
+     * The standard validation settings used by this method are:
+     *
+     * -Require the reference dictionary to be a superset of the cram dictionary
+     *
+     * -Do not perform checks related to contig ordering: don't throw if the common contigs are in
+     *  different orders with respect to each other, occur at different absolute indices, or are
+     *  lexicographically sorted human dictionaries. GATK uses contig names rather than contig
+     *  indices, and so should not be sensitive to contig ordering issues.
+     *
+     * @param referenceDictionary the sequence dictionary for the reference
+     * @param cramDictionary sequence dictionary from a CRAM file
+     */
+    public static void validateCRAMDictionaryAgainstReference( final SAMSequenceDictionary referenceDictionary,
+                                                               final SAMSequenceDictionary cramDictionary ) {
+        // For CRAM, we require the reference dictionary to be a superset of the reads dictionary
+        final boolean requireSuperset = true;
+        final boolean checkContigOrdering = false;
+
+        validateDictionaries("reference", referenceDictionary, "reads", cramDictionary, requireSuperset, checkContigOrdering);
+    }
+
 
     /**
      * Tests for compatibility between two sequence dictionaries.  If the dictionaries are incompatible, then
@@ -95,16 +129,17 @@ public class SequenceDictionaryUtils {
      * @param name2 name associated with dict2
      * @param dict2 the sequence dictionary dict2
      * @param requireSuperset if true, require that dict1 be a superset of dict2, rather than dict1 and dict2 sharing a common subset
-     * @param checkContigIndices if true, check whether common contigs occur at the same absolute indices in each dictionary
+     * @param checkContigOrdering if true, require common contigs to be in the same relative order with respect to each other
+     *                            and occur at the same absolute indices, and forbid lexicographically-sorted human dictionaries
      */
     public static void validateDictionaries( final String name1,
                                              final SAMSequenceDictionary dict1,
                                              final String name2,
                                              final SAMSequenceDictionary dict2,
                                              final boolean requireSuperset,
-                                             final boolean checkContigIndices ) {
+                                             final boolean checkContigOrdering ) {
 
-        final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2, checkContigIndices);
+        final SequenceDictionaryCompatibility type = compareDictionaries(dict1, dict2, checkContigOrdering);
 
         switch ( type ) {
             case IDENTICAL:
@@ -132,6 +167,8 @@ public class SequenceDictionaryUtils {
             }
 
             case NON_CANONICAL_HUMAN_ORDER: {
+                // We only get NON_CANONICAL_HUMAN_ORDER if the caller explicitly requested that we check contig ordering,
+                // so we should always throw when we see it.
                 UserException ex;
                 if ( nonCanonicalHumanContigOrder(dict1) ) {
                     ex = new UserException.LexicographicallySortedSequenceDictionary(name1, dict1);
@@ -144,6 +181,8 @@ public class SequenceDictionaryUtils {
             }
 
             case OUT_OF_ORDER: {
+                // We only get OUT_OF_ORDER if the caller explicitly requested that we check contig ordering,
+                // so we should always throw when we see it.
                 UserException ex = new UserException.IncompatibleSequenceDictionaries(
                                 "The relative ordering of the common contigs in " + name1 + " and " + name2 +
                                 " is not the same; to fix this please see: "
@@ -154,7 +193,7 @@ public class SequenceDictionaryUtils {
             }
 
             case DIFFERENT_INDICES: {
-                // We only get DIFFERENT_INDICES if the caller explicitly requested that we check contig indices,
+                // We only get DIFFERENT_INDICES if the caller explicitly requested that we check contig ordering,
                 // so we should always throw when we see it.
                 final String msg = "One or more contigs common to both dictionaries have " +
                         "different indices (ie., absolute positions) in each dictionary. Code " +
@@ -172,43 +211,36 @@ public class SequenceDictionaryUtils {
     /**
      * Workhorse routine that takes two dictionaries and returns their compatibility.
      *
-     * This version does not check whether common contigs occur at the same absolute indices in each dictionary.
-     *
      * @param dict1 first sequence dictionary
      * @param dict2 second sequence dictionary
+     * @param checkContigOrdering if true, perform checks related to contig ordering: forbid lexicographically-sorted
+     *                            dictionaries, and require common contigs to be in the same relative order and at the
+     *                            same absolute indices
      * @return A SequenceDictionaryCompatibility enum value describing the compatibility of the two dictionaries
      */
-    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2 ) {
-        return compareDictionaries(dict1, dict2, false);
-    }
-
-    /**
-     * Workhorse routine that takes two dictionaries and returns their compatibility.
-     *
-     * @param dict1 first sequence dictionary
-     * @param dict2 second sequence dictionary
-     * @param checkContigIndices if true, check whether the common contigs occur at the same absolute indices
-     * @return A SequenceDictionaryCompatibility enum value describing the compatibility of the two dictionaries
-     */
-    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2, final boolean checkContigIndices ) {
-        if ( nonCanonicalHumanContigOrder(dict1) || nonCanonicalHumanContigOrder(dict2) )
+    public static SequenceDictionaryCompatibility compareDictionaries( final SAMSequenceDictionary dict1, final SAMSequenceDictionary dict2, final boolean checkContigOrdering ) {
+        if ( checkContigOrdering && (nonCanonicalHumanContigOrder(dict1) || nonCanonicalHumanContigOrder(dict2)) ) {
             return SequenceDictionaryCompatibility.NON_CANONICAL_HUMAN_ORDER;
+        }
 
         final Set<String> commonContigs = getCommonContigsByName(dict1, dict2);
 
-        if (commonContigs.size() == 0) {
+        if ( commonContigs.size() == 0 ) {
             return SequenceDictionaryCompatibility.NO_COMMON_CONTIGS;
         }
         else if ( ! commonContigsHaveSameLengths(commonContigs, dict1, dict2) ) {
             return SequenceDictionaryCompatibility.UNEQUAL_COMMON_CONTIGS;
         }
-        else if ( ! commonContigsAreInSameRelativeOrder(commonContigs, dict1, dict2) ) {
+
+        final boolean commonContigsAreInSameRelativeOrder = commonContigsAreInSameRelativeOrder(commonContigs, dict1, dict2);
+
+        if ( checkContigOrdering && ! commonContigsAreInSameRelativeOrder ) {
             return SequenceDictionaryCompatibility.OUT_OF_ORDER;
         }
-        else if ( commonContigs.size() == dict1.size() && commonContigs.size() == dict2.size() ) {
+        else if ( commonContigsAreInSameRelativeOrder && commonContigs.size() == dict1.size() && commonContigs.size() == dict2.size() ) {
             return SequenceDictionaryCompatibility.IDENTICAL;
         }
-        else if ( checkContigIndices && ! commonContigsAreAtSameIndices(commonContigs, dict1, dict2) ) {
+        else if ( checkContigOrdering && ! commonContigsAreAtSameIndices(commonContigs, dict1, dict2) ) {
             return SequenceDictionaryCompatibility.DIFFERENT_INDICES;
         }
         else if ( supersets(dict1, dict2) ) {
@@ -302,9 +334,6 @@ public class SequenceDictionaryUtils {
      * @return
      */
     private static boolean nonCanonicalHumanContigOrder(SAMSequenceDictionary dict) {
-        if ( ! ENABLE_LEXICOGRAPHIC_REQUIREMENT_FOR_HUMAN ) // if we don't want to enable this test, just return false
-            return false;
-
         SAMSequenceRecord chr1 = null, chr2 = null, chr10 = null;
         for ( SAMSequenceRecord elt : dict.getSequences() ) {
             if ( isHumanSeqRecord(elt, CHR1_HG18, CHR1_HG19, CHR1_B36, CHR1_B37) ) chr1 = elt;
