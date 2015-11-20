@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
         oneLineSummary = "Generates recalibration table",
         programGroup = SparkProgramGroup.class
 )
-public class BaseRecalibratorSparkOptimized extends SparkCommandLineProgram {
+public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
 
     /**
