@@ -150,7 +150,7 @@ public final class CommandLineParser {
         this.programProperties = this.callerArguments.getClass().getAnnotation(CommandLineProgramProperties.class);
     }
 
-    private List<ArgumentDefinition> createArgumentDefinitions(final Object callerArguments) {
+    private void createArgumentDefinitions(final Object callerArguments) {
         for (final Field field : getAllFields(callerArguments.getClass())) {
             if (field.getAnnotation(Argument.class) != null && field.getAnnotation(ArgumentCollection.class) != null){
                 throw new GATKException.CommandLineParserInternalException("An Argument cannot be an argument collection: "
@@ -171,7 +171,6 @@ public final class CommandLineParser {
                 }
             }
         }
-        return null;
     }
 
     private static List<Field> getAllFields(Class<?> clazz) {
@@ -310,10 +309,11 @@ public final class CommandLineParser {
     private static OptionParser setupOptionParser(Collection<ArgumentDefinition> argumentDefinitions, boolean hasPositionalArguments) {
         final OptionParser parser = new OptionParser();
 
+        final StrictBooleanConverter converter = new StrictBooleanConverter();
         for (ArgumentDefinition arg : argumentDefinitions){
             final OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.getDoc());
             if (arg.isFlag()) {
-                bld.withOptionalArg().withValuesConvertedBy(new StrictBooleanConverter());
+                bld.withOptionalArg().withValuesConvertedBy(converter);
             } else {
                 bld.withRequiredArg();
             }
@@ -560,10 +560,10 @@ public final class CommandLineParser {
 
             final ArgumentDefinition argumentDefinition = new ArgumentDefinition(field, argumentAnnotation, parent);
 
-            for (final String argument : argumentAnnotation.mutex()) {
-                final ArgumentDefinition mutextArgumentDef = argumentMap.get(argument);
-                if (mutextArgumentDef != null) {
-                    mutextArgumentDef.getMutuallyExclusive().add(field.getName());
+            for (final String argumentName : argumentAnnotation.mutex()) {
+                final ArgumentDefinition mutuallyExclusiveArgument = argumentMap.get(argumentName);
+                if (mutuallyExclusiveArgument != null) {
+                    mutuallyExclusiveArgument.getMutuallyExclusive().add(field.getName());
                 }
             }
             if (inArgumentMap(argumentDefinition)) {
