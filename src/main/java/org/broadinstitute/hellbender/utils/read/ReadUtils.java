@@ -935,4 +935,8 @@ public final class ReadUtils {
 
         return factory.makeWriter(header.clone(), preSorted, outputFile, referenceFile);
     }
+
+    public static boolean isNonPrimary(GATKRead read) {
+        return read.isSecondaryAlignment() || read.isSupplementaryAlignment() || read.isUnmapped();
+    }
 }
