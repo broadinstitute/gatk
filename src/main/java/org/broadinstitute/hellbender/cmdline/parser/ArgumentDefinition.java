@@ -277,7 +277,7 @@ final class ArgumentDefinition {
             return mutuallyExclusiveArguments.stream()
                     .map(arg -> arg.getArgumentParamUsage(argumentDefinitionMap))
                     .sorted()
-                    .collect(Collectors.joining("\n", "one of the following required arguments must be specified:\n", "\n"));
+                    .collect(Collectors.joining("\n", "exactly one of the following arguments is required:\n", "\n"));
         }
     }
 
@@ -304,4 +304,5 @@ final class ArgumentDefinition {
     public Set<String> getMutuallyExclusive() {
         return mutuallyExclusive;
     }
+
 }
