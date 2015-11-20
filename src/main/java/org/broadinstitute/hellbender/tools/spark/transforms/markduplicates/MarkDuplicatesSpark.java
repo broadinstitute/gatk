@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -82,8 +83,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
 
         if (metricsFile != null) {
-            final JavaPairRDD<String, DuplicationMetrics> metrics = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReads);
-            MarkDuplicatesSparkUtils.saveMetricsRDD(metrics, metricsFile, getAuthHolder());
+            final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReads);
+            final MetricsFile<DuplicationMetrics, Double> resultMetrics = getMetricsFile();
+            MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile, getAuthHolder());
         }
     }
 }

@@ -218,12 +218,11 @@ public abstract class CommandLineProgram {
         return commandLineParser;
     }
 
-
     /**
      * @return Version stored in the manifest of the jarfile.
      */
     public String getVersion() {
-        return getCommandLineParser().getVersion();
+        return commandLineParser == null ? "SNAPSHOT" : commandLineParser.getVersion();
     }
 
     public String getCommandLine() {

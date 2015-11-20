@@ -20,6 +20,11 @@ import java.util.*;
 
 public final class Utils {
 
+    /**
+     * Comparator for strings that sorts null first;
+     */
+    public static final Comparator<? super String> COMPARE_STRINGS_NULLS_FIRST = Comparator.nullsFirst(Comparator.naturalOrder());
+
     private Utils(){}
 
     /**

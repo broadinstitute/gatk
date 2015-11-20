@@ -5,10 +5,19 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
+import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * This class defines the individual test cases to run.  The actual running of the test is done
@@ -19,6 +28,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/MarkDuplicates/");
 
     protected abstract AbstractMarkDuplicatesTester getTester();
+
+    protected abstract CommandLineProgram getCommandLineProgramInstance();
 
     // ELIGIBLE_BASE_QUALITY is the minimum quality considered by the dataflow version
     // for marking a specific pair as best. We use it to ensure that the expected
@@ -511,5 +522,45 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.addMatePair("RUNID:1:1:15993:13361", 2, 41212324, 41212310, false, false, false, false, "33S35M", "19S49M", true, true, false, false, false, ELIGIBLE_BASE_QUALITY);
         tester.addMatePair("RUNID:1:1:16020:13352", 2, 41212324, 41212319, false, false, true, true, "33S35M", "28S40M", true, true, false, false, false, DEFAULT_BASE_QUALITY);
         tester.runTest();
+    }
+
+    @Test(dataProvider = "testDuplicateDetectionDataProviderWithMetrics")
+    public void testDuplicateDetectionDataProviderWithMetrics(final File sam, final File expectedMetrics) throws IOException {
+        final File outputDir = BaseTest.createTempDir("MarkDups");
+        final File outputSam = new File(outputDir, "MarkDups" + ".sam");
+        outputSam.deleteOnExit();
+        final File metricsFile = new File(outputDir, "MarkDups" + ".duplicate_metrics");
+        metricsFile.deleteOnExit();
+        final CommandLineProgram markDuplicates = getCommandLineProgramInstance();
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("-I");
+        args.add(sam.getAbsolutePath());
+        args.add("-O");
+        args.add(outputSam.getAbsolutePath());
+        args.add("--METRICS_FILE");
+        args.add(metricsFile.getAbsolutePath());
+        markDuplicates.instanceMain(args.getArgsArray());
+        IntegrationTestSpec.assertEqualTextFiles(metricsFile, expectedMetrics, "#"); //this compares the values but not headers
+
+        //Note: headers need to be compares not by exact values because they include times and class names
+        final List<String> lines = FileUtils.readLines(metricsFile);
+        Assert.assertTrue(lines.get(0).startsWith("##"), lines.get(0));
+        Assert.assertTrue(lines.get(1).startsWith("#"), lines.get(1));
+        Assert.assertTrue(lines.get(1).toLowerCase().contains("--input"), lines.get(1));  //Note: lowercase because picard uses INPUT and GATK uses input for full name
+        Assert.assertTrue(lines.get(2).startsWith("##"), lines.get(2));
+        Assert.assertTrue(lines.get(3).startsWith("# Started on:"), lines.get(3));
+        Assert.assertTrue(lines.get(4).trim().isEmpty());
+        Assert.assertTrue(lines.get(4).trim().isEmpty());
+        Assert.assertTrue(lines.get(5).startsWith("## METRICS CLASS"), lines.get(5));
+    }
+
+    @DataProvider(name="testDuplicateDetectionDataProviderWithMetrics")
+    public Object[][] testDuplicateDetectionDataProviderWithMetrics() {
+        //Note: the expected metrics files were created using picard 1.130
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "example.chr1.1-1K.unmarkedDups.bam"), new File(TEST_DATA_DIR,"expected.chr1.1-1K.unmarkedDups.markDuplicate.metrics")},
+                {new File(TEST_DATA_DIR, "optical_dupes.bam"), new File(TEST_DATA_DIR,"expected.optical_dupes.markDuplicate.metrics")},
+                {new File(TEST_DATA_DIR, "inputSingleLibrarySolexa16404.bam"), new File(TEST_DATA_DIR,"expected.inputSingleLibrarySolexa16404.metrics")},
+        };
     }
 }
