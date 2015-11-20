@@ -216,6 +216,13 @@ public final class CommandLineParser {
         }
     }
 
+    private String generateUsageFromRequiredArguments(){
+        return argumentDefinitions.stream()
+                .filter(arg -> !arg.isOptional())
+                .map(ArgumentDefinition::getPrettyNameAndType)
+                .collect(Collectors.joining(" ", "Usage: " + callerArguments.getClass().getSimpleName(), " [options]"));
+    }
+
     /**
      * Parse command-line arguments, and store values in callerArguments object passed to ctor.
      * @param messageStream Where to write error messages.
@@ -843,4 +850,5 @@ public final class CommandLineParser {
 
         return argumentValues;
     }
+
 }
