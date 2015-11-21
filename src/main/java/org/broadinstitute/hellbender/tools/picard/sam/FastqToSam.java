@@ -146,20 +146,20 @@ public final class FastqToSam extends PicardCommandLineProgram {
         QUALITY_FORMAT = FastqToSam.determineQualityFormat(reader, reader2, QUALITY_FORMAT);
 
         final SAMFileHeader header = createSamFileHeader();
-        final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(header, false, OUTPUT);
+        try (final SAMFileWriter writer = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, header, false)) {
 
-        reader = fileToFastqReader(FASTQ);
-        if (FASTQ2 != null) {
-            reader2 = fileToFastqReader(FASTQ2);
+            reader = fileToFastqReader(FASTQ);
+            if (FASTQ2 != null) {
+                reader2 = fileToFastqReader(FASTQ2);
+            }
+            makeItSo(reader, reader2, writer);
+
+            reader.close();
+
+            if (reader2 != null) {
+                reader2.close();
+            }
         }
-        makeItSo(reader, reader2, writer);
-
-        reader.close();
-
-        if (reader2 != null) {
-            reader2.close();
-        }
-
         return null;
     }
 

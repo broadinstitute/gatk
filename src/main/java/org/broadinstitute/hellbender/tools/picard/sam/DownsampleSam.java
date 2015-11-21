@@ -50,7 +50,7 @@ public final class DownsampleSam extends PicardCommandLineProgram {
         long total = 0;
         long kept = 0;
 
-        try(final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT)) {
+        try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, in.getFileHeader(), true)) {
             final Map<String, Boolean> decisions = new HashMap<>();
 
             final ProgressLogger progress = new ProgressLogger(logger, (int) 1e7, "Read");

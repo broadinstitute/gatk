@@ -47,8 +47,6 @@ public final class FixMateInformation extends PicardCommandLineProgram {
     @Argument(shortName = "MC", optional = true, doc = "Adds the mate CIGAR tag (MC) if true, does not if false.")
     public Boolean ADD_MATE_CIGAR = true;
 
-    protected SAMFileWriter out;
-
     protected Object doWork() {
         // Open up the input
         boolean allQueryNameSorted = true;
@@ -137,23 +135,25 @@ public final class FixMateInformation extends PicardCommandLineProgram {
             throw new UserException("Can't CREATE_INDEX unless sort order is coordinate");
         }
 
-        createSamFileWriter(header);
+        try (final SAMFileWriter out = createSAMWriter(
+                OUTPUT, REFERENCE_SEQUENCE, header, header.getSortOrder() == SAMFileHeader.SortOrder.queryname)) {
 
-        logger.info("Traversing query name sorted records and fixing up mate pair information.");
-        final ProgressLogger progress = new ProgressLogger(logger);
-        while (iterator.hasNext()) {
-            final SAMRecord record = iterator.next();
-            out.addAlignment(record);
-            progress.record(record);
-        }
-        iterator.close();
 
-        if (header.getSortOrder() == SAMFileHeader.SortOrder.queryname) {
-            logger.info("Closing output file.");
-        } else {
-            logger.info("Finished processing reads; re-sorting output file.");
+            logger.info("Traversing query name sorted records and fixing up mate pair information.");
+            final ProgressLogger progress = new ProgressLogger(logger);
+            while (iterator.hasNext()) {
+                final SAMRecord record = iterator.next();
+                out.addAlignment(record);
+                progress.record(record);
+            }
+            iterator.close();
+
+            if (header.getSortOrder() == SAMFileHeader.SortOrder.queryname) {
+                logger.info("Closing output file.");
+            } else {
+                logger.info("Finished processing reads; re-sorting output file.");
+            }
         }
-        closeWriter();
 
         // Lastly if we're fixing in place, swap the files
         // TODO throw appropriate exceptions instead of writing to log.error and returning
@@ -200,20 +200,6 @@ public final class FixMateInformation extends PicardCommandLineProgram {
 
         CloserUtil.close(readers);
         return null;
-    }
-
-    protected void createSamFileWriter(final SAMFileHeader header) {
-        out = new SAMFileWriterFactory().makeSAMOrBAMWriter(header,
-                header.getSortOrder() == SAMFileHeader.SortOrder.queryname, OUTPUT);
-
-    }
-
-    protected void writeAlignment(final SAMRecord sam) {
-        out.addAlignment(sam);
-    }
-
-    protected void closeWriter() {
-        out.close();
     }
 
 }

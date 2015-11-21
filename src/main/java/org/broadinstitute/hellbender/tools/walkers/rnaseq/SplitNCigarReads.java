@@ -109,7 +109,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
 
     private SAMFileGATKReadWriter initialize(final SamReader in) {
         final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(in.getFileHeader());
-        final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(new SAMFileWriterFactory().makeWriter(outputHeader, true, OUTPUT, REFERENCE_SEQUENCE));
+        final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, true, false, false));
 
         try {
             final IndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_SEQUENCE);

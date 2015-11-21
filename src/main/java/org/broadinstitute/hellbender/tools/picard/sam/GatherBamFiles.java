@@ -48,7 +48,7 @@ public final class GatherBamFiles extends PicardCommandLineProgram {
         if (determineBlockCopyingStatus(inputs)) {
             BamFileIoUtils.gatherWithBlockCopying(inputs, OUTPUT, CREATE_INDEX, CREATE_MD5_FILE);
         } else {
-            gatherNormally(inputs, OUTPUT, CREATE_INDEX, CREATE_MD5_FILE, REFERENCE_SEQUENCE);
+            gatherNormally(inputs, OUTPUT, REFERENCE_SEQUENCE);
         }
 
         return null;
@@ -68,16 +68,13 @@ public final class GatherBamFiles extends PicardCommandLineProgram {
      * Simple implementation of a gather operations that uses SAMFileReaders and Writers in order to concatenate
      * multiple BAM files.
      */
-    private static void gatherNormally(final List<File> inputs, final File output, final boolean createIndex, final boolean createMd5,
-                                       final File referenceFasta) {
+    private void gatherNormally(final List<File> inputs, final File output, final File referenceFasta) {
         final SAMFileHeader header;
         {
             header = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).getFileHeader(inputs.get(0));
         }
 
-        try (final SAMFileWriter out =
-                     new SAMFileWriterFactory().setCreateIndex(createIndex).setCreateMd5File(createMd5).makeWriter(header, false, output, referenceFasta))
-        {
+        try (final SAMFileWriter out = createSAMWriter(output, referenceFasta, header, true)) {
             for (final File f : inputs) {
                 log.info("Gathering " + f.getAbsolutePath());
                 final SamReader in = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).open(f);

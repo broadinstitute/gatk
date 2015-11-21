@@ -73,7 +73,7 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
         SAMFileWriter samWriter = null;
         //This writes the header with sequenceDictionary
         try {
-            samWriter = new SAMFileWriterFactory().makeSAMWriter(samHeader, false, OUTPUT);
+            samWriter = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, samHeader, false);
         }
         finally {
             samWriter.close();

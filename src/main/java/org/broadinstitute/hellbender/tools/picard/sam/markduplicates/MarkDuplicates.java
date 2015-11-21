@@ -101,10 +101,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         // Key: previous PG ID on a SAM Record (or null).  Value: New PG ID to replace it.
         final Map<String, String> chainedPgIds = getChainedPgIds(outputHeader);
 
-        try (final SAMFileWriter out = new SAMFileWriterFactory().makeWriter(outputHeader,
-                true,
-                OUTPUT,
-                REFERENCE_SEQUENCE)) {
+        try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, true)) {
 
             // Now copy over the file while marking all the necessary indexes as duplicates
             long recordInFileIndex = 0;

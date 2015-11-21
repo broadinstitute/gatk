@@ -69,49 +69,48 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
         final SAMFileHeader outHeader = ReadUtils.cloneSAMFileHeader(inHeader);
         if (null == SORT_ORDER) this.SORT_ORDER = inHeader.getSortOrder(); // same as the input
         outHeader.setSortOrder(SORT_ORDER);
-        SAMFileWriterFactory.setDefaultCreateIndexWhileWriting(CREATE_INDEX);
-        SAMFileWriterFactory.setDefaultCreateMd5File(CREATE_MD5_FILE);
-        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, false, OUTPUT);
 
-        // Iterate over the records, revert original base qualities, and push them into a SortingCollection by queryname
-        final SortingCollection<SAMRecord> sorter = SortingCollection.newInstance(SAMRecord.class, new BAMRecordCodec(outHeader),
-                new SAMRecordQueryNameComparator(), MAX_RECORDS_IN_RAM);
-        final ProgressLogger revertingProgress = new ProgressLogger(logger, 1000000, " reverted OQs");
-        int numOriginalQualitiesRestored = 0;
-        for (final SAMRecord record : in) {
-            // Clean up reads that map off the end of the reference
-            AbstractAlignmentMerger.createNewCigarsIfMapsOffEndOfReference(record);
+        try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outHeader, false)) {
+            // Iterate over the records, revert original base qualities, and push them into a SortingCollection by queryname
+            final SortingCollection<SAMRecord> sorter = SortingCollection.newInstance(SAMRecord.class, new BAMRecordCodec(outHeader),
+                    new SAMRecordQueryNameComparator(), MAX_RECORDS_IN_RAM);
+            final ProgressLogger revertingProgress = new ProgressLogger(logger, 1000000, " reverted OQs");
+            int numOriginalQualitiesRestored = 0;
+            for (final SAMRecord record : in) {
+                // Clean up reads that map off the end of the reference
+                AbstractAlignmentMerger.createNewCigarsIfMapsOffEndOfReference(record);
 
-            if (RESTORE_ORIGINAL_QUALITIES && null != record.getOriginalBaseQualities()) {
-                // revert the original base qualities
-                record.setBaseQualities(record.getOriginalBaseQualities());
-                record.setOriginalBaseQualities(null);
-                numOriginalQualitiesRestored++;
+                if (RESTORE_ORIGINAL_QUALITIES && null != record.getOriginalBaseQualities()) {
+                    // revert the original base qualities
+                    record.setBaseQualities(record.getOriginalBaseQualities());
+                    record.setOriginalBaseQualities(null);
+                    numOriginalQualitiesRestored++;
+                }
+                if (!foundPairedMappedReads && record.getReadPairedFlag() && !record.getReadUnmappedFlag())
+                    foundPairedMappedReads = true;
+                revertingProgress.record(record);
+                sorter.add(record);
             }
-            if (!foundPairedMappedReads && record.getReadPairedFlag() && !record.getReadUnmappedFlag()) foundPairedMappedReads = true;
-            revertingProgress.record(record);
-            sorter.add(record);
-        }
-        CloserUtil.close(in);
-        logger.info("Reverted the original base qualities for " + numOriginalQualitiesRestored + " records");
+            CloserUtil.close(in);
+            logger.info("Reverted the original base qualities for " + numOriginalQualitiesRestored + " records");
 
-        /**
-         * Iterator through sorting collection output
-         * 1. Set mate cigar string and mate information
-         * 2. push record into SAMFileWriter to the output
-         */
-        try (final SamPairUtil.SetMateInfoIterator sorterIterator = new SamPairUtil.SetMateInfoIterator(sorter.iterator(), true)) {
-            final ProgressLogger sorterProgress = new ProgressLogger(logger, 1000000, " mate cigars added");
-            while (sorterIterator.hasNext()) {
-                final SAMRecord record = sorterIterator.next();
-                out.addAlignment(record);
-                sorterProgress.record(record);
+            /**
+             * Iterator through sorting collection output
+             * 1. Set mate cigar string and mate information
+             * 2. push record into SAMFileWriter to the output
+             */
+            try (final SamPairUtil.SetMateInfoIterator sorterIterator = new SamPairUtil.SetMateInfoIterator(sorter.iterator(), true)) {
+                final ProgressLogger sorterProgress = new ProgressLogger(logger, 1000000, " mate cigars added");
+                while (sorterIterator.hasNext()) {
+                    final SAMRecord record = sorterIterator.next();
+                    out.addAlignment(record);
+                    sorterProgress.record(record);
+                }
+                CloserUtil.close(out);
+                logger.info("Updated " + sorterIterator.getNumMateCigarsAdded() + " records with mate cigar");
+                if (!foundPairedMappedReads) logger.info("Did not find any paired mapped reads.");
             }
-            CloserUtil.close(out);
-            logger.info("Updated " + sorterIterator.getNumMateCigarsAdded() + " records with mate cigar");
-            if (!foundPairedMappedReads) logger.info("Did not find any paired mapped reads.");
         }
-
         return null;
     }
 

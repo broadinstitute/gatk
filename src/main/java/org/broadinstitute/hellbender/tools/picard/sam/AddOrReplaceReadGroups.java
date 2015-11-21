@@ -97,9 +97,11 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
         outHeader.setReadGroups(Arrays.asList(rg));
         if (SORT_ORDER != null) outHeader.setSortOrder(SORT_ORDER);
 
-        try (final SAMFileWriter outWriter = new SAMFileWriterFactory().makeWriter(outHeader,
-                outHeader.getSortOrder() == inHeader.getSortOrder(),
-                OUTPUT, REFERENCE_SEQUENCE)) {
+        try (final SAMFileWriter outWriter = createSAMWriter(
+                OUTPUT,
+                REFERENCE_SEQUENCE,
+                outHeader,
+                outHeader.getSortOrder() == inHeader.getSortOrder())) {
 
             final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord read : in) {
