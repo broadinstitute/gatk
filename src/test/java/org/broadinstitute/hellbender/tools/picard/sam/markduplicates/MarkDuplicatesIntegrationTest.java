@@ -5,11 +5,12 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.TestUtil;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesCommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesTester;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesCommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -36,9 +37,14 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
 
     @DataProvider(name="strictlyBadBams")
     public Object[][] strictlyBadBams() {
-        return new Object[][] {
+        return new Object[][]{
                 {new File(getTestDataDir(), "non_strict.bam")},
         };
+    }
+
+    @Override
+    protected CommandLineProgram getCommandLineProgramInstance() {
+        return new MarkDuplicates();
     }
 
     // NB: this test should return different results than MarkDuplicatesWithMateCigar
@@ -270,4 +276,6 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
                 {new File(TEST_DATA_DIR, "example.chr1.1-1K.unmarkedDups.bam"), 0L},
         };
     }
+
+
 }

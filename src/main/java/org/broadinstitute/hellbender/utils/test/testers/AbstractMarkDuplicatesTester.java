@@ -12,7 +12,6 @@ import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.test.testers.SamFileTester;
 import org.testng.Assert;
 
 import java.io.File;
@@ -47,6 +46,10 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
 
         metricsFile = new File(getOutputDir(), "metrics.txt");
         addArg("--METRICS_FILE", metricsFile.getAbsolutePath());
+    }
+
+    public File getMetricsFile() {
+        return metricsFile;
     }
 
     @Override
@@ -130,8 +133,8 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
             catch (final FileNotFoundException ex) {
                 System.err.println("Metrics file not found: " + ex);
             }
-            // NB: Test writes an initial metrics line with a null entry for LIBRARY and 0 values for all metrics. Why?
-            final DuplicationMetrics observedMetrics = metricsOutput.getMetrics().get(metricsOutput.getMetrics().size() - 1);
+            // NB: Test writes an initial metrics line with a null entry for LIBRARY and 0 values for all metrics. So we find the first non-null one
+            final DuplicationMetrics observedMetrics = metricsOutput.getMetrics().stream().filter(metric -> metric.LIBRARY != null).findFirst().get();
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedMetrics.UNPAIRED_READS_EXAMINED, "UNPAIRED_READS_EXAMINED does not match expected");
             Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedMetrics.READ_PAIRS_EXAMINED, "READ_PAIRS_EXAMINED does not match expected");
             Assert.assertEquals(observedMetrics.UNMAPPED_READS, expectedMetrics.UNMAPPED_READS, "UNMAPPED_READS does not match expected");

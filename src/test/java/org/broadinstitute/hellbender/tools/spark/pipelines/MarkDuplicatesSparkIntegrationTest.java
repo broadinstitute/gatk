@@ -3,14 +3,17 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.metrics.MetricsFile;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.tools.picard.sam.markduplicates.MarkDuplicatesIntegrationTest;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.markduplicates.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSparkTester;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesCommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,13 +24,21 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
 
+    @Override
     protected AbstractMarkDuplicatesTester getTester() {
         return new MarkDuplicatesSparkTester();
     }
+
+    @Override
+    protected CommandLineProgram getCommandLineProgramInstance() {
+        return new MarkDuplicatesSpark();
+    }
+
 
     // The following tests are overridden from the base class as they fail for
     // the spark version. The failure causes are recorded.
@@ -48,6 +59,10 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         return new Object[][]{
             // The first two values are total reads and duplicate reads. The list is an encoding of the metrics
             // file output by this bam file. These metrics files all match the outputs of picard mark duplicates.
+
+             //Note: in each of those cases, we'd really want to pass null as the last parameter (not 0L) but IntelliJ
+             // does not like it and skips the test (rendering issue) - so we pass 0L and account for it at test time
+             // (see comment in testMarkDuplicatesSparkIntegrationTestLocal)
             {new File(MarkDuplicatesIntegrationTest.TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"), 20, 0,
              ImmutableMap.of("Solexa-16419", ImmutableList.of(0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16416", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
@@ -79,7 +94,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(input.getPath());
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
@@ -116,11 +131,23 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        Assert.assertEquals(metricsOutput.getMetrics().size(), metricsExpected.size(),
+        final List<DuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
+                metric ->
+                    metric.UNPAIRED_READS_EXAMINED != 0L ||
+                    metric.READ_PAIRS_EXAMINED != 0L ||
+                    metric.UNMAPPED_READS != 0L ||
+                    metric.UNPAIRED_READ_DUPLICATES != 0L ||
+                    metric.READ_PAIR_DUPLICATES != 0L ||
+                    metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
+                    (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
+                    (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
+        ).collect(Collectors.toList());
+
+        Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
                             "Wrong number of metrics with non-zero fields.");
-        for (int i = 0; i < metricsOutput.getMetrics().size(); i++ ){
-            final DuplicationMetrics observedMetrics = metricsOutput.getMetrics().get(i);
-            List<String> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
+        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
+            final DuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
+            List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(0));
             Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedList.get(1));
@@ -129,7 +156,12 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
             Assert.assertEquals(observedMetrics.READ_PAIR_DUPLICATES, expectedList.get(4));
             Assert.assertEquals(observedMetrics.READ_PAIR_OPTICAL_DUPLICATES, expectedList.get(5));
             Assert.assertEquals(observedMetrics.PERCENT_DUPLICATION, expectedList.get(6));
-            Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
+
+            //Note: IntelliJ does not like it when a parameter for a test is null (can't print it and skips the test)
+            //so we work around it by passing in an 'expected 0L' and only comparing to it if the actual value is non-null
+            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long)expectedList.get(7) != 0L)  {
+                Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.*;
@@ -109,7 +110,10 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      * @param libraryIdGenerator
      */
     protected void finalizeAndWriteMetrics(final LibraryIdGenerator libraryIdGenerator) {
-        final Map<String, DuplicationMetrics> metricsByLibrary = libraryIdGenerator.getMetricsByLibraryMap();
+        //We want to sort libraries by name
+        final SortedMap<String, DuplicationMetrics> metricsByLibrary = new TreeMap<>(Utils.COMPARE_STRINGS_NULLS_FIRST);
+        metricsByLibrary.putAll(libraryIdGenerator.getMetricsByLibraryMap());
+
         final Histogram<Short> opticalDuplicatesByLibraryId = libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap();
         final Map<String, Short> libraryIds = libraryIdGenerator.getLibraryIdsMap();
 

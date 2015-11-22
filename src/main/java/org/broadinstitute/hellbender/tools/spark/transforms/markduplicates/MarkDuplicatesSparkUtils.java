@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimaps;
+import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -11,18 +8,15 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
-import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesUtils;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
-import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
-import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import scala.Tuple2;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -242,13 +236,32 @@ public class MarkDuplicatesSparkUtils {
                 });
     }
 
-    public static void saveMetricsRDD(final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath, AuthHolder authHolder) {
-        final MetricsFile<DuplicationMetrics, Double> metrics = new MetricsFile<>();
-        for (final Map.Entry<String, DuplicationMetrics> entry : metricsRDD.collectAsMap().entrySet()) {
-            metrics.addMetric(entry.getValue());
+    /**
+     * Saves the metrics to a file.
+     * Note: the SamFileHeader is needed in order to include libraries that didn't have any duplicates.
+     * @param result metrics object, potentially pre-initialized with headers,
+     */
+    public static void saveMetricsRDD(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath, AuthHolder authHolder) {
+        final LibraryIdGenerator libraryIdGenerator = new LibraryIdGenerator(header);
+
+        final Map<String, DuplicationMetrics> nonEmptyMetricsByLibrary = metricsRDD.collectAsMap();           //Unknown Library
+        final Map<String, DuplicationMetrics> emptyMapByLibrary = libraryIdGenerator.getMetricsByLibraryMap();//with null
+
+        final List<String> sortedListOfLibraryNames = new ArrayList<>(Sets.union(emptyMapByLibrary.keySet(), nonEmptyMetricsByLibrary.keySet()));
+        sortedListOfLibraryNames.sort(Utils.COMPARE_STRINGS_NULLS_FIRST);
+        for (final String library : sortedListOfLibraryNames){
+            //if a non-empty exists, take it, otherwise take from the the empties. This is done to include libraries with zero data in them.
+            //But not all libraries are listed in the header (esp in testing data) so we union empty and non-empty
+            final DuplicationMetrics metricsToAdd = nonEmptyMetricsByLibrary.containsKey(library) ? nonEmptyMetricsByLibrary.get(library) : emptyMapByLibrary.get(library);
+            metricsToAdd.calculateDerivedMetrics();
+            result.addMetric(metricsToAdd);
         }
 
-        MetricsUtils.saveMetrics(metrics, metricsOutputPath, authHolder );
+        if (nonEmptyMetricsByLibrary.size() == 1) {
+            result.setHistogram(nonEmptyMetricsByLibrary.values().iterator().next().calculateRoiHistogram());
+        }
+
+        MetricsUtils.saveMetrics(result, metricsOutputPath, authHolder );
     }
 
     /**
