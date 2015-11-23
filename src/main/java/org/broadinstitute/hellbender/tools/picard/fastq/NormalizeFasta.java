@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MiscProgramGroup;
-import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -28,10 +28,12 @@ import java.io.IOException;
 )
 public final class NormalizeFasta extends CommandLineProgram {
 
-    @Argument(shortName=StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The input fasta file to normalize.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName=StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The input fasta file to normalize.")
     public File INPUT;
 
-    @Argument(shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="The output fasta file to write.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="The output fasta file to write.")
     public File OUTPUT;
 
     @Argument(doc="The line length to be used for the output fasta file.")

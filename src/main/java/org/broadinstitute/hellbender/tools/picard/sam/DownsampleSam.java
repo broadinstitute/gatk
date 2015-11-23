@@ -26,10 +26,12 @@ import java.util.Random;
 )
 public final class DownsampleSam extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to downsample.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to downsample.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output, downsampled, SAM or BAM file to write.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output, downsampled, SAM or BAM file to write.")
     public File OUTPUT;
 
     @Argument(shortName = "R", doc = "Random seed to use if reproducibilty is desired.  " +

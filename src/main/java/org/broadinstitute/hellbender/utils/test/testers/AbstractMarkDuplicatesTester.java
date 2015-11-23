@@ -39,7 +39,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
     }
 
     public AbstractMarkDuplicatesTester() {
-        super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, true);
+        super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH);
 
         expectedMetrics = new DuplicationMetrics();
         expectedMetrics.READ_PAIR_OPTICAL_DUPLICATES = 0;

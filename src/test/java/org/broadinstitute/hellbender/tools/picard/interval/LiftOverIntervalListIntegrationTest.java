@@ -20,10 +20,10 @@ public final class LiftOverIntervalListIntegrationTest extends CommandLineProgra
         final File expectedFile = new File(TEST_DATA_DIR, "Broad.human.exome.b37.200lines.hg18.interval_list");
         final File outfile = BaseTest.createTempFile("test_Broad.human.exome.b37.200lines.", ".interval_list");
         final String[] args = new String[]{
-                "--INPUT", inputInterval.getAbsolutePath(),
+                "--input", inputInterval.getAbsolutePath(),
                 "--CHAIN", inputChain.getAbsolutePath(),
                 "--SEQUENCE_DICTIONARY", inputDict.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
         };
         final Object code = runCommandLine(args);
         Assert.assertEquals(code, 0);
@@ -37,10 +37,10 @@ public final class LiftOverIntervalListIntegrationTest extends CommandLineProgra
         final File inputDict = new File(TEST_DATA_DIR, "Homo_sapiens_assembly18.dict");
         final File outfile = BaseTest.createTempFile("test_Broad.human.exome.b37.200lines.", ".interval_list");
         final String[] args = new String[]{
-                "--INPUT", inputInterval.getAbsolutePath(),
+                "--input", inputInterval.getAbsolutePath(),
                 "--CHAIN", inputChain.getAbsolutePath(),
                 "--SEQUENCE_DICTIONARY", inputDict.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
         };
         final Object code = runCommandLine(args);
         Assert.assertEquals(code, 1);

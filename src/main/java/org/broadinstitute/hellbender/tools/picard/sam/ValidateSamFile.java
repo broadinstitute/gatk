@@ -28,11 +28,13 @@ public final class ValidateSamFile extends PicardCommandLineProgram {
 
     public enum Mode {VERBOSE, SUMMARY}
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "Input SAM/BAM file")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file or standard out if missing",
             optional = true)
     public File OUTPUT;

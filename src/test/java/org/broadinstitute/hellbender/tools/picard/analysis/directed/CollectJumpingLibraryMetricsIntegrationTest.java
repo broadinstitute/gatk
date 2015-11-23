@@ -25,8 +25,8 @@ public final class CollectJumpingLibraryMetricsIntegrationTest extends CommandLi
         final File outfile = BaseTest.createTempFile("jumpinglib_1", ".txt");
 
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--MQ", "39",
                 "--T", "25000",
                 "--CHIMERA_KB_MIN", "200000"

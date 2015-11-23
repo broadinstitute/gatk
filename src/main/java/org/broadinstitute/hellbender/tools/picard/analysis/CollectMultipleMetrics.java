@@ -78,7 +78,8 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
 
     }
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM or BAM file.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc = "Input SAM or BAM file.")
     public File INPUT;
 
     @Argument(doc = "If true (default), then the sort order in the header file will be ignored.",
@@ -88,7 +89,8 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
     @Argument(doc = "Stop after processing N reads, mainly for debugging.")
     public int STOP_AFTER = 0;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Base name of output files.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Base name of output files.")
     public String OUTPUT;
 
     @Argument(doc = "List of metrics programs to apply during the pass through the SAM file.")

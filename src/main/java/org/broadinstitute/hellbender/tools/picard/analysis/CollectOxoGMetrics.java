@@ -18,7 +18,6 @@ import htsjdk.samtools.util.ListMap;
 import htsjdk.samtools.util.SamLocusIterator;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.StringUtil;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -27,7 +26,10 @@ import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.utils.variant.DbSnpBitSetUtil;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static htsjdk.samtools.util.CodeUtil.getOrElse;
 import static htsjdk.samtools.util.SequenceUtil.generateAllKmers;
@@ -44,11 +46,11 @@ import static java.lang.Math.log10;
 public final class CollectOxoGMetrics extends PicardCommandLineProgram {
     static final String USAGE = "Collects metrics quantifying the CpCG -> CpCA error rate from the provided SAM/BAM";
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "Input BAM file for analysis.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Location of output metrics file to write.")
     public File OUTPUT;
 

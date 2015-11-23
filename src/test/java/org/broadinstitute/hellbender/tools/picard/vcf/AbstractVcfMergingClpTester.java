@@ -25,10 +25,10 @@ public abstract class AbstractVcfMergingClpTester extends CommandLineProgramTest
     protected void runClp(final List<File> inputs, final File output, final List<String> otherArguments) {
         final List<String> argList = new ArrayList<>();
         for (final File input : inputs) {
-            argList.add("--INPUT");
+            argList.add("--input");
             argList.add(input.getAbsolutePath());
         }
-        argList.add("--OUTPUT");
+        argList.add("--output");
         argList.add(output.getAbsolutePath());
         argList.addAll(otherArguments);
         runCommandLine(argList);

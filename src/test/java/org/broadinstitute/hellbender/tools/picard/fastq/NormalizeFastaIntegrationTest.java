@@ -23,8 +23,8 @@ public final class NormalizeFastaIntegrationTest extends CommandLineProgramTest 
         final File outfile = BaseTest.createTempFile("normalized", ".fasta");
 
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE", "TRUE",
                 "--LINE_LENGTH", "5",
         };
@@ -39,8 +39,8 @@ public final class NormalizeFastaIntegrationTest extends CommandLineProgramTest 
         final File input = new File(TEST_DATA_PATH, "testfasta.fasta");
 
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", input.getAbsolutePath(),       //will blow up
+                "--input", input.getAbsolutePath(),
+                "--output", input.getAbsolutePath(),       //will blow up
                 "--TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE", "TRUE",
                 "--LINE_LENGTH", "5",
         };

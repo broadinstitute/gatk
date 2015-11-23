@@ -1,6 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.Defaults;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
@@ -16,11 +21,13 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.function.UnaryOperator;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
@@ -46,7 +53,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
     protected File OUTPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
+    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
             common = true, optional = true)
     public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 

@@ -1,9 +1,21 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.*;
+import htsjdk.samtools.BAMRecordCodec;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordQueryNameComparator;
+import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.SamPairUtil;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.SortingCollection;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.mergealignment.AbstractAlignmentMerger;
@@ -26,13 +38,15 @@ import java.util.Iterator;
 )
 public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM/BAM file to revert the state of.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM/BAM file to create.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM/BAM file to create.")
     public File OUTPUT;
 
-    @Argument(shortName = "SO", doc = "The sort order to create the reverted output file with."
+    @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, doc = "The sort order to create the reverted output file with."
             + "By default, the sort order will be the same as the input.", optional = true)
     public SAMFileHeader.SortOrder SORT_ORDER = null;
 

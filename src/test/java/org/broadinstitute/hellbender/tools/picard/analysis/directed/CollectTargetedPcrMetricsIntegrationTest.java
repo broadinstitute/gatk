@@ -26,10 +26,10 @@ public final class CollectTargetedPcrMetricsIntegrationTest extends CommandLineP
 
         final String[] args = {
 
-                "--INPUT", input.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
                 "--AI", amplicon_intervals.getAbsolutePath(),
                 "--TI", target_intervals.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--R", reference.getAbsolutePath(),
                 "--N", "lifted_Chr20test_targets",
                 "--LEVEL", "ALL_READS",

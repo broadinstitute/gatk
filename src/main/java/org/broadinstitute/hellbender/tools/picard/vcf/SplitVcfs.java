@@ -11,7 +11,6 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -38,7 +37,8 @@ import java.io.File;
 )
 public final class SplitVcfs extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The VCF or BCF input file")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The VCF or BCF input file")
     public File INPUT;
 
     @Argument(doc = "The VCF or BCF file to which SNP records should be written. The file format is determined by file extension.")

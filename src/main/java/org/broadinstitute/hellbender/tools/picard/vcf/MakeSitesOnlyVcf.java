@@ -12,7 +12,6 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -22,7 +21,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
-import java.util.*;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Writes out a VCF that contains all the site-level information for all records in the input VCF and no per-sample information.
@@ -38,10 +38,12 @@ import java.util.*;
 )
 public final class MakeSitesOnlyVcf extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF or BCF")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF or BCF")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF or BCF to emit without per-sample info.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF or BCF to emit without per-sample info.")
     public File OUTPUT;
 
     @Argument(shortName = "S", doc = "Optionally one or more samples to retain when building the 'sites-only' VCF.", optional=true)

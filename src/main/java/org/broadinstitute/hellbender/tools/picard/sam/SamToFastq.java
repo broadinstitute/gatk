@@ -1,20 +1,34 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.SAMValidationError;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.fastq.FastqWriter;
 import htsjdk.samtools.fastq.FastqWriterFactory;
-import htsjdk.samtools.util.*;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.broadinstitute.hellbender.cmdline.*;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Lazy;
+import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * <p/>
@@ -35,7 +49,9 @@ import java.util.*;
 )
 public final class SamToFastq extends PicardCommandLineProgram {
 
-    @Argument(doc = "Input SAM/BAM file to extract reads from", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
+    @Argument(doc = "Input SAM/BAM file to extract reads from",
+            fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
     @Argument(shortName = "F", doc = "Output fastq file (single-end fastq or, if paired, first end of the pair fastq).",

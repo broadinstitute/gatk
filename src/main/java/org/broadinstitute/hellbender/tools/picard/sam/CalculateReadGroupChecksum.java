@@ -21,10 +21,12 @@ public final class CalculateReadGroupChecksum extends PicardCommandLineProgram {
 
     private static final String OUTPUT_FILE_EXTENSION = ".read_group_md5";
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file. ")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc = "The input SAM or BAM file. ")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The file to which the hash code should be written.", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "The file to which the hash code should be written.", optional = true)
     public File OUTPUT;
 
     /**

@@ -21,11 +21,11 @@ import java.util.*;
  */
 public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more input SAM or BAM files to analyze. Must be coordinate sorted.")
     public List<File> INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The output file to write marked records to")
     public File OUTPUT;
 

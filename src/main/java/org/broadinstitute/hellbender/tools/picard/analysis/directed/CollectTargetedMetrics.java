@@ -8,12 +8,9 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -22,7 +19,9 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
-import java.util.*;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Both CollectTargetedPCRMetrics and CalculateHybridSelection metrics share virtually identical program structures except
@@ -56,10 +55,12 @@ public abstract class CollectTargetedMetrics<METRIC extends MultiLevelMetrics, C
     @Argument(shortName = "TI", doc = "An interval list file that contains the locations of the targets.")
     public List<File> TARGET_INTERVALS;
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "An aligned SAM or BAM file.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc = "An aligned SAM or BAM file.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output file to write the metrics to.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "The output file to write the metrics to.")
     public File OUTPUT;
 
     @Argument(shortName = "LEVEL", doc = "The level(s) at which to accumulate metrics.")

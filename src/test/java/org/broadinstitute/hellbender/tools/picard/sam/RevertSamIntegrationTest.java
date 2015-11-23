@@ -35,9 +35,9 @@ public final class RevertSamIntegrationTest extends CommandLineProgramTest {
         final File output = BaseTest.createTempFile("reverted", ".sam");
         final RevertSam reverter = new RevertSam();
         final List<String> args = new ArrayList<>();
-        args.add("--INPUT");
+        args.add("--input");
         args.add(basicSamToRevert.getAbsolutePath());
-        args.add("--OUTPUT");
+        args.add("--output");
         args.add(output.getAbsolutePath());
         if (so != null) {
             args.add("--SORT_ORDER");
@@ -129,9 +129,9 @@ public final class RevertSamIntegrationTest extends CommandLineProgramTest {
         final File output = BaseTest.createTempFile("bad", ".sam");
         final RevertSam reverter = new RevertSam();
         final List<String> args = new ArrayList<>();
-        args.add("--INPUT");
+        args.add("--input");
         args.add(negativeTestSamToRevert.getAbsolutePath());
-        args.add("--OUTPUT");
+        args.add("--output");
         args.add(output.getAbsolutePath());
         if (sample != null) {
             args.add("--SAMPLE_ALIAS");

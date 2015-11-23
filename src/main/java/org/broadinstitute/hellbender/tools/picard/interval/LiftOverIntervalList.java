@@ -4,24 +4,21 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.liftover.LiftOver;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 
 import java.io.File;
-import java.util.*;
+import java.util.List;
 
 import static htsjdk.samtools.SamReaderFactory.makeDefault;
 import static htsjdk.samtools.liftover.LiftOver.DEFAULT_LIFTOVER_MINMATCH;
 import static htsjdk.samtools.util.IOUtil.assertFileIsReadable;
 import static htsjdk.samtools.util.IOUtil.assertFileIsWritable;
 import static htsjdk.samtools.util.IntervalList.fromFile;
-import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.INPUT_SHORT_NAME;
-import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
-import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME;
+import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
 
 /**
  * @author alecw@broadinstitute.org
@@ -34,10 +31,14 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
 )
 public final class LiftOverIntervalList extends PicardCommandLineProgram {
 
-    @Argument(doc = "Interval list to be lifted over.", shortName = INPUT_SHORT_NAME)
+    @Argument(doc = "Interval list to be lifted over.",
+            fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Argument(doc = "Where to write lifted-over interval list.", shortName = OUTPUT_SHORT_NAME)
+    @Argument(doc = "Where to write lifted-over interval list.",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 
     @Argument(doc = "Sequence dictionary to write into the output interval list.",

@@ -26,8 +26,8 @@ public final class CleanSamIntegrationTest extends CommandLineProgramTest {
         final File inputFile = new File(TEST_DATA_DIR, samFile);
         final File cleanedFile = BaseTest.createTempFile(samFile + ".", outputExtension);
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--INPUT"); args.add(inputFile.getAbsolutePath());
-        args.add("--OUTPUT"); args.add(cleanedFile.getAbsolutePath());
+        args.add("--input"); args.add(inputFile.getAbsolutePath());
+        args.add("--output"); args.add(cleanedFile.getAbsolutePath());
         File referenceFile = referenceFileName == null ? null : new File(TEST_DATA_DIR, referenceFileName);
         if (null != referenceFile) {
             args.add("--R");

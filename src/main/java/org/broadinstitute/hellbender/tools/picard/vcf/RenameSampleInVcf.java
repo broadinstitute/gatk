@@ -23,10 +23,12 @@ import java.util.*;
         programGroup = VariantProgramGroup.class
 )
 public final class RenameSampleInVcf extends PicardCommandLineProgram {
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input single sample VCF.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input single sample VCF.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output single sample VCF.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output single sample VCF.")
     public File OUTPUT;
 
     @Argument(doc = "Existing name of sample in VCF; if provided, asserts that that is the name of the extant sample name", optional = true)

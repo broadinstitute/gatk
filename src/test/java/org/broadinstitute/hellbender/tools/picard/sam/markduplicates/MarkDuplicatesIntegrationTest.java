@@ -77,11 +77,11 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
             final MarkDuplicates markDuplicates = new MarkDuplicates();
             final ArgumentsBuilder args = new ArgumentsBuilder();
             for (int i = 1; i <= 3; ++i) {
-                args.add("--INPUT");
+                args.add("--input");
                 args.add(new File(TEST_DATA_DIR, "merge" + i + ".sam").getAbsolutePath());
             }
             final File outputSam = new File(outputDir, TEST_BASE_NAME + ".sam");
-            args.add("--OUTPUT");
+            args.add("--output");
             args.add(outputSam.getAbsolutePath());
             args.add("--METRICS_FILE");
             args.add(new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics").getAbsolutePath());

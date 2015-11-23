@@ -20,7 +20,6 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFRecordCodec;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -31,7 +30,10 @@ import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import java.io.File;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Tool for lifting over a VCF to another genome build and producing a properly header'd,
@@ -48,10 +50,12 @@ import java.util.*;
         programGroup = VariantProgramGroup.class
 )
 public final class LiftoverVcf extends PicardCommandLineProgram {
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input VCF/BCF file to be lifted over.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input VCF/BCF file to be lifted over.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output location to write the lifted over VCF/BCF to.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output location to write the lifted over VCF/BCF to.")
     public File OUTPUT;
 
     @Argument(shortName = "C", doc = "The liftover chain file. See https://genome.ucsc.edu/goldenPath/help/chain.html for a description" +

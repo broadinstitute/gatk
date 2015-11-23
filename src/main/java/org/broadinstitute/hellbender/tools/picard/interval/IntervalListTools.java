@@ -36,13 +36,16 @@ import java.util.*;
 )
 public final class IntervalListTools extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more interval lists. If multiple interval lists are provided the output is the" +
                     "result of merging the inputs. Supported formats are interval_list and VCF.")
     public List<File> INPUT;
 
     @Argument(doc = "The output interval list file to write (if SCATTER_COUNT is 1) or the directory into which " +
-            "to write the scattered interval sub-directories (if SCATTER_COUNT > 1)", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = true)
+            "to write the scattered interval sub-directories (if SCATTER_COUNT > 1)",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = true)
     public File OUTPUT;
 
     @Argument(doc = "The amount to pad each end of the intervals by before other operations are undertaken. Negative numbers are allowed " +

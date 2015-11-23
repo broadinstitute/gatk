@@ -1279,8 +1279,8 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
         if (progGroupName != null) {
             args.add("--PROGRAM_GROUP_NAME");args.add(progGroupName);
         }
-        args.add("--REFERENCE_SEQUENCE"); args.add(refSeq.getAbsolutePath());
-        args.add("--OUTPUT"); args.add( output.getAbsolutePath());
+        args.add("--reference"); args.add(refSeq.getAbsolutePath());
+        args.add("--output"); args.add( output.getAbsolutePath());
 
         if (expectedOrientation != null) {
             args.add("--EXPECTED_ORIENTATIONS"); args.add(expectedOrientation.toString());

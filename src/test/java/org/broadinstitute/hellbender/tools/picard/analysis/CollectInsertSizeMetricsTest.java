@@ -38,9 +38,9 @@ public final class CollectInsertSizeMetricsTest extends CommandLineProgramTest {
         final File pdf = BaseTest.createTempFile("test", ".pdf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--INPUT");
+        args.add("--input");
         args.add(input.getAbsolutePath());
-        args.add("--OUTPUT");
+        args.add("--output");
         args.add(outfile.getAbsolutePath());
         if (null != referenceName) {
             final File REF = new File(referenceName);

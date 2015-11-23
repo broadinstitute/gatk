@@ -5,20 +5,35 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.*;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.Histogram;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.SortingCollection;
+import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
+import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
-import java.io.*;
-import java.util.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static java.lang.Math.pow;
 
@@ -61,11 +76,12 @@ import static java.lang.Math.pow;
 )
 public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "One or more files to combine and " +
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc = "One or more files to combine and " +
             "estimate library complexity from. Reads can be mapped or unmapped.")
     public List<File> INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output file to writes per-library metrics to.")
     public File OUTPUT;
 

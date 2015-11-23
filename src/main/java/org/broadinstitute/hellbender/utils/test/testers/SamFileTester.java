@@ -21,7 +21,6 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     private int readNameCounter = 0;
     private boolean noMateCigars = false;
     private boolean deleteOnExit = true;
-    private boolean useStandardInputNames = false;
     protected final List<String> args = new ArrayList<>();
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, final DuplicateScoringStrategy.ScoringStrategy duplicateScoringStrategy) {
@@ -33,11 +32,6 @@ public abstract class SamFileTester extends CommandLineProgramTest {
 
     public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength) {
         this(readLength, deleteOnExit, defaultChromosomeLength, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
-    }
-
-  public SamFileTester(final int readLength, final boolean deleteOnExit, final int defaultChromosomeLength, boolean useStandardInputNames) {
-        this(readLength, deleteOnExit, defaultChromosomeLength, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
-        this.useStandardInputNames = true;
     }
 
     public void setHeader(final SAMFileHeader header) {
@@ -263,13 +257,8 @@ public abstract class SamFileTester extends CommandLineProgramTest {
     public void runTest() {
         final File input = createInputFile();
         output = new File(outputDir, "output.sam");
-        if (useStandardInputNames) {
-          addArg("--" + StandardArgumentDefinitions.INPUT_LONG_NAME, input.getAbsolutePath());
-          addArg("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, output.getAbsolutePath());
-        } else {
-          addArg("--INPUT", input.getAbsolutePath());
-          addArg("--OUTPUT", output.getAbsolutePath());
-        }
+        addArg("--" + StandardArgumentDefinitions.INPUT_LONG_NAME, input.getAbsolutePath());
+        addArg("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, output.getAbsolutePath());
         addArgs();
         runCommandLine(args);
         test();

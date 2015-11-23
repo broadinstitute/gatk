@@ -57,11 +57,11 @@ public final class CollectRrbsMetricsTest extends CommandLineProgramTest {
 	private MetricsFile<RrbsSummaryMetrics, ?> getSummaryFile(final String input, final String reference, final String prefix,
 															  final List<String> sequences) throws Exception {
 		final List<String> argList = new ArrayList<>();
-		argList.add("--INPUT");
+		argList.add("--input");
         argList.add(input);
 		argList.add("--METRICS_FILE_PREFIX");
         argList.add(prefix);
-		argList.add("--REFERENCE");
+		argList.add("--reference");
         argList.add(reference);
 		for (final String sequence : sequences) {
 			argList.add("--SEQUENCE_NAMES");

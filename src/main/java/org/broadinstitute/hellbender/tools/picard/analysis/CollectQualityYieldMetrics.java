@@ -28,15 +28,15 @@ import java.io.File;
 )
 public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "A SAM or BAM file to process.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The metrics file to write with quality yield metrics.")
     public File OUTPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.USE_ORIGINAL_QUALITIES_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.USE_ORIGINAL_QUALITIES_LONG_NAME, shortName = StandardArgumentDefinitions.USE_ORIGINAL_QUALITIES_SHORT_NAME,
             doc = "If available in the OQ tag, use the original quality scores " +
                     "as inputs instead of the quality scores in the QUAL field.")
     public boolean USE_ORIGINAL_QUALITIES = true;

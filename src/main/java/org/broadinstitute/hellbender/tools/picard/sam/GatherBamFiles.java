@@ -30,11 +30,13 @@ import java.util.List;
 )
 public final class GatherBamFiles extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more BAM or CRAM files or text files containing lists of BAM files one per line.")
     public List<File> INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file to write.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file to write.")
     public File OUTPUT;
 
     private static final Logger log = LogManager.getLogger();

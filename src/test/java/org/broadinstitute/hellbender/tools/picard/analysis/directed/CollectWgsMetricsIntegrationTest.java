@@ -18,9 +18,9 @@ public final class CollectWgsMetricsIntegrationTest extends CommandLineProgramTe
         final File expectedFile = new File(TEST_DATA_DIR, "CollectWgsMetrics.txt");
         final File outfile = BaseTest.createTempFile("testCollectWgsMetrics", ".metrics");
         final String[] args = new String[]{
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
-                "--REFERENCE", refFile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
+                "--reference", refFile.getAbsolutePath(),
                 "--VALIDATION_STRINGENCY", "LENIENT",
                 "--STOP_AFTER", "10000000",
                 "--INCLUDE_BQ_HISTOGRAM", "TRUE"

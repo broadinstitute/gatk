@@ -60,8 +60,8 @@ public final class AddCommentsToBamIntegrationTest extends CommandLineProgramTes
 
     private void runIt(final File inputFile, final File outputFile, final String[] commentList) {
         final List<String> args = new ArrayList<>(Arrays.asList(
-                "--INPUT", inputFile.getAbsolutePath(),
-                "--OUTPUT", outputFile.getAbsolutePath()));
+                "--input", inputFile.getAbsolutePath(),
+                "--output", outputFile.getAbsolutePath()));
         for (final String comment : commentList) {
             args.add("--COMMENT");
             args.add(comment);
