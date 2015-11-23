@@ -65,6 +65,36 @@ import java.util.stream.StreamSupport;
 )
 public class CalculateTargetCoverage extends TargetWalker {
 
+    /**
+     * Short name for the {@link #maximumCoverage} argument.
+     */
+    public static final String MAXIMUM_COVERAGE_SHORT_NAME = "max";
+
+    /**
+     * Long name for the {@link #maximumCoverage} argument.
+     */
+    public static final String MAXIMUM_COVERAGE_FULL_NAME = "maximumCoverage";
+
+    /**
+     * Default value for the {@link #maximumCoverage} argument.
+     */
+    public static final long MAXIMUM_COVERAGE_DEFAULT = Long.MAX_VALUE;
+
+    /**
+     * Short name for the {@link #minimumMappingQuality} argument.
+     */
+    public static final String MINIMUM_MAPPING_QUALITY_SHORT_NAME = "minMQ";
+
+    /**
+     * Long name for the {@link #minimumMappingQuality} argument.
+     */
+    public static final String MINIMUM_MAPPING_QUALITY_FULL_NAME = "minimumMappingQuality";
+
+    /**
+     * Default value for the {@link #minimumMappingQuality} argument.
+     */
+    public static final int MINIMUM_MAPPING_QUALITY_DEFAULT = 0;
+
     @Argument(
             doc = "Output file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -72,6 +102,22 @@ public class CalculateTargetCoverage extends TargetWalker {
             optional  = false
     )
     protected File outputFile;
+
+    @Argument(
+            doc = "Maximum coverage per target and coverage group",
+            shortName = MAXIMUM_COVERAGE_SHORT_NAME,
+            fullName = MAXIMUM_COVERAGE_FULL_NAME,
+            optional = true
+    )
+    protected long maximumCoverage = MAXIMUM_COVERAGE_DEFAULT;
+
+    @Argument(
+            doc = "Minimum mapping quality",
+            shortName = MINIMUM_MAPPING_QUALITY_SHORT_NAME,
+            fullName  = MINIMUM_MAPPING_QUALITY_FULL_NAME,
+            optional = true
+    )
+    protected int minimumMappingQuality = MINIMUM_MAPPING_QUALITY_DEFAULT;
 
     protected TableWriter<ReadCountRecord> outputTableWriter;
 
@@ -131,10 +177,13 @@ public class CalculateTargetCoverage extends TargetWalker {
     }
 
     private CountingReadFilter makeReadFilter() {
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
+        final CountingReadFilter baseFilter = new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
                 .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
                 .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
                 .and(new CountingReadFilter("Non_Zero_Reference_Length", ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
+
+        return minimumMappingQuality <= 0 ? baseFilter :
+                baseFilter.and(new CountingReadFilter("MinMQ_" + minimumMappingQuality, read -> read.getMappingQuality() >= minimumMappingQuality));
     }
 
     @Override
@@ -145,6 +194,10 @@ public class CalculateTargetCoverage extends TargetWalker {
                 .mapToInt(readToColumn)
                 .filter(i -> i >= 0)
                 .forEach(i -> counts[i]++);
+        // cap by the maximum coverage allowed.
+        for (int i = 0; i < counts.length; i++) {
+            counts[i] = Math.min(counts[i], maximumCoverage);
+        }
         try {
             outputTableWriter.writeRecord(new ReadCountRecord(target, counts));
         } catch (final IOException ex) {
