@@ -608,6 +608,12 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         return new GoogleGenomicsReadToGATKReadAdapter(genomicsRead.clone());
     }
 
+    @Override
+    public GATKRead deepCopy() {
+        // Produces a deep copy..
+        return copy();
+    }
+
     /**
      * Return a SAM string representation of this read.
      */

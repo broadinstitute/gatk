@@ -500,18 +500,24 @@ public interface GATKRead extends Locatable {
     void clearAttributes();
 
     /**
-     * @return A copy of this read. The copy will not necessarily be a true deep copy (the fields inside the
-     *         encapsulated read itself may be shallow copied), but should be safe to use freely in general
+     * Return a copy of this read.
+     *
+     * @return A copy of this read. The copy will not necessarily be a true deep copy (the fields
+     *         encapsulated by the read itself may be shallow copied), but should be safe to use freely in general
      *         given that all GATKRead methods that return mutable reference types make defensive copies
      *         (with the exception of the conversion methods {@link #convertToSAMRecord} and
      *         {@link #convertToGoogleGenomicsRead}, but these are safe to call on copies since the
      *         encapsulated reads do get shallow copied at a minimum by this method, so modifications
      *         to the fields within a copied read will not alter the original).
-     *
-     * TODO: guarantee a deep copy here (requires writing a deep copy method for SAMRecord; copy() for
-     * TODO: Google Genomics reads already performs a deep copy)
      */
     GATKRead copy();
+
+    /**
+     * Return a deep copy of this read.
+     *
+     * @return A true deep copy of this read.
+     */
+    GATKRead deepCopy();
 
     /**
      * Convert this read into a SAMRecord.

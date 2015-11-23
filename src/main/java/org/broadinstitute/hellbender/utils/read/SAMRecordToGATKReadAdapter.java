@@ -491,8 +491,14 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public GATKRead copy() {
-        // Produces a shallow but "safe to use" copy. TODO: perform a deep copy here
+        // Produces a shallow but "safe to use" copy.
         return new SAMRecordToGATKReadAdapter(ReadUtils.cloneSAMRecord(samRecord));
+    }
+
+    @Override
+    public GATKRead deepCopy() {
+        // Produces a true deep copy.
+        return new SAMRecordToGATKReadAdapter(samRecord.deepCopy());
     }
 
     @Override
