@@ -2,10 +2,13 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileAlreadyExistsException;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -13,6 +16,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
+import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -26,10 +30,19 @@ import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConv
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.seqdoop.hadoop_bam.KeyIgnoringBAMOutputFormat;
+import org.seqdoop.hadoop_bam.SAMFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
+import org.seqdoop.hadoop_bam.util.SAMOutputPreparer;
 import scala.Tuple2;
+import scala.math.Ordering;
+import scala.math.Ordering$;
+import scala.reflect.ClassTag;
+import scala.reflect.ClassTag$;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Comparator;
 
 /**
  * ReadsSparkSink writes GATKReads to a file. This code lifts from the HadoopGenomics/Hadoop-BAM
@@ -63,6 +76,12 @@ public class ReadsSparkSink {
         }
     }
 
+    public static class SparkHeaderlessBAMOutputFormat extends SparkBAMOutputFormat {
+        public SparkHeaderlessBAMOutputFormat() {
+            setWriteHeader(false);
+        }
+    }
+
     /**
      * writeReads writes rddReads to outputFile with header as the file header.
      * @param ctx the JavaSparkContext to write.
@@ -75,6 +94,7 @@ public class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
         if (format.equals(ReadsWriteFormat.SINGLE)) {
+            header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
             writeReadsSingle(ctx, outputFile, rddReads, header);
         } else if (format.equals(ReadsWriteFormat.SHARDED)) {
             writeReadsSharded(ctx, outputFile, rddReads, header);
@@ -142,9 +162,9 @@ public class ReadsSparkSink {
             return new Tuple2<>(gatkRead, samRecordWritable);
         });
 
-        // coalesce is needed for writing to a single bam.
+        // do a total sort so that all the reads in partition i are less than those in partition i+1
         final JavaPairRDD<GATKRead, SAMRecordWritable> out =
-                rddSamRecordWriteable.sortByKey(new ReadCoordinateComparator(header)).coalesce(1);
+                totalSortByKey(rddSamRecordWriteable, new ReadCoordinateComparator(header), GATKRead.class);
 
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         // MyOutputFormat.setHeader.
@@ -156,31 +176,69 @@ public class ReadsSparkSink {
         }).mapToPair(t -> t);
 
         deleteHadoopFile(outputFile);
-        finalOut.saveAsNewAPIHadoopFile(outputFile, GATKRead.class, SAMRecordWritable.class, SparkBAMOutputFormat.class);
-        renameHadoopSingleShard(outputFile);
+        // Use SparkHeaderlessBAMOutputFormat so that the header is not written for each part file
+        finalOut.saveAsNewAPIHadoopFile(outputFile, GATKRead.class, SAMRecordWritable.class, SparkHeaderlessBAMOutputFormat.class);
+        mergeBam(outputFile, header);
+    }
+
+    /**
+     * Perform a totally-ordered sort by the given RDD's keys, so that the keys within a partition are sorted and, in
+     * addition, all the keys in partition <i>i</i> are less than those in partition <i>i+1</i>. The implementation uses
+     * Spark's RangePartitioner to create roughly equal partitions by sampling the keys in the RDD.
+     */
+    public static <K, V> JavaPairRDD<K, V> totalSortByKey(JavaPairRDD<K, V> rdd, Comparator<K> comparator, Class<K> keyClass) {
+        int numPartitions = rdd.partitions().size();
+        if (numPartitions == 1) {
+            return rdd.sortByKey(comparator);
+        }
+        Ordering<K> ordering = Ordering$.MODULE$.comparatorToOrdering(comparator);
+        ClassTag<K> tag = ClassTag$.MODULE$.apply(keyClass);
+        RangePartitioner<K, V> partitioner = new RangePartitioner<>(numPartitions, rdd.rdd(), true, ordering, tag);
+        return rdd.repartitionAndSortWithinPartitions(partitioner, comparator);
     }
 
     private static void deleteHadoopFile(String fileToObliterate) throws IOException {
         Configuration conf = new Configuration();
         FileSystem fs = FileSystem.get(conf);
-        fs.delete(new Path(fileToObliterate),true);
+        fs.delete(new Path(fileToObliterate), true);
     }
 
-    private static void renameHadoopSingleShard(String outputFile) throws IOException {
-        // At this point, the file is in outputFile/part-r-0000. We move it out of that dir and into it's own well-named
-        // file.  This will not work if the last step was a merge (assuming saveAsNewAPIHadoopFile doesn't cause the
-        // last step to be a reduce).
+    private static void mergeBam(String outputFile, SAMFileHeader header) throws IOException {
+        // At this point, the part files (part-r-00000, part-r-00001, etc) are in a directory named outputFile.
+        // Each part file is a BAM file with no header or terminating end-of-file marker (Hadoop-BAM does not add
+        // end-of-file markers), so to merge into a single BAM we concatenate the header with the part files and a
+        // terminating end-of-file marker. Note that this has the side effect of being ever-so-slightly less efficient
+        // than writing a BAM in one go because the last block of each file isn't completely full.
+
         Configuration conf = new Configuration();
         FileSystem fs = FileSystem.get(conf);
-        String ouputParentDir = outputFile.substring(0, outputFile.lastIndexOf("/") + 1);
+        String outputParentDir = outputFile.substring(0, outputFile.lastIndexOf("/") + 1);
         // First, check for the _SUCCESS file.
         String successFile = outputFile + "/_SUCCESS";
         if (!fs.exists(new Path(successFile))) {
             throw new GATKException("unable to find " + successFile + " file");
         }
-        String tmpPath = ouputParentDir + "tmp" + System.currentTimeMillis();
-        fs.rename(new Path(outputFile + "/part-r-00000"), new Path(tmpPath));
+        String tmpPath = outputParentDir + "tmp" + System.currentTimeMillis();
+        fs.rename(new Path(outputFile), new Path(tmpPath));
         fs.delete(new Path(outputFile), true);
-        fs.rename(new Path(tmpPath), new Path(outputFile));
+
+        try (final OutputStream out = fs.create(new Path(outputFile))) {
+            new SAMOutputPreparer().prepareForRecords(out, SAMFormat.BAM, header); // write the header
+            mergeInto(out, new Path(tmpPath), conf);
+            out.write(BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK); // add the BGZF terminator
+        }
+    }
+
+    private static void mergeInto(OutputStream out, Path directory, Configuration conf) throws IOException {
+        final FileSystem fs = directory.getFileSystem(conf);
+        final FileStatus[] parts = fs.globStatus(new Path(directory, "part-r-[0-9][0-9][0-9][0-9][0-9]*"));
+        for (final FileStatus part : parts) {
+            try (final InputStream in = fs.open(part.getPath())) {
+                IOUtils.copyBytes(in, out, conf, false);
+            }
+        }
+        for (final FileStatus part : parts) {
+            fs.delete(part.getPath(), false);
+        }
     }
 }
