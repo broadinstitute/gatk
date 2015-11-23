@@ -8,7 +8,6 @@ import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.index.tabix.TabixIndex;
-import htsjdk.tribble.util.LittleEndianOutputStream;
 import htsjdk.variant.vcf.VCF3Codec;
 import htsjdk.variant.vcf.VCFCodec;
 import org.apache.logging.log4j.LogManager;
@@ -16,12 +15,12 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -39,7 +38,13 @@ public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
     @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file (eg., VCF/BCF/etc. file) to index. Must be in a tribble-supported format")
-    private File featureFile;
+    public File featureFile;
+
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc = "The output index file. If missing, the tool will create an index file in the same directory as the input file.",
+            optional = true)
+    public File outputFile;
 
     public static final int OPTIMAL_GVCF_INDEX_BIN_SIZE = 128000;
     public static final String GVCF_FILE_EXTENSION = ".gvcf";
@@ -53,26 +58,32 @@ public final class IndexFeatureFile extends CommandLineProgram {
 
         // Get the right codec for the file to be indexed. This call will throw an appropriate exception
         // if featureFile is not in a supported format or is unreadable.
-        FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(featureFile);
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(featureFile);
 
-        // Create appropriate index type in memory, and determine the name of the file we'll write the index to
-        final Index index = createAppropriateIndexInMemory(featureFile, codec);
-        final File indexFile = index instanceof TabixIndex ? new File(featureFile.getAbsolutePath() + TABIX_INDEX_EXTENSION) :
-                                                             Tribble.indexFile(featureFile);
+        final Index index = createAppropriateIndexInMemory(codec);
+        final File indexFile = determineFileName(index);
 
-        // Write the index to disk
-        try ( LittleEndianOutputStream stream = new LittleEndianOutputStream(new FileOutputStream(indexFile)) ) {
-            index.write(stream);
-        }
-        catch ( IOException e ) {
+        try{
+            IndexFactory.writeIndex(index, indexFile);
+        } catch ( final IOException e ) {
             throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexFile.getAbsolutePath(), e);
         }
 
         logger.info("Successfully wrote index to " + indexFile.getAbsolutePath());
-        return 0;
+        return indexFile.getAbsolutePath();
     }
 
-    private Index createAppropriateIndexInMemory( final File featureFile, final FeatureCodec<? extends Feature, ?> codec ) {
+    private File determineFileName(final Index index) {
+        if (outputFile != null){
+            return outputFile;
+        } else if (index instanceof TabixIndex){
+            return new File(featureFile.getAbsolutePath() + TABIX_INDEX_EXTENSION);
+        } else {
+            return Tribble.indexFile(featureFile);
+        }
+    }
+
+    private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec ) {
         // For block-compression VCF files, write a Tabix index
         if ( AbstractFeatureReader.hasBlockCompressedExtension(featureFile) ) {
             if ( isVCFCodec(codec) ) {

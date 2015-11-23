@@ -46,7 +46,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
                             "Wrong codec selected for file " + file.getAbsolutePath());
     }
 
-    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
+    @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testDetectUnsupportedFileFormat() {
         final File unsupportedFile = new File(FEATURE_MANAGER_TEST_DIRECTORY + "unsupported_format_file");
 
