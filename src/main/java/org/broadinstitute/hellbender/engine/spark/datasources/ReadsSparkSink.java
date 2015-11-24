@@ -153,18 +153,13 @@ public class ReadsSparkSink {
         // Set the header on the main thread.
         SparkBAMOutputFormat.setHeader(header);
 
-        // The expected format for writing is JavaPairRDD where the key is ignored and the value is a
-        // SAMRecordWritable. We use GATKRead as the key, so we can sort the reads before writing them to a file.
-        JavaPairRDD<GATKRead, SAMRecordWritable> rddSamRecordWriteable = rddReads.mapToPair(gatkRead -> {
-            SAMRecord samRecord = gatkRead.convertToSAMRecord(header);
-            SAMRecordWritable samRecordWritable = new SAMRecordWritable();
-            samRecordWritable.set(samRecord);
-            return new Tuple2<>(gatkRead, samRecordWritable);
-        });
+        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
+        // of data going through the shuffle.
+        JavaPairRDD<GATKRead, Void> rddReadPairs = rddReads.mapToPair(gatkRead -> new Tuple2<>(gatkRead, (Void) null));
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final JavaPairRDD<GATKRead, SAMRecordWritable> out =
-                totalSortByKey(rddSamRecordWriteable, new ReadCoordinateComparator(header), GATKRead.class);
+        final JavaPairRDD<GATKRead, Void> out =
+                totalSortByKey(rddReadPairs, new ReadCoordinateComparator(header), GATKRead.class);
 
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         // MyOutputFormat.setHeader.
@@ -173,7 +168,12 @@ public class ReadsSparkSink {
         final JavaPairRDD<GATKRead, SAMRecordWritable> finalOut = out.mapPartitions(tuple2Iterator -> {
             SparkBAMOutputFormat.setHeader(broadcast.getValue());
             return new IteratorIterable<>(tuple2Iterator);
-        }).mapToPair(t -> t);
+        }).mapToPair(t -> {
+            SAMRecord samRecord = t._1().convertToSAMRecord(header);
+            SAMRecordWritable samRecordWritable = new SAMRecordWritable();
+            samRecordWritable.set(samRecord);
+            return new Tuple2<>(t._1(), samRecordWritable);
+        });
 
         deleteHadoopFile(outputFile);
         // Use SparkHeaderlessBAMOutputFormat so that the header is not written for each part file
