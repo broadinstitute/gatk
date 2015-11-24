@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
@@ -70,6 +71,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
+    @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
+
     /**
      * all the command line arguments for BQSR and its covariates
      */
@@ -101,8 +105,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         }
 
         JavaRDD<GATKRead> initialReads = getReads();
-
-        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), new OpticalDuplicateFinder());
+        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder());
 
         // The marked reads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional

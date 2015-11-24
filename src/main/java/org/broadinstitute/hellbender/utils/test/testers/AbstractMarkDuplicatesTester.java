@@ -22,7 +22,7 @@ import java.io.FileReader;
  * This class is an extension of SamFileTester used to test AbstractMarkDuplicatesCommandLineProgram's with SAM files generated on the fly.
  * This performs the underlying tests defined by classes such as AbstractMarkDuplicatesCommandLineProgramTest.
  */
-abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
+public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
 
     final private File metricsFile;
     final DuplicationMetrics expectedMetrics;
@@ -156,5 +156,5 @@ abstract public class AbstractMarkDuplicatesTester extends SamFileTester {
         }
     }
 
-    abstract protected CommandLineProgram getProgram();
+    protected abstract CommandLineProgram getProgram();
 }

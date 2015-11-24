@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
 import java.io.IOException;
@@ -39,6 +40,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             shortName = "M", fullName = "METRICS_FILE")
     protected String metricsFile;
 
+    @Argument(shortName = "DS", fullName = "duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
+
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
@@ -47,16 +51,18 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     protected int parallelism = 0;
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
+                                         final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder) {
-        return mark(reads, header, opticalDuplicateFinder, reads.partitions().size());
+        return mark(reads, header, scoringStrategy, opticalDuplicateFinder, reads.partitions().size());
     }
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
+                                         final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder, final int parallelism) {
 
         JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !isNonPrimary(v1));
         JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> isNonPrimary(v1));
-        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, opticalDuplicateFinder, primaryReads, parallelism);
+        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, scoringStrategy, opticalDuplicateFinder, primaryReads, parallelism);
 
         return primaryReadsTransformed.union(nonPrimaryReads);
     }
@@ -74,7 +80,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
 
-        final JavaRDD<GATKRead> finalReads = mark(reads, getHeaderForReads(), finder, parallelism);
+        final JavaRDD<GATKRead> finalReads = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, parallelism);
 
         try {
             ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
