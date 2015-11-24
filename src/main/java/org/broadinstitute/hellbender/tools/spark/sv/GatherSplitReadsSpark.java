@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import htsjdk.samtools.*;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -15,12 +14,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
-import org.seqdoop.hadoop_bam.BAMRecordWriter;
-import org.seqdoop.hadoop_bam.SAMRecordWritable;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.*;
 
 @CommandLineProgramProperties(summary="Gather clustered split reads using spark",
@@ -197,9 +192,9 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         private static final int MIN_EVIDENCE = 3; // minimum evidence count in a cluster
     }
 
-    private static final class SAMWindowSorter implements Iterator<GATKRead>, Iterable<GATKRead>
+    private static final class WindowSorter implements Iterator<GATKRead>, Iterable<GATKRead>
     {
-        public SAMWindowSorter( final Iterator<GATKRead> someInputIterator, final int someWindowSize )
+        public WindowSorter(final Iterator<GATKRead> someInputIterator, final int someWindowSize )
         {
             inputIterator = someInputIterator;
             windowSize = someWindowSize;
@@ -265,8 +260,12 @@ public class GatherSplitReadsSpark extends GATKSparkTool
             throw new IllegalStateException("The BAM must be coordinate sorted.");
 
         final JavaRDD<GATKRead> clusteredReads =
-            getReads().mapPartitions(readItr ->
-                { return new SAMWindowSorter(new SplitReadClusterer(readItr),SAM_WINDOW_SIZE); }, true);
+            getReads()
+                .mapPartitions(readItr ->
+                { return new WindowSorter(new SplitReadClusterer(readItr),SAM_WINDOW_SIZE); }, true)
+                .coalesce(1)
+                .mapPartitions(readItr ->
+                { return new WindowSorter(readItr,SAM_WINDOW_SIZE); }, true);
 
         try
         { ReadsSparkSink.writeReads(ctx, output, clusteredReads, header.value(), ReadsWriteFormat.SINGLE); }
