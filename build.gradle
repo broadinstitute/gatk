@@ -84,10 +84,6 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror']
 }
 
-installDist.dependsOn downloadGsaLibFile
-build.dependsOn installDist
-check.dependsOn installDist
-
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
@@ -191,10 +187,6 @@ jar {
 task testAll(type: Test){
     useTestNG{}
 
-    // ensure dataflowRunner is passed to the test VM if specified on the command line
-    systemProperty "dataflowRunner", System.getProperty("dataflowRunner")
-    // increase max buffer size for Spark serialization
-    systemProperty "spark.kryoserializer.buffer.max", "256m"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
     // set heap size for the test JVM(s)
@@ -397,6 +389,14 @@ uploadArchives {
                 ' for more information.' )
             throw new Exception("Missing sonatype username or password, please see the README for properties that must be specified for uploading an archive.")}
         )
-
     }
+
+task installSpark{ dependsOn sparkJar }
+task installAll{  dependsOn installSpark, installDist }
+
+
+installDist.dependsOn downloadGsaLibFile
+build.dependsOn installDist
+check.dependsOn installDist
+
 }

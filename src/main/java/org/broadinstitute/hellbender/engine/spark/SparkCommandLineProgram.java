@@ -18,7 +18,6 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
             shortName = "apiKey", fullName = "apiKey", optional=true)
     protected String apiKey = null;
 
-
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     protected String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
 
