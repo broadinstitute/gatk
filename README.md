@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/broadinstitute/hellbender-protected.svg?branch=master)](https://travis-ci.org/broadinstitute/hellbender-protected)
-[![Coverage Status](https://coveralls.io/repos/broadinstitute/hellbender-protected/badge.svg?branch=master&t=fjUaFR)](https://coveralls.io/r/broadinstitute/hellbender-protected?branch=master)
+[![Build Status](https://travis-ci.org/broadinstitute/gatk-protected.svg?branch=master)](https://travis-ci.org/broadinstitute/gatk-protected)
+[![Coverage Status](https://coveralls.io/repos/broadinstitute/gatk-protected/badge.svg?branch=master&t=fjUaFR)](https://coveralls.io/r/broadinstitute/gatk-protected?branch=master)
 
 GATK4-Protected (codename Hellbender-protected)
 ===============================================
