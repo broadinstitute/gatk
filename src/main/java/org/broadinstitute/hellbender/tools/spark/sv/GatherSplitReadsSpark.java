@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -13,6 +15,7 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
@@ -95,11 +98,12 @@ public class GatherSplitReadsSpark extends GATKSparkTool
                     !read.isDuplicate() && read.getMappingQuality() > 0 &&
                     read.getStart() != ReadConstants.UNSET_POSITION )
             {
-                if ( partitionContig == null )
-                    partitionContig = read.getContig();
-                else if ( partitionContig != read.getContig() )
-                    throw new GATKException("This tool cannot handle partitions that cross contig boundaries.  "+
-                            "Please reindex your input to provide single-contig partitions.");
+                String readContig = read.getContig();
+                if ( currentContig != readContig )
+                {
+                    currentContig = readContig;
+                    locMap.clear();
+                }
 
                 final List<CigarElement> cigarElements = read.getCigar().getCigarElements();
                 int matchLen = 0;
@@ -178,7 +182,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
             return true;
         }
 
-        private String partitionContig = null;
+        private String currentContig = null;
         private long counter = 0;
         private final Iterator<GATKRead> inputIterator;
         private final SortedMap<EventEvidence,GATKRead> locMap = new TreeMap<>();
@@ -194,8 +198,61 @@ public class GatherSplitReadsSpark extends GATKSparkTool
 
     private static final class WindowSorter implements Iterator<GATKRead>, Iterable<GATKRead>
     {
-        public WindowSorter(final Iterator<GATKRead> someInputIterator, final int someWindowSize )
+        private static final class GATKKey implements Comparable<GATKKey>
         {
+            GATKKey( int someRelativeContigNo, GATKRead someRead )
+            {
+                relativeContigNo = someRelativeContigNo;
+                locus = someRead.getStart();
+                isFirst = someRead.isFirstOfPair();
+                read = someRead;
+            }
+
+            @Override
+            public int compareTo( GATKKey that )
+            {
+                int result = Integer.compare(this.relativeContigNo,that.relativeContigNo);
+                if ( result == 0 ) result = Integer.compare(this.locus,that.locus);
+                if ( result == 0 ) result = this.read.getName().compareTo(that.read.getName());
+                if ( result == 0 ) result = -Boolean.compare(this.isFirst,that.isFirst);
+                return result;
+            }
+
+            @Override
+            public boolean equals( Object obj )
+            {
+                if ( !(obj instanceof GATKKey) ) return false;
+                GATKKey that = (GATKKey)obj;
+                return this.read.getName() == that.read.getName() && this.isFirst == that.isFirst;
+            }
+
+            @Override
+            public int hashCode()
+            {
+                return 47*read.hashCode() ^ Boolean.hashCode(isFirst);
+            }
+
+            public int distanceTo( GATKKey that )
+            {
+                if ( this.relativeContigNo != that.relativeContigNo )
+                    return Integer.MAX_VALUE;
+                return that.locus - this.locus;
+            }
+
+            public GATKRead getRead() { return read; }
+
+            private final int relativeContigNo;
+            private final int locus;
+            private final boolean isFirst;
+            private final GATKRead read;
+        }
+
+        public WindowSorter( final Iterator<GATKRead> someInputIterator,
+                             final int someWindowSize )
+        {
+            currentContig = null;
+            contigNo = 0;
+            recordSet = new TreeSet<>();
             inputIterator = someInputIterator;
             windowSize = someWindowSize;
             fillBuffer();
@@ -210,8 +267,8 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         @Override
         public GATKRead next()
         {
-            final Iterator<GATKRead> itr = recordSet.iterator();
-            final GATKRead result = itr.next();
+            final Iterator<GATKKey> itr = recordSet.iterator();
+            final GATKRead result = itr.next().getRead();
             itr.remove();
             fillBuffer();
             return result;
@@ -223,31 +280,30 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         private void fillBuffer()
         {
             while ( getSetSpan() <= windowSize && inputIterator.hasNext() )
-                recordSet.add(inputIterator.next());
+            {
+                GATKRead read = inputIterator.next();
+                String readContig = read.getContig();
+                if ( currentContig == null || currentContig != readContig )
+                {
+                    currentContig = readContig;
+                    contigNo += 1;
+                }
+                recordSet.add(new GATKKey(contigNo,read));
+            }
         }
 
         private int getSetSpan()
         {
-            if ( recordSet.isEmpty() )
-                return 0;
-            final GATKRead first = recordSet.first();
-            final GATKRead last = recordSet.last();
-            return last.getStart() - first.getStart();
+            if ( recordSet.isEmpty() ) return 0;
+            final GATKKey first = recordSet.first();
+            final GATKKey last = recordSet.last();
+            if ( first == last ) return 0;
+            return first.distanceTo(last);
         }
 
-        private static final class ReadComparator implements Comparator<GATKRead>
-        {
-            @Override
-            public int compare( final GATKRead rec1, final GATKRead rec2 )
-            {
-                int result = Integer.compare(rec1.getStart(), rec2.getStart());
-                if ( result == 0 ) result = rec1.getName().compareTo(rec2.getName());
-                if ( result == 0 ) result = -Boolean.compare(rec1.isFirstOfPair(),rec2.isFirstOfPair());
-                return result;
-            }
-        }
-
-        private final SortedSet<GATKRead> recordSet = new TreeSet<>(new ReadComparator());
+        private String currentContig;
+        private int contigNo;
+        private final SortedSet<GATKKey> recordSet;
         private final Iterator<GATKRead> inputIterator;
         private final int windowSize;
     }
@@ -255,9 +311,9 @@ public class GatherSplitReadsSpark extends GATKSparkTool
     @Override
     protected void runTool( final JavaSparkContext ctx )
     {
-        final Broadcast<SAMFileHeader> header = ctx.broadcast(getHeaderForReads());
-        if ( header.value().getSortOrder() != SAMFileHeader.SortOrder.coordinate )
-            throw new IllegalStateException("The BAM must be coordinate sorted.");
+        final SAMFileHeader header = getHeaderForReads();
+        if ( header.getSortOrder() != SAMFileHeader.SortOrder.coordinate )
+            throw new GATKException("The BAM must be coordinate sorted.");
 
         final JavaRDD<GATKRead> clusteredReads =
             getReads()
@@ -268,7 +324,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
                 { return new WindowSorter(readItr,SAM_WINDOW_SIZE); }, true);
 
         try
-        { ReadsSparkSink.writeReads(ctx, output, clusteredReads, header.value(), ReadsWriteFormat.SINGLE); }
+        { ReadsSparkSink.writeReads(ctx,output,clusteredReads,header,ReadsWriteFormat.SINGLE); }
         catch ( IOException e )
         { throw new GATKException("Unable to write BAM" + output, e); }
     }

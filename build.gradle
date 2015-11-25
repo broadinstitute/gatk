@@ -127,7 +127,7 @@ dependencies {
 
     compile 'org.jgrapht:jgrapht-core:0.9.1'
     compile 'org.testng:testng:6.9.6' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
-    compile('org.seqdoop:hadoop-bam:7.3.1-SNAPSHOT') {
+    compile('org.seqdoop:hadoop-bam:7.3.0') {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
