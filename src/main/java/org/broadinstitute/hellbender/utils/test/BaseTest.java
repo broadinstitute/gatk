@@ -80,6 +80,9 @@ public abstract class BaseTest {
     // Variants from a DBSNP 138 VCF overlapping the reads in NA12878_20_21_WGS_bam
     public static final String dbsnp_138_b37_20_21_vcf = largeFileTestDir + "dbsnp_138.b37.20.21.vcf";
 
+    public static final String WGS_B37_CH20_1M_1M1K_BAM = "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
+    public static final String DBSNP_138_B37_CH20_1M_1M1K_VCF = "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
+
     /**
      * END OF LARGE FILES FOR TESTING
      */
