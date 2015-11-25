@@ -195,6 +195,7 @@ task testAll(type: Test){
     systemProperty "dataflowRunner", System.getProperty("dataflowRunner")
     // increase max buffer size for Spark serialization
     systemProperty "spark.kryoserializer.buffer.max", "256m"
+    systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
@@ -237,6 +238,8 @@ test {
             excludeGroups 'spark'
         }
     }
+
+    systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
