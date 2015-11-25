@@ -21,8 +21,8 @@ public final class SamAssertionUtilsUnitTest extends BaseTest{
                 {fileBam, "file1_reorder_PG_header_lines.sam", true},    //ok to reorder PG lines
                 {fileBam, "file1_reorder_read_attributes.sam", true},    //ok to reorder attributes
                 {fileBam, "file1_new_read_attribute.sam", true},         //ok to add an attribute
+                {fileBam, "file1_different_version.sam", true},         //ok to have a different version if everything else is same
 
-                {fileBam, "file1_different_version.sam", false},
                 {fileBam, "file1_missing_read_attribute.sam", false},  //not ok to lose an attribute
                 {fileBam, "file1_different_bases.sam", false},
                 {fileBam, "file1_different_basequals.sam", false},

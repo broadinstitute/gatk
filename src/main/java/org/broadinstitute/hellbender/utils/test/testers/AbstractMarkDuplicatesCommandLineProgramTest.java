@@ -3,14 +3,17 @@ package org.broadinstitute.hellbender.utils.test.testers;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -562,5 +565,35 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
                 {new File(TEST_DATA_DIR, "optical_dupes.bam"), new File(TEST_DATA_DIR,"expected.optical_dupes.markDuplicate.metrics")},
                 {new File(TEST_DATA_DIR, "inputSingleLibrarySolexa16404.bam"), new File(TEST_DATA_DIR,"expected.inputSingleLibrarySolexa16404.metrics")},
         };
+    }
+
+    @DataProvider(name="testMDdata")
+    public Object[][] testMDdata() {
+        //Note: the expected metrics files were created using picard 1.130
+
+        //On this file, the spark version used to create the wrong order of reads. It was fixed in https://github.com/broadinstitute/gatk/pull/1197
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "mdOrderBug.sam"), new File(TEST_DATA_DIR,"expected.mdOrderBug.sam")},
+        };
+    }
+
+    @Test(dataProvider = "testMDdata")
+    public void testMDOrder(final File input, final File expectedOutput) throws Exception {
+
+        final File metricsFile = createTempFile("markdups_metrics", ".txt");
+        final File outputFile = createTempFile("markdups", ".bam");
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("-"+ StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        args.add(input.getPath());
+        args.add("-"+StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        args.add(outputFile.getAbsolutePath());
+        args.add("--METRICS_FILE");
+        args.add(metricsFile.getAbsolutePath());
+
+        final CommandLineProgram markDuplicates = getCommandLineProgramInstance();
+
+        markDuplicates.instanceMain(args.getArgsArray());
+        SamAssertionUtils.assertEqualBamFiles(outputFile, expectedOutput, false, ValidationStringency.SILENT);
     }
 }
