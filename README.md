@@ -46,9 +46,9 @@ Note: for faster gradle operations, add `org.gradle.daemon=true` to your `~/.gra
 ##Running GATK4
 To run the main program locally, run `build/install/gatk/bin/gatk`.
 
-For spark tools, first build the Spark jar using `gradle sparkJar`. The jar can be found in `build/libs/` and will have
+For Spark tools, first build the Spark jar using `gradle sparkJar`. The jar can be found in `build/libs/` and will have
 a name that matches the pattern `gatk-all-4.pre-alpha-7-*-SNAPSHOT-spark.jar`, where `*` is the
-hash of the current commit.
+hash of the current commit. More information on how to run an monitor Spark GATK4 tools is [here](https://github.com/broadinstitute/gatk/blob/master/spark.md).
 
 There are three main ways to run GATK4 with Spark,
 * Locally, using the regular gatk jar and `--sparkMaster 'local[*]'`
