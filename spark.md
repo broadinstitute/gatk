@@ -1,32 +1,18 @@
-Hellbender on Spark
+GATK4 on Spark
 ================
 
-[Apache Spark](https://spark.apache.org/) is a fast and general engine for large-scale data processing, and thanks to
-[Spark Dataflow](https://github.com/cloudera/spark-dataflow), Hellbender can run on any Spark cluster, such as an
-on-premise Hadoop cluster with HDFS storage and the Spark runtime. You can also use the Spark Dataflow Runner locally
-for testing, without having to install Spark separately, or with a local standalone cluster running on your machine.
+[Apache Spark](https://spark.apache.org/) is a fast and general engine for large-scale data processing. GATK4 can run on any Spark cluster, such as an
+on-premise Hadoop cluster with HDFS storage and the Spark runtime. You can also use the local runner.
 
-This document walks through all of these different scenarios.
 
-Running Tests on Spark Dataflow
+Running GATK4 Commands Locally on Spark (without a Cluster)
 ------------
 
-To run tests against the Spark Dataflow runner set the `dataflowRunner` system property as follows:
-
-```bash
-gradle test -DdataflowRunner=SparkPipelineRunner
-```
-
-The tests create a local Spark cluster running in the JVM and use it to run the Hellbender Dataflow pipelines.
-
-Running Hellbender Commands Locally on Spark Dataflow (Without a Cluster)
-------------
-
-This allows you to run Hellbender Dataflow command lines using Spark running in the local JVM. It is useful for testing
-commands against local files using the Spark Dataflow runner.
+This allows you to run GATK4 command lines using Spark running in the local JVM. It is useful for testing
+commands against local files using the Spark runner.
 
 First, [download](https://spark.apache.org/downloads.html) and unpack the Spark tarball on your local machine.
-Version 1.3.1 for Hadoop 2.6 is recommended.
+Version 1.5.x for Hadoop 2.6 is recommended.
 
 For convenience, add Spark to your `PATH`:
 
@@ -35,11 +21,11 @@ export SPARK_HOME=/path/to/spark/installation
 export PATH=$PATH:$SPARK_HOME/bin
 ```
 
-The Hellbender build produces a JAR file that is suitable for running Spark jobs with (note that it differs from the
-"fat JAR" that is used for running regular Hellbender commands). Build it with:
+The GATK build produces a JAR file that is suitable for running Spark jobs with (note that it differs from the
+"fat JAR" that is used for running regular GATK commands). Build the Spark-compatible jar with:
 
 ```bash
-gradle clean shadowJar
+gradle clean sparkJar
 ```
 
 You should see a JAR file in the _build/libs_ directory with a `-spark` extension.
@@ -49,13 +35,10 @@ the count reads program to count the number of reads in a BAM file, type the fol
 
 ```bash
 spark-submit \
-  build/libs/hellbender-all-*-spark.jar CountReadsDataflow \
+  build/libs/gatk-all-*-spark.jar CountReadsSpark \
     --input ./src/test/resources/org/broadinstitute/hellbender/tools/flag_stat.bam \
-    --output countreads \
-    --runner SPARK
+    --output countreads
 ```
-
-Notice that the Spark Dataflow runner was specified using the `--runner` argument.
 
 You can inspect the output with
 
@@ -63,7 +46,7 @@ You can inspect the output with
 cat countreads*
 ```
 
-Running Hellbender Commands on a Spark Cluster
+Running GATK4 Commands on a Spark Cluster
 ------------
 
 In this scenario, your input and output files reside on HDFS, and Spark will run in a distributed fashion on the cluster.
@@ -90,10 +73,9 @@ spark-submit \
   --conf spark.driver.userClassPathFirst=true \
   --conf spark.executor.userClassPathFirst=true \
   --conf spark.io.compression.codec=lzf \
-  build/libs/hellbender-all-*-spark.jar CountReadsDataflow \
+  build/libs/gatk-all-*-spark.jar CountReadsSpark \
     --input hdfs://$NAMENODE/user/$USER/flag_stat.bam \
     --output hdfs://$NAMENODE/user/$USER/out/countreads \
-    --runner SPARK \
     --sparkMaster $SPARK_MASTER
 ```
 
@@ -144,10 +126,9 @@ spark-submit \
   --conf spark.executor.userClassPathFirst=true \
   --conf spark.io.compression.codec=lzf \
   --conf spark.shuffle.io.preferDirectBufs=false \
-  build/libs/hellbender-all-*-spark.jar CountReadsDataflow \
+  build/libs/gatk-all-*-spark.jar CountReadsSpark \
     --input hdfs://$NAMENODE/user/$USER/bam/NA12877_S1.bam \
     --output hdfs://$NAMENODE/user/$USER/out/countreads \
-    --runner SPARK \
     --sparkMaster $SPARK_MASTER
 ```
 
@@ -155,9 +136,13 @@ The input file, _NA12877_S1.bam_, is 121GB in size, which gets split into ~950 p
 format), so roughly ten rounds of 100 concurrent tasks are needed to process the file. On a larger cluster it would be
 advisable to increase the number of executors (or executor cores, or both) so that the pipeline completed faster.
 
+While your Spark job is running, the [Spark UI](http://spark.apache.org/docs/latest/monitoring.html) is an excellent place to monitor the  progress. Additionally, if you're running tests, then by adding `-Dgatk.spark.debug=true` you can run a single Spark test and look at the Spark UI (on [http://localhost:4040/](http://localhost:4040/)) as it runs.
+
 You can find more information about tuning Spark and choosing good values for number of executors and memory settings
 at the following:
 
 * [Tuning Spark](https://spark.apache.org/docs/latest/tuning.html)
 * [How-to: Tune Your Apache Spark Jobs (Part 1)](http://blog.cloudera.com/blog/2015/03/how-to-tune-your-apache-spark-jobs-part-1/)
 * [How-to: Tune Your Apache Spark Jobs (Part 2)](http://blog.cloudera.com/blog/2015/03/how-to-tune-your-apache-spark-jobs-part-2/)
+ 
+
