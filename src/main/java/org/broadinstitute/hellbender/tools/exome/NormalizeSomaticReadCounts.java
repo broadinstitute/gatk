@@ -7,10 +7,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -63,33 +60,21 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      *     It must be small yet greater than 0 to avoid -Inf problems in the calculations.
      * </p>
      */
-    public static double EPSILON = Math.pow(10,-10);
+    public static final double EPSILON = Math.pow(10,-10);
 
     /**
      * Cached inverse of the natural logarithm of 2.
      */
-    private static double INV_LN2 = 1.0 / Math.log(2.0);
+    private static final double INV_LN2 = 1.0 / Math.log(2.0);
 
     public static final String READ_COUNTS_FILE_FULL_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
     public static final String READ_COUNTS_FILE_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
 
-    public static final String TARGET_FILE_FULL_NAME = "targets";
-    public static final String TARGET_FILE_SHORT_NAME = "T";
-
-    public static final String PON_FILE_FULL_NAME = "panelOfNormals";
-    public static final String PON_FILE_SHORT_NAME = "pon";
-
-    public static final String TANGENT_NORMALIZED_COUNTS_FULL_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
-    public static final String TANGENT_NORMALIZED_COUNTS_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
-
-    public static final String FACTOR_NORMALIZED_COUNTS_FULL_NAME = "factorNormalizedOutput";
+    public static final String FACTOR_NORMALIZED_COUNTS_LONG_NAME = "factorNormalizedOutput";
     public static final String FACTOR_NORMALIZED_COUNTS_SHORT_NAME = "FNO";
 
-    public static final String TANGENT_BETA_HATS_FULL_NAME = "betaHatsOutput";
+    public static final String TANGENT_BETA_HATS_LONG_NAME = "betaHatsOutput";
     public static final String TANGENT_BETA_HATS_SHORT_NAME = "BHO";
-
-    public static final String PRE_TANGENT_NORMALIZATION_FULL_NAME = "preTangentNormalizationOutput";
-    public static final String PRE_TANGENT_NORMALIZATION_SHORT_NAME = "PTNO";
 
     @Argument(
             doc = "read counts input file.  This can only contain one sample at a time.",
@@ -101,16 +86,16 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
     @Argument(
             doc = "target BED file.",
-            shortName = TARGET_FILE_SHORT_NAME,
-            fullName = TARGET_FILE_FULL_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
             optional = true
     )
     protected File targetFile;
 
     @Argument(
             doc = "panel Of normals HDF5 file",
-            shortName = PON_FILE_SHORT_NAME,
-            fullName = PON_FILE_FULL_NAME,
+            shortName = ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.PON_FILE_LONG_NAME,
             optional = false
     )
     protected File ponFile;
@@ -118,15 +103,15 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     @Argument(
             doc = "Factor normalized counts output",
             shortName = FACTOR_NORMALIZED_COUNTS_SHORT_NAME,
-            fullName = FACTOR_NORMALIZED_COUNTS_FULL_NAME,
+            fullName = FACTOR_NORMALIZED_COUNTS_LONG_NAME,
             optional = true
     )
     protected File fntOutFile;
 
     @Argument(
             doc = "Tangent normalized counts output",
-            shortName = TANGENT_NORMALIZED_COUNTS_SHORT_NAME,
-            fullName = TANGENT_NORMALIZED_COUNTS_FULL_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME,
             optional = false
     )
     protected File outFile;
@@ -134,15 +119,15 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     @Argument(
             doc = "Tangent normalization Beta Hats output file",
             shortName = TANGENT_BETA_HATS_SHORT_NAME,
-            fullName = TANGENT_BETA_HATS_FULL_NAME,
+            fullName = TANGENT_BETA_HATS_LONG_NAME,
             optional = true
     )
     protected File betaHatsOutFile;
 
     @Argument(
             doc = "Pre-tangent normalization counts",
-            shortName = PRE_TANGENT_NORMALIZATION_SHORT_NAME,
-            fullName = PRE_TANGENT_NORMALIZATION_FULL_NAME,
+            shortName = ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             optional = true
     )
     protected File preTangentNormalizationOutFile;

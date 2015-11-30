@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 import org.broadinstitute.hellbender.utils.segmenter.SegmenterUnitTest;
 import org.testng.annotations.DataProvider;
@@ -24,9 +26,9 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
     public void testUnLoggedCommandLine(final File INPUT_FILE, final File EXPECTED, final File output, String sampleName) throws IOException {
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         final String[] arguments = {
-                "-" + PerformSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
-                "-" + PerformSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
-                "-" + PerformSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
         };
         runCommandLine(arguments);
         SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
@@ -40,10 +42,10 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + PerformSegmentation.SAMPLE_NAME_SHORT_NAME, sampleName,
-                "-" + PerformSegmentation.TARGETS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
-                "-" + PerformSegmentation.SEGMENT_FILE_SHORT_NAME, output.getAbsolutePath(),
-                "-" + PerformSegmentation.LOG2_SHORT_NAME,
+                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
         SegmenterUnitTest.assertEqualSegments(output, EXPECTED);

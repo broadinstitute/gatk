@@ -20,29 +20,22 @@ import java.util.stream.Collectors;
  * Created by David Benjamin 7/15/15
  */
 public final class SegmentUtils {
-    private static final String SAMPLE_COLUMN = "Sample";
-    private static final String CONTIG_COLUMN = "Chromosome";
-    private static final String START_COLUMN = "Start";
-    private static final String END_COLUMN = "End";
-    private static final String NUM_PROBES_COLUMN = "Num_Probes";
-    private static final String MEAN_COLUMN = "Segment_Mean";
-    private static final String CALL_COLUMN = "Segment_Call";
-    private static final String MISSING_DATA = "NA";
 
     private SegmentUtils() {}
 
     /**
      * read a list of intervals without calls from a segfile with header:
-     * Sample   Chromosome  Start  End Num_PRobes  Segment_Mean    Segment_Call
+     * Sample   Chromosome  Start  End Num_Probes  Segment_Mean    Segment_Call
      */
     public static List<SimpleInterval> readIntervalsFromSegfile(final File segmentsFile) {
         try (final TableReader<SimpleInterval> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN)) {
+                    if (!columns.containsAll(SegmentTableColumns.SAMPLE.toString(), SegmentTableColumns.CONTIG.toString(),
+                            SegmentTableColumns.START.toString(), SegmentTableColumns.END.toString())) {
                         throw formatExceptionFactory.apply("Bad header");
                     }
                     // return the lambda to translate dataLines into uncalled segments.
-                    return (dataLine) -> new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN));
+                    return (dataLine) -> intervalFromDataline(dataLine);
                 })) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
@@ -59,14 +52,7 @@ public final class SegmentUtils {
      * Note Segment_Call is optional.  If not present, the modeled segments will be populated with a blank value.
      */
     public static List<ModeledSegment> readModeledSegmentsFromSegfile(final File segmentsFile) {
-
-        final Function<DataLine, ModeledSegment> dataLineToModeledSegmentFunction = (dataLine) -> new ModeledSegment(
-                new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)),
-                dataLine.get(CALL_COLUMN, ModeledSegment.NO_CALL),
-                dataLine.getLong(NUM_PROBES_COLUMN),
-                ParamUtils.log2(dataLine.getDouble(MEAN_COLUMN))
-        );
-        return readModeledSegments(segmentsFile, dataLineToModeledSegmentFunction);
+        return readModeledSegments(segmentsFile, (dataLine) -> modeledSegmentFromDataLine(dataLine, true));
     }
 
     /**
@@ -79,22 +65,16 @@ public final class SegmentUtils {
      * Note Segment_Call is optional.  If not present, the modeled segments will be populated with a blank value.
      */
     public static List<ModeledSegment> readModeledSegmentsFromLegacySegfile(final File segmentsFile) {
-
-        final Function<DataLine, ModeledSegment> dataLineToModeledSegmentFunction = (dataLine) -> new ModeledSegment(
-                new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)),
-                dataLine.get(CALL_COLUMN, ModeledSegment.NO_CALL),
-                dataLine.getLong(NUM_PROBES_COLUMN),
-                dataLine.getDouble(MEAN_COLUMN)
-        );
-        return readModeledSegments(segmentsFile, dataLineToModeledSegmentFunction);
+        return readModeledSegments(segmentsFile, (dataLine) -> modeledSegmentFromDataLine(dataLine, false));
     }
 
     private static List<ModeledSegment> readModeledSegments(File segmentsFile, Function<DataLine, ModeledSegment> dataLineToModeledSegmentFunction) {
         try (final TableReader<ModeledSegment> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     // Note that Segment_Call is optional
-                    if (!columns.containsAll(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, NUM_PROBES_COLUMN,
-                            MEAN_COLUMN)) {
+                    if (!columns.containsAll(SegmentTableColumns.SAMPLE.toString(), SegmentTableColumns.CONTIG.toString(),
+                            SegmentTableColumns.START.toString(), SegmentTableColumns.END.toString(), SegmentTableColumns.NUM_PROBES.toString(),
+                            SegmentTableColumns.MEAN.toString())) {
                         throw formatExceptionFactory.apply("Bad header");
                     }
                     // return the lambda to translate dataLines into called segments.
@@ -290,24 +270,35 @@ public final class SegmentUtils {
      */
     public static void writeModeledSegmentsToSegfile(final File outFile, List<ModeledSegment> segments, final String sample) {
         try (final TableWriter<ModeledSegment> writer = TableUtils.writer(outFile,
-                new TableColumnCollection(SAMPLE_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, NUM_PROBES_COLUMN,
-                        MEAN_COLUMN, CALL_COLUMN),
+                new TableColumnCollection(SegmentTableColumns.COLUMN_NAME_ARRAY),
 
                 //lambda for filling an initially empty DataLine
-                (ci, dataLine) -> {
-                    dataLine.append(sample, ci.getContig()).append(ci.getStart(), ci.getEnd())
-                            .append(ci.getOriginalProbeCount())
-                            .append(ci.getSegmentMeanInCRSpace())
-                            .append(ci.getCall());
+                (ms, dataLine) -> {
+                    dataLine.append(sample, ms.getContig()).append(ms.getStart(), ms.getEnd())
+                            .append(ms.getOriginalProbeCount())
+                            .append(ms.getSegmentMeanInCRSpace())
+                            .append(ms.getCall());
                 })) {
-            for (final ModeledSegment ci : segments) {
-                if (ci == null) {
-                    throw new IllegalArgumentException("Segments list contains a null.");
-                }
-                writer.writeRecord(ci);
+            for (final ModeledSegment ms : segments) {
+                writer.writeRecord(Utils.nonNull(ms, "Segments list contains a null."));
             }
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
+    }
+
+    private static SimpleInterval intervalFromDataline(final DataLine dataLine) {
+        return new SimpleInterval(dataLine.get(SegmentTableColumns.CONTIG.toString()),
+                dataLine.getInt(SegmentTableColumns.START.toString()), dataLine.getInt(SegmentTableColumns.END.toString()));
+    }
+
+    private static ModeledSegment modeledSegmentFromDataLine(final DataLine dataLine, final boolean takeLog2) {
+        final Double mean = dataLine.getDouble(SegmentTableColumns.MEAN.toString());
+
+        return new ModeledSegment(
+                intervalFromDataline(dataLine),
+                dataLine.get(SegmentTableColumns.CALL.toString(), ModeledSegment.NO_CALL),
+                dataLine.getLong(SegmentTableColumns.NUM_PROBES.toString()),
+                takeLog2 ? ParamUtils.log2(mean) : mean);
     }
 }

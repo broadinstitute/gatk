@@ -6,6 +6,7 @@ import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
@@ -67,10 +68,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, COORD_ONLY_READ_COUNTS_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
         };
         runCommandLine(arguments);
     }
@@ -84,12 +85,12 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath() + "failure-name",
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath() + "failure-name",
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
         runCommandLine(arguments);
     }
@@ -104,11 +105,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_WITH_EXTRA_TARGET_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
         runCommandLine(arguments);
     }
@@ -123,11 +124,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_WITH_EXTRA_TARGET_INPUT_ONE_SAMPLE.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
         runCommandLine(arguments);
     }
@@ -142,11 +143,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_MISSING_A_TARGET_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
         runCommandLine(arguments);
     }
@@ -161,11 +162,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_MISSING_A_TARGET_INPUT_ONE_SAMPLE.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
         runCommandLine(arguments);
     }
@@ -179,10 +180,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_BAD_NAME.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
         };
         runCommandLine(arguments);
     }
@@ -195,10 +196,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_BAD_NAME_ONE_SAMPLE.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS_WITH_BAD_NAME.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
         };
         runCommandLine(arguments);
     }
@@ -213,11 +214,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_INPUT.getAbsolutePath(),
-               "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+               "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-               "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+               "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-               "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+               "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
 
         runCommandLine(arguments);
@@ -234,11 +235,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, FULL_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
-               "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+               "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-               "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+               "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-               "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+               "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
 
         runCommandLine(arguments);
@@ -285,11 +286,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, TARGET_NAME_ONLY_READ_COUNTS_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
 
         runCommandLine(arguments);
@@ -304,11 +305,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, TARGET_NAME_ONLY_READ_COUNTS_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
 
         runCommandLine(arguments);
@@ -324,11 +325,11 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, TARGET_NAME_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.TANGENT_BETA_HATS_SHORT_NAME, betaHatsOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PRE_TANGENT_NORMALIZATION_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, preTangentNormalizationOutput.getAbsolutePath()
         };
 
         runCommandLine(arguments);
@@ -375,10 +376,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, COORD_ONLY_READ_COUNTS_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
         };
 
         runCommandLine(arguments);
@@ -393,10 +394,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
         };
 
         runCommandLine(arguments);
@@ -418,9 +419,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
         final String[] arguments = {
                 "-" + NormalizeSomaticReadCounts.READ_COUNTS_FILE_SHORT_NAME, COORD_ONLY_READ_COUNTS_INPUT.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME, TEST_PON.getAbsolutePath(),
                 "-" + NormalizeSomaticReadCounts.FACTOR_NORMALIZED_COUNTS_SHORT_NAME, factorNormalizedOutput.getAbsolutePath(),
-                "-" + NormalizeSomaticReadCounts.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME, tangentNormalizationOutput.getAbsolutePath(),
         };
 
         runCommandLine(arguments);

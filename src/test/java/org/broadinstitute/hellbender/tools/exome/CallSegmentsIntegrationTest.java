@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -22,10 +24,10 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         final File outputFile = createTempFile("test",".txt");
 
         final String[] arguments = {
-                "-" + CallSegments.SEGFILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
-                "-" + CallSegments.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + CallSegments.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
+                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD)
         };
         runCommandLine(arguments);
@@ -45,12 +47,12 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         final File outputFile = createTempFile("test",".txt");
 
         final String[] arguments = {
-                "-" + CallSegments.SEGFILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
-                "-" + CallSegments.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + CallSegments.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
+                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
-                "-" + CallSegments.LEGACY_SEG_FILE_SHORT_NAME, "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
+                "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME, "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
         };
         runCommandLine(arguments);
 
@@ -69,10 +71,10 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         final File outputFile = createTempFile("test",".txt");
 
         final String[] arguments = {
-                "-" + CallSegments.SEGFILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
-                "-" + CallSegments.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + CallSegments.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
+                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
                 "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
         };
@@ -93,12 +95,12 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         final File outputFile = createTempFile("test",".txt");
 
         final String[] arguments = {
-                "-" + CallSegments.SEGFILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
-                "-" + CallSegments.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + CallSegments.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + CallSegments.SAMPLE_LONG_NAME, SAMPLE_NAME,
+                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
-                "-" + CallSegments.LEGACY_SEG_FILE_SHORT_NAME
+                "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME
         };
         runCommandLine(arguments);
 

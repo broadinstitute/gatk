@@ -127,9 +127,9 @@ public final class CombineReadCounts extends CommandLineProgram {
     public static final String MAX_GROUP_SIZE_FULL_NAME = "maxOpenFiles";
     public static final int DEFAULT_MAX_GROUP_SIZE = 100;
 
-    private static final String READ_COUNTS_FILE_DOCUMENTATION =
+    private static final String READ_COUNT_FILES_DOCUMENTATION =
             "Coverage files to combine, they must contain all the targets in the input file (" +
-                    TargetArgumentCollection.TARGET_FILE_FULL_NAME + ") and in the same order";
+                    TargetArgumentCollection.TARGET_FILE_LONG_NAME + ") and in the same order";
 
     @Argument(
             doc = "File containing a list of coverage files to merge",
@@ -140,7 +140,7 @@ public final class CombineReadCounts extends CommandLineProgram {
     protected File coverageFileList;
 
     @Argument(
-            doc = READ_COUNTS_FILE_DOCUMENTATION,
+            doc = READ_COUNT_FILES_DOCUMENTATION,
             shortName = READ_COUNT_FILES_SHORT_NAME,
             fullName = READ_COUNT_FILES_FULL_NAME,
             optional = true
@@ -341,7 +341,7 @@ public final class CombineReadCounts extends CommandLineProgram {
      */
     private List<String> readCountColumnNames(final TableColumnCollection columns) {
         return columns.names().stream()
-                .filter(n -> !TargetTableColumn.isStandardTargetColumnName(n))
+                .filter(n -> !TargetTableColumns.isStandardTargetColumnName(n))
                 .collect(Collectors.toList());
     }
 
@@ -363,9 +363,9 @@ public final class CombineReadCounts extends CommandLineProgram {
 
                 @Override
                 public void processColumns(final TableColumnCollection columns) {
-                    hasCoordinates = columns.containsAll(TargetTableColumn.CONTIG.toString(), TargetTableColumn.START.toString(),
-                            TargetTableColumn.END.toString());
-                    hasName = columns.contains(TargetTableColumn.NAME.toString());
+                    hasCoordinates = columns.containsAll(TargetTableColumns.CONTIG.toString(), TargetTableColumns.START.toString(),
+                            TargetTableColumns.END.toString());
+                    hasName = columns.contains(TargetTableColumns.NAME.toString());
                     if (!hasCoordinates && !hasName) {
                         throw this.formatException("header contain neither coordinates nor target name columns");
                     }
@@ -394,7 +394,7 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private Target createTarget(final DataLine dataLine) {
                     if (hasName) {
-                        final String name = dataLine.get(TargetTableColumn.NAME);
+                        final String name = dataLine.get(TargetTableColumns.NAME);
                         final Target target = targets.target(name);
                         final SimpleInterval interval = createInterval(dataLine);
                         if (target == null) {
@@ -422,9 +422,9 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private SimpleInterval createInterval(final DataLine dataLine) {
                     if (hasCoordinates) {
-                        return new SimpleInterval(dataLine.get(TargetTableColumn.CONTIG),
-                                dataLine.getInt(TargetTableColumn.START),
-                                dataLine.getInt(TargetTableColumn.END));
+                        return new SimpleInterval(dataLine.get(TargetTableColumns.CONTIG),
+                                dataLine.getInt(TargetTableColumns.START),
+                                dataLine.getInt(TargetTableColumns.END));
                     } else {
                         return null;
                     }

@@ -12,7 +12,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-enum TargetTableColumn {
+enum TargetTableColumns {
     NAME("NAME", true),
     CONTIG("CONTIG", true),
     START("START", true),
@@ -24,7 +24,7 @@ enum TargetTableColumn {
 
     private boolean mandatory;
 
-    TargetTableColumn(String columnName, boolean mandatory ) {
+    TargetTableColumns(String columnName, boolean mandatory) {
         this.columnName = Utils.nonNull(columnName);
         this.mandatory = mandatory;
     }
@@ -35,7 +35,7 @@ enum TargetTableColumn {
     }
 
     public static final String[] COLUMN_NAME_ARRAY =
-            Stream.of(values()).map(TargetTableColumn::toString).toArray(String[]::new);
+            Stream.of(values()).map(TargetTableColumns::toString).toArray(String[]::new);
 
     /**
      * Set of all strings that correspond to a special column name.
@@ -50,7 +50,7 @@ enum TargetTableColumn {
     /**
      * Set of all mandatory columns.
      */
-    public static final Set<TargetTableColumn> MANDATORY_COLUMN_SET =
+    public static final Set<TargetTableColumns> MANDATORY_COLUMN_SET =
             Collections.unmodifiableSet(Stream.of(values())
                     .filter(c -> c.mandatory)
                     .collect(Collectors.toSet()));
@@ -59,7 +59,7 @@ enum TargetTableColumn {
      * Array with all the mandatory column names.
      */
     public static final String[] MANDATORY_COLUMN_NAME_ARRAY =
-            MANDATORY_COLUMN_SET.stream().map(TargetTableColumn::toString).toArray(String[]::new);
+            MANDATORY_COLUMN_SET.stream().map(TargetTableColumns::toString).toArray(String[]::new);
     /**
      * Checks whether a string is a special column's name.
      *

@@ -49,9 +49,9 @@ public final class TargetTableReader extends TableReader<Target> {
 
     @Override
     protected void processColumns(final TableColumnCollection columns) {
-        if (!columns.containsAll(TargetTableColumn.MANDATORY_COLUMN_NAME_ARRAY)) {
+        if (!columns.containsAll(TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY)) {
             throw formatException("Bad header: missing required columns: "
-                    + Stream.of(TargetTableColumn.MANDATORY_COLUMN_NAME_ARRAY)
+                    + Stream.of(TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY)
                             .filter(c -> !columns.contains(c)).collect(Collectors.joining(", ")));
         }
         annotationCollection = new TargetTableAnnotationManager(getSource(), columns);
@@ -60,16 +60,16 @@ public final class TargetTableReader extends TableReader<Target> {
     @Override
     protected Target createRecord(final DataLine dataLine) {
 
-        final String contig = dataLine.get(TargetTableColumn.CONTIG);
-        final int start = dataLine.getInt(TargetTableColumn.START);
-        final int end = dataLine.getInt(TargetTableColumn.END);
+        final String contig = dataLine.get(TargetTableColumns.CONTIG);
+        final int start = dataLine.getInt(TargetTableColumns.START);
+        final int end = dataLine.getInt(TargetTableColumns.END);
         if (start < 0) {
             throw formatException("the start position must not be negative: " + start);
         } else if (start > end) {
             throw formatException(String.format("the start position %d cannot be greater than the end position %d", start, end));
         }
         final SimpleInterval interval = new SimpleInterval(contig, start, end);
-        final String name = dataLine.get(TargetTableColumn.NAME);
+        final String name = dataLine.get(TargetTableColumns.NAME);
         return new Target(name, interval, annotationCollection.createTargetAnnotationCollection(dataLine));
     }
 }

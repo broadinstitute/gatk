@@ -20,11 +20,6 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class AllelicCountCollection {
-    private static final String CONTIG_COLUMN_NAME = "CONTIG";
-    private static final String POSITION_COLUMN_NAME = "POS";
-    private static final String REF_COUNT_COLUMN_NAME = "REF_COUNT";
-    private static final String ALT_COUNT_COLUMN_NAME = "ALT_COUNT";
-
     private final List<AllelicCount> counts;
 
     public AllelicCountCollection() {
@@ -39,15 +34,15 @@ public class AllelicCountCollection {
         this.counts = new ArrayList<>();
         try (final TableReader<AllelicCount> reader = TableUtils.reader(inputFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.matchesExactly(
-                            CONTIG_COLUMN_NAME, POSITION_COLUMN_NAME, REF_COUNT_COLUMN_NAME, ALT_COUNT_COLUMN_NAME))
+                    if (!columns.matchesExactly(AllelicCountTableColumns.COLUMN_NAME_ARRAY))
                         throw formatExceptionFactory.apply("Bad header");
 
                     // return the lambda to translate dataLines into AllelicCounts.
                     return (dataLine) -> {
-                        final Interval interval = new Interval(dataLine.get(0), dataLine.getInt(1), dataLine.getInt(1));
-                        final int refReadCount = dataLine.getInt(2);
-                        final int altReadCount = dataLine.getInt(3);
+                        final int position = dataLine.getInt(AllelicCountTableColumns.POSITION.toString());
+                        final Interval interval = new Interval(dataLine.get(AllelicCountTableColumns.CONTIG.toString()), position, position);
+                        final int refReadCount = dataLine.getInt(AllelicCountTableColumns.REF_COUNT.toString());
+                        final int altReadCount = dataLine.getInt(AllelicCountTableColumns.ALT_COUNT.toString());
                         return new AllelicCount(interval, refReadCount, altReadCount);
                     };
                 })) {
@@ -66,8 +61,7 @@ public class AllelicCountCollection {
      * @param altReadCount  number of reads at site different from the reference
      */
     public void add(final Interval interval, final int refReadCount, final int altReadCount) {
-        final AllelicCount count = new AllelicCount(interval, refReadCount, altReadCount);
-        counts.add(count);
+        counts.add(new AllelicCount(interval, refReadCount, altReadCount));
     }
 
     /** Returns an unmodifiable view of the list of AllelicCounts.   */
@@ -81,8 +75,7 @@ public class AllelicCountCollection {
      */
     public void write(final File outputFile) {
         try (final TableWriter<AllelicCount> writer = TableUtils.writer(outputFile,
-                new TableColumnCollection(
-                        CONTIG_COLUMN_NAME, POSITION_COLUMN_NAME, REF_COUNT_COLUMN_NAME, ALT_COUNT_COLUMN_NAME),
+                new TableColumnCollection(AllelicCountTableColumns.COLUMN_NAME_ARRAY),
                 //lambda for filling an initially empty DataLine
                 (count, dataLine) -> {
                     final Interval interval = count.getInterval();

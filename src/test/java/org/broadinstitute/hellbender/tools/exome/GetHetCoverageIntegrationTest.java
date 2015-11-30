@@ -5,6 +5,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.Interval;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException.CommandLineException;
 import org.testng.Assert;
@@ -45,12 +46,12 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         final File tumorOutputFile = createTempFile("tumor-test", ".txt");
 
         final String[] arguments = {
-                "-" + GetHetCoverage.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
-                "-" + GetHetCoverage.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
-                "-" + GetHetCoverage.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
-                "-" + GetHetCoverage.NORMAL_HET_REF_ALT_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
-                "-" + GetHetCoverage.TUMOR_HET_REF_ALT_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath()
         };
         runCommandLine(arguments);
 
@@ -82,12 +83,12 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         final File tumorOutputFile = createTempFile("tumor-test",".txt");
 
         final String[] arguments = {
-                "-" + GetHetCoverage.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
-                "-" + GetHetCoverage.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
-                "-" + GetHetCoverage.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
-                "-" + GetHetCoverage.NORMAL_HET_REF_ALT_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
-                "-" + GetHetCoverage.TUMOR_HET_REF_ALT_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
                 "-" + GetHetCoverage.PVALUE_THRESHOLD_SHORT_NAME, Double.toString(-10)
         };
         runCommandLine(arguments);
