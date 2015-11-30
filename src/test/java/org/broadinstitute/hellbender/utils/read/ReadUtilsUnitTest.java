@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import htsjdk.samtools.Cigar;
+import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -386,5 +389,52 @@ public final class ReadUtilsUnitTest extends BaseTest {
     public void testGetReferenceIndex( final GATKRead read, final SAMFileHeader header, final int expectedReferenceIndex, final int expectedMateReferenceIndex ) {
         Assert.assertEquals(ReadUtils.getReferenceIndex(read, header), expectedReferenceIndex, "Wrong reference index for read");
         Assert.assertEquals(ReadUtils.getMateReferenceIndex(read, header), expectedMateReferenceIndex, "Wrong reference index for read's mate");
+    }
+
+    @DataProvider(name="createSAMWriter")
+    public Object[][] createSAMWriterData() {
+        return new Object[][] {
+                // Note: We expect to silently fail to create an index if createIndex is true but sort order is not coord.
+                {new File(getToolTestDataDir(), "query_sorted.bam"),     false,  true, true, false},
+                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),false,  true, true, true},
+                {new File(getToolTestDataDir(), "query_sorted.bam"),     true,   true, true, false},
+                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),true,   true, true, true},
+                {new File(getToolTestDataDir(), "query_sorted.bam"),     true,   true, false, false},
+                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),true,   true, false, true},
+                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),true,   false, false, false}
+        };
+    }
+
+    @Test(dataProvider="createSAMWriter")
+    public void testCreateSAMWriter(
+            final File bamFile,
+            final boolean preSorted,
+            final boolean createIndex,
+            final boolean createMD5,
+            final boolean expectIndex) throws Exception {
+
+        final File outputFile = createTempFile("samWriterTest",  ".bam");
+
+        try (final SamReader samReader = SamReaderFactory.makeDefault().open(bamFile)) {
+             final SAMFileHeader header = samReader.getFileHeader();
+            if (expectIndex) { // ensure test condition
+                Assert.assertEquals(expectIndex, header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
+            }
+
+            try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
+                            (outputFile, null, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
+                final Iterator<SAMRecord> samRecIt = samReader.iterator();
+                while (samRecIt.hasNext()) {
+                    samWriter.addAlignment(samRecIt.next());
+                }
+            }
+        }
+
+        final File md5File = new File(outputFile.getAbsolutePath() + ".md5");
+        if (md5File.exists()) {
+            md5File.deleteOnExit();
+        }
+        Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputFile));
+        Assert.assertEquals(createMD5, md5File.exists());
     }
 }
