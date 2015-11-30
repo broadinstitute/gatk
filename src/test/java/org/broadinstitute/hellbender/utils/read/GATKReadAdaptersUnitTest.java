@@ -1394,4 +1394,72 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         Assert.assertTrue(m.find());
         return Integer.parseInt(m.group(2)); // use the second capture group in the reg ex above since we don't want the tab
     }
+
+    @DataProvider(name="copyData")
+    public Object[][] getCopyData() {
+        List<Object[]> testCases = new ArrayList<>();
+
+        testCases.add(new Object[]{basicReadBackedBySam()});
+        testCases.add(new Object[]{basicReadBackedByGoogle()});
+
+        return testCases.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider="copyData")
+    public void testShallowCopy(final GATKRead read) {
+        Assert.assertEquals(read, read.copy());
+
+        read.setIsReverseStrand(false);
+        final GATKRead shallowCopy = read.copy();
+        Assert.assertEquals(read.isReverseStrand(), shallowCopy.isReverseStrand());
+        read.setIsReverseStrand(true);
+        Assert.assertNotEquals(read.isReverseStrand(), shallowCopy.isReverseStrand());
+        Assert.assertNotEquals(read, shallowCopy);
+
+        Assert.assertEquals(read, read.deepCopy());
+    }
+
+    @Test(dataProvider="copyData")
+    public void testDeepCopyReverseStrand(final GATKRead read) {
+        Assert.assertEquals(read, read.deepCopy());
+
+        // make sure we've copied deeply; i.e. for GoogleRead backed reads,
+        // reverseStrand is nested as LinearAlignment->Position->reverseStrand
+        read.setIsReverseStrand(false);
+        final GATKRead deepCopy = read.deepCopy();
+        Assert.assertEquals(read.isReverseStrand(), deepCopy.isReverseStrand());
+        read.setIsReverseStrand(true);
+        Assert.assertNotEquals(read.isReverseStrand(), deepCopy.isReverseStrand());
+        Assert.assertNotEquals(read, deepCopy);
+
+        Assert.assertEquals(read, read.deepCopy());
+    }
+
+    @Test(dataProvider="copyData")
+    public void testDeepCopyAttributes(final GATKRead read) {
+        Assert.assertEquals(read, read.deepCopy());
+
+        GATKRead deepCopy = read.deepCopy();
+        byte attr[] = new byte[]{'B', 'I'};
+        read.setAttribute("BI", attr);
+        Assert.assertEquals(read.getAttributeAsByteArray("BI"), attr);
+        Assert.assertNull(deepCopy.getAttributeAsByteArray("BI"));
+        Assert.assertNotEquals(read, deepCopy);
+
+        deepCopy = read.deepCopy();
+        Assert.assertEquals(read.getAttributeAsByteArray("BI"), deepCopy.getAttributeAsByteArray("BI"));
+    }
+
+    @Test(dataProvider="copyData")
+    public void testDeepCopyPosition(final GATKRead read) {
+        Assert.assertEquals(read, read.deepCopy());
+
+        // position
+        final GATKRead deepCopy = read.deepCopy();
+        read.setPosition("2", 1);
+        Assert.assertNotEquals(read.getContig(), deepCopy.getContig());
+        Assert.assertNotEquals(read, deepCopy);
+
+        Assert.assertEquals(read, read.deepCopy());
+    }
 }
