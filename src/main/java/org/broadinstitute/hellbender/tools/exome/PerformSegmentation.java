@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 
 @CommandLineProgramProperties(
         summary = "Segment genomic data into regions of constant copy-ratio",
         oneLineSummary = "Segment genomic data into regions of constant copy-ratio",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class PerformSegmentation extends CommandLineProgram {
 

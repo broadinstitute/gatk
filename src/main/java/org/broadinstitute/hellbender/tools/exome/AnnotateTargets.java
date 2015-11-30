@@ -4,7 +4,7 @@ import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
@@ -61,7 +61,7 @@ import java.util.*;
 @CommandLineProgramProperties(
         oneLineSummary = "Annotate targets",
         summary = "Annotate targets with various properties such as GC content and repeat fraction",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public class AnnotateTargets extends TargetWalker {
 

@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Perform PCA on coverage counts",
         oneLineSummary = "Perform PCA on coverage counts",
-        programGroup = ExomeAnalysisProgramGroup.class)
+        programGroup = CopyNumberProgramGroup.class)
 @SuppressWarnings("serial")
 public class CalculateCoverageComponents extends SparkToggleCommandLineProgram {
 

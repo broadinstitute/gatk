@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -61,7 +61,7 @@ import java.util.stream.StreamSupport;
 @CommandLineProgramProperties(
         oneLineSummary = "Calculate Target Coverage",
         summary = "Calculate Target Coverage",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public class CalculateTargetCoverage extends TargetWalker {
 

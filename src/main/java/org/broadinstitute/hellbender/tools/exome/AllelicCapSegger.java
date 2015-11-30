@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
@@ -22,7 +22,7 @@ import java.util.List;
                 "and segments found by the ReCapSeg tool. Bayesian parameter estimation of models for the " +
                 "copy ratios and minor allele fractions in each segment is performed using Markov chain Monte Carlo.",
         oneLineSummary = "Detect copy-number events using allelic-count data and ReCapSeg output.",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public class AllelicCapSegger extends CommandLineProgram {
     protected static final String SNP_MAF_SEG_FILE_TAG = "MAF";

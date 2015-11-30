@@ -6,6 +6,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.svd.SVD;
@@ -21,7 +22,8 @@ import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "(EXPERIMENTAL) Performs a SVD",
-        oneLineSummary = "(EXPERIMENTAL) Runs a SVD on Spark and writes the matrix to a text file (tsv).  The output file has no header and is just the raw numbers.  This tool is unsupported."
+        oneLineSummary = "(EXPERIMENTAL) Runs a SVD on Spark and writes the matrix to a text file (tsv).  The output file has no header and is just the raw numbers.  This tool is unsupported.",
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class DecomposeSingularValues extends SparkToggleCommandLineProgram {
     private static final long serialVersionUID = 1L;

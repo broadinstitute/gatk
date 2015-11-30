@@ -34,7 +34,7 @@ public class AllelicCapSeggerIntegrationTest extends CommandLineProgramTest {
                 "--" + AllelicCapSegger.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
                 "--" + AllelicCapSegger.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
                 "--" + AllelicCapSegger.NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
-                "--VERBOSITY", "INFO",
+                "--verbosity", "INFO",
         };
         runCommandLine(arguments);
 

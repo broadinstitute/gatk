@@ -36,7 +36,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
             drivingFeatures = new FeatureDataSource<>(drivingFile, (FeatureCodec<F, ?>)codec);
 
             final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingFile);
-            features.addToFeatureSources(0, drivingFeaturesInput, StandardArgumentDefinitions.VARIANT_LONG_NAME, StandardArgumentDefinitions.VARIANT_SHORT_NAME, codec.getFeatureType());
+            features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType());
         } else {
             throw new UserException("File " + drivingFile + " contains features of the wrong type.");
         }
