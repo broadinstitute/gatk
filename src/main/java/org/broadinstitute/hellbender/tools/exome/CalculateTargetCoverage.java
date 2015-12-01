@@ -134,6 +134,7 @@ public class CalculateTargetCoverage extends TargetWalker {
 
     @Override
     public void onTraversalStart() {
+        super.onTraversalStart();
         final List<String> sampleList = getHeaderForReads().getReadGroups().stream()
                 .map(SAMReadGroupRecord::getSample)
                 .filter(Objects::nonNull)

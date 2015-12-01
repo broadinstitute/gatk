@@ -23,10 +23,10 @@ public class ReadCountCollectionUtilsUnitTest {
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/tools/exome");
     private static final File FULL_CORRECT_FILE = new File(TEST_FILE_DIR, "rcc-test-full-counts.txt");
 
-    private static final String CONTIG_START_END = TargetColumns.CONTIG.toString()
-            + "\t" + TargetColumns.START.toString() + "\t" + TargetColumns.END.toString();
+    private static final String CONTIG_START_END = TargetTableColumn.CONTIG.toString()
+            + "\t" + TargetTableColumn.START.toString() + "\t" + TargetTableColumn.END.toString();
 
-    private static final String CONTIG_START_END_NAME = CONTIG_START_END + "\t" + TargetColumns.NAME.toString();
+    private static final String CONTIG_START_END_NAME = CONTIG_START_END + "\t" + TargetTableColumn.NAME.toString();
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullFile() throws IOException {
@@ -164,7 +164,7 @@ public class ReadCountCollectionUtilsUnitTest {
         final PrintWriter writer = new PrintWriter(testFile);
         writer.println("## comment 1");
         writer.println("## comment 2");
-        writer.println("SAMPLE2\tSAMPLE1\t" + TargetColumns.NAME.toString());
+        writer.println("SAMPLE2\tSAMPLE1\t" + TargetTableColumn.NAME.toString());
         writer.println("1.1\t2.2\ttgt_0");
         writer.println("-1.1E-7\t-2.2E-8\ttgt_1");
         writer.close();

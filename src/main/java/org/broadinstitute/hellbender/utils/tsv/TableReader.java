@@ -340,7 +340,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
             } else if (line.length != columns.columnCount()) {
                 throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
             } else {
-                final R result = createRecord(new DataLine(line, columns, this::formatException));
+                final R result = createRecord(new DataLine(reader.getLineNumber(), line, columns, this::formatException));
                 if (result != null) {
                     return result;
                 }

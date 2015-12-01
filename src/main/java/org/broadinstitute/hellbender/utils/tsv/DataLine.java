@@ -26,6 +26,16 @@ import java.util.function.Function;
 public final class DataLine {
 
     /**
+     * Constant to indicate that a data-line has no line number assigned.
+     */
+    public static final long NO_LINE_NUMBER = -1;
+
+    /**
+     * The line number for this data-line.
+     */
+    private final long lineNumber;
+
+    /**
      * Holds the values for the data line in construction.
      */
     private final String[] values;
@@ -55,12 +65,14 @@ public final class DataLine {
      * breaking the consistency of this instance.
      * </p>
      *
+     * @param lineNumber the line number for this data-line, {@link #NO_LINE_NUMBER} when this is unspecified.
      * @param values             the value array.
      * @param columns            the columns of the table that will enclose this data-line instance.
      * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
      * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
      */
-    DataLine(final String[] values, final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
+    DataLine(final long lineNumber, final String[] values, final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
+        this.lineNumber = lineNumber;
         this.values = Utils.nonNull(values, "the value array cannot be null");
         this.columns = Utils.nonNull(columns, "the columns cannot be null");
         this.formatErrorFactory = Utils.nonNull(formatErrorFactory, "the format error factory cannot be null");
@@ -72,12 +84,35 @@ public final class DataLine {
     /**
      * Creates a new data-line instance.
      *
+     * @param lineNumber the line number for this data-line, {@link #NO_LINE_NUMBER} when this is unspecified.
+     * @param columns            the columns of the table that will enclose this data-line instance.
+     * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
+     * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
+     */
+    public DataLine(final long lineNumber, final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
+        this(lineNumber, new String[Utils.nonNull(columns, "the columns cannot be null").columnCount()], columns, formatErrorFactory);
+    }
+
+    /**
+     * Creates a new data-line instance with no line-number.
+     *
+     * @param columns            the columns of the table that will enclose this data-line instance.
+     * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
+     * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
+     */
+    DataLine(final String[] fields, final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
+        this(NO_LINE_NUMBER, fields, columns, formatErrorFactory);
+    }
+
+    /**
+     * Creates a new data-line instance with no line-number.
+     *
      * @param columns            the columns of the table that will enclose this data-line instance.
      * @param formatErrorFactory to be used when there is a column formatting error based on the requested data-type.
      * @throws IllegalArgumentException if {@code columns} or {@code formatErrorFactory} are {@code null}.
      */
     public DataLine(final TableColumnCollection columns, final Function<String, RuntimeException> formatErrorFactory) {
-        this(new String[Utils.nonNull(columns, "the columns cannot be null").columnCount()], columns, formatErrorFactory);
+        this(NO_LINE_NUMBER, columns, formatErrorFactory);
     }
 
     /**
@@ -247,7 +282,7 @@ public final class DataLine {
      * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
      * @throws RuntimeException         if the value at that target column cannot be transform into an integer.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public int getInt(final int index) {
         try {
@@ -266,7 +301,7 @@ public final class DataLine {
      * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
      * @throws RuntimeException         if the value at that target column cannot be transform into a long.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public long getLong(final int index) {
         try {
@@ -285,7 +320,7 @@ public final class DataLine {
      * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
      * @throws RuntimeException         if the value at that target column cannot be transform into a boolean.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public boolean getBoolean(final int index) {
         try {
@@ -312,13 +347,33 @@ public final class DataLine {
      * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
      * @throws RuntimeException         if the value at that target column cannot be transform into a double.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public double getDouble(final int index) {
+        return getDouble(index, null);
+    }
+
+    /**
+     * Returns the double value in a column by its index.
+     *
+     * @param index the target column index.
+     * @param formatErrorFactory format error factory.
+     * @return any double value.
+     * @throws IllegalArgumentException if {@code index} is not valid.
+     * @throws IllegalStateException    if {@code index} has not been initialized and contains a {@code null}.
+     * @throws RuntimeException         if the value at that target column cannot be transform into a double.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link DataLine}.
+     */
+    public double getDouble(final int index, final Function<String, RuntimeException> formatErrorFactory) {
         try {
             return Double.parseDouble(get(index));
         } catch (final NumberFormatException ex) {
-            throw formatErrorFactory.apply(String.format("expected int value for column %s but found %s", columns.nameAt(index), get(index)));
+            if (formatErrorFactory != null) {
+                throw formatErrorFactory.apply(String.format("expected int value for column %s but found %s", columns.nameAt(index), get(index)));
+            } else {
+                throw this.formatErrorFactory.apply(String.format("expected int value for column %s but found %s", columns.nameAt(index), get(index)));
+            }
         }
     }
 
@@ -379,7 +434,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into an integer.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public int getInt(final String columnName) {
         return getInt(columnIndex(columnName));
@@ -394,7 +449,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a long.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public long getLong(final String columnName) {
         return getLong(columnIndex(columnName));
@@ -409,7 +464,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a boolean.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public boolean getBoolean(final String columnName) {
         return getBoolean(columnIndex(columnName));
@@ -424,7 +479,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a double.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public double getDouble(final String columnName) {
         return getDouble(columnIndex(columnName));
@@ -444,7 +499,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a double.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public String get(final Enum<?> column) {
         return get(Utils.nonNull(column).toString());
@@ -464,7 +519,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a double.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public int getInt(final Enum<?> column) {
         return getInt(Utils.nonNull(column).toString());
@@ -484,7 +539,7 @@ public final class DataLine {
      * @throws IllegalStateException    if that column values is undefined ({@code null}).
      * @throws RuntimeException         if the value at that target column cannot be transform into a double.
      *                                  The exact class of the exception will depend on the exception factory provided when creating this
-     *                                  {@link #DataLine}.
+     *                                  {@link DataLine}.
      */
     public double getDouble(final Enum<?> column) {
         return getDouble(Utils.nonNull(column).toString());
@@ -695,5 +750,15 @@ public final class DataLine {
      */
     public String[] toArray() {
         return values.clone();
+    }
+
+    /**
+     * Returns the line number for this data-line.
+     * <p>{@link #NO_LINE_NUMBER}</p> must be used to mark data-lines that do not have
+     * a line number assigned, e.g. because the actually aren't part of a file.
+     * @return any long value.
+     */
+    public long getLineNumber() {
+        return lineNumber;
     }
 }

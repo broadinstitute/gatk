@@ -341,7 +341,7 @@ public final class CombineReadCounts extends CommandLineProgram {
      */
     private List<String> readCountColumnNames(final TableColumnCollection columns) {
         return columns.names().stream()
-                .filter(n -> !TargetColumns.isTargetColumnName(n))
+                .filter(n -> !TargetTableColumn.isStandardTargetColumnName(n))
                 .collect(Collectors.toList());
     }
 
@@ -363,9 +363,9 @@ public final class CombineReadCounts extends CommandLineProgram {
 
                 @Override
                 public void processColumns(final TableColumnCollection columns) {
-                    hasCoordinates = columns.containsAll(TargetColumns.CONTIG.toString(), TargetColumns.START.toString(),
-                            TargetColumns.END.toString());
-                    hasName = columns.contains(TargetColumns.NAME.toString());
+                    hasCoordinates = columns.containsAll(TargetTableColumn.CONTIG.toString(), TargetTableColumn.START.toString(),
+                            TargetTableColumn.END.toString());
+                    hasName = columns.contains(TargetTableColumn.NAME.toString());
                     if (!hasCoordinates && !hasName) {
                         throw this.formatException("header contain neither coordinates nor target name columns");
                     }
@@ -394,7 +394,7 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private Target createTarget(final DataLine dataLine) {
                     if (hasName) {
-                        final String name = dataLine.get(TargetColumns.NAME);
+                        final String name = dataLine.get(TargetTableColumn.NAME);
                         final Target target = targets.target(name);
                         final SimpleInterval interval = createInterval(dataLine);
                         if (target == null) {
@@ -422,9 +422,9 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private SimpleInterval createInterval(final DataLine dataLine) {
                     if (hasCoordinates) {
-                        return new SimpleInterval(dataLine.get(TargetColumns.CONTIG),
-                                dataLine.getInt(TargetColumns.START),
-                                dataLine.getInt(TargetColumns.END));
+                        return new SimpleInterval(dataLine.get(TargetTableColumn.CONTIG),
+                                dataLine.getInt(TargetTableColumn.START),
+                                dataLine.getInt(TargetTableColumn.END));
                     } else {
                         return null;
                     }

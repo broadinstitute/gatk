@@ -25,6 +25,11 @@ public class Target implements Locatable, Feature {
     private final SimpleInterval interval;
 
     /**
+     *
+     */
+    private final TargetAnnotationCollection annotations;
+
+    /**
      * Creates a new target given its name.
      * <p>
      * The interval is left undefined.
@@ -37,6 +42,14 @@ public class Target implements Locatable, Feature {
         this(name, null);
     }
 
+    public Target(final String name, final SimpleInterval interval) {
+        this(name, interval, null);
+    }
+
+    public TargetAnnotationCollection getAnnotations() {
+        return annotations;
+    }
+
     /**
      * Construct a new target given all its properties except coverage.
      * <p>
@@ -45,13 +58,15 @@ public class Target implements Locatable, Feature {
      *
      * @param name the name of the interval.
      * @param interval the interval.
+     * @param annotations annotations on the target.
      *
      * @throws IllegalArgumentException if {@code name} is {@code null}.
      */
-    public Target(final String name, final SimpleInterval interval) {
+    public Target(final String name, final SimpleInterval interval, final TargetAnnotationCollection annotations) {
         Utils.nonNull(name, "the name cannot be null");
         this.name = name;
         this.interval = interval;
+        this.annotations = annotations;
     }
 
     /**

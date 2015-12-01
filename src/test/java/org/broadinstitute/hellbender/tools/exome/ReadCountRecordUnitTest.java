@@ -20,7 +20,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class ReadCountRecordUnitTest {
+public final class ReadCountRecordUnitTest {
 
     private static final int[] TEST_VALUE_COUNT = new int[] {0, 1, 10, 50};
 

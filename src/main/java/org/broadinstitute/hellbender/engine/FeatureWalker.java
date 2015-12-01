@@ -62,6 +62,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
                             new ReadsContext(reads, variantInterval),
                             new ReferenceContext(reference, variantInterval),
                             new FeatureContext(features, variantInterval));
+                    progressMeter.update(feature);
                 });
     }
 
