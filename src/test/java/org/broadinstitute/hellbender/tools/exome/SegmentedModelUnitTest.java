@@ -16,7 +16,7 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class SegmentedModelUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final File TARGET_FILE_SMALL_SEGMENT_MERGING
             = new File(TEST_SUB_DIR + "targets-small-segment-merging-base.tsv");

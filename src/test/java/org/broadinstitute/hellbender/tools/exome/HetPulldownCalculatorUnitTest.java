@@ -25,7 +25,7 @@ import java.util.Map;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class HetPulldownCalculatorUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR + "normal.sorted.bam");
     private static final File NORMAL_UNSORTED_BAM_FILE = new File(TEST_SUB_DIR + "normal.unsorted.bam");

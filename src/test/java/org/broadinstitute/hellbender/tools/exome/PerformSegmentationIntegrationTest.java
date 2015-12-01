@@ -14,9 +14,9 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
     @DataProvider(name="inputFileData")
     public Object[][] inputFileData() {
         return new Object[][] {
-                new Object[] { new File("src/test/resources/segmenter/input/HCC1143_reduced.tsv"), new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg"), createTempFile("recapseg.HCC1143", ".seg"), "HCC1143"},
-                new Object[] { new File("src/test/resources/segmenter/input/HCC1143_short.tsv"), new File("src/test/resources/segmenter/output/HCC1143_short_result.seg"), createTempFile("recapseg.HCC1143", ".seg"), "HCC1143"},
-                new Object[] { new File("src/test/resources/segmenter/input/Simple.tsv"), new File("src/test/resources/segmenter/output/Simple_result.seg"), createTempFile("recapseg.HCC1143", ".seg"), "Simple"},
+                new Object[] { new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced.tsv"), new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg"), createTempFile("recapseg.HCC1143", ".seg"), "HCC1143"},
+                new Object[] { new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_short.tsv"), new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_short_result.seg"), createTempFile("recapseg.HCC1143", ".seg"), "HCC1143"},
+                new Object[] { new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv"), new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg"), createTempFile("recapseg.HCC1143", ".seg"), "Simple"},
         };
     }
 
@@ -34,8 +34,8 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
     @Test()
     public void testUnLoggedCommandLine() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_reduced_log.tsv");
-        final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced_log.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);

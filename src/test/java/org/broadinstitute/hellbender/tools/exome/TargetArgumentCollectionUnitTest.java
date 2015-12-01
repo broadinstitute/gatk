@@ -16,7 +16,7 @@ import java.util.List;
 public class TargetArgumentCollectionUnitTest {
 
     private static final File BAD_TEST_TARGETS = new File("/not-a-file.tab");
-    private static final File TEST_TARGETS = new File("src/test/resources/org/broadinstitute/tools/exome/targetargumentcollection-test-targets.tab");
+    private static final File TEST_TARGETS = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/targetargumentcollection-test-targets.tab");
 
     @Test
     public void testOptionalWithoutDefaultSupplierAndMissingTargetsFile() {

@@ -35,7 +35,7 @@ public final class TargetCoverageUnitTest extends BaseTest {
 
     @Test
     public void testReadTargetsWithCoverage() {
-        final File TEST_DIR = new File("src/test/resources/org/broadinstitute/tools/exome/caller");
+        final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
         final File TEST_TARGETS = new File(TEST_DIR,"targets.tsv");
 
         List<TargetCoverage> targets = TargetCoverageUtils.readTargetsWithCoverage(TEST_TARGETS);

@@ -20,7 +20,7 @@ import java.io.IOException;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR + "normal.sorted.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR + "tumor.sorted.bam");

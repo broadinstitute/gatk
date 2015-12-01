@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/utils/mcmc/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/utils/mcmc/";
 
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
             + "coverages-for-gibbs-sampler-copy-ratio-test.txt");

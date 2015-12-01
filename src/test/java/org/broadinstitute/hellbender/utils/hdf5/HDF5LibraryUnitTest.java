@@ -25,7 +25,7 @@ import java.util.stream.Stream;
  */
 public final class HDF5LibraryUnitTest {
 
-    private static File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/utils/hdf5");
+    private static File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/utils/hdf5");
     private static File TEST_PON_TARGETS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-targets.txt");
     private static File TEST_PON_SAMPLES = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-samples.txt");
     private static File TEST_PON_TARGET_FACTORS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-target_factors.txt");

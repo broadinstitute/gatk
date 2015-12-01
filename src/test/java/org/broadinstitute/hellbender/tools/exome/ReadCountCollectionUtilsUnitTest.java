@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  */
 public class ReadCountCollectionUtilsUnitTest {
 
-    private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/tools/exome");
+    private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
     private static final File FULL_CORRECT_FILE = new File(TEST_FILE_DIR, "rcc-test-full-counts.txt");
 
     private static final String CONTIG_START_END = TargetTableColumn.CONTIG.toString()
