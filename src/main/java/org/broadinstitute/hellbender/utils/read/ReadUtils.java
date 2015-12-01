@@ -4,6 +4,8 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.cram.build.CramIO;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -22,6 +24,8 @@ import java.util.List;
 public final class ReadUtils {
     private ReadUtils() {
     }
+
+    private static final Logger logger = LogManager.getLogger();
 
     /**
      * The default quality score for an insertion or deletion, if
@@ -888,17 +892,19 @@ public final class ReadUtils {
             final File referenceFile,
             final SAMFileHeader header,
             final boolean preSorted,
-            boolean createIndex,
-            boolean createMD5)
+            boolean createOutputBamIndex,
+            final boolean createMD5)
     {
         Utils.nonNull(outputFile);
         Utils.nonNull(header);
 
-        if (createIndex && header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
-            throw new UserException("Sort order must be coordinate to allow creation of an output index");
+        if (createOutputBamIndex && header.getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
+            logger.warn("Skipping index file creation for: " +
+                    outputFile.getAbsolutePath() +  ". Index file creation requires reads in coordinate sorted order.");
+            createOutputBamIndex = false;
         }
 
-        final SAMFileWriterFactory factory = new SAMFileWriterFactory().setCreateIndex(createIndex).setCreateMd5File(createMD5);
+        final SAMFileWriterFactory factory = new SAMFileWriterFactory().setCreateIndex(createOutputBamIndex).setCreateMd5File(createMD5);
         return ReadUtils.createCommonSAMWriterFromFactory(factory, outputFile, referenceFile, header, preSorted);
     }
 

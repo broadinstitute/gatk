@@ -48,7 +48,7 @@ public abstract class GATKTool extends CommandLineProgram {
     private boolean disableSequenceDictionaryValidation = false;
 
     @Argument(fullName="createOutputBamIndex", shortName="createOutputBamIndex", doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true)
-    public boolean createOutputBamIndex = false;
+    public boolean createOutputBamIndex = true;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
