@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 public final class VariantProgramGroup implements CommandLineProgramGroup {
     @Override
     public String getName() {
-        return "VCF/BCF";
+        return "VCF";
     }
 
     @Override

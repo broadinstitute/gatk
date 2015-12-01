@@ -19,8 +19,8 @@ import java.io.File;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "Program to chart the nucleotide distribution per cycle in a SAM or BAM file.",
-        oneLineSummary = "Program to chart the nucleotide distribution per cycle in a SAM or BAM file.",
+        summary = "Program to chart the nucleotide distribution per cycle in a SAM/BAM/CRAM file",
+        oneLineSummary = "Produces metrics about nucleotide distribution per cycle in a SAM/BAM/CRAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectBaseDistributionByCycle extends SinglePassSamProgram {

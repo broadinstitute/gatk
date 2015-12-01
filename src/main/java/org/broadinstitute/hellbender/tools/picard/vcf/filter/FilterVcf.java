@@ -26,16 +26,16 @@ import java.util.*;
  */
 @CommandLineProgramProperties(
         summary = "Applies one or more hard filters to a VCF file to filter out genotypes and variants.",
-        oneLineSummary = "Hard filters a VCF.",
+        oneLineSummary = "Hard-filters a VCF file",
         programGroup = VariantProgramGroup.class
 )
 public final class FilterVcf extends PicardCommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc="The INPUT VCF or BCF file.")
+            doc="The input VCF file.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="The output VCF or BCF.")
+            doc="The output VCF file.")
     public File OUTPUT;
 
     @Argument(doc="The minimum allele balance acceptable before filtering a site. Allele balance is calculated for heterozygotes as " +

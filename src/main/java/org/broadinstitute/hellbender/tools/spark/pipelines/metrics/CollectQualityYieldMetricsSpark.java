@@ -26,7 +26,7 @@ import java.io.Serializable;
 @CommandLineProgramProperties(
         summary = "Collects quality yield metrics, a set of metrics that quantify the quality and yield of sequence data from a " +
                 "SAM/BAM input file.",
-        oneLineSummary = "Collects a set of metrics that quantify the quality and yield of sequence data from the provided SAM/BAM",
+        oneLineSummary = "CollectQualityYieldMetrics on Spark",
         programGroup = SparkProgramGroup.class
 )
 public final class CollectQualityYieldMetricsSpark extends GATKSparkTool {

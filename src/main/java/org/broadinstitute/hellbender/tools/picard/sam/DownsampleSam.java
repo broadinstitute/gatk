@@ -17,21 +17,23 @@ import java.util.Random;
  * of both ends of a pair or neither end of the pair!
  */
 @CommandLineProgramProperties(
-        summary = "Randomly down-sample a SAM or BAM file to retain " +
+        summary = "Randomly down-sample a SAM/BAM/CRAM file to retain " +
                 "a random subset of the reads. Mate-pairs are either both kept or both discarded. Reads marked as not primary " +
                 "alignments are all discarded. Each read is given a probability P of being retained - results with the exact " +
                 "same input in the same order and with the same value for RANDOM_SEED will produce the same results.",
-        oneLineSummary = "Down-sample a SAM or BAM file to retain a random subset of the reads",
+        oneLineSummary = "Down-sample a SAM/BAM file to retain a random subset of the reads",
         programGroup = ReadProgramGroup.class
 )
 public final class DownsampleSam extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to downsample.")
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, 
+	    doc = "The input SAM/BAM/CRAM file to downsample.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output, downsampled, SAM or BAM file to write.")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, 
+	    doc = "The output, downsampled, SAM/BAM/CRAM file to write.")
     public File OUTPUT;
 
     @Argument(shortName = "R", doc = "Random seed to use if reproducibilty is desired.  " +

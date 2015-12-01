@@ -24,43 +24,43 @@ import java.util.List;
  * @author ktibbett@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        summary = "Merges alignment data from a SAM or BAM " +
-                "file with additional data stored in an unmapped BAM file and produces a third SAM " +
-                "or BAM file of aligned and unaligned reads. The purpose is to use information from the " +
-                "unmapped BAM to fix up aligner output, so that the resulting file is valid for use by other " +
-                "Picard programs. For simple BAM file merges, use MergeSamFiles. NOTE that MergeBamAlignment expects to " +
+        summary = "Merges alignment data from a SAM/BAM/CRAM " +
+                "file with additional data stored in an unmapped SAM/BAM/CRAM file and produces a third SAM/BAM/CRAM " +
+                "file of aligned and unaligned reads. The purpose is to use information from the " +
+                "unmapped SAM/BAM/CRAM to fix up aligner output, so that the resulting file is valid for use by other " +
+                "Picard programs. For simple SAM/BAM/CRAM file merges, use MergeSamFiles. NOTE that MergeBamAlignment expects to " +
                 "find a sequence dictionary in the same directory as REFERENCE_SEQUENCE and expects it " +
                 "to have the same base name as the reference fasta except with the extension '.dict'",
-        oneLineSummary = "Merges alignment data from a SAM or BAM with data in an unmapped BAM file",
+        oneLineSummary = "Merges alignment data from a SAM/BAM with data in an unmapped SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class MergeBamAlignment extends PicardCommandLineProgram {
 
     @Argument(shortName = "UNMAPPED",
-            doc = "Original SAM or BAM file of unmapped reads, which must be in queryname order.")
+            doc = "Original SAM/BAM/CRAM file of unmapped reads, which must be in queryname order.")
     public File UNMAPPED_BAM;
 
     @Argument(shortName = "ALIGNED",
-            doc = "SAM or BAM file(s) with alignment data.",
+            doc = "SAM/BAM/CRAM file(s) with alignment data.",
             mutex = {"READ1_ALIGNED_BAM", "READ2_ALIGNED_BAM"},
             optional = true)
     public List<File> ALIGNED_BAM;
 
     @Argument(shortName = "R1_ALIGNED",
-            doc = "SAM or BAM file(s) with alignment data from the first read of a pair.",
+            doc = "SAM/BAM/CRAM file(s) with alignment data from the first read of a pair.",
             mutex = {"ALIGNED_BAM"},
             optional = true)
     public List<File> READ1_ALIGNED_BAM;
 
     @Argument(shortName = "R2_ALIGNED",
-            doc = "SAM or BAM file(s) with alignment data from the second read of a pair.",
+            doc = "SAM/BAM file(s) with alignment data from the second read of a pair.",
             mutex = {"ALIGNED_BAM"},
             optional = true)
     public List<File> READ2_ALIGNED_BAM;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Merged SAM or BAM file to write to.")
+            doc = "Merged SAM/BAM/CRAM file to write to.")
     public File OUTPUT;
 
     @Argument(shortName = StandardArgumentDefinitions.PROGRAM_RECORD_ID_SHORT_NAME,

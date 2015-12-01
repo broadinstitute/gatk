@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.MiscProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.FastaProgramGroup;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -24,7 +24,7 @@ import java.io.IOException;
                 "normalizes it so that all lines of sequence except the last line per named sequence " +
                 "are of the same length.",
         oneLineSummary = "Normalizes lines of sequence in a fasta file to be of the same length",
-        programGroup = MiscProgramGroup.class
+        programGroup = FastaProgramGroup.class
 )
 public final class NormalizeFasta extends CommandLineProgram {
 

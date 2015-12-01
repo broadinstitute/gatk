@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 
 @CommandLineProgramProperties(
         summary = "Walks over the input data set, calculating the number of variants seen.",
-        oneLineSummary = "Count variants",
+        oneLineSummary = "Count variants in a VCF file",
         programGroup = VariantProgramGroup.class
 )
 public final class CountVariants extends VariantWalker{

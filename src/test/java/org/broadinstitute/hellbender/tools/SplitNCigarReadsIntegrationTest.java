@@ -1,16 +1,23 @@
-package org.broadinstitute.hellbender.tools.walkers.rnaseq;
+package org.broadinstitute.hellbender.tools;
 
-import com.google.common.primitives.Ints;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,7 +28,7 @@ import java.util.List;
  * For valid cigar sting in length 8 there are few thousands options, with N in every possible option and with more than one N (for example 1M1N1M1N1M1N2M).
  * The cigarElements array is used to provide all the possible cigar element that might be included.
  */
-public final class SplitNCigarReadsUnitTest extends BaseTest {
+public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTest {
     final static CigarElement[] cigarElements = {
             new CigarElement(1, CigarOperator.HARD_CLIP),
             new CigarElement(1, CigarOperator.SOFT_CLIP),
@@ -31,9 +38,28 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
             new CigarElement(1, CigarOperator.SKIPPED_REGION)
     };
 
+    private static File REFERENCE_FASTA = new File(BaseTest.exampleReference);
+
+    private IndexedFastaSequenceFile referenceReader;
+    private GenomeLocParser genomeLocParser;
+    private SAMFileHeader header;
+
+    @BeforeClass
+    public void setup() throws FileNotFoundException {
+        referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_FASTA);
+        genomeLocParser = new GenomeLocParser(referenceReader.getSequenceDictionary());
+        header = new SAMFileHeader();
+        header.setSequenceDictionary(referenceReader.getSequenceDictionary());
+    }
+
+    @Override
+    public String getTestedClassName() {
+        return SplitNCigarReads.class.getSimpleName();
+    }
+
     private final class TestManager extends OverhangFixingManager {
-        public TestManager( final SAMFileHeader header ) {
-            super(header, null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        public TestManager() {
+            super(header, null, genomeLocParser, referenceReader, 10000, 1, 40, false);
         }
     }
 
@@ -44,8 +70,8 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
 
         // For Debugging use those lines (instead of above cigarList) to create specific read:
         //------------------------------------------------------------------------------------
-        // final SAMRecord tmpRead = SAMRecord.createRandomRead(6);
-        // tmpRead.setCigarString("1M1N1M");
+        // final GATKRead tmpRead = GATKRead.createRandomRead(6);
+        // tmpRead.setCigar("1M1N1M");
 
         // final List<Cigar> cigarList = new ArrayList<>();
         // cigarList.add(tmpRead.getCigar());
@@ -55,25 +81,23 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
             final int numOfSplits = numOfNElements(cigar.getCigarElements());
 
             if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
-                final SAMFileHeader header = new SAMFileHeader();
-                header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
-                final TestManager manager = new TestManager(header);
 
+                final TestManager manager = new TestManager();
                 GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
                 SplitNCigarReads.splitNCigarRead(read, manager);
                 List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
                 final int expectedReads = numOfSplits+1;
-                Assert.assertEquals(splitReads.size(), expectedReads, "wrong number of reads after split read with cigar: " + cigar + " at Ns [expected]: " + expectedReads + " [actual value]: " + splitReads.size());
+                Assert.assertEquals(splitReads.size(),expectedReads,"wrong number of reads after split read with cigar: "+cigar+" at Ns [expected]: "+expectedReads+" [actual value]: "+splitReads.size());
                 final List<Integer> readLengths = consecutiveNonNElements(read.getCigar().getCigarElements());
                 int index = 0;
                 int offsetFromStart = 0;
                 for(final OverhangFixingManager.SplitRead splitRead: splitReads){
                     int expectedLength = readLengths.get(index);
                     Assert.assertTrue(splitRead.read.getLength() == expectedLength,
-                            "the " + index + " (starting with 0) split read has a wrong length.\n" +
-                                    "cigar of original read: " + cigar + "\n" +
-                                    "expected length: " + expectedLength + "\n" +
-                                    "actual length: " + splitRead.read.getLength() + "\n");
+                            "the "+index+" (starting with 0) split read has a wrong length.\n" +
+                                    "cigar of original read: "+cigar+"\n"+
+                                    "expected length: "+expectedLength+"\n"+
+                                    "actual length: "+splitRead.read.getLength()+"\n");
                     assertBases(splitRead.read.getBases(), read.getBases(), offsetFromStart);
                     index++;
                     offsetFromStart += expectedLength;
@@ -83,9 +107,12 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
     }
 
     private int numOfNElements(final List<CigarElement> cigarElements){
-        return Ints.checkedCast(cigarElements.stream()
-                .filter(e -> e.getOperator() == CigarOperator.SKIPPED_REGION)
-                .count());
+        int numOfNElements = 0;
+        for (CigarElement element: cigarElements){
+            if (element.getOperator() == CigarOperator.SKIPPED_REGION)
+                numOfNElements++;
+        }
+        return numOfNElements;
     }
 
     private static boolean isCigarDoesNotHaveEmptyRegionsBetweenNs(final Cigar cigar) {
@@ -105,7 +132,9 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
                 sawS = true;
 
         }
-        return sawS || sawM;
+        if(!sawS && !sawM)
+            return false;
+        return true;
     }
 
     private List<Integer> consecutiveNonNElements(final List<CigarElement> cigarElements){
@@ -131,7 +160,7 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
 
     private void assertBases(final byte[] actualBase, final byte[] expectedBase, final int startIndex) {
         for (int i = 0; i < actualBase.length; i++) {
-            Assert.assertEquals(actualBase[i], expectedBase[startIndex + i], "unmatched bases between: " + Arrays.toString(actualBase) + "\nand:\n" + Arrays.toString(expectedBase) + "\nat position: " + i);
+            Assert.assertEquals(actualBase[i], expectedBase[startIndex + i],"unmatched bases between: "+ Arrays.toString(actualBase)+"\nand:\n"+Arrays.toString(expectedBase)+"\nat position: "+i);
         }
     }
 

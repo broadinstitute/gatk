@@ -12,13 +12,13 @@ import java.io.File;
 import java.util.List;
 
 /**
- * A tool to add comments to a BAM file header. Effectively copies the BAM file except for the addition of the @CO records
+ * A tool to add comments to a BAM or CRAM file header. Effectively copies the file except for the addition of the @CO records
  * in the header. This tool does not support SAM files.
  *
  * @author jgentry
  */
 @CommandLineProgramProperties(
-        summary = "Adds one or more comments to the header of a specified BAM file. Copies the file with the " +
+        summary = "Adds one or more comments to the header of a specified BAM or CRAM file. Copies the file with the " +
                 "modified header to a specified output file. Note that a block copying method is used to ensure efficient transfer to the " +
                 "output file. SAM files are not supported",
         oneLineSummary = "Adds comments to the header of a BAM file",
@@ -27,7 +27,7 @@ import java.util.List;
 public final class AddCommentsToBam extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "Input BAM file to add a comment to the header")
+            doc = "Input BAM/CRAM file to add a comment to the header")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

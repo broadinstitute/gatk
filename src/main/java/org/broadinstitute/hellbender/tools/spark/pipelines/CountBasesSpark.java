@@ -16,7 +16,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-@CommandLineProgramProperties(summary = "Counts bases in the input BAM", oneLineSummary = "Counts bases in a BAM file", programGroup = SparkProgramGroup.class)
+@CommandLineProgramProperties(summary = "Counts bases in the input SAM/BAM",
+        oneLineSummary = "CountBases on Spark",
+        programGroup = SparkProgramGroup.class)
 public final class CountBasesSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

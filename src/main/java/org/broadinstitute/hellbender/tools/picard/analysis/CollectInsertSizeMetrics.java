@@ -4,10 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -16,7 +15,8 @@ import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;
 
 import java.io.File;
-import java.util.*;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Command line program to read non-duplicate insert sizes, create a Histogram
@@ -25,10 +25,10 @@ import java.util.*;
  * @author Doug Voet (dvoet at broadinstitute dot org)
  */
 @CommandLineProgramProperties(
-        summary = "Reads a SAM or BAM file and writes a file containing metrics about " +
+        summary = "Reads a SAM/BAM/CRAM file and writes a file containing metrics about " +
                 "the statistical distribution of insert size (excluding duplicates) " +
                 "and generates a Histogram plot.",
-        oneLineSummary = "Writes insert size distribution metrics for a SAM or BAM file",
+        oneLineSummary = "Produces metrics for insert size distribution for a SAM/BAM/CRAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectInsertSizeMetrics extends SinglePassSamProgram {

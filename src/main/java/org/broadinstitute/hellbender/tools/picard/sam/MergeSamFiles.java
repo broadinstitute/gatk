@@ -23,23 +23,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Reads a SAM or BAM file and combines the output to one file
+ * Reads a SAM/BAM/CRAM file and combines the output to one file
  *
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
         summary = "Merges multiple SAM/BAM files into one file.",
-        oneLineSummary = "Merges multiple SAM or BAM files into one file",
+        oneLineSummary = "Merges multiple SAM/BAM files into one file",
         programGroup = ReadProgramGroup.class
 )
 public final class MergeSamFiles extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "SAM or BAM input file", optional=false)
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "SAM/BAM input file", optional=false)
     public List<File> INPUT = new ArrayList<>();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "SAM or BAM file to write merged result to")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "SAM/BAM file to write merged result to")
     public File OUTPUT;
 
     @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, doc = "Sort order of output file", optional = true)

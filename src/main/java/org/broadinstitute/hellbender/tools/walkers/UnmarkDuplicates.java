@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriterFactory;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -12,14 +10,13 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 
 @CommandLineProgramProperties(
-        summary = "Simple tool to \"unmark\" duplicates in a SAM/BAM file. Clears the isDuplicate bit on all reads.",
-        oneLineSummary = "Unmark Duplicates",
+        summary = "Simple tool to \"unmark\" duplicates in a SAM/BAM/CRAM file. Clears the isDuplicate bit on all reads.",
+        oneLineSummary = "Unmark duplicates in a SAM/BAM/CRAM file",
         usageExample = "hellbender UnmarkDuplicates -I input.bam -O output.bam",
         programGroup = ReadProgramGroup.class
 )

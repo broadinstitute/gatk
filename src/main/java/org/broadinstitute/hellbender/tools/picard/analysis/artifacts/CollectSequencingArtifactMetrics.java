@@ -4,14 +4,7 @@ import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.filter.AggregateFilter;
-import htsjdk.samtools.filter.AlignedFilter;
-import htsjdk.samtools.filter.DuplicateReadFilter;
-import htsjdk.samtools.filter.FailsVendorReadQualityFilter;
-import htsjdk.samtools.filter.InsertSizeFilter;
-import htsjdk.samtools.filter.MappingQualityFilter;
-import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
-import htsjdk.samtools.filter.SamRecordFilter;
+import htsjdk.samtools.filter.*;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.IOUtil;
@@ -23,13 +16,16 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.picard.analysis.SinglePassSamProgram;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics.BaitBiasDetailMetrics;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics.BaitBiasSummaryMetrics;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics.PreAdapterDetailMetrics;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics.PreAdapterSummaryMetrics;
+import org.broadinstitute.hellbender.utils.variant.DbSnpBitSetUtil;
 
 import java.io.File;
 import java.util.*;
 
 import static htsjdk.samtools.util.CodeUtil.getOrElse;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics.*;
-import org.broadinstitute.hellbender.utils.variant.DbSnpBitSetUtil;
 
 /**
  * Quantify substitution errors caused by mismatched base pairings during various
@@ -53,7 +49,7 @@ import org.broadinstitute.hellbender.utils.variant.DbSnpBitSetUtil;
         programGroup = QCProgramGroup.class
 )
 public final class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
-    static final String USAGE = "Collect metrics to quantify single-base sequencing artifacts.";
+    static final String USAGE = "Produces metrics to quantify single-base sequencing artifacts from a SAM/BAM file";
 
     @Argument(doc = "An optional list of intervals to restrict analysis to.", optional = true)
     public File INTERVALS;

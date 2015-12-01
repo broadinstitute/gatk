@@ -6,5 +6,5 @@ public final class QCProgramGroup implements CommandLineProgramGroup {
     @Override
     public String getName() { return "QC"; }
     @Override
-    public String getDescription() { return "Diagnostics and Quality Control Tools"; }
+    public String getDescription() { return "Tools for Diagnostics and Quality Control"; }
 }

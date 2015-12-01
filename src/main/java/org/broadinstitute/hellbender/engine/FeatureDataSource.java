@@ -15,7 +15,7 @@ import java.util.*;
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
  * on the genome in a format supported by our file parsing framework, Tribble. Examples of Features are
- * VCF/BCF records and hapmap records.
+ * VCF records and hapmap records.
  *
  * Two basic operations are available on this data source:
  *

@@ -17,7 +17,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-@CommandLineProgramProperties(summary ="runs FlagStat on Spark", oneLineSummary = "FlagStat", programGroup = SparkProgramGroup.class)
+@CommandLineProgramProperties(summary ="runs FlagStat on Spark",
+        oneLineSummary = "FlagStat on Spark",
+        programGroup = SparkProgramGroup.class)
 public final class FlagStatSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

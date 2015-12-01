@@ -14,11 +14,11 @@ import java.util.*;
  */
 @CommandLineProgramProperties(
         summary = "USAGE: CompareSAMs <SAMFile1> <SAMFile2>\n" +
-                "Compares the headers of the two input SAM or BAM files, and, if possible, the SAMRecords. " +
+                "Compares the headers of the two input SAM/BAM/CRAM files, and, if possible, the SAMRecords. " +
                 "For SAMRecords, compares only the readUnmapped flag, reference name, start position and strand. " +
                 "Reports the number of SAMRecords that match, differ in alignment, are mapped in only one input, " +
                 "or are missing in one of the files",
-        oneLineSummary = "Compares two input SAM or BAM files",
+        oneLineSummary = "Compares two input SAM/BAM/CRAM files",
         programGroup = ReadProgramGroup.class
 )
 public final class CompareSAMs extends PicardCommandLineProgram {
@@ -34,9 +34,9 @@ public final class CompareSAMs extends PicardCommandLineProgram {
         SamComparison comparison = new SamComparison(sam1, sam2);
         comparison.printReport();
         if (comparison.areEqual()) {
-            System.out.println("SAM files match.");
+            System.out.println("Files match.");
         } else {
-            System.out.println("SAM files differ.");
+            System.out.println("Files differ.");
         }
         CloserUtil.close(sam1);
         CloserUtil.close(sam2);

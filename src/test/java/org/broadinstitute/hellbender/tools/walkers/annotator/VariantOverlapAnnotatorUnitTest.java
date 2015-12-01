@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -130,7 +131,7 @@ public final class VariantOverlapAnnotatorUnitTest extends BaseTest {
         Assert.assertEquals(annotated, toAnnotate);
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup=QCProgramGroup.class)
     private static class ArtificialFeatureContainingCommandLineProgram_ForVariantOverlap extends CommandLineProgram {
         @Argument(fullName = "dbsnp", shortName = "f")
         FeatureInput<Feature> featureArgument;

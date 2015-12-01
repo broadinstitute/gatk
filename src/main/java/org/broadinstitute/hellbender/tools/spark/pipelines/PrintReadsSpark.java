@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
 
-@CommandLineProgramProperties(summary = "Print reads from the input BAM", oneLineSummary = "Print reads from the input BAM", programGroup = SparkProgramGroup.class)
+@CommandLineProgramProperties(summary = "Print reads from the input BAM", oneLineSummary = "PrintReads on Spark", programGroup = SparkProgramGroup.class)
 public final class PrintReadsSpark extends GATKSparkTool {
 
     public static final String SHARDED_OUTPUT_LONG_ARG = "shardedOutput";

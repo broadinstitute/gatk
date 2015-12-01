@@ -21,18 +21,19 @@ import java.io.File;
  * @author ktibbett@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        summary = "Convert a BAM file to a SAM file, or SAM to BAM.\n" +
+        summary = "Convert a SAM/BAM/CRAM file to a SAM/BAM/CRAM file (i.e., changes the format).\n" +
                 "Input and output formats are determined by file extension.",
-        oneLineSummary = "Convert a BAM file to a SAM file, or a SAM to a BAM",
+        oneLineSummary = "Convert a SAM/BAM/CRAM file to a SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class SamFormatConverter extends PicardCommandLineProgram {
-    @Argument(doc = "The BAM or SAM file to parse.",
+
+    @Argument(doc = "The input SAM/BAM/CRAM file.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Argument(doc = "The BAM or SAM output file. ",
+    @Argument(doc = "The ouput SAM/BAM/CRAM file. ",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;

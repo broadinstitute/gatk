@@ -88,7 +88,7 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(
         summary = "Select variant calls based on sample names, patterns, etc.",
-        oneLineSummary = "Select variants from a VCF",
+        oneLineSummary = "Select a subset of variants from a larger callset in a VCF file",
         programGroup = VariantProgramGroup.class
 )
 public class SelectVariants extends VariantWalker {

@@ -18,14 +18,14 @@ import java.io.File;
  */
 
 @CommandLineProgramProperties(
-        summary = "Converts a VCF or BCF file to a Picard Interval List.",
-        oneLineSummary = "Converts a VCF or BCF file to a Picard Interval List.",
+        summary = "Converts a VCF file to a Picard Interval List",
+        oneLineSummary = "Converts a VCF file to a Picard Interval List",
         programGroup = VariantProgramGroup.class
 )
 public final class VcfToIntervalList extends PicardCommandLineProgram {
     // The following attributes define the command-line arguments
 
-    @Argument(doc = "The BCF or VCF input file. The file format is determined by file extension.",
+    @Argument(doc = "The VCF input file. The file format is determined by file extension.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;

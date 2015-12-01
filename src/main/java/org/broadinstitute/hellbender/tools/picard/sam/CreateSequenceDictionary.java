@@ -1,12 +1,18 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.FastaProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
@@ -18,21 +24,23 @@ import java.util.Set;
 import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
 
 /**
- * Create a SAM/BAM file from a fasta containing reference sequence.  The output SAM file contains a header but no
+ * Create a dict file from a fasta containing reference sequence.  The output file is a SAM file that contains a header but no
  * SAMRecords, and the header contains only sequence records.
  */
 @CommandLineProgramProperties(
-        summary = "Read fasta or fasta.gz containing reference sequences, and write as a SAM or BAM file with only sequence dictionary.\n",
-        oneLineSummary = "Creates a SAM or BAM file from reference sequence in fasta format",
-        programGroup = ReadProgramGroup.class
+        summary = "Read fasta or fasta.gz containing reference sequences, and write as a dict file with the sequence dictionary.\n",
+        oneLineSummary = "Creates a dict file from reference sequence in fasta format",
+        programGroup = FastaProgramGroup.class
 )
 public final class
 CreateSequenceDictionary extends PicardCommandLineProgram {
 
     // The following attributes define the command-line arguments
-    @Argument(doc = "Output SAM or BAM file containing only the sequence dictionary",
+
+    @Argument(
+	    shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
+            doc = "Output a dict file containing only the sequence dictionary")
     public File OUTPUT;
 
     @Argument(doc = "Put into AS field of sequence dictionary entry if supplied", optional = true)

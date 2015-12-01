@@ -14,7 +14,7 @@ import java.text.NumberFormat;
 @CommandLineProgramProperties(
 	summary = "Walks over all input data, accumulating statistics such as total number of read\n" +
             "reads with QC failure flag set, number of duplicates, percentage mapped, etc.",
-	oneLineSummary = "A reimplementation of the 'samtools flagstat' subcommand.",
+	oneLineSummary = "A reimplementation of the 'samtools flagstat' subcommand",
     programGroup = ReadProgramGroup.class
 )
 public final class FlagStat extends ReadWalker {

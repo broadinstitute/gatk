@@ -9,11 +9,9 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.SparkPipelineProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
@@ -37,9 +35,9 @@ import java.io.IOException;
 import java.util.List;
 @CommandLineProgramProperties(
         summary = "This tools performs 2 steps of BQSR - creation of recalibration tables and rewriting of the bam, without writing the tables to disk. ",
-        oneLineSummary = "Both steps of BQSR",
+        oneLineSummary = "Both steps of BQSR (BaseRecalibrator and ApplyBQSR) on Spark",
         usageExample = "BQSRPipelineSpark -I in.bam --knownSites in.vcf -O out.bam",
-        programGroup = SparkProgramGroup.class
+        programGroup = SparkPipelineProgramGroup.class
 )
 /**
  * BQSR. The final result is analysis-ready reads.

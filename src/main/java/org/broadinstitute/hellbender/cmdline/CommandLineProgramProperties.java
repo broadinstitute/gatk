@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.cmdline;
 
-import org.broadinstitute.hellbender.cmdline.programgroups.MiscProgramGroup;
-
-
 import java.lang.annotation.*;
 
 /**
@@ -29,6 +26,6 @@ public @interface CommandLineProgramProperties {
      * @return an example command line for this program
      */
     String usageExample() default "The author of this program hasn't included any example usage, please complain to them.";
-    Class<? extends CommandLineProgramGroup> programGroup() default MiscProgramGroup.class;
+    Class<? extends CommandLineProgramGroup> programGroup();
     boolean omitFromCommandLine() default false;
 }

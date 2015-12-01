@@ -34,8 +34,8 @@ import java.util.List;
  */
 @CommandLineProgramProperties(
         summary = "Program to chart " +
-                "quality score distributions in a SAM or BAM file.",
-        oneLineSummary = "Charts quality score distributions for a SAM or BAM file",
+                "quality score distributions in a SAM/BAM file.",
+        oneLineSummary = "QualityScoreDistribution on Spark",
         programGroup = SparkProgramGroup.class
 )
 public final class QualityScoreDistributionSpark extends GATKSparkTool {

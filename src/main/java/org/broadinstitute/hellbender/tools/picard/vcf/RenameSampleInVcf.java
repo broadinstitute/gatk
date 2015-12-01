@@ -18,8 +18,8 @@ import java.io.File;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "Rename a sample within a VCF or BCF.",
-        oneLineSummary = "Rename a sample within a VCF or BCF.",
+        summary = "Rename a sample within a VCF.",
+        oneLineSummary = "Rename a sample within a VCF",
         programGroup = VariantProgramGroup.class
 )
 public final class RenameSampleInVcf extends PicardCommandLineProgram {

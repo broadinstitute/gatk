@@ -21,8 +21,8 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 
 import java.io.IOException;
 
-@CommandLineProgramProperties(summary="Apply Base Quality Recalibration to a bam file using spark",
-        oneLineSummary="apply BQSR on spark",
+@CommandLineProgramProperties(summary="Apply Base Quality Recalibration to a SAM/BAM/CRAM file using Spark",
+        oneLineSummary="ApplyBQSR on Spark",
         programGroup = SparkProgramGroup.class)
 public final class ApplyBQSRSpark extends GATKSparkTool {
     private static final long serialVersionUID = 0l;

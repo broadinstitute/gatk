@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.NGSPlatform;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
@@ -79,7 +78,7 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
 
 @CommandLineProgramProperties(
         summary = "First pass of the Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        oneLineSummary = "Generates recalibration table",
+        oneLineSummary = "Generates recalibration table for BQSR",
         programGroup = ReadProgramGroup.class
 )
 public final class BaseRecalibrator extends ReadWalker {

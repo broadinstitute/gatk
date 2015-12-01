@@ -28,8 +28,8 @@ import java.util.Arrays;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        summary = "Program to chart the nucleotide distribution per cycle in a SAM or BAM file.",
-        oneLineSummary = "Program to chart the nucleotide distribution per cycle in a SAM or BAM file.",
+        summary = "Program to chart the nucleotide distribution per cycle in a SAM/BAM file",
+        oneLineSummary = "CollectBaseDistributionByCycle on Spark",
         programGroup = SparkProgramGroup.class
 )
 public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {

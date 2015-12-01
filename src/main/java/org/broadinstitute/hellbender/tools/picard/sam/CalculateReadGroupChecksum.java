@@ -12,9 +12,9 @@ import java.io.IOException;
 
 @CommandLineProgramProperties(
         summary = "Creates a hash code based on identifying information in the RG (read group) " +
-                "records in a SAM file's header. This hash code changes any time read groups are added or removed " +
-                "comparing one file's hash code to another tells you if the read groups in the BAM files are different.",
-        oneLineSummary = "Creates a hash code based on the read groups (RG) in the SAM or BAM header.",
+                "records in a SAM/BAM/CRAM file's header. This hash code changes any time read groups are added or removed " +
+                "comparing one file's hash code to another tells you if the read groups in the SAM/BAM/CRAM files are different.",
+        oneLineSummary = "Creates a hash code based on the read groups (RG) in the SAM/BAM/CRAM header",
         programGroup = ReadProgramGroup.class
 )
 public final class CalculateReadGroupChecksum extends PicardCommandLineProgram {
@@ -22,7 +22,7 @@ public final class CalculateReadGroupChecksum extends PicardCommandLineProgram {
     private static final String OUTPUT_FILE_EXTENSION = ".read_group_md5";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "The input SAM or BAM file. ")
+            doc = "The input SAM/BAM/CRAM file. ")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

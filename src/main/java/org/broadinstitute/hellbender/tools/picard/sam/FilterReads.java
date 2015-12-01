@@ -18,15 +18,15 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 
 /**
- * From a SAM or BAM file, produce a new SAM or BAM by filtering aligned reads or a list of read
+ * From a SAM/BAM/CRAM file, produce a new SAM/BAM/CRAM by filtering aligned reads or a list of read
  * names provided in a file (one readname per line)
  * <p/>
  * $Id$
  */
 @CommandLineProgramProperties(
-        summary = "Produces a new SAM or BAM file by including or excluding aligned reads " +
-                "or a list of reads names supplied in the READ_LIST_FILE from the input SAM or BAM file.\n",
-        oneLineSummary = "Creates a new SAM or BAM file by including or excluding aligned reads",
+        summary = "Produces a new SAM/BAM/CRAM file by including or excluding aligned reads " +
+                "or a list of reads names supplied in the READ_LIST_FILE from the input SAM/BAM/CRAM file.\n",
+        oneLineSummary = "Creates a new SAM/BAM/CRAM file by including or excluding aligned reads",
         programGroup = ReadProgramGroup.class
 )
 public final class FilterReads extends PicardCommandLineProgram {
@@ -34,10 +34,10 @@ public final class FilterReads extends PicardCommandLineProgram {
     private static final Logger log = LogManager.getLogger();
 
     private static enum Filter {
-        includeAligned("OUTPUT SAM/BAM will contain aligned reads only. INPUT SAM/BAM must be in queryname SortOrder. (Note that *both* first and second of paired reads must be aligned to be included in the OUTPUT SAM or BAM)"),
-        excludeAligned("OUTPUT SAM/BAM will contain un-mapped reads only. INPUT SAM/BAM must be in queryname SortOrder. (Note that *both* first and second of pair must be aligned to be excluded from the OUTPUT SAM or BAM)"),
-        includeReadList("OUTPUT SAM/BAM will contain reads that are supplied in the READ_LIST_FILE file"),
-        excludeReadList("OUTPUT bam will contain reads that are *not* supplied in the READ_LIST_FILE file");
+        includeAligned("OUTPUT SAM/BAM/CRAM will contain aligned reads only. INPUT SAM/BAM/CRAM must be in queryname SortOrder. (Note that *both* first and second of paired reads must be aligned to be included in the OUTPUT file)"),
+        excludeAligned("OUTPUT SAM/BAM/CRAM will contain un-mapped reads only. INPUT SAM/BAM/CRAM must be in queryname SortOrder. (Note that *both* first and second of pair must be aligned to be excluded from the OUTPUT file)"),
+        includeReadList("OUTPUT SAM/BAM/CRAM will contain reads that are supplied in the READ_LIST_FILE file"),
+        excludeReadList("OUTPUT SAM/BAM/CRAM will contain reads that are *not* supplied in the READ_LIST_FILE file");
 
         private final String description;
 
@@ -51,7 +51,7 @@ public final class FilterReads extends PicardCommandLineProgram {
         }
     }
 
-    @Argument(doc = "The SAM or BAM file that will be filtered.",
+    @Argument(doc = "The SAM/BAM file that will be filtered.",
             optional = false,
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
@@ -60,14 +60,14 @@ public final class FilterReads extends PicardCommandLineProgram {
     @Argument(doc = "Filter.", optional = false)
     public Filter FILTER = null;
 
-    @Argument(doc = "Read List File containing reads that will be included or excluded from the OUTPUT SAM or BAM file.",
+    @Argument(doc = "Read List File containing reads that will be included or excluded from the OUTPUT SAM/BAM/CRAM file.",
             optional = true,
             shortName = "RLF")
     public File READ_LIST_FILE;
 
     @Argument(
-            doc = "SortOrder of the OUTPUT SAM or BAM file, otherwise use the SortOrder of the INPUT file.",
-            optional = true, shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME)
+            doc = "SortOrder of the OUTPUT SAM/BAM/CRAM file, otherwise use the SortOrder of the INPUT file.",
+     	    optional = true, shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME)
     public SAMFileHeader.SortOrder SORT_ORDER;
 
     @Argument(
@@ -75,11 +75,10 @@ public final class FilterReads extends PicardCommandLineProgram {
             optional = true)
     public boolean WRITE_READS_FILES = true;
 
-    @Argument(doc = "SAM or BAM file to write read excluded results to",
+    @Argument(doc = "SAM/BAM file to write read excluded results to",
             optional = false,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
-
     public File OUTPUT;
 
     private void filterReads(final FilteringIterator filteringIterator) {
@@ -113,7 +112,7 @@ public final class FilterReads extends PicardCommandLineProgram {
     /**
      * Write out a file of read names for debugging purposes.
      *
-     * @param samOrBamFile The SAM or BAM file for which we are going to write out a file of its
+     * @param samOrBamFile The SAM/BAM file for which we are going to write out a file of its
      *                     containing read names
      */
     private void writeReadsFile(final File samOrBamFile) throws IOException {

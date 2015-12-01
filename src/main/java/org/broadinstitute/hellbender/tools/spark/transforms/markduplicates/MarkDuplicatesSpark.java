@@ -24,7 +24,7 @@ import java.io.IOException;
 
 @CommandLineProgramProperties(
         summary ="Marks duplicates on spark",
-        oneLineSummary ="Mark Duplicates",
+        oneLineSummary ="MarkDuplicates on Spark",
         programGroup = SparkProgramGroup.class)
 public final class MarkDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;

@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -15,18 +18,20 @@ import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Outputs reads by read group, etc. " +
                 "Not to be confused with a tool that splits reads for RNA-Seq analysis.",
-        oneLineSummary = "Outputs reads by read group, etc.",
+        oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
         programGroup = ReadProgramGroup.class
 )
 public final class SplitReads extends ReadWalker {
@@ -39,7 +44,7 @@ public final class SplitReads extends ReadWalker {
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "The directory to output SAM or BAM or CRAM files.")
+            doc = "The directory to output SAM/BAM/CRAM files.")
     public File OUTPUT_DIRECTORY = new File("");
 
     @Argument(shortName = SAMPLE_SHORT_NAME,
@@ -61,7 +66,7 @@ public final class SplitReads extends ReadWalker {
     public void onTraversalStart() {
         IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
         if ( readArguments.getReadFiles().size() != 1 ) {
-            throw new UserException("This tool only accepts a single SAM/BAM as input");
+            throw new UserException("This tool only accepts a single SAM/BAM/CRAM as input");
         }
 
         if (SAMPLE) {

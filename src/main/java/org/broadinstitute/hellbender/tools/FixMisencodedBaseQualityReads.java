@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriterFactory;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,8 +15,8 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import java.io.File;
 
 @CommandLineProgramProperties(
-	summary = "Fixes Illumina base quality scores.",
-    oneLineSummary = "Fix Illumina base quality scores.",
+	summary = "Fixes Illumina base quality scores in a SAM/BAM/CRAM file",
+    oneLineSummary = "Fix Illumina base quality scores in a SAM/BAM/CRAM file",
     programGroup = ReadProgramGroup.class
 )
 public final class FixMisencodedBaseQualityReads extends ReadWalker {
