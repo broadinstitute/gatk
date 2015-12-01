@@ -16,8 +16,8 @@ public class SegmenterUnitTest extends BaseTest {
 
     @Test
     public void testHCC1143Reduced() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_reduced.tsv");
-        final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
@@ -26,8 +26,8 @@ public class SegmenterUnitTest extends BaseTest {
 
     @Test
     public void testHCC1143Short() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_short.tsv");
-        final File EXPECTED = new File("src/test/resources/segmenter/output/HCC1143_short_result.seg");
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_short.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_short_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
@@ -36,8 +36,8 @@ public class SegmenterUnitTest extends BaseTest {
 
     @Test
     public void testSimple() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/segmenter/input/Simple.tsv");
-        final File EXPECTED = new File("src/test/resources/segmenter/output/Simple_result.seg");
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "Simple";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);

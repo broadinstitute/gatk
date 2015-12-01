@@ -15,7 +15,7 @@ import java.io.IOException;
 
 
 public class SparkSingularValueDecomposerUnitTest extends BaseTest {
-    private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/tools/exome");
+    private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
     private static final File CONTROL_PCOV_FULL_FILE = new File(TEST_FILE_DIR, "create-pon-control-full.pcov");
     private static final File CONTROL_PCOV_GT_SV = new File(TEST_FILE_DIR, "create-pon-control-full.pcov.gt.singular_values");
     private static final File CONTROL_PCOV_GT_V = new File(TEST_FILE_DIR, "create-pon-control-full.pcov.gt.v");

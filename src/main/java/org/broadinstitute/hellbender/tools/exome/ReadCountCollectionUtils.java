@@ -271,7 +271,9 @@ public final class ReadCountCollectionUtils {
                 recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
             }
 
-            private Function<DataLine, ReadCountRecord> composeRecordExtractor(final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor, final TargetCollection<E> targets) {
+            private Function<DataLine, ReadCountRecord> composeRecordExtractor(final Function<DataLine, SimpleInterval> intervalExtractor,
+                        final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor,
+                        final TargetCollection<E> targets) {
                 if (targetNameExtractor == null && (targets == null || intervalExtractor == null)) {
                     throw formatException("the input files does not contain a target name column and no target file was provided");
                 } else if (targetNameExtractor != null && intervalExtractor != null) {
@@ -291,7 +293,8 @@ public final class ReadCountCollectionUtils {
                 }
             }
 
-            private ReadCountRecord extractRecordWithTargetNameExtractorAndTargetCollection(final DataLine v, Function<DataLine, String> targetNameExtractor, Function<DataLine, double[]> countExtractor) {
+            private ReadCountRecord extractRecordWithTargetNameExtractorAndTargetCollection(final DataLine v,
+                    final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor) {
                 final String name = targetNameExtractor.apply(v);
                 final E nameTarget = targets.target(name);
                 if (nameTarget == null) {
@@ -305,7 +308,8 @@ public final class ReadCountCollectionUtils {
                 }
             }
 
-            private ReadCountRecord extractRecordWithIntervalExtractorAndTargetCollection(final DataLine v, final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, double[]> countExtractor) {
+            private ReadCountRecord extractRecordWithIntervalExtractorAndTargetCollection(final DataLine v,
+                    final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, double[]> countExtractor) {
                 final SimpleInterval interval = intervalExtractor.apply(v);
                 final E intervalTarget = targets.target(interval);
                 if (intervalTarget == null) {
@@ -321,7 +325,9 @@ public final class ReadCountCollectionUtils {
                 }
             }
 
-            private ReadCountRecord extractRecordWithTargetNameAndIntervalExtractorsAndTargetCollection(final DataLine data, final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor) {
+            private ReadCountRecord extractRecordWithTargetNameAndIntervalExtractorsAndTargetCollection(final DataLine data,
+                        final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, String> targetNameExtractor,
+                        final Function<DataLine, double[]> countExtractor) {
                     final String name = targetNameExtractor.apply(data);
                     final SimpleInterval interval = intervalExtractor.apply(data);
                     final E nameTarget = targets.target(name);

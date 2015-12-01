@@ -12,7 +12,7 @@ import java.util.List;
  * @author lichtens &lt;lichtens@broadinstitute.org&gt;
  */
 public class DetectCoverageDropoutIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/tools/exome/detectcoveragedropout");
+    private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/detectcoveragedropout");
     private static final File TEST_TARGETS = new File(TEST_DIR, "recapseg.tn.HCC1143T-100_27M_37M.tsv");
     private static final File TEST_SEGMENTS = new File(TEST_DIR, "HCC1143T-100_27M_37M.seg");
 

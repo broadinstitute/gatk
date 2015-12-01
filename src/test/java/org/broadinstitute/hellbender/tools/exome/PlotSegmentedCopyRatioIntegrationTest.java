@@ -14,9 +14,9 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
 
     @Test()
     public void testUnLoggedCommandLine() throws IOException {
-        final File TN_FILE = new File("src/test/resources/plotter/HCC1143.tn.tsv");
-        final File PRE_TN_FILE = new File("src/test/resources/plotter/HCC1143.preTN.tsv");
-        final File SEG_FILE = new File("src/test/resources/plotter/HCC1143.seg");
+        final File TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.tn.tsv");
+        final File PRE_TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.preTN.tsv");
+        final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, TN_FILE.getAbsolutePath(),

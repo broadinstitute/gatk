@@ -18,7 +18,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
 
     @Test
     public void testReadUncalledSegments() {
-        final File TEST_DIR = new File("src/test/resources/org/broadinstitute/tools/exome/caller");
+        final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
         final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
 
 

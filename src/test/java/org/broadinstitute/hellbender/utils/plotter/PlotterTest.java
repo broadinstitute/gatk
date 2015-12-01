@@ -1,7 +1,6 @@
-package org.broadinstitute.hellbender.utils.plotting;
+package org.broadinstitute.hellbender.utils.plotter;
 
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.plotter.CopyRatioSegmentedPlotter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -13,8 +12,8 @@ public class PlotterTest extends BaseTest {
 
     @Test
     public void testTangentPlotting() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/segmenter/input/HCC1143_reduced.tsv");
-        final File SEG_FILE = new File("src/test/resources/segmenter/output/HCC1143_reduced_result.seg");
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced.tsv");
+        final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
         String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, INPUT_FILE.getAbsolutePath(),
