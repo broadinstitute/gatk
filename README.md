@@ -5,7 +5,7 @@
 
 ###GATK 4 (codename Hellbender)
 
-The public parts of the next generation of GATK/Picard methods engine and tools.
+This repository contains the next generation of GATK/Picard engine and the freely available tools (see [LICENSE](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)). See also the [gatk-protected](https://github.com/broadinstitute/gatk-protected) repository for additional GATK tools that are distributed under a different license.
 
 This project is in a pre-alpha development stage and is not yet ready for general use. 
 
