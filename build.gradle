@@ -277,18 +277,20 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.7'
 }
 
-
-task fatJar(type: Jar) {
-  manifest {
+tasks.withType(ShadowJar) {
+    manifest {
         attributes 'Implementation-Title': 'Hellbender',
-          'Implementation-Version': version,
-          'Main-Class': 'org.broadinstitute.hellbender.Main'
+                'Implementation-Version': version,
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
     }
+    from(project.sourceSets.main.output)
     baseName = project.name + '-all'
+    mergeServiceFiles()
+    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
+    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
 }
+
 
 configurations {
     sparkConfiguration {
@@ -301,20 +303,15 @@ configurations {
     }
 }
 
+shadowJar {
+    configurations = [project.configurations.runtime]
+    classifier = 'shadowJar'
+    mergeServiceFiles('reference.conf')
+}
+
 task sparkJar(type: ShadowJar) {
-    manifest {
-        attributes 'Implementation-Title': 'Hellbender',
-                'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
-    }
     configurations = [project.configurations.sparkConfiguration]
-    from(project.sourceSets.main.output)
-    baseName = project.name + '-all'
     classifier = 'spark'
-    mergeServiceFiles()
-    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
-    zip64 true
-    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
