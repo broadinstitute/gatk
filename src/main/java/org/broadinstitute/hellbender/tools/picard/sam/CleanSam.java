@@ -1,10 +1,17 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
-
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.*;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.mergealignment.AbstractAlignmentMerger;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
@@ -23,10 +30,12 @@ public final class CleanSam extends PicardCommandLineProgram {
 
     static final String USAGE = "Cleans the provided SAM/BAM/CRAM, soft-clipping beyond-end-of-reference alignments and setting MAPQ to 0 for unmapped reads";
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM to be cleaned.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc = "Input SAM to be cleaned.")
     public File INPUT;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Where to write cleaned SAM.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Where to write cleaned SAM.")
     public File OUTPUT;
 
     /**

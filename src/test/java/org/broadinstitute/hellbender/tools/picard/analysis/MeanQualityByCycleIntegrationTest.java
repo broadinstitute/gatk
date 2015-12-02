@@ -33,9 +33,9 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--INPUT");
+        args.add("--input");
         args.add(input.getAbsolutePath());
-        args.add("--OUTPUT");
+        args.add("--output");
         args.add(outfile.getAbsolutePath());
         args.add("--CHART");
         args.add(pdf.getAbsolutePath());
@@ -68,8 +68,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
                 "--PF_READS_ONLY", "false",
                 "--PRODUCE_PLOT", "true",
@@ -88,8 +88,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
                 "--PF_READS_ONLY", "true",
                 "--PRODUCE_PLOT", "true",
@@ -108,8 +108,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
                 "--ALIGNED_READS_ONLY", "false",
                 "--PRODUCE_PLOT", "true",
@@ -128,8 +128,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
         outfile.deleteOnExit();
         pdf.deleteOnExit();
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--CHART", pdf.getAbsolutePath(),
                 "--ALIGNED_READS_ONLY", "true",
                 "--PRODUCE_PLOT", "true",

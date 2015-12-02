@@ -1,8 +1,15 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
-import org.apache.logging.log4j.Logger;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Iso8601Date;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -20,21 +27,23 @@ import java.util.Arrays;
  * @author mdepristo
  */
 @CommandLineProgramProperties(
-        summary = "Replaces all read groups in the INPUT file with a single new read group and assigns " +
-                "all reads to this read group in the OUTPUT BAM",
+        summary = "Replaces all read groups in the input file with a single new read group and assigns " +
+                "all reads to this read group in the output BAM",
         oneLineSummary = "Replaces read groups in a BAM or SAM file with a single new read group",
         programGroup = ReadProgramGroup.class
 )
 public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
 
-    @Argument(shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam).")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc = "Input file (bam or sam).")
     public File INPUT = null;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (bam or sam).")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Output file (bam or sam).")
     public File OUTPUT = null;
 
     @Argument(shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, optional = true,
-            doc = "Optional sort order to output in. If not supplied OUTPUT is in the same order as INPUT.")
+            doc = "Optional sort order to output in. If not supplied output is in the same order as input.")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
     @Argument(shortName = "ID", doc = "Read Group ID")

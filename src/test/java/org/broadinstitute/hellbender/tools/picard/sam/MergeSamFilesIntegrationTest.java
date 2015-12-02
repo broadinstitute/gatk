@@ -30,9 +30,9 @@ public final class MergeSamFilesIntegrationTest extends CommandLineProgramTest {
         final File mergedOutput = BaseTest.createTempFile("unsortedInputSortedOutputTest.", BamFileIoUtils.BAM_FILE_EXTENSION);
 
         final String[] args = new String[]{
-                "--INPUT", sam1.getAbsolutePath(),
-                "--INPUT", sam2.getAbsolutePath(),
-                "--OUTPUT", mergedOutput.getAbsolutePath(),
+                "--input", sam1.getAbsolutePath(),
+                "--input", sam2.getAbsolutePath(),
+                "--output", mergedOutput.getAbsolutePath(),
                 "--SO", "coordinate"
         };
         

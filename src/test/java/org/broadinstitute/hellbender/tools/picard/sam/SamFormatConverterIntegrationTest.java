@@ -53,10 +53,10 @@ public final class SamFormatConverterIntegrationTest extends CommandLineProgramT
 
     private void convertFile(final File inputFile, final File fileToCompare, final String extension, final File referenceFile) throws IOException {
         final List<String> samFileConverterArgs = new ArrayList<>();
-        samFileConverterArgs.add("--INPUT");
+        samFileConverterArgs.add("--input");
         samFileConverterArgs.add(inputFile.getAbsolutePath());
         final File converterOutput = BaseTest.createTempFile("SamFileConverterTest." + inputFile.getName(), extension);
-        samFileConverterArgs.add("--OUTPUT");
+        samFileConverterArgs.add("--output");
         samFileConverterArgs.add(converterOutput.getAbsolutePath());
         if (null != referenceFile) {
             samFileConverterArgs.add("--R");

@@ -159,7 +159,7 @@ public final class FastqToSamIntegrationTest extends CommandLineProgramTest {
             args.add("--FASTQ2");
             args.add(fastq2.getAbsolutePath());
         }
-        args.add("--OUTPUT");
+        args.add("--output");
         args.add(samFile.getAbsolutePath());
         args.add("--QUALITY_FORMAT");
         args.add(version.toString());

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
-import org.apache.logging.log4j.Logger;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -406,7 +405,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
         this.duplicateIndexes.doneAddingStartIteration();
     }
 
-    private boolean areComparableForDuplicates(final ReadEndsForMarkDuplicates lhs, final ReadEndsForMarkDuplicates rhs, final boolean compareRead2) {
+    private static boolean areComparableForDuplicates(final ReadEndsForMarkDuplicates lhs, final ReadEndsForMarkDuplicates rhs, final boolean compareRead2) {
         boolean retval = lhs.libraryId == rhs.libraryId &&
                 lhs.read1ReferenceIndex == rhs.read1ReferenceIndex &&
                 lhs.read1Coordinate == rhs.read1Coordinate &&

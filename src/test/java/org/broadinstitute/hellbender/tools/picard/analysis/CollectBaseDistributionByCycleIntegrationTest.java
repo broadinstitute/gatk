@@ -46,9 +46,9 @@ public final class CollectBaseDistributionByCycleIntegrationTest extends Command
         final File pdf = BaseTest.createTempFile("test", ".pdf");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + "INPUT");
+        args.add("--" + "input");
         args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + "OUTPUT");
+        args.add("--" + "output");
         args.add(outfile.getCanonicalPath());
         if (null != referenceName) {
             final File REF = new File(referenceName);

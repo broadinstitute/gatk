@@ -57,7 +57,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
 
         if (clippingAction != null) {
             convertFile(new String[]{
-                    "-INPUT",             samFile.getAbsolutePath(),
+                    "-input",             samFile.getAbsolutePath(),
                     "--FASTQ",            f1.getAbsolutePath(),
                     "--SECOND_END_FASTQ", f2.getAbsolutePath(),
                     "--CLIPPING_ACTION",  clippingAction,
@@ -65,7 +65,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
             });
         } else {
             convertFile(new String[]{
-                    "--INPUT",             samFile.getAbsolutePath(),
+                    "--input",             samFile.getAbsolutePath(),
                     "--FASTQ",             f1.getAbsolutePath(),
                     "--SECOND_END_FASTQ",  f2.getAbsolutePath(),
             });
@@ -104,7 +104,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final File pair2File = newTempFastqFile("pair2");
 
         convertFile(new String[]{
-                "--INPUT", samFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
                 "--FASTQ", pair1File.getAbsolutePath(),
                 "--SECOND_END_FASTQ", pair2File.getAbsolutePath()
         });
@@ -136,7 +136,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final File pairFile = newTempFastqFile("pair");
 
         convertFile(new String[]{
-                "--INPUT", samFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
                 "--FASTQ", pairFile.getAbsolutePath(),
                 "--INTERLEAVE",
         });
@@ -165,7 +165,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final File pair1 = BaseTest.createTempFile("tt-pair1.", ".fastq");
         final File pair2 = BaseTest.createTempFile("tt-pair2.", ".fastq");
         convertFile(new String[]{
-                "--INPUT", samFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
                 "--FASTQ", pair1.getAbsolutePath(),
                 "--SECOND_END_FASTQ", pair2.getAbsolutePath()
         });
@@ -194,7 +194,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
 
         final String tmpDir = IOUtil.getDefaultTmpDir().getAbsolutePath() + "/";
         final String [] args = new String[]{
-                "--INPUT", samFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
                 "--OUTPUT_PER_RG",
                 "--OUTPUT_DIR", tmpDir,
         };
@@ -256,7 +256,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final File samFile = new File(TEST_DATA_DIR,samFilename);
         final String tmpDir = IOUtil.getDefaultTmpDir().getAbsolutePath() + "/";
         final String [] args = new String[]{
-                "--INPUT", samFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
                 "--OUTPUT_PER_RG",
                 "--OUTPUT_DIR", tmpDir,
         };
@@ -287,7 +287,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         final File pair2File = newTempFastqFile("pair2");
 
         convertFile(new String[]{
-                "--INPUT", samFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
                 "--FASTQ", pair1File.getAbsolutePath(),
                 "--SECOND_END_FASTQ", pair2File.getAbsolutePath(),
                 "--READ1_TRIM", Integer.toString(read1Trim),

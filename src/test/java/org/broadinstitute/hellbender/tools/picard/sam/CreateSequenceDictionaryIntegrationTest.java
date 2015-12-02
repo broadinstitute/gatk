@@ -25,8 +25,8 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
         final File outputDict = BaseTest.createTempFile("CreateSequenceDictionaryTest.", ".dict");
         outputDict.delete();
         final String[] argv = {
-                "--REFERENCE", BASIC_FASTA.getAbsolutePath(),
-                "--OUTPUT", outputDict.getAbsolutePath()
+                "--reference", BASIC_FASTA.getAbsolutePath(),
+                "--output", outputDict.getAbsolutePath()
         };
         runCommandLine(argv);
     }
@@ -39,8 +39,8 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
         final File outputDict = BaseTest.createTempFile("CreateSequenceDictionaryTest.", ".dict");
         outputDict.delete();
         final String[] argv = {
-                "--REFERENCE", DUPLICATE_FASTA.getAbsolutePath(),
-                "--OUTPUT", outputDict.getAbsolutePath(),
+                "--reference", DUPLICATE_FASTA.getAbsolutePath(),
+                "--output", outputDict.getAbsolutePath(),
         };
         runCommandLine(argv);
         Assert.fail("Exception should have been thrown.");
@@ -52,7 +52,7 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
         final File output = BaseTest.createTempFile("TestOutput", ".out");
         final String[] argv = {
                 "CreateSequenceDictionary",
-                "--OUTPUT", output.getAbsolutePath()
+                "--output", output.getAbsolutePath()
         };
         runCommandLine(argv);
     }

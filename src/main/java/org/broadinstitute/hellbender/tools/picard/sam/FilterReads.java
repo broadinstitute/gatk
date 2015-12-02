@@ -25,7 +25,7 @@ import java.text.DecimalFormat;
  */
 @CommandLineProgramProperties(
         summary = "Produces a new SAM or BAM file by including or excluding aligned reads " +
-                "or a list of reads names supplied in the READ_LIST_FILE from the INPUT SAM or BAM file.\n",
+                "or a list of reads names supplied in the READ_LIST_FILE from the input SAM or BAM file.\n",
         oneLineSummary = "Creates a new SAM or BAM file by including or excluding aligned reads",
         programGroup = ReadProgramGroup.class
 )
@@ -53,6 +53,7 @@ public final class FilterReads extends PicardCommandLineProgram {
 
     @Argument(doc = "The SAM or BAM file that will be filtered.",
             optional = false,
+            fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
@@ -66,7 +67,7 @@ public final class FilterReads extends PicardCommandLineProgram {
 
     @Argument(
             doc = "SortOrder of the OUTPUT SAM or BAM file, otherwise use the SortOrder of the INPUT file.",
-            optional = true, shortName = "SO")
+            optional = true, shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME)
     public SAMFileHeader.SortOrder SORT_ORDER;
 
     @Argument(
@@ -75,7 +76,10 @@ public final class FilterReads extends PicardCommandLineProgram {
     public boolean WRITE_READS_FILES = true;
 
     @Argument(doc = "SAM or BAM file to write read excluded results to",
-            optional = false, shortName = "O")
+            optional = false,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
+
     public File OUTPUT;
 
     private void filterReads(final FilteringIterator filteringIterator) {
@@ -87,7 +91,7 @@ public final class FilterReads extends PicardCommandLineProgram {
             fileHeader.setSortOrder(SORT_ORDER);
         }
         final boolean presorted = inputSortOrder.equals(fileHeader.getSortOrder());
-        logger.info("Filtering [presorted=" + presorted + "] " + INPUT.getName() + " -> OUTPUT=" +
+        logger.info("Filtering [presorted=" + presorted + "] " + INPUT.getName() + " -> output=" +
                 OUTPUT.getName() + " [sortorder=" + fileHeader.getSortOrder().name() + "]");
 
         final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Written");

@@ -8,9 +8,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -19,11 +17,15 @@ import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
-import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Calculates and reports QC metrics for RRBS data based on the methylation status at individual C/G bases as well
@@ -40,7 +42,7 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
     static final String USAGE = "Collects metrics about bisulfite conversion for RRBS data";
     private static final String R_SCRIPT = "rrbsQc.R";
 
-    @Argument(doc = "The BAM or SAM file containing aligned reads. Must be coordinate sorted", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, doc = "The BAM or SAM file containing aligned reads. Must be coordinate sorted", shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
     @Argument(doc = "Base name for output files", shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME)

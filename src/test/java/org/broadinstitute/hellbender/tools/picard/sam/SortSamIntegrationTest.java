@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
@@ -38,8 +37,8 @@ public class SortSamIntegrationTest extends CommandLineProgramTest {
         final File outputBam = createTempFile("sort_sam", "outputExtension");
         File referenceFile = null == referenceFileName ? null : new File(getTestDataDir(), referenceFileName);
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--INPUT"); args.add(inputBam.getCanonicalPath());
-        args.add("--OUTPUT"); args.add(outputBam.getCanonicalPath());
+        args.add("--input"); args.add(inputBam.getCanonicalPath());
+        args.add("--output"); args.add(outputBam.getCanonicalPath());
         if (null != referenceFile) {
             args.add("--R");
             args.add(referenceFile.getAbsolutePath());

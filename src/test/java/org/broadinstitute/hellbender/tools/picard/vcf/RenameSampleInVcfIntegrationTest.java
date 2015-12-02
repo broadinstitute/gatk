@@ -24,8 +24,8 @@ public final class RenameSampleInVcfIntegrationTest extends CommandLineProgramTe
         final File outfile = BaseTest.createTempFile("renamed", ".vcf");
 
         final String[] args = {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--OLD_SAMPLE_NAME", "NA12878",
                 "--NEW_SAMPLE_NAME", "FRED"
         };

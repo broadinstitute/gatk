@@ -30,10 +30,12 @@ import java.util.*;
         programGroup = VariantProgramGroup.class
 )
 public final class FilterVcf extends PicardCommandLineProgram {
-    @Argument(shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="The INPUT VCF or BCF file.")
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName= StandardArgumentDefinitions.INPUT_SHORT_NAME,
+            doc="The INPUT VCF or BCF file.")
     public File INPUT;
 
-    @Argument(shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="The output VCF or BCF.")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc="The output VCF or BCF.")
     public File OUTPUT;
 
     @Argument(doc="The minimum allele balance acceptable before filtering a site. Allele balance is calculated for heterozygotes as " +

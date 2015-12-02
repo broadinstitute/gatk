@@ -28,8 +28,8 @@ public final class CalculateReadGroupChecksumIntegrationTest extends CommandLine
         final File inputFile = new File(TEST_DATA_DIR, inputFileName);
         final File outfile = BaseTest.createTempFile("testCalculateReadGroupChecksum", ".txt");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--INPUT"); args.add(inputFile.getAbsolutePath());
-        args.add("--OUTPUT"); args.add(outfile.getAbsolutePath());
+        args.add("--input"); args.add(inputFile.getAbsolutePath());
+        args.add("--output"); args.add(outfile.getAbsolutePath());
         if (null != referenceFileName) {
             args.add("--R");
             args.add(new File(TEST_DATA_DIR, referenceFileName).getAbsolutePath());
@@ -47,7 +47,7 @@ public final class CalculateReadGroupChecksumIntegrationTest extends CommandLine
         final File outfile =  new File(input.getParentFile(), CalculateReadGroupChecksum.getOutputFileName(input));
         outfile.deleteOnExit();
         final String[] args = new String[]{
-                "--INPUT", input.getAbsolutePath()
+                "--input", input.getAbsolutePath()
         };
         runCommandLine(args);
 

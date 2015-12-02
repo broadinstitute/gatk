@@ -61,8 +61,8 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         final File metricsFile = BaseTest.createTempFile("tmp.", ".rna_metrics");
 
         final String[] args = new String[] {
-                "--INPUT", samFile.getAbsolutePath(),
-                "--OUTPUT", metricsFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
+                "--output", metricsFile.getAbsolutePath(),
                 "--REF_FLAT", getRefFlatFile(sequence).getAbsolutePath(),
                 "--RIBOSOMAL_INTERVALS", rRnaIntervalsFile.getAbsolutePath(),
                 "--STRAND_SPECIFICITY", "SECOND_READ_TRANSCRIPTION_STRAND",
@@ -131,8 +131,8 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
         final File metricsFile = BaseTest.createTempFile("tmp.", ".rna_metrics");
 
         final String[] args = new String[] {
-                "--INPUT", samFile.getAbsolutePath(),
-                "--OUTPUT", metricsFile.getAbsolutePath(),
+                "--input", samFile.getAbsolutePath(),
+                "--output", metricsFile.getAbsolutePath(),
                 "--REF_FLAT", getRefFlatFile(sequence).getAbsolutePath(),
                 "--RIBOSOMAL_INTERVALS", rRnaIntervalsFile.getAbsolutePath(),
                 "--STRAND_SPECIFICITY", "SECOND_READ_TRANSCRIPTION_STRAND",

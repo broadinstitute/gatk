@@ -93,8 +93,8 @@ public final class FilterVcfTest extends CommandLineProgramTest {
 
         final String[] args = new String[]{
                 "--CREATE_INDEX", "true",
-                "--INPUT", vcf.getAbsolutePath(),
-                "--OUTPUT", out.getAbsolutePath(),
+                "--input", vcf.getAbsolutePath(),
+                "--output", out.getAbsolutePath(),
                 "--MIN_AB", Double.toString(minAb),
                 "--MIN_DP", Integer.toString(minDp),
                 "--MIN_GQ", Integer.toString(minGq),

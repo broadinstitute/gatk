@@ -39,9 +39,9 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
         final File reference = new File(TEST_DATA_DIR, referenceFile);
         final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
-                "--REFERENCE_SEQUENCE", reference.getAbsolutePath()
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
+                "--reference", reference.getAbsolutePath()
         };
         runCommandLine(args);
 
@@ -97,9 +97,9 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
         final File reference = new File(TEST_DATA_DIR, "summary_alignment_stats_test.fasta");
         final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
-                "--REFERENCE_SEQUENCE", reference.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
+                "--reference", reference.getAbsolutePath(),
                 "--IS_BISULFITE_SEQUENCED", "true"
         };
         runCommandLine(args);
@@ -158,8 +158,8 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test.sam");
         final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath()
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath()
         };
         runCommandLine(args);
 
@@ -214,8 +214,8 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test2.sam");
         final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath()
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath()
         };
         runCommandLine(args);
 
@@ -231,8 +231,8 @@ public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgram
         final File input = new File(TEST_DATA_DIR, "summary_alignment_stats_test_multiple.sam");
         final File outfile = BaseTest.createTempFile("alignmentMetrics", ".txt");
         final String[] args = new String[] {
-                "--INPUT", input.getAbsolutePath(),
-                "--OUTPUT", outfile.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
+                "--output", outfile.getAbsolutePath(),
                 "--METRIC_ACCUMULATION_LEVEL", "ALL_READS",
                 "--METRIC_ACCUMULATION_LEVEL", "SAMPLE",
                 "--METRIC_ACCUMULATION_LEVEL", "LIBRARY",

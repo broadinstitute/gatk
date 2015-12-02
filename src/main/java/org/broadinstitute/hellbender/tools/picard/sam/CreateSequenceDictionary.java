@@ -26,10 +26,12 @@ import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
         oneLineSummary = "Creates a SAM or BAM file from reference sequence in fasta format",
         programGroup = ReadProgramGroup.class
 )
-public final class CreateSequenceDictionary extends PicardCommandLineProgram {
+public final class
+CreateSequenceDictionary extends PicardCommandLineProgram {
 
     // The following attributes define the command-line arguments
     @Argument(doc = "Output SAM or BAM file containing only the sequence dictionary",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 

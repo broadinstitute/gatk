@@ -43,7 +43,8 @@ public final class FastqToSam extends PicardCommandLineProgram {
             "scores with a character shift of 33.  If this value is not specified, the quality format will be detected automatically.", optional = true)
     public FastqQualityFormat QUALITY_FORMAT;
 
-    @Argument(doc="Output SAM/BAM file. ", shortName= StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
+    @Argument(doc="Output SAM/BAM file. ", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName= StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT ;
 
     @Argument(shortName="RG", doc="Read group name")

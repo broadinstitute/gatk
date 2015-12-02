@@ -58,7 +58,8 @@ public final class MergeBamAlignment extends PicardCommandLineProgram {
             optional = true)
     public List<File> READ2_ALIGNED_BAM;
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Merged SAM or BAM file to write to.")
     public File OUTPUT;
 

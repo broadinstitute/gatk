@@ -83,14 +83,14 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
         final File outputFile = BaseTest.createTempFile("gatherBamFilesTest.samFile.", outputExtension);
         final List<String> args = new ArrayList<>();
         for (final File splitBam : bams) {
-            args.add("--INPUT");
+            args.add("--input");
             args.add(splitBam.getAbsolutePath());
         }
         if (null != referenceFile) {
             args.add("--R");
             args.add(referenceFile.getAbsolutePath());
         }
-        args.add("--OUTPUT");
+        args.add("--output");
         args.add(outputFile.getAbsolutePath());
         runCommandLine(args);
 

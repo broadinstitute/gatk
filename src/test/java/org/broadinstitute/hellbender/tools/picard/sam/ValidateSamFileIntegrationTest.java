@@ -39,7 +39,7 @@ public final class ValidateSamFileIntegrationTest extends CommandLineProgramTest
     public void testNoOutputFile(final String input, final String mode,  final String referenceName, final boolean expectedValidity) throws Exception {
         final File testFile = new File(TEST_DATA_DIR, input);
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--INPUT");
+        args.add("--input");
         args.add(testFile.getPath());
         args.add("--MODE");
         args.add(mode);

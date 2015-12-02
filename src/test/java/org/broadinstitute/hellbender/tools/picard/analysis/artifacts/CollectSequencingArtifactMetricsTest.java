@@ -51,9 +51,9 @@ public final class CollectSequencingArtifactMetricsTest extends CommandLineProgr
         final File expected = new File(TEST_CASES, testCase);
 
         final StringBuilder args = new StringBuilder();
-        args.append("--INPUT " + TEST_SAM.getAbsolutePath());
-        args.append(" --OUTPUT " + actual.getAbsolutePath());
-        args.append(" --REFERENCE_SEQUENCE " + REFERENCE.getAbsolutePath());
+        args.append("--input " + TEST_SAM.getAbsolutePath());
+        args.append(" --output " + actual.getAbsolutePath());
+        args.append(" --reference " + REFERENCE.getAbsolutePath());
 
         if (!extraArgs.isEmpty()) args.append(" " + extraArgs);
 

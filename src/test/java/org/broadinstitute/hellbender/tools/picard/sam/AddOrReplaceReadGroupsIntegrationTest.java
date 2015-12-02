@@ -3,15 +3,12 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public final class AddOrReplaceReadGroupsIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIR = getTestDataDir() + "/picard/sam/AddOrReplaceReadGroups";
@@ -43,8 +40,8 @@ public final class AddOrReplaceReadGroupsIntegrationTest extends CommandLineProg
     private void runIt(final File inputFile, final File referenceFile, final File outputFile) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.add("--INPUT"); args.add(inputFile.getAbsolutePath());
-        args.add("--OUTPUT"); args.add(outputFile.getAbsolutePath());
+        args.add("--input"); args.add(inputFile.getAbsolutePath());
+        args.add("--output"); args.add(outputFile.getAbsolutePath());
         if (null != referenceFile) {
             args.add("--R");
             args.add(referenceFile.getAbsolutePath());

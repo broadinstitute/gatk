@@ -86,9 +86,9 @@ public final class ReplaceSamHeaderIntegrationTest extends CommandLineProgramTes
 
     private void runIt(final File inputFile, final File inputHeaderFile, final File outputFile) {
         final List<String> args = new ArrayList<>(Arrays.asList(
-                "--INPUT", inputFile.getAbsolutePath(),
+                "--input", inputFile.getAbsolutePath(),
                 "--HEADER", inputHeaderFile.getAbsolutePath(),
-                "--OUTPUT", outputFile.getAbsolutePath()
+                "--output", outputFile.getAbsolutePath()
                 )
         );
         runCommandLine(args);

@@ -35,7 +35,7 @@ public final class SplitVcfsTest extends CommandLineProgramTest {
 		snpOutputFile.deleteOnExit();
 
         final String[] args = new String[]{
-                "--INPUT", input.getAbsolutePath(),
+                "--input", input.getAbsolutePath(),
                 "--SNP_OUTPUT", snpOutputFile.getAbsolutePath(),
                 "--INDEL_OUTPUT", indelOutputFile.getAbsolutePath()
         };
