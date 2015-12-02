@@ -5,7 +5,6 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -15,7 +14,6 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
@@ -27,6 +25,7 @@ import java.util.*;
 public class GatherSplitReadsSpark extends GATKSparkTool
 {
     private static final long serialVersionUID = 1L;
+    private static final int OUTPUT_SORT_WINDOW_SIZE = 500;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
@@ -38,37 +37,136 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         return true;
     }
 
-    private static final class EventEvidence implements Comparable<EventEvidence>
+
+    @Override
+    protected void runTool( final JavaSparkContext ctx )
     {
-        public EventEvidence( final int someLocus )
+        final SAMFileHeader header = getHeaderForReads();
+        if ( header.getSortOrder() != SAMFileHeader.SortOrder.coordinate )
+            throw new GATKException("The BAM must be coordinate sorted.");
+
+        final JavaRDD<GATKRead> clusteredReads =
+            getReads()
+            .mapPartitions(readItr ->
+                new WindowSorter(new BreakpointClusterer(new SplitReadDetector(),
+                                                         new DiscordantPairDetector(),
+                                                         readItr),OUTPUT_SORT_WINDOW_SIZE), true)
+            .coalesce(1)
+            .mapPartitions(readItr ->
+                new WindowSorter(readItr,OUTPUT_SORT_WINDOW_SIZE), true);
+
+        try
+        { ReadsSparkSink.writeReads(ctx,output,clusteredReads,header,ReadsWriteFormat.SINGLE); }
+        catch ( IOException e )
+        { throw new GATKException("Unable to write BAM" + output, e); }
+    }
+
+    private static final class EventLocus implements Comparable<EventLocus>
+    {
+        public EventLocus( final int someLocusStart, final int intervalWidth )
         {
-            locus = someLocus;
-            counter = 0;
+            locusStart = someLocusStart;
+            locusEnd = someLocusStart + intervalWidth;
         }
 
-        public EventEvidence( final int someLocus, final long someCounter )
+        public int getLocusStart() { return locusStart; }
+        public int getLocusEnd() { return locusEnd; }
+
+        public EventLocus makeUnique( long someId )
         {
-            locus = someLocus;
-            counter = someCounter;
+            if ( id == 0 )
+                id = someId;
+            return this;
         }
 
-        public int getLocus() { return locus; }
-
-        public int compareTo( final EventEvidence ee )
+        public int compareTo( final EventLocus ee )
         {
-            int result = Integer.compare(locus,ee.locus);
-            if ( result == 0 ) result = Long.compare(counter,ee.counter);
+            int result = Integer.compare(locusStart,ee.locusStart);
+            if ( result == 0 ) result = Integer.compare(locusEnd,ee.locusEnd);
+            if ( result == 0 ) result = Long.compare(id,ee.id);
             return result;
         }
 
-        private final int locus;
-        private final long counter; // used as a uniquifier
+        private final int locusStart;
+        private final int locusEnd;
+        private long id = 0; // used as a uniquifier
     }
 
-    private static final class SplitReadClusterer implements Iterator<GATKRead>
+    private static final class SplitReadDetector
     {
-        public SplitReadClusterer( final Iterator<GATKRead> someInputIterator )
+        public EventLocus isSplit( GATKRead read )
         {
+            final List<CigarElement> cigarElements = read.getCigar().getCigarElements();
+            final ListIterator<CigarElement> itr0 = cigarElements.listIterator();
+            if ( itr0.hasNext() )
+            {
+                CigarElement firstEle = itr0.next();
+                if ( firstEle.getOperator() == CigarOperator.HARD_CLIP && itr0.hasNext() )
+                    firstEle = itr0.next();
+                if ( firstEle.getOperator() == CigarOperator.SOFT_CLIP &&
+                        firstEle.getLength() >= MIN_SOFT_CLIP_LEN &&
+                        highQualityRegion(read.getBaseQualities(), 0) )
+                    return new EventLocus(read.getStart()-SOFT_CLIP_LOCUS_WIDTH/2, SOFT_CLIP_LOCUS_WIDTH);
+            }
+
+            final ListIterator<CigarElement> itrN = cigarElements.listIterator(cigarElements.size());
+            if ( itrN.hasPrevious() )
+            {
+                CigarElement lastEle = itrN.previous();
+                if ( lastEle.getOperator() == CigarOperator.HARD_CLIP && itrN.hasPrevious() )
+                    lastEle = itrN.previous();
+                if ( lastEle.getOperator() == CigarOperator.SOFT_CLIP &&
+                        lastEle.getLength() >= MIN_SOFT_CLIP_LEN &&
+                        highQualityRegion(read.getBaseQualities(), read.getLength()-lastEle.getLength()) )
+                    return new EventLocus(read.getEnd()-SOFT_CLIP_LOCUS_WIDTH/2, SOFT_CLIP_LOCUS_WIDTH);
+            }
+
+            return null;
+        }
+
+        private static boolean highQualityRegion( final byte[] quals, int idx )
+        {
+            for ( final int end = idx+MIN_SOFT_CLIP_LEN; idx != end; ++idx )
+                if ( quals[idx] < MIN_QUALITY )
+                    return false;
+
+            return true;
+        }
+
+        private static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
+        private static final int SOFT_CLIP_LOCUS_WIDTH = 4; // uncertainty in event locus for soft clip
+        private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
+    }
+
+    private static final class DiscordantPairDetector
+    {
+        public EventLocus isDiscordant( GATKRead read )
+        {
+            if ( !read.mateIsUnmapped() && read.getContig() == read.getMateContig() )
+            {
+                if ( read.isReverseStrand() == read.mateIsReverseStrand() || !read.isProperlyPaired() )
+                {
+                    int locus = read.getFragmentLength() < 0 ?
+                            read.getStart()-FUNKY_PAIR_LOCUS_WIDTH :
+                            read.getEnd();
+                    return new EventLocus(locus, FUNKY_PAIR_LOCUS_WIDTH);
+                }
+            }
+
+            return null;
+        }
+
+        private static final int FUNKY_PAIR_LOCUS_WIDTH = 100; // uncertainty in event locus for discordant pair
+    }
+
+    private static final class BreakpointClusterer implements Iterator<GATKRead>
+    {
+        public BreakpointClusterer( final SplitReadDetector someSplitReadDetector,
+                                    final DiscordantPairDetector someDiscordantPairDetector,
+                                    final Iterator<GATKRead> someInputIterator )
+        {
+            splitReadDetector = someSplitReadDetector;
+            discordantPairDetector = someDiscordantPairDetector;
             inputIterator = someInputIterator;
         }
 
@@ -112,56 +210,50 @@ public class GatherSplitReadsSpark extends GATKSparkTool
                         matchLen += ele.getLength();
                 if ( matchLen >= MIN_MATCH_LEN )
                 {
-                    final ListIterator<CigarElement> itr0 = cigarElements.listIterator();
-                    if ( itr0.hasNext() )
-                    {
-                        CigarElement firstEle = itr0.next();
-                        if ( firstEle.getOperator() == CigarOperator.HARD_CLIP && itr0.hasNext() )
-                            firstEle = itr0.next();
-                        if ( firstEle.getOperator() == CigarOperator.SOFT_CLIP &&
-                                firstEle.getLength() >= MIN_SOFT_CLIP_LEN &&
-                                highQualityRegion(read.getBaseQualities(), 0) )
-                            return cluster(read, read.getStart()); // NON-STRUCTURED return
-                    }
-                    final ListIterator<CigarElement> itrN = cigarElements.listIterator(cigarElements.size());
-                    if ( itrN.hasPrevious() )
-                    {
-                        CigarElement lastEle = itrN.previous();
-                        if ( lastEle.getOperator() == CigarOperator.HARD_CLIP && itrN.hasPrevious() )
-                            lastEle = itrN.previous();
-                        if ( lastEle.getOperator() == CigarOperator.SOFT_CLIP &&
-                                lastEle.getLength() >= MIN_SOFT_CLIP_LEN &&
-                                highQualityRegion(read.getBaseQualities(), read.getLength()-lastEle.getLength()) )
-                            return cluster(read, read.getEnd()); // NON-STRUCTURED return
-                    }
+                    EventLocus eventLocus = splitReadDetector.isSplit(read);
+                    if ( eventLocus != null )
+                        return cluster(eventLocus,read);
+                    eventLocus = discordantPairDetector.isDiscordant(read);
+                    if ( eventLocus != null )
+                        return cluster(eventLocus,read);
                 }
             }
             return Collections.emptyIterator();
         }
 
-        private Iterator<GATKRead> cluster( final GATKRead read, final int locus )
+        private Iterator<GATKRead> cluster( final EventLocus newEventLocus, final GATKRead read )
         {
-            final EventEvidence newEvidence = new EventEvidence(locus,++counter);
-            locMap.put(newEvidence,read);
+            final int locusStart = newEventLocus.getLocusStart();
+            final int locusEnd = newEventLocus.getLocusEnd();
 
             // clean out old stuff that can't possibly be interesting anymore
-            final Iterator<Map.Entry<EventEvidence,GATKRead>> itr = locMap.entrySet().iterator();
+            final Iterator<Map.Entry<EventLocus,GATKRead>> itr = locMap.entrySet().iterator();
+            final int staleEnd = locusStart - MAX_LOCUS_DIST;
             while ( itr.hasNext() )
             {
-                final EventEvidence oldEvidence = itr.next().getKey();
-                if ( oldEvidence.getLocus() + MAX_LOCUS_DIST > newEvidence.getLocus() )
+                final EventLocus eventLocus = itr.next().getKey();
+                if ( eventLocus.getLocusStart() >= locusStart )
                     break;
-                itr.remove();
+                if ( eventLocus.getLocusEnd() <= staleEnd )
+                    itr.remove();
             }
 
-            // find all the evidence in a window surrounding the locus of the new evidence
-            final SortedMap<EventEvidence,GATKRead> windowMap = locMap
-                    .tailMap(new EventEvidence(newEvidence.getLocus()-CLUSTER_WINDOW))
-                    .headMap(new EventEvidence(newEvidence.getLocus()+CLUSTER_WINDOW + 1));
-            if ( windowMap.size() >= MIN_EVIDENCE )
+            locMap.put(newEventLocus.makeUnique(++eventIdCounter),read);
+
+            // see if there are a sufficient number of overlapping putative events to call a cluster
+            final List<Map.Entry<EventLocus,GATKRead>> overlappers = new LinkedList<>();
+            for ( Map.Entry<EventLocus,GATKRead> entry : locMap.entrySet() )
+            {
+                final EventLocus eventLocus = entry.getKey();
+                if ( eventLocus.getLocusStart() >= locusEnd )
+                    break;
+                if ( eventLocus.getLocusEnd() > locusStart )
+                    overlappers.add(entry);
+            }
+            if ( overlappers.size() >= MIN_EVIDENCE )
             {
                 final List<GATKRead> list = new LinkedList<>();
-                for ( Map.Entry<EventEvidence,GATKRead> entry : windowMap.entrySet() )
+                for ( Map.Entry<EventLocus,GATKRead> entry : overlappers )
                 {
                     if (entry.getValue() != null)
                     {
@@ -169,31 +261,22 @@ public class GatherSplitReadsSpark extends GATKSparkTool
                         entry.setValue(null);
                     }
                 }
-                return list.iterator(); // NON-STRUCTURED return
+                return list.iterator();
             }
             return Collections.emptyIterator();
         }
 
-        private static boolean highQualityRegion( final byte[] quals, int idx )
-        {
-            for ( final int end = idx+MIN_SOFT_CLIP_LEN; idx != end; ++idx )
-                if ( quals[idx] < MIN_QUALITY )
-                    return false; // NON-STRUCTURED return
-            return true;
-        }
-
-        private String currentContig = null;
-        private long counter = 0;
+        private SplitReadDetector splitReadDetector;
+        private DiscordantPairDetector discordantPairDetector;
         private final Iterator<GATKRead> inputIterator;
-        private final SortedMap<EventEvidence,GATKRead> locMap = new TreeMap<>();
+        private String currentContig = null;
+        private long eventIdCounter = 0;
+        private final SortedMap<EventLocus,GATKRead> locMap = new TreeMap<>();
         private Iterator<GATKRead> outputIterator = Collections.emptyIterator();
 
         private static final int MIN_MATCH_LEN = 45; // minimum length of matched portion of an interesting alignment
-        private static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
-        private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
-        private static final int MAX_LOCUS_DIST = 500; // stale evidence distance, should be somewhat longer than a read
-        private static final int CLUSTER_WINDOW = 2; // size of locus window in which we cluster event evidence
-        private static final int MIN_EVIDENCE = 3; // minimum evidence count in a cluster
+        private static final int MAX_LOCUS_DIST = 300; // stale evidence distance, should be about the fragment length
+        private static final int MIN_EVIDENCE = 5; // minimum evidence count in a cluster
     }
 
     private static final class WindowSorter implements Iterator<GATKRead>, Iterable<GATKRead>
@@ -229,7 +312,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
             @Override
             public int hashCode()
             {
-                return 47*read.hashCode() ^ Boolean.hashCode(isFirst);
+                return 47*read.getName().hashCode() ^ Boolean.hashCode(isFirst);
             }
 
             public int distanceTo( GATKKey that )
@@ -307,27 +390,4 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         private final Iterator<GATKRead> inputIterator;
         private final int windowSize;
     }
-
-    @Override
-    protected void runTool( final JavaSparkContext ctx )
-    {
-        final SAMFileHeader header = getHeaderForReads();
-        if ( header.getSortOrder() != SAMFileHeader.SortOrder.coordinate )
-            throw new GATKException("The BAM must be coordinate sorted.");
-
-        final JavaRDD<GATKRead> clusteredReads =
-            getReads()
-                .mapPartitions(readItr ->
-                { return new WindowSorter(new SplitReadClusterer(readItr),SAM_WINDOW_SIZE); }, true)
-                .coalesce(1)
-                .mapPartitions(readItr ->
-                { return new WindowSorter(readItr,SAM_WINDOW_SIZE); }, true);
-
-        try
-        { ReadsSparkSink.writeReads(ctx,output,clusteredReads,header,ReadsWriteFormat.SINGLE); }
-        catch ( IOException e )
-        { throw new GATKException("Unable to write BAM" + output, e); }
-    }
-
-    private static final int SAM_WINDOW_SIZE = 500;
 }
