@@ -96,4 +96,35 @@ public class PairedEnds implements OpticalDuplicateFinder.PhysicalLocation {
     }
     return new PairedEnds(first.copy()).and(second.copy());
   }
+
+  /**
+   * Returns the pair orientation suitable for optical duplicates,
+   * which always goes by the first then the second end for the strands.
+   * This is based on code in MarkDuplicates and ReadEnds.getOrientationByte.
+   * Returns one of {@link ReadEnds#RR}, {@link ReadEnds#RF}, {@link ReadEnds#FR}, {@link ReadEnds#FF}
+   */
+  public byte getOrientationForOpticalDuplicates() {
+    final GATKRead read1;
+    final GATKRead read2;
+    if (first.isFirstOfPair()){
+      read1 = first;
+      read2 = second;
+    } else {
+      read1 = second;
+      read2 = first;
+    }
+
+    final boolean R1R = read1.isReverseStrand();
+    final boolean R2R = read2.isReverseStrand();
+    if (R1R && R2R) {
+      return ReadEnds.RR;
+    }
+    if (R1R) {
+      return ReadEnds.RF; //at this point we know for sure R2R is false
+    }
+    if (R2R) {
+      return ReadEnds.FR; //at this point we know for sure R1R is false
+    }
+    return ReadEnds.FF;  //at this point we know for sure R1R is false and R2R is false
+  }
 }
