@@ -139,7 +139,8 @@ public final class SplitReadsIntegrationTest extends CommandLineProgramTest {
                 .filter(f -> f.getType().isAssignableFrom(SamReader.Type.class))
                 .map(f -> orNull(() -> f.get(null)))
                 .filter(v -> v instanceof SamReader.Type)
-                .map(v -> (SamReader.Type) v);
+                .map(v -> (SamReader.Type) v)
+                .filter(v -> !v.fileExtension().equals("sra")); // exclude SRA file types until we have tests
     }
 
     private static <V> V orNull(final Callable<V> callable) {
