@@ -34,4 +34,28 @@ public class ReferenceTwoBitSourceUnitTest extends BaseTest {
         ReferenceBases actual = twoBitRef.getReferenceBases(null, interval);
         Assert.assertEquals(actual, expected);
     }
+
+    @DataProvider(name = "outOfBoundsIntervals")
+    public Object[][] getOutOfBoundsIntervals() throws IOException {
+        final ReferenceTwoBitSource twoBitRef = new ReferenceTwoBitSource(null, publicTestDir + "large/human_g1k_v37.20.21.2bit");
+        final int chr20End = 63025520;
+
+        return new Object[][] {
+                { twoBitRef, new SimpleInterval("20", chr20End - 100, chr20End + 1), 101, chr20End },
+                { twoBitRef, new SimpleInterval("20", chr20End - 100, chr20End + 100), 101, chr20End },
+                { twoBitRef, new SimpleInterval("20", chr20End - 1, chr20End + 1), 2, chr20End },
+                { twoBitRef, new SimpleInterval("20", chr20End, chr20End + 1), 1, chr20End },
+        };
+    }
+
+    @Test(dataProvider = "outOfBoundsIntervals")
+    public void testQueryPastContigEnd( final ReferenceTwoBitSource refSource, final SimpleInterval outOfBoundsInterval, final int expectedNumBases, final int contigEnd ) throws IOException {
+        final ReferenceBases bases = refSource.getReferenceBases(null, outOfBoundsInterval);
+
+        // Verify that the ReferenceTwoBitSource cropped our out-of-bounds interval at the contig end, as expected,
+        // and that we got the correct number of bases back.
+        Assert.assertEquals(bases.getInterval().getEnd(), contigEnd, "Interval was not cropped at contig end");
+        Assert.assertEquals(bases.getBases().length, expectedNumBases, "Wrong number of bases returned from query");
+        Assert.assertEquals(bases.getInterval().size(), expectedNumBases, "Wrong interval in ReferenceBases object returned from query");
+    }
 }

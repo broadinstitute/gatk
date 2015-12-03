@@ -30,8 +30,9 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
 
     public static final String TWO_BIT_EXTENSION = ".2bit";
 
-    private String referenceURL;
-    private TwoBitFile twoBitFile;
+    private final String referenceURL;
+    private final TwoBitFile twoBitFile;
+    private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
     public ReferenceTwoBitSource(PipelineOptions popts, String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
@@ -41,18 +42,28 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL, popts));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
+        this.twoBitSeqEntries = JavaConversions.mapAsJavaMap(twoBitFile.seqRecords());
     }
 
+    /**
+     * Gets the reference bases spanning the requested interval. If the interval ends beyond the end of its
+     * contig according to our reference source's dictionary, it will be truncated at the contig end.
+     *
+     * @param pipelineOptions pipeline options (may be null)
+     * @param interval query interval
+     * @return A ReferenceBases containing the reference bases spanning the requested interval, cropped at the
+     *         contig end if necessary
+     */
     @Override
     public ReferenceBases getReferenceBases(PipelineOptions pipelineOptions, SimpleInterval interval) throws IOException {
-        String bases = twoBitFile.extract(simpleIntervalToReferenceRegion(interval));
-        return new ReferenceBases(bases.getBytes(), interval);
+        final SimpleInterval queryInterval = cropIntervalAtContigEnd(interval);
+        final String bases = twoBitFile.extract(simpleIntervalToReferenceRegion(queryInterval));
+        return new ReferenceBases(bases.getBytes(), queryInterval);
     }
 
     @Override
     public SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-        Map<String, TwoBitRecord> twoBitEntries = JavaConversions.mapAsJavaMap(twoBitFile.seqRecords());
-        List<SAMSequenceRecord> records = twoBitEntries.entrySet().stream()
+        List<SAMSequenceRecord> records = twoBitSeqEntries.entrySet().stream()
                 .map(pair -> new SAMSequenceRecord(pair.getKey(), pair.getValue().dnaSize()))
                 .collect(Collectors.toList());
         return new SAMSequenceDictionary(records);
@@ -69,4 +80,16 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
         long end = interval.getGA4GHEnd();
         return new ReferenceRegion(contig, start, end, null);
     }
+
+    private SimpleInterval cropIntervalAtContigEnd( final SimpleInterval interval ) {
+        // The 2bit query API does not support queries beyond the ends of contigs, so we need
+        // to truncate our interval at the contig end if necessary.
+        final TwoBitRecord contigRecord = twoBitSeqEntries.get(interval.getContig());
+        if ( contigRecord == null ) {
+            throw new IllegalArgumentException("Contig " + interval.getContig() + " not found in reference dictionary");
+        }
+
+        return new SimpleInterval(interval.getContig(), interval.getStart(), Math.min(interval.getEnd(), contigRecord.dnaSize()));
+    }
+
 }
