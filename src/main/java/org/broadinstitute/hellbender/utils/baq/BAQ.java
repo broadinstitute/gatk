@@ -519,7 +519,7 @@ public final class BAQ implements Serializable {
         // start is alignment start - band width / 2 - size of first I element, if there is one.  Stop is similar
         final int offset = bandWidth / 2;
         final int readStart = includeClippedBases ? read.getUnclippedStart() : read.getStart();
-        final int start = Math.max(readStart - offset - ReadUtils.getFirstInsertionOffset(read), 0);
+        final int start = Math.max(readStart - offset - ReadUtils.getFirstInsertionOffset(read), 1);
         final int stop = (includeClippedBases ? read.getUnclippedEnd() : read.getEnd()) + offset + ReadUtils.getLastInsertionOffset(read);
 
         return new SimpleInterval(read.getContig(), start, stop);
