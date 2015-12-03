@@ -489,6 +489,55 @@ public final class HDF5File implements AutoCloseable {
         }
     }
 
+    /**
+     * Checks whether there is an element with an arbitrary path in the underlying file.
+     * @param path the query path.
+     * @return {@code true} iff there is such an element (group or object).
+     * @throws GATKException if there is an unexpected exception when accessing the hd5 file.
+     */
+    public boolean isPresent(final String path) throws GATKException {
+        Utils.nonNull(path, "the path cannot be null");
+        final Queue<String> pathElements = Stream.of(path.split(PATH_ELEMENT_SEPARATOR)).filter(s -> !s.isEmpty()).collect(Collectors.toCollection(ArrayDeque::new));
+        final ArrayList<Integer> groupIds = new ArrayList<>(pathElements.size() + 1);
+        try {
+            final int rootId = H5.H5Gopen(fileId, PATH_ELEMENT_SEPARATOR, HDF5Constants.H5P_DEFAULT);
+            if (rootId < 0) {
+                throw new GATKException(String.format("there was a problem in finding group (%s) in file %s", path, file));
+            }
+
+            groupIds.add(rootId);
+            while (!pathElements.isEmpty()) {
+                final int parentId = groupIds.get(groupIds.size() - 1);
+                final String childName = pathElements.remove();
+                final int childType = findOutGroupChildType(parentId, childName, path);
+                if (childType == HDF5Constants.H5G_UNKNOWN) {
+                    // Element not found, so a dead-end.
+                    return false;
+                } else if (childType != HDF5Constants.H5G_GROUP) {
+                    if (!pathElements.isEmpty()) {
+                        // we encounter a non-group element and there are still some more elements in the path.
+                        // so it is a dead-end.
+                        return false;
+                    }
+                } else {  // it is a group.
+                    final int nextGroupId = H5.H5Gopen(parentId, childName, HDF5Constants.H5P_DEFAULT);
+                    if (nextGroupId < 0) {
+                        throw new GATKException(String.format("there was a problem in finding group (%s) in file %s", path, file));
+                    }
+                    groupIds.add(nextGroupId);
+                }
+            }
+        } catch (final HDF5LibraryException ex) {
+            throw new GATKException(String.format("Exception trying to find/make a group (%s) in file %s", path, file), ex);
+        } finally {
+            // we need to do our best to close all the groups we have opened.
+            for (final int groupId : groupIds) {
+                try { H5.H5Gclose(groupId); } catch (final HDF5LibraryException ex) { }
+            }
+        }
+        return true;
+    }
+
     //////////////////////
     // Write operations.
     //////////////////////

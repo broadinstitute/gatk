@@ -202,6 +202,36 @@ public final class HDF5LibraryUnitTest {
         file.close();
     }
 
+    @Test(dependsOnMethods = {"testCreateGroup", "testMakeDouble"})
+    public void testIsPresent() throws IOException {
+        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
+        Assert.assertFalse(file.isPresent("test-group"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run/bernie-follows"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run/jill-follows"));
+        file.makeGroup("test-group/lola-run");
+        Assert.assertTrue(file.isPresent("test-group"));
+        Assert.assertTrue(file.isPresent("test-group/lola-run"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run/bernie-follows"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run/jill-follows"));
+        file.makeDouble("test-group/lola-run/bernie-follows", 0.1);
+        Assert.assertTrue(file.isPresent("test-group"));
+        Assert.assertTrue(file.isPresent("test-group/lola-run"));
+        Assert.assertTrue(file.isPresent("test-group/lola-run/bernie-follows"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run/jill-follows"));
+        Assert.assertFalse(file.isPresent("test-group/lola-run/bernie-follows/and-so-does-jill"));
+        file.close();
+
+        final HDF5File file2 = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
+        Assert.assertTrue(file2.isPresent("test-group"));
+        Assert.assertTrue(file2.isPresent("test-group/lola-run"));
+        Assert.assertTrue(file2.isPresent("test-group/lola-run/bernie-follows"));
+        Assert.assertFalse(file2.isPresent("test-group/lola-run/jill-follows"));
+        Assert.assertFalse(file2.isPresent("test-group/lola-run/bernie-follows/and-so-does-jill"));
+        file2.close();
+    }
+
     @Test()
     public void testCreateGroup() throws IOException {
         final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
