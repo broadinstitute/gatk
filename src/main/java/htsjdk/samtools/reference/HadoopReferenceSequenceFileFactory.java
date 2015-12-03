@@ -110,7 +110,7 @@ public class HadoopReferenceSequenceFileFactory {
                     channelBuffer = ByteBuffer.wrap(channelBytes, 0, bytesRead);
                     // End Hellbender changes
                 } catch (IOException ex) {
-                    throw new SAMException("Unable to load " + contig + "(" + start + ", " + stop + ") from " + file);
+                    throw new SAMException("Unable to load " + contig + "(" + start + ", " + stop + ") from " + getPath());
                 }
 
                 // Reset the buffer for outbound transfers.
