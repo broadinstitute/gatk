@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -16,14 +14,13 @@ import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 
 @CommandLineProgramProperties(
-        summary = "Applies the BQSR table to the input BAM.",
-        oneLineSummary = "Applies the BQSR table to the input BAM.",
+        summary = "Applies the BQSR table to the input SAM/BAM/CRAM",
+        oneLineSummary = "Applies the BQSR table to the input SAM/BAM/CRAM",
         programGroup = ReadProgramGroup.class
 )
 public final class ApplyBQSR extends ReadWalker{

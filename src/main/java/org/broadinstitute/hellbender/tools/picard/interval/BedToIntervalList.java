@@ -28,8 +28,8 @@ import java.io.IOException;
  * @author nhomer
  */
 @CommandLineProgramProperties(
-        summary = "Converts a BED file to an Picard Interval List.",
-        oneLineSummary = "Converts a BED file to an Picard Interval List.",
+        summary = "Converts a BED file to an Picard Interval List",
+        oneLineSummary = "Converts a BED file to an Picard Interval List",
         programGroup = IntervalProgramGroup.class
 )
 public final class BedToIntervalList extends PicardCommandLineProgram {

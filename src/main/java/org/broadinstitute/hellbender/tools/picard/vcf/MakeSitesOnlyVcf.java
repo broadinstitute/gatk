@@ -30,20 +30,20 @@ import java.util.TreeSet;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        summary = "Reads a VCF/VCF.gz/BCF and removes all genotype information from it while retaining " +
+        summary = "Reads a VCF/VCF.gz and removes all genotype information from it while retaining " +
                 "all site level information, including annotations based on genotypes (e.g. AN, AF). Output an be " +
                 "any support variant format including .vcf, .vcf.gz or .bcf.",
-        oneLineSummary = "Creates a VCF bereft of genotype information from an input VCF or BCF",
+        oneLineSummary = "Creates a VCF bereft of genotype information from an input VCF",
         programGroup = VariantProgramGroup.class
 )
 public final class MakeSitesOnlyVcf extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF or BCF")
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input VCF")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF or BCF to emit without per-sample info.")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF to emit without per-sample info.")
     public File OUTPUT;
 
     @Argument(shortName = "S", doc = "Optionally one or more samples to retain when building the 'sites-only' VCF.", optional=true)

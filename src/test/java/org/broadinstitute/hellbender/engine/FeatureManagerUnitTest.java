@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -76,7 +77,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         Assert.assertEquals(FeatureManager.isFeatureFile(file), expectedIsFeatureFile, "isFeatureFile() returned incorrect result for file " + file.getAbsolutePath());
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = QCProgramGroup.class)
     private static class ValidFeatureArgumentSource extends CommandLineProgram {
         // We should be able to detect the type parameter of a FeatureInput regardless of whether or
         // not it's wrapped within a Collection
@@ -105,7 +106,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         }
     }
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "",programGroup = QCProgramGroup.class)
     @SuppressWarnings("rawtypes")
     private static class InvalidFeatureArgumentSource extends CommandLineProgram {
         // FeatureInputs without type parameters (ie., raw types) should be detected as errors

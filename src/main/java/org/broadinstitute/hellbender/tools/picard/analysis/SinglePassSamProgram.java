@@ -30,8 +30,9 @@ import java.util.*;
  * @author Tim Fennell
  */
 public abstract class SinglePassSamProgram extends PicardCommandLineProgram {
+
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM or BAM file.")
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input SAM/BAM file.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,

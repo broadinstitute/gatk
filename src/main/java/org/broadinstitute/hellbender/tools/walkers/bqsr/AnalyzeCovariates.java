@@ -150,8 +150,8 @@ import java.util.Optional;
  *
  */
 @CommandLineProgramProperties(
-        summary = "TODO",
-        oneLineSummary = "Tool to analyze and evaluate base recalibration tables.",
+        summary = "Tool to analyze and evaluate base recalibration tables for BQSR",
+        oneLineSummary = "Tool to analyze and evaluate base recalibration tables for BQSR",
         programGroup = QCProgramGroup.class
 )
 public final class AnalyzeCovariates extends CommandLineProgram {

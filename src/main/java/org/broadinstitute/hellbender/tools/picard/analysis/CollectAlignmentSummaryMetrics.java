@@ -18,7 +18,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * A command line tool to read a BAM file and produce standard alignment metrics that would be applicable to any alignment.  
+ * A command line tool to read a SAM/BAM/CRAM file and produce standard alignment metrics that would be applicable to any alignment.
  * Metrics to include, but not limited to:
  * <ul>
  * <li>Total number of reads (total, period, no exclusions)</li>
@@ -44,7 +44,7 @@ import java.util.*;
         programGroup = QCProgramGroup.class
 )
 public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
-    static final String USAGE = "Produces from a SAM or BAM a file containing summary alignment metrics";
+    static final String USAGE = "Produces from a SAM/BAM/CRAM file containing summary alignment metrics";
     
     private static final Logger log = LogManager.getLogger();
 
@@ -66,7 +66,7 @@ public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
     @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics.  ")
     public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
-    @Argument(shortName="BS", doc="Whether the SAM or BAM file consists of bisulfite sequenced reads.  ")
+    @Argument(shortName="BS", doc="Whether the SAM/BAM/CRAM file consists of bisulfite sequenced reads.  ")
     public boolean IS_BISULFITE_SEQUENCED = false;
 
     private AlignmentSummaryMetricsCollector collector;

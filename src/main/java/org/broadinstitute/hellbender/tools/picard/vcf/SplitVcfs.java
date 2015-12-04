@@ -29,22 +29,23 @@ import java.io.File;
  * extension will create gzip-compressed output.
  */
 @CommandLineProgramProperties(
-        summary = "Splits an input VCF or BCF file into two VCF files, one for indel records and one for SNPs. The" +
+        summary = "Splits an input VCF file into two VCF files, one for indel records and one for SNPs. The" +
                 "headers of the two output files will be identical. An index file is created and a" +
                 "sequence dictionary is required by default.",
-        oneLineSummary = "Splits an input VCF or BCF file into two VCF or BCF files",
+        oneLineSummary = "Splits an input VCF file into two VCF files",
         programGroup = VariantProgramGroup.class
 )
 public final class SplitVcfs extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The VCF or BCF input file")
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, 
+            doc = "The VCF input file")
     public File INPUT;
 
-    @Argument(doc = "The VCF or BCF file to which SNP records should be written. The file format is determined by file extension.")
+    @Argument(doc = "The VCF file to which SNP records should be written. The file format is determined by file extension.")
     public File SNP_OUTPUT;
 
-    @Argument(doc = "The VCF or BCF file to which indel records should be written. The file format is determined by file extension.")
+    @Argument(doc = "The VCF file to which indel records should be written. The file format is determined by file extension.")
     public File INDEL_OUTPUT;
 
     @Argument(shortName = "D", doc = "The index sequence dictionary to use instead of the sequence dictionaries in the input files", optional = true)

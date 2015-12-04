@@ -23,7 +23,7 @@ public final class HsMetrics extends MultiLevelMetrics {
     /** Target terrirtoy / bait territory.  1 == perfectly efficient, 0.5 = half of baited bases are not target. */
     public double BAIT_DESIGN_EFFICIENCY;
 
-    /** The total number of reads in the SAM or BAM file examine. */
+    /** The total number of reads in the SAM/BAM file examine. */
     public long TOTAL_READS;
 
     /** The number of reads that pass the vendor's filter. */

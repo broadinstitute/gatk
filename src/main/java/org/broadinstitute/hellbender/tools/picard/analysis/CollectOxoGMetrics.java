@@ -11,13 +11,7 @@ import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.ListMap;
-import htsjdk.samtools.util.SamLocusIterator;
-import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.samtools.util.StringUtil;
+import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -44,7 +38,7 @@ import static java.lang.Math.log10;
         programGroup = QCProgramGroup.class
 )
 public final class CollectOxoGMetrics extends PicardCommandLineProgram {
-    static final String USAGE = "Collects metrics quantifying the CpCG -> CpCA error rate from the provided SAM/BAM";
+    static final String USAGE = "Produces metrics quantifying the CpCG -> CpCA error rate from the provided SAM/BAM file";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "Input BAM file for analysis.")

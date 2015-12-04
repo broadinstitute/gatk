@@ -19,7 +19,7 @@ import scala.Tuple2;
 
 import java.io.IOException;
 
-@CommandLineProgramProperties(summary = "Sorts the input BAM", oneLineSummary = "Sorts a BAM file", programGroup = SparkProgramGroup.class)
+@CommandLineProgramProperties(summary = "Sorts the input BAM", oneLineSummary = "SortBam on Spark", programGroup = SparkProgramGroup.class)
 public final class SortBamSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

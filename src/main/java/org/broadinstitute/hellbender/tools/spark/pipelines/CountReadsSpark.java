@@ -16,7 +16,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-@CommandLineProgramProperties(summary = "Counts reads in the input BAM", oneLineSummary = "Counts reads in a BAM file", programGroup = SparkProgramGroup.class)
+@CommandLineProgramProperties(summary = "Counts reads in the input SAM/BAM",
+        oneLineSummary = "CountReads on Spark",
+        programGroup = SparkProgramGroup.class)
 public final class CountReadsSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

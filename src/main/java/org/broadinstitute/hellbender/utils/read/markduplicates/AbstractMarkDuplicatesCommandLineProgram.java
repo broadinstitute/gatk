@@ -15,14 +15,14 @@ import java.util.*;
 
 /**
  * Abstract class that holds parameters and methods common to classes that perform duplicate
- * detection and/or marking within SAM/BAM files.
+ * detection and/or marking within SAM/BAM/CRAM files.
  *
  * @author Nils Homer
  */
 public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "One or more input SAM or BAM files to analyze. Must be coordinate sorted.")
+            doc = "One or more input SAM/BAM/CRAM files to analyze. Must be coordinate sorted.")
     public List<File> INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

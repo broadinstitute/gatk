@@ -28,9 +28,9 @@ import java.util.*;
  */
 @CommandLineProgramProperties(
         summary = "Program to generate a data table and pdf chart of " +
-                "mean base quality by cycle from a SAM or BAM file.  Works best on a single lane/run of data, but can be applied to" +
+                "mean base quality by cycle from a SAM/BAM/CRAM file.  Works best on a single lane/run of data, but can be applied to" +
                 "merged BAMs. Uses R to generate chart output.",
-        oneLineSummary = "Writes mean quality by cycle for a SAM or BAM file",
+        oneLineSummary = "Produces metrics for mean quality by cycle for a SAM/BAM/CRAM file",
         programGroup = QCProgramGroup.class
 )
 public final class MeanQualityByCycle extends SinglePassSamProgram {

@@ -56,7 +56,7 @@ public abstract class CollectTargetedMetrics<METRIC extends MultiLevelMetrics, C
     public List<File> TARGET_INTERVALS;
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "An aligned SAM or BAM file.")
+            doc = "An aligned SAM/BAM file.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

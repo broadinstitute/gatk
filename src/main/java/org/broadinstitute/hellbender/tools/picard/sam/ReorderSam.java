@@ -31,21 +31,21 @@ import java.util.Map;
  * @author mdepristo
  */
 @CommandLineProgramProperties(
-        summary = "Not to be confused with SortSam which sorts a SAM or BAM file with a valid sequence dictionary, " +
+        summary = "Not to be confused with SortSam which sorts a SAM/BAM file with a valid sequence dictionary, " +
                 "ReorderSam reorders reads in a SAM/BAM file to match the contig ordering in a provided reference file, " +
                 "as determined by exact name matching of contigs.  Reads mapped to contigs absent in the new " +
                 "reference are dropped. Runs substantially faster if the input is an indexed BAM file.",
-        oneLineSummary = "Reorders reads in a SAM or BAM file to match ordering in reference",
+        oneLineSummary = "Reorders reads in a SAM/BAM file to match ordering in reference",
         programGroup = ReadProgramGroup.class
 )
 public final class ReorderSam extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file (bam or sam) to extract reads from.")
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "Input file SAM.BAM to extract reads from.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (bam or sam) to write extracted reads to.")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file SAM/BAM to write extracted reads to.")
     public File OUTPUT;
 
     @Argument(shortName = "S", doc = "If true, then allows only a partial overlap of the BAM contigs with the new reference " +

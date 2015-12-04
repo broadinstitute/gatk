@@ -9,6 +9,8 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -17,6 +19,11 @@ import java.io.File;
 
 public final class GATKToolUnitTest extends BaseTest{
 
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithReads",
+            oneLineSummary = "TestGATKToolWithReads",
+            programGroup = ReadProgramGroup.class
+    )
     private static final class TestGATKToolWithReads extends GATKTool{
 
         @Override
@@ -30,6 +37,11 @@ public final class GATKToolUnitTest extends BaseTest{
         }
     }
 
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithReads",
+            oneLineSummary = "TestGATKToolWithReads",
+            programGroup = ReadProgramGroup.class
+    )
     private static final class TestGATKToolWithFeatures extends GATKTool{
 
         @Argument(fullName="mask", shortName="mask", doc="Input mask", optional=true)

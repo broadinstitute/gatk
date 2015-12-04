@@ -18,8 +18,8 @@ import java.io.PrintStream;
  * along with overlapping reads/reference bases/variants (if present).
  */
 @CommandLineProgramProperties(
-        summary = "Prints variants supplied to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
-        oneLineSummary = "Print variants with optional contextual data",
+        summary = "Example tool that prints variants supplied to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
+        oneLineSummary = "Example tool that prints variants with optional contextual data",
         programGroup = VariantProgramGroup.class
 )
 public final class ExampleVariantWalker extends VariantWalker {

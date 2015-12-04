@@ -12,7 +12,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -29,7 +28,6 @@ import java.util.List;
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
  * GATK tools should extend one of the Walker classes instead.
  */
-@CommandLineProgramProperties(summary = "Generic GATK tool", oneLineSummary = "Generic GATK tool", omitFromCommandLine = true)
 public abstract class GATKTool extends CommandLineProgram {
 
     @ArgumentCollection

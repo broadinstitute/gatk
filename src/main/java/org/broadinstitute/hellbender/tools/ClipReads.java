@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
@@ -24,7 +22,6 @@ import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
@@ -136,7 +133,7 @@ import java.util.regex.Pattern;
  */
 @CommandLineProgramProperties(
         summary = "Read clipping based on quality, position or sequence matching.",
-        oneLineSummary = "Clip reads",
+        oneLineSummary = "Clip reads in a SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class ClipReads extends ReadWalker {

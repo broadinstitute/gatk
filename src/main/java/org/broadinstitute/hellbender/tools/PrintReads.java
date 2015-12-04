@@ -1,20 +1,20 @@
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 
 @CommandLineProgramProperties(
-	summary = "Prints reads from the input to the output.",
-    oneLineSummary = "Print reads",
+	summary = "Prints reads from the input SAM/BAM/CRAM file to the SAM/BAM/CRAM file.",
+    oneLineSummary = "Print reads in the SAM/BAM/CRAM file",
     programGroup = ReadProgramGroup.class
 )
 public final class PrintReads extends ReadWalker {

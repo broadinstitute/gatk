@@ -10,7 +10,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Calculates HS metrics for a given SAM or BAM file. Requires the input of a list of
+ * Calculates HS metrics for a given SAM/BAM file. Requires the input of a list of
  * target intervals and a list of bait intervals. Can be invoked either on an entire
  * iterator of SAMRecords or be passed SAMRecords one at a time.
  *

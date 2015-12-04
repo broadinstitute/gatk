@@ -12,13 +12,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.filter.FilteringIterator;
 import htsjdk.samtools.filter.SamRecordFilter;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.FastqQualityFormat;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.QualityEncodingDetector;
-import htsjdk.samtools.util.SolexaQualityConverter;
-import htsjdk.samtools.util.SortingCollection;
+import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -43,9 +37,9 @@ import java.util.Map;
  * all alignment information.
  */
 @CommandLineProgramProperties(
-        summary = "Reverts SAM or BAM files to a previous state by removing certain types of information and/or " +
+        summary = "Reverts SAM/BAM files to a previous state by removing certain types of information and/or " +
                 "substituting in the original quality scores when available.",
-        oneLineSummary = "Reverts SAM or BAM files to a previous state",
+        oneLineSummary = "Reverts SAM/BAM files to a previous state",
         programGroup = ReadProgramGroup.class
 )
 public final class RevertSam extends PicardCommandLineProgram {

@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +16,7 @@ import java.util.Arrays;
 
 public final class FeatureContextUnitTest extends BaseTest {
 
-    @CommandLineProgramProperties(summary = "", oneLineSummary = "")
+    @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = QCProgramGroup.class)
     private static class ArtificialFeatureContainingCommandLineProgram extends CommandLineProgram {
         @Argument(fullName = "featureArgument", shortName = "f")
         FeatureInput<Feature> featureArgument;

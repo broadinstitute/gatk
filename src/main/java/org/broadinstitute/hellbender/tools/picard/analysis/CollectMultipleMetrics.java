@@ -18,10 +18,10 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        summary = "Takes an input BAM and reference sequence and runs one or more Picard " +
+        summary = "Takes an input SAM/BAM file and reference sequence and runs one or more Picard " +
                 "metrics modules at the same time to cut down on I/O. Currently all programs are run with " +
                 "default options and fixed output extesions, but this may become more flexible in future.",
-        oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM",
+        oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectMultipleMetrics extends PicardCommandLineProgram {

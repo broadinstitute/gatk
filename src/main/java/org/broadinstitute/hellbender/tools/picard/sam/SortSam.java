@@ -16,19 +16,19 @@ import java.io.File;
  * @author alecw@broadinstitute.org
  */
 @CommandLineProgramProperties(
-        summary = "Sorts the input SAM or BAM.\n" +
+        summary = "Sorts the input SAM/BAM/CRAM.\n" +
                 "Input and output formats are determined by file extension.",
-        oneLineSummary = "Sorts a SAM or BAM file",
+        oneLineSummary = "Sorts a SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class SortSam extends PicardCommandLineProgram {
 
-    @Argument(doc = "The BAM or SAM file to sort.",
+    @Argument(doc = "The SAM/BAM/CRAM file to sort.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME)
     public File INPUT;
 
-    @Argument(doc = "The sorted BAM or SAM output file. ",
+    @Argument(doc = "The sorted SAM/BAM/CRAM output file. ",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;

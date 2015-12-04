@@ -6,6 +6,7 @@ import htsjdk.samtools.util.*;
 
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
@@ -25,9 +26,9 @@ import java.util.Map;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        summary = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules. " +
+        summary = "Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules. " +
                 "All records are then written to the output file with the duplicate records flagged.",
-        oneLineSummary = "Examines aligned records in the supplied SAM or BAM file to locate duplicate molecules.",
+        oneLineSummary = "Examines aligned records in the supplied SAM/BAM/CRAM file to locate duplicate molecules.",
         programGroup = ReadProgramGroup.class
 )
 public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgram {

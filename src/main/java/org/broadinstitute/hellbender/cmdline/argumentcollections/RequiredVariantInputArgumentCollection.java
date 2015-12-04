@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * An argument collection for use with tools that accept one or more input files containing VariantContext records
- * (eg., VCF/BCF files), and require at least one such input.
+ * (eg., VCF files), and require at least one such input.
  */
 public final class RequiredVariantInputArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;

@@ -34,13 +34,13 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Computes a number of metrics that are useful for evaluating coverage and performance of " +
                 "whole genome sequencing experiments.",
-        oneLineSummary = "Writes whole genome sequencing-related metrics for a SAM or BAM file",
+        oneLineSummary = "Produces metrics related to whole genome sequencing for a SAM/BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectWgsMetrics extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "Input SAM or BAM file.")
+            doc = "Input SAM/BAM file.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

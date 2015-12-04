@@ -3,13 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.vcf;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.liftover.LiftOver;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.CollectionUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.samtools.util.SortingCollection;
-import htsjdk.samtools.util.StringUtil;
+import htsjdk.samtools.util.*;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -46,16 +40,18 @@ import java.util.Map;
                 "and indexed. Records may be rejected because they cannot be lifted over or because post-liftover the " +
                 "reference allele mismatches the target genome build.  Rejected records will be emitted with filters " +
                 "to the REJECT file, on the source genome.",
-        oneLineSummary = "Lifts a VCF between genome builds.",
+        oneLineSummary = "Lifts a VCF between genome builds",
         programGroup = VariantProgramGroup.class
 )
-public final class LiftoverVcf extends PicardCommandLineProgram {
+public final class LiftOverVcf extends PicardCommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "The input VCF/BCF file to be lifted over.")
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, 
+            doc = "The input VCF file to be lifted over.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The output location to write the lifted over VCF/BCF to.")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, 
+            doc = "The output location to write the lifted over VCF to.")
     public File OUTPUT;
 
     @Argument(shortName = "C", doc = "The liftover chain file. See https://genome.ucsc.edu/goldenPath/help/chain.html for a description" +

@@ -22,14 +22,14 @@ import java.io.File;
  */
 @CommandLineProgramProperties(
         summary = "Collects quality yield metrics, a set of metrics that quantify the quality and yield of sequence data from a " +
-                "SAM/BAM input file.",
-        oneLineSummary = "Collects a set of metrics that quantify the quality and yield of sequence data from the provided SAM/BAM",
+                "SAM/BAM/CRAM input file.",
+        oneLineSummary = "Produces metrics that quantify the quality and yield of sequence data from the provided SAM/BAM/CRAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "A SAM or BAM file to process.")
+            doc = "A SAM/BAM/CRAM file to process.")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

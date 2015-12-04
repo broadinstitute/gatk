@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -35,7 +34,7 @@ import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        oneLineSummary = "Generates recalibration table",
+        oneLineSummary = "BaseRecalibrator on Spark",
         programGroup = SparkProgramGroup.class
 )
 public class BaseRecalibratorSpark extends GATKSparkTool {

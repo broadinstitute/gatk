@@ -28,12 +28,12 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        summary = "Tool to collect information about GC bias in the reads in a given BAM file. Computes" +
+        summary = "Tool to collect information about GC bias in the reads in a given SAM/BAM file. Computes" +
                 " the number of windows (of size specified by WINDOW_SIZE) in the genome at each GC%" +
                 " and counts the number of read starts in each GC bin.  What is output and plotted is" +
                 " the \"normalized coverage\" in each bin - i.e. the number of reads per window normalized" +
                 " to the average number of reads per window across the whole genome..\n",
-        oneLineSummary = "Collects information about GC bias in the reads in the provided SAM or BAM",
+        oneLineSummary = "Produces metrics about GC bias in the reads in the provided SAM/BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectGcBiasMetrics extends SinglePassSamProgram {
@@ -54,7 +54,7 @@ public final class CollectGcBiasMetrics extends SinglePassSamProgram {
     @Argument(doc = "For summary metrics, exclude GC windows that include less than this fraction of the genome.")
     public double MINIMUM_GENOME_FRACTION = 0.00001;
 
-    @Argument(shortName = "BS", doc = "Whether the SAM or BAM file consists of bisulfite sequenced reads.  ")
+    @Argument(shortName = "BS", doc = "Whether the SAM/BAM file consists of bisulfite sequenced reads.  ")
     public boolean IS_BISULFITE_SEQUENCED = false;
 
     @Argument(doc = "Should an output plot be created")

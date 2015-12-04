@@ -34,7 +34,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
     private final int maxInsertSize;
 
 
-    //Whether the SAM or BAM file consists of bisulfite sequenced reads.
+    //Whether the SAM/BAM file consists of bisulfite sequenced reads.
     private final boolean isBisulfiteSequenced;
 
     //The minimum mapping quality a base has to meet in order to be considered high quality

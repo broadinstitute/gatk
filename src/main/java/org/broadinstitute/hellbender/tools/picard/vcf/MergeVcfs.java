@@ -39,20 +39,22 @@ import java.util.List;
  * ".gz" extension will create gzip-compressed output.
  */
 @CommandLineProgramProperties(
-        summary = "Merges multiple VCF or BCF files into one VCF file. Input files must be sorted by their contigs " +
+        summary = "Merges multiple VCF files into one VCF file. Input files must be sorted by their contigs " +
                 "and, within contigs, by start position. The input files must have the same sample and " +
                 "contig lists. An index file is created and a sequence dictionary is required by default.",
-        oneLineSummary = "Merges multiple VCF or BCF files into one VCF file or BCF",
+        oneLineSummary = "Merges multiple VCF files into one VCF file",
         programGroup = VariantProgramGroup.class
 )
 public final class MergeVcfs extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="VCF or BCF input files File format is determined by file extension.", optional = false)
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, 
+            doc="VCF input files File format is determined by file extension.", optional = false)
     public List<File> INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "The merged VCF or BCF file. File format is determined by file extension.")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, 
+            doc = "The merged VCF file. File format is determined by file extension.")
     public File OUTPUT;
 
     @Argument(shortName = "D", doc = "The index sequence dictionary to use instead of the sequence dictionary in the input file", optional = true)

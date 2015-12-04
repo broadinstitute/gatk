@@ -25,19 +25,19 @@ import java.io.IOException;
 
 /**
  * Tool to create an appropriate index file for the various kinds of Feature-containing files
- * we support. These include VCF, BCF, and BED files.
+ * we support. These include VCF, and BED files.
  *
  * Such files must have an index in order to be queried by interval.
  */
 @CommandLineProgramProperties(
-        summary = "Creates indices for Feature-containing files, such as VCF, BCF, and BED files",
-        oneLineSummary = "Creates indices for Feature-containing files",
+        summary = "Creates indices for Feature-containing files, such as VCF and BED files",
+        oneLineSummary = "Creates indices for Feature-containing files (eg VCF and BED files)",
         programGroup = VariantProgramGroup.class
 )
 public final class IndexFeatureFile extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(IndexFeatureFile.class);
 
-    @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file (eg., VCF/BCF/etc. file) to index. Must be in a tribble-supported format")
+    @Argument(shortName = "F", fullName = "feature_file", doc = "Feature file (eg., VCF or BED file) to index. Must be in a tribble-supported format")
     public File featureFile;
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

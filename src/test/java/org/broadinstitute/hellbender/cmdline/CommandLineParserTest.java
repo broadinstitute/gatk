@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,7 +22,8 @@ public final class CommandLineParserTest {
 
     @CommandLineProgramProperties(
             summary = "Usage: frobnicate [arguments] input-file output-file\n\nRead input-file, frobnicate it, and write frobnicated results to output-file\n",
-            oneLineSummary = "Read input-file, frobnicate it, and write frobnicated results to output-file"
+            oneLineSummary = "Read input-file, frobnicate it, and write frobnicated results to output-file",
+            programGroup = QCProgramGroup.class
     )
     class FrobnicateArguments {
         @ArgumentCollection
@@ -45,7 +47,8 @@ public final class CommandLineParserTest {
 
     @CommandLineProgramProperties(
             summary = "Usage: framistat [arguments]\n\nCompute the plebnick of the freebozzle.\n",
-            oneLineSummary = "ompute the plebnick of the freebozzle"
+            oneLineSummary = "ompute the plebnick of the freebozzle",
+            programGroup = QCProgramGroup.class
     )
     class ArgumentsWithoutPositional {
         public static final int DEFAULT_FROBNICATION_THRESHOLD = 20;
@@ -80,7 +83,8 @@ public final class CommandLineParserTest {
 
     @CommandLineProgramProperties(
             summary = "[oscillation_frequency]\n\nResets oscillation frequency.\n",
-            oneLineSummary = "Reset oscillation frequency."
+            oneLineSummary = "Reset oscillation frequency.",
+            programGroup = QCProgramGroup.class
     )
     public class RequiredOnlyArguments {
         @Argument(doc="Oscillation frequency.", optional = false)
@@ -99,7 +103,8 @@ public final class CommandLineParserTest {
 
     @CommandLineProgramProperties(
             summary = "[oscillation_frequency]\n\nRecalibrates overthruster oscillation. \n",
-            oneLineSummary = "Recalibrates the overthruster."
+            oneLineSummary = "Recalibrates the overthruster.",
+            programGroup = QCProgramGroup.class
     )
     public class OptionalOnlyArguments {
         @Argument(doc="Oscillation frequency.", optional = true)

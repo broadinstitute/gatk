@@ -26,7 +26,7 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
 @CommandLineProgramProperties(
         summary = "Lifts over an interval list from one reference build to another. Based on UCSC liftOver." +
                 " Uses a UCSC chain file to guide the liftOver.",
-        oneLineSummary = "Lifts over an interval list from one reference build to another",
+        oneLineSummary = "Lifts over an interval list between genome builds",
         programGroup = IntervalProgramGroup.class
 )
 public final class LiftOverIntervalList extends PicardCommandLineProgram {

@@ -21,7 +21,7 @@ import java.io.PrintStream;
  * along with overlapping reads/reference bases/variants (if present).
  */
 @CommandLineProgramProperties(
-        summary = "Prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
+        summary = "Example tool that prints intervals supplied via -L to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Print intervals with optional contextual data",
         programGroup = IntervalProgramGroup.class
 )

@@ -17,13 +17,13 @@ public final class TargetedPcrMetrics extends MultiLevelMetrics {
     /** The number of unique bases covered by the intervals of all targets that should be covered */
     public long TARGET_TERRITORY;
 
-    /** The total number of reads in the SAM or BAM file examine. */
+    /** The total number of reads in the SAM/BAM file examine. */
     public long TOTAL_READS;
 
     /** The number of reads that pass the vendor's filter. */
     public long PF_READS;
 
-    /** THe number of bases in the SAM or BAM file to be examined */
+    /** THe number of bases in the SAM/BAM file to be examined */
     public long PF_BASES;
 
     /** The number of PF reads that are not marked as duplicates. */

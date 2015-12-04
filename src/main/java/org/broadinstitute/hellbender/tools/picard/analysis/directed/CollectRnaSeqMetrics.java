@@ -5,13 +5,12 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.OverlapDetector;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
@@ -23,12 +22,15 @@ import org.broadinstitute.hellbender.utils.gene.GeneAnnotationReader;
 import org.broadinstitute.hellbender.utils.io.Resource;
 
 import java.io.File;
-import java.util.*;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "Collect metrics about the alignment of RNA to various functional classes of loci in the genome:" +
                 "coding, intronic, UTR, intergenic, ribosomal. Also determines strand-specificity for strand-specific libraries.",
-        oneLineSummary = "Produces RNA alignment metrics for a SAM or BAM file",
+        oneLineSummary = "Produces RNA alignment metrics for a SAM/BAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectRnaSeqMetrics extends SinglePassSamProgram {

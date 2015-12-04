@@ -20,8 +20,8 @@ import java.util.List;
  * @author Doug Voet
  */
 @CommandLineProgramProperties(
-        summary = "Read a SAM or BAM file and report on its validity.",
-        oneLineSummary = "Validates a SAM or BAM file",
+        summary = "Read a SAM/BAM/CRAM file and report on its validity.",
+        oneLineSummary = "Validates a SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
 public final class ValidateSamFile extends PicardCommandLineProgram {
@@ -30,7 +30,7 @@ public final class ValidateSamFile extends PicardCommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            doc = "Input SAM/BAM file")
+            doc = "Input SAM/BAM/CRAM file")
     public File INPUT;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -57,7 +57,7 @@ public final class ValidateSamFile extends PicardCommandLineProgram {
     public boolean VALIDATE_INDEX = true;
 
     @Argument(shortName = "BISULFITE",
-            doc = "Whether the SAM or BAM file consists of bisulfite sequenced reads. " +
+            doc = "Whether the SAM/BAM/CRAM file consists of bisulfite sequenced reads. " +
                     "If so, C->T is not counted as an error in computing the value of the NM tag.")
     public boolean IS_BISULFITE_SEQUENCED = false;
 
