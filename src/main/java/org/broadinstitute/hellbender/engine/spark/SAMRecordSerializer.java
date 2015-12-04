@@ -5,20 +5,17 @@ import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 /**
- * Efficient serializer for SAMRecordToGATKReadAdapters that uses SAMRecordSparkCodec for encoding/decoding.
- * Assumes that the underlying SAMRecords are headerless (and clears their header if they're not).
+ * Efficient serializer for SAMRecords that uses SAMRecordSparkCodec for encoding/decoding.
+ * Assumes that the SAMRecords are headerless (and clears their header if they're not).
  */
-public final class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRecordToGATKReadAdapter> {
-
+public final class SAMRecordSerializer extends Serializer<SAMRecord> {
     private SAMRecordSparkCodec lazyCodec = new SAMRecordSparkCodec();
 
     @Override
-    public void write(Kryo kryo, Output output, SAMRecordToGATKReadAdapter adapter) {
-        SAMRecord record = adapter.getEncapsulatedSamRecord();
-        // The underlying read is likely to already be headerless, but as a defensive
+    public void write(Kryo kryo, Output output, SAMRecord record) {
+        // The read is likely to already be headerless, but as a defensive
         // measure in case it's not, set the header to null explicitly.
         record.setHeader(null);
 
@@ -33,7 +30,7 @@ public final class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRe
     }
 
     @Override
-    public SAMRecordToGATKReadAdapter read(Kryo kryo, Input input, Class<SAMRecordToGATKReadAdapter> type) {
+    public SAMRecord read(Kryo kryo, Input input, Class<SAMRecord> type) {
         final String referenceName = input.readString();
         final String mateReferenceName = input.readString();
         lazyCodec.setInputStream(input);
@@ -45,10 +42,11 @@ public final class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRe
         // set reference names (and indices to null)
         record.setReferenceName(referenceName);
         record.setMateReferenceName(mateReferenceName);
+        // Explicitly clear the reference indices by calling setHeader(null). Although setReferenceName()
+        // and setMateReferenceName() above will usually null out the reference indices for us (since our
+        // read is headerless) they won't do so if either name is "*"
+        record.setHeader(null);
 
-        // headerlessReadAdapter() calls setHeader(null), which will set reference indices to null if the above
-        // setReferenceName()/setMateReferenceName() calls failed to do so (eg., in the case of "*" as the
-        // reference name).
-        return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);
+        return record;
     }
 }
