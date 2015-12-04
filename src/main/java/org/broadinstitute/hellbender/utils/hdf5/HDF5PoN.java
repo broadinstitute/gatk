@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
+import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.util.Lazy;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.tools.exome.TargetCoverageUtils;
+import org.broadinstitute.hellbender.tools.exome.TargetTableColumns;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.IntPredicate;
 
 /**
@@ -54,9 +57,31 @@ public final class HDF5PoN implements PoN {
 
     private final static String VERSION_PATH = VERSION_GROUP_NAME + "/values";
 
+    private final static String TARGETS_GROUP_NAME = "/targets";
+
+    private final static String TARGETS_PATH = TARGETS_GROUP_NAME + "/block0_values";
+
+    private final static String RAW_TARGETS_GROUP_NAME = "/raw_targets";
+
+    private final static String RAW_TARGETS_PATH = RAW_TARGETS_GROUP_NAME + "/block0_values";
+
+    public final static String RAW_TARGET_NAMES_PATH = RAW_TARGETS_GROUP_NAME + "/index";
+
+    private final static String LOG_NORMALS_TARGETS_GROUP_NAME = "/log_normals_targets";
+
+    private final static String LOG_NORMALS_TARGETS_PATH = LOG_NORMALS_TARGETS_GROUP_NAME + "/block0_values";
+
+    private final static String TARGET_VARIANCES_GROUP_NAME = "/target_variances";
+    private final static String TARGET_VARIANCES_PATH = TARGET_VARIANCES_GROUP_NAME + "/block0_values";
+
     private final HDF5File file;
 
     private final Lazy<List<String>> targetNames;
+
+    private final Lazy<List<String>> rawTargetNames;
+    private final Lazy<List<Target>> targets;
+    private final Lazy<List<Target>> rawTargets;
+    private final Lazy<List<Target>> panelTargets;
 
     private final Lazy<List<String>> reducedTargetNames;
 
@@ -64,8 +89,22 @@ public final class HDF5PoN implements PoN {
 
     private final Lazy<List<String>> logNormalSampleNames;
 
+    private final static Map<String, Integer> targetColumnToPoNIndex = ImmutableMap.of(
+            TargetTableColumns.CONTIG.toString(), 0, TargetTableColumns.START.toString(), 1,
+            TargetTableColumns.END.toString(), 2
+    );
+
+    private final static int NUM_TARGETS_COLS = targetColumnToPoNIndex.size();
+
+    private final static String NUM_TARGETS_COLS_GROUP_NAME = "/num_target_cols";
+
+    private final static String NUM_TARGETS_COLS_PATH = NUM_TARGETS_COLS_GROUP_NAME + "/values";
+
+
     /**
      * Create a new PoN interface to a HDF5 file.
+     *
+     * <p>DEV NOTE:  If you are adding attributes that are not RealMatrix nor a primitive, you must follow the pattern in the constructor (i.e. the Lazy loading pattern).  See the targetNames private attribute.  Otherwise, some operations will hang.</p>
      * @param file the underlying HDF5 file.
      * @throws IllegalArgumentException if {@code file} is {@code null}.
      */
@@ -76,9 +115,13 @@ public final class HDF5PoN implements PoN {
         sampleNames = new Lazy<>(() -> readSampleNames(file));
         logNormalSampleNames = new Lazy<>(() -> readLogNormalizedSampleNames(file));
         reducedTargetNames = new Lazy<>(() -> Collections.unmodifiableList(Arrays.asList(file.readStringArray(REDUCED_PON_TARGET_PATH))));
+        targets  = new Lazy<>(() -> readTargets(file));
+        rawTargets  = new Lazy<>(() -> readRawTargets(file));
+        rawTargetNames  = new Lazy<>(() -> readRawTargetNames(file));
+        panelTargets = new Lazy<>(() -> readPanelTargets(file));
     }
 
-        /**
+    /**
      * Reads the log-normalized sample names sub-set.
      * @param reader the source HDF5 reader.
      * @return never {@code null}.
@@ -99,6 +142,16 @@ public final class HDF5PoN implements PoN {
         final String[] values = reader.readStringArray(TARGET_NAMES_PATH);
         return Collections.unmodifiableList(Arrays.asList(values));
     }
+    /**
+     * Reads the raw target names.
+     * @param reader the source HDF5 reader.
+     * @return never {@code null}.
+     * @throws GATKException if there was any problem reading the contents of the underlying HDF5 file.
+     */
+    private static List<String> readRawTargetNames(final HDF5File reader) {
+        final String[] values = reader.readStringArray(RAW_TARGET_NAMES_PATH);
+        return Collections.unmodifiableList(Arrays.asList(values));
+    }
 
     /**
      * Reads the sample names.
@@ -114,6 +167,11 @@ public final class HDF5PoN implements PoN {
     @Override
     public List<String> getTargetNames() {
         return targetNames.get();
+    }
+
+    @Override
+    public List<String> getRawTargetNames() {
+        return rawTargetNames.get();
     }
 
     @Override
@@ -140,6 +198,70 @@ public final class HDF5PoN implements PoN {
         }
         return new Array2DRowRealMatrix(values);
     }
+
+    @Override
+    public double[] getTargetVariances() {
+        final double[] values = file.readDoubleArray(TARGET_VARIANCES_PATH);
+        if (values.length != panelTargets.get().size()) {
+            throw new GATKException(String.format("wrong number of elements in the target variances recovered from file '%s': %d != %d", file.getFile(), values.length, panelTargets.get().size()));
+        }
+        return values;
+    }
+
+    @Override
+    public List<Target> getTargets() {
+        return targets.get();
+    }
+
+    @Override
+    public List<Target> getRawTargets() {
+        return rawTargets.get();
+    }
+
+    @Override
+    public List<Target> getPanelTargets() {
+        return panelTargets.get();
+    }
+
+    private static List<Target> readTargets(final HDF5File reader) {
+        final String[][] values = reader.readStringMatrix(TARGETS_PATH, NUM_TARGETS_COLS_PATH);
+
+        final List<String> targetNamesToRender = readTargetNames(reader);
+        return renderPoNTargets(values, targetNamesToRender, reader);
+    }
+
+    private static List<Target> readPanelTargets(final HDF5File reader) {
+        final String[][] values = reader.readStringMatrix(LOG_NORMALS_TARGETS_PATH, NUM_TARGETS_COLS_PATH);
+
+        final List<String> targetNamesToRender = Arrays.asList(reader.readStringArray(REDUCED_PON_TARGET_PATH));
+        return renderPoNTargets(values, targetNamesToRender, reader);
+    }
+
+    private static List<Target> readRawTargets(final HDF5File reader) {
+        final String[][] values = reader.readStringMatrix(RAW_TARGETS_PATH, NUM_TARGETS_COLS_PATH);
+
+        final List<String> targetNamesToRender = Arrays.asList(reader.readStringArray(RAW_TARGET_NAMES_PATH));
+        return renderPoNTargets(values, targetNamesToRender, reader);
+    }
+
+    private static List<Target> renderPoNTargets(final String[][] values, final List<String> targetNamesToRender, final HDF5File reader) {
+        if (values.length != targetNamesToRender.size()) {
+            throw new GATKException(String.format("wrong number of elements in the targets recovered from file '%s': %d != %d", reader.getFile(), values.length, targetNamesToRender.size()));
+        }
+
+        final int numTargetCols = (int) reader.readDouble(NUM_TARGETS_COLS_PATH);
+
+        final List<Target> result = new ArrayList<>(values.length);
+        for (int i= 0; i < values.length; i ++) {
+            if (values[i].length != numTargetCols) {
+                throw new GATKException(String.format("wrong number of column elements in the targets recovered from file '%s': %d != %d", reader.getFile(), values[i].length, numTargetCols));
+            }
+            result.add(new Target(targetNamesToRender.get(i), new SimpleInterval(values[i][0], Integer.parseInt(values[i][1]), Integer.parseInt(values[i][2]))));
+        }
+        return result;
+    }
+
+
 
     @Override
     public void setTargetFactors(final RealMatrix targetFactors) {
@@ -276,6 +398,14 @@ public final class HDF5PoN implements PoN {
     }
 
     /**
+     * Changes the raw target names in the PoN.
+     */
+    public void setRawTargetNames(final List<String> names) {
+        checkNameList(names);
+        file.makeStringArray(RAW_TARGET_NAMES_PATH, names.toArray(new String[names.size()]));
+    }
+
+    /**
      * Set the normalized read counts.
      * @param normalizedCounts the normalized read counts.
      */
@@ -313,13 +443,42 @@ public final class HDF5PoN implements PoN {
         file.makeStringArray(REDUCED_PON_TARGET_PATH, names.toArray(new String[names.size()]));
     }
 
-    private void checkNameList(List<String> names) {
+    private void checkNameList(final List<String> names) {
         Utils.nonNull(names, "the input names cannot be null");
         if (names.contains(null)) {
             throw new IllegalArgumentException("the input names list cannot contain a null");
         }
     }
 
+    protected void setTargetValues(final List<Target> targets, final String fullPath) {
+        Utils.nonNull(targets, "Cannot create targets with null input");
 
+        final String[][] targetValues = new String[targets.size()][NUM_TARGETS_COLS];
+        for (int i = 0; i < targets.size(); i++) {
+            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumns.CONTIG.toString())] = targets.get(i).getContig();
+            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumns.START.toString())] = String.valueOf(targets.get(i).getStart());
+            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumns.END.toString())] = String.valueOf(targets.get(i).getEnd());
+        }
+        file.makeStringMatrix(fullPath, targetValues, NUM_TARGETS_COLS_PATH);
+    }
+
+    public void setTargets(final List<Target> targets) {
+        setTargetValues(targets, TARGETS_PATH);
+    }
+
+    public void setPanelTargets(final List<Target> targets) {
+        setTargetValues(targets, LOG_NORMALS_TARGETS_PATH);
+    }
+
+    public void setRawTargets(final List<Target> targets) {
+        setTargetValues(targets, RAW_TARGETS_PATH);
+    }
+
+    public void setTargetVariances(final double[] targetVariances) {
+        if (targetVariances.length != panelTargets.get().size()) {
+            throw new GATKException(String.format("Writing wrong number of elements in the target variances attempted to file '%s': %d != %d", file.getFile(), targetVariances.length, panelTargets.get().size()));
+        }
+        file.makeDoubleArray(TARGET_VARIANCES_PATH, targetVariances);
+    }
 
 }

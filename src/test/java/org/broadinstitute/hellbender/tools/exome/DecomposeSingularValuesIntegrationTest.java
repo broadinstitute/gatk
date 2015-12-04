@@ -9,6 +9,7 @@ import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
+import org.broadinstitute.hellbender.utils.hdf5.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
 import org.broadinstitute.hellbender.utils.svd.SVDTestUtils;
@@ -21,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 
 public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
@@ -102,7 +102,7 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
 
     private void assertOutputFileValues(final File outputFile, final RealMatrix expected){
 
-        final RealMatrix actualResults = readTsvIntoMatrix(outputFile);
+        final RealMatrix actualResults = PoNTestUtils.readTsvIntoMatrix(outputFile);
 
         Assert.assertEquals(actualResults.getColumnDimension(), expected.getColumnDimension());
         Assert.assertEquals(actualResults.getRowDimension(), expected.getRowDimension());
@@ -117,28 +117,8 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
     private void assertOutputFile(final File outputFile, final int gtNumRows, final int gtNumCols){
         Assert.assertTrue(outputFile.exists(), "Output file does not exist.");
         Assert.assertTrue(outputFile.length() > 0, "Output file is empty: " + outputFile.getAbsolutePath());
-        final RealMatrix actualResults = readTsvIntoMatrix(outputFile);
+        final RealMatrix actualResults = PoNTestUtils.readTsvIntoMatrix(outputFile);
         Assert.assertEquals(actualResults.getRowDimension(), gtNumRows);
         Assert.assertEquals(actualResults.getColumnDimension(), gtNumCols);
-
-    }
-
-    private RealMatrix readTsvIntoMatrix(final File inputFile) {
-
-        final List<double []> allData = new ArrayList<>();
-        try {
-            final CSVReader reader = new CSVReader(new FileReader(inputFile), '\t', CSVWriter.NO_QUOTE_CHARACTER);
-            String[] nextLine;
-            while ((nextLine = reader.readNext()) != null) {
-                allData.add(Arrays.stream(nextLine).map(Double :: parseDouble).mapToDouble(d -> d).toArray());
-            }
-        } catch (final IOException ioe) {
-            Assert.fail("Could not open test file: " + inputFile, ioe);
-        }
-        final RealMatrix result = new Array2DRowRealMatrix(allData.size(), allData.get(0).length);
-        for (int i = 0; i < result.getRowDimension(); i++) {
-            result.setRow(i, allData.get(i));
-        }
-        return result;
     }
 }

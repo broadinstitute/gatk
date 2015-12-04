@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.utils.param;
 
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
 
 /**
  * Created by lichtens on 8/25/15.
@@ -26,6 +29,37 @@ public class ParamUtilsUnitTest {
     public void testInRangeFailureAllPositiveInt(){
         ParamUtils.inRange(4, 7, 10, "Range calculation did not work properly");
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaN(){
+        ParamUtils.inRange(Double.NaN, 7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNHigh(){
+        ParamUtils.inRange(7, 10, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNLow(){
+        ParamUtils.inRange(7, Double.NaN, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNTwo1(){
+        ParamUtils.inRange(7, Double.NaN, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNTwo2(){
+        ParamUtils.inRange(Double.NaN, 10, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNThree(){
+        ParamUtils.inRange(Double.NaN, Double.NaN, Double.NaN, "Range calculation did not work properly");
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testInRangeFailureAllPositiveDouble(){
         ParamUtils.inRange(4.1, 7.2, 10, "Range calculation did not work properly");
@@ -77,8 +111,54 @@ public class ParamUtilsUnitTest {
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
+    public void testNegativeIsGreaterThanZero(){
+        ParamUtils.isGreaterThanZero(Double.NEGATIVE_INFINITY, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "ERROR")
+    public void testNaNIsGreaterThanZero(){
+        ParamUtils.isGreaterThanZero(Double.NaN, "ERROR");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
     public void testNegativeIsNotPositive2(){
         ParamUtils.isPositiveOrZero(-4.2, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "ERROR")
+    public void testIsPositiveOnNan(){
+        ParamUtils.isPositiveOrZero(Double.NaN, "ERROR");
+    }
+
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
+    public void testNegativeIsGreaterThanZero2(){
+        ParamUtils.isGreaterThanZero(-4.2, "That is negative!");
+    }
+
+    @Test
+    public void testPositiveIsGreaterThanZero(){
+        ParamUtils.isGreaterThanZero(4.2, "That is negative!");
+    }
+
+    @Test
+    public void testPositiveIsGreaterThanZero2(){
+        ParamUtils.isGreaterThanZero(4, "That is negative!");
+    }
+
+    @Test
+    public void testPositiveIsGreaterThanZeroWithInf(){
+        ParamUtils.isGreaterThanZero(Double.POSITIVE_INFINITY, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
+    public void testZeroIsGreaterThanZero2(){
+        ParamUtils.isGreaterThanZero(0, "That is zero!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
+    public void testZeroIsGreaterThanZero3(){
+        ParamUtils.isGreaterThanZero(0.0, "That is zero!");
     }
 
     @Test
@@ -126,5 +206,25 @@ public class ParamUtilsUnitTest {
     public void testLog2OfNegativeNumber() {
         Assert.assertTrue(Double.isNaN(ParamUtils.log2(-4)));
         Assert.assertTrue(Double.isNaN(ParamUtils.log2(-5.1)));
+    }
+
+    @Test
+    public void testWriteAndReadDoublesToFile() {
+        final double [] testData = {0.0, 1.234552345, Math.PI, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -3.91};
+        final File outputFile = IOUtils.createTempFile("param-test-write-doubles-", ".txt");
+        ParamUtils.writeValuesToFile(testData, outputFile);
+
+        // Test values
+        final double[] valuesInFile = ParamUtils.readValuesFromFile(outputFile);
+
+        Assert.assertEquals(valuesInFile.length, testData.length);
+
+        for (int i = 0; i < testData.length; i++) {
+            if (Double.isNaN(testData[i])) {
+                Assert.assertTrue(Double.isNaN(valuesInFile[i]));
+            } else {
+                Assert.assertEquals(valuesInFile[i], testData[i], 1e-20);
+            }
+        }
     }
 }

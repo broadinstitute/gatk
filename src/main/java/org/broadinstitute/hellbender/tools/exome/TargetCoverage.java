@@ -11,6 +11,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
  */
 
 public final class TargetCoverage extends Target {
+
+    static final long serialVersionUID = 1111337337337L;
+
     private double coverage;
 
     /**

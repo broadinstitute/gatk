@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.bed.BEDFeature;
-import org.apache.commons.collections4.list.SetUniqueList;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
@@ -23,21 +20,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Normalizes read counts given the PanelOfNormals.
- * <p/>
- * <p>
- * Currently this tool only performs target factor normalization.
- * </p>
- * <p/>
- * <p>
- * Subsequent version will perform tangent normalization as well.
- * </p>
+ *
+ * <p> Dev note:  If this is extended to use spark, please be wary that the parallelization in tangent normalization is
+ * by case sample, which may not yield benefits for most use cases (which are one sample)  </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -52,20 +40,6 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * Name of the column that contains the I.D. of the PoN <i>"eigen sample"</i>.
      */
     public static final String PON_SAMPLE_BETA_HAT_COLUMN_NAME = "PON.SAMPLE";
-
-    /**
-     * Minimum target normalized and column centered count possible.
-     *
-     * <p>
-     *     It must be small yet greater than 0 to avoid -Inf problems in the calculations.
-     * </p>
-     */
-    public static final double EPSILON = Math.pow(10,-10);
-
-    /**
-     * Cached inverse of the natural logarithm of 2.
-     */
-    private static final double INV_LN2 = 1.0 / Math.log(2.0);
 
     public static final String READ_COUNTS_FILE_FULL_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
     public static final String READ_COUNTS_FILE_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
@@ -140,45 +114,17 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
             final PoN pon = new HDF5PoN(ponReader);
             final TargetCollection<? extends BEDFeature> exonCollection = readTargetCollection(targetFile);
             final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, exonCollection);
-            final ReadCountCollection targetFactorNormalized = applyTargetFactorNormalization(pon, readCountCollection);
-            applyTangentNormalization(pon, readCountCollection, targetFactorNormalized);
+            final TangentNormalizationResult tangentNormalizationResult = TangentNormalizer.tangentNormalizePcov(pon, readCountCollection);
+            outputTangentNormalizationResult(tangentNormalizationResult);
             return "SUCCESS";
         }
     }
 
-    /**
-     * Perform tangent normalization.
-     *
-     * <p>
-     * This is done on target-factor normalized counts provided as the input.
-     * </p>
-     *
-     * @param pon the panel-of-normals to use to tangent-normalize
-     * @param originalCounts the original input read-counts.
-     * @param targetFactorNormalizedCounts the target-factor normalized counts.
-     */
-    private void applyTangentNormalization(final PoN pon, final ReadCountCollection originalCounts, final ReadCountCollection targetFactorNormalizedCounts) {
-
-        final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(targetFactorNormalizedCounts.targets(), pon.getPanelTargetNames(), readCountsFile);
-
-        // The input counts with row (targets) sorted so that the match the PoN's matrix order.
-        final RealMatrix tangentNormalizationRawInputCounts = targetMapper.fromCaseToPoNCounts(targetFactorNormalizedCounts.counts());
-
-        // We prepare the counts for tangent normalization.
-        final RealMatrix tangentNormalizationInputCounts = composeTangentNormalizationInputMatrix(tangentNormalizationRawInputCounts);
-
-        // Calculate the beta-hats for the input read count columns (samples).
-        final RealMatrix tangentBetaHats = pon.betaHats(tangentNormalizationInputCounts, true, EPSILON);
-
-        // Actual tangent normalization step.
-        final RealMatrix tangentNormalizedCounts = pon.tangentNormalization(tangentNormalizationInputCounts, tangentBetaHats, true);
-
-        // Output the tangent normalized counts.
-        final ReadCountCollection tangentNormalized = targetMapper.fromPoNtoCaseCountCollection(tangentNormalizedCounts, originalCounts.columnNames());
-        writeTangentNormalizedOutput(tangentNormalized);
-        final ReadCountCollection preTangentNormalized = targetMapper.fromPoNtoCaseCountCollection(tangentNormalizationInputCounts, originalCounts.columnNames());
-        writePreTangentNormalizationOutput(preTangentNormalized);
-        writeTangentBetaHats(tangentBetaHats, originalCounts.columnNames());
+    private void outputTangentNormalizationResult(final TangentNormalizationResult tangentNormalizationResult){
+        writeTangentNormalizedOutput(tangentNormalizationResult.getTangentNormalized());
+        writePreTangentNormalizationOutput(tangentNormalizationResult.getPreTangentNormalized());
+        writeTangentBetaHats(tangentNormalizationResult.getTangentBetaHats(), tangentNormalizationResult.getTargetFactorNormalizedCounts().columnNames());
+        writeTargetFactorNormalizedOutput(tangentNormalizationResult.getTargetFactorNormalizedCounts());
     }
 
     /**
@@ -202,24 +148,6 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
                 throw new UserException.CouldNotCreateOutputFile(preTangentNormalizationOutFile, ex.getMessage());
             }
         }
-    }
-
-    /**
-     * Perform target-factor normalization of the original read counts.
-     * @param pon the panel-of-normals.
-     * @param inputReadCounts the input/original read counts.
-     * @return never {@code null} a new read counts collections.
-     */
-    private ReadCountCollection applyTargetFactorNormalization(final PoN pon, final ReadCountCollection inputReadCounts) {
-
-        final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(inputReadCounts.targets(), pon.getTargetNames(), readCountsFile);
-        final RealMatrix inputCounts = targetMapper.fromCaseToPoNCounts(inputReadCounts.counts());
-        final RealMatrix targetNormalizedCounts = pon.factorNormalization(inputCounts);
-
-        final ReadCountCollection targetFactorNormalized = targetMapper.fromPoNtoCaseCountCollection(targetNormalizedCounts, inputReadCounts.columnNames());
-
-        writeTargetFactorNormalizedOutput(targetFactorNormalized);
-        return targetFactorNormalized;
     }
 
     /**
@@ -248,75 +176,6 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(betaHatsOutFile,ex.getMessage());
         }
-    }
-
-    /**
-     * Prepares the data to perform tangent factor normalization.
-     * <p>
-     * This is done count group or column:
-     *   <ol>
-     *     </li>we change counts to their ratio versus the column mean,</li>
-     *     </li>then we transform value to their log_2,</li>
-     *     </li>and finally we center then around the median.</li>
-     *   </ol>
-     * </p>
-     *
-     * @param matrix input matrix.
-     * @return never {@code null}.
-     */
-    private RealMatrix composeTangentNormalizationInputMatrix(final RealMatrix matrix) {
-
-        final double[] columnInverseMeans = calculateColumnInverseMeans(matrix);
-
-        final double[][] result = log2ColumnMeanCenteredCounts(matrix, columnInverseMeans);
-
-        centerAroundColumnMedian(result);
-
-        return new Array2DRowRealMatrix(result,false);
-    }
-
-    /**
-     * Center the values around the median per column.
-     * @param result the input and output matrix where the first dimension are rows and the second columns.
-     */
-    private void centerAroundColumnMedian(final double[][] result) {
-        for (int i = 0; i < result[0].length; i++) {
-            final DescriptiveStatistics stats = new DescriptiveStatistics();
-            for (final double[] aResult : result) {
-                stats.addValue(aResult[i]);
-            }
-            final double median = stats.getPercentile(50);
-            for (int j = 0; j < result.length; j++) {
-                result[j][i] -= median;
-            }
-        }
-    }
-
-    private double[][] log2ColumnMeanCenteredCounts(RealMatrix matrix, double[] columnInverseMeans) {
-        final double[][] result = new double[matrix.getRowDimension()][columnInverseMeans.length];
-        // First we divide by column mean then becoming a ratio;
-        // We also log_2 transform it at this point.
-        for (int i = 0; i < result.length; i++) {
-            final double[] inputRow = matrix.getRow(i);
-            for (int j = 0; j < columnInverseMeans.length; j++) {
-                if ((result[i][j] = inputRow[j] * columnInverseMeans[j]) < EPSILON) {
-                    result[i][j] = EPSILON;
-                }
-                result[i][j] = Math.log(result[i][j]) * INV_LN2;
-            }
-        }
-        return result;
-    }
-
-    private double[] calculateColumnInverseMeans(RealMatrix matrix) {
-        return IntStream.range(0, matrix.getColumnDimension())
-                    .mapToDouble(i ->
-                                    1.0 / IntStream.range(0, matrix.getRowDimension())
-                                            .mapToDouble(j -> matrix.getEntry(j, i))
-                                            .average().orElseThrow(
-                                                    () -> new IllegalArgumentException("cannot calculate a average for column " + i)
-                                            )
-                    ).toArray();
     }
 
     /**
@@ -407,96 +266,4 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
             throw new UserException.CouldNotCreateOutputFile(file, ex.getMessage());
         }
     }
-
-
-    /**
-     * Utility class use to map matrices rows between two different target lists.
-     * <p>
-     *     The "case" target list is provided by a {@link ReadCountCollection}, whereas the "pon" target list
-     *     is provided by a {@link PoN}.
-     * </p>
-     * <p>
-     *     This class contains method to re-organized a matrix rows that is based on one list to match the order
-     *     impose by the other list.
-     * </p>
-     * <p>
-     *     It also provided methods to create a PoN re-organized count matrix directly from a {@link ReadCountCollection}.
-     *     object and the reverse operation, that is to create a new {@link ReadCountCollection} from a count matrix
-     *     whose rows have been reorganized to satisfy the {@link PoN} target order.
-     * </p>
-     */
-    private static final class Case2PoNTargetMapper {
-
-        private final List<String> ponTargetNames;
-        private final Map<String, Integer> caseTargetIndexes;
-        private final List<Target> outputTargets;
-        private final File readCountsFile;
-
-        /**
-         * Creates a new mapper.
-         * @param caseTargets the case sample targets as they appear in the input read counts.
-         * @param ponTargetNames the PoN target names in the order they are present in the PoN.
-         */
-        private Case2PoNTargetMapper(final List<Target> caseTargets, final List<String> ponTargetNames, final File readCountsFile)  {
-            this.readCountsFile = readCountsFile;
-            this.ponTargetNames = ponTargetNames;
-            this.caseTargetIndexes = IntStream.range(0, caseTargets.size()).boxed()
-                    .collect(Collectors.toMap(i -> caseTargets.get(i).getName(), Function.identity()));
-            if (this.ponTargetNames.stream().anyMatch(n -> ! caseTargetIndexes.containsKey(n))) {
-                throw new UserException.BadInput(
-                        String.format("the read-count input file '%s' is missing some target in the PoN: e.g. '%s'",
-                                readCountsFile,this.ponTargetNames.stream().filter(n -> ! caseTargetIndexes.containsKey(n)).limit(10).collect(Collectors.joining(", "))));
-            }
-            this.outputTargets =  ponTargetNames.stream()
-                    .map(caseTargetIndexes::get).sorted().map(caseTargets::get).collect(Collectors.toList());
-        }
-
-        /**
-         * Re-arrange case read counts counts based on PoN target order.
-         * @param caseCounts the input counts to rearrange.
-         * @return never {@code null}, a new matrix with row sorted according to the PoN target order.
-         */
-        private RealMatrix fromCaseToPoNCounts(final RealMatrix caseCounts) {
-            final RealMatrix result = new Array2DRowRealMatrix(ponTargetNames.size(), caseCounts.getColumnDimension());
-            for (int i = 0; i < ponTargetNames.size(); i++) {
-                final String targetName = ponTargetNames.get(i);
-                final Integer inputIndex = caseTargetIndexes.get(targetName);
-                if (inputIndex == null) {
-                    throw new UserException.BadInput(String.format("missing PoN target name %s in input read counts %s", targetName, readCountsFile));
-                }
-                result.setRow(i, caseCounts.getRow(inputIndex));
-            }
-            return result;
-        }
-
-        /**
-         * Re-arrange the input rows from the PoN to the case data target order.
-         * @param ponCounts count matrix with row organized using the PoN target order.
-         * @return never {@code null} a new matrix with the row order changed according to the case read count target order.
-         */
-        private RealMatrix fromPoNToCaseCounts(final RealMatrix ponCounts) {
-            final Map<String,Integer> ponTargetsIndexes = IntStream.range(0, ponTargetNames.size()).boxed()
-                    .collect(Collectors.toMap(ponTargetNames::get, Function.identity()));
-            final RealMatrix result = new Array2DRowRealMatrix(ponCounts.getRowDimension(),ponCounts.getColumnDimension());
-            for (int i = 0; i < outputTargets.size(); i++) {
-                final Target target = outputTargets.get(i);
-                result.setRow(i, ponCounts.getRow(ponTargetsIndexes.get(target.getName())));
-            }
-            return result;
-        }
-
-        /**
-         * Given a read counts using the PoN target order to a read-count collection
-         * based on the case sample target order.
-         *
-         * @param counts PoN target sorted count matrix.
-         * @param countColumnNames count column names.
-         * @return never {@code null} a read-count collection with the row order according to the case read count target order.
-         */
-        private ReadCountCollection fromPoNtoCaseCountCollection(final RealMatrix counts, final List<String> countColumnNames) {
-            return new ReadCountCollection(SetUniqueList.setUniqueList(new ArrayList<>(outputTargets)),SetUniqueList.setUniqueList(new ArrayList<>(countColumnNames)),
-                    fromPoNToCaseCounts(counts));
-        }
-    }
-
 }

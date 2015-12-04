@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
+import org.broadinstitute.hellbender.utils.hdf5.*;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,6 +15,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Integration test for {@link CreatePanelOfNormals}.
@@ -41,6 +43,33 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
     private static final File EXPECTED_SOME_TARGETS_PON = new File(TEST_FILE_DIR, "create-pon-some-targets.pon");
 
     @Test(dataProvider="allTargetsHDF5PoNCreationData")
+    public void testAllTargetsHDF5PoNCreationNoSparkNoQC(final File targetsFile, final File inputFile) {
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        arguments.add(inputFile.toString());
+        if (targetsFile != null) {
+            arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
+            arguments.add(targetsFile.toString());
+        }
+        final File outputFile = createTempFile("pon-",".hd5");
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.toString());
+        arguments.add("--VERBOSITY");
+        arguments.add("INFO");
+        arguments.add("-" + CreatePanelOfNormals.DISABLE_SPARK_SHORT_NAME);
+        arguments.add("-" + CreatePanelOfNormals.NO_QC_SHORT_NAME);
+
+        runCommandLine(arguments);
+        assertBasicPoNAssumptions(outputFile, targetsFile);
+        PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+        assertRamPoNDuplicate(outputFile);
+
+        // No blacklist file should have been created...
+        final File blacklistFile = new File(outputFile + CreatePanelOfNormals.BLACKLIST_FILE_APPEND);
+        Assert.assertFalse(blacklistFile.exists());
+    }
+
+    @Test(dataProvider="allTargetsHDF5PoNCreationData")
     public void testAllTargetsHDF5PoNCreationNoSpark(final File targetsFile, final File inputFile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
@@ -54,10 +83,15 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         arguments.add(outputFile.toString());
         arguments.add("--verbosity");
         arguments.add("INFO");
-        arguments.add("-ds");
+        arguments.add("-" + CreatePanelOfNormals.DISABLE_SPARK_SHORT_NAME);
 
         runCommandLine(arguments);
-        assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+        assertBasicPoNAssumptions(outputFile, targetsFile);
+        PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+        assertRamPoNDuplicate(outputFile);
+
+        final File blacklistFile = new File(outputFile + CreatePanelOfNormals.BLACKLIST_FILE_APPEND);
+        assertBlacklistFileIsEmpty(blacklistFile);
     }
 
     @Test(dataProvider="allTargetsHDF5PoNCreationData")
@@ -69,16 +103,75 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
             arguments.add(targetsFile.toString());
         }
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.toString());
+        arguments.add("--VERBOSITY");
+        arguments.add("INFO");
+
+        runCommandLine(arguments);
+        // Need to support targetsFile == null
+        assertBasicPoNAssumptions(outputFile, targetsFile);
+        PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+        assertRamPoNDuplicate(outputFile);
+
+        final File blacklistFile = new File(outputFile + CreatePanelOfNormals.BLACKLIST_FILE_APPEND);
+        assertBlacklistFileIsEmpty(blacklistFile);
+    }
+
+    @Test(dataProvider="allTargetsHDF5PoNCreationData")
+    public void testAllTargetsHDF5PoNCreationSparkNoQC(final File targetsFile, final File inputFile) {
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        arguments.add(inputFile.toString());
+        if (targetsFile != null) {
+            arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
+            arguments.add(targetsFile.toString());
+        }
+        final File outputFile = createTempFile("pon-", ".hd5");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("--verbosity");
         arguments.add("INFO");
+        arguments.add("-" + CreatePanelOfNormals.NO_QC_SHORT_NAME);
 
         runCommandLine(arguments);
-        assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+        // Need to support targetsFile == null
+        assertBasicPoNAssumptions(outputFile, targetsFile);
+        PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
+        assertRamPoNDuplicate(outputFile);
+
+        // No blacklist file should have been created...
+        final File blacklistFile = new File(outputFile + CreatePanelOfNormals.BLACKLIST_FILE_APPEND);
+        Assert.assertFalse(blacklistFile.exists());
     }
 
+    private void assertBlacklistFileIsEmpty(final File blacklistFile) {
+        Assert.assertTrue(blacklistFile.exists());
+        Assert.assertEquals(FileUtils.sizeOf(blacklistFile), 0);
+    }
+
+    private void assertBasicPoNAssumptions(final File ponFile, final File initialTargetsFileUsedToCreatePoN) {
+        try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
+            final HDF5PoN pon = new HDF5PoN(ponHDF5File);
+
+            Assert.assertTrue(pon.getTargets().size() >= pon.getPanelTargets().size());
+            Assert.assertTrue(pon.getRawTargets().size() > pon.getTargets().size());
+
+            Assert.assertTrue(pon.getTargetNames().size() == pon.getTargets().size());
+            Assert.assertTrue(pon.getPanelTargetNames().size() == pon.getPanelTargetNames().size());
+            Assert.assertTrue(pon.getRawTargetNames().size() == pon.getRawTargetNames().size());
+
+            if (initialTargetsFileUsedToCreatePoN != null) {
+
+                final TargetCollection<Target> tc = TargetArgumentCollection.readTargetCollection(initialTargetsFileUsedToCreatePoN);
+                Assert.assertEquals(pon.getRawTargets().size(), tc.targetCount());
+
+                // Check that the raw targets are the same
+                Assert.assertTrue(IntStream.of(new IntRange(0, pon.getRawTargets().size()-1).toArray()).boxed().map(i -> pon.getRawTargets().get(i).equals(tc.target(i))).allMatch(t -> t));
+            }
+        }
+    }
 
     @Test()
     public void testDryRun() {
@@ -216,7 +309,25 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
     }
 
     @Test(dataProvider="someTargetsHDF5PoNCreationData")
-    public void testSomeTargetsHDF5PoNCreation(final File targetsFile, final File inputFile) {
+    public void testSomeTargetsHDF5PoNCreationNoSpark(final File targetsFile, final File inputFile) {
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        arguments.add(inputFile.toString());
+        if (targetsFile != null) {
+            arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
+            arguments.add(targetsFile.toString());
+        }
+        arguments.add("-ds");
+        final File outputFile = createTempFile("pon-",".hd5");
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.toString());
+        runCommandLine(arguments);
+        PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_SOME_TARGETS_PON);
+        assertRamPoNDuplicate(outputFile);
+    }
+
+    @Test(dataProvider="someTargetsHDF5PoNCreationData")
+    public void testSomeTargetsHDF5PoNCreationSpark(final File targetsFile, final File inputFile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(inputFile.toString());
@@ -228,41 +339,58 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         runCommandLine(arguments);
-        assertEquivalentPoN(outputFile, EXPECTED_SOME_TARGETS_PON);
+        PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_SOME_TARGETS_PON);
+        assertRamPoNDuplicate(outputFile);
     }
 
-    private void assertEquivalentPoN(final File outputFile, final File expectedAllTargetsPon) {
-        try (final HDF5File leftFile = new HDF5File(outputFile);
-             final HDF5File rightFile = new HDF5File(expectedAllTargetsPon)) {
-            final HDF5PoN leftPoN = new HDF5PoN(leftFile);
-            final HDF5PoN rightPoN = new HDF5PoN(rightFile);
-            Assert.assertEquals(leftPoN.getSampleNames(), rightPoN.getSampleNames());
-            Assert.assertEquals(new LinkedHashSet<>(leftPoN.getTargetNames()), new LinkedHashSet<>(rightPoN.getTargetNames()));
-            assertEqualsMatrix(leftPoN.getTargetFactors(), rightPoN.getTargetFactors(), true);
-            assertEqualsMatrix(leftPoN.getLogNormalizedCounts(), rightPoN.getLogNormalizedCounts(), true);
-            assertEqualsMatrix(leftPoN.getLogNormalizedPInverseCounts(), rightPoN.getLogNormalizedPInverseCounts(), true);
-            assertEqualsMatrix(leftPoN.getNormalizedCounts(), rightPoN.getNormalizedCounts(), true);
-            assertEqualsMatrix(leftPoN.getReducedPanelCounts(), rightPoN.getReducedPanelCounts(), true);
-            assertEqualsMatrix(leftPoN.getReducedPanelPInverseCounts(), rightPoN.getReducedPanelPInverseCounts(), true);
-            Assert.assertEquals(leftPoN.getPanelSampleNames(), rightPoN.getPanelSampleNames());
-            Assert.assertEquals(leftPoN.getPanelTargetNames(), rightPoN.getPanelTargetNames());
+
+    private void assertRamPoNDuplicate(final File outputFile) {
+        try (final HDF5File hdf5FilePoN = new HDF5File(outputFile)) {
+            final HDF5PoN filePoN = new HDF5PoN(hdf5FilePoN);
+            assertRamPoNDuplicate(filePoN);
         }
     }
 
-    private void assertEqualsMatrix(final RealMatrix left, final RealMatrix right, final boolean isAllowNegatedValues) {
-        Assert.assertEquals(left.getRowDimension(), right.getRowDimension());
-        Assert.assertEquals(left.getColumnDimension(), right.getColumnDimension());
-        for (int i = 0; i < left.getRowDimension(); i++) {
-            final double[] leftRow = left.getRow(i);
-            final double[] rightRow = right.getRow(i);
-            for (int j = 0; j < leftRow.length; j++) {
-                if (isAllowNegatedValues) {
-                    Assert.assertEquals(Math.abs(leftRow[j]), Math.abs(rightRow[j]), 0.0001);
-                } else {
-                    Assert.assertEquals(leftRow[j], rightRow[j], 0.0001);
-                }
-            }
-        }
+    /**
+     * Assert that we can create a valid ram pon duplicate.
+     *
+     * @param pon never {@code null}
+     */
+    private void assertRamPoNDuplicate(final PoN pon) {
+
+        final PoN ramPoN = new RamPoN(pon);
+
+        PoNTestUtils.assertEqualsMatrix(pon.getLogNormalizedCounts(), ramPoN.getLogNormalizedCounts(), false);
+        PoNTestUtils.assertEqualsMatrix(pon.getLogNormalizedPInverseCounts(), ramPoN.getLogNormalizedPInverseCounts(), false);
+        PoNTestUtils.assertEqualsMatrix(pon.getNormalizedCounts(), ramPoN.getNormalizedCounts(), false);
+        PoNTestUtils.assertEqualsMatrix(pon.getReducedPanelCounts(), ramPoN.getReducedPanelCounts(), false);
+        PoNTestUtils.assertEqualsMatrix(pon.getReducedPanelPInverseCounts(), ramPoN.getReducedPanelPInverseCounts(), false);
+        PoNTestUtils.assertEqualsMatrix(pon.getTargetFactors(), ramPoN.getTargetFactors(), false);
+
+        final List<Target> ponPanelTargets = pon.getPanelTargets();
+        final List<Target> ponTargets = pon.getTargets();
+        final List<Target> ponRawTargets = pon.getRawTargets();
+
+        final List<Target> ramPoNPanelTargets = ramPoN.getPanelTargets();
+        final List<Target> ramPoNTargets = ramPoN.getTargets();
+        final List<Target> ramPoNRawTargets = ramPoN.getRawTargets();
+
+        Assert.assertEquals(ponPanelTargets.size(), ramPoNPanelTargets.size());
+        Assert.assertEquals(ponTargets.size(), ramPoNTargets.size());
+
+        // Make sure every target is the same
+        Assert.assertTrue(IntStream.range(0, ponRawTargets.size()).boxed().allMatch(i -> ponRawTargets.get(i).equals(ramPoNRawTargets.get(i))));
+        Assert.assertTrue(IntStream.range(0, ponTargets.size()).boxed().allMatch(i -> ponTargets.get(i).equals(ramPoNTargets.get(i))));
+        Assert.assertTrue(IntStream.range(0, ponPanelTargets.size()).boxed().allMatch(i -> ponPanelTargets.get(i).equals(ramPoNPanelTargets.get(i))));
+
+        // Make sure every sample name is the same
+        Assert.assertTrue(IntStream.range(0, pon.getSampleNames().size()).boxed().allMatch(i -> pon.getSampleNames().get(i).equals(ramPoN.getSampleNames().get(i))));
+        Assert.assertTrue(IntStream.range(0, pon.getPanelSampleNames().size()).boxed().allMatch(i -> pon.getPanelSampleNames().get(i).equals(ramPoN.getPanelSampleNames().get(i))));
+
+        // Make sure every target name is the same
+        Assert.assertTrue(IntStream.range(0, pon.getTargetNames().size()).boxed().allMatch(i -> pon.getTargetNames().get(i).equals(ramPoN.getTargetNames().get(i))));
+        Assert.assertTrue(IntStream.range(0, pon.getPanelTargetNames().size()).boxed().allMatch(i -> pon.getPanelTargetNames().get(i).equals(ramPoN.getPanelTargetNames().get(i))));
+
     }
 
     @DataProvider(name="allTargetsHDF5PoNCreationData")
@@ -285,5 +413,4 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
                 { SOME_TARGETS_FILE, CONTROL_PCOV_SOME_TARGETS_FULL_FILE },
         };
     }
-
 }
