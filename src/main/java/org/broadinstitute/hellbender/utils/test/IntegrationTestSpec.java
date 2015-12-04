@@ -179,7 +179,7 @@ public final class IntegrationTestSpec {
             final String expectedFileName = expectedFiles.get(i);
             final File expectedFile = new File(expectedFileName);
             if (expectedFileName.endsWith(".bam")){
-                assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
+                SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
             } else {
                 assertEqualTextFiles(resultFile, expectedFile);
             }
@@ -209,34 +209,6 @@ public final class IntegrationTestSpec {
             Assert.assertEquals(actualLines.get(i).toString(), expectedLines.get(i).toString(), "Line number " + i + " (not counting comments)");
         }
         Assert.assertEquals (actualLines.size(), expectedLines.size(), "line counts");
-    }
-
-    /**
-     * Compares the two given bam files, optionally sorting them before comparison.
-     * The sorting is helpful to compare files that are different but equivalent (eg read pairs with same coordinates get reordered).
-     */
-    public static void assertEqualBamFiles(final File resultFile, final File expectedFile, final boolean compareBamFilesSorted, final ValidationStringency stringency) throws IOException {
-
-        if (compareBamFilesSorted) {
-            final File resultFileSorted= BaseTest.createTempFile("resultsFileSorted", ".bam");
-            final File expectedFileSorted = BaseTest.createTempFile("expectedFileSorted", ".bam");
-
-            sortSam(resultFile, resultFileSorted, stringency);
-            sortSam(expectedFile, expectedFileSorted, stringency);
-
-            SamAssertionUtils.assertSamsEqual(resultFileSorted, expectedFileSorted, stringency);
-        } else {
-            SamAssertionUtils.assertSamsEqual(resultFile, expectedFile, stringency);
-        }
-    }
-
-    private static void sortSam(final File input, final File output, final ValidationStringency stringency) {
-        final SortSam sort = new SortSam();
-        sort.INPUT = input;
-        sort.OUTPUT = output;
-        sort.SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
-        sort.VALIDATION_STRINGENCY = stringency;
-        sort.runTool();
     }
 
 }

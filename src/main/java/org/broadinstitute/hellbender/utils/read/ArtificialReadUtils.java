@@ -154,6 +154,10 @@ public final class ArtificialReadUtils {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(header, "default_read", 0, 10000, bases, qual, cigar));
     }
 
+    public static GATKRead createArtificialRead(final SAMFileHeader header, final String cigarString) {
+        return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(header, TextCigarCodec.decode(cigarString)));
+    }
+
     public static GATKRead createArtificialRead(final SAMFileHeader header, final Cigar cigar) {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(header, cigar));
     }

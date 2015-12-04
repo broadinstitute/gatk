@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 
 import org.testng.annotations.DataProvider;
@@ -92,7 +93,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
         Assert.assertEquals(getReadCounts(outFile.getAbsolutePath()), 5);
 
         File expectedFile = new File(expectedFilePath, "testBAM.bam");
-        IntegrationTestSpec.assertEqualBamFiles(outFile, expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
+        SamAssertionUtils.assertEqualBamFiles(outFile, expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
     private void testWriteToFile

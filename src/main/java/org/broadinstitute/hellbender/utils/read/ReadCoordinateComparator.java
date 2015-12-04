@@ -12,7 +12,12 @@ import java.util.Comparator;
  * Uses the various other fields in a read to break ties for reads that share
  * the same location.
  *
- * Based loosely on the SAMRecordCoordinateComparator from htsjdk.
+ * Based loosely on the {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
+ * This comparator, when given two GATKReads that are backed by SAMRecords will produce the same exact order as {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
+ * UNLESS the read(s) are in a state that GATKRead considers invalid, eg:
+ *   - read is unmapped but has a getReferenceIndex that is not {@link htsjdk.samtools.SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX}.
+ *
+ * In those cases, the order may not be the same as {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
  */
 public final class ReadCoordinateComparator implements Comparator<GATKRead>, Serializable {
     private static final long serialVersionUID = 1L;
@@ -33,6 +38,11 @@ public final class ReadCoordinateComparator implements Comparator<GATKRead>, Ser
             return result;
         }
 
+        //This is done to mimic SAMRecordCoordinateComparator's behavior
+        if (first.isReverseStrand() != second.isReverseStrand()){
+            return first.isReverseStrand()? 1: -1;
+        }
+
         result = first.getName().compareTo(second.getName());
         if ( result != 0 ) { return result; }
         result = Integer.compare(ReadUtils.getSAMFlagsForRead(first), ReadUtils.getSAMFlagsForRead(second));
@@ -51,15 +61,15 @@ public final class ReadCoordinateComparator implements Comparator<GATKRead>, Ser
     }
 
     private int compareCoordinates( final GATKRead first, final GATKRead second ) {
-        final int firstRefIndex = ReadUtils.getReferenceIndex(first, header);
-        final int secondRefIndex = ReadUtils.getReferenceIndex(second, header);
-
         if ( first.isUnmapped() ) {
             return second.isUnmapped() ? 0 : 1;
         }
-        else if ( second.isUnmapped() ) {
+        if ( second.isUnmapped() ) {
             return -1;
         }
+
+        final int firstRefIndex = ReadUtils.getReferenceIndex(first, header);
+        final int secondRefIndex = ReadUtils.getReferenceIndex(second, header);
 
         final int refIndexComparison = firstRefIndex - secondRefIndex;
         if ( refIndexComparison != 0 ) {

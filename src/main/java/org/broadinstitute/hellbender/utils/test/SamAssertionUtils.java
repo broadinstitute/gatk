@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
+import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
 import org.testng.Assert;
@@ -201,8 +202,9 @@ public final class SamAssertionUtils {
 
             final SAMFileHeader h1 = reader1.getFileHeader();
             final SAMFileHeader h2 = reader2.getFileHeader();
-            String msg = compareValues(h1.getVersion(), h2.getVersion(), "File format version");
-            if (msg != null) { return msg; }
+            String msg;
+
+            //Note: we allow the versions to differ
 
             msg = compareValues(h1.getCreator(), h2.getCreator(), "File creator");
             if (msg != null) { return msg; }
@@ -242,7 +244,7 @@ public final class SamAssertionUtils {
         } else {
             final String s1 = String.valueOf(v1);
             final String s2 = String.valueOf(v2);
-            return label + " differs. File 1: " + s1 + "File 2: " + s2;
+            return label + " differs. File 1: " + s1 + " File 2: " + s2;
         }
     }
 
@@ -261,7 +263,7 @@ public final class SamAssertionUtils {
 
         final String readNames = "actualName:" + actualName + " expectedName:" + expectedName;
 
-        msg = compareValues(actualRead.getFlags(), expectedRead.getFlags(), readNames + " getFlags");
+        msg = compareValues(SAMFlag.getFlags(actualRead.getFlags()), SAMFlag.getFlags(expectedRead.getFlags()), readNames + " getFlags");
         if (msg != null){ return msg; }
 
         msg = compareValues(actualRead.getInferredInsertSize(), expectedRead.getInferredInsertSize(), readNames + " getInferredInsertSize");
@@ -322,7 +324,12 @@ public final class SamAssertionUtils {
 
         final Sets.SetView<String> attrDiff = Sets.difference(expectedAttributesByName.keySet(), actualAttributesByName.keySet());
         if (!attrDiff.isEmpty()){
-            return "expected read contains attributes that actual read lacks: " + readNames + " " + attrDiff;
+            final StringBuilder sb= new StringBuilder();
+            sb.append("expected read contains attributes that actual read lacks: " + readNames + " " + attrDiff + "\n");
+            for (final String attr : attrDiff) {
+                sb.append(attr + " " + expectedAttributesByName.get(attr) + "\n");
+            }
+            return sb.toString();
         }
 
         for (int i = 0; i < expectedAttributesByName.size(); i++) {
@@ -334,5 +341,34 @@ public final class SamAssertionUtils {
             if (msg != null){ return msg; }
         }
         return null;
+    }
+
+
+    /**
+     * Compares the two given bam files, optionally sorting them before comparison.
+     * The sorting is helpful to compare files that are different but equivalent (eg read pairs with same coordinates get reordered).
+     */
+    public static void assertEqualBamFiles(final File resultFile, final File expectedFile, final boolean compareBamFilesSorted, final ValidationStringency stringency) throws IOException {
+
+        if (compareBamFilesSorted) {
+            final File resultFileSorted= BaseTest.createTempFile("resultsFileSorted", ".bam");
+            final File expectedFileSorted = BaseTest.createTempFile("expectedFileSorted", ".bam");
+
+            sortSam(resultFile, resultFileSorted, stringency);
+            sortSam(expectedFile, expectedFileSorted, stringency);
+
+            assertSamsEqual(resultFileSorted, expectedFileSorted, stringency);
+        } else {
+            assertSamsEqual(resultFile, expectedFile, stringency);
+        }
+    }
+
+    private static void sortSam(final File input, final File output, final ValidationStringency stringency) {
+        final SortSam sort = new SortSam();
+        sort.INPUT = input;
+        sort.OUTPUT = output;
+        sort.SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
+        sort.VALIDATION_STRINGENCY = stringency;
+        sort.runTool();
     }
 }

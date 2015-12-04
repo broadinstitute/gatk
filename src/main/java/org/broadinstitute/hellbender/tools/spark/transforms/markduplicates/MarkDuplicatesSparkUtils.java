@@ -29,7 +29,7 @@ import java.util.stream.StreamSupport;
 public class MarkDuplicatesSparkUtils {
 
     // Used to set an attribute on the GATKRead marking this read as an optical duplicate.
-    private static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
+    public static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
 
     /**
      * (0) filter: remove unpaired reads and reads with an unmapped mate.

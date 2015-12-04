@@ -40,8 +40,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             shortName = "M", fullName = "METRICS_FILE")
     protected String metricsFile;
 
-    @Argument(shortName = "DS", fullName = "duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
-    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
+    @Argument(shortName = "DS", fullName = "DUPLICATE_SCORING_STRATEGY", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
@@ -80,18 +80,32 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
 
-        final JavaRDD<GATKRead> finalReads = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, parallelism);
-
-        try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
-        } catch (IOException e) {
-            throw new GATKException("unable to write bam: " + e);
-        }
+        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, parallelism);
 
         if (metricsFile != null) {
-            final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReads);
+            final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
             final MetricsFile<DuplicationMetrics, Double> resultMetrics = getMetricsFile();
             MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, getHeaderForReads(), metricsByLibrary, metricsFile, getAuthHolder());
         }
+
+        final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes(finalReadsForMetrics);
+
+        try {
+            ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
+        } catch (final IOException e) {
+            throw new GATKException("unable to write bam: " + e);
+        }
+    }
+
+
+    /**
+     * The OD attribute was added to each read for optical dups.
+     * Now we have to clear it to avoid polluting the output.
+     */
+    public static JavaRDD<GATKRead> cleanupTemporaryAttributes(final JavaRDD<GATKRead> reads) {
+        return reads.map(read -> {
+            read.clearAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+            return read;
+        });
     }
 }

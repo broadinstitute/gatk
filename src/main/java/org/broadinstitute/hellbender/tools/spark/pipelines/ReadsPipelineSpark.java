@@ -72,7 +72,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
-    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
+    public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
     /**
      * all the command line arguments for BQSR and its covariates
@@ -104,8 +104,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
                     "as getParallelVariants(List) is broken");
         }
 
-        JavaRDD<GATKRead> initialReads = getReads();
-        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder());
+        final JavaRDD<GATKRead> initialReads = getReads();
+        final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder());
+        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
 
         // The marked reads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
