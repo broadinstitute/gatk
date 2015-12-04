@@ -17,10 +17,10 @@ public class SortSamIntegrationTest extends CommandLineProgramTest {
                 {"count_reads.bam", "count_reads_sorted.bam", null, ".bam", "coordinate"},
                 {"count_reads.bam", "count_reads_sorted.bam", "count_reads.fasta", ".cram", "coordinate"},
                 {"count_reads.bam", "count_reads.bam", null, ".bam", "queryname"},
-                // next two require fix to https://github.com/samtools/htsjdk/issues/365
-                //{"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".cram", "coordinate"},
-                //{"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".bam", "coordinate"},
-                {"count_reads.cram", "count_reads.cram", "count_reads.fasta", ".cram", "queryname"},
+                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".cram", "coordinate"},
+                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".bam", "coordinate"}
+                // requires fix in https://github.com/samtools/htsjdk/issues/404
+                //{"count_reads.cram", "count_reads.cram", "count_reads.fasta", ".cram", "queryname"}
         };
     }
 
@@ -34,7 +34,7 @@ public class SortSamIntegrationTest extends CommandLineProgramTest {
     {
         final File inputBam = new File(getTestDataDir(), inputFileName);
         final File expectedBam = new File(getTestDataDir(), expectedOutputFileName);
-        final File outputBam = createTempFile("sort_sam", "outputExtension");
+        final File outputBam = createTempFile("sort_sam", outputExtension);
         File referenceFile = null == referenceFileName ? null : new File(getTestDataDir(), referenceFileName);
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--input"); args.add(inputBam.getCanonicalPath());
