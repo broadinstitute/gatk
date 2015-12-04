@@ -882,7 +882,7 @@ public final class ReadUtils {
      * @param referenceFile - the reference source to use. Can not be null if a output file has a .cram extension.
      * @param header - header to be used for the output writer
      * @param preSorted - if true then the records must already be sorted to match the header sort order
-     * @param createIndex - if true an index will be created for .BAM and .CRAM files
+     * @param createOutputBamIndex - if true an index will be created for .BAM and .CRAM files
      * @param createMD5 - if true an MD5 file will be created
      *
      * @return SAMFileWriter
@@ -933,6 +933,6 @@ public final class ReadUtils {
             throw new UserException("A reference file is required for writing CRAM files");
         }
 
-        return factory.makeWriter(header, preSorted, outputFile, referenceFile);
+        return factory.makeWriter(header.clone(), preSorted, outputFile, referenceFile);
     }
 }
