@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -9,8 +10,10 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -105,6 +108,34 @@ public final class TargetCoverageUtils {
             }
             for (final TargetCoverage target : targets) {
                 writer.writeRecord(target);
+            }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
+    }
+
+    /**
+     * write a list of targets without coverage to BED file, only storing chr, start, end, and name
+     *
+     */
+    public static void writeTargetsAsBed(final File outFile, final List<Target> targets) {
+
+        Utils.nonNull(outFile, "Output file cannot be null.");
+        Utils.nonNull(targets, "Targets cannot be null.");
+
+        final boolean areTargetIntervalsAllPopulated = targets.stream().allMatch(t -> t.getInterval() != null);
+        if (!areTargetIntervalsAllPopulated) {
+            throw new UserException("Cannot write target file with any null intervals.");
+        }
+
+        try (final FileWriter fw = new FileWriter(outFile)) {
+            fw.write("##CONTIG  START\t\tEND\tNAME\n");
+            for (Target t: targets) {
+                final List<String> fields = Arrays.asList(t.getContig(), String.valueOf(t.getInterval().getGA4GHStart()),
+                        String.valueOf(t.getInterval().getGA4GHEnd()), t.getName());
+
+                final String lineString = StringUtils.join(fields, '\t');
+                fw.write(lineString + "\n");
             }
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
