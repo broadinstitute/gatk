@@ -20,6 +20,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -571,15 +572,20 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public Object[][] testMDdata() {
         //Note: the expected metrics files were created using picard 1.130
 
-        //On this file, the spark version used to create the wrong order of reads. It was fixed in https://github.com/broadinstitute/gatk/pull/1197
+        //On this file, the spark version used to create the wrong order of reads.
         return new Object[][] {
-                {new File(TEST_DATA_DIR, "mdOrderBug.sam"), new File(TEST_DATA_DIR,"expected.mdOrderBug.sam")},
+                {new File(TEST_DATA_DIR, "mdOrderBug.bam"), new File(TEST_DATA_DIR,"expected.mdOrderBug.bam")},  //fixed in https://github.com/broadinstitute/gatk/pull/1197
+                {new File(TEST_DATA_DIR, "mdOrderBug2.bam"), new File(TEST_DATA_DIR,"expected.mdOrderBug2.bam")},
         };
     }
 
     @Test(dataProvider = "testMDdata")
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
+        // This method is overridden in MarkDuplicatesSparkIntegrationTest to provide a --parallelism argument
+        testMDOrderImpl(input, expectedOutput, "");
+    }
 
+    protected void testMDOrderImpl(final File input, final File expectedOutput, final String extraArgs) throws Exception {
         final File metricsFile = createTempFile("markdups_metrics", ".txt");
         final File outputFile = createTempFile("markdups", ".bam");
 
@@ -590,10 +596,13 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         args.add(outputFile.getAbsolutePath());
         args.add("--METRICS_FILE");
         args.add(metricsFile.getAbsolutePath());
+        args.add(extraArgs);
 
         final CommandLineProgram markDuplicates = getCommandLineProgramInstance();
 
         markDuplicates.instanceMain(args.getArgsArray());
         SamAssertionUtils.assertEqualBamFiles(outputFile, expectedOutput, false, ValidationStringency.SILENT);
     }
+
+
 }

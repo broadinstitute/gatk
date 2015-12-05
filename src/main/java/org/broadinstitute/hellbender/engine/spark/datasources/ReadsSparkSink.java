@@ -25,10 +25,7 @@ import org.bdgenomics.adam.models.RecordGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.read.*;
 import org.seqdoop.hadoop_bam.KeyIgnoringBAMOutputFormat;
 import org.seqdoop.hadoop_bam.SAMFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
@@ -86,31 +83,42 @@ public class ReadsSparkSink {
      * writeReads writes rddReads to outputFile with header as the file header.
      * @param ctx the JavaSparkContext to write.
      * @param outputFile path to the output bam.
-     * @param rddReads reads to write.
+     * @param reads reads to write.
      * @param header the header to put at the top of the files
      * @param format should the output be a single file, sharded, ADAM, etc.
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
+
+        // The underlying reads are required to be in SAMRecord format in order to be
+        // written out, so we convert them to SAMRecord explicitly here. If they're already
+        // SAMRecords, this will effectively be a no-op. The SAMRecords will be headerless
+        // for efficient serialization.
+        final JavaRDD<SAMRecord> samReads = reads.map(read -> read.convertToSAMRecord(null));
+
         if (format.equals(ReadsWriteFormat.SINGLE)) {
             header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            writeReadsSingle(ctx, outputFile, rddReads, header);
+            writeReadsSingle(ctx, outputFile, samReads, header);
         } else if (format.equals(ReadsWriteFormat.SHARDED)) {
-            writeReadsSharded(ctx, outputFile, rddReads, header);
+            writeReadsSharded(ctx, outputFile, samReads, header);
         } else if (format.equals(ReadsWriteFormat.ADAM)) {
-            writeReadsADAM(ctx, outputFile, rddReads, header);
+            writeReadsADAM(ctx, outputFile, samReads, header);
         }
     }
 
     private static void writeReadsADAM(
-            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddGATKReads,
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header) throws IOException {
         SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
         RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
         JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
-                rddGATKReads.map(read -> GATKReadToBDGAlignmentRecordConverter.convert(read, header, seqDict, readGroups))
-                        .mapToPair(alignmentRecord -> new Tuple2<>(null, alignmentRecord));
+                reads.map(read -> {
+                    read.setHeader(header);
+                    AlignmentRecord alignmentRecord = GATKReadToBDGAlignmentRecordConverter.convert(read, seqDict, readGroups);
+                    read.setHeader(null); // Restore the header to its previous state so as not to surprise the caller
+                    return alignmentRecord;
+                }).mapToPair(alignmentRecord -> new Tuple2<>(null, alignmentRecord));
         // instantiating a Job is necessary here in order to set the Hadoop Configuration...
         Job job = Job.getInstance(ctx.hadoopConfiguration());
         // ...here, which sets a config property that the AvroParquetOutputFormat needs when writing data. Specifically,
@@ -123,61 +131,62 @@ public class ReadsSparkSink {
     }
 
     private static void writeReadsSharded(
-            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header) throws IOException {
         // Set the header on the main thread.
         SparkBAMOutputFormat.setHeader(header);
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         final Broadcast<SAMFileHeader> broadcast = ctx.broadcast(header);
-        JavaRDD<GATKRead> gatkReadJavaRDD = rddReads.mapPartitions(gatkReadIterator -> {
+        JavaRDD<SAMRecord> readsRDD = reads.mapPartitions(readIterator -> {
             SparkBAMOutputFormat.setHeader(broadcast.getValue());
-            return new IteratorIterable<>(gatkReadIterator);
+            return new IteratorIterable<>(readIterator);
         });
 
         // The expected format for writing is JavaPairRDD where the key is ignored and the value is a
-        // SAMRecordWritable. We use GATKRead as the key, so we can sort the reads before writing them to a file.
-        JavaPairRDD<GATKRead, SAMRecordWritable> rddSamRecordWriteable = gatkReadJavaRDD.mapToPair(gatkRead -> {
-            SAMRecord samRecord = gatkRead.convertToSAMRecord(broadcast.getValue());
+        // SAMRecordWritable. We use SAMRecord as the key, so we can sort the reads before writing them to a file.
+        JavaPairRDD<SAMRecord, SAMRecordWritable> rddSamRecordWriteable = readsRDD.mapToPair(read -> {
+            read.setHeader(broadcast.getValue());
             SAMRecordWritable samRecordWritable = new SAMRecordWritable();
-            samRecordWritable.set(samRecord);
-            return new Tuple2<>(gatkRead, samRecordWritable);
+            samRecordWritable.set(read);
+            return new Tuple2<>(read, samRecordWritable);
         });
 
         deleteHadoopFile(outputFile);
-        rddSamRecordWriteable.saveAsNewAPIHadoopFile(outputFile, GATKRead.class, SAMRecordWritable.class, SparkBAMOutputFormat.class);
+        rddSamRecordWriteable.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, SparkBAMOutputFormat.class);
     }
 
     private static void writeReadsSingle(
-            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> rddReads,
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header) throws IOException {
         // Set the header on the main thread.
         SparkBAMOutputFormat.setHeader(header);
 
         // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
         // of data going through the shuffle.
-        JavaPairRDD<GATKRead, Void> rddReadPairs = rddReads.mapToPair(gatkRead -> new Tuple2<>(gatkRead, (Void) null));
+        JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final JavaPairRDD<GATKRead, Void> out =
-                totalSortByKey(rddReadPairs, new ReadCoordinateComparator(header), GATKRead.class);
+        final JavaPairRDD<SAMRecord, Void> out =
+                totalSortByKey(rddReadPairs, new HeaderlessSAMRecordCoordinateComparator(header), SAMRecord.class);
 
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         // MyOutputFormat.setHeader.
         final Broadcast<SAMFileHeader> broadcast = ctx.broadcast(header);
 
-        final JavaPairRDD<GATKRead, SAMRecordWritable> finalOut = out.mapPartitions(tuple2Iterator -> {
+        final JavaPairRDD<SAMRecord, SAMRecordWritable> finalOut = out.mapPartitions(tuple2Iterator -> {
             SparkBAMOutputFormat.setHeader(broadcast.getValue());
             return new IteratorIterable<>(tuple2Iterator);
         }).mapToPair(t -> {
-            SAMRecord samRecord = t._1().convertToSAMRecord(header);
+            SAMRecord samRecord = t._1();
+            samRecord.setHeader(header);
             SAMRecordWritable samRecordWritable = new SAMRecordWritable();
             samRecordWritable.set(samRecord);
-            return new Tuple2<>(t._1(), samRecordWritable);
+            return new Tuple2<>(samRecord, samRecordWritable);
         });
 
         deleteHadoopFile(outputFile);
         // Use SparkHeaderlessBAMOutputFormat so that the header is not written for each part file
-        finalOut.saveAsNewAPIHadoopFile(outputFile, GATKRead.class, SAMRecordWritable.class, SparkHeaderlessBAMOutputFormat.class);
+        finalOut.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, SparkHeaderlessBAMOutputFormat.class);
         mergeBam(outputFile, header);
     }
 

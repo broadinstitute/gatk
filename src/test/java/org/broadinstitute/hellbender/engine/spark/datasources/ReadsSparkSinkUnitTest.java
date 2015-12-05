@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordCoordinateComparator;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -30,6 +31,12 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         return new Object[][]{
                 {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1", ".bam"},
                 {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", "ReadsSparkSinkUnitTest2", ".bam"},
+
+                // This file has unmapped reads that are set to the position of their mates -- the ordering check
+                // in the tests below will fail if our ordering of these reads relative to the mapped reads
+                // is not consistent with the definition of coordinate sorting as defined in
+                // htsjdk.samtools.SAMRecordCoordinateComparator
+                {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3", ".bam"}
         };
     }
 
@@ -38,6 +45,15 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         return new Object[][]{
                 {testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam", "ReadsSparkSinkUnitTest1_ADAM"},
                 {testDataDir + "tools/BQSR/expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", "ReadsSparkSinkUnitTest2_ADAM"},
+
+                // This file has unmapped reads that are set to the position of their mates -- the ordering check
+                // in the tests below will fail if our ordering of these reads relative to the mapped reads
+                // is not consistent with the definition of coordinate sorting as defined in
+                // htsjdk.samtools.SAMRecordCoordinateComparator
+                //
+                // Currently disabled, as this test case doesn't pass for ADAM (we have an open ticket for this:
+                // https://github.com/broadinstitute/gatk/issues/1254)
+                // {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3_ADAM"}
         };
     }
 
@@ -56,13 +72,13 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath());
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
 
-        final ReadCoordinateComparator comparator = new ReadCoordinateComparator(header);
+        final SAMRecordCoordinateComparator comparator = new SAMRecordCoordinateComparator();
         // Assert that the reads are sorted.
         final int size = writtenReads.size();
         for (int i = 0; i < size-1; ++i) {
-            final GATKRead smaller = writtenReads.get(i);
-            final GATKRead larger = writtenReads.get(i + 1);
-            Assert.assertTrue(comparator.compare(smaller, larger) < 0);
+            final SAMRecord smaller = writtenReads.get(i).convertToSAMRecord(header);
+            final SAMRecord larger = writtenReads.get(i + 1).convertToSAMRecord(header);
+            Assert.assertTrue(comparator.compare(smaller, larger) < 0, "Reads are out of order: " + smaller.getSAMString() + " and " + larger.getSAMString());
         }
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }

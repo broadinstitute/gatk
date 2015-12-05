@@ -12,12 +12,15 @@ import java.util.Comparator;
  * Uses the various other fields in a read to break ties for reads that share
  * the same location.
  *
- * Based loosely on the {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
- * This comparator, when given two GATKReads that are backed by SAMRecords will produce the same exact order as {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
- * UNLESS the read(s) are in a state that GATKRead considers invalid, eg:
- *   - read is unmapped but has a getReferenceIndex that is not {@link htsjdk.samtools.SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX}.
+ * Based loosely on the {@link htsjdk.samtools.SAMRecordCoordinateComparator}, but does not
+ * match its order for all reads (see explanation below). Use {@link HeaderlessSAMRecordCoordinateComparator}
+ * if an exact match against the ordering of {@link htsjdk.samtools.SAMRecordCoordinateComparator}
+ * is required (eg., you are writing a bam).
  *
- * In those cases, the order may not be the same as {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
+ * This comparator, when given two GATKReads that are backed by SAMRecords will produce the same exact order as {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
+ * EXCEPT for read(s) that are in a state that is disallowed by the GATKRead interface, eg: a read that is
+ * unmapped but has a reference index that is not {@link htsjdk.samtools.SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX}.
+ * For such reads, the order will not be the same as the {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
  */
 public final class ReadCoordinateComparator implements Comparator<GATKRead>, Serializable {
     private static final long serialVersionUID = 1L;
