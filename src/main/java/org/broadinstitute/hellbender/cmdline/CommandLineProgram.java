@@ -41,17 +41,17 @@ import java.util.List;
 public abstract class CommandLineProgram {
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
-    @Argument(common=true, optional=true)
+    @Argument(optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
     public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
 
-    @Argument(doc = "Control verbosity of logging.", common=true)
+    @Argument(doc = "Control verbosity of logging.")
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
-    @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
+    @Argument(doc = "Whether to suppress job-summary info on System.err.")
     public Boolean QUIET = false;
 
     /**
@@ -194,7 +194,7 @@ public abstract class CommandLineProgram {
             for (final String msg : customErrorMessages) {
                 System.err.println(msg);
             }
-            commandLineParser.usage(System.err, false);
+            commandLineParser.usage(System.err);
             return false;
         }
         return true;

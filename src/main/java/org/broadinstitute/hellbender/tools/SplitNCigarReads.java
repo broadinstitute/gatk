@@ -54,8 +54,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
     protected File OUTPUT;
 
-    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
-            common = true, optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.", optional = true)
     public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     /**

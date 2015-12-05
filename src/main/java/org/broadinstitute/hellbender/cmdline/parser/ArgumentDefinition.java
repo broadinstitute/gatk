@@ -25,7 +25,6 @@ final class ArgumentDefinition {
     private final String shortName;
     private final String doc;
     private final String defaultValue;
-    private final boolean isCommon;
     private final Set<String> mutuallyExclusive;
     private final Object parent;
     private final boolean isSensitive;
@@ -45,7 +44,6 @@ final class ArgumentDefinition {
         this.doc = annotation.doc();
         this.isCollection = CommandLineParser.isCollectionField(field);
 
-        this.isCommon = annotation.common();
         this.isSensitive = annotation.sensitive();
 
         this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
@@ -295,10 +293,6 @@ final class ArgumentDefinition {
 
     public String getDefaultValue() {
         return defaultValue;
-    }
-
-    public boolean isCommon() {
-        return isCommon;
     }
 
     public Set<String> getMutuallyExclusive() {

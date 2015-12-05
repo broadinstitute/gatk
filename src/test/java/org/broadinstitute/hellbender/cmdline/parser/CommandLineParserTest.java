@@ -107,7 +107,7 @@ public final class CommandLineParserTest extends BaseTest {
     public void testRequiredOnlyUsage() {
         final RequiredOnlyArguments nr = new RequiredOnlyArguments();
         final CommandLineParser clp = new CommandLineParser(nr);
-        final String out = BaseTest.captureStderr(() -> clp.usage(System.err, false)); // without common args
+        final String out = BaseTest.captureStderr(() -> clp.usage(System.err)); // without common args
         final int reqIndex = out.indexOf("Required Arguments:");
         Assert.assertTrue(reqIndex > 0);
         Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) < 0);
@@ -127,7 +127,7 @@ public final class CommandLineParserTest extends BaseTest {
     public void testOptionalOnlyUsage() {
         final OptionalOnlyArguments oo = new OptionalOnlyArguments();
         final CommandLineParser clp = new CommandLineParser(oo);
-        final String out = BaseTest.captureStderr(() -> clp.usage(System.err, false)); // without common args
+        final String out = BaseTest.captureStderr(() -> clp.usage(System.err)); // without common args
         final int reqIndex = out.indexOf("Required Arguments:");
         Assert.assertTrue(reqIndex < 0);
         Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) > 0);
@@ -138,7 +138,7 @@ public final class CommandLineParserTest extends BaseTest {
      * emitted before optional ones.
      */
     private static void validateRequiredOptionalUsage(final CommandLineParser clp, final boolean withDefault) {
-        final String out = BaseTest.captureStderr(() -> clp.usage(System.err, withDefault)); // with common args
+        final String out = BaseTest.captureStderr(() -> clp.usage(System.err)); // with common args
         // Required arguments should appear before optional ones
         final int reqIndex = out.indexOf("Required Arguments:");
         Assert.assertTrue(reqIndex > 0);
