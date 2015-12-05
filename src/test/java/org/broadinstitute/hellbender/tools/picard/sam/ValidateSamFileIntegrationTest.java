@@ -31,7 +31,7 @@ public final class ValidateSamFileIntegrationTest extends CommandLineProgramTest
           {"valid.cram", "VERBOSE", "valid.fasta", true}, // the NM tags in the CRAM file do match the reference (ty samtools)
           {"invalid_coord_sort_order.sam", "SUMMARY", null, false},
           {"invalid_coord_sort_order.sam", "SUMMARY", "invalid_coord_sort_order.fasta", false},
-          //{"invalid_coord_sort_order.cram", "SUMMARY", "invalid_coord_sort_order.fasta", false},  // requires htsjdk fix to SamFileValidator
+          {"invalid_coord_sort_order.cram", "SUMMARY", "invalid_coord_sort_order.fasta", false},
         };
     }
 

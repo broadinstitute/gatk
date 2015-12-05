@@ -145,17 +145,13 @@ public final class GatherBamFilesIntegrationTest extends CommandLineProgramTest 
         );
 
         return new Object[][]{
-                // these require the fix to https://github.com/samtools/htsjdk/issues/365
-                // that is in PR https://github.com/samtools/htsjdk/pull/368
                 {splitCramsUnmappedLast, origCram, true, true},
                 {splitCramsUnmappedFirst, origCram, true, true},
                 {splitCramsUnmappedMissing, origCram, false, false}
         };
     }
 
-    // These tests require the fix to https://github.com/samtools/htsjdk/issues/365
-    // in PR https://github.com/samtools/htsjdk/pull/368
-    @Test(dataProvider="cramgathering", enabled=false)
+    @Test(dataProvider="cramgathering")
     public void testTheCRAMGathering(final List<File> crams, final File original, final boolean expectEqual, final boolean expectEqualLenient) throws IOException {
         testTheGathering(crams, original, new File(TEST_DATA_DIR, "basic.fasta"), CramIO.CRAM_FILE_EXTENSION, expectEqual, expectEqualLenient);
     }

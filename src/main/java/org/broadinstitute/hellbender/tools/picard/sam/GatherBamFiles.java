@@ -76,7 +76,7 @@ public final class GatherBamFiles extends PicardCommandLineProgram {
             header = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).getFileHeader(inputs.get(0));
         }
 
-        try (final SAMFileWriter out = createSAMWriter(output, referenceFasta, header, true)) {
+        try (final SAMFileWriter out = createSAMWriter(output, referenceFasta, header, false)) {
             for (final File f : inputs) {
                 log.info("Gathering " + f.getAbsolutePath());
                 final SamReader in = SamReaderFactory.makeDefault().referenceSequence(referenceFasta).open(f);
