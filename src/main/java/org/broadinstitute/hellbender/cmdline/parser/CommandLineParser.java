@@ -190,27 +190,22 @@ public final class CommandLineParser {
      * Print a usage message based on the arguments object passed to the ctor.
      *
      * @param stream Where to write the usage message.
-     * @param printCommon True if common args should be included in the usage message.
      */
-    public void usage(final PrintStream stream, final boolean printCommon) {
+    public void usage(final PrintStream stream) {
         stream.print(getStandardUsagePreamble(callerArguments.getClass()) + getUsagePreamble());
         stream.println('\n' + getVersion());
 
-        // filter on common and partition on optional
         final Map<Boolean, List<ArgumentDefinition>> argMap = argumentDefinitions.stream()
-                .filter(argumentDefinition -> printCommon || !argumentDefinition.isCommon())
                 .collect(Collectors.partitioningBy(ArgumentDefinition::isOptional));
+        printArgumentGroup(stream, argMap.get(false), "\n\nRequired Arguments:\n");
+        printArgumentGroup(stream, argMap.get(true), "\nOptional Arguments:\n");
+    }
 
-        final List<ArgumentDefinition> reqArgs = argMap.get(false); // required args
-        if (reqArgs != null && !reqArgs.isEmpty()) {
-            stream.println("\n\nRequired Arguments:\n");
-            reqArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
-        }
-
-        final List<ArgumentDefinition> optArgs = argMap.get(true); // optional args
-        if (optArgs != null && !optArgs.isEmpty()) {
-            stream.println("\nOptional Arguments:\n");
-            optArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
+    private void printArgumentGroup(PrintStream stream, List<ArgumentDefinition> args, String groupName) {
+        if (args != null && !args.isEmpty()) {
+            stream.println(groupName);
+            args.stream().sorted(Comparator.comparing(ArgumentDefinition::getLongName))
+                    .forEachOrdered(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
         }
     }
 
@@ -237,7 +232,7 @@ public final class CommandLineParser {
 
         //check if special short circuiting arguments are set
         if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.HELP_FULLNAME)) {
-            usage(messageStream, true);
+            usage(messageStream);
             return false;
         } else if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.VERSION_FULLNAME)) {
             messageStream.println(getVersion());

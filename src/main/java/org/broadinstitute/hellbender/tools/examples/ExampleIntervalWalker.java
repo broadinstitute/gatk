@@ -30,7 +30,7 @@ public final class ExampleIntervalWalker extends IntervalWalker {
     @ArgumentCollection
     private OptionalVariantInputArgumentCollection optionalVariants = new OptionalVariantInputArgumentCollection();
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", optional = true)
     private File outputFile = null;
 
     private PrintStream outputStream = null;

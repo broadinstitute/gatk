@@ -381,7 +381,7 @@ public class SelectVariants extends VariantWalker {
 
     @Argument(fullName=StandardArgumentDefinitions.LENIENT_LONG_NAME,
                             shortName = StandardArgumentDefinitions.LENIENT_SHORT_NAME,
-                            doc = "Lenient processing of VCF files", common = true, optional = true)
+                            doc = "Lenient processing of VCF files", optional = true)
     private boolean lenientVCFProcessing;
 
     @HiddenOption
