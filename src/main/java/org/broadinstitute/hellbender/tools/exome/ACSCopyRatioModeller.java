@@ -331,14 +331,14 @@ public final class ACSCopyRatioModeller {
             //construct list of coverages (in order corresponding to that of segments in SegmentedModel;
             //this may not be in genomic order, depending on how the segments are sorted in the segment file,
             //so we cannot simply take the list of coverages in the order from TargetCollection.targets()
-            final List<Double> coverages = new ArrayList<>((int) targetCoverages.exomeSize());
-            segmentedModel.getSegments().stream()
-                    .map(s -> targetCoverages.targets(s).stream().map(TargetCoverage::getCoverage)
-                            .collect(Collectors.toList()))
-                    .forEach(coverages::addAll);
-            numTargetsPerSegment =
-                    segmentedModel.getSegments().stream().map(s -> targetCoverages.targets(s).size())
-                            .collect(Collectors.toList());
+            final List<Double> coverages = segmentedModel.getSegments().stream()
+                    .flatMap(s -> targetCoverages.targets(s).stream())
+                    .map(TargetCoverage::getCoverage)
+                    .collect(Collectors.toList());
+
+            numTargetsPerSegment = segmentedModel.getSegments().stream()
+                    .map(s -> targetCoverages.targets(s).size())
+                    .collect(Collectors.toList());
             numSegments = numTargetsPerSegment.size();
             numTargets = coverages.size();
             coverageRange = Collections.max(coverages) - Collections.min(coverages);

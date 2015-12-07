@@ -15,7 +15,7 @@ import java.io.IOException;
 
 public class PadTargetsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/tools/exome");
+    private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
     private static final File TEST_FILE = new File(TEST_FILE_DIR, "targets.bed");
 
     @Test
