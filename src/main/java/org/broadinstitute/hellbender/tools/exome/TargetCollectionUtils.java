@@ -12,16 +12,16 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * Utility class used to create {@link TargetCollections} from common target data sources.
+ * Utility class used to create {@link TargetCollection} from common target data sources.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class TargetCollections {
+public final class TargetCollectionUtils {
 
     /**
      * Disabled instantiation of this helper class.
      */
-    private TargetCollections() {
+    private TargetCollectionUtils() {
 
     }
 

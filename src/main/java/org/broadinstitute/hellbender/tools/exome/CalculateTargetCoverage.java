@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Calculate read-counts on an exome given its intervals.
+ * Calculate read-counts across targets given their reference coordinates.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -41,13 +41,13 @@ import java.util.stream.IntStream;
         oneLineSummary = "Count overlapping reads target by target",
         programGroup = CopyNumberProgramGroup.class
 )
-public final class ExomeReadCounts extends ReadWalker {
+public final class CalculateTargetCoverage extends ReadWalker {
 
     public static final String DEFAULT_COHORT_NAME = "<ALL>";
-    public static final String EXON_CONTIG_COLUMN_NAME = "CONTIG";
-    public static final String EXON_START_COLUMN_NAME = "START";
-    public static final String EXON_END_COLUMN_NAME = "END";
-    public static final String EXON_NAME_COLUMN_NAME = "NAME";
+    public static final String TARGET_CONTIG_COLUMN_NAME = "CONTIG";
+    public static final String TARGET_START_COLUMN_NAME = "START";
+    public static final String TARGET_END_COLUMN_NAME = "END";
+    public static final String TARGET_NAME_COLUMN_NAME = "NAME";
 
     /**
      * Header name for the column that contains a count sum (across columns or rows).
@@ -78,10 +78,10 @@ public final class ExomeReadCounts extends ReadWalker {
     protected static final String AVERAGE_DOUBLE_FORMAT = "%.4f";
     protected static final String TRANSFORM_FULL_NAME = "transform";
     protected static final String TRANSFORM_SHORT_NAME = TRANSFORM_FULL_NAME;
-    protected static final String EXOME_FILE_FULL_NAME = "exome";
-    protected static final String EXOME_FILE_SHORT_NAME = EXOME_FILE_FULL_NAME;
-    protected static final String EXON_OUT_INFO_FULL_NAME = "exonInformationColumns";
-    protected static final String EXON_OUT_INFO_SHORT_NAME = "exonInfo";
+    protected static final String TARGET_FILE_FULL_NAME = "targets";
+    protected static final String TARGET_FILE_SHORT_NAME = "T";
+    protected static final String TARGET_OUT_INFO_FULL_NAME = "targetInformationColumns";
+    protected static final String TARGET_OUT_INFO_SHORT_NAME = "targetInfo";
     protected static final String KEEP_DUPLICATE_READS_FULL_NAME = "keepduplicatereads";
     protected static final String KEEP_DUPLICATE_READS_SHORT_NAME = "keepdups";
 
@@ -134,19 +134,19 @@ public final class ExomeReadCounts extends ReadWalker {
 
     @Argument(
             doc = "File containing the targets for analysis",
-            shortName = EXOME_FILE_SHORT_NAME,
-            fullName = EXOME_FILE_FULL_NAME,
+            shortName = TARGET_FILE_SHORT_NAME,
+            fullName = TARGET_FILE_FULL_NAME,
             optional = true
     )
-    protected File exomeFile = null;
+    protected File targetsFile = null;
 
     @Argument(
-            doc = "Exon identification information to be show in outputs",
-            shortName = EXON_OUT_INFO_SHORT_NAME,
-            fullName = EXON_OUT_INFO_FULL_NAME,
+            doc = "Target identification information to be showed in outputs",
+            shortName = TARGET_OUT_INFO_SHORT_NAME,
+            fullName = TARGET_OUT_INFO_FULL_NAME,
             optional = true
     )
-    protected ExonOutInfo exonOutInfo = ExonOutInfo.COORDS;
+    protected TargetOutInfo targetOutInfo = TargetOutInfo.COORDS;
 
     @Argument(
             doc = "Flag to retain duplicate reads",
@@ -179,10 +179,10 @@ public final class ExomeReadCounts extends ReadWalker {
     /**
      * Reference to the logger.
      */
-    private static final Logger logger = LogManager.getLogger(ExomeReadCounts.class);
+    private static final Logger logger = LogManager.getLogger(CalculateTargetCoverage.class);
 
     /**
-     * Exon database reference.
+     * Target database reference.
      */
     private TargetCollection<? extends Locatable> targetCollection;
 
@@ -214,7 +214,7 @@ public final class ExomeReadCounts extends ReadWalker {
 
         logger.log(Level.INFO, "Reading targets locations from intervals...");
 
-        targetCollection = resolveExonCollection();
+        targetCollection = resolveTargetCollection();
 
         // Initializing count and count column management member fields:
         countColumns = groupBy.countColumns(this);
@@ -222,14 +222,14 @@ public final class ExomeReadCounts extends ReadWalker {
         counts = new int[columnCount][targetCollection.targetCount()];
 
         // Open output files and write headers:
-        outputWriter = openOutputWriter(output, composeMatrixOutputHeader(getCommandLine(), exonOutInfo, groupBy, countColumns.columnNames()));
+        outputWriter = openOutputWriter(output, composeMatrixOutputHeader(getCommandLine(), targetOutInfo, groupBy, countColumns.columnNames()));
         if (columnSummaryOutput != null) {
             columnSummaryOutputWriter = openOutputWriter(columnSummaryOutput,
-                    composeColumnSummaryHeader(getCommandLine(), groupBy, targetCollection.targetCount(), targetCollection.exomeSize()));
+                    composeColumnSummaryHeader(getCommandLine(), groupBy, targetCollection.targetCount(), targetCollection.totalSize()));
         }
         if (rowSummaryOutput != null) {
             rowSummaryOutputWriter = openOutputWriter(rowSummaryOutput,
-                    composeRowOutputHeader(getCommandLine(), exonOutInfo, groupBy, countColumns.columnCount()));
+                    composeRowOutputHeader(getCommandLine(), targetOutInfo, groupBy, countColumns.columnCount()));
         }
 
         // Next we start the traversal:
@@ -240,21 +240,21 @@ public final class ExomeReadCounts extends ReadWalker {
      * Builds the target collection given the values of user arguments.
      *
      * @throws UserException if there is some inconsistency in user arguments and inputs.
-     * @throws GATKException if there was any problem parsing the content of the exome file.
+     * @throws GATKException if there was any problem parsing the content of the targets file.
      * @return never {@code null}.
      */
-    private TargetCollection<? extends Locatable> resolveExonCollection() {
+    private TargetCollection<? extends Locatable> resolveTargetCollection() {
         final TargetCollection<? extends Locatable> result;
-        if (exomeFile != null) {
-            result = resolveExonCollectionFromExomeFile();
+        if (targetsFile != null) {
+            result = resolveTargetCollectionFromTargetsFile();
         } else if (hasIntervals()) {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-            result = TargetCollections.fromSimpleIntervalList(intervalArgumentCollection.getIntervals(sequenceDictionary));
+            result = TargetCollectionUtils.fromSimpleIntervalList(intervalArgumentCollection.getIntervals(sequenceDictionary));
         } else {
-            throw new UserException(String.format("You must indicate the set of target as input intervals (e.g. -L target-intervals.list) or a exome feature file (e.g. -%s my-targets.bed) ",EXOME_FILE_SHORT_NAME));
+            throw new UserException(String.format("You must indicate the set of target as input intervals (e.g. -L target-intervals.list) or a target feature file (e.g. -%s my-targets.bed) ", TARGET_FILE_SHORT_NAME));
         }
-        if (exonOutInfo.requiresUniqueExonName()) {
-            checkAllExonsHaveName(result);
+        if (targetOutInfo.requiresUniqueTargetName()) {
+            checkAllTargetsHaveName(result);
         }
         return result;
     }
@@ -264,30 +264,30 @@ public final class ExomeReadCounts extends ReadWalker {
      * @param result the query target collection.
      * @throws UserException if there are some targets with no name in {@code result}.
      */
-    private <T extends Locatable> void checkAllExonsHaveName(TargetCollection<T> result) {
+    private <T extends Locatable> void checkAllTargetsHaveName(TargetCollection<T> result) {
         if (result.targets().stream().anyMatch(e -> result.name(e) == null)) {
-            throw new UserException(String.format("Exon output info requested '%s' requires that each target has a designated unique name/id but there are some with no names: %s", exonOutInfo.name(),
+            throw new UserException(String.format("Target output info requested '%s' requires that each target has a designated unique name/id but there are some with no names: %s", targetOutInfo.name(),
                     result.targets().stream().filter(e -> result.name(e) == null).limit(10).map(e -> result.location(e).toString()).collect(Collectors.joining(", "))));
         }
     }
 
     /**
-     * Constructs the target collection from an exome-file passed by the user.
+     * Constructs the target collection from an target-file passed by the user.
      *
      * @return never {@code null}.
      */
-    private TargetCollection<? extends Locatable> resolveExonCollectionFromExomeFile() {
-        Utils.regularReadableUserFile(exomeFile);
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(exomeFile);
-        logger.log(Level.INFO,String.format("Reading target intervals from exome file '%s' ...",exomeFile.getAbsolutePath()));
+    private TargetCollection<? extends Locatable> resolveTargetCollectionFromTargetsFile() {
+        Utils.regularReadableUserFile(targetsFile);
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(targetsFile);
+        logger.log(Level.INFO,String.format("Reading target intervals from targets file '%s' ...", targetsFile.getAbsolutePath()));
         final Class<? extends Feature> featureType = codec.getFeatureType();
         final TargetCollection<? extends Locatable> result;
         if (BEDFeature.class.isAssignableFrom(featureType)) {
             @SuppressWarnings("unchecked")
             final FeatureCodec<? extends BEDFeature, ?> bedFeatureCodec = (FeatureCodec<? extends BEDFeature, ?>) codec;
-            result = TargetCollections.fromBEDFeatureFile(exomeFile, bedFeatureCodec);
+            result = TargetCollectionUtils.fromBEDFeatureFile(targetsFile, bedFeatureCodec);
         } else {
-            throw new UserException.BadInput(String.format("currently only BED formatted exome file are supported. '%s' does not seem to be a BED file",exomeFile.getAbsolutePath()));
+            throw new UserException.BadInput(String.format("currently only BED formatted targets file are supported. '%s' does not seem to be a BED file", targetsFile.getAbsolutePath()));
         }
         logger.log(Level.INFO,String.format("Found %d targets to analyze.",result.targetCount()));
         return result;
@@ -329,11 +329,11 @@ public final class ExomeReadCounts extends ReadWalker {
         logger.log(Level.INFO, "Collecting read counts done.");
 
         logger.log(Level.INFO, "Writing counts ...");
-        final int exonCount = targetCollection.targetCount();
+        final int targetCount = targetCollection.targetCount();
         final int columnCount = counts.length;
         final long[] columnTotals = calculateColumnTotals();
 
-        for (int i = 0; i < exonCount; i++) {
+        for (int i = 0; i < targetCount; i++) {
             final int[] countBuffer = new int[columnCount];
             for (int j = 0; j < columnCount; j++) {
                 countBuffer[j] = counts[j][i];
@@ -369,7 +369,7 @@ public final class ExomeReadCounts extends ReadWalker {
             return;
         }
 
-        final long exomeSize = targetCollection.exomeSize();
+        final long totalSize = targetCollection.totalSize();
 
         final List<String> columnNames = countColumns.columnNames();
         for (int i = 0; i < columnNames.size(); i++) {
@@ -378,7 +378,7 @@ public final class ExomeReadCounts extends ReadWalker {
                     String.join(COLUMN_SEPARATOR,
                             columnNames.get(i),
                             String.valueOf(sum),
-                            String.format(AVERAGE_DOUBLE_FORMAT, sum / (double) exomeSize)));
+                            String.format(AVERAGE_DOUBLE_FORMAT, sum / (double) totalSize)));
         }
         columnSummaryOutputWriter.close();
     }
@@ -407,18 +407,18 @@ public final class ExomeReadCounts extends ReadWalker {
                                  final int index) {
         final String countString = IntStream.range(0, countBuffer.length).mapToObj(
                 i -> transform.apply(countBuffer[i], columnTotals[i])).collect(Collectors.joining(COLUMN_SEPARATOR));
-        final String exonInfoString = exonOutInfo.composeExonOutInfoString(index, targetCollection);
+        final String targetInfoString = targetOutInfo.composeTargetOutInfoString(index, targetCollection);
 
-        outputWriter.println(String.join(COLUMN_SEPARATOR, exonInfoString, countString));
+        outputWriter.println(String.join(COLUMN_SEPARATOR, targetInfoString, countString));
 
         if (rowSummaryOutputWriter != null) {
             final long sum = MathUtils.sum(countBuffer);
             final SimpleInterval location = targetCollection.location(index);
-            final int exonSize = location.size();
+            final int targetSize = location.size();
             rowSummaryOutputWriter.println(String.join(COLUMN_SEPARATOR,
-                    exonInfoString,
+                    targetInfoString,
                     Long.toString(sum), String.format(AVERAGE_DOUBLE_FORMAT,
-                            sum / ((float) countColumns.columnCount() * exonSize))));
+                            sum / ((float) countColumns.columnCount() * targetSize))));
         }
     }
 
@@ -430,12 +430,12 @@ public final class ExomeReadCounts extends ReadWalker {
      * </p>
      *
      * @param commandLine the command-line.
-     * @param exonCount   number of targets processed.
-     * @param exomeSize   size of the exome processed in bps.
+     * @param targetCount   number of targets processed.
+     * @param totalSize   combined total size of all targets processed in bps.
      * @return never {@code null}.
      */
     private static String composeColumnSummaryHeader(final String commandLine, final GroupBy groupBy,
-                                                     final int exonCount, final long exomeSize) {
+                                                     final int targetCount, final long totalSize) {
         return String.format(
                 String.join(LINE_SEPARATOR,
                         "##fileFormat  = tsv",
@@ -443,10 +443,10 @@ public final class ExomeReadCounts extends ReadWalker {
                         "##title       = Summary counts per %s",
                         "##metaData    = {",
                         "##    targetCount = %d,",
-                        "##    exomeSize = %d (bp)",
+                        "##    totalSize = %d (bp)",
                         "##}",
                         String.join(COLUMN_SEPARATOR, groupBy.name(), SUM_COLUMN_NAME, AVG_BP_COLUMN_NAME)),
-                commandLine, groupBy.toString(), exonCount, exomeSize);
+                commandLine, groupBy.toString(), targetCount, totalSize);
     }
 
     /**
@@ -457,7 +457,7 @@ public final class ExomeReadCounts extends ReadWalker {
      * @param columnCount number of count-column involved in the analysis.
      * @return never {@code null}.
      */
-    private static String composeRowOutputHeader(final String commandLine, final ExonOutInfo exonOutInfo, final GroupBy groupBy,
+    private static String composeRowOutputHeader(final String commandLine, final TargetOutInfo targetOutInfo, final GroupBy groupBy,
                                                  final int columnCount) {
         return String.format(
                 String.join(LINE_SEPARATOR,
@@ -468,7 +468,7 @@ public final class ExomeReadCounts extends ReadWalker {
                         "##    groupBy     = %s,",
                         "##    columnCount = %d",
                         "##}",
-                        String.join(COLUMN_SEPARATOR,exonOutInfo.headerString(),SUM_COLUMN_NAME,AVG_COL_BP_COLUMN_NAME)),
+                        String.join(COLUMN_SEPARATOR, targetOutInfo.headerString(),SUM_COLUMN_NAME,AVG_COL_BP_COLUMN_NAME)),
                 commandLine, groupBy, columnCount);
     }
 
@@ -480,14 +480,14 @@ public final class ExomeReadCounts extends ReadWalker {
      * @param countColumnNames the column names.
      * @return never {@code null}.
      */
-    private static String composeMatrixOutputHeader(final String commandLine, final ExonOutInfo exonOutInfo, final GroupBy groupBy,
+    private static String composeMatrixOutputHeader(final String commandLine, final TargetOutInfo targetOutInfo, final GroupBy groupBy,
                                                     final List<String> countColumnNames) {
         final String countColumnHeaderString = String.join(COLUMN_SEPARATOR, countColumnNames).replace("%", "%%");
         final String formatString = String.join(LINE_SEPARATOR,
                 "##fileFormat  = tsv",
                 "##commandLine = %s",
                 "##title       = Read counts per target and %s",
-                String.join(COLUMN_SEPARATOR, exonOutInfo.headerString(), countColumnHeaderString));
+                String.join(COLUMN_SEPARATOR, targetOutInfo.headerString(), countColumnHeaderString));
         return String.format(formatString, commandLine, groupBy.toString());
     }
 
@@ -509,14 +509,14 @@ public final class ExomeReadCounts extends ReadWalker {
         /**
          * Reference to the counting tool.
          */
-        protected final ExomeReadCounts tool;
+        protected final CalculateTargetCoverage tool;
 
         /**
          * Creates a new count-counts instance given the reference to the embedding tool instance.
          *
          * @param tool the read-count tool instance.
          */
-        private CountColumns(final ExomeReadCounts tool) {
+        private CountColumns(final CalculateTargetCoverage tool) {
             this.tool = tool;
         }
 
@@ -557,7 +557,7 @@ public final class ExomeReadCounts extends ReadWalker {
         /**
          * Creates a new count-counts instance given the reference to the embedding tool instance.
          */
-        private CohortCountColumns(final ExomeReadCounts tool) {
+        private CohortCountColumns(final CalculateTargetCoverage tool) {
             super(tool);
         }
 
@@ -583,7 +583,7 @@ public final class ExomeReadCounts extends ReadWalker {
         /**
          * Creates a new per sample count-counts manager given the reference to the embedding tool instance.
          */
-        private SampleCountColumns(final ExomeReadCounts tool) {
+        private SampleCountColumns(final CalculateTargetCoverage tool) {
             super(tool);
         }
 
@@ -609,7 +609,7 @@ public final class ExomeReadCounts extends ReadWalker {
         /**
          * Creates a new per sample count-counts manager given the reference to the embedding tool instance.
          */
-        private ReadGroupCountColumns(final ExomeReadCounts tool) {
+        private ReadGroupCountColumns(final CalculateTargetCoverage tool) {
             super(tool);
         }
 
@@ -647,7 +647,7 @@ public final class ExomeReadCounts extends ReadWalker {
         /**
          * Corresponding count-columns manager factory.
          */
-        private final Function<ExomeReadCounts, ? extends CountColumns> countColumnsFactory;
+        private final Function<CalculateTargetCoverage, ? extends CountColumns> countColumnsFactory;
 
         /**
          * Creates a new group-by option.
@@ -655,7 +655,7 @@ public final class ExomeReadCounts extends ReadWalker {
          * @param countColumnsFactory the count-columns manager factory to be used with
          *                            this group-by option. Assumed not to be {@code null}.
          */
-        GroupBy(final Function<ExomeReadCounts, ? extends CountColumns> countColumnsFactory) {
+        GroupBy(final Function<CalculateTargetCoverage, ? extends CountColumns> countColumnsFactory) {
             this.countColumnsFactory = countColumnsFactory;
         }
 
@@ -678,7 +678,7 @@ public final class ExomeReadCounts extends ReadWalker {
          * @throws IllegalArgumentException if {@code tool} is {@code null}.
          * @throws IllegalStateException    if {@code tool} is not in a compatible state for this type of count-columns.
          */
-        protected CountColumns countColumns(final ExomeReadCounts tool) {
+        protected CountColumns countColumns(final CalculateTargetCoverage tool) {
             return countColumnsFactory.apply(tool);
         }
     }
@@ -758,28 +758,28 @@ public final class ExomeReadCounts extends ReadWalker {
     /**
      * Possible per-target information included in the output.
      */
-    protected enum ExonOutInfo {
+    protected enum TargetOutInfo {
 
         /**
          * Only target coordinates (contig name, start and end positions).
          */
-        COORDS(ExonOutInfo::coordinateComposer,
-                EXON_CONTIG_COLUMN_NAME,EXON_START_COLUMN_NAME, EXON_END_COLUMN_NAME),
+        COORDS(TargetOutInfo::coordinateComposer,
+                TARGET_CONTIG_COLUMN_NAME, TARGET_START_COLUMN_NAME, TARGET_END_COLUMN_NAME),
 
         /**
          * Only target name/id.
          */
-        NAME(ExonOutInfo::nameComposer,
-                EXON_NAME_COLUMN_NAME),
+        NAME(TargetOutInfo::nameComposer,
+                TARGET_NAME_COLUMN_NAME),
 
         /**
-         * Exon coordinates and name.
+         * Target coordinates and name.
          */
-        FULL(ExonOutInfo::coordinateAndNameComposer,
-                EXON_CONTIG_COLUMN_NAME,EXON_START_COLUMN_NAME, EXON_END_COLUMN_NAME,EXON_NAME_COLUMN_NAME);
+        FULL(TargetOutInfo::coordinateAndNameComposer,
+                TARGET_CONTIG_COLUMN_NAME, TARGET_START_COLUMN_NAME, TARGET_END_COLUMN_NAME, TARGET_NAME_COLUMN_NAME);
 
         /**
-         * Exon information string composer for the genomic coordinate part of the target.
+         * Target information string composer for the genomic coordinate part of the target.
          *
          * @param index      the index of a target within the collection.
          * @param collection the containing target collection.
@@ -797,7 +797,7 @@ public final class ExomeReadCounts extends ReadWalker {
         }
 
         /**
-         * Exon information string composer for the name part of the target information.
+         * Target information string composer for the name part of the target information.
          *
          * @param index the target index.
          * @param collection the containing target collection.
@@ -810,7 +810,7 @@ public final class ExomeReadCounts extends ReadWalker {
         }
 
         /**
-         * Exon information string composer for the combined coordinate name part of the target information.
+         * Target information string composer for the combined coordinate name part of the target information.
          *
          * @param index the target index in the input collection.
          * @param collection the containing target collection.
@@ -839,8 +839,8 @@ public final class ExomeReadCounts extends ReadWalker {
              * @param index the subject target index in the collection.
              * @param targetCollection the enclosing target collection.
              * @param <T> the target data type.
-             * @throws IllegalArgumentException if {@code index} is not a valid index in {@code exonCollection} or
-             *   {@code exonCollection} is {@code null}.
+             * @throws IllegalArgumentException if {@code index} is not a valid index in {@code targetCollection} or
+             *   {@code targetCollection} is {@code null}.
              * @return never {@code null}.
              *
              */
@@ -861,7 +861,7 @@ public final class ExomeReadCounts extends ReadWalker {
          * @throws IllegalArgumentException if {@code composer} or {@code headerNames} are {@code null},
          *   or {@code headerNames} contains a {@code null}.
          */
-        ExonOutInfo(final Composer composer, final String... headerNames) {
+        TargetOutInfo(final Composer composer, final String... headerNames) {
             this.composer = Utils.nonNull(composer, "the info string composer cannot be null");
             this.headerNames = Collections.unmodifiableList(Arrays.asList(Utils.nonNull(headerNames, "the header name list provided cannot be null")));
             if (this.headerNames.stream().anyMatch(Objects::isNull)) {
@@ -898,7 +898,7 @@ public final class ExomeReadCounts extends ReadWalker {
          * Checks whether this target output info choice requires that all target have
          * a unique name.
          */
-        protected boolean requiresUniqueExonName() {
+        protected boolean requiresUniqueTargetName() {
             return this == NAME;
         }
 
@@ -909,7 +909,7 @@ public final class ExomeReadCounts extends ReadWalker {
          * @param collection the target containing collection.
          * @throws IllegalArgumentException if either {@code target} or {@code collection} is {@code null}.
          */
-        protected <T> String composeExonOutInfoString(final int index, final TargetCollection<T> collection) {
+        protected <T> String composeTargetOutInfoString(final int index, final TargetCollection<T> collection) {
             Utils.nonNull(collection,"the collection cannot be null");
             Utils.validIndex(index, collection.targetCount());
             return composer.apply(index,collection);

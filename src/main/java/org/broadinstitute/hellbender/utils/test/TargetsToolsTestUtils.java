@@ -9,13 +9,13 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.io.File;
 
 /**
- * Some common elements for exome analysis tool unit and integration tests.
+ * Some common elements for target collection analysis tool unit and integration tests.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ExomeToolsTestUtils {
+public final class TargetsToolsTestUtils {
 
-    private ExomeToolsTestUtils(){} //don't instantiate this
+    private TargetsToolsTestUtils(){} //don't instantiate this
 
     /**
      * Returns a {@link File} pointing to the directory that contains the test data.
@@ -26,7 +26,7 @@ public final class ExomeToolsTestUtils {
     }
 
     /**
-     * {@link File} pointing to the test toy reference used in exome analysis tool tests.
+     * {@link File} pointing to the test toy reference used in targets analysis tool tests.
      */
     public static final File REFERENCE_FILE = new File(getTestDataDir(),"test_reference.fasta");
 

@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Exon collection supported by a list of intervals sorted by location and with quick
+ * Target collection supported by a list of intervals sorted by location and with quick
  * look-up by name using a hash.
  * <p>
  *     Intervals are sorted using {@link IntervalUtils#LEXICOGRAPHICAL_ORDER_COMPARATOR}.
@@ -111,13 +111,13 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
     }
 
     @Override
-    public String name(final T exon) {
-        Utils.nonNull(exon,"null target not allowed");
-        final String contig = exon.getContig();
+    public String name(final T target) {
+        Utils.nonNull(target,"null target not allowed");
+        final String contig = target.getContig();
         if (contig == null) {
             return null;
         } else {
-            return String.format("%s:%d-%d", contig, exon.getStart(), exon.getEnd());
+            return String.format("%s:%d-%d", contig, target.getStart(), target.getEnd());
         }
     }
 
@@ -145,11 +145,11 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
 
     @Override
     public int index(final String name) {
-        final T exon = intervalsByName.get(name);
-        if (exon == null) {
+        final T target = intervalsByName.get(name);
+        if (target == null) {
             return -1;
         } else {
-            final int searchIndex = uncachedBinarySearch(location(exon));
+            final int searchIndex = uncachedBinarySearch(location(target));
             if (searchIndex < 0) { // checking just in case.
                 throw new IllegalStateException("could not found named interval amongst sorted intervals, impossible");
             }
@@ -171,8 +171,8 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
     }
 
     @Override
-    public SimpleInterval location(final T exon) {
-        return new SimpleInterval(Utils.nonNull(exon, "the target cannot be null"));
+    public SimpleInterval location(final T target) {
+        return new SimpleInterval(Utils.nonNull(target, "the target cannot be null"));
     }
 
     @Override
