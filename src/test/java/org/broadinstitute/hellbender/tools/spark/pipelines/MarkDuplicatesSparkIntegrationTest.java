@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,7 +47,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
         // Override this test case to provide a --parallelism argument, so that we write a single, sorted
         // bam (since sharded output is not sorted, and this test case is sensitive to order).
-        testMDOrderImpl(input, expectedOutput, "--parallelism 1 --sparkMaster local[1]");
+        testMDOrderImpl(input, expectedOutput, "--parallelism 1");
     }
 
     @DataProvider(name = "md")
