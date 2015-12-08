@@ -130,6 +130,22 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outBam, expectedBam);
     }
 
+    @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
+    public void testSequenceDictionaryValidation() throws Exception {
+        final File inCram = new File(getTestDataDir(), "print_reads.sorted.cram");
+        final File inRef = new File(getTestDataDir(), "print_reads.chr1only.fasta");
+        final File outBam = createTempFile("print_reads_spark", ".bam");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(inCram.getCanonicalPath());
+        args.add("-R");
+        args.add(inRef.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outBam.getCanonicalPath());
+
+        this.runCommandLine(args.getArgsArray());
+    }
+
     @DataProvider(name="testFileToFile_queryNameSorted")
     public Object[][] testFileToFile_queryNameSorted() {
         return new String[][]{

@@ -319,8 +319,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             // Validate the reference sequence dictionary against the reads sequence dictionary, if both are present,
             // using standard GATK validation settings (requiring a common subset of equivalent contigs without respect
             // to ordering).
+            // Check the reference dictionary against the reads dictionary
             if ( hasReference() && hasReads() ) {
-                SequenceDictionaryUtils.validateDictionaries("reference", referenceDictionary, "reads", readsHeader.getSequenceDictionary());
+                if ( hasCramInput() ) {
+                    // Use stricter validation for CRAM vs. the reference
+                    SequenceDictionaryUtils.validateCRAMDictionaryAgainstReference(referenceDictionary, readsHeader.getSequenceDictionary());
+                }
+                else {
+                    // Use standard validation settings for non-CRAM reads input vs. the reference
+                    SequenceDictionaryUtils.validateDictionaries("reference", referenceDictionary, "reads", readsHeader.getSequenceDictionary());
+                }
             }
         }
     }
