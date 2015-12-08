@@ -14,6 +14,8 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
 import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -50,6 +52,7 @@ import java.util.Comparator;
  * read writing code as well as from bigdatagenomics/adam.
  */
 public final class ReadsSparkSink {
+    private static final Logger logger = LogManager.getLogger(ReadsSparkSink.class);
 
     // We need an output format for saveAsNewAPIHadoopFile.
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
@@ -208,6 +211,7 @@ public final class ReadsSparkSink {
         if (numPartitions == 1) {
             return rdd.sortByKey(comparator);
         }
+        logger.info("****NUM PARTITIONS: " + numPartitions);
         Ordering<K> ordering = Ordering$.MODULE$.comparatorToOrdering(comparator);
         ClassTag<K> tag = ClassTag$.MODULE$.apply(keyClass);
         RangePartitioner<K, V> partitioner = new RangePartitioner<>(numPartitions, rdd.rdd(), true, ordering, tag);
