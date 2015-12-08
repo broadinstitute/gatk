@@ -43,6 +43,7 @@ import scala.reflect.ClassTag$;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -248,7 +249,8 @@ public final class ReadsSparkSink {
 
     private static void mergeInto(OutputStream out, Path directory, Configuration conf) throws IOException {
         final FileSystem fs = directory.getFileSystem(conf);
-        final FileStatus[] parts = fs.globStatus(new Path(directory, "part-r-[0-9][0-9][0-9][0-9][0-9]*"));
+        final FileStatus[] parts = getBamFragments(directory, fs);
+
         for (final FileStatus part : parts) {
             try (final InputStream in = fs.open(part.getPath())) {
                 org.apache.hadoop.io.IOUtils.copyBytes(in, out, conf, false);
@@ -257,5 +259,17 @@ public final class ReadsSparkSink {
         for (final FileStatus part : parts) {
             fs.delete(part.getPath(), false);
         }
+    }
+
+    protected static FileStatus[] getBamFragments( final Path directory, final FileSystem fs ) throws IOException {
+        final FileStatus[] parts = fs.globStatus(new Path(directory, "part-r-[0-9][0-9][0-9][0-9][0-9]*"));
+
+        // FileSystem.globStatus() has a known bug that causes it to not sort the array returned by
+        // name (despite claiming to): https://issues.apache.org/jira/browse/HADOOP-10798
+        // Because of this bug, we do an explicit sort here to avoid assembling the bam fragments
+        // in the wrong order.
+        Arrays.sort(parts);
+
+        return parts;
     }
 }

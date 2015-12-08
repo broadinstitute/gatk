@@ -4,6 +4,10 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordCoordinateComparator;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -19,6 +23,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -38,8 +44,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
                 // htsjdk.samtools.SAMRecordCoordinateComparator
                 {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3", ".bam"},
 
-                //This always works locally but fails sometimes on travis. Probably related to https://github.com/broadinstitute/gatk/issues/1258
-//                {NA12878_20_21_WGS_bam , "ReadsSparkSinkUnitTest4", ".bam"},
+                {NA12878_20_21_WGS_bam , "ReadsSparkSinkUnitTest4", ".bam"}
         };
     }
 
@@ -60,7 +65,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
                 //This test is disabled because it fails on travis (passes locally though)
                 //https://github.com/broadinstitute/gatk/issues/1254
-//                {NA12878_chr17_1k_BAM, "ReadsSparkSinkUnitTest4_ADAM"},
+                // {NA12878_chr17_1k_BAM, "ReadsSparkSinkUnitTest4_ADAM"}
         };
     }
 
@@ -149,6 +154,20 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             Assert.assertEquals(observed.getMappingQuality(), expected.getMappingQuality(), "getMappingQuality");
             Assert.assertEquals(observed.getMateAlignmentStart(), expected.getMateAlignmentStart(), "getMateAlignmentStart");
             Assert.assertEquals(observed.getCigar(), expected.getCigar(), "getCigar");
+        }
+    }
+
+    @Test
+    public void testGetBamFragments() throws IOException {
+        final Path fragmentDir = new Path(publicTestDir + "org/broadinstitute/hellbender/engine/spark/ReadSparkSink_fragments_test");
+        final FileSystem fs = fragmentDir.getFileSystem(new Configuration());
+
+        final FileStatus[] bamFragments = ReadsSparkSink.getBamFragments(fragmentDir, fs);
+        final List<String> expectedFragmentNames = Arrays.asList("part-r-00000", "part-r-00001", "part-r-00002", "part-r-00003");
+
+        Assert.assertEquals(bamFragments.length, expectedFragmentNames.size(), "Wrong number of fragments returned by ReadsSparkSink.getBamFragments()");
+        for ( int i = 0; i < bamFragments.length; ++i ) {
+            Assert.assertEquals(bamFragments[i].getPath().getName(), expectedFragmentNames.get(i), "Fragments are not in correct order");
         }
     }
 }
