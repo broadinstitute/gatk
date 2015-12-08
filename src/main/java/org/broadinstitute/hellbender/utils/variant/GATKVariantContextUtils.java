@@ -53,14 +53,9 @@ public final class GATKVariantContextUtils {
             final Options... options)
     {
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
+                                                            .clearOptions()
                                                             .setOutputFile(outFile)
                                                             .setOutputFileType(VariantContextWriterBuilder.OutputType.VCF);
-
-        // Work around for a bug in htsjdk where calling setOption after calling clearOptions has a global side effect,
-        // so manually unset the default options instead of clearing them. When an htsjdk version with
-        // https://github.com/samtools/htsjdk/pull/354 is used by gatk, we can remove this unsetOption call and go back
-        // to calling clearOptions on the writer builder.
-        vcWriterBuilder.unsetOption(Options.INDEX_ON_THE_FLY);
 
         if (null != referenceDictionary) {
             vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceDictionary);
