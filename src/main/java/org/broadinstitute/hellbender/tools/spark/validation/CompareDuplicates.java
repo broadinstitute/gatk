@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import scala.Tuple2;
 
-import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +55,7 @@ public final class CompareDuplicates extends GATKSparkTool {
         JavaRDD<GATKRead> firstReads = filteredReads(getReads(), readArguments.getReadFilesNames().get(0));
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, getIntervals()), input2);
+        JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, getIntervals()), input2);
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();

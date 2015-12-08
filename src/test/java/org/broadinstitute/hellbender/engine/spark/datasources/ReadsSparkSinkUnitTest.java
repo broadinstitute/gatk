@@ -22,8 +22,8 @@ import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 
-
 public class ReadsSparkSinkUnitTest extends BaseTest {
+
     private static String testDataDir = publicTestDir + "org/broadinstitute/hellbender/";
 
     @DataProvider(name = "loadReadsBAM")
@@ -36,7 +36,10 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
                 // in the tests below will fail if our ordering of these reads relative to the mapped reads
                 // is not consistent with the definition of coordinate sorting as defined in
                 // htsjdk.samtools.SAMRecordCoordinateComparator
-                {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3", ".bam"}
+                {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3", ".bam"},
+
+                //This always works locally but fails sometimes on travis. Probably related to https://github.com/broadinstitute/gatk/issues/1258
+//                {NA12878_20_21_WGS_bam , "ReadsSparkSinkUnitTest4", ".bam"},
         };
     }
 
@@ -51,9 +54,13 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
                 // is not consistent with the definition of coordinate sorting as defined in
                 // htsjdk.samtools.SAMRecordCoordinateComparator
                 //
-                // Currently disabled, as this test case doesn't pass for ADAM (we have an open ticket for this:
+                // This test is currently disabled, as this test case doesn't pass for ADAM (we have an open ticket for this:
                 // https://github.com/broadinstitute/gatk/issues/1254)
-                // {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3_ADAM"}
+                // {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3_ADAM"},
+
+                //This test is disabled because it fails on travis (passes locally though)
+                //https://github.com/broadinstitute/gatk/issues/1254
+//                {NA12878_chr17_1k_BAM, "ReadsSparkSinkUnitTest4_ADAM"},
         };
     }
 
@@ -64,12 +71,12 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
         ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath());
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath(), null);
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
 
         final SAMRecordCoordinateComparator comparator = new SAMRecordCoordinateComparator();
@@ -78,7 +85,8 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         for (int i = 0; i < size-1; ++i) {
             final SAMRecord smaller = writtenReads.get(i).convertToSAMRecord(header);
             final SAMRecord larger = writtenReads.get(i + 1).convertToSAMRecord(header);
-            Assert.assertTrue(comparator.compare(smaller, larger) < 0, "Reads are out of order: " + smaller.getSAMString() + " and " + larger.getSAMString());
+            final int compare = comparator.compare(smaller, larger);
+            Assert.assertTrue(compare < 0, "Reads are out of order (compare=" + compare+"): " + smaller.getSAMString() + " and " + larger.getSAMString());
         }
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }
@@ -90,7 +98,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
         rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
@@ -98,7 +106,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
         Assert.assertEquals(shards, 2);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath());
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath(), null);
         // reads are not globally sorted, so don't test that
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }
@@ -115,7 +123,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
         ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.ADAM);
@@ -134,13 +142,13 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             SAMRecord observed = adamList.get(i).convertToSAMRecord(header);
             // manually test equality of some fields, as there are issues with roundtrip BAM -> ADAM -> BAM
             // see https://github.com/bigdatagenomics/adam/issues/823
-            Assert.assertEquals(expected.getReadName(), observed.getReadName());
-            Assert.assertEquals(expected.getAlignmentStart(), observed.getAlignmentStart());
-            Assert.assertEquals(expected.getAlignmentEnd(), observed.getAlignmentEnd());
-            Assert.assertEquals(expected.getFlags(), observed.getFlags());
-            Assert.assertEquals(expected.getMappingQuality(), observed.getMappingQuality());
-            Assert.assertEquals(expected.getMateAlignmentStart(), observed.getMateAlignmentStart());
-            Assert.assertEquals(expected.getCigar(), observed.getCigar());
+            Assert.assertEquals(observed.getReadName(), expected.getReadName(), "readname");
+            Assert.assertEquals(observed.getAlignmentStart(), expected.getAlignmentStart(), "getAlignmentStart");
+            Assert.assertEquals(observed.getAlignmentEnd(), expected.getAlignmentEnd(), "getAlignmentEnd");
+            Assert.assertEquals(observed.getFlags(), expected.getFlags(), "getFlags");
+            Assert.assertEquals(observed.getMappingQuality(), expected.getMappingQuality(), "getMappingQuality");
+            Assert.assertEquals(observed.getMateAlignmentStart(), expected.getMateAlignmentStart(), "getMateAlignmentStart");
+            Assert.assertEquals(observed.getCigar(), expected.getCigar(), "getCigar");
         }
     }
 }

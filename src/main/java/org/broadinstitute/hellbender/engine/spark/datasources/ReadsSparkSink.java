@@ -8,11 +8,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileAlreadyExistsException;
-import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
@@ -25,7 +24,12 @@ import org.bdgenomics.adam.models.RecordGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
+import org.broadinstitute.hellbender.utils.read.HeaderlessSAMRecordCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.seqdoop.hadoop_bam.KeyIgnoringBAMOutputFormat;
 import org.seqdoop.hadoop_bam.SAMFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
@@ -45,7 +49,7 @@ import java.util.Comparator;
  * ReadsSparkSink writes GATKReads to a file. This code lifts from the HadoopGenomics/Hadoop-BAM
  * read writing code as well as from bigdatagenomics/adam.
  */
-public class ReadsSparkSink {
+public final class ReadsSparkSink {
 
     // We need an output format for saveAsNewAPIHadoopFile.
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
@@ -90,6 +94,10 @@ public class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
+
+        if (IOUtils.isCramFileName(outputFile)) {
+            throw new UserException("Writing CRAM files in Spark tools is not supported yet.");
+        }
 
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already
@@ -243,7 +251,7 @@ public class ReadsSparkSink {
         final FileStatus[] parts = fs.globStatus(new Path(directory, "part-r-[0-9][0-9][0-9][0-9][0-9]*"));
         for (final FileStatus part : parts) {
             try (final InputStream in = fs.open(part.getPath())) {
-                IOUtils.copyBytes(in, out, conf, false);
+                org.apache.hadoop.io.IOUtils.copyBytes(in, out, conf, false);
             }
         }
         for (final FileStatus part : parts) {

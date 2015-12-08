@@ -55,7 +55,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
             Assert.assertEquals(output.getAllHistograms().size(), 1);
             Assert.assertEquals(output.getHistogram().size(), 202);
         }
-        Assert.assertTrue(pdf.exists());
+        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertTrue(pdf.length() > 0, "length");
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
@@ -75,7 +76,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
                 "--PRODUCE_PLOT", "true",
         };
         runCommandLine(args);
-        Assert.assertTrue(pdf.exists());
+        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertTrue(pdf.length() > 0, "length");
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
@@ -95,7 +97,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
                 "--PRODUCE_PLOT", "true",
         };
         runCommandLine(args);
-        Assert.assertTrue(pdf.exists());
+        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertTrue(pdf.length() > 0, "length");
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
@@ -115,7 +118,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
                 "--PRODUCE_PLOT", "true",
         };
         runCommandLine(args);
-        Assert.assertTrue(pdf.exists());
+        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertTrue(pdf.length() > 0, "length");
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
@@ -135,7 +139,8 @@ public final class MeanQualityByCycleIntegrationTest extends CommandLineProgramT
                 "--PRODUCE_PLOT", "true",
         };
         runCommandLine(args);
-        Assert.assertTrue(pdf.exists());
+        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertEquals(pdf.length(), 0, "length");   //should be empty because there are no aligned reads here
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 }

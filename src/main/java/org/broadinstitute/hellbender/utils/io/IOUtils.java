@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
@@ -32,6 +33,20 @@ import java.util.zip.ZipException;
 public final class IOUtils {
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
     private static final File DEV_DIR = new File("/dev");
+
+    /**
+     * Returns true if the file's extension is CRAM.
+     */
+    public static boolean isCramFile(final File inputFile) {
+        return isCramFileName(inputFile.getName());
+    }
+
+    /**
+     * Returns true if the file's extension is CRAM.
+     */
+    public static boolean isCramFileName(final String inputFileName) {
+        return CramIO.CRAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+    }
 
     /**
      * Creates a temp directory with the prefix and optional suffix.

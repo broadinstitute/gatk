@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
+import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 
 public final class MeanQualityByCycleSparkIntegrationTest extends CommandLineProgramTest {
@@ -19,6 +23,47 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
     @Override
     public String getTestedClassName() {
         return MeanQualityByCycleSpark.class.getSimpleName();
+    }
+
+    @DataProvider(name="filenames")
+    public Object[][] filenames() {
+        return new String[][]{
+                {"first5000a.bam", null},
+                {"first5000a.cram", b37_reference_20_21}
+        };
+    }
+    @Test(dataProvider="filenames", groups = {"R"})
+    public void test(final String inputFile, final String referenceName) throws IOException {
+        final File input = new File(TEST_DATA_DIR, inputFile);
+        final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
+        final File outfile = BaseTest.createTempFile("testMeanQualityByCycle", ".metrics");
+        final File pdf = BaseTest.createTempFile("testMeanQualityByCycle", ".pdf");
+        outfile.deleteOnExit();
+        pdf.deleteOnExit();
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--input");
+        args.add(input.getAbsolutePath());
+        args.add("--output");
+        args.add(outfile.getAbsolutePath());
+        args.add("--chart");
+        args.add(pdf.getAbsolutePath());
+        if (null != referenceName) {
+            final File REF = new File(referenceName);
+            args.add("-R");
+            args.add(REF.getAbsolutePath());
+        }
+
+        runCommandLine(args.getArgsArray());
+
+        try (final FileReader actualReader = new FileReader(outfile);) {
+            final MetricsFile<?,Integer> output = new MetricsFile<>();
+            output.read(actualReader);
+            Assert.assertEquals(output.getAllHistograms().size(), 1);
+            Assert.assertEquals(output.getHistogram().size(), 202);
+        }
+        Assert.assertTrue(pdf.exists(), "exists");
+        Assert.assertTrue(pdf.length() > 0, "length");
+        IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
     @Test

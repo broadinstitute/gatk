@@ -8,24 +8,16 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.IOException;
@@ -206,13 +198,24 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             try {
                 return readsSource.getADAMReads(readInput, intervals, getHeaderForReads());
             } catch (IOException e) {
-                throw new UserException("Failed to read ADAM file " + readInput);
+                throw new UserException("Failed to read ADAM file " + readInput, e);
             }
 
         } else {
+            if (hasCramInput() && !hasReference()){
+                throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+            }
+            final String refPath = hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null;
             // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
-            return readsSource.getParallelReads(readInput, intervals, bamPartitionSplitSize);
+            return readsSource.getParallelReads(readInput, refPath, intervals, bamPartitionSplitSize);
         }
+    }
+
+    /**
+     * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
+     */
+    private boolean hasCramInput() {
+        return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
     }
 
     /**
