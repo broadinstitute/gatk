@@ -9,7 +9,6 @@ jdk:
 - oraclejdk8
 env:
   matrix:
-  - CLOUD=mandatory
   - CLOUD=false
   global:
   #gradle needs this
@@ -61,13 +60,7 @@ script:
     echo "Can't run cloud tests without keys so don't run tests";
   else
    bash scripts/install_git_lfs.sh;
-   ./gradlew test;
-  fi
-after_success:
-- if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
-    echo "Can't run cloud tests without keys so don't try to record coverage tests";
-  else
-   ./gradlew jacocoTestReport coveralls;
+   ./gradlew test -Dtest.single=MarkDuplicatesSparkIntegrationTest;
   fi
 after_failure:
 - dmesg | tail -100

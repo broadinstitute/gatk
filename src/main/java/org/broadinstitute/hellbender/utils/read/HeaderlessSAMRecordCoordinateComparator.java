@@ -15,30 +15,64 @@ public final class HeaderlessSAMRecordCoordinateComparator implements Comparator
     private static final long serialVersionUID = 1L;
 
     private final SAMFileHeader header;
-    private transient SAMRecordCoordinateComparator samComparator;
 
     public HeaderlessSAMRecordCoordinateComparator( final SAMFileHeader header ) {
         this.header = header;
     }
 
-    @Override
-    public int compare( SAMRecord firstRead, SAMRecord secondRead ) {
-        // Restore our transient samComparator if it was lost due to serialization
-        if ( samComparator == null ) {
-            samComparator = new SAMRecordCoordinateComparator();
+    public int compare(final SAMRecord samRecord1, final SAMRecord samRecord2) {
+        int cmp = fileOrderCompare(samRecord1, samRecord2);
+        if (cmp != 0) {
+            return cmp;
         }
+        // Test of negative strand flag is not really necessary, because it is tested
+        // with cmp if getFlags, but it is left here because that is the way it was done
+        // in the past.
+        if (samRecord1.getReadNegativeStrandFlag() == samRecord2.getReadNegativeStrandFlag()) {
+            cmp = samRecord1.getReadName().compareTo(samRecord2.getReadName());
+            if (cmp != 0) return cmp;
+            cmp = compareInts(samRecord1.getFlags(), samRecord2.getFlags());
+            if (cmp != 0) return cmp;
+            cmp = compareInts(samRecord1.getMappingQuality(), samRecord2.getMappingQuality());
+            if (cmp != 0) return cmp;
+            cmp = compareInts(header.getSequenceIndex(samRecord1.getMateReferenceName()), header.getSequenceIndex(samRecord2.getMateReferenceName()));
+            if (cmp != 0) return cmp;
+            cmp = compareInts(samRecord1.getMateAlignmentStart(), samRecord2.getMateAlignmentStart());
+            if (cmp != 0) return cmp;
+            cmp = compareInts(samRecord1.getInferredInsertSize(), samRecord2.getInferredInsertSize());
+            return cmp;
 
-        // Temporarily set the headers on the reads to our header so that they can be compared
-        // using the existing SAMRecordCoordinateComparator
-        firstRead.setHeader(header);
-        secondRead.setHeader(header);
+        }
+        else return (samRecord1.getReadNegativeStrandFlag()? 1: -1);
+    }
 
-        final int result = samComparator.compare(firstRead, secondRead);
+    private int compareInts(int i1, int i2) {
+        if (i1 < i2) return -1;
+        else if (i1 > i2) return 1;
+        else return 0;
+    }
 
-        // Set the headers on the reads back to null
-        firstRead.setHeader(null);
-        secondRead.setHeader(null);
+    /**
+     * Less stringent compare method than the regular compare.  If the two records
+     * are equal enough that their ordering in a sorted SAM file would be arbitrary,
+     * this method returns 0.  If read is paired and unmapped, use the mate mapping to sort.
+     * Records being compared must have non-null SAMFileHeaders.
+     *
+     * @return negative if samRecord1 < samRecord2,  0 if equal, else positive
+     */
+    public int fileOrderCompare(final SAMRecord samRecord1, final SAMRecord samRecord2) {
+        final int refIndex1 = header.getSequenceIndex(samRecord1.getReferenceName());
+        final int refIndex2 = header.getSequenceIndex(samRecord2.getReferenceName());
 
-        return result;
+        if (refIndex1 == -1) {
+            return (refIndex2 == -1? 0: 1);
+        } else if (refIndex2 == -1) {
+            return -1;
+        }
+        final int cmp = refIndex1 - refIndex2;
+        if (cmp != 0) {
+            return cmp;
+        }
+        return samRecord1.getAlignmentStart() - samRecord2.getAlignmentStart();
     }
 }
