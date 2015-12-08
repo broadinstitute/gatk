@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordCoordinateComparator;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -15,30 +14,69 @@ public final class HeaderlessSAMRecordCoordinateComparator implements Comparator
     private static final long serialVersionUID = 1L;
 
     private final SAMFileHeader header;
-    private transient SAMRecordCoordinateComparator samComparator;
 
     public HeaderlessSAMRecordCoordinateComparator( final SAMFileHeader header ) {
         this.header = header;
     }
 
     @Override
-    public int compare( SAMRecord firstRead, SAMRecord secondRead ) {
-        // Restore our transient samComparator if it was lost due to serialization
-        if ( samComparator == null ) {
-            samComparator = new SAMRecordCoordinateComparator();
+    public int compare( final SAMRecord samRecord1, final SAMRecord samRecord2 ) {
+        int cmp = compareCoordinates(samRecord1, samRecord2);
+        if ( cmp != 0 ) {
+            return cmp;
         }
 
-        // Temporarily set the headers on the reads to our header so that they can be compared
-        // using the existing SAMRecordCoordinateComparator
-        firstRead.setHeader(header);
-        secondRead.setHeader(header);
+        // Test of negative strand flag is not really necessary, because it is tested
+        // via getFlags(), but it is left here because that is the way it is done
+        // in {@link htsjdk.samtools.SAMRecordCoordinateComparator}
+        if ( samRecord1.getReadNegativeStrandFlag() == samRecord2.getReadNegativeStrandFlag() ) {
+            cmp = samRecord1.getReadName().compareTo(samRecord2.getReadName());
+            if ( cmp != 0 ) {
+                return cmp;
+            }
+            cmp = Integer.compare(samRecord1.getFlags(), samRecord2.getFlags());
+            if ( cmp != 0 ) {
+                return cmp;
+            }
+            cmp = Integer.compare(samRecord1.getMappingQuality(), samRecord2.getMappingQuality());
+            if ( cmp != 0 ) {
+                return cmp;
+            }
+            cmp = Integer.compare(header.getSequenceIndex(samRecord1.getMateReferenceName()), header.getSequenceIndex(samRecord2.getMateReferenceName()));
+            if ( cmp != 0 ) {
+                return cmp;
+            }
+            cmp = Integer.compare(samRecord1.getMateAlignmentStart(), samRecord2.getMateAlignmentStart());
+            if ( cmp != 0 ) {
+                return cmp;
+            }
+            cmp = Integer.compare(samRecord1.getInferredInsertSize(), samRecord2.getInferredInsertSize());
+            return cmp;
+        }
+        else {
+            return samRecord1.getReadNegativeStrandFlag() ? 1: -1;
+        }
+    }
 
-        final int result = samComparator.compare(firstRead, secondRead);
+    /**
+     * Compare the coordinates of two reads. If a read is paired and unmapped, use its mate mapping
+     * as its position.
+     *
+     * @return negative if samRecord1 < samRecord2,  0 if equal, else positive
+     */
+    private int compareCoordinates( final SAMRecord samRecord1, final SAMRecord samRecord2 ) {
+        final int refIndex1 = header.getSequenceIndex(samRecord1.getReferenceName());
+        final int refIndex2 = header.getSequenceIndex(samRecord2.getReferenceName());
 
-        // Set the headers on the reads back to null
-        firstRead.setHeader(null);
-        secondRead.setHeader(null);
-
-        return result;
+        if ( refIndex1 == -1 ) {
+            return refIndex2 == -1 ? 0: 1;
+        } else if ( refIndex2 == -1 ) {
+            return -1;
+        }
+        final int cmp = refIndex1 - refIndex2;
+        if ( cmp != 0 ) {
+            return cmp;
+        }
+        return samRecord1.getAlignmentStart() - samRecord2.getAlignmentStart();
     }
 }
