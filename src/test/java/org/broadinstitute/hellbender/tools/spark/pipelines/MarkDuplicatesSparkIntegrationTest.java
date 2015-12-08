@@ -41,8 +41,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         return new MarkDuplicatesSpark();
     }
 
-    // This test passes locally, but fails intermittently in travis. Disabled until we determine the cause.
-    @Test(dataProvider = "testMDdata", enabled = false)
+    @Test(dataProvider = "testMDdata")
     @Override
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
         // Override this test case to provide a --parallelism argument, so that we write a single, sorted
