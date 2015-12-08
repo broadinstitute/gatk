@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
-
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
@@ -22,7 +21,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.AuthHolder;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -155,7 +153,7 @@ public class ReadsSparkSource implements Serializable {
                     return reader.getFileHeader();
                 }
             } catch (Exception e) {
-                throw new UserException("Failed to read bams header from " + filePath + ".", e);
+                throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
             }
         }
 
@@ -178,7 +176,7 @@ public class ReadsSparkSource implements Serializable {
             }
             return SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
         } catch (IOException e) {
-            throw new UserException("Failed to read bams header from " + filePath + ".", e);
+            throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
         }
     }
 

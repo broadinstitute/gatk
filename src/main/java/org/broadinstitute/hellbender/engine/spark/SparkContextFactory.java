@@ -19,14 +19,16 @@ public final class SparkContextFactory {
     private static final boolean SPARK_DEBUG_ENABLED = Boolean.getBoolean("gatk.spark.debug");
 
     public static final Map<String, String> TEST_ATTRIBUTES = ImmutableMap.<String, String>builder()
+            .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
+            .put("spark.kryoserializer.buffer.max", "256m")
+            .build();
+
+    public static final Map<String, String> MANDATORY_ATTRIBUTES = ImmutableMap.<String,String>builder()
             .put("spark.serializer", KryoSerializer.class.getCanonicalName())
             .put("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
-            .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
             .build();
 
     public static final Map<String, String> CMDLINE_ATTRIBUTES = ImmutableMap.<String, String>builder()
-            .put("spark.serializer", KryoSerializer.class.getCanonicalName())
-            .put("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
             .put("spark.kryoserializer.buffer.max", "512m")
             .put("spark.driver.maxResultSize", "0")
             .put("spark.driver.userClassPathFirst", "true")
@@ -103,7 +105,9 @@ public final class SparkContextFactory {
     @VisibleForTesting
     static SparkConf setupSparkConf(final String appName, final String master, final Map<String, String> sparkAttributes) {
         final SparkConf sparkConf = new SparkConf().setAppName(appName).setMaster(master);
-        sparkAttributes.forEach(sparkConf::set);
+
+        MANDATORY_ATTRIBUTES.forEach(sparkConf::set);
+        sparkAttributes.forEach(sparkConf::setIfMissing);
         return sparkConf;
     }
     

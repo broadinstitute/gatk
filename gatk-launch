@@ -1,0 +1,284 @@
+#!/usr/bin/env python
+import sys
+from subprocess import call
+import os
+import hashlib
+import signal
+
+script = os.path.dirname(os.path.realpath(__file__))
+
+BUILD_LOCATION = script +"/build/install/gatk/bin/"
+GATK_RUN_SCRIPT = BUILD_LOCATION + "gatk"
+BIN_PATH = script + "/build/libs"
+
+DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
+"--conf", "spark.driver.maxResultSize=0",
+"--conf", "spark.driver.userClassPathFirst=true",
+"--conf", "spark.executor.userClassPathFirst=true",
+"--conf", "spark.io.compression.codec=lzf",
+"--conf", "spark.yarn.executor.memoryOverhead=600"]
+
+class GATKLaunchException(Exception):
+    pass
+
+
+def signal_handler(signal, frame):
+    sys.exit(1)
+
+
+def main(args):
+    #suppress stack trace when killed by keyboard interrupt
+    signal.signal(signal.SIGINT, signal_handler)
+
+    try:
+        if len(args) is 0:
+            print("")
+            print("Usage:")
+            print(" General format")
+            print("    gatk-launch Tool toolArgs -- sparkArgs")
+            print("")
+            print("    gatk-launch <GATKTool> <GATK arg 1>...<arg n>")
+            print("")
+            print("    gatk-launch <GATKTool> <GATK arg 1>...<arg n>  [ -- --sparkRunner <DIRECT | SUBMIT | GCS>  <Spark arg 1>...<Spark arg n> ]")
+            print("")
+            print("gatk-launch forwards commands to GATK and adds some sugar for submitting spark jobs")
+            print("")
+            print("   --sparkRunner <target>    controls how spark tools are run")
+            print("     valid targets are:")
+            print("     DIRECT:    run using the in memory spark runner")
+            print("     SUBMIT:  run gatk using spark-submit on an existing cluster ")
+            print("               --sparkMaster must be specified")
+            print("               arguments to spark-submit may optionally be specified after -- ")
+            print("     GCS:      run gatk using gcloud dataproc")
+            print("               commands after the -- will be passed to dataproc")
+            print("               --cluster <your-cluster> must be specified after the --")
+            print("               spark properties and some common spark-submit parameters will be translated to dataproc equivalents")
+            print("")
+            print("    --dryRun    may be specified to output the generated command line without running it")
+            sys.exit(0)
+
+        dryRun = "--dryRun" in args
+        if dryRun:
+            dryRun = True
+            args.remove("--dryRun")
+
+        sparkRunner = getValueForArgument(args, "--sparkRunner")
+        if sparkRunner is not None:
+            i = args.index("--sparkRunner")
+            del args[i] #remove spark target
+            del args[i] #and its parameter
+
+        (gatkArgs, sparkArgs) = getSplitArgs(args)
+
+        sparkMaster = getValueForArgument(sparkArgs, "--sparkMaster")
+        if sparkMaster is not None:
+            i = sparkArgs.index("--sparkMaster")
+            del sparkArgs[i] #remove spark target
+            del sparkArgs[i] #and its parameter
+            gatkArgs += ["--sparkMaster", sparkMaster]
+
+        runGATK(sparkRunner, dryRun, gatkArgs, sparkArgs)
+    except GATKLaunchException as e:
+        sys.stderr.write(str(e)+"\n")
+
+
+def getSparkSubmit():
+    sparkhome = os.environ.get("SPARK_HOME")
+    if sparkhome is not None:
+        return sparkhome +"/bin/spark-submit"
+    else:
+        return "spark-submit"
+
+
+def getSparkJar():
+    sparkproperty = os.environ.get('GATK_SPARK_JAR')
+    if not sparkproperty is None:
+        if not os.path.exists(sparkproperty):
+            raise GATKLaunchException("GATK_SPARK_JAR was set to: " + sparkproperty + " but it doesn't exist, please fix your environment")
+        else:
+            return sparkproperty
+
+    if not os.path.exists(BIN_PATH):
+        raise GATKLaunchException("No spark jar was found, please build one by running\n\n    " + script + "/gradlew sparkJar")
+    files = os.listdir(BIN_PATH)
+    sparkjars = [f for f in files if "spark.jar" in f]
+    if len(sparkjars) is 0:
+        raise GATKLaunchException("No spark jar was found, please build one by running\n\n    " + script + "/gradlew sparkJar\n"
+                             "or\n"
+                             "    export GATK_SPARK_JAR=<path_to_spark_jar>")
+    elif len(sparkjars) > 1:
+        raise GATKLaunchException("Multiple spark jars were found please fix the problem by either:\n\n"
+                             "    export GATK_SPARK_JAR=<path_to_spark_jar>\n\nor\n\n"
+                             "   " + script + "/gradlew clean sparkJar")
+    else:
+        return BIN_PATH+ "/" + sparkjars[0]
+
+
+def md5(file):
+    hash = hashlib.md5()
+    with open(file, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash.update(chunk)
+    return hash.hexdigest()
+
+
+def cacheJarOnGCS(jar, dryRun):
+    staging = os.environ.get("GATK_GCS_STAGING")
+    if dryRun is True:
+        return jar
+    elif staging is None:
+        sys.stderr.write( "\njar caching is disabled because GATK_GCS_STAGING is not set\n\n"
+                              "please set GATK_GCS_STAGING to a bucket you have write access too in order to enable jar caching\n"
+                              "add the following line to you .bashrc or equivalent startup script\n\n"
+                              "    export GATK_GCS_STAGING=gs://<my_bucket>/\n")
+        return jar
+    else:
+        jarname = os.path.basename(jar)
+        (name, ext) = os.path.splitext(jarname)
+        jarmd5 = md5(jar)
+        gcsjar = staging + name + "_"+ jarmd5 + ext
+
+        try:
+            if call(["gsutil", "-q", "stat", gcsjar]) is 0:
+                    sys.stderr.write("\nfound cached jar: " + gcsjar + "\n")
+                    return gcsjar
+            else:
+                if call(["gsutil", "cp", jar, gcsjar]) is 0:
+                    sys.stderr.write("\nuploaded " + jar + " -> " + gcsjar + "\n")
+                    return gcsjar
+                else:
+                    sys.stderr.write("\nfailed to upload " + jar + " -> " + gcsjar + "\nThere may be something wrong with your bucket permissions or gsutil installation\n")
+                    return jar
+
+        except OSError:
+            sys.stderr.write("\nTried to execute gsutil to upload the jar but it wasn't available\n "
+                             "See https://cloud.google.com/sdk/#Quick_Start for instructions on installing gsutil\n\n")
+            return jar
+
+
+def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
+    if sparkRunner is None or sparkRunner == "DIRECT":
+        cmd = [getGatkWrapperScript()] + gatkArgs
+        runCommand(cmd, dryrun)
+    elif sparkRunner == "SUBMIT":
+        cmd = [ getSparkSubmit(),
+          "--master", getSparkMasterSpecified(gatkArgs)] \
+              + DEFAULT_SPARK_ARGS \
+              + sparkArgs \
+              + [getSparkJar()] \
+              + gatkArgs
+        try:
+            runCommand(cmd, dryrun)
+        except OSError:
+            raise GATKLaunchException("Tried to run spark-submit but failed.\nMake sure spark-submit is available in your path")
+    elif sparkRunner == "GCS":
+        jarPath = cacheJarOnGCS(getSparkJar(), dryrun)
+        dataprocargs = convertSparkSubmitToDataprocArgs(sparkArgs)
+
+        sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + " ".join(sparkArgs) +" -> " + " ".join(dataprocargs) +"\n" )
+
+        cmd = [ "gcloud", "beta", "dataproc", "jobs", "submit", "spark"] \
+              + dataprocargs \
+              + ["--jar", jarPath] \
+              + gatkArgs + ["--sparkMaster", "yarn-client"]
+        try:
+            runCommand(cmd, dryrun)
+        except OSError:
+            raise GATKLaunchException("Tried to run gcloud but failed.\nMake sure gcloud is available in your path and you are properly authenticated")
+    else:
+        raise GATKLaunchException("Value: " + sparkRunner + " is not a valid value for --sparkRunner.  Choose one of DIRECT, SUBMIT, GCS")
+
+
+def getGatkWrapperScript():
+    if not os.path.exists(GATK_RUN_SCRIPT):
+        raise GATKLaunchException("Missing GATK wrapper script: " + GATK_RUN_SCRIPT + "\nTo generate the wrapper run:\n\n    " + script + "/gradlew installDist")
+    return GATK_RUN_SCRIPT
+
+
+def runCommand(cmd, dryrun):
+    if dryrun:
+        print( "\nDry run:\n")
+        print(("    " + " ".join(cmd)+"\n"))
+    else:
+        sys.stderr.write( "\nRunning:\n")
+        sys.stderr.write("    " + " ".join(cmd)+"\n")
+        call(cmd)
+
+def getSplitArgs(args):
+    inFirstGroup = True
+    firstArgs = []
+    secondArgs = []
+
+    for arg in args:
+        if arg == "--":
+            if not inFirstGroup:
+                raise GATKLaunchException("Argument '--' must only be specified once")
+            inFirstGroup = False
+        else:
+            if inFirstGroup:
+                firstArgs.append(arg)
+            else:
+                secondArgs.append(arg)
+    return (firstArgs, secondArgs)
+
+
+def isDryRun(args):
+    return "--dryRun" in args
+
+
+def getValueForArgument(args, argument):
+    if argument in args:
+        i = args.index(argument)
+        if len(args) <= i+1:
+            raise GATKLaunchException("Argument: " + argument + " requires a parameter")
+        return args[i+1]
+    return None
+
+
+def getSparkMasterSpecified(args):
+    value = getValueForArgument(args, "--sparkMaster")
+    if value is None:
+        raise GATKLaunchException("The argument --sparkMaster <master url> must be specified")
+    else:
+        return value
+
+
+# translate select spark-submit parameters to their gcloud equivalent
+def convertSparkSubmitToDataprocArgs(args):
+    replacements = {"--driver-memory": "spark.driver.memory",
+                    "--driver-cores": "spark.driver.cores",
+                    "--executor-memory": "spark.executor.memory",
+                    "--executor-cores": "spark.executor.cores",
+                    "--num-executors": "spark.executor.instances" }
+
+    dataprocargs = []
+    properties = []
+    try:
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg == "--conf":
+                i += 1
+                properties.append(args[i])
+            elif not replacements.get(arg) is None:
+                i += 1
+                propertyname = replacements.get(arg)
+                properties.append(propertyname + "=" + args[i])
+            else:
+                dataprocargs.append(arg)
+            i +=1
+    except IndexError:
+        raise GATKLaunchException("Found an argument: " + arg + "with no matching value.")
+
+    if not len(properties) is 0:
+        dataprocargs.append("--properties")
+        dataprocargs.append(",".join(properties))
+
+    return dataprocargs
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+
+
