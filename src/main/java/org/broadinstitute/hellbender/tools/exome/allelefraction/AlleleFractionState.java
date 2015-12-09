@@ -56,10 +56,10 @@ public final class AlleleFractionState extends AbstractParameterizedState {
         return new AlleleFractionState(meanBias(), biasVariance(), proposedOutlierProbability, minorFractions());
     }
 
-    public AlleleFractionState(final double biasMean, final double biasVariance, final double outlierProbability,
+    public AlleleFractionState(final double meanBias, final double biasVariance, final double outlierProbability,
             final MinorFractions minorFractions) {
         super(Arrays.asList(
-                new Parameter<>(MEAN_BIAS_NAME, biasMean),
+                new Parameter<>(MEAN_BIAS_NAME, meanBias),
                 new Parameter<>(BIAS_VARIANCE_NAME, biasVariance),
                 new Parameter<>(P_OUTLIER_NAME, outlierProbability),
                 new Parameter<>(MINOR_FRACTIONS_NAME, minorFractions)));
