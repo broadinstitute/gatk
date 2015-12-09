@@ -4,15 +4,13 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.DoubleStream;
 
@@ -163,7 +161,7 @@ public final class PCA {
      *     The result matrix has one column per principal components.
      * </p>
      * <p>
-     *     Each row represent the contributions of the corresponding input variable to that component.
+     *     Each row represents the contributions of the corresponding input variables to that component.
      * </p>
      *
      * @return never {@code null}.
@@ -208,5 +206,38 @@ public final class PCA {
         output.makeDoubleArray(VARIANCES_FULL_PATH, pca.variances);
         output.makeDoubleArray(CENTERS_FULL_PATH, pca.centers);
         output.makeDoubleMatrix(EIGEN_VECTORS_FULL_PATH, pca.eigenVectors.getData());
+    }
+
+    /**
+     * Reads a PCA result object from a HDF5 file.
+     *
+     * @param hdf5 the file to read.
+     * @return never {@code null}.
+     * @throws GATKException if any low level error occurred reading the contents of the file.
+     */
+    public static PCA readHDF5(final HDF5File hdf5)  {
+        final List<String> variables = hdf5.isPresent(VARIABLES_FULL_PATH) ? Arrays.asList(hdf5.readStringArray(VARIABLES_FULL_PATH)) : null;
+        final List<String> samples = hdf5.isPresent(SAMPLES_FULL_PATH) ? Arrays.asList(hdf5.readStringArray(SAMPLES_FULL_PATH)) : null;
+        final RealMatrix eigenVectors = new Array2DRowRealMatrix(hdf5.readDoubleMatrix(EIGEN_VECTORS_FULL_PATH));
+        final double[] centers = hdf5.readDoubleArray(CENTERS_FULL_PATH);
+        final double[] variances = hdf5.readDoubleArray(VARIANCES_FULL_PATH);
+        return new PCA(variables, samples, centers, eigenVectors, variances);
+    }
+
+    /**
+     * Returns the variable names for the PCA result.
+     *
+     * @return {@code null} if variables have not been named.
+     */
+    public List<String> getVariables() {
+        return variables == null ? null : Collections.unmodifiableList(variables);
+    }
+
+    /**
+     * Returns the sample names for the PCA result.
+     * @return {@code null} if samples have not been named.
+     */
+    public List<String> getSamples() {
+        return samples == null ? null : Collections.unmodifiableList(samples);
     }
 }
