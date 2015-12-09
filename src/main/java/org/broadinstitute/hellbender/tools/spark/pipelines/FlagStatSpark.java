@@ -38,12 +38,16 @@ public final class FlagStatSpark extends GATKSparkTool {
 
         final FlagStatus result = reads.aggregate(new FlagStatus(), FlagStatus::add, FlagStatus::merge);
         System.out.println(result);
-        final File file = new File(out);
-        try(final OutputStream outputStream = BucketUtils.createNonGCSFile(file.getPath());
-            final PrintStream ps = new PrintStream(outputStream)) {
-            ps.print(result);
-        } catch(final IOException e){
-            throw new UserException.CouldNotCreateOutputFile(file, e);
+
+        if ( out != null ) {
+            final File file = new File(out);
+            try ( final OutputStream outputStream = BucketUtils.createNonGCSFile(file.getPath());
+                  final PrintStream ps = new PrintStream(outputStream) ) {
+                ps.print(result);
+            }
+            catch ( final IOException e ) {
+                throw new UserException.CouldNotCreateOutputFile(file, e);
+            }
         }
     }
 }
