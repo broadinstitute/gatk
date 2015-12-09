@@ -60,8 +60,8 @@ script:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   else
-   bash scripts/install_git_lfs.sh;
-   ./gradlew test;
+    bash scripts/install_git_lfs.sh;
+    travis_wait 30 ./gradlew test;
   fi
 after_success:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
