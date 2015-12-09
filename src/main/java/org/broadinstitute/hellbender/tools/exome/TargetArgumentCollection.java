@@ -45,7 +45,7 @@ public class TargetArgumentCollection {
      * Holds a reference to a function that provides a default target file in case the user
      * does not specify one explicitly using argument {@link #targetsFile}.
      */
-    private final Supplier<File> defaultTargetFileSupplier;
+    private final Supplier<File> defaultTargetsFileSupplier;
 
     /**
      * Creates a new target argument collection.
@@ -53,12 +53,12 @@ public class TargetArgumentCollection {
      *    The one argument for this constructor is a reference to the default target file supplier.
      * </p>
      *
-     * @param defaultTargetFileSupplier the fail-over targets file name supplier in case no target
+     * @param defaultTargetsFileSupplier the fail-over targets file name supplier in case no target
      *                                    file name was indicated explicitly.
-     * @throws IllegalArgumentException if {@code defaultTargetFileSupplier} is {@code null}.
+     * @throws IllegalArgumentException if {@code defaultTargetsFileSupplier} is {@code null}.
      */
-    protected TargetArgumentCollection(final Supplier<File> defaultTargetFileSupplier) {
-        this.defaultTargetFileSupplier = Utils.nonNull(defaultTargetFileSupplier, "the default target file supplier cannot be null");
+    protected TargetArgumentCollection(final Supplier<File> defaultTargetsFileSupplier) {
+        this.defaultTargetsFileSupplier = Utils.nonNull(defaultTargetsFileSupplier, "the default target file supplier cannot be null");
     }
 
     /**
@@ -107,14 +107,14 @@ public class TargetArgumentCollection {
 
     /**
      * Resolves the name of the target file given the explicit argument {@link #targetsFile} and the
-     * default target file supplier {@link #defaultTargetFileSupplier}.
+     * default target file supplier {@link #defaultTargetsFileSupplier}.
      *
      * @return {@code null} when neither approach resolves into a target file name. The file returned is not
      * guaranteed to exist or been a readable regular file.
      */
     public File getTargetsFile() {
         return targetsFile != null ? targetsFile
-                : (defaultTargetFileSupplier != null ) ? defaultTargetFileSupplier.get()
+                : (defaultTargetsFileSupplier != null ) ? defaultTargetsFileSupplier.get()
                 : null;
     }
 
