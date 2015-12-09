@@ -184,9 +184,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertTrue(clp.parseArguments(System.err, args));
+        final FrobnicateArguments fo = parseArgumentsIntoObject(new FrobnicateArguments(), args);
         Assert.assertEquals(fo.positionalArguments.size(), 2);
         final File[] expectedPositionalArguments = { new File("positional1"), new File("positional2")};
         Assert.assertEquals(fo.positionalArguments.toArray(), expectedPositionalArguments);
@@ -259,9 +257,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertTrue(clp.parseArguments(System.err, args));
+        final FrobnicateArguments fo = parseArgumentsIntoObject(new FrobnicateArguments(), args);
         Assert.assertEquals(fo.FROBNICATION_THRESHOLD.intValue(), 20);
     }
 
@@ -274,9 +270,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     class CollectionRequired{
@@ -287,9 +281,7 @@ public final class CommandLineParserTest extends BaseTest {
     @Test(expectedExceptions = UserException.MissingArgument.class)
     public void testMissingRequiredCollectionArgument(){
         final String[] args = {};
-        final CollectionRequired cr = new CollectionRequired();
-        final CommandLineParser clp = new CommandLineParser(cr);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new CollectionRequired(), args);
     }
 
     @Test( expectedExceptions = UserException.BadArgumentValue.class)
@@ -303,9 +295,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     @Test(expectedExceptions = UserException.BadArgumentValue.class)
@@ -318,9 +308,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     @Test(expectedExceptions = UserException.MissingArgument.class)
@@ -331,9 +319,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     @Test(expectedExceptions = UserException.CommandLineException.class)
@@ -347,9 +333,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional2",
                 "positional3",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     @Test(expectedExceptions = UserException.MissingArgument.class)
@@ -360,9 +344,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "--SHMIGGLE_TYPE","shmiggle1",
                 "--SHMIGGLE_TYPE","shmiggle2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     @Test( expectedExceptions = UserException.CommandLineException.class)
@@ -375,9 +357,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "--SHMIGGLE_TYPE","shmiggle2",
                 "positional"
         };
-        final ArgumentsWithoutPositional fo = new ArgumentsWithoutPositional();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new ArgumentsWithoutPositional(), args);
     }
 
     @Test(expectedExceptions = UserException.CommandLineException.class)
@@ -389,9 +369,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
 
     @Test
@@ -415,9 +393,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "positional1",
                 "positional2",
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        Assert.assertTrue(clp.parseArguments(System.err, args));
+        final FrobnicateArguments fo = parseArgumentsIntoObject(new FrobnicateArguments(), args);
         Assert.assertEquals(fo.positionalArguments.size(), 2);
         final File[] expectedPositionalArguments = { new File("positional1"), new File("positional2")};
         Assert.assertEquals(fo.positionalArguments.toArray(), expectedPositionalArguments);
@@ -444,9 +420,7 @@ public final class CommandLineParserTest extends BaseTest {
                 "--T","17",
                 "--"+SpecialArgumentsCollection.ARGUMENTS_FILE_FULLNAME ,argumentsFile.getPath()
         };
-        final FrobnicateArguments fo = new FrobnicateArguments();
-        final CommandLineParser clp = new CommandLineParser(fo);
-        clp.parseArguments(System.err, args);
+        parseArgumentsIntoObject(new FrobnicateArguments(), args);
     }
     
     @DataProvider(name="failingMutexScenarios")
@@ -461,16 +435,12 @@ public final class CommandLineParserTest extends BaseTest {
 
     @Test
     public void passingMutexCheck(){
-        final MutexArguments o = new MutexArguments();
-        final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"-A", "1", "-B", "2"}));
+        parseArgumentsIntoObject(new MutexArguments(), new String[]{"-A", "1", "-B", "2"});
     }
 
     @Test(dataProvider="failingMutexScenarios", expectedExceptions = UserException.CommandLineException.class)
-    public void testFailingMutex(final String testName, final String[] args, final boolean expected) {
-        final MutexArguments o = new MutexArguments();
-        final CommandLineParser clp = new CommandLineParser(o);
-        clp.parseArguments(System.err, args);
+    public void testFailingMutex(final String testName, final String[] args, final boolean ignored) {
+        parseArgumentsIntoObject(new MutexArguments(), args);
     }
 
     class UninitializedCollectionArguments {
@@ -487,10 +457,8 @@ public final class CommandLineParserTest extends BaseTest {
 
     @Test
     public void testUninitializedCollections() {
-        final UninitializedCollectionArguments o = new UninitializedCollectionArguments();
-        final CommandLineParser clp = new CommandLineParser(o);
         final String[] args = {"--LIST","L1", "--LIST","L2", "--ARRAY_LIST","S1", "--HASH_SET","HS1", "P1", "P2"};
-        Assert.assertTrue(clp.parseArguments(System.err, args));
+        final UninitializedCollectionArguments o = parseArgumentsIntoObject(new UninitializedCollectionArguments(), args);
         Assert.assertEquals(o.LIST.size(), 2);
         Assert.assertEquals(o.ARRAY_LIST.size(), 1);
         Assert.assertEquals(o.HASH_SET.size(), 1);
@@ -529,25 +497,25 @@ public final class CommandLineParserTest extends BaseTest {
     }
 
     public static void assertListIsPopulatedCorrectly(String[] args, List<String> expected) {
-        final CollectionWithDefaultValuesArguments o = new CollectionWithDefaultValuesArguments();
-        final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertTrue(clp.parseArguments(System.err, args));
+        final CollectionWithDefaultValuesArguments o = parseArgumentsIntoObject(new CollectionWithDefaultValuesArguments(), args);
         Assert.assertEquals(o.LIST, expected);
+    }
+
+    public static <T> T parseArgumentsIntoObject(T objectWithUninitializedArgs, String[] args) {
+        final CommandLineParser clp = new CommandLineParser(objectWithUninitializedArgs);
+        Assert.assertTrue(clp.parseArguments(System.err, args));
+        return objectWithUninitializedArgs;
     }
 
     @Test
        public void testFlagNoArgument(){
-        final BooleanFlags o = new BooleanFlags();
-        final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1"}));
+        final BooleanFlags o = parseArgumentsIntoObject(new BooleanFlags(), new String[] { "--flag1" });
         Assert.assertTrue(o.flag1);
     }
 
     @Test
     public void testFlagsWithArguments(){
-        final BooleanFlags o = new BooleanFlags();
-        final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1", "false", "--flag2", "false"}));
+        final BooleanFlags o = parseArgumentsIntoObject(new BooleanFlags(), new String[] {"--flag1", "false", "--flag2", "false"});
         Assert.assertFalse(o.flag1);
         Assert.assertFalse(o.flag2);
     }
@@ -570,11 +538,7 @@ public final class CommandLineParserTest extends BaseTest {
 
     @Test
     public void testArgumentCollection(){
-        final ArgsCollectionHaver o = new ArgsCollectionHaver();
-        final CommandLineParser clp = new CommandLineParser(o);
-
-        final String[] args = {"--arg1", "42", "--somenumber", "12"};
-        Assert.assertTrue(clp.parseArguments(System.err, args));
+        final ArgsCollectionHaver o = parseArgumentsIntoObject(new ArgsCollectionHaver(), new String[]{"--arg1", "42", "--somenumber", "12"});
         Assert.assertEquals(o.someNumber, 12);
         Assert.assertEquals(o.default_args.Arg1, 42);
 
@@ -599,10 +563,9 @@ public final class CommandLineParserTest extends BaseTest {
 
     @Test
     public void testCombinationOfFlags(){
-        final BooleanFlags o = new BooleanFlags();
-        final CommandLineParser clp = new CommandLineParser(o);
+        final String[] args = {"--flag1", "false", "--flag2"};
+        final BooleanFlags o = parseArgumentsIntoObject( new BooleanFlags(), args);
 
-        clp.parseArguments(System.err, new String[]{"--flag1", "false", "--flag2"});
         Assert.assertFalse(o.flag1);
         Assert.assertTrue(o.flag2);
         Assert.assertFalse(o.flag3);
@@ -617,7 +580,7 @@ public final class CommandLineParserTest extends BaseTest {
     @Test(expectedExceptions = GATKException.CommandLineParserInternalException.class)
     public void testBadFieldCausesException(){
         final WithBadField o = new WithBadField();
-        final CommandLineParser clp = new CommandLineParser(o);
+        new CommandLineParser(o);
     }
 
     class PrivateArgument{
@@ -636,19 +599,17 @@ public final class CommandLineParserTest extends BaseTest {
 
     @Test
     public void testFlagWithPositionalFollowing(){
-        final PrivateArgument o = new PrivateArgument();
-        final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--flag1","1","2" }));
+        final String[] args = {"--flag1", "1", "2"};
+        final PrivateArgument o = parseArgumentsIntoObject(new PrivateArgument(), args);
         Assert.assertTrue(o.booleanFlags.flag1);
         Assert.assertEquals(o.positionals, Arrays.asList(1, 2));
     }
 
     @Test
     public void testPrivateArgument(){
-        final PrivateArgument o = new PrivateArgument();
-        final CommandLineParser clp = new CommandLineParser(o);
-        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--privateArgument",
-                "--privateCollection", "1", "--privateCollection", "2", "--flag1"}));
+        final String[] args = {"--privateArgument",
+                "--privateCollection", "1", "--privateCollection", "2", "--flag1"};
+        final PrivateArgument o = parseArgumentsIntoObject(new PrivateArgument(), args);
         Assert.assertTrue(o.privateArgument);
         Assert.assertEquals(o.privateCollection, Arrays.asList(1,2));
         Assert.assertTrue(o.booleanFlags.flag1);
@@ -981,12 +942,10 @@ public final class CommandLineParserTest extends BaseTest {
     @Test
     @SuppressWarnings("rawtypes")
     public void testGatherArgumentValuesOfTypeWithParameterizedType() {
-        final GatherArgumentValuesParameterizedTypeSource argumentSource = new GatherArgumentValuesParameterizedTypeSource();
-
         // Parse the command line, and inject values into our test instance
-        final CommandLineParser clp = new CommandLineParser(argumentSource);
-        clp.parseArguments(System.err, new String[]{"--parameterizedTypeArgument", "parameterizedTypeArgumentValue",
-                                                    "--parameterizedTypeListArgument", "parameterizedTypeListArgumentValue"});
+        final String[] args = {"--parameterizedTypeArgument", "parameterizedTypeArgumentValue",
+                "--parameterizedTypeListArgument", "parameterizedTypeListArgumentValue"};
+        GatherArgumentValuesParameterizedTypeSource argumentSource = parseArgumentsIntoObject(new GatherArgumentValuesParameterizedTypeSource(), args);
 
         // Gather argument values of the raw type GatherArgumentValuesParameterizedTargetType, and make
         // sure that we match fully-parameterized declarations
