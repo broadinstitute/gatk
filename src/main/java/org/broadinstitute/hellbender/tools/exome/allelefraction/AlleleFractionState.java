@@ -22,7 +22,7 @@ public final class AlleleFractionState extends AbstractParameterizedState {
     @SuppressWarnings("serial")
     public static final class MinorFractions extends ArrayList<Double> {
         public MinorFractions() { super(); }
-        public MinorFractions(final List other) {
+        public MinorFractions(final List<Double> other) {
             super(new ArrayList<>(other));
         }
     }

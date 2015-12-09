@@ -97,12 +97,12 @@ jacoco {
 
 //NOTE: we ignore contracts for now
 compileJava {
-  options.compilerArgs = ['-proc:none', '-Xlint:all']
-}
-compileTestJava { 
-  options.compilerArgs = ['-proc:none', '-Xlint:all']
+   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
 }
 
+compileTestJava {
+   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
+}
 
 build.dependsOn installApp
 check.dependsOn installApp
