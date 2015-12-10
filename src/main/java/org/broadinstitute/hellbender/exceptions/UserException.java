@@ -86,7 +86,7 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public CommandLineException(String message) {
-            super(String.format("Invalid command line: %s", message));
+            super(String.format("Invalid command line: %s\nUse ./gatk-launch <toolname> --help to see commandline arguments for the tool.", message));
         }
     }
 
