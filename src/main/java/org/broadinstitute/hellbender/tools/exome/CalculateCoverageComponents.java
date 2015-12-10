@@ -73,8 +73,14 @@ public class CalculateCoverageComponents extends SparkToggleCommandLineProgram {
         final List<String> targetNames = analysisReadCounts.targets().stream().map(Target::getName).collect(Collectors.toList());
         final List<String> sampleNames = analysisReadCounts.columnNames();
         final double[][] counts = analysisReadCounts.counts().getData();
+        //TODO Mysterious bug when trying to use the Spark based SVD
+        //TODO Corresponding issue number #242.
+        //TODO for now force to use the non-spark implementation:
+        //TODO once solved uncomment the following 2 lines and remove the other two that follow.
+        //final PCA pca = PCA.createPCA(targetNames, sampleNames, new Array2DRowRealMatrix(counts),
+        //        ctx == null ? SVDFactory::createSVD : (dm) -> SVDFactory.createSVD(dm, ctx));
         final PCA pca = PCA.createPCA(targetNames, sampleNames, new Array2DRowRealMatrix(counts),
-                ctx == null ? SVDFactory::createSVD : (dm) -> SVDFactory.createSVD(dm, ctx));
+                SVDFactory::createSVD);
         try (final HDF5File output = new HDF5File(outputFile, HDF5File.OpenMode.CREATE)) {
             PCA.writeHDF5(pca, output);
         } catch (final GATKException ex) {
