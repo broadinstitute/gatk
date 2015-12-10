@@ -1,14 +1,15 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFormatException;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.File;
 
 /**
  * Test for CompareSams tool.
@@ -72,4 +73,10 @@ public final class CompareSAMsIntegrationTest extends CommandLineProgramTest {
                 String fileName1, String fileName2, ValidationStringency stringency, boolean expectedResult) throws Exception {
          compareSAMHelper(fileName1,  fileName2,  null, stringency, expectedResult);
     }
+
+    @Test(expectedExceptions = SAMException.class)
+    public void testCompareSAMMissingFile() throws Exception {
+        compareSAMHelper("foo", "bar", null, ValidationStringency.DEFAULT_STRINGENCY, false);
+    }
+
 }

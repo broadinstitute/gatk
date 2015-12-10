@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
-import org.broadinstitute.hellbender.cmdline.*;
+import htsjdk.samtools.util.IOUtil;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.PositionalArguments;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
 
 import java.io.File;
-import java.util.*;
+import java.util.List;
 
 /**
  * Wrapper CLP for SamComparison.
@@ -28,6 +32,9 @@ public final class CompareSAMs extends PicardCommandLineProgram {
 
     @Override
     protected Object doWork() {
+        IOUtil.assertFileIsReadable(samFiles.get(0));
+        IOUtil.assertFileIsReadable(samFiles.get(1));
+
         SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(VALIDATION_STRINGENCY);
         SamReader sam1 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(0));
         SamReader sam2 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(1));
