@@ -44,9 +44,9 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     @Test(dataProvider = "testMDdata")
     @Override
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
-        // Override this test case to provide a --parallelism argument, so that we write a single, sorted
+        // Override this test case to provide a --shardedOutput false argument, so that we write a single, sorted
         // bam (since sharded output is not sorted, and this test case is sensitive to order).
-        testMDOrderImpl(input, expectedOutput, "--parallelism 1");
+        testMDOrderImpl(input, expectedOutput, "--shardedOutput false");
     }
 
     @DataProvider(name = "md")
