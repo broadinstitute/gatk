@@ -15,7 +15,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
     private static String baseTestString(String args, String testFile) {
         return " --variant " + testFile
-                    + " -o %s "
+                    + " -O %s "
                     + args;
     }
 
@@ -28,7 +28,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         + " --variant " + testFile
                         + " -sn NA11918 "
                         + " -sr " // suppress reference file path in output for test differencing
-                        + " -o %s ",
+                        + " -O %s ",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleSelection.vcf")
         );
 
@@ -44,7 +44,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         + " --variant " + testFile
                         + " -select 'DP < 7' "
                         + " -sr " // suppress reference file path in output for test differencing
-                        + " -o %s ",
+                        + " -O %s ",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleExpressionSelection.vcf")
         );
 

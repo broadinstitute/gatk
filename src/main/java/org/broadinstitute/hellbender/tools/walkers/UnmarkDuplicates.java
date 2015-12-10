@@ -22,7 +22,7 @@ import java.io.File;
 )
 public class UnmarkDuplicates extends ReadWalker {
 
-    @Argument(fullName = "output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
     public File OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter;
