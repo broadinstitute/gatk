@@ -7,6 +7,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function2;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -15,7 +16,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.List;
 
 @CommandLineProgramProperties(summary = "Compares two the quality scores of BAMs", oneLineSummary = "Diff qs of the BAMs",
@@ -36,7 +40,7 @@ final public class CompareBaseQualities extends GATKSparkTool  {
     @Argument(doc="print summary", shortName = "ps", fullName = "printSummary", optional = true)
     protected boolean printSummary = true;
 
-    @Argument(doc="summary output file", shortName = "O", fullName = "output", optional = true)
+    @Argument(doc="summary output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = true)
     protected String outputFilename = null;
 
     @Argument(doc="throw error on diff", shortName = "cd", fullName = "throwOnDiff", optional = true)

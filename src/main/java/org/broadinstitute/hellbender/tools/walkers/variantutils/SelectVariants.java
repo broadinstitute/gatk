@@ -116,8 +116,10 @@ public class SelectVariants extends VariantWalker {
                     doc="Output variants also called in this comparison track", optional=true)
     private FeatureInput<VariantContext> concordanceTrack;
 
-    @Argument(doc="File to which variants should be written")
-    private File outFile = null;
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+              shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+              doc="File to which variants should be written")
+    public File outFile = null;
 
     /**
      * This argument can be specified multiple times in order to provide multiple sample names.
