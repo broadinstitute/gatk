@@ -326,11 +326,6 @@ public class SelectVariants extends VariantWalker {
     @Argument(fullName="fullyDecode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
     private boolean fullyDecode = false;
 
-    @HiddenOption
-    @Argument(fullName="justRead",
-                    doc="If true, we won't actually write the output file.  For efficiency testing only", optional=true)
-    private boolean justRead = false;
-
     /**
      * If this argument is provided, indels that are larger than the specified size will be excluded.
      */
@@ -558,7 +553,6 @@ public class SelectVariants extends VariantWalker {
             }
 
             if (!failedJexlMatch &&
-                    !justRead &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
                 vcfWriter.add(filteredGenotypeToNocall);
             }
