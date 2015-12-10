@@ -37,7 +37,6 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         return true;
     }
 
-
     @Override
     protected void runTool( final JavaSparkContext ctx )
     {
@@ -46,7 +45,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
             throw new GATKException("The BAM must be coordinate sorted.");
 
         final JavaRDD<GATKRead> clusteredReads =
-            getReads()
+            getUnfilteredReads()
             .mapPartitions(readItr ->
                 new WindowSorter(new BreakpointClusterer(new SplitReadDetector(),
                                                          new DiscordantPairDetector(),
@@ -121,6 +120,16 @@ public class GatherSplitReadsSpark extends GATKSparkTool
                     return new EventLocus(read.getEnd()-SOFT_CLIP_LOCUS_WIDTH/2, SOFT_CLIP_LOCUS_WIDTH);
             }
 
+            int locus = read.getStart();
+            for ( CigarElement ele : cigarElements )
+            {
+                CigarOperator op = ele.getOperator();
+                if ( op == CigarOperator.DELETION || op == CigarOperator.INSERTION )
+                    if ( ele.getLength() >= MIN_INDEL_LEN )
+                        return new EventLocus(locus-SOFT_CLIP_LOCUS_WIDTH/2, SOFT_CLIP_LOCUS_WIDTH);
+                if ( op.consumesReferenceBases() )
+                    locus += ele.getLength();
+            }
             return null;
         }
 
@@ -134,6 +143,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         }
 
         private static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
+        private static final int MIN_INDEL_LEN = 25; // minimum length of an interesting indel
         private static final int SOFT_CLIP_LOCUS_WIDTH = 4; // uncertainty in event locus for soft clip
         private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
     }
@@ -142,12 +152,15 @@ public class GatherSplitReadsSpark extends GATKSparkTool
     {
         public EventLocus isDiscordant( GATKRead read )
         {
-            if ( !read.mateIsUnmapped() && read.getContig() == read.getMateContig() )
+            if ( read.mateIsUnmapped() )
+                return new EventLocus(read.getEnd(), FUNKY_PAIR_LOCUS_WIDTH);
+
+            if ( read.getContig() == read.getMateContig() )
             {
                 if ( read.isReverseStrand() == read.mateIsReverseStrand() || !read.isProperlyPaired() )
                 {
                     int locus = read.getFragmentLength() < 0 ?
-                            read.getStart()-FUNKY_PAIR_LOCUS_WIDTH :
+                            read.getStart() - FUNKY_PAIR_LOCUS_WIDTH :
                             read.getEnd();
                     return new EventLocus(locus, FUNKY_PAIR_LOCUS_WIDTH);
                 }
@@ -193,7 +206,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         private Iterator<GATKRead> processRead( final GATKRead read )
         {
             if ( !read.failsVendorQualityCheck() && !read.isUnmapped() &&
-                    !read.isDuplicate() && read.getMappingQuality() > 0 &&
+                    !read.isDuplicate() && read.getMappingQuality() >= MIN_MAPQ &&
                     read.getStart() != ReadConstants.UNSET_POSITION )
             {
                 String readContig = read.getContig();
@@ -275,6 +288,7 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         private Iterator<GATKRead> outputIterator = Collections.emptyIterator();
 
         private static final int MIN_MATCH_LEN = 45; // minimum length of matched portion of an interesting alignment
+        private static final int MIN_MAPQ = 20; // minimum mapping quality of an interesting alignment
         private static final int MAX_LOCUS_DIST = 300; // stale evidence distance, should be about the fragment length
         private static final int MIN_EVIDENCE = 5; // minimum evidence count in a cluster
     }
