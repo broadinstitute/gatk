@@ -226,34 +226,37 @@ public final class CommandLineParser {
     @SuppressWarnings("unchecked")
     public boolean parseArguments(final PrintStream messageStream, final String[] args) {
         this.argv = args;
+        try {
+            final OptionParser optionParser = setupOptionParser(argumentDefinitions, positionalArguments != null);
+            final OptionSet parsedArguments = parseArgumentsIntoOptionSet(args, optionParser);
 
-        final OptionParser optionParser = setupOptionParser(argumentDefinitions, positionalArguments != null);
-        final OptionSet parsedArguments = parseArgumentsIntoOptionSet(args, optionParser);
+            //check if special short circuiting arguments are set
+            if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.HELP_FULLNAME)) {
+                usage(messageStream);
+                return false;
+            } else if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.VERSION_FULLNAME)) {
+                messageStream.println(getVersion());
+                return false;
+            }
 
-        //check if special short circuiting arguments are set
-        if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.HELP_FULLNAME)) {
-            usage(messageStream);
-            return false;
-        } else if (isSpecialFlagSet(parsedArguments, SpecialArgumentsCollection.VERSION_FULLNAME)) {
-            messageStream.println(getVersion());
-            return false;
+            parsedArguments.asMap().keySet().stream()
+                    .filter(optSpec -> parsedArguments.has(optSpec))
+                    .forEach(optSpec -> {
+                        //get the ArgumentDefinitions that corresponds to the name of the OptionParser Opt Spec
+                        final ArgumentDefinition argDef = argumentMap.get(optSpec.options().get(0));
+                        argDef.setArgument((List<String>) optSpec.values(parsedArguments));
+                    });
+
+            for (Object arg : parsedArguments.nonOptionArguments()) {
+                setPositionalArgument((String) arg);
+            }
+
+            assertArgumentsAreValid();
+
+            return true;
+        }catch (UserException.CommandLineException e){
+                throw new UserException.CommandLineException(e.getMessage(), getCommandLineAsInput(), e);
         }
-
-        parsedArguments.asMap().keySet().stream()
-                .filter(optSpec -> parsedArguments.has(optSpec))
-                .forEach(optSpec -> {
-                    //get the ArgumentDefinitions that corresponds to the name of the OptionParser Opt Spec
-                    final ArgumentDefinition argDef = argumentMap.get(optSpec.options().get(0));
-                    argDef.setArgument((List<String>) optSpec.values(parsedArguments));
-                });
-
-        for (Object arg : parsedArguments.nonOptionArguments()) {
-            setPositionalArgument((String) arg);
-        }
-
-        assertArgumentsAreValid();
-
-        return true;
     }
 
     /**

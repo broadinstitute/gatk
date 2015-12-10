@@ -22,11 +22,16 @@ public class UserException extends RuntimeException {
     private static final long serialVersionUID = 0L;
 
     public UserException(final String msg) {
-        super("A USER ERROR has occurred:\n\n" + msg +"\n\nRerun with --help to see more information on available options");
+        super(formatMessage(msg));
     }
 
     public UserException(final String message, final Throwable throwable) {
-        super("A USER ERROR has occurred\n\n: " + message, throwable);
+        super(formatMessage(message), throwable);
+    }
+
+    protected static String formatMessage(String msg) {
+        return "A UserException has occurred:\n\nThis is an error which is likely to be correctable by the user." + msg
+                +"\n\n\nRerun with --help to see more information on available options";
     }
 
     protected static String getMessage(final Throwable t) {
@@ -89,9 +94,13 @@ public class UserException extends RuntimeException {
             this(message, "");
         }
 
+        public CommandLineException()
+
         public CommandLineException(String message, String commandLine) {
-            super(String.format("Invalid command line: %s\n%s", commandLine, message));
+            super(String.format("Invalid command line: %s\n\n%s", commandLine, message));
         }
+
+
     }
 
     public static class ConflictingMutuallyExclusiveArguments extends CommandLineException {

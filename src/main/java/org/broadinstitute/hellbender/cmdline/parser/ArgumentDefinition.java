@@ -97,9 +97,6 @@ final class ArgumentDefinition {
             output.append(",-").append(shortName);
         }
         output.append(':').append(CommandLineParser.getUnderlyingType(field).getSimpleName());
-        if (isCollection) {
-            output.append("[]");
-        }
         return output.toString();
     }
 
