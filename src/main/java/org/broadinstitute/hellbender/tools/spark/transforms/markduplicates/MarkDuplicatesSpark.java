@@ -47,6 +47,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
+    @Argument(doc = "If specified, shard the output bam", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
+    private boolean shardedOutput = false;
+
     @Argument(doc="The output parallelism, sets the number of reducers. Defaults to the number of partitions in the input.",
             shortName = "P", fullName = "parallelism", optional = true)
     protected int parallelism = 0;
@@ -88,7 +91,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes(finalReadsForMetrics);
 
         try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
+            ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
         } catch (final IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }
