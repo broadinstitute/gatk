@@ -36,7 +36,9 @@ public final class DownsampleSam extends PicardCommandLineProgram {
 	    doc = "The output, downsampled, SAM/BAM/CRAM file to write.")
     public File OUTPUT;
 
-    @Argument(shortName = "R", doc = "Random seed to use if reproducibilty is desired.  " +
+    @Argument(fullName = "random_seed",
+              shortName = "rand",
+              doc = "Random seed to use if reproducibilty is desired.  " +
             "Setting to null will cause multiple invocations to produce different results.")
     public Long RANDOM_SEED = 1L;
 
