@@ -85,19 +85,19 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * To run a Spark tool on a Spark cluster, the syntax is:
 
-  **`./gatk-launch ToolName toolArguments -- --sparkRunner SUBMIT --sparkMaster <master_url> additionalSparkArguments`**
+  **`./gatk-launch ToolName toolArguments -- --sparkRunner SPARK --sparkMaster <master_url> additionalSparkArguments`**
     * Examples:
 
         ```
         ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
             -- \
-            --sparkRunner SUBMIT --sparkMaster <master_url>
+            --sparkRunner SPARK --sparkMaster <master_url>
         ```
 
         ```
         ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
             -- \
-            --sparkRunner SUBMIT --sparkMaster <master_url> \
+            --sparkRunner SPARK --sparkMaster <master_url> \
             --num-executors 5 --executor-cores 2 --executor-memory 4g \
             --conf spark.yarn.executor.memoryOverhead=600
         ```

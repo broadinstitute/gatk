@@ -33,11 +33,11 @@ def main(args):
     try:
         if len(args) is 0:
             print("")
-            print(" Usage template for all tools (uses --sparkRunner DIRECT when used with a Spark tool)")
+            print(" Usage template for all tools (uses --sparkRunner LOCAL when used with a Spark tool)")
             print("    ./gatk-launch AnyTool toolArgs")
             print("")
             print(" Usage template for Spark tools (will NOT work on non-Spark tools)")
-            print("    ./gatk-launch SparkTool toolArgs  [ -- --sparkRunner <DIRECT | SUBMIT | GCS> sparkArgs ]")
+            print("    ./gatk-launch SparkTool toolArgs  [ -- --sparkRunner <LOCAL | SPARK | GCS> sparkArgs ]")
             print("")
             print(" Usage help")
             print("    ./gatk-launch --help      Print the list of available tools" )
@@ -48,14 +48,14 @@ def main(args):
             print("")
             print("   --sparkRunner <target>    controls how spark tools are run")
             print("     valid targets are:")
-            print("     DIRECT:  run using the in-memory spark runner")
-            print("     SUBMIT:  run gatk using spark-submit on an existing cluster ")
-            print("               --sparkMaster must be specified")
-            print("               arguments to spark-submit may optionally be specified after -- ")
-            print("     GCS:      run gatk using gcloud dataproc")
-            print("               commands after the -- will be passed to dataproc")
-            print("               --cluster <your-cluster> must be specified after the --")
-            print("               spark properties and some common spark-submit parameters will be translated to dataproc equivalents")
+            print("     LOCAL:   run using the in-memory spark runner")
+            print("     SPARK:   run using spark-submit on an existing cluster ")
+            print("              --sparkMaster must be specified")
+            print("              arguments to spark-submit may optionally be specified after -- ")
+            print("     GCS:     run using Google cloud dataproc")
+            print("              commands after the -- will be passed to dataproc")
+            print("              --cluster <your-cluster> must be specified after the --")
+            print("              spark properties and some common spark-submit parameters will be translated to dataproc equivalents")
             print("")
             print("    --dryRun    may be specified to output the generated command line without running it")
             sys.exit(0)
@@ -160,10 +160,10 @@ def cacheJarOnGCS(jar, dryRun):
 
 
 def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
-    if sparkRunner is None or sparkRunner == "DIRECT":
+    if sparkRunner is None or sparkRunner == "LOCAL":
         cmd = [getGatkWrapperScript()] + gatkArgs
         runCommand(cmd, dryrun)
-    elif sparkRunner == "SUBMIT":
+    elif sparkRunner == "SPARK":
         cmd = [ getSparkSubmit(),
           "--master", getSparkMasterSpecified(gatkArgs)] \
               + DEFAULT_SPARK_ARGS \
@@ -189,7 +189,7 @@ def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
         except OSError:
             raise GATKLaunchException("Tried to run gcloud but failed.\nMake sure gcloud is available in your path and you are properly authenticated")
     else:
-        raise GATKLaunchException("Value: " + sparkRunner + " is not a valid value for --sparkRunner.  Choose one of DIRECT, SUBMIT, GCS")
+        raise GATKLaunchException("Value: " + sparkRunner + " is not a valid value for --sparkRunner.  Choose one of LOCAL, SPARK, GCS")
 
 
 def getGatkWrapperScript():
