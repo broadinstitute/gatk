@@ -20,7 +20,7 @@ import java.util.stream.StreamSupport;
  */
 public abstract class ReadWalker extends GATKTool {
 
-    @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
+    @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", optional = true)
     public boolean disable_all_read_filters = false;
 
     @Override

@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.parser.CommandLineParser;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 
 import java.io.File;
@@ -40,19 +41,18 @@ import java.util.List;
 public abstract class CommandLineProgram {
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
-    @Argument(common=true, optional=true)
+    @Argument(optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
     public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
 
-    @Argument(doc = "Control verbosity of logging.", common=true)
+    @Argument(doc = "Control verbosity of logging.")
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
-    @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
+    @Argument(doc = "Whether to suppress job-summary info on System.err.")
     public Boolean QUIET = false;
-    private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
 
     /**
     * Initialized in parseArgs.  Subclasses may want to access this to do their
@@ -185,7 +185,7 @@ public abstract class CommandLineProgram {
 
         commandLineParser = new CommandLineParser(this);
         final boolean ret = commandLineParser.parseArguments(System.err, argv);
-        commandLine = commandLineParser.getCommandLine();
+        commandLine = commandLineParser.getFullySpecifiedCommandLine();
         if (!ret) {
             return false;
         }
@@ -194,7 +194,7 @@ public abstract class CommandLineProgram {
             for (final String msg : customErrorMessages) {
                 System.err.println(msg);
             }
-            commandLineParser.usage(System.err, false);
+            commandLineParser.usage(System.err);
             return false;
         }
         return true;
@@ -208,10 +208,6 @@ public abstract class CommandLineProgram {
         }
 
         return file;
-    }
-
-    public String getStandardUsagePreamble() {
-        return standardUsagePreamble;
     }
 
     public CommandLineParser getCommandLineParser() {
