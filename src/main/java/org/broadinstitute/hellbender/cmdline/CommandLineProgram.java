@@ -47,7 +47,7 @@ public abstract class CommandLineProgram {
             "It is unlikely these will ever need to be accessed by the command line program")
     public SpecialArgumentsCollection specialArgumentsCollection = new SpecialArgumentsCollection();
 
-    @Argument(doc = "Control verbosity of logging.", common=true)
+    @Argument(fullName = StandardArgumentDefinitions.VERBOSITY_NAME, shortName = StandardArgumentDefinitions.VERBOSITY_NAME, doc = "Control verbosity of logging.", common = true, optional = true)
     public Log.LogLevel VERBOSITY = Log.LogLevel.INFO;
 
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)

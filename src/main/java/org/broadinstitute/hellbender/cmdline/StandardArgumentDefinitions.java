@@ -13,6 +13,7 @@ public final class StandardArgumentDefinitions {
     public static final String FEATURE_LONG_NAME = "feature";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "useOriginalQualities";
     public static final String LENIENT_LONG_NAME = "lenient";
+    public static final String VERBOSITY_NAME = "verbosity";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";

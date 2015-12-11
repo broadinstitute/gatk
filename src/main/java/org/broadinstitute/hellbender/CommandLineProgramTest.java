@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender;
 
+import htsjdk.samtools.util.Log;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
@@ -40,7 +42,7 @@ public abstract class CommandLineProgramTest extends BaseTest {
     }
 
     /**
-     * Look for VERBOSITY argument; if not found, supply a default value that minimizes the amount of logging output.
+     * Look for --verbosity argument; if not found, supply a default value that minimizes the amount of logging output.
      */
     private List<String> injectDefaultVerbosity(final List<String> args) {
 
@@ -48,11 +50,13 @@ public abstract class CommandLineProgramTest extends BaseTest {
         BunnyLog.setEnabled(false);
 
         for (String arg : args) {
-            if (arg.equalsIgnoreCase("--VERBOSITY")) return args;
+            if (arg.equalsIgnoreCase("--" + StandardArgumentDefinitions.VERBOSITY_NAME) || arg.equalsIgnoreCase("-" + StandardArgumentDefinitions.VERBOSITY_NAME)) {
+                return args;
+            }
         }
         List<String> argsWithVerbosity = new ArrayList<>(args);
-        argsWithVerbosity.add("--VERBOSITY");
-        argsWithVerbosity.add("ERROR");
+        argsWithVerbosity.add("--" + StandardArgumentDefinitions.VERBOSITY_NAME);
+        argsWithVerbosity.add(Log.LogLevel.ERROR.name());
         return argsWithVerbosity;
     }
 
