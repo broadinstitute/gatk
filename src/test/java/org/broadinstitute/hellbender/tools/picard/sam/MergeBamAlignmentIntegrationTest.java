@@ -12,8 +12,10 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.*;
 
 /**
@@ -1582,5 +1584,20 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                         },
                 },
         };
+    }
+
+    @Test
+    public void testHelp() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps= new PrintStream(baos);
+        System.setErr(ps);
+        runCommandLine(new String[]{
+                "--help",
+        });
+        final String s = baos.toString();
+        String[] lines = s.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            Assert.assertFalse(lines[i].contains("READ2_ALIGNED_BAM (R2_ALIGNED) READ2_ALIGNED_BAM"), lines[i]); //Same option twice!
+        }
     }
 }

@@ -40,19 +40,19 @@ public final class MergeBamAlignment extends PicardCommandLineProgram {
             doc = "Original SAM/BAM/CRAM file of unmapped reads, which must be in queryname order.")
     public File UNMAPPED_BAM;
 
-    @Argument(shortName = "ALIGNED",
+    @Argument(shortName = "ALIGNED", fullName = "ALIGNED_BAM",
             doc = "SAM/BAM/CRAM file(s) with alignment data.",
             mutex = {"READ1_ALIGNED_BAM", "READ2_ALIGNED_BAM"},
             optional = true)
     public List<File> ALIGNED_BAM;
 
-    @Argument(shortName = "R1_ALIGNED",
+    @Argument(shortName = "R1_ALIGNED", fullName= "READ1_ALIGNED_BAM",
             doc = "SAM/BAM/CRAM file(s) with alignment data from the first read of a pair.",
             mutex = {"ALIGNED_BAM"},
             optional = true)
     public List<File> READ1_ALIGNED_BAM;
 
-    @Argument(shortName = "R2_ALIGNED",
+    @Argument(shortName = "R2_ALIGNED", fullName= "READ2_ALIGNED_BAM",
             doc = "SAM/BAM file(s) with alignment data from the second read of a pair.",
             mutex = {"ALIGNED_BAM"},
             optional = true)

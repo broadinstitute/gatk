@@ -11,8 +11,10 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.*;
 
 /**
@@ -129,6 +131,23 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
             Assert.assertTrue(outputHeaderSet2.contains(readName+"/2"));
         }
     }
+
+
+    @Test
+    public void testHelp() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps= new PrintStream(baos);
+        System.setErr(ps);
+        convertFile(new String[]{
+                "--help",
+        });
+        final String s = baos.toString();
+        String[] lines = s.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            Assert.assertFalse(lines[i].contains("OUTPUT_PER_RG (OPRG) OUTPUT_PER_RG (OPRG)"), lines[i]); //Same option twice!
+        }
+    }
+
 
     @Test(dataProvider =  "okFiles")
     public void testOkInterleavedFile(final String samFilename) throws IOException {
