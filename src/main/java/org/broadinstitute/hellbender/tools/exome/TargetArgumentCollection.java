@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
  *   The main argument is the targets containing file name itself.
  * </p>
  * <p>
- *   If the user does not specify such a file name, the fail-over target file supplier is used to
+ *   If the user does not specify such a file name, the default target file supplier is used to
  *   determine a suitable replacement.
  * </p>
  * <p>
@@ -28,15 +29,15 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TargetArgumentCollection {
+public final class TargetArgumentCollection {
 
-    public static final String TARGET_FILE_SHORT_NAME = "T";
-    public static final String TARGET_FILE_FULL_NAME = "targets";
+    public static final String TARGET_FILE_SHORT_NAME = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME;
+    public static final String TARGET_FILE_LONG_NAME = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME;
 
     @Argument(
             doc = "Targets listing file",
             shortName = TARGET_FILE_SHORT_NAME,
-            fullName = TARGET_FILE_FULL_NAME,
+            fullName = TARGET_FILE_LONG_NAME,
             optional = true
     )
     protected File targetsFile;
@@ -92,15 +93,14 @@ public class TargetArgumentCollection {
      */
     protected TargetCollection<Target> readTargetCollection(final boolean optional) {
         final File resolveFile = getTargetsFile();
-        if (resolveFile == null) {
+        if (resolveFile != null) {
+            return readTargetCollection(resolveFile);
+        } else {
             if (optional) {
                 return null;
             } else {
-                throw new UserException.BadArgumentValue(TARGET_FILE_SHORT_NAME,
-                        "No target file was specified");
+                throw new UserException.BadArgumentValue(TARGET_FILE_SHORT_NAME, "No target file was specified");
             }
-        } else {
-            return readTargetCollection(resolveFile);
         }
     }
 
@@ -110,12 +110,11 @@ public class TargetArgumentCollection {
      * default target file supplier {@link #defaultTargetsFileSupplier}.
      *
      * @return {@code null} when neither approach resolves into a target file name. The file returned is not
-     * guaranteed to exist or been a readable regular file.
+     * guaranteed to exist or to be a readable regular file.
      */
     public File getTargetsFile() {
         return targetsFile != null ? targetsFile
-                : (defaultTargetsFileSupplier != null ) ? defaultTargetsFileSupplier.get()
-                : null;
+                : (defaultTargetsFileSupplier != null ) ? defaultTargetsFileSupplier.get() : null;
     }
 
     /**
@@ -125,7 +124,7 @@ public class TargetArgumentCollection {
      * @throws UserException.CouldNotReadInputFile if there was some problem when reading the file
      *         provided.
      */
-    private static TargetCollection<Target> readTargetCollection(final File file) {
+    public static TargetCollection<Target> readTargetCollection(final File file) {
         try (final TargetTableReader reader = new TargetTableReader(file)) {
             return new HashedListTargetCollection<Target>(Utils.nonNull(reader.stream().collect(Collectors.toList()), "the input feature list cannot be null")) {
                 @Override

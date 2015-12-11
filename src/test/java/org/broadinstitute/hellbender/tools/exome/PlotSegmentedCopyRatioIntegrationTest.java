@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.plotter.CopyRatioSegmentedPlotter;
@@ -22,12 +23,12 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, TN_FILE.getAbsolutePath(),
                 PRE_TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath() + "/", true);
         final String[] arguments = {
-                "-" + PlotSegmentedCopyRatio.SAMPLE_NAME_SHORT_NAME, sampleName,
-                "-" + PlotSegmentedCopyRatio.TARGETS_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
-                "-" + PlotSegmentedCopyRatio.PRE_TANGENT_TARGETS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
-                "-" + PlotSegmentedCopyRatio.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
+                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
-                "-" + PlotSegmentedCopyRatio.LOG2_SHORT_NAME,
+                "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());

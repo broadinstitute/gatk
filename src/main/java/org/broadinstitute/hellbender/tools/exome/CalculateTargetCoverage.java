@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * Calculate the coverage of a target.
+ * Calculate the coverage (integer read counts) of targets.
  * <p>
  * The user must indicate the target table file using the argument -{@value TargetArgumentCollection#TARGET_FILE_SHORT_NAME}.
  * That file must follow the format described in {@link TargetTableReader}.

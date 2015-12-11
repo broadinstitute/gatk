@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -21,24 +18,10 @@ import java.io.File;
         oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample."
 )
 public final class GetHetCoverage extends CommandLineProgram {
-    protected static final String NORMAL_BAM_FILE_FULL_NAME = "normal";
-    protected static final String NORMAL_BAM_FILE_SHORT_NAME = "N";
-
-    protected static final String TUMOR_BAM_FILE_FULL_NAME = "tumor";
-    protected static final String TUMOR_BAM_FILE_SHORT_NAME = "T";
-
-    protected static final String SNP_FILE_FULL_NAME = "snpIntervals";
-    protected static final String SNP_FILE_SHORT_NAME = "snp";
 
     @ArgumentCollection
     protected static final ReferenceInputArgumentCollection REF_ARGUMENTS =
             new RequiredReferenceInputArgumentCollection();
-
-    protected static final String NORMAL_HET_REF_ALT_COUNTS_FILE_FULL_NAME = "normalOut";
-    protected static final String NORMAL_HET_REF_ALT_COUNTS_FILE_SHORT_NAME = "NOut";
-
-    protected static final String TUMOR_HET_REF_ALT_COUNTS_FILE_FULL_NAME = "tumorOut";
-    protected static final String TUMOR_HET_REF_ALT_COUNTS_FILE_SHORT_NAME = "TOut";
 
     protected static final String HET_ALLELE_FRACTION_FULL_NAME = "hetAlleleFraction";
     protected static final String HET_ALLELE_FRACTION_SHORT_NAME = "AF";
@@ -48,40 +31,40 @@ public final class GetHetCoverage extends CommandLineProgram {
 
     @Argument(
             doc = "BAM file for normal sample.",
-            fullName = NORMAL_BAM_FILE_FULL_NAME,
-            shortName = NORMAL_BAM_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME,
             optional = false
     )
     protected File normalBAMFile;
 
     @Argument(
             doc = "BAM file for tumor sample.",
-            fullName = TUMOR_BAM_FILE_FULL_NAME,
-            shortName = TUMOR_BAM_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME,
             optional = false
     )
     protected File tumorBAMFile;
 
     @Argument(
             doc = "Interval-list file of common SNPs.",
-            fullName = SNP_FILE_FULL_NAME,
-            shortName = SNP_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.SNP_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME,
             optional = false
     )
     protected File snpFile;
 
     @Argument(
             doc = "Output file for normal-sample ref/alt read counts (at heterozygous SNPs).",
-            fullName = NORMAL_HET_REF_ALT_COUNTS_FILE_FULL_NAME,
-            shortName = NORMAL_HET_REF_ALT_COUNTS_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME,
             optional = false
     )
     protected File normalHetOutputFile;
 
     @Argument(
             doc = "Output file for tumor-sample ref/alt read counts (at heterozygous SNPs in normal sample).",
-            fullName = TUMOR_HET_REF_ALT_COUNTS_FILE_FULL_NAME,
-            shortName = TUMOR_HET_REF_ALT_COUNTS_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME,
             optional = false
     )
     protected File tumorHetOutputFile;

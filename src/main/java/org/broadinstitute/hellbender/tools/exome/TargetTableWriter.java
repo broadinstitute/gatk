@@ -45,11 +45,11 @@ public class TargetTableWriter extends TableWriter<Target> {
     private static TableColumnCollection composeTableColumns(final Set<TargetAnnotation> annotations) {
         Utils.nonNull(annotations);
 
-        final List<TargetTableColumn> columns = new ArrayList<>(4 + annotations.size());
-        columns.add(TargetTableColumn.CONTIG);
-        columns.add(TargetTableColumn.START);
-        columns.add(TargetTableColumn.END);
-        columns.add(TargetTableColumn.NAME);
+        final List<TargetTableColumns> columns = new ArrayList<>(4 + annotations.size());
+        columns.add(TargetTableColumns.CONTIG);
+        columns.add(TargetTableColumns.START);
+        columns.add(TargetTableColumns.END);
+        columns.add(TargetTableColumns.NAME);
         annotations.stream()
                 .map(annotation -> annotation.column)
                 .forEach(columns::add);

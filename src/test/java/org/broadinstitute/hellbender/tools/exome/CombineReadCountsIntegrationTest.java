@@ -282,10 +282,10 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
     private File createTargetFile(final List<Target> targets) throws IOException {
         final File result = BaseTest.createTempFile("targets",".tab");
         final TableWriter<Target> writer = TableUtils.writer(result, new TableColumnCollection(
-                        TargetTableColumn.CONTIG,
-                        TargetTableColumn.START,
-                        TargetTableColumn.END,
-                        TargetTableColumn.NAME),
+                        TargetTableColumns.CONTIG,
+                        TargetTableColumns.START,
+                        TargetTableColumns.END,
+                        TargetTableColumns.NAME),
                 (t,dataLine) -> {
                     final SimpleInterval interval = t.getInterval();
                     dataLine.append(interval.getContig())
@@ -302,12 +302,12 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
     private void createCountFile(final File output, List<Target> targets, final String sample, final double[] count, final boolean useName, final boolean useCoordinates) throws IOException {
         final List<String> columnNames = new ArrayList<>();
         if (useCoordinates) {
-            columnNames.add(TargetTableColumn.CONTIG.toString());
-            columnNames.add(TargetTableColumn.START.toString());
-            columnNames.add(TargetTableColumn.END.toString());
+            columnNames.add(TargetTableColumns.CONTIG.toString());
+            columnNames.add(TargetTableColumns.START.toString());
+            columnNames.add(TargetTableColumns.END.toString());
         }
         if (useName) {
-            columnNames.add(TargetTableColumn.NAME.toString());
+            columnNames.add(TargetTableColumns.NAME.toString());
         }
         columnNames.add(sample);
         final TableColumnCollection columns = new TableColumnCollection(columnNames);

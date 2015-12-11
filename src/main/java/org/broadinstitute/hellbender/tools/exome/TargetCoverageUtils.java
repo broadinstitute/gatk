@@ -19,12 +19,12 @@ import java.util.stream.Collectors;
 
 
 public final class TargetCoverageUtils {
+    //TODO: these columns disagree with our standard uppercase ones
+    //TODO: this is necessary to match gatk-public, but it's really awful and must be fixed
     public static final String TARGET_NAME_COLUMN = "name";
     public static final String CONTIG_COLUMN = "contig";
     public static final String START_COLUMN = "start";
     public static final String END_COLUMN = "stop";
-
-    private static final String [] COLUMN_NAMES = {TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN};
 
     private TargetCoverageUtils() {}
 

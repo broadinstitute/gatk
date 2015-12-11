@@ -194,7 +194,6 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         if (line == null) {
             throw formatException("premature end of table: header line not found");
         } else {
-
             TableColumnCollection.checkNames(line, UserException.BadInput::new);
             columns = new TableColumnCollection(line);
             processColumns(columns);

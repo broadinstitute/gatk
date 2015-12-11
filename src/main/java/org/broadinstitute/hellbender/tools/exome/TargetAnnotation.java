@@ -18,26 +18,26 @@ public enum TargetAnnotation {
      * <p>This value is always a number between 0 and 1 except in very rare cases with small targets with all, undefined bases (N or X),
      * in this case it value will be {@link Double#NaN NaN}</p>.
      */
-    GC_CONTENT(TargetTableColumn.GC_CONTENT),
+    GC_CONTENT(TargetTableColumns.GC_CONTENT),
 
     /**
      * Fraction of bases in the target that have been marked as repeated somewhere else in the genome.
      *
      * <p>This value is always a number between 0 and 1 without exceptions.</p>
      */
-    REPEAT_FRACTION(TargetTableColumn.REPEAT_FRACTION);
+    REPEAT_FRACTION(TargetTableColumns.REPEAT_FRACTION);
 
     /**
      * Reference to the corresponding column in the targets table.
      */
-    public final TargetTableColumn column;
+    public final TargetTableColumns column;
 
     /**
      * Constructs a new annotation enum value.
      * @param column the corresponding column in the targets table.
      * @throws IllegalArgumentException if {@code column} is {@code null}.
      */
-    TargetAnnotation(final TargetTableColumn column) {
+    TargetAnnotation(final TargetTableColumns column) {
         this.column = Utils.nonNull(column);
     }
 }
