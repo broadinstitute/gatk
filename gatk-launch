@@ -164,7 +164,7 @@ def cacheJarOnGCS(jar, dryRun):
 
 def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
     if sparkRunner is None or sparkRunner == "LOCAL":
-        cmd = [getGatkWrapperScript()] + gatkArgs
+        cmd = [getGatkWrapperScript()] + gatkArgs + sparkArgs
         runCommand(cmd, dryrun)
     elif sparkRunner == "SPARK":
         cmd = [ getSparkSubmit(),
