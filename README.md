@@ -56,6 +56,10 @@ If you are looking for the codebase of the current production version of GATK, p
     * If you've previously built a Spark jar, you'll need to run `gradle clean` first to remove old versions
       of the jar from `build/libs`, otherwise `gatk-launch` will not know which jar to use.
 
+* To clean previous builds, run **`gradle clean`**
+    * If you get an error about "Multiple spark jars were found" when building using one of the commands above,
+      try cleaning before building.
+
 * For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.
   This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.
 
