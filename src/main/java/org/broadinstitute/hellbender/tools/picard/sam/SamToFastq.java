@@ -61,7 +61,7 @@ public final class SamToFastq extends PicardCommandLineProgram {
     @Argument(shortName = "FU", doc = "Output fastq file for unpaired reads; may only be provided in paired-fastq mode", optional = true, mutex = {"OUTPUT_PER_RG"})
     public File UNPAIRED_FASTQ;
 
-    @Argument(shortName = "OPRG", doc = "Output a fastq file per read group (two fastq files per read group if the group is paired).",
+    @Argument(shortName = "OPRG", fullName = "OUTPUT_PER_RG", doc = "Output a fastq file per read group (two fastq files per read group if the group is paired).",
             optional = true, mutex = {"FASTQ", "SECOND_END_FASTQ", "UNPAIRED_FASTQ"})
     public boolean OUTPUT_PER_RG;
 

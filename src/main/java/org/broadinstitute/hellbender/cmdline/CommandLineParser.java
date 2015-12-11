@@ -613,7 +613,7 @@ public final class CommandLineParser {
             for (final String argument : argumentAnnotation.mutex()) {
                 final ArgumentDefinition mutextArgumentDef = argumentMap.get(argument);
                 if (mutextArgumentDef != null) {
-                    mutextArgumentDef.mutuallyExclusive.add(field.getName());
+                    mutextArgumentDef.mutuallyExclusive.add(getArgumentNameForMutex(field, argumentAnnotation));
                 }
             }
             if (inArgumentMap(argumentDefinition)) {
@@ -624,6 +624,16 @@ public final class CommandLineParser {
             }
         } catch (final IllegalAccessException e) {
             throw new GATKException.ShouldNeverReachHereException("We should not have reached here because we set accessible to true", e);
+        }
+    }
+
+    private String getArgumentNameForMutex(final Field field, final Argument argumentAnnotation) {
+        if (!argumentAnnotation.fullName().isEmpty()) {
+            return argumentAnnotation.fullName();
+        } else if (!argumentAnnotation.shortName().isEmpty()) {
+            return argumentAnnotation.shortName();
+        } else {
+            return field.getName();
         }
     }
 

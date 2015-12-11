@@ -76,6 +76,17 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testPRNoFailWithHighMaxCycle", this);      //this just checks that the tool does not blow up
     }
 
+
+    @Test
+    public void testHelp() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -I " + hiSeqBamAligned +
+                        " --help --bqsr_recal_file " + resourceDir + "HiSeq.1mb.1RG.highMaxCycle.table.gz" +
+                        " -O /dev/null",
+                Arrays.<String>asList());
+        spec.executeTest("testHelp", this);      //this just checks that the tool does not blow up
+    }
+
     @Test
     public void testPRFailWithLowMaxCycle() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
