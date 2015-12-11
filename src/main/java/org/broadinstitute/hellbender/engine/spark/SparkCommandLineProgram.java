@@ -4,6 +4,7 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 
@@ -18,9 +19,6 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
             shortName = "apiKey", fullName = "apiKey", optional=true)
     protected String apiKey = null;
 
-    @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
-    protected String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
-
     @Argument(
             doc = "Name of the program running",
             shortName = "N",
@@ -29,9 +27,13 @@ public abstract class SparkCommandLineProgram extends CommandLineProgram impleme
     )
     public String programName;
 
+    @ArgumentCollection
+    public SparkCommandLineArgumentCollection sparkArgs = new SparkCommandLineArgumentCollection();
+
+
     @Override
     protected Object doWork() {
-        final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkMaster);
+        final JavaSparkContext ctx = SparkContextFactory.getSparkContext(getProgramName(), sparkArgs.getSparkProperties(), sparkArgs.getSparkMaster());
         try{
             runPipeline(ctx);
             return null;
