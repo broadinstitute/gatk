@@ -48,7 +48,7 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public CouldNotReadInputFile(String message, Exception e) {
-            super(String.format("Couldn't read file because %s caused by %s", message, getMessage(e)));
+            super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)));
         }
 
         public CouldNotReadInputFile(File file) {
@@ -56,15 +56,15 @@ public class UserException extends RuntimeException {
         }
 
         public CouldNotReadInputFile(File file, String message) {
-            super(String.format("Couldn't read file %s because %s", file.getAbsolutePath(), message));
+            super(String.format("Couldn't read file %s. Error was: %s", file.getAbsolutePath(), message));
         }
 
         public CouldNotReadInputFile(String file, String message) {
-            super(String.format("Couldn't read file %s because %s", file, message));
+            super(String.format("Couldn't read file %s. Error was: %s", file, message));
         }
 
         public CouldNotReadInputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't read file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)));
+            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file.getAbsolutePath(), message, getMessage(e)));
         }
 
         public CouldNotReadInputFile(File file, Exception e) {
