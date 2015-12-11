@@ -112,12 +112,9 @@ def getSparkJar():
         raise GATKLaunchException("No spark jar was found, please build one by running\n\n    " + script + "/gradlew sparkJar\n"
                              "or\n"
                              "    export GATK_SPARK_JAR=<path_to_spark_jar>")
-    elif len(sparkjars) > 1:
-        raise GATKLaunchException("Multiple spark jars were found please fix the problem by either:\n\n"
-                             "    export GATK_SPARK_JAR=<path_to_spark_jar>\n\nor\n\n"
-                             "   " + script + "/gradlew clean sparkJar")
     else:
-        return BIN_PATH+ "/" + sparkjars[0]
+        newest = max(sparkjars, key=lambda x: os.stat(BIN_PATH + "/" + x).st_mtime)
+        return BIN_PATH+ "/" + newest
 
 
 def md5(file):
