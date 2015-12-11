@@ -211,6 +211,9 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * If you push to master or mess the commit history, you owe us 1 growler or tasty snacks at happy hour. If you break the master build, you owe 3 growlers (or lots of tasty snacks). Beer may be replaced by wine (in the color and vintage of buyer's choosing) in proportions of 1 growler = 1 bottle. 
 
+##Note on 2bit Reference
+* Note: Some GATK Spark tools by default require the reference file to be in 2bit format (notably `BaseRecalibratorSpark`,`BQSRPipelineSpark` and `ReadsPipelineSpark`). You can convert your fasta to 2bit by using the `faToTwoBit` utility from [UCSC](http://hgdownload.soe.ucsc.edu/admin/exe/) - see also the [documentation for `faToTwoBit`](https://genome.ucsc.edu/goldenpath/help/blatSpec.html#faToTwoBitUsage).
+
 ##R Dependency
 Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convinience rather than a primary output.  
 
