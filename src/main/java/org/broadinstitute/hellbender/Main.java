@@ -134,7 +134,7 @@ public class Main {
         if (args.length < 1) {
             printUsage(classes, commandLineName);
         } else {
-            if (args[0].equals("-h")) {
+            if (args[0].equals("-h") || args[0].equals("--help")) {
                 printUsage(classes, commandLineName);
             } else {
                 if (simpleNameToClass.containsKey(args[0])) {
