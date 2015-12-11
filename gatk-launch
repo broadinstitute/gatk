@@ -33,12 +33,16 @@ def main(args):
     try:
         if len(args) is 0:
             print("")
-            print("Usage:")
             print(" Usage template for all tools (uses --sparkRunner DIRECT when used with a Spark tool)")
             print("    ./gatk-launch AnyTool toolArgs")
             print("")
             print(" Usage template for Spark tools (will NOT work on non-Spark tools)")
             print("    ./gatk-launch SparkTool toolArgs  [ -- --sparkRunner <DIRECT | SUBMIT | GCS> sparkArgs ]")
+            print("")
+            print(" Usage help")
+            print("    ./gatk-launch --help      Print the list of available tools" )
+            print("")
+            print("    ./gatk-launch Tool --help  Print help on a particular tool" )
             print("")
             print("gatk-launch forwards commands to GATK and adds some sugar for submitting spark jobs")
             print("")
