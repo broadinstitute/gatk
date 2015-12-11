@@ -32,7 +32,8 @@ If you are looking for the codebase of the current production version of GATK, p
 ##Quick Start Guide
 
 * Build the GATK: `gradle installAll`
-* Get a list of available tools: `./gatk-launch --help`
+* Get help on running the GATK: `./gatk-launch --help`
+* Get a list of available tools: `./gatk-launch --list`
 * Run a tool: `./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam`
 * Get help on a particular tool: `./gatk-launch PrintReads --help`
 
@@ -65,7 +66,9 @@ If you are looking for the codebase of the current production version of GATK, p
     * You need to have built the GATK as described in the "Building GATK4" section above before running this script.
     * Can run non-Spark tools as well as Spark tools, and can run Spark tools locally, on a Spark cluster, or on Google Cloud Dataproc.
 
-* To print a list of available tools, run **`./gatk-launch --help`**.
+* For help on using `gatk-launch` itself, run **`./gatk-launch --help`**
+
+* To print a list of available tools, run **`./gatk-launch --list`**.
     * Spark-based tools will have a name ending in `Spark` (eg., `BaseRecalibratorSpark`) and will be in one of the
       `Spark` categories. All other tools are non-Spark-based.
 
