@@ -23,7 +23,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -43,8 +42,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
                 // is not consistent with the definition of coordinate sorting as defined in
                 // htsjdk.samtools.SAMRecordCoordinateComparator
                 {testDataDir + "tools/BQSR/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam", "ReadsSparkSinkUnitTest3", ".bam"},
-
-                {NA12878_20_21_WGS_bam , "ReadsSparkSinkUnitTest4", ".bam"}
         };
     }
 
