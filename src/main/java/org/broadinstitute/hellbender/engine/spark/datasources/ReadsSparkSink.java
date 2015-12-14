@@ -15,7 +15,6 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
-import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -35,16 +34,11 @@ import org.seqdoop.hadoop_bam.SAMFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMOutputPreparer;
 import scala.Tuple2;
-import scala.math.Ordering;
-import scala.math.Ordering$;
-import scala.reflect.ClassTag;
-import scala.reflect.ClassTag$;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
-import java.util.Comparator;
 
 /**
  * ReadsSparkSink writes GATKReads to a file. This code lifts from the HadoopGenomics/Hadoop-BAM
@@ -176,7 +170,7 @@ public final class ReadsSparkSink {
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
         final JavaPairRDD<SAMRecord, Void> out =
-                totalSortByKey(rddReadPairs, new HeaderlessSAMRecordCoordinateComparator(header), SAMRecord.class);
+                rddReadPairs.sortByKey(new HeaderlessSAMRecordCoordinateComparator(header));
 
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         // MyOutputFormat.setHeader.
@@ -197,22 +191,6 @@ public final class ReadsSparkSink {
         // Use SparkHeaderlessBAMOutputFormat so that the header is not written for each part file
         finalOut.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, SparkHeaderlessBAMOutputFormat.class);
         mergeBam(outputFile, header);
-    }
-
-    /**
-     * Perform a totally-ordered sort by the given RDD's keys, so that the keys within a partition are sorted and, in
-     * addition, all the keys in partition <i>i</i> are less than those in partition <i>i+1</i>. The implementation uses
-     * Spark's RangePartitioner to create roughly equal partitions by sampling the keys in the RDD.
-     */
-    public static <K, V> JavaPairRDD<K, V> totalSortByKey(JavaPairRDD<K, V> rdd, Comparator<K> comparator, Class<K> keyClass) {
-        int numPartitions = rdd.partitions().size();
-        if (numPartitions == 1) {
-            return rdd.sortByKey(comparator);
-        }
-        Ordering<K> ordering = Ordering$.MODULE$.comparatorToOrdering(comparator);
-        ClassTag<K> tag = ClassTag$.MODULE$.apply(keyClass);
-        RangePartitioner<K, V> partitioner = new RangePartitioner<>(numPartitions, rdd.rdd(), true, ordering, tag);
-        return rdd.repartitionAndSortWithinPartitions(partitioner, comparator);
     }
 
     private static void deleteHadoopFile(String fileToObliterate) throws IOException {
