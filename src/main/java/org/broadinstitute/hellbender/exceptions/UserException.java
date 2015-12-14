@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.exceptions;
 
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -414,6 +416,20 @@ public class UserException extends RuntimeException {
 
         public NoSuitableCodecs(final File file) {
             super("Cannot read " + file + " because no suitable codecs found");
+        }
+    }
+
+    public static final class WrongFeatureType extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public WrongFeatureType( final File featureFile, final Class<? extends Feature> requiredFeatureType ) {
+            super(String.format("File %s is of the wrong type. It should contain Features of type %s, but instead contains Features of a different type.",
+                                featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName()));
+        }
+
+        public WrongFeatureType( final File featureFile, final Class<? extends Feature> requiredFeatureType, final List<String> actualFeatureTypes ) {
+            super(String.format("File %s is of the wrong type. It should contain Features of type %s, but instead contains Features of type(s): %s",
+                                featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
         }
     }
 }

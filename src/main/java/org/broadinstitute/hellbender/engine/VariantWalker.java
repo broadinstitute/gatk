@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 import java.util.Collections;
@@ -60,18 +59,15 @@ public abstract class VariantWalker extends GATKTool {
     private void initializeDrivingVariants() {
         // Need to discover the right codec for the driving source of variants manually, since we are
         // treating it specially (separate from the other sources of Features in our FeatureManager).
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile);
-        if (VariantContext.class.equals(codec.getFeatureType())) {
-            //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
-            drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec, "drivingVariants", FEATURE_CACHE_LOOKAHEAD);
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile, VariantContext.class);
 
-            //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
-            //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
-            drivingVariantsFeatureInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingVariantFile);
-            features.addToFeatureSources(0, drivingVariantsFeatureInput, StandardArgumentDefinitions.VARIANT_LONG_NAME, StandardArgumentDefinitions.VARIANT_SHORT_NAME, codec.getFeatureType());
-        } else {
-            throw new UserException("File " + drivingVariantFile + " cannot be decoded as a variant file.");
-        }
+        //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
+        drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec, "drivingVariants", FEATURE_CACHE_LOOKAHEAD);
+
+        //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
+        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        drivingVariantsFeatureInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingVariantFile);
+        features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class);
 
         if ( hasIntervals() ) {
             drivingVariants.setIntervalsForTraversal(intervalsForTraversal);

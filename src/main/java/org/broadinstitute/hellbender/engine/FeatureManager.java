@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -133,13 +134,10 @@ public final class FeatureManager implements AutoCloseable {
         for ( final Pair<Field, FeatureInput> featureArgument : featureArgumentValues ) {
             final FeatureInput<? extends Feature> featureInput = featureArgument.getValue();
 
-            final String fullName = featureArgument.getKey().getAnnotation(Argument.class).fullName();
-            final String shortName = featureArgument.getKey().getAnnotation(Argument.class).shortName();
-
             // Only create a data source for Feature arguments that were actually specified
             if ( featureInput != null ) {
                 final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
-                addToFeatureSources(featureQueryLookahead, featureInput, fullName, shortName, featureType);
+                addToFeatureSources(featureQueryLookahead, featureInput, featureType);
             }
         }
     }
@@ -150,32 +148,18 @@ public final class FeatureManager implements AutoCloseable {
      *
      * @param featureQueryLookahead look ahead this many bases during queries that produce cache misses
      * @param featureInput source of features
-     * @param fullName full name of the argument (used in error message)
-     * @param shortName short name of the argument (used in error message)
      * @param featureType class of features
      * Note: package-visible to enable access from the core walker classes
      * (but not actual tools, so it's not protected).
      */
-    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final String fullName, final String shortName, final Class<? extends Feature> featureType) {
+    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType) {
         // Record the expected Feature type as declared in the parameterized type of the Field declaration
         // (eg., VariantContext if the field was a FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>).
         // This is used for type-checking purposes.
         featureInput.setFeatureType(featureType);
 
         // Select the right codec for decoding the underlying file
-        final FeatureCodec<? extends Feature, ?> codec = getCodecForFile(featureInput.getFeatureFile());
-
-        // Make sure that the declared Feature type for the argument matches the actual type of Feature
-        // that we will be getting from the selected codec
-        if ( ! featureType.isAssignableFrom(codec.getFeatureType()) ) {
-            throw new UserException(String.format("Argument --%s/-%s requires file(s) containing Features of type %s, " +
-                                                  "but file %s contains Features of type %s",
-                                                  fullName,
-                                                  shortName,
-                                                  featureType,
-                                                  featureInput.getFeatureFile().getAbsolutePath(),
-                                                  codec.getFeatureType()));
-        }
+        final FeatureCodec<? extends Feature, ?> codec = getCodecForFile(featureInput.getFeatureFile(), featureType);
 
         // Create a new FeatureDataSource for this file, and add it to our query pool
         featureSources.put(featureInput, new FeatureDataSource<>(featureInput.getFeatureFile(), codec, featureInput.getName(), featureQueryLookahead));
@@ -341,6 +325,27 @@ public final class FeatureManager implements AutoCloseable {
      * @return the codec suitable for decoding the provided file
      */
     public static FeatureCodec<? extends Feature, ?> getCodecForFile( final File featureFile ) {
+        return getCodecForFile(featureFile, null);
+    }
+
+    /**
+     * Utility method that determines the correct codec to use to read Features from the provided file,
+     * optionally considering only codecs that produce a particular type of Feature.
+     *
+     * Codecs MUST correctly implement the {@link FeatureCodec#canDecode(String)} method
+     * in order to be considered as candidates for decoding the file, and must produce
+     * Features of the specified type if featureType is non-null.
+     *
+     * Throws an exception if no suitable codecs are found (this is a user error, since the file is of
+     * an unsupported format), or if more than one codec claims to be able to decode the file (this is
+     * a configuration error on the codec authors' part).
+     *
+     * @param featureFile file for which to find the right codec
+     * @param featureType If specified, consider only codecs that produce Features of this type. May be null,
+     *                    in which case all codecs are considered.
+     * @return the codec suitable for decoding the provided file
+     */
+    public static FeatureCodec<? extends Feature, ?> getCodecForFile( final File featureFile, final Class<? extends Feature> featureType ) {
         // Make sure file exists/is readable
         if ( ! featureFile.canRead() ) {
             throw new UserException.CouldNotReadInputFile(featureFile);
@@ -354,8 +359,20 @@ public final class FeatureManager implements AutoCloseable {
         if ( candidateCodecs.isEmpty() ) {
             throw new UserException.NoSuitableCodecs(featureFile);
         }
-        // If multiple codecs can handle the file, it's a configuration error on the part of the codec authors
-        else if ( candidateCodecs.size() > 1 ) {
+
+        // If featureType was specified, subset to only codecs that produce the requested type of Feature,
+        // and throw an error if there are no such codecs.
+        if ( featureType != null ) {
+            final List<String> discoveredCodecsFeatureTypes = candidateCodecs.stream().map(codec -> codec.getFeatureType().getSimpleName()).collect(Collectors.toList());
+            candidateCodecs.removeIf(codec -> ! featureType.isAssignableFrom(codec.getFeatureType()));
+
+            if ( candidateCodecs.isEmpty() ) {
+                throw new UserException.WrongFeatureType(featureFile, featureType, discoveredCodecsFeatureTypes);
+            }
+        }
+
+        // If we still have multiple candidate codecs, it's a configuration error on the part of the codec authors
+        if ( candidateCodecs.size() > 1 ) {
             final StringBuilder multiCodecMatches = new StringBuilder();
             for ( FeatureCodec<? extends Feature, ?> candidateCodec : candidateCodecs ) {
                 multiCodecMatches.append(candidateCodec.getClass().getCanonicalName());
