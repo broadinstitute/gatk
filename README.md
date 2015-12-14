@@ -23,7 +23,7 @@ If you are looking for the codebase of the current production version of GATK, p
 * Git 2.5 or greater
 * Optional, but recommended:
     * Gradle 2.7 or greater (needed for building the GATK, but can use the bundled `./gradlew` script instead which will
-      download an appropriate gradle version for you automatically)
+      download an appropriate gradle version for you automatically: just replace `gradle` with `./gradlew` in the commands below)
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
@@ -53,8 +53,6 @@ If you are looking for the codebase of the current production version of GATK, p
     * The resulting jar will be in `build/libs/` and will have a name like `gatk-all-*-SNAPSHOT-spark.jar`
     * This jar will not include Spark and Hadoop libraries, in order to allow
       the versions of Spark and Hadoop installed on your cluster to be used.
-    * If you've previously built a Spark jar, you'll need to run `gradle clean` first to remove old versions
-      of the jar from `build/libs`, otherwise `gatk-launch` will not know which jar to use.
 
 * To remove previous builds, run **`gradle clean`**
 
