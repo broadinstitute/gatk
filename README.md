@@ -59,6 +59,9 @@ If you are looking for the codebase of the current production version of GATK, p
 * For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.
   This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.
 
+* Gradle keeps a cache of dependencies used to build GATK.  By default this goes in `~/.gradle`.  If there is insufficient free space in your home directory, you can change the location of the cache by setting the `GRADLE_USER_HOME` environment variable.
+
+
 ##Running GATK4
 
 * The standard way to run GATK4 tools is via the **`gatk-launch`** wrapper script located in the root directory of a clone of this repository.
