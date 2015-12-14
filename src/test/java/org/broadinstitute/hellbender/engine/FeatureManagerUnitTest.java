@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
 import htsjdk.variant.bcf2.BCF2Codec;
@@ -42,9 +44,15 @@ public final class FeatureManagerUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "DetectCorrectFileFormatTestData")
-    public void testDetectCorrectFileFormat( final File file, final Class<?> expectedCodecClass ) {
+    public void testDetectCorrectFileFormat( final File file, final Class<? extends FeatureCodec<? extends Feature, ?>> expectedCodecClass ) throws Exception {
         Assert.assertEquals(FeatureManager.getCodecForFile(file).getClass(), expectedCodecClass,
                             "Wrong codec selected for file " + file.getAbsolutePath());
+
+        // We should also get the correct codec if we pass in the explicit expected Feature type to getCodecForFile()
+        @SuppressWarnings("unchecked")
+        final Class<? extends Feature> expectedCodecFeatureType = expectedCodecClass.newInstance().getFeatureType();
+        Assert.assertEquals(FeatureManager.getCodecForFile(file, expectedCodecFeatureType).getClass(), expectedCodecClass,
+                "Wrong codec selected for file " + file.getAbsolutePath() + " after subsetting to the expected Feature type");
     }
 
     @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
@@ -56,6 +64,14 @@ public final class FeatureManagerUnitTest extends BaseTest {
 
         // Should throw, since the file exists and is readable, but is in an unsupported format
         FeatureManager.getCodecForFile(unsupportedFile);
+    }
+
+    @Test(expectedExceptions = UserException.WrongFeatureType.class)
+    public void testRestrictCodecSelectionToWrongFeatureType() {
+        final File vcf = new File(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_vcf4_file.vcf");
+
+        // If we require BED Features from this vcf file, we should get a type mismatch exception
+        FeatureManager.getCodecForFile(vcf, BEDFeature.class);
     }
 
     @DataProvider(name = "IsFeatureFileTestData")
