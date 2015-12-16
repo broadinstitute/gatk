@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.UUID;
 
 /**
  * ReadsSparkSink writes GATKReads to a file. This code lifts from the HadoopGenomics/Hadoop-BAM
@@ -66,7 +67,7 @@ public final class ReadsSparkSink {
                 super.checkOutputSpecs(job);
             } catch (FileAlreadyExistsException e) {
                 // delete existing files before overwriting them
-                Path outDir = getOutputPath(job);
+                final Path outDir = getOutputPath(job);
                 outDir.getFileSystem(job.getConfiguration()).delete(outDir, true);
             }
         }
@@ -100,12 +101,12 @@ public final class ReadsSparkSink {
         // for efficient serialization.
         final JavaRDD<SAMRecord> samReads = reads.map(read -> read.convertToSAMRecord(null));
 
-        if (format.equals(ReadsWriteFormat.SINGLE)) {
+        if (format == ReadsWriteFormat.SINGLE) {
             header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
             writeReadsSingle(ctx, outputFile, samReads, header);
-        } else if (format.equals(ReadsWriteFormat.SHARDED)) {
+        } else if (format == ReadsWriteFormat.SHARDED) {
             writeReadsSharded(ctx, outputFile, samReads, header);
-        } else if (format.equals(ReadsWriteFormat.ADAM)) {
+        } else if (format == ReadsWriteFormat.ADAM) {
             writeReadsADAM(ctx, outputFile, samReads, header);
         }
     }
@@ -113,9 +114,9 @@ public final class ReadsSparkSink {
     private static void writeReadsADAM(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header) throws IOException {
-        SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-        RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
-        JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
+        final SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
+        final RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
+        final JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
                 reads.map(read -> {
                     read.setHeader(header);
                     AlignmentRecord alignmentRecord = GATKReadToBDGAlignmentRecordConverter.convert(read, seqDict, readGroups);
@@ -123,7 +124,7 @@ public final class ReadsSparkSink {
                     return alignmentRecord;
                 }).mapToPair(alignmentRecord -> new Tuple2<>(null, alignmentRecord));
         // instantiating a Job is necessary here in order to set the Hadoop Configuration...
-        Job job = Job.getInstance(ctx.hadoopConfiguration());
+        final Job job = Job.getInstance(ctx.hadoopConfiguration());
         // ...here, which sets a config property that the AvroParquetOutputFormat needs when writing data. Specifically,
         // we are writing the Avro schema to the Configuration as a JSON string. The AvroParquetOutputFormat class knows
         // how to translate objects in the Avro data model to the Parquet primitives that get written.
@@ -140,16 +141,16 @@ public final class ReadsSparkSink {
         SparkBAMOutputFormat.setHeader(header);
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         final Broadcast<SAMFileHeader> broadcast = ctx.broadcast(header);
-        JavaRDD<SAMRecord> readsRDD = reads.mapPartitions(readIterator -> {
+        final JavaRDD<SAMRecord> readsRDD = reads.mapPartitions(readIterator -> {
             SparkBAMOutputFormat.setHeader(broadcast.getValue());
             return new IteratorIterable<>(readIterator);
         });
 
         // The expected format for writing is JavaPairRDD where the key is ignored and the value is a
         // SAMRecordWritable. We use SAMRecord as the key, so we can sort the reads before writing them to a file.
-        JavaPairRDD<SAMRecord, SAMRecordWritable> rddSamRecordWriteable = readsRDD.mapToPair(read -> {
+        final JavaPairRDD<SAMRecord, SAMRecordWritable> rddSamRecordWriteable = readsRDD.mapToPair(read -> {
             read.setHeader(broadcast.getValue());
-            SAMRecordWritable samRecordWritable = new SAMRecordWritable();
+            final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
             samRecordWritable.set(read);
             return new Tuple2<>(read, samRecordWritable);
         });
@@ -166,7 +167,7 @@ public final class ReadsSparkSink {
 
         // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
         // of data going through the shuffle.
-        JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
+        final JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
         final JavaPairRDD<SAMRecord, Void> out =
@@ -180,9 +181,9 @@ public final class ReadsSparkSink {
             SparkBAMOutputFormat.setHeader(broadcast.getValue());
             return new IteratorIterable<>(tuple2Iterator);
         }).mapToPair(t -> {
-            SAMRecord samRecord = t._1();
+            final SAMRecord samRecord = t._1();
             samRecord.setHeader(header);
-            SAMRecordWritable samRecordWritable = new SAMRecordWritable();
+            final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
             samRecordWritable.set(samRecord);
             return new Tuple2<>(samRecord, samRecordWritable);
         });
@@ -194,8 +195,8 @@ public final class ReadsSparkSink {
     }
 
     private static void deleteHadoopFile(String fileToObliterate) throws IOException {
-        Configuration conf = new Configuration();
-        FileSystem fs = FileSystem.get(conf);
+        final Configuration conf = new Configuration();
+        final FileSystem fs = FileSystem.get(conf);
         fs.delete(new Path(fileToObliterate), true);
     }
 
@@ -206,23 +207,27 @@ public final class ReadsSparkSink {
         // terminating end-of-file marker. Note that this has the side effect of being ever-so-slightly less efficient
         // than writing a BAM in one go because the last block of each file isn't completely full.
 
-        Configuration conf = new Configuration();
-        FileSystem fs = FileSystem.get(conf);
-        String outputParentDir = outputFile.substring(0, outputFile.lastIndexOf("/") + 1);
+        final Configuration conf = new Configuration();
+        final FileSystem fs = FileSystem.get(conf);
+        final String outputParentDir = outputFile.substring(0, outputFile.lastIndexOf('/') + 1);
         // First, check for the _SUCCESS file.
-        String successFile = outputFile + "/_SUCCESS";
+        final String successFile = outputFile + "/_SUCCESS";
         if (!fs.exists(new Path(successFile))) {
             throw new GATKException("unable to find " + successFile + " file");
         }
-        String tmpPath = outputParentDir + "tmp" + System.currentTimeMillis();
-        fs.rename(new Path(outputFile), new Path(tmpPath));
-        fs.delete(new Path(outputFile), true);
+        final Path outputPath = new Path(outputFile);
+        final Path tmpPath = new Path(outputParentDir + "tmp" + UUID.randomUUID());
 
-        try (final OutputStream out = fs.create(new Path(outputFile))) {
+        fs.rename(outputPath, tmpPath);
+        fs.delete(outputPath, true);
+
+        try (final OutputStream out = fs.create(outputPath)) {
             new SAMOutputPreparer().prepareForRecords(out, SAMFormat.BAM, header); // write the header
-            mergeInto(out, new Path(tmpPath), conf);
+            mergeInto(out, tmpPath, conf);
             out.write(BlockCompressedStreamConstants.EMPTY_GZIP_BLOCK); // add the BGZF terminator
         }
+        
+        fs.delete(tmpPath, true);
     }
 
     private static void mergeInto(OutputStream out, Path directory, Configuration conf) throws IOException {
