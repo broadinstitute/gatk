@@ -139,8 +139,8 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public GATKReportTable generateReportTable(final String covariateNames) {
         GATKReportTable argumentsTable;
         argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2, GATKReportTable.Sorting.SORT_BY_COLUMN);
-        argumentsTable.addColumn("Argument");
-        argumentsTable.addColumn(RecalUtils.ARGUMENT_VALUE_COLUMN_NAME);
+        argumentsTable.addColumn("Argument", "%s");
+        argumentsTable.addColumn(RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, "");
         argumentsTable.addRowID("covariate", true);
         argumentsTable.set("covariate", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, covariateNames);
         argumentsTable.addRowID("no_standard_covs", true);

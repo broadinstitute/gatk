@@ -1,0 +1,133 @@
+#:GATKReport.v1.1:5
+#:GATKTable:2:18:%s:%s:;
+#:GATKTable:Arguments:Recalibration argument collection values used in this run
+Argument                    Value                                                                   
+binary_tag_name             null                                                                    
+covariate                   ReadGroupCovariate,QualityScoreCovariate,ContextCovariate,CycleCovariate
+default_platform            null                                                                    
+deletions_default_quality   45                                                                      
+force_platform              null                                                                    
+indels_context_size         3                                                                       
+insertions_default_quality  45                                                                      
+low_quality_tail            2                                                                       
+maximum_cycle_value         500                                                                     
+mismatches_context_size     3                                                                       
+mismatches_default_quality  -1                                                                      
+no_standard_covs            false                                                                   
+plot_pdf_file               null                                                                    
+quantizing_levels           16                                                                      
+recalibration_report        null                                                                    
+run_without_dbsnp           false                                                                   
+solid_nocall_strategy       THROW_EXCEPTION                                                         
+solid_recal_mode            SET_Q_ZERO                                                              
+
+#:GATKTable:3:94:%s:%s:%s:;
+#:GATKTable:Quantized:Quality quantization map
+QualityScore  Count  QuantizedScore
+           0      0              93
+           1      0              93
+           2      0              93
+           3      0              93
+           4      0              93
+           5      0              93
+           6      0              93
+           7      0              93
+           8      0              93
+           9      0              93
+          10      0              93
+          11      0              93
+          12      0              93
+          13      0              93
+          14      0              93
+          15      0              93
+          16      0              93
+          17      0              93
+          18      0              93
+          19      0              93
+          20      0              93
+          21      0              93
+          22      0              93
+          23      0              93
+          24      0              93
+          25      0              93
+          26      0              93
+          27      0              93
+          28      0              93
+          29      0              93
+          30      0              93
+          31      0              93
+          32      0              93
+          33      0              93
+          34      0              93
+          35      0              93
+          36      0              93
+          37      0              93
+          38      0              93
+          39      0              93
+          40      0              93
+          41      0              93
+          42      0              93
+          43      0              93
+          44      0              93
+          45      0              93
+          46      0              93
+          47      0              93
+          48      0              93
+          49      0              93
+          50      0              93
+          51      0              93
+          52      0              93
+          53      0              93
+          54      0              93
+          55      0              93
+          56      0              93
+          57      0              93
+          58      0              93
+          59      0              93
+          60      0              93
+          61      0              93
+          62      0              93
+          63      0              93
+          64      0              93
+          65      0              93
+          66      0              93
+          67      0              93
+          68      0              93
+          69      0              93
+          70      0              93
+          71      0              93
+          72      0              93
+          73      0              93
+          74      0              93
+          75      0              93
+          76      0              93
+          77      0              93
+          78      0              93
+          79      0              79
+          80      0              80
+          81      0              81
+          82      0              82
+          83      0              83
+          84      0              84
+          85      0              85
+          86      0              86
+          87      0              87
+          88      0              88
+          89      0              89
+          90      0              90
+          91      0              91
+          92      0              92
+          93      0              93
+
+#:GATKTable:6:0:%s:%s:%.4f:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable0:
+ReadGroup  EventType  EmpiricalQuality  EstimatedQReported  Observations  Errors
+
+#:GATKTable:6:0:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable1:
+ReadGroup  QualityScore  EventType  EmpiricalQuality  Observations  Errors
+
+#:GATKTable:8:0:%s:%s:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable2:
+ReadGroup  QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors
+

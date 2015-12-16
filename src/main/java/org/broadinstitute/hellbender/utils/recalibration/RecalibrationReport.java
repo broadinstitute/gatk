@@ -1,21 +1,30 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -23,6 +32,7 @@ import java.util.TreeSet;
  * This class has all the static functionality for reading a recalibration report file into memory. 
  */
 public final class RecalibrationReport {
+    private static final Logger logger = LogManager.getLogger(RecalibrationReport.class);
     private QuantizationInfo quantizationInfo; // histogram containing the counts for qual quantization (calculated after recalibration is done)
     private final RecalibrationTables recalibrationTables; // quick access reference to the tables
     private final StandardCovariateList covariates; // list of all covariates to be used in this calculation
@@ -39,14 +49,14 @@ public final class RecalibrationReport {
     }
 
     public RecalibrationReport(final GATKReport report){
-        this(report, getReadGroups(report));
+        this(report, report.getReadGroups());
     }
 
     public RecalibrationReport(final GATKReport report, final SortedSet<String> allReadGroups) {
         argumentTable = report.getTable(RecalUtils.ARGUMENT_REPORT_TABLE_TITLE);
         RAC = initializeArgumentCollectionTable(argumentTable);
 
-        GATKReportTable quantizedTable = report.getTable(RecalUtils.QUANTIZED_REPORT_TABLE_TITLE);
+        final GATKReportTable quantizedTable = report.getTable(RecalUtils.QUANTIZED_REPORT_TABLE_TITLE);
         quantizationInfo = initializeQuantizationTable(quantizedTable);
 
         covariates = new StandardCovariateList(RAC, new ArrayList<>(allReadGroups));
@@ -64,18 +74,72 @@ public final class RecalibrationReport {
     }
 
     /**
-     * Gets the unique read groups in the table
-     *
-     * @param report the GATKReport containing the table with RecalUtils.READGROUP_REPORT_TABLE_TITLE
-     * @return the unique read groups
+     * Gather multiple {@link RecalibrationReport}s into a single file
+     * @param inputs a list of {@link RecalibrationReport} files to gather
+     * @param output a file to write the recalibration reports to
      */
-    private static SortedSet<String> getReadGroups(final GATKReport report) {
-        final GATKReportTable reportTable = report.getTable(RecalUtils.READGROUP_REPORT_TABLE_TITLE);
-        final SortedSet<String> readGroups = new TreeSet<>();
-        for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
-            readGroups.add(reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME).toString());
+    public static void gatherReportsIntoOneFile(final List<File> inputs, final File output) {
+        Utils.nonNull(inputs, "inputs");
+        Utils.nonNull(output, "output");
+        try (final PrintStream outputFile = new PrintStream(output)){
+            final GATKReport report = gatherReports(inputs);
+            report.print(outputFile);
+        } catch(final FileNotFoundException e) {
+            throw new UserException.CouldNotCreateOutputFile(output, e);
         }
-        return readGroups;
+    }
+
+    /**
+     * Gathers a set of files containing {@link RecalibrationReport}s into a single {@link GATKReport}.
+     *
+     * @param inputs a list of files containing {@link RecalibrationReport}s
+     * @return gathered recalibration GATK report
+     */
+    public static GATKReport gatherReports(final List<File> inputs) {
+        Utils.nonNull(inputs);
+        if ( inputs.isEmpty()) { throw new IllegalArgumentException("Cannot gather an empty list of inputs"); }
+
+        final SortedSet<String> allReadGroups = new TreeSet<>();
+        final Map<File, Set<String>> inputReadGroups = new LinkedHashMap<>();
+
+        // Get the read groups from each input report
+        for (final File input : inputs) {
+            final GATKReport report = new GATKReport(input);
+            final Set<String> readGroups = report.getReadGroups();
+            inputReadGroups.put(input, readGroups);
+            allReadGroups.addAll(readGroups);
+        }
+
+        logTablesWithMissingReadGroups(allReadGroups, inputReadGroups);
+
+        final RecalibrationReport result = inputs.stream()
+                .map(i -> new RecalibrationReport(new GATKReport(i), allReadGroups))
+                .reduce(RecalibrationReport::combine)
+                .filter(r -> !r.isEmpty())
+                .orElseThrow(() -> new GATKException("there is no usable data in any input file") );
+
+        result.quantizationInfo = new QuantizationInfo(result.recalibrationTables, result.RAC.QUANTIZING_LEVELS);
+        return result.createGATKReport();
+    }
+
+    /**
+     * helper function to output log messages if there are tables that are missing read groups that were seen in the other tables
+     * @param allReadGroups a set of all of the read groups across inputs
+     * @param inputReadGroups a map from file to the read groups that file contains
+     */
+    private static void logTablesWithMissingReadGroups(SortedSet<String> allReadGroups, Map<File, Set<String>> inputReadGroups) {
+        // Log the read groups that are missing from specific inputs
+        for (final Map.Entry<File, Set<String>> entry: inputReadGroups.entrySet()) {
+            final File input = entry.getKey();
+            final Set<String> readGroups = entry.getValue();
+            if (allReadGroups.size() != readGroups.size()) {
+                // Since this is not completely unexpected, more than debug, but less than a proper warning.
+                logger.info("Missing read group(s)" + ": " + input.getAbsolutePath());
+                for (final Object readGroup: CollectionUtils.subtract(allReadGroups, readGroups)) {
+                    logger.info("  " + readGroup);
+                }
+            }
+        }
     }
 
     /**
@@ -91,12 +155,16 @@ public final class RecalibrationReport {
     *
     * @param other the recalibration report to combine with this one
     */
-    public void combine(final RecalibrationReport other) {
+    public RecalibrationReport combine(final RecalibrationReport other) {
+        if (other.isEmpty()){
+            return this;
+        }
         for ( int tableIndex = 0; tableIndex < recalibrationTables.numTables(); tableIndex++ ) {
             final NestedIntegerArray<RecalDatum> myTable = recalibrationTables.getTable(tableIndex);
             final NestedIntegerArray<RecalDatum> otherTable = other.recalibrationTables.getTable(tableIndex);
             RecalUtils.combineTables(myTable, otherTable);
         }
+        return this;
     }
 
     public QuantizationInfo getQuantizationInfo() {
@@ -190,7 +258,7 @@ public final class RecalibrationReport {
         }
     }
 
-    private double asDouble(final Object o) {
+    private static double asDouble(final Object o) {
         if ( o instanceof Double)
             return (Double)o;
         else if ( o instanceof Integer)
@@ -201,7 +269,7 @@ public final class RecalibrationReport {
             throw new GATKException("Object " + o + " is expected to be either a double, long or integer but it's not either: " + o.getClass());
     }
 
-    private long asLong(final Object o) {
+    private static long asLong(final Object o) {
         if ( o instanceof Long)
             return (Long)o;
         else if ( o instanceof Integer)
@@ -212,7 +280,7 @@ public final class RecalibrationReport {
             throw new GATKException("Object " + o + " is expected to be a long but it's not: " + o.getClass());
     }
 
-    private RecalDatum getRecalDatum(final GATKReportTable reportTable, final int row, final boolean hasEstimatedQReportedColumn) {
+    private static RecalDatum getRecalDatum(final GATKReportTable reportTable, final int row, final boolean hasEstimatedQReportedColumn) {
         final long nObservations = asLong(reportTable.get(row, RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME));
         final double nErrors = asDouble(reportTable.get(row, RecalUtils.NUMBER_ERRORS_COLUMN_NAME));
 
@@ -233,7 +301,7 @@ public final class RecalibrationReport {
      * @param table the GATKReportTable containing the quantization mappings
      * @return an ArrayList with the quantization mappings from 0 to MAX_SAM_QUAL_SCORE
      */
-    private QuantizationInfo initializeQuantizationTable(GATKReportTable table) {
+    private static QuantizationInfo initializeQuantizationTable(GATKReportTable table) {
         final Byte[] quals  = new Byte[QualityUtils.MAX_SAM_QUAL_SCORE + 1];
         final Long[] counts = new Long[QualityUtils.MAX_SAM_QUAL_SCORE + 1];
         for ( int i = 0; i < table.getNumRows(); i++ ) {
@@ -254,7 +322,7 @@ public final class RecalibrationReport {
      * @param table the GATKReportTable containing the arguments and its corresponding values
      * @return a RAC object properly initialized with all the objects in the table
      */
-    private RecalibrationArgumentCollection initializeArgumentCollectionTable(GATKReportTable table) {
+    private static RecalibrationArgumentCollection initializeArgumentCollectionTable(GATKReportTable table) {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
         final List<String> standardCovariateClassNames = new StandardCovariateList(RAC, Collections.emptyList()).getStandardCovariateClassNames();
@@ -328,21 +396,26 @@ public final class RecalibrationReport {
         return RAC;
     }
 
-    private byte decodeByte(final Object value) {
-        if (!(value instanceof Byte || value instanceof String)){
-            throw new IllegalArgumentException("expected a Byte or a String but got " + value);
+    private static byte decodeByte(final Object value) {
+        if (value instanceof Byte){
+            return (Byte)value;
+        } else if ( value instanceof String ) {
+            return Byte.parseByte((String)value);
+        } else if ( value instanceof Long ) {
+            return ((Long) value).byteValue();
+        } else {
+            throw new IllegalArgumentException("expected a Byte, String, or Long, but got " + value);
         }
-        return value instanceof Byte ? (Byte)value: Byte.parseByte((String)value);
     }
 
-    private int decodeInteger(final Object value) {
+    private static int decodeInteger(final Object value) {
         if (!(value instanceof Integer || value instanceof String)){
             throw new IllegalArgumentException("expected a Integer or a String but got " + value);
         }
         return value instanceof Integer ? (Integer) value: Integer.parseInt((String)value);
     }
 
-    private boolean decodeBoolean(final Object value) {
+    private static boolean decodeBoolean(final Object value) {
         if (!(value instanceof Boolean || value instanceof String)){
             throw new IllegalArgumentException("expected a Boolean or a String but got " + value);
         }
@@ -368,4 +441,5 @@ public final class RecalibrationReport {
     public boolean isEmpty() {
         return recalibrationTables.isEmpty();
     }
+
 }

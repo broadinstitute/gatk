@@ -20,7 +20,7 @@ run_without_dbsnp           false
 solid_nocall_strategy       THROW_EXCEPTION                                                         
 solid_recal_mode            SET_Q_ZERO                                                              
 
-#:GATKTable:3:94:%s:%s:%s:;
+#:GATKTable:3:94:%d:%d:%d:;
 #:GATKTable:Quantized:Quality quantization map
 QualityScore  Count  QuantizedScore
            0      0              93
@@ -125,7 +125,7 @@ ReadGroup          EventType  EmpiricalQuality  EstimatedQReported  Observations
 20FUKAAXX100202.5  I                   45.0000             45.0000            92    0.00
 20FUKAAXX100202.5  M                   36.0000             36.8252            92    0.00
 
-#:GATKTable:6:12:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:6:12:%s:%d:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable1:
 ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Errors
 20FUKAAXX100202.5            30  M                   30.0000             1    0.00
@@ -141,7 +141,7 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20FUKAAXX100202.5            45  D                   45.0000            92    0.00
 20FUKAAXX100202.5            45  I                   45.0000            92    0.00
 
-#:GATKTable:8:384:%s:%s:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:8:384:%s:%d:%s:%s:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable2:
 ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors
 20FUKAAXX100202.5            30  -93             Cycle          M                   30.0000             1    0.00

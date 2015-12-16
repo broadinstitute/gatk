@@ -41,7 +41,13 @@ public final class QualityScoreCovariate implements Covariate {
 
     @Override
     public int keyFromValue(final Object value) {
-        return (value instanceof String) ? Byte.parseByte((String) value) : (int)(Byte) value;
+        if ( value instanceof String ){
+            return Byte.parseByte((String) value);
+        } else if ( value instanceof Long ) {
+            return ((Long) value).intValue();
+        } else {
+            return (int)(Byte) value;
+        }
     }
 
     @Override

@@ -20,7 +20,7 @@ run_without_dbsnp           false
 solid_nocall_strategy       THROW_EXCEPTION                                                         
 solid_recal_mode            SET_Q_ZERO                                                              
 
-#:GATKTable:3:94:%s:%s:%s:;
+#:GATKTable:3:94:%d:%d:%d:;
 #:GATKTable:Quantized:Quality quantization map
 QualityScore  Count  QuantizedScore
            0      0              21
@@ -170,7 +170,7 @@ ReadGroup          EventType  EmpiricalQuality  EstimatedQReported  Observations
 20GAVAAXX100126.8  I                   45.0000             45.0000           505    0.00
 20GAVAAXX100126.8  M                   36.0000             36.1892           505    2.00
 
-#:GATKTable:6:405:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:6:405:%s:%d:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable1:
 ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Errors
 20FUKAAXX100202.1            21  M                   21.0000             1    0.00
@@ -305,6 +305,8 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20FUKAAXX100202.6            40  M                   40.0000             5    0.00
 20FUKAAXX100202.6            45  D                   45.0000           403    0.00
 20FUKAAXX100202.6            45  I                   45.0000           403    0.00
+20FUKAAXX100202.7             8  M                    8.0000             1    0.00
+20FUKAAXX100202.7             9  M                    9.0000             1    1.00
 20FUKAAXX100202.7            10  M                   10.0000             1    0.00
 20FUKAAXX100202.7            12  M                   12.0000             1    0.00
 20FUKAAXX100202.7            13  M                   13.0000             2    0.03
@@ -335,8 +337,6 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20FUKAAXX100202.7            39  M                   39.0000            33    0.00
 20FUKAAXX100202.7            45  D                   45.0000           400    0.98
 20FUKAAXX100202.7            45  I                   45.0000           400    0.00
-20FUKAAXX100202.7             8  M                    8.0000             1    0.00
-20FUKAAXX100202.7             9  M                    9.0000             1    1.00
 20FUKAAXX100202.8            13  M                   13.0000             1    0.00
 20FUKAAXX100202.8            17  M                   17.0000             1    0.00
 20FUKAAXX100202.8            20  M                   20.0000             2    0.00
@@ -430,6 +430,9 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20GAVAAXX100126.3            40  M                   40.0000             2    0.00
 20GAVAAXX100126.3            45  D                   45.0000           303    0.00
 20GAVAAXX100126.3            45  I                   45.0000           303    0.00
+20GAVAAXX100126.4             7  M                    7.0000             4    1.00
+20GAVAAXX100126.4             8  M                    8.0000             1    0.00
+20GAVAAXX100126.4             9  M                    9.0000             2    0.00
 20GAVAAXX100126.4            10  M                   10.0000             1    0.00
 20GAVAAXX100126.4            11  M                   11.0000             4    0.00
 20GAVAAXX100126.4            12  M                   12.0000             1    0.00
@@ -463,9 +466,9 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20GAVAAXX100126.4            40  M                   40.0000             2    0.00
 20GAVAAXX100126.4            45  D                   45.0000           717    0.00
 20GAVAAXX100126.4            45  I                   45.0000           717    1.00
-20GAVAAXX100126.4             7  M                    7.0000             4    1.00
-20GAVAAXX100126.4             8  M                    8.0000             1    0.00
-20GAVAAXX100126.4             9  M                    9.0000             2    0.00
+20GAVAAXX100126.5             6  M                    6.0000             1    1.00
+20GAVAAXX100126.5             8  M                    8.0000             2    0.00
+20GAVAAXX100126.5             9  M                    9.0000             2    0.00
 20GAVAAXX100126.5            10  M                   10.0000             1    0.00
 20GAVAAXX100126.5            11  M                   11.0000             2    0.00
 20GAVAAXX100126.5            12  M                   12.0000             2    1.00
@@ -500,9 +503,9 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20GAVAAXX100126.5            41  M                   41.0000             2    0.00
 20GAVAAXX100126.5            45  D                   45.0000           688    0.00
 20GAVAAXX100126.5            45  I                   45.0000           688    0.00
-20GAVAAXX100126.5             6  M                    6.0000             1    1.00
-20GAVAAXX100126.5             8  M                    8.0000             2    0.00
-20GAVAAXX100126.5             9  M                    9.0000             2    0.00
+20GAVAAXX100126.6             6  M                    6.0000             2    1.00
+20GAVAAXX100126.6             7  M                    7.0000             1    0.00
+20GAVAAXX100126.6             8  M                    8.0000             1    0.00
 20GAVAAXX100126.6            10  M                   10.0000             1    1.00
 20GAVAAXX100126.6            12  M                   12.0000             2    1.00
 20GAVAAXX100126.6            13  M                   13.0000             1    0.00
@@ -533,9 +536,8 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20GAVAAXX100126.6            40  M                   40.0000             3    0.00
 20GAVAAXX100126.6            45  D                   45.0000           567    0.00
 20GAVAAXX100126.6            45  I                   45.0000           567    0.00
-20GAVAAXX100126.6             6  M                    6.0000             2    1.00
-20GAVAAXX100126.6             7  M                    7.0000             1    0.00
-20GAVAAXX100126.6             8  M                    8.0000             1    0.00
+20GAVAAXX100126.7             7  M                    7.0000             1    0.00
+20GAVAAXX100126.7             9  M                    9.0000             1    0.00
 20GAVAAXX100126.7            10  M                   10.0000             1    0.00
 20GAVAAXX100126.7            20  M                   20.0000             1    0.00
 20GAVAAXX100126.7            21  M                   21.0000             1    0.00
@@ -559,8 +561,6 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20GAVAAXX100126.7            40  M                   40.0000             1    0.00
 20GAVAAXX100126.7            45  D                   45.0000           372    0.00
 20GAVAAXX100126.7            45  I                   45.0000           372    0.00
-20GAVAAXX100126.7             7  M                    7.0000             1    0.00
-20GAVAAXX100126.7             9  M                    9.0000             1    0.00
 20GAVAAXX100126.8            21  M                   21.0000             1    0.00
 20GAVAAXX100126.8            24  M                   24.0000             1    0.00
 20GAVAAXX100126.8            27  M                   27.0000             1    0.00
@@ -579,7 +579,7 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20GAVAAXX100126.8            45  D                   45.0000           505    1.00
 20GAVAAXX100126.8            45  I                   45.0000           505    0.00
 
-#:GATKTable:8:15808:%s:%s:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:8:15808:%s:%d:%s:%s:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable2:
 ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors
 20FUKAAXX100202.1            21  69              Cycle          M                   21.0000             1    0.00
@@ -6454,6 +6454,10 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20FUKAAXX100202.6            45  TTG             Context        I                   45.0000            10    0.00
 20FUKAAXX100202.6            45  TTT             Context        D                   45.0000            17    0.00
 20FUKAAXX100202.6            45  TTT             Context        I                   45.0000            17    0.00
+20FUKAAXX100202.7             8  -80             Cycle          M                    8.0000             1    0.00
+20FUKAAXX100202.7             8  AC              Context        M                    8.0000             1    0.00
+20FUKAAXX100202.7             9  -5              Cycle          M                    9.0000             1    1.00
+20FUKAAXX100202.7             9  CA              Context        M                    9.0000             1    1.00
 20FUKAAXX100202.7            10  -50             Cycle          M                   10.0000             1    0.00
 20FUKAAXX100202.7            10  GG              Context        M                   10.0000             1    0.00
 20FUKAAXX100202.7            12  -41             Cycle          M                   12.0000             1    0.00
@@ -7458,10 +7462,6 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20FUKAAXX100202.7            45  TTG             Context        I                   45.0000             9    0.00
 20FUKAAXX100202.7            45  TTT             Context        D                   45.0000            11    0.03
 20FUKAAXX100202.7            45  TTT             Context        I                   45.0000            11    0.00
-20FUKAAXX100202.7             8  -80             Cycle          M                    8.0000             1    0.00
-20FUKAAXX100202.7             8  AC              Context        M                    8.0000             1    0.00
-20FUKAAXX100202.7             9  -5              Cycle          M                    9.0000             1    1.00
-20FUKAAXX100202.7             9  CA              Context        M                    9.0000             1    1.00
 20FUKAAXX100202.8            13  -73             Cycle          M                   13.0000             1    0.00
 20FUKAAXX100202.8            13  GG              Context        M                   13.0000             1    0.00
 20FUKAAXX100202.8            17  -85             Cycle          M                   17.0000             1    0.00
@@ -11272,6 +11272,19 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20GAVAAXX100126.3            45  TTG             Context        I                   45.0000            15    0.00
 20GAVAAXX100126.3            45  TTT             Context        D                   45.0000            16    0.00
 20GAVAAXX100126.3            45  TTT             Context        I                   45.0000            16    0.00
+20GAVAAXX100126.4             7  -19             Cycle          M                    7.0000             1    0.00
+20GAVAAXX100126.4             7  -65             Cycle          M                    7.0000             1    0.00
+20GAVAAXX100126.4             7  -83             Cycle          M                    7.0000             1    1.00
+20GAVAAXX100126.4             7  4               Cycle          M                    7.0000             1    0.00
+20GAVAAXX100126.4             7  AG              Context        M                    7.0000             1    1.00
+20GAVAAXX100126.4             7  GA              Context        M                    7.0000             1    0.00
+20GAVAAXX100126.4             7  TA              Context        M                    7.0000             2    0.00
+20GAVAAXX100126.4             8  -44             Cycle          M                    8.0000             1    0.00
+20GAVAAXX100126.4             8  CA              Context        M                    8.0000             1    0.00
+20GAVAAXX100126.4             9  -42             Cycle          M                    9.0000             1    0.00
+20GAVAAXX100126.4             9  -46             Cycle          M                    9.0000             1    0.00
+20GAVAAXX100126.4             9  GA              Context        M                    9.0000             1    0.00
+20GAVAAXX100126.4             9  GG              Context        M                    9.0000             1    0.00
 20GAVAAXX100126.4            10  46              Cycle          M                   10.0000             1    0.00
 20GAVAAXX100126.4            10  AA              Context        M                   10.0000             1    0.00
 20GAVAAXX100126.4            11  -66             Cycle          M                   11.0000             1    0.00
@@ -12547,19 +12560,16 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20GAVAAXX100126.4            45  TTG             Context        I                   45.0000            30    0.00
 20GAVAAXX100126.4            45  TTT             Context        D                   45.0000            35    0.00
 20GAVAAXX100126.4            45  TTT             Context        I                   45.0000            35    0.00
-20GAVAAXX100126.4             7  -19             Cycle          M                    7.0000             1    0.00
-20GAVAAXX100126.4             7  -65             Cycle          M                    7.0000             1    0.00
-20GAVAAXX100126.4             7  -83             Cycle          M                    7.0000             1    1.00
-20GAVAAXX100126.4             7  4               Cycle          M                    7.0000             1    0.00
-20GAVAAXX100126.4             7  AG              Context        M                    7.0000             1    1.00
-20GAVAAXX100126.4             7  GA              Context        M                    7.0000             1    0.00
-20GAVAAXX100126.4             7  TA              Context        M                    7.0000             2    0.00
-20GAVAAXX100126.4             8  -44             Cycle          M                    8.0000             1    0.00
-20GAVAAXX100126.4             8  CA              Context        M                    8.0000             1    0.00
-20GAVAAXX100126.4             9  -42             Cycle          M                    9.0000             1    0.00
-20GAVAAXX100126.4             9  -46             Cycle          M                    9.0000             1    0.00
-20GAVAAXX100126.4             9  GA              Context        M                    9.0000             1    0.00
-20GAVAAXX100126.4             9  GG              Context        M                    9.0000             1    0.00
+20GAVAAXX100126.5             6  59              Cycle          M                    6.0000             1    1.00
+20GAVAAXX100126.5             6  TC              Context        M                    6.0000             1    1.00
+20GAVAAXX100126.5             8  32              Cycle          M                    8.0000             1    0.00
+20GAVAAXX100126.5             8  33              Cycle          M                    8.0000             1    0.00
+20GAVAAXX100126.5             8  AC              Context        M                    8.0000             1    0.00
+20GAVAAXX100126.5             8  CG              Context        M                    8.0000             1    0.00
+20GAVAAXX100126.5             9  -82             Cycle          M                    9.0000             1    0.00
+20GAVAAXX100126.5             9  52              Cycle          M                    9.0000             1    0.00
+20GAVAAXX100126.5             9  AA              Context        M                    9.0000             1    0.00
+20GAVAAXX100126.5             9  GG              Context        M                    9.0000             1    0.00
 20GAVAAXX100126.5            10  35              Cycle          M                   10.0000             1    0.00
 20GAVAAXX100126.5            10  GC              Context        M                   10.0000             1    0.00
 20GAVAAXX100126.5            11  44              Cycle          M                   11.0000             1    0.00
@@ -13802,16 +13812,14 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20GAVAAXX100126.5            45  TTG             Context        I                   45.0000            23    0.00
 20GAVAAXX100126.5            45  TTT             Context        D                   45.0000            23    0.00
 20GAVAAXX100126.5            45  TTT             Context        I                   45.0000            23    0.00
-20GAVAAXX100126.5             6  59              Cycle          M                    6.0000             1    1.00
-20GAVAAXX100126.5             6  TC              Context        M                    6.0000             1    1.00
-20GAVAAXX100126.5             8  32              Cycle          M                    8.0000             1    0.00
-20GAVAAXX100126.5             8  33              Cycle          M                    8.0000             1    0.00
-20GAVAAXX100126.5             8  AC              Context        M                    8.0000             1    0.00
-20GAVAAXX100126.5             8  CG              Context        M                    8.0000             1    0.00
-20GAVAAXX100126.5             9  -82             Cycle          M                    9.0000             1    0.00
-20GAVAAXX100126.5             9  52              Cycle          M                    9.0000             1    0.00
-20GAVAAXX100126.5             9  AA              Context        M                    9.0000             1    0.00
-20GAVAAXX100126.5             9  GG              Context        M                    9.0000             1    0.00
+20GAVAAXX100126.6             6  -27             Cycle          M                    6.0000             1    0.00
+20GAVAAXX100126.6             6  -43             Cycle          M                    6.0000             1    1.00
+20GAVAAXX100126.6             6  GA              Context        M                    6.0000             1    0.00
+20GAVAAXX100126.6             6  TT              Context        M                    6.0000             1    1.00
+20GAVAAXX100126.6             7  -22             Cycle          M                    7.0000             1    0.00
+20GAVAAXX100126.6             7  TA              Context        M                    7.0000             1    0.00
+20GAVAAXX100126.6             8  -37             Cycle          M                    8.0000             1    0.00
+20GAVAAXX100126.6             8  TA              Context        M                    8.0000             1    0.00
 20GAVAAXX100126.6            10  -68             Cycle          M                   10.0000             1    1.00
 20GAVAAXX100126.6            10  TT              Context        M                   10.0000             1    1.00
 20GAVAAXX100126.6            12  -46             Cycle          M                   12.0000             1    1.00
@@ -14869,14 +14877,10 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20GAVAAXX100126.6            45  TTG             Context        I                   45.0000            33    0.00
 20GAVAAXX100126.6            45  TTT             Context        D                   45.0000            51    0.00
 20GAVAAXX100126.6            45  TTT             Context        I                   45.0000            51    0.00
-20GAVAAXX100126.6             6  -27             Cycle          M                    6.0000             1    0.00
-20GAVAAXX100126.6             6  -43             Cycle          M                    6.0000             1    1.00
-20GAVAAXX100126.6             6  GA              Context        M                    6.0000             1    0.00
-20GAVAAXX100126.6             6  TT              Context        M                    6.0000             1    1.00
-20GAVAAXX100126.6             7  -22             Cycle          M                    7.0000             1    0.00
-20GAVAAXX100126.6             7  TA              Context        M                    7.0000             1    0.00
-20GAVAAXX100126.6             8  -37             Cycle          M                    8.0000             1    0.00
-20GAVAAXX100126.6             8  TA              Context        M                    8.0000             1    0.00
+20GAVAAXX100126.7             7  -14             Cycle          M                    7.0000             1    0.00
+20GAVAAXX100126.7             7  CC              Context        M                    7.0000             1    0.00
+20GAVAAXX100126.7             9  -5              Cycle          M                    9.0000             1    0.00
+20GAVAAXX100126.7             9  AA              Context        M                    9.0000             1    0.00
 20GAVAAXX100126.7            10  -64             Cycle          M                   10.0000             1    0.00
 20GAVAAXX100126.7            10  AA              Context        M                   10.0000             1    0.00
 20GAVAAXX100126.7            20  -53             Cycle          M                   20.0000             1    0.00
@@ -15695,10 +15699,6 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20GAVAAXX100126.7            45  TTG             Context        I                   45.0000             9    0.00
 20GAVAAXX100126.7            45  TTT             Context        D                   45.0000             9    0.00
 20GAVAAXX100126.7            45  TTT             Context        I                   45.0000             9    0.00
-20GAVAAXX100126.7             7  -14             Cycle          M                    7.0000             1    0.00
-20GAVAAXX100126.7             7  CC              Context        M                    7.0000             1    0.00
-20GAVAAXX100126.7             9  -5              Cycle          M                    9.0000             1    0.00
-20GAVAAXX100126.7             9  AA              Context        M                    9.0000             1    0.00
 20GAVAAXX100126.8            21  101             Cycle          M                   21.0000             1    0.00
 20GAVAAXX100126.8            21  TG              Context        M                   21.0000             1    0.00
 20GAVAAXX100126.8            24  30              Cycle          M                   24.0000             1    0.00

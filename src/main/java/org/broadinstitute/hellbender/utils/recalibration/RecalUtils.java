@@ -60,10 +60,10 @@ public final class RecalUtils {
     private static final Pair<String, String> covariateValue     = new MutablePair<>(RecalUtils.COVARIATE_VALUE_COLUMN_NAME, "%s");
     private static final Pair<String, String> covariateName      = new MutablePair<>(RecalUtils.COVARIATE_NAME_COLUMN_NAME, "%s");
     private static final Pair<String, String> eventType          = new MutablePair<>(RecalUtils.EVENT_TYPE_COLUMN_NAME, "%s");
-    private static final Pair<String, String> empiricalQuality   = new MutablePair<>(RecalUtils.EMPIRICAL_QUALITY_COLUMN_NAME, "%." + EMPIRICAL_QUAL_DECIMAL_PLACES + "f");
-    private static final Pair<String, String> estimatedQReported = new MutablePair<>(RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME, "%." + EMPIRICAL_Q_REPORTED_DECIMAL_PLACES + "f");
+    private static final Pair<String, String> empiricalQuality   = new MutablePair<>(RecalUtils.EMPIRICAL_QUALITY_COLUMN_NAME, "%." + EMPIRICAL_QUAL_DECIMAL_PLACES + 'f');
+    private static final Pair<String, String> estimatedQReported = new MutablePair<>(RecalUtils.ESTIMATED_Q_REPORTED_COLUMN_NAME, "%." + EMPIRICAL_Q_REPORTED_DECIMAL_PLACES + 'f');
     private static final Pair<String, String> nObservations      = new MutablePair<>(RecalUtils.NUMBER_OBSERVATIONS_COLUMN_NAME, "%d");
-    private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%." + NUMBER_ERRORS_DECIMAL_PLACES+ "f");
+    private static final Pair<String, String> nErrors            = new MutablePair<>(RecalUtils.NUMBER_ERRORS_COLUMN_NAME, "%." + NUMBER_ERRORS_DECIMAL_PLACES+ 'f');
 
     /**
      * Component used to print out csv representation of the reports that can be use to perform analysis in
@@ -175,7 +175,6 @@ public final class RecalUtils {
      * Print out a collection of reports into a file in Csv format in a way
      * that can be used by R scripts (such as the plot generator script).
      *
-     * @param out
      * @param reports map where keys are the unique 'mode' (ORIGINAL, RECALIBRATED, ...)
      *                of each report and the corresponding value the report itself.
      * @param covs the covariates to print out.
@@ -191,7 +190,7 @@ public final class RecalUtils {
     }
 
     public static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
-        List<GATKReportTable> result = new LinkedList<>();
+        final List<GATKReportTable> result = new LinkedList<>();
         int rowIndex = 0;
 
         GATKReportTable allCovsReportTable = null;
@@ -200,7 +199,7 @@ public final class RecalUtils {
             final ArrayList<Pair<String, String>> columnNames = new ArrayList<>(); // initialize the array to hold the column names
             columnNames.add(new MutablePair<>(covariates.getReadGroupCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
             if (!recalibrationTables.isReadGroupTable(table)) {
-                columnNames.add(new MutablePair<>(covariates.getQualityScoreCovariate().parseNameForReport(), "%s")); // save the required covariate name so we can reference it in the future
+                columnNames.add(new MutablePair<>(covariates.getQualityScoreCovariate().parseNameForReport(), "%d")); // save the required covariate name so we can reference it in the future
                 if (recalibrationTables.isAdditionalCovariateTable(table)) {
                     columnNames.add(covariateValue);
                     columnNames.add(covariateName);
@@ -285,7 +284,7 @@ public final class RecalUtils {
     }
 
     private static GATKReportTable makeNewTableWithColumns(ArrayList<Pair<String, String>> columnNames, String reportTableName, GATKReportTable.Sorting sort) {
-        GATKReportTable rt = new GATKReportTable(reportTableName, "", columnNames.size(), sort);
+        final GATKReportTable rt = new GATKReportTable(reportTableName, "", columnNames.size(), sort);
         for (final Pair<String, String> columnName : columnNames) {
             rt.addColumn(columnName.getLeft(), columnName.getRight());
         }
@@ -475,12 +474,13 @@ public final class RecalUtils {
      */
     private static void addToDeltaTable(final NestedIntegerArray<RecalDatum> deltaTable, final int[] deltaKey, final RecalDatum recalDatum) {
         final RecalDatum deltaDatum = deltaTable.get(deltaKey); // check if we already have a RecalDatum for this key
-        if (deltaDatum == null)
+        if (deltaDatum == null) {
             // if we don't have a key yet, create a new one with the same values as the current datum
             deltaTable.put(new RecalDatum(recalDatum), deltaKey);
-        else
+        } else {
             // if we do have a datum, combine it with this one
             deltaDatum.combine(recalDatum);
+        }
     }
 
     /**
@@ -490,7 +490,7 @@ public final class RecalUtils {
      * @param RAC  The list of shared command line arguments
      */
     public static void parsePlatformForRead(final GATKRead read, final SAMFileHeader header, final RecalibrationArgumentCollection RAC) {
-        SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
+        final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
 
         if (RAC.FORCE_PLATFORM != null && (readGroup.getPlatform() == null || !readGroup.getPlatform().equals(RAC.FORCE_PLATFORM))) {
             readGroup.setPlatform(RAC.FORCE_PLATFORM);
@@ -559,18 +559,20 @@ public final class RecalUtils {
      * @param table2 the source table to merge into table1
      */
     public static void combineTables(final NestedIntegerArray<RecalDatum> table1, final NestedIntegerArray<RecalDatum> table2) {
-        if ( table1 == null ) throw new IllegalArgumentException("table1 cannot be null");
-        if ( table2 == null ) throw new IllegalArgumentException("table2 cannot be null");
-        if ( ! Arrays.equals(table1.getDimensions(), table2.getDimensions()))
+        if ( table1 == null ) { throw new IllegalArgumentException("table1 cannot be null"); }
+        if ( table2 == null ) { throw new IllegalArgumentException("table2 cannot be null"); }
+        if ( ! Arrays.equals(table1.getDimensions(), table2.getDimensions())) {
             throw new IllegalArgumentException("Table1 " + Utils.join(",", table1.getDimensions()) + " not equal to " + Utils.join(",", table2.getDimensions()));
+        }
 
         for (final NestedIntegerArray.Leaf<RecalDatum> row : table2.getAllLeaves()) {
             final RecalDatum myDatum = table1.get(row.keys);
 
-            if (myDatum == null)
+            if (myDatum == null) {
                 table1.put(row.value, row.keys);
-            else
+            } else {
                 myDatum.combine(row.value);
+            }
         }
     }
 
