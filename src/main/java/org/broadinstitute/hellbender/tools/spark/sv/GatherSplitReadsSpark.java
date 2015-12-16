@@ -153,16 +153,16 @@ public class GatherSplitReadsSpark extends GATKSparkTool
         public EventLocus isDiscordant( GATKRead read )
         {
             if ( read.mateIsUnmapped() )
-                return new EventLocus(read.getEnd(), FUNKY_PAIR_LOCUS_WIDTH);
-
-            if ( read.getContig() == read.getMateContig() )
+            {
+                int locus = read.isReverseStrand() ? read.getStart() - FUNKY_PAIR_LOCUS_WIDTH : read.getEnd();
+                return new EventLocus(locus,FUNKY_PAIR_LOCUS_WIDTH);
+            }
+            else if ( read.getContig() == read.getMateContig() )
             {
                 if ( read.isReverseStrand() == read.mateIsReverseStrand() || !read.isProperlyPaired() )
                 {
-                    int locus = read.getFragmentLength() < 0 ?
-                            read.getStart() - FUNKY_PAIR_LOCUS_WIDTH :
-                            read.getEnd();
-                    return new EventLocus(locus, FUNKY_PAIR_LOCUS_WIDTH);
+                    int locus = read.getFragmentLength() < 0 ? read.getStart() - FUNKY_PAIR_LOCUS_WIDTH : read.getEnd();
+                    return new EventLocus(locus,FUNKY_PAIR_LOCUS_WIDTH);
                 }
             }
 
