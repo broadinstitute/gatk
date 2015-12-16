@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,6 +24,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final File tempDir = createTempDir("allelic-integration-" + SAMPLE_NAME);
         final String tempDirPath = tempDir.getAbsolutePath();
         final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
+        System.out.println(tempDirPath);
 
         final String[] arguments = {
                 "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
