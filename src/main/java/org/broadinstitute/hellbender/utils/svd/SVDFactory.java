@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 /**
  * Entry point for creating an instance of SVD.  When the object is created, all of the calculation will be done as well.
  */
-public class SVDFactory {
+public final class SVDFactory {
 
     /**
      * Create a SVD instance using Apache Commons Math.

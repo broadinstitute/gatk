@@ -86,6 +86,27 @@ public class DataLineUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
+    public void testAppendLong(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.append((long)i), subject);
+        }
+        final String[] array = subject.toArray();
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(array[i], "" + i);
+        }
+    }
+
+    @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
+    public void testLineNumber(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        Assert.assertEquals(subject.getLineNumber(), DataLine.NO_LINE_NUMBER);
+
+        final DataLine subject2 = new DataLine(3, columns, IllegalArgumentException::new);
+        Assert.assertEquals(subject2.getLineNumber(), 3);
+    }
+
+    @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
     public void testSetDoubleByName(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
         for (int i = 0; i < columns.columnCount(); i++) {
@@ -295,6 +316,28 @@ public class DataLineUnitTest extends BaseTest {
         }
     }
 
+    @Test(dataProvider = "tableColumnsData")
+    public void testGetLongByName(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(columns.nameAt(i), (long) i), subject);
+        }
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(subject.getLong(columns.nameAt(i)), i);
+        }
+    }
+
+    @Test(dataProvider = "tableColumnsData")
+    public void testGetBooleanByName(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(columns.nameAt(i), i % 2 == 0), subject);
+        }
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(subject.getBoolean(columns.nameAt(i)), i % 2 == 0);
+        }
+    }
+
     @Test(dataProvider = "tableColumnsData", expectedExceptions = GATKException.class)
     public void testGetNoValidInt(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, GATKException::new);
@@ -307,6 +350,20 @@ public class DataLineUnitTest extends BaseTest {
         final DataLine subject = new DataLine(columns, GATKException::new);
         subject.set(0, "no-dbl");
         subject.getDouble(0);
+    }
+
+    @Test(dataProvider = "tableColumnsData", expectedExceptions = GATKException.class)
+    public void testGetNoValidBoolean(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, GATKException::new);
+        subject.set(0, "no-bool");
+        subject.getBoolean(0);
+    }
+
+    @Test(dataProvider = "tableColumnsData", expectedExceptions = GATKException.class)
+    public void testGetNoValidLong(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, GATKException::new);
+        subject.set(0, "no-long");
+        subject.getLong(0);
     }
 
     @Test(dataProvider = "tableColumnsData", expectedExceptions = IllegalArgumentException.class)
@@ -341,6 +398,7 @@ public class DataLineUnitTest extends BaseTest {
         }
         for (int i = 0; i < columns.columnCount(); i++) {
             Assert.assertEquals(subject.get(columns.nameAt(i)), "" + i);
+            Assert.assertEquals(subject.get(columns.nameAt(i), "fred"), "" + i);
         }
     }
 

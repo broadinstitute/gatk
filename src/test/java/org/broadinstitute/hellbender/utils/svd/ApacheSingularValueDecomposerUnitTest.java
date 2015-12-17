@@ -24,7 +24,7 @@ public class ApacheSingularValueDecomposerUnitTest extends BaseTest {
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
         try {
             final ReadCountCollection rcc = ReadCountCollectionUtils.parse(CONTROL_PCOV_FULL_FILE);
-            final SVD svd = ApacheSingularValueDecomposer.createSVD(rcc.counts());
+            final SVD svd = SVDFactory.createSVD(rcc.counts());
             SVDTestUtils.assertSVD(svd, CONTROL_PCOV_GT_SV, CONTROL_PCOV_GT_V, CONTROL_PCOV_GT_PINV);
         } catch (final IOException ioe) {
             Assert.fail("Error in test data.", ioe);

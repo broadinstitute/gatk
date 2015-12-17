@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 /**
  * Perform singular value decompoisition (and pseudoinverse calculation) in pure Java, Commons Math.
  */
-class ApacheSingularValueDecomposer {
+final class ApacheSingularValueDecomposer {
 
     /** Create a SVD instance using Apache Commons Math.
      *
