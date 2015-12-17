@@ -122,6 +122,14 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     private CSVReader csvReader;
 
     /**
+     * Indicates whether the reader has tried to fetch the next record.
+     * <p>If {@code true} the content of {@link #nextRecord} represent the next record to be returned
+     * by {@link #readRecord} ({@code null} if we reached the end of the table), otherwise {@link #nextRecord} reference
+     * is invalid and the next record must be fetched using {@link #fetchNextRecord()}.</p>
+     */
+    private boolean nextRecordFetched = false;
+
+    /**
      * Holds a reference to the next record.
      * <p>
      * This is {@code null} when we reached the end of the source.
@@ -180,7 +188,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         this.reader = sourceReader instanceof LineNumberReader ? (LineNumberReader) sourceReader : new LineNumberReader(sourceReader);
         this.csvReader = new CSVReader(this.reader, TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
         findAndProcessHeaderLine();
-        this.nextRecord = fetchNextRecord();
+        this.nextRecordFetched = false;
     }
 
     /**
@@ -297,11 +305,15 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IOException if a {@link IOException} was thrown when reading from the input.
      */
     public final R readRecord() throws IOException {
-        final R result = nextRecord;
-        if (result != null) {
+        if (nextRecordFetched == false) {
             nextRecord = fetchNextRecord();
         }
-        return result;
+        if (nextRecord != null) {
+            nextRecordFetched = false;
+            return nextRecord;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -331,17 +343,17 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @throws IOException if a {@link IOException} was thrown when reading from the input.
      */
     private R fetchNextRecord() throws IOException {
-
+        nextRecordFetched = true;
         String[] line;
         while ((line = csvReader.readNext()) != null) {
-            if (isCommentLine(line) || isHeaderLine(line)) {
-                continue;
-            } else if (line.length != columns.columnCount()) {
-                throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
-            } else {
-                final R result = createRecord(new DataLine(reader.getLineNumber(), line, columns, this::formatException));
-                if (result != null) {
-                    return result;
+            if (!isCommentLine(line) && !isHeaderLine(line)) {
+                if (line.length != columns.columnCount()) {
+                    throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
+                } else {
+                    final R result = createRecord(new DataLine(reader.getLineNumber(), line, columns, this::formatException));
+                    if (result != null) {
+                        return result;
+                    }
                 }
             }
         }
@@ -402,21 +414,30 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
 
             @Override
             public boolean hasNext() {
-                return nextRecord != null;
-            }
-
-            @Override
-            public R next() {
-                if (nextRecord == null) {
-                    throw new NoSuchElementException("there is no more record in the input");
-                } else {
-                    final R result = nextRecord;
+                if (!nextRecordFetched) {
                     try {
                         nextRecord = fetchNextRecord();
                     } catch (final IOException ex) {
                         throw new UncheckedIOException(ex);
                     }
-                    return result;
+                }
+                return nextRecord != null;
+            }
+
+            @Override
+            public R next() {
+                if (!nextRecordFetched) {
+                    try {
+                        nextRecord = fetchNextRecord();
+                    } catch (final IOException ex) {
+                        throw new UncheckedIOException(ex);
+                    }
+                }
+                if (nextRecord == null) {
+                    throw new NoSuchElementException("there is no more record in the input");
+                } else {
+                    nextRecordFetched = false;
+                    return nextRecord;
                 }
             }
         };
