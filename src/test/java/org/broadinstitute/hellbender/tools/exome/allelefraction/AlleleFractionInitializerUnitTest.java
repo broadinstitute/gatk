@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import htsjdk.samtools.util.Interval;
 import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -45,7 +45,7 @@ public final class AlleleFractionInitializerUnitTest {
 
     @Test
     public void testResponsibility() {
-        final Interval DUMMY = new Interval("dummy", 1, 2);
+        final SimpleInterval DUMMY = new SimpleInterval("dummy", 1, 2);
         final double VERY_LIKELY = 0.9;
 
         final AlleleFractionInitializer.Responsibility resp1 = new AlleleFractionInitializer.Responsibility(new AllelicCount(DUMMY, 1, 0));

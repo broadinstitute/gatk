@@ -2,11 +2,8 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 
 import java.io.File;
 

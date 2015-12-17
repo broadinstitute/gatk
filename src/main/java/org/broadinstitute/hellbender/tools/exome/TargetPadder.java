@@ -5,6 +5,7 @@ import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+
 import java.util.List;
 import java.util.stream.Collectors;
 

@@ -4,12 +4,11 @@ import com.google.cloud.dataflow.sdk.repackaged.com.google.common.annotations.Vi
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.broadinstitute.hellbender.tools.exome.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
-import org.broadinstitute.hellbender.utils.mcmc.AdaptiveMetropolisSampler;
-import org.broadinstitute.hellbender.utils.mcmc.GibbsSampler;
-import org.broadinstitute.hellbender.utils.mcmc.ParameterizedModel;
-import org.broadinstitute.hellbender.utils.mcmc.Sampler;
+import org.broadinstitute.hellbender.utils.mcmc.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,6 +48,7 @@ import static org.broadinstitute.hellbender.utils.MathUtils.logFactorial;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleFractionModeller {
+    private final SegmentedModel segmentedModel;
     private final ParameterizedModel<AlleleFractionState, AlleleFractionData> model;
     private final List<Double> meanBiasSamples = new ArrayList<>();
     private final List<Double> biasVarianceSamples = new ArrayList<>();
@@ -117,6 +117,9 @@ public final class AlleleFractionModeller {
         }
 
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
+            if (data.numHetsInSegment(segmentIndex) == 0) {
+                return Double.NaN;
+            }
             return sampler.sample(x -> {
                 final AlleleFractionState proposal = makeSingleSegmentState(state.meanBias(),
                         state.biasVariance(), state.outlierProbability(), x);
@@ -147,6 +150,7 @@ public final class AlleleFractionModeller {
     // END OF INNER SAMPLER CLASSES SECTION ----------------------------------------------------------------------------
 
     public AlleleFractionModeller(final SegmentedModel segmentedModel) {
+        this.segmentedModel = segmentedModel;
         final AlleleFractionData data = new AlleleFractionData(segmentedModel);
         numSegments = data.numSegments();
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
@@ -245,7 +249,7 @@ public final class AlleleFractionModeller {
      * @param segment index of segment containijng this het site
      * @param count AllelicCount of alt and ref reads
      * @param order the desired moment
-     * @return
+     * @return kth moment of allelic bias with respect to the het likelihood integrand
      */
     public static double biasPosteriorMoment(final AlleleFractionState state, final int segment, final AllelicCount count,
                                              final AlleleFractionIndicator indicator, final int order) {
@@ -273,6 +277,14 @@ public final class AlleleFractionModeller {
         minorFractionsSamples.addAll(gibbsSampler.getSamples(AlleleFractionState.MINOR_FRACTIONS_NAME, AlleleFractionState.MinorFractions.class, numBurnIn));
     }
 
+    /**
+     * Returns the {@link SegmentedModel} held internally.
+     * @return the {@link SegmentedModel} held internally
+     */
+    public SegmentedModel getSegmentedModel() {
+        return segmentedModel;
+    }
+
     public List<Double> getmeanBiasSamples() {
         return Collections.unmodifiableList(meanBiasSamples);
     }
@@ -281,6 +293,26 @@ public final class AlleleFractionModeller {
     }
     public List<Double> getOutlierProbabilitySamples() { return Collections.unmodifiableList(outlierProbabilitySamples); }
     public List<AlleleFractionState.MinorFractions> getMinorFractionsSamples() { return Collections.unmodifiableList(minorFractionsSamples); }
+
+    /**
+     * Returns a list of {@link PosteriorSummary} elements summarizing the minor-allele-fraction posterior for each segment.
+     * Should only be called after {@link AlleleFractionModeller#fitMCMC(int, int)} has been called.
+     * @return  list of {@link PosteriorSummary} elements summarizing the minor-allele-fraction posterior for each segment
+     */
+    public List<PosteriorSummary> getMinorAlleleFractionsPosteriorSummaries() {
+        final int numSegments = segmentedModel.getSegments().size();
+        final List<PosteriorSummary> posteriorSummaries = new ArrayList<>(numSegments);
+        for (int segment = 0; segment < numSegments; segment++) {
+            final int j = segment;
+            final double[] minorFractionSamples =
+                    Doubles.toArray(minorFractionsSamples.stream().map(s -> s.get(j))
+                            .collect(Collectors.toList()));
+            final double posteriorMean = new Mean().evaluate(minorFractionSamples);
+            final double posteriorStandardDeviation = new StandardDeviation().evaluate(minorFractionSamples);
+            posteriorSummaries.add(new PosteriorSummary(posteriorMean, posteriorStandardDeviation));
+        }
+        return posteriorSummaries;
+    }
 
     public List<List<Double>> getMinorFractionSamplesBySegment() {
         final List<List<Double>> result = new ArrayList<>();

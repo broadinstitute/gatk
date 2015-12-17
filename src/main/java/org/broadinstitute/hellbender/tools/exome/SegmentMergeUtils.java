@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.primitives.Doubles;
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.exception.InsufficientDataException;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -10,14 +11,14 @@ import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Helper/utility class for merging segments in a {@link SegmentedModel}.
+ * Helper/utility class for merging segments.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -25,17 +26,6 @@ public final class SegmentMergeUtils {
     private enum MergeDirection {
         LEFT, RIGHT, NONE
     }
-
-    //random generator for breaking ties in small-segment merging
-    private static final int RANDOM_SEED = 42;
-    private static final RandomGenerator rng =
-            RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
-    //Kolmogorov-Smirnov test for small-segment merging
-    private static final int KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED = 42;
-    private static final RandomGenerator rngKolmogorovSmirnovTest =
-            RandomGeneratorFactory.createRandomGenerator(new Random(KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED));
-    private static final KolmogorovSmirnovTest kolmogorovSmirnovTest =
-            new KolmogorovSmirnovTest(rngKolmogorovSmirnovTest);
 
     private SegmentMergeUtils() {}
 
@@ -60,23 +50,6 @@ public final class SegmentMergeUtils {
     }
 
     /**
-     * Returns the number of segments that contain a number of targets below a given threshold.
-     * @param segments              list of segments
-     * @param targets               targets to be segmented
-     * @param targetNumberThreshold number of targets below which a segment is considered small
-     * @return                      number of segments containing a number of targets strictly less than the threshold
-     */
-    public static int countSmallSegments(final List<SimpleInterval> segments,
-                                         final TargetCollection <TargetCoverage> targets,
-                                         final int targetNumberThreshold) {
-        Utils.nonNull(segments, "The list of segments cannot be null.");
-        Utils.nonNull(targets, "The collection of targets cannot be null.");
-        return (int) segments.stream()
-                .filter(s -> targets.targetCount(s) < targetNumberThreshold)
-                .count();
-    }
-
-    /**
      * Given a list of segments, returns a new, modifiable list of segments with the small segments (i.e., those
      * containing less than a specified number of targets) dropped.  Does not modify the input collections.
      * @param segments              list of segments (will not be modified)
@@ -85,44 +58,95 @@ public final class SegmentMergeUtils {
      * @return                      new list of segments with small segments dropped, never {@code null}
      */
     public static List<SimpleInterval> dropSmallSegments(final List<SimpleInterval> segments,
-                                                         final TargetCollection <TargetCoverage> targets,
+                                                         final TargetCollection <? extends Locatable> targets,
                                                          final int targetNumberThreshold) {
         Utils.nonNull(segments, "The list of segments cannot be null.");
         Utils.nonNull(targets, "The collection of targets cannot be null.");
+
         return segments.stream().filter(s -> targets.targetCount(s) >= targetNumberThreshold)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Identifies spurious segments (i.e., segments containing only targets that are created by
+     * SNP-segment breakpoints and are not present in the original set of target segments)
+     * introduced into the middle of original target-coverage segments
+     * by {@link SegmentUtils#unionSegments} and merges them with adjacent segments
+     * according to the logic in {@link org.broadinstitute.hellbender.tools.exome.SegmentMergeUtils.SmallSegments},
+     * returning a new, modifiable list of segments.
+     * @param segments          list of segments in which to identify spurious middle segments
+     * @param targetSegments    original list of target-coverage segments
+     * @param genome            target-coverage and SNP-allele-count data to be segmented
+     * @return                  new list of segments with spurious middle segments merged, never {@code null}
+     */
+    public static List<SimpleInterval> mergeSpuriousMiddles(final List<SimpleInterval> segments,
+                                                            final List<SimpleInterval> targetSegments,
+                                                            final Genome genome) {
+        Utils.nonNull(targetSegments, "The list of target segments cannot be null.");
+        Utils.nonNull(segments, "The list of segments cannot be null.");
+        Utils.nonNull(genome, "The genome cannot be null.");
+
+        final Set<SimpleInterval> targetSegmentsSet = new HashSet<>(targetSegments);
+        final List<SimpleInterval> mergedSegments = new ArrayList<>(segments);
+        int index = 0;
+        while (index < mergedSegments.size()) {
+            final SimpleInterval segment = mergedSegments.get(index);
+            final int numSNPs = genome.getSNPs().targetCount(segment);
+            //if current segment is a spurious middle, merge it with an adjacent segment
+            if (numSNPs == 0 && !targetSegmentsSet.contains(segment)) {
+                final MergeDirection direction =
+                        SmallSegments.calculateMergeDirection(mergedSegments, genome, index);
+                if (direction == MergeDirection.LEFT) {
+                    //current = merge(left, current), remove left, stay on current during next iteration
+                    mergedSegments.set(index, mergeSegments(mergedSegments.get(index - 1), segment));
+                    mergedSegments.remove(index - 1);
+                    index -= 2;
+                } else if (direction == MergeDirection.RIGHT) {
+                    //current = merge(current, right), remove right, stay on current during next iteration
+                    mergedSegments.set(index, mergeSegments(segment, mergedSegments.get(index + 1)));
+                    mergedSegments.remove(index + 1);
+                    index--;
+                }
+            }
+            index++; //if no merge performed, go to next segment during next iteration
+        }
+        return mergedSegments;
     }
 
     /**
      * Returns a new, modifiable list of segments with small segments (i.e., those containing less than a specified
      * number of targets) merged.  The list of segments is traversed from beginning to end.  Upon arrival at a small
      * segment, the segment is repeatedly merged with its closest neighboring segment until it is above threshold,
-     * then the traversal resumes.  Does not modify the input collections.
-     * @param segments              original list of segments (will not be modified)
-     * @param genome                linear target-coverage and SNP-allele-count data to be segmented
+     * then the traversal resumes.  Spurious segments introduced by the segment-union step are also remerged.
+     * Does not modify the input collections.
+     * @param segments              list of segments (from segment-union step, will not be modified)
+     * @param genome                target-coverage and SNP-allele-count data to be segmented
      * @param targetNumberThreshold number of targets below which a segment is considered small
      * @return                      new list of segments with small segments merged, never {@code null}
      */
     public static List<SimpleInterval> mergeSmallSegments(final List<SimpleInterval> segments,
                                                           final Genome genome,
                                                           final int targetNumberThreshold) {
-        Utils.nonNull(segments, "The list of segments cannot be null.");
-        Utils.nonNull(genome.getTargets(), "The collection of targets contained in the genome cannot be null.");
-        Utils.nonNull(genome.getSNPs(), "The collection of SNPs contained in the genome cannot be null.");
+        Utils.nonNull(segments, "The list of unioned segments cannot be null.");
+        Utils.nonNull(genome, "The genome cannot be null.");
+
         final List<SimpleInterval> mergedSegments = new ArrayList<>(segments);
         int index = 0;
         while (index < mergedSegments.size()) {
+            final SimpleInterval segment = mergedSegments.get(index);
+            final int numTargets = genome.getTargets().targetCount(segment);
             //if current segment is small, merge it with an adjacent segment
-            if (genome.getTargets().targetCount(mergedSegments.get(index)) < targetNumberThreshold) {
-                final MergeDirection direction = SmallSegments.calculateMergeDirection(mergedSegments, genome, index);
+            if (numTargets < targetNumberThreshold) {
+                final MergeDirection direction =
+                        SmallSegments.calculateMergeDirection(mergedSegments, genome, index);
                 if (direction == MergeDirection.LEFT) {
                     //current = merge(left, current), remove left, stay on current during next iteration
-                    mergedSegments.set(index, mergeSegments(mergedSegments.get(index - 1), mergedSegments.get(index)));
+                    mergedSegments.set(index, mergeSegments(mergedSegments.get(index - 1), segment));
                     mergedSegments.remove(index - 1);
                     index -= 2;
                 } else if (direction == MergeDirection.RIGHT) {
                     //current = merge(current, right), remove right, stay on current during next iteration
-                    mergedSegments.set(index, mergeSegments(mergedSegments.get(index), mergedSegments.get(index + 1)));
+                    mergedSegments.set(index, mergeSegments(segment, mergedSegments.get(index + 1)));
                     mergedSegments.remove(index + 1);
                     index--;
                 }
@@ -134,12 +158,50 @@ public final class SegmentMergeUtils {
     }
 
     /**
+     * Returns a new, modifiable list of segments with similar segments (i.e., adjacent segments with both
+     * segment-mean and minor-allele-fractions posteriors similar; posteriors are similar if the difference
+     * between posterior means is less than sigmaThreshold times the posterior standard deviation of either summary)
+     * merged.  The list of segments is traversed once from beginning to end, and each segment is checked for similarity
+     * with the segment to the right and merged until it is no longer similar.
+     * @param segments                          list of {@link ACSModeledSegment} to be merged
+     * @param sigmaThresholdSegmentMean         threshold number of standard deviations for segment-mean similarity
+     * @param sigmaThresholdMinorAlleleFraction threshold number of standard deviations for minor-allele-fraction similarity
+     * @return      new list of modeled segments with similar segments merged, never {@code null}
+     */
+    public static List<ACSModeledSegment> mergeSimilarSegments(final List<ACSModeledSegment> segments,
+                                                               final double sigmaThresholdSegmentMean,
+                                                               final double sigmaThresholdMinorAlleleFraction) {
+        Utils.nonNull(segments, "The list of segments cannot be null.");
+        ParamUtils.isPositiveOrZero(sigmaThresholdSegmentMean,
+                "The threshold for segment-mean similar-segment merging cannot be negative.");
+        ParamUtils.isPositiveOrZero(sigmaThresholdMinorAlleleFraction,
+                "The threshold for minor-allele-fraction similar-segment merging cannot be negative.");
+
+        final List<ACSModeledSegment> mergedSegments = new ArrayList<>(segments);
+        int index = 0;
+        while (index < mergedSegments.size() - 1) {
+            final ACSModeledSegment segment1 = mergedSegments.get(index);
+            final ACSModeledSegment segment2 = mergedSegments.get(index + 1);
+            if (segment1.getContig().equals(segment2.getContig()) &&
+                    SimilarSegments.areSimilar(segment1, segment2,
+                            sigmaThresholdSegmentMean, sigmaThresholdMinorAlleleFraction)) {
+                mergedSegments.set(index, SimilarSegments.merge(segment1, segment2));
+                mergedSegments.remove(index + 1);
+                index--; //if merge performed, stay on current segment during next iteration
+            }
+            index++; //if no merge performed, go to next segment during next iteration
+        }
+        return mergedSegments;
+    }
+
+    /**
      * Contains private methods for small-segment merging.
      *
      * <p>
      *     The goal of small-segment merging is to merge all small segments (i.e., those with a number of targets below
      *     a given threshold) with adjacent segments.  This is done to match the output of circular binary segmentation,
-     *     which does not generate segments with less than 3 targets.
+     *     which does not generate segments with less than 3 targets.  Spurious segments with no SNPs introduced during
+     *     the segment-union step are also merged.
      * </p>
      *
      * <p>
@@ -224,6 +286,17 @@ public final class SegmentMergeUtils {
 
         //scores with an absolute difference less than DOUBLE_EQUALITY_EPSILON are taken to be equal
         private static final double DOUBLE_EQUALITY_EPSILON = 1E-6;
+
+        //random generator for breaking ties in small-segment merging
+        private static final int RANDOM_SEED = 42;
+        private static final RandomGenerator rng =
+                RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
+        //Kolmogorov-Smirnov test for small-segment merging
+        private static final int KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED = 42;
+        private static final RandomGenerator rngKolmogorovSmirnovTest =
+                RandomGeneratorFactory.createRandomGenerator(new Random(KOLMOGOROV_SMIRNOV_TEST_RANDOM_SEED));
+        private static final KolmogorovSmirnovTest kolmogorovSmirnovTest =
+                new KolmogorovSmirnovTest(rngKolmogorovSmirnovTest);
 
         /**
          * Returns genomic distance between two segments (specified by their indices in a list), which should be given
@@ -450,21 +523,21 @@ public final class SegmentMergeUtils {
         /**
          * Returns a list of the coverages for targets in a given segment.
          * @param segment   segment to consider
-         * @param targets   linear target-coverage data to be segmented
+         * @param targets   target-coverage data to be segmented
          * @return          list of the coverages for targets in the segment
          */
         private static List<Double> makeCoverageList(final SimpleInterval segment,
                                                      final TargetCollection<TargetCoverage> targets) {
-            return targets.targets(segment).stream().map(t -> t.getCoverage()).collect(Collectors.toList());
+            return targets.targets(segment).stream().map(TargetCoverage::getCoverage).collect(Collectors.toList());
         }
 
         /**
          * Given a segment specified by an index, returns a pair of scores for adjacent segments based on the
-         * Hodges-Lehmann estimators between the observed linear target coverages; except for edge cases,
+         * Hodges-Lehmann estimators between the observed target coverages; except for edge cases,
          * the sum of the scores will be unity. All segments are assumed to be on the same chromosome.
          * If any of the three segments is missing targets, both scores are Double.NEGATIVE_INFINITY.
          * @param segments  list of segments
-         * @param targets   linear target-coverage data to be segmented
+         * @param targets   target-coverage data to be segmented
          * @param index     index of the center segment to consider
          * @return          scores for adjacent segments based on Hodges-Lehmann estimators
          */
@@ -492,7 +565,7 @@ public final class SegmentMergeUtils {
          * Given a segment specified by an index, returns the small-segment merge scores for merging with adjacent
          * segments.
          * @param segments  list of segments
-         * @param genome    linear target-coverage and SNP-allele-count data to be segmented
+         * @param genome    target-coverage and SNP-allele-count data to be segmented
          * @param index     index of the center segment to consider
          * @return          pair of small-segment merge scores for merging with adjacent segments
          *                  (Double.NEGATIVE_INFINITY for adjacent segments that are on different chromosomes)
@@ -531,16 +604,16 @@ public final class SegmentMergeUtils {
         }
 
         /**
-         * Given a segment specified by an index, returns the direction of the adjacent segment with which it should be
-         * merged (i.e., the adjacent segment with higher small-segment merge score given by
-         * {@link SegmentMergeUtils.SmallSegments#calculateScores}).
+         * Given a segment specified by an index, returns the direction of the adjacent segment(s) with which it
+         * should be merged (i.e., the adjacent segment with higher small-segment merge score given by
+         * {@link SegmentMergeUtils.SmallSegments#calculateScores}.
          * If both adjacent segments are on different chromosomes than the specified segment, returns
          * MergeDirection.NONE.
-         * @param segments  list of segments
-         * @param genome    linear target-coverage and SNP-allele-count data to be segmented
-         * @param index     index of the center segment to consider
-         * @return          direction of the adjacent segment with higher small-segment merge score
-         *                  (MergeDirection.NONE if both adjacent segments are on different chromosomes)
+         * @param segments          list of segments (from segment-union step)
+         * @param genome            target-coverage and SNP-allele-count data to be segmented
+         * @param index             index of the center segment to consider
+         * @return                  direction of the adjacent segment with higher small-segment merge score
+         *                          (MergeDirection.NONE if both adjacent segments are on different chromosomes)
          */
         private static MergeDirection calculateMergeDirection(final List<SimpleInterval> segments,
                                                               final Genome genome,
@@ -562,6 +635,55 @@ public final class SegmentMergeUtils {
                 return isLeftScoreHigher ? MergeDirection.LEFT : MergeDirection.RIGHT;
             }
             throw new GATKException.ShouldNeverReachHereException("Something went wrong during small-segment merging.");
+        }
+    }
+
+    /**
+     * Contains private methods for similar-segment merging.
+     */
+    private static final class SimilarSegments {
+        //checks similarity of posterior summaries to within a sigma threshold;
+        //posterior summaries are similar if the difference between posterior means is less than
+        //sigmaThreshold times the posterior standard deviation of either summary
+        private static boolean areSimilar(final PosteriorSummary summary1, final PosteriorSummary summary2,
+                                          final double sigmaThreshold) {
+            if (Double.isNaN(summary1.mean()) || Double.isNaN(summary2.mean())) {
+                return true;
+            }
+            final double absoluteDifference = Math.abs(summary1.mean() - summary2.mean());
+            return absoluteDifference < sigmaThreshold * summary1.standardDeviation() ||
+                    absoluteDifference < sigmaThreshold * summary2.standardDeviation();
+        }
+
+        //checks similarity of modeled segments to within sigma thresholds for segment mean and minor allele fraction
+        private static boolean areSimilar(final ACSModeledSegment segment1, final ACSModeledSegment segment2,
+                                          final double sigmaThresholdSegmentMean, final double sigmaThresholdMinorAlleleFraction) {
+            return areSimilar(segment1.getSegmentMeanPosteriorSummary(), segment2.getSegmentMeanPosteriorSummary(), sigmaThresholdSegmentMean) &&
+                    areSimilar(segment1.getMinorAlleleFractionPosteriorSummary(), segment2.getMinorAlleleFractionPosteriorSummary(), sigmaThresholdMinorAlleleFraction);
+        }
+
+        //merges posterior summaries naively
+        private static PosteriorSummary merge(final PosteriorSummary summary1, final PosteriorSummary summary2) {
+            if (Double.isNaN(summary1.mean()) && !Double.isNaN(summary2.mean())) {
+                return new PosteriorSummary(summary2);
+            }
+            if ((!Double.isNaN(summary1.mean()) && Double.isNaN(summary2.mean())) ||
+                    (Double.isNaN(summary1.mean()) && Double.isNaN(summary2.mean()))) {
+                return new PosteriorSummary(summary1);
+            }
+            final double variance = 1. / (1. / Math.pow(summary1.standardDeviation(), 2.) + 1. / Math.pow(summary2.standardDeviation(), 2.));
+            final double mean =
+                    (summary1.mean() / Math.pow(summary1.standardDeviation(), 2.) + summary2.mean() / Math.pow(summary2.standardDeviation(), 2.))
+                            * variance;
+            final double standardDeviation = Math.sqrt(variance);
+            return new PosteriorSummary(mean, standardDeviation);
+        }
+
+        //merges modeled segments naively
+        private static ACSModeledSegment merge(final ACSModeledSegment segment1, final ACSModeledSegment segment2) {
+            return new ACSModeledSegment(SegmentMergeUtils.mergeSegments(segment1.getInterval(), segment2.getInterval()),
+                    merge(segment1.getSegmentMeanPosteriorSummary(), segment2.getSegmentMeanPosteriorSummary()),
+                    merge(segment1.getMinorAlleleFractionPosteriorSummary(), segment2.getMinorAlleleFractionPosteriorSummary()));
         }
     }
 }

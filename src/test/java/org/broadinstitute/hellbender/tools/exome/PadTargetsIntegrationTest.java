@@ -4,7 +4,6 @@ import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

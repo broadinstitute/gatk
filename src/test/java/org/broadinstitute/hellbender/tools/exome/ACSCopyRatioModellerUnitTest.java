@@ -5,13 +5,14 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,18 +29,18 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ACSCopyRatioModellerTest extends BaseTest {
+public final class ACSCopyRatioModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final String SAMPLE_NAME = "test";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
-            + "coverages-for-copy-ratio-modeller-test.tsv");
+            + "coverages-for-copy-ratio-modeller.tsv");
     private static final File SEGMENT_FILE =
-            new File(TEST_SUB_DIR + "segments-for-copy-ratio-modeller-test.tsv");
+            new File(TEST_SUB_DIR + "segments-for-copy-ratio-modeller.seg");
     private static final File MEANS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "means-truth-for-copy-ratio-modeller-test.txt");
+            + "segment-means-truth-for-copy-ratio-modeller.txt");
     private static final File OUTLIER_INDICATORS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "outlier-indicators-truth-for-copy-ratio-modeller-test.txt");
+            + "outlier-indicators-truth-for-copy-ratio-modeller.txt");
 
     private static final double VARIANCE_TRUTH = 1.;
     private static final double OUTLIER_PROBABILITY_TRUTH = 0.025;
@@ -101,7 +102,7 @@ public final class ACSCopyRatioModellerTest extends BaseTest {
     public void testRunMCMCOnCopyRatioSegmentedModel() {
         //load data (coverages and number of targets in each segment)
         final List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(COVERAGES_FILE);
-        final Genome genome = new Genome(targetCoverages, new ArrayList<>(), SAMPLE_NAME); //Genome with no SNPs
+        final Genome genome = new Genome(targetCoverages, Collections.emptyList(), SAMPLE_NAME); //Genome with no SNPs
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
         //run MCMC
@@ -135,17 +136,12 @@ public final class ACSCopyRatioModellerTest extends BaseTest {
         int numMeansOutsideOneSigma = 0;
         int numMeansOutsideTwoSigma = 0;
         int numMeansOutsideThreeSigma = 0;
-        final List<ACSCopyRatioModeller.SegmentMeans> segmentMeansSamples = modeller.getSegmentMeansSamples();
         final int numSegments = meansTruth.size();
+        final List<PosteriorSummary> meanPosteriorSummaries = modeller.getSegmentMeansPosteriorSummaries();
         final double[] meanPosteriorStandardDeviations = new double[numSegments];
         for (int segment = 0; segment < numSegments; segment++) {
-            final int j = segment;
-            final double[] meanSamples =
-                    Doubles.toArray(segmentMeansSamples.stream().map(s -> s.getMeanInSegment(j))
-                            .collect(Collectors.toList()));
-            final double meanPosteriorMean = new Mean().evaluate(meanSamples);
-            final double meanPosteriorStandardDeviation =
-                    new StandardDeviation().evaluate(meanSamples);
+            final double meanPosteriorMean = meanPosteriorSummaries.get(segment).mean();
+            final double meanPosteriorStandardDeviation = meanPosteriorSummaries.get(segment).standardDeviation();
             meanPosteriorStandardDeviations[segment] = meanPosteriorStandardDeviation;
             final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorMean - meansTruth.get(segment));
             if (absoluteDifferenceFromTruth > meanPosteriorStandardDeviation) {
@@ -189,5 +185,12 @@ public final class ACSCopyRatioModellerTest extends BaseTest {
         }
         final double fractionOfOutlierIndicatorsCorrect = (double) numIndicatorsCorrect / targetCoverages.size();
         Assert.assertTrue(fractionOfOutlierIndicatorsCorrect >= 0.95);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testMissingData() {
+        final Genome genome = new Genome(Collections.emptyList(), Collections.emptyList(), SAMPLE_NAME);
+        final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
+        new ACSCopyRatioModeller(segmentedModel);
     }
 }

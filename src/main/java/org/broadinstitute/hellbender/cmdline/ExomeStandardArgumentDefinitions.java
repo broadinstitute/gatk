@@ -7,7 +7,7 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String SEGMENT_FILE_SHORT_NAME = "S";
     public static final String SEGMENT_FILE_LONG_NAME = "segments";
 
-    //BED file of trargets intervals
+    //file of target intervals
     public static final String TARGET_FILE_SHORT_NAME = "T";
     public static final String TARGET_FILE_LONG_NAME = "targets";
 

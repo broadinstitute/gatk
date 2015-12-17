@@ -11,13 +11,14 @@ public final class RCBSSegmenter {
 
     private RCBSSegmenter() {
     }
+
     /**
      * @param sample_name Name of the sample being run through the segmenter
      * @param tnFile Tangent-normalized targets file
      * @param outputFile Full path to the outputted segment file
      */
-    public static void writeSegmentFile(String sample_name, String tnFile, String outputFile, Boolean log) {
-        String logArg = log ? "TRUE" : "FALSE";
+    public static void writeSegmentFile(final String sample_name, final String tnFile, final String outputFile, final Boolean log) {
+        final String logArg = log ? "TRUE" : "FALSE";
         final RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new Resource(R_SCRIPT, RCBSSegmenter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Interval;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -40,7 +41,7 @@ public class AllelicCountCollection {
                     // return the lambda to translate dataLines into AllelicCounts.
                     return (dataLine) -> {
                         final int position = dataLine.getInt(AllelicCountTableColumns.POSITION.toString());
-                        final Interval interval = new Interval(dataLine.get(AllelicCountTableColumns.CONTIG.toString()), position, position);
+                        final SimpleInterval interval = new SimpleInterval(dataLine.get(AllelicCountTableColumns.CONTIG.toString()), position, position);
                         final int refReadCount = dataLine.getInt(AllelicCountTableColumns.REF_COUNT.toString());
                         final int altReadCount = dataLine.getInt(AllelicCountTableColumns.ALT_COUNT.toString());
                         return new AllelicCount(interval, refReadCount, altReadCount);
@@ -60,7 +61,7 @@ public class AllelicCountCollection {
      * @param refReadCount  number of reads at site matching the reference
      * @param altReadCount  number of reads at site different from the reference
      */
-    public void add(final Interval interval, final int refReadCount, final int altReadCount) {
+    public void add(final SimpleInterval interval, final int refReadCount, final int altReadCount) {
         counts.add(new AllelicCount(interval, refReadCount, altReadCount));
     }
 

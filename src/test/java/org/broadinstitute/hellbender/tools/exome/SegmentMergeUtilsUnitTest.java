@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.util.Interval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -75,7 +75,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         private static final List<SimpleInterval> mergedSegmentsAll =
                 Arrays.asList(new SimpleInterval("chr2", 100, 600));
 
-        @DataProvider(name="dataSmallSegmentMerging")
+        @DataProvider(name = "dataSmallSegmentMerging")
         public Object[][] dataSmallSegmentMerging() {
             return new Object[][]{
                     //=================================================================================================
@@ -104,14 +104,14 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                                             //no SNPs
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 10, 10)
                                     )
                             ),
                             //expected merged segments
@@ -140,14 +140,14 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 10, 10)
                                     ),
                                     Arrays.asList(
                                             //no SNPs
@@ -184,14 +184,14 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                                             //no SNPs
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 10, 10)
                                     )
                             ),
                             //expected merged segments
@@ -396,16 +396,16 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 10, 10)
                                     )
                             ),
                             //expected merged segments
@@ -470,20 +470,20 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 100 - 20, 20)
 
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 100 - 30, 30),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 100 - 35, 35),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 100 - 40, 40)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 100 - 30, 30),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 100 - 35, 35),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 100 - 40, 40)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 100 - 50, 50),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 100 - 55, 55),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 100 - 60, 60)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 100 - 50, 50),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 100 - 55, 55),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 100 - 60, 60)
                                     )
                             ),
                             //expected merged segments
@@ -514,29 +514,29 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 103, 103), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 104, 104), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 105, 105), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 103, 103), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 104, 104), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 105, 105), 100 - 20, 20)
 
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 303, 303), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 304, 304), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 305, 305), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 303, 303), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 304, 304), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 305, 305), 100 - 20, 20)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 503, 503), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 504, 504), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 505, 505), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 503, 503), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 504, 504), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 505, 505), 100 - 20, 20)
                                     )
                             ),
                             //expected merged segments
@@ -568,25 +568,25 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 100 - 11, 11),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 100 - 11, 11),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 100 - 20, 20)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 303, 303), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 304, 304), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 305, 305), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 303, 303), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 304, 304), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 305, 305), 100 - 20, 20)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 100 - 11, 11),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 503, 503), 100 - 11, 11),
-                                            new AllelicCount(new Interval("chr2", 504, 504), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 505, 505), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 100 - 11, 11),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 503, 503), 100 - 11, 11),
+                                            new AllelicCount(new SimpleInterval("chr2", 504, 504), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 505, 505), 100 - 20, 20)
                                     )
                             ),
                             //expected merged segments
@@ -618,29 +618,29 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 100 - 7, 7),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 103, 103), 100 - 8, 8),
-                                            new AllelicCount(new Interval("chr2", 104, 104), 100 - 13, 13),
-                                            new AllelicCount(new Interval("chr2", 105, 105), 100 - 18, 18)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 100 - 7, 7),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 103, 103), 100 - 8, 8),
+                                            new AllelicCount(new SimpleInterval("chr2", 104, 104), 100 - 13, 13),
+                                            new AllelicCount(new SimpleInterval("chr2", 105, 105), 100 - 18, 18)
 
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 303, 303), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 304, 304), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 305, 305), 100 - 20, 20)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 303, 303), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 304, 304), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 305, 305), 100 - 20, 20)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 100 - 11, 11),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 100 - 21, 21),
-                                            new AllelicCount(new Interval("chr2", 503, 503), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 504, 504), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 505, 505), 100 - 22, 22)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 100 - 11, 11),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 100 - 21, 21),
+                                            new AllelicCount(new SimpleInterval("chr2", 503, 503), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 504, 504), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 505, 505), 100 - 22, 22)
                                     )
                             ),
                             //expected merged segments
@@ -673,86 +673,86 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             Arrays.asList(
                                     Arrays.asList(
                                             //15 alt counts drawn from normal with mean 15, variance 5, rounded
-                                            new AllelicCount(new Interval("chr2", 100, 100), 100 - 5, 5),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 100 - 6, 6),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 103, 103), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 104, 104), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 105, 105), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 106, 106), 100 - 10, 10),
-                                            new AllelicCount(new Interval("chr2", 107, 107), 100 - 11, 11),
-                                            new AllelicCount(new Interval("chr2", 108, 108), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 109, 109), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 110, 110), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 111, 111), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 112, 112), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 113, 113), 100 - 18, 18),
-                                            new AllelicCount(new Interval("chr2", 114, 114), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 100 - 5, 5),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 100 - 6, 6),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 103, 103), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 104, 104), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 105, 105), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 106, 106), 100 - 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 107, 107), 100 - 11, 11),
+                                            new AllelicCount(new SimpleInterval("chr2", 108, 108), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 109, 109), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 110, 110), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 111, 111), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 112, 112), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 113, 113), 100 - 18, 18),
+                                            new AllelicCount(new SimpleInterval("chr2", 114, 114), 100 - 19, 19),
                                             //15 alt counts drawn from normal with mean 85, variance 5, rounded
-                                            new AllelicCount(new Interval("chr2", 115, 115), 100 - 77, 77),
-                                            new AllelicCount(new Interval("chr2", 116, 116), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 117, 117), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 118, 118), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 119, 119), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 120, 120), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 121, 121), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 122, 122), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 123, 123), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 124, 124), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 125, 125), 100 - 87, 87),
-                                            new AllelicCount(new Interval("chr2", 126, 126), 100 - 87, 87),
-                                            new AllelicCount(new Interval("chr2", 127, 127), 100 - 91, 91),
-                                            new AllelicCount(new Interval("chr2", 128, 128), 100 - 93, 93),
-                                            new AllelicCount(new Interval("chr2", 129, 129), 100 - 93, 93)
+                                            new AllelicCount(new SimpleInterval("chr2", 115, 115), 100 - 77, 77),
+                                            new AllelicCount(new SimpleInterval("chr2", 116, 116), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 117, 117), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 118, 118), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 119, 119), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 120, 120), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 121, 121), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 122, 122), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 123, 123), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 124, 124), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 125, 125), 100 - 87, 87),
+                                            new AllelicCount(new SimpleInterval("chr2", 126, 126), 100 - 87, 87),
+                                            new AllelicCount(new SimpleInterval("chr2", 127, 127), 100 - 91, 91),
+                                            new AllelicCount(new SimpleInterval("chr2", 128, 128), 100 - 93, 93),
+                                            new AllelicCount(new SimpleInterval("chr2", 129, 129), 100 - 93, 93)
 
                                     ),
                                     Arrays.asList(
                                             //10 alt counts drawn from normal with mean 15, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 300, 300), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 303, 303), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 304, 304), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 305, 305), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 306, 306), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 307, 307), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 308, 308), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 309, 309), 100 - 18, 18),
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 303, 303), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 304, 304), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 305, 305), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 306, 306), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 307, 307), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 308, 308), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 309, 309), 100 - 18, 18),
                                             //10 alt counts drawn from normal with mean 85, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 310, 310), 100 - 82, 82),
-                                            new AllelicCount(new Interval("chr2", 311, 311), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 312, 312), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 313, 313), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 314, 314), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 315, 315), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 316, 316), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 317, 317), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 318, 318), 100 - 87, 87),
-                                            new AllelicCount(new Interval("chr2", 319, 319), 100 - 88, 88)
+                                            new AllelicCount(new SimpleInterval("chr2", 310, 310), 100 - 82, 82),
+                                            new AllelicCount(new SimpleInterval("chr2", 311, 311), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 312, 312), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 313, 313), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 314, 314), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 315, 315), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 316, 316), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 317, 317), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 318, 318), 100 - 87, 87),
+                                            new AllelicCount(new SimpleInterval("chr2", 319, 319), 100 - 88, 88)
                                     ),
                                     Arrays.asList(
                                             //10 alt counts drawn from normal with mean 15, variance 3, rounded
-                                            new AllelicCount(new Interval("chr2", 500, 500), 100 - 11, 11),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 503, 503), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 504, 504), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 505, 505), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 506, 506), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 507, 507), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 508, 508), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 509, 509), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 100 - 11, 11),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 503, 503), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 504, 504), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 505, 505), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 506, 506), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 507, 507), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 508, 508), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 509, 509), 100 - 19, 19),
                                             //10 alt counts drawn from normal with mean 85, variance 3, rounded
-                                            new AllelicCount(new Interval("chr2", 510, 510), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 511, 511), 100 - 82, 82),
-                                            new AllelicCount(new Interval("chr2", 512, 512), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 513, 513), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 514, 514), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 515, 515), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 516, 516), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 517, 517), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 518, 518), 100 - 86, 86),
-                                            new AllelicCount(new Interval("chr2", 519, 519), 100 - 87, 87)
+                                            new AllelicCount(new SimpleInterval("chr2", 510, 510), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 511, 511), 100 - 82, 82),
+                                            new AllelicCount(new SimpleInterval("chr2", 512, 512), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 513, 513), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 514, 514), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 515, 515), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 516, 516), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 517, 517), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 518, 518), 100 - 86, 86),
+                                            new AllelicCount(new SimpleInterval("chr2", 519, 519), 100 - 87, 87)
                                     )
                             ),
                             //expected merged segments
@@ -784,86 +784,86 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             Arrays.asList(
                                     Arrays.asList(
                                             //15 alt counts drawn from normal with mean 15, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 100, 100), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 100 - 12, 12),
-                                            new AllelicCount(new Interval("chr2", 103, 103), 100 - 14, 14),
-                                            new AllelicCount(new Interval("chr2", 104, 104), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 105, 105), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 106, 106), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 107, 107), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 108, 108), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 109, 109), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 110, 110), 100 - 15, 15),
-                                            new AllelicCount(new Interval("chr2", 111, 111), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 112, 112), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 113, 113), 100 - 16, 16),
-                                            new AllelicCount(new Interval("chr2", 114, 114), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 100 - 12, 12),
+                                            new AllelicCount(new SimpleInterval("chr2", 103, 103), 100 - 14, 14),
+                                            new AllelicCount(new SimpleInterval("chr2", 104, 104), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 105, 105), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 106, 106), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 107, 107), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 108, 108), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 109, 109), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 110, 110), 100 - 15, 15),
+                                            new AllelicCount(new SimpleInterval("chr2", 111, 111), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 112, 112), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 113, 113), 100 - 16, 16),
+                                            new AllelicCount(new SimpleInterval("chr2", 114, 114), 100 - 17, 17),
                                             //15 alt counts drawn from normal with mean 85, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 115, 115), 100 - 82, 82),
-                                            new AllelicCount(new Interval("chr2", 116, 116), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 117, 117), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 118, 118), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 119, 119), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 120, 120), 100 - 83, 83),
-                                            new AllelicCount(new Interval("chr2", 121, 121), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 122, 122), 100 - 84, 84),
-                                            new AllelicCount(new Interval("chr2", 123, 123), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 124, 124), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 125, 125), 100 - 85, 85),
-                                            new AllelicCount(new Interval("chr2", 126, 126), 100 - 86, 86),
-                                            new AllelicCount(new Interval("chr2", 127, 127), 100 - 86, 86),
-                                            new AllelicCount(new Interval("chr2", 128, 128), 100 - 87, 87),
-                                            new AllelicCount(new Interval("chr2", 129, 129), 100 - 88, 88)
+                                            new AllelicCount(new SimpleInterval("chr2", 115, 115), 100 - 82, 82),
+                                            new AllelicCount(new SimpleInterval("chr2", 116, 116), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 117, 117), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 118, 118), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 119, 119), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 120, 120), 100 - 83, 83),
+                                            new AllelicCount(new SimpleInterval("chr2", 121, 121), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 122, 122), 100 - 84, 84),
+                                            new AllelicCount(new SimpleInterval("chr2", 123, 123), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 124, 124), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 125, 125), 100 - 85, 85),
+                                            new AllelicCount(new SimpleInterval("chr2", 126, 126), 100 - 86, 86),
+                                            new AllelicCount(new SimpleInterval("chr2", 127, 127), 100 - 86, 86),
+                                            new AllelicCount(new SimpleInterval("chr2", 128, 128), 100 - 87, 87),
+                                            new AllelicCount(new SimpleInterval("chr2", 129, 129), 100 - 88, 88)
 
                                     ),
                                     Arrays.asList(
                                             //10 alt counts drawn from normal with mean 20, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 300, 300), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 100 - 19, 19),
-                                            new AllelicCount(new Interval("chr2", 303, 303), 100 - 19, 19),
-                                            new AllelicCount(new Interval("chr2", 304, 304), 100 - 19, 19),
-                                            new AllelicCount(new Interval("chr2", 305, 305), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 306, 306), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 307, 307), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 308, 308), 100 - 21, 21),
-                                            new AllelicCount(new Interval("chr2", 309, 309), 100 - 24, 24),
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 303, 303), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 304, 304), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 305, 305), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 306, 306), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 307, 307), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 308, 308), 100 - 21, 21),
+                                            new AllelicCount(new SimpleInterval("chr2", 309, 309), 100 - 24, 24),
                                             //10 alt counts drawn from normal with mean 80, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 310, 310), 100 - 74, 75),
-                                            new AllelicCount(new Interval("chr2", 311, 311), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 312, 312), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 313, 313), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 314, 314), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 315, 315), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 316, 316), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 317, 317), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 318, 318), 100 - 82, 82),
-                                            new AllelicCount(new Interval("chr2", 319, 319), 100 - 82, 82)
+                                            new AllelicCount(new SimpleInterval("chr2", 310, 310), 100 - 74, 75),
+                                            new AllelicCount(new SimpleInterval("chr2", 311, 311), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 312, 312), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 313, 313), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 314, 314), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 315, 315), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 316, 316), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 317, 317), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 318, 318), 100 - 82, 82),
+                                            new AllelicCount(new SimpleInterval("chr2", 319, 319), 100 - 82, 82)
                                     ),
                                     Arrays.asList(
                                             //10 alt counts drawn from normal with mean 20, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 500, 500), 100 - 17, 17),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 100 - 18, 18),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 100 - 19, 19),
-                                            new AllelicCount(new Interval("chr2", 503, 503), 100 - 19, 19),
-                                            new AllelicCount(new Interval("chr2", 504, 504), 100 - 19, 19),
-                                            new AllelicCount(new Interval("chr2", 505, 505), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 506, 506), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 507, 507), 100 - 20, 20),
-                                            new AllelicCount(new Interval("chr2", 508, 508), 100 - 21, 21),
-                                            new AllelicCount(new Interval("chr2", 509, 509), 100 - 23, 23),
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 100 - 17, 17),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 100 - 18, 18),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 503, 503), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 504, 504), 100 - 19, 19),
+                                            new AllelicCount(new SimpleInterval("chr2", 505, 505), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 506, 506), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 507, 507), 100 - 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 508, 508), 100 - 21, 21),
+                                            new AllelicCount(new SimpleInterval("chr2", 509, 509), 100 - 23, 23),
                                             //10 alt counts drawn from normal with mean 80, variance 2, rounded
-                                            new AllelicCount(new Interval("chr2", 510, 510), 100 - 78, 78),
-                                            new AllelicCount(new Interval("chr2", 511, 511), 100 - 78, 78),
-                                            new AllelicCount(new Interval("chr2", 512, 512), 100 - 79, 79),
-                                            new AllelicCount(new Interval("chr2", 513, 513), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 514, 514), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 515, 515), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 516, 516), 100 - 80, 80),
-                                            new AllelicCount(new Interval("chr2", 517, 517), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 518, 518), 100 - 81, 81),
-                                            new AllelicCount(new Interval("chr2", 519, 519), 100 - 82, 82)
+                                            new AllelicCount(new SimpleInterval("chr2", 510, 510), 100 - 78, 78),
+                                            new AllelicCount(new SimpleInterval("chr2", 511, 511), 100 - 78, 78),
+                                            new AllelicCount(new SimpleInterval("chr2", 512, 512), 100 - 79, 79),
+                                            new AllelicCount(new SimpleInterval("chr2", 513, 513), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 514, 514), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 515, 515), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 516, 516), 100 - 80, 80),
+                                            new AllelicCount(new SimpleInterval("chr2", 517, 517), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 518, 518), 100 - 81, 81),
+                                            new AllelicCount(new SimpleInterval("chr2", 519, 519), 100 - 82, 82)
                                     )
                             ),
                             //expected merged segments
@@ -900,14 +900,14 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                                             //no SNPs
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 10, 10)
                                     )
                             ),
                             //expected merged segments
@@ -938,19 +938,19 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //SNP counts
                             Arrays.asList(
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 100, 100), 20, 20),
-                                            new AllelicCount(new Interval("chr2", 101, 101), 30, 30),
-                                            new AllelicCount(new Interval("chr2", 102, 102), 40, 40)
+                                            new AllelicCount(new SimpleInterval("chr2", 100, 100), 20, 20),
+                                            new AllelicCount(new SimpleInterval("chr2", 101, 101), 30, 30),
+                                            new AllelicCount(new SimpleInterval("chr2", 102, 102), 40, 40)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 300, 300), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 301, 301), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 302, 302), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 300, 300), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 301, 301), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 302, 302), 10, 10)
                                     ),
                                     Arrays.asList(
-                                            new AllelicCount(new Interval("chr2", 500, 500), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 501, 501), 10, 10),
-                                            new AllelicCount(new Interval("chr2", 502, 502), 10, 10)
+                                            new AllelicCount(new SimpleInterval("chr2", 500, 500), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 501, 501), 10, 10),
+                                            new AllelicCount(new SimpleInterval("chr2", 502, 502), 10, 10)
                                     )
                             ),
                             //expected merged segments
@@ -970,6 +970,88 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
             final List<SimpleInterval> resultMergedSegments =
                     SegmentMergeUtils.mergeSmallSegments(segments, genome, SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);
             Assert.assertEquals(resultMergedSegments, expectedMergedSegments);
+        }
+    }
+
+    /**
+     * Tests for similar-segment merging.
+     */
+    public static final class SimilarSegmentsTestHelper {
+        private static final double SIGMA_THRESHOLD = 2;
+
+        private static ACSModeledSegment constructSegment(final String contig, final int start, final int end,
+                                                          final double segmentMeanPosteriorMean,
+                                                          final double segmentMeanPosteriorStandardDeviation,
+                                                          final double minorAlleleFractionPosteriorMean,
+                                                          final double minorAlleleFractionPosteriorStandardDeviation) {
+            return new ACSModeledSegment(new SimpleInterval(contig, start, end),
+                    new PosteriorSummary(segmentMeanPosteriorMean, segmentMeanPosteriorStandardDeviation),
+                    new PosteriorSummary(minorAlleleFractionPosteriorMean, minorAlleleFractionPosteriorStandardDeviation));
+        }
+
+        @DataProvider(name = "dataSimilarSegmentMerging")
+        public Object[][] dataSimilarSegmentMerging() {
+            return new Object[][]{
+                    //=================================================================================================
+                    {
+                            //segments to merge
+                            Arrays.asList(
+                                    constructSegment("1", 1, 10, 1., 0.05, 0.45, 0.1),      //merge right
+                                    constructSegment("1", 11, 20, 1.05, 0.05, 0.25, 0.2),
+                                    constructSegment("1", 21, 30, 5., 0.05, 0.25, 0.1),     //no merge
+                                    constructSegment("2", 1, 10, 5., 0.05, 0.25, 0.05),     //no merge
+                                    constructSegment("2", 11, 20, 1.05, 0.01, 0.25, 0.05),  //merge right
+                                    constructSegment("2", 21, 30, 1., 0.05, 0.3, 0.01)
+                            ),
+                            //expected merged segments
+                            Arrays.asList(
+                                    constructSegment("1", 1, 20, 1.025, 0.035, 0.41, 0.089),
+                                    constructSegment("1", 21, 30, 5., 0.05, 0.25, 0.1),
+                                    constructSegment("2", 1, 10, 5., 0.05, 0.25, 0.05),
+                                    constructSegment("2", 11, 30, 1.048, 0.0098, 0.298, 0.0098)
+                            )
+                    },
+                    //=================================================================================================
+                    {
+                            //segments to merge
+                            Arrays.asList(
+                                    constructSegment("1", 1, 10, 1., 0.05, 0.45, 0.1),      //merge right twice
+                                    constructSegment("1", 11, 20, 1.05, 0.05, 0.25, 0.2),
+                                    constructSegment("1", 21, 30, 1.05, 0.01, 0.25, 0.05),
+                                    constructSegment("1", 31, 40, 5., 0.05, 0.25, 0.1)      //no merge
+                            ),
+                            //expected merged segments
+                            Arrays.asList(
+                                    constructSegment("1", 1, 30, 1.048, 0.0096, 0.288, 0.044),
+                                    constructSegment("1", 31, 40, 5., 0.05, 0.25, 0.1)
+                            )
+                    }
+            };
+        }
+
+        @Test(dataProvider = "dataSimilarSegmentMerging")
+        public void testSimilarSegmentMerging(final List<ACSModeledSegment> segments,
+                                              final List<ACSModeledSegment> expectedMergedSegments) {
+            final List<ACSModeledSegment> resultMergedSegments =
+                    SegmentMergeUtils.mergeSimilarSegments(segments, SIGMA_THRESHOLD, SIGMA_THRESHOLD);
+            Assert.assertTrue(resultMergedSegments.size() == expectedMergedSegments.size());
+            for (int i = 0; i < resultMergedSegments.size(); i++) {
+                final ACSModeledSegment resultSegment = resultMergedSegments.get(i);
+                final ACSModeledSegment expectedSegment = expectedMergedSegments.get(i);
+                Assert.assertEquals(resultSegment.getInterval(), expectedSegment.getInterval());
+                Assert.assertEquals(
+                        resultSegment.getSegmentMeanPosteriorSummary().mean(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().mean(), 0.001);
+                Assert.assertEquals(
+                        resultSegment.getSegmentMeanPosteriorSummary().standardDeviation(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().standardDeviation(), 0.001);
+                Assert.assertEquals(
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().mean(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().mean(), 0.001);
+                Assert.assertEquals(
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().standardDeviation(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().standardDeviation(), 0.001);
+            }
         }
     }
 }

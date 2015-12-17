@@ -18,11 +18,13 @@ public final class Genome {
 
     /**
      * Constructs a genome from lists containing linear target-coverage and SNP-allele-count data.
-     * @param targets       list of linear target coverages
-     * @param snps          list of SNP allele counts
-     * @param sampleName    name of the sample
+     * @param targets       list of linear target coverages, cannot be {@code null}
+     * @param snps          list of SNP allele counts, cannot be {@code null}
+     * @param sampleName    name of the sample, cannot be {@code null}
      */
     public Genome(final List<TargetCoverage> targets, final List<AllelicCount> snps, final String sampleName) {
+        Utils.nonNull(targets, "The list of targets cannot be null.");
+        Utils.nonNull(snps, "The list of SNPs cannot be null.");
         Utils.nonNull(sampleName, "Sample name cannot be null.");
         this.targets = new HashedListTargetCollection<>(targets);
         this.snps = new HashedListTargetCollection<>(snps);
@@ -43,4 +45,6 @@ public final class Genome {
     public final TargetCollection<TargetCoverage> getTargets() {  return targets; }
 
     public final TargetCollection<AllelicCount> getSNPs() {  return snps; }
+
+    public final String getSampleName() {   return sampleName;  }
 }

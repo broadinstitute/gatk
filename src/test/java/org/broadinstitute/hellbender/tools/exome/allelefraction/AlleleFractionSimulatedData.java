@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import breeze.stats.distributions.Poisson;
-import htsjdk.samtools.util.Interval;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
@@ -30,6 +28,7 @@ public final class AlleleFractionSimulatedData {
     private static final RandomGenerator rng2 = new Well19937a(RANDOM_SEED);
 
     private static PoissonDistribution makePoisson(final double mean) {
+        rng2.setSeed(RANDOM_SEED);
         return new PoissonDistribution(rng2, mean, PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
     }
 
@@ -39,11 +38,10 @@ public final class AlleleFractionSimulatedData {
 
     public AlleleFractionSimulatedData(final double averageHetsPerSegment, final int numSegments,
                                        final double averageDepth, final double biasMean, final double biasVariance, final double outlierProbability) {
+        rng.setSeed(RANDOM_SEED);
         this.numSegments = numSegments;
         final AlleleFractionState.MinorFractions minorFractions = new AlleleFractionState.MinorFractions();
         final List<AllelicCount> alleleCounts = new ArrayList<>();
-        final List<Integer> startHetsPerSegment = new ArrayList<>();
-        final List<Integer> numHetsPerSegment = new ArrayList<>();
         final List<SimpleInterval> segments = new ArrayList<>();
 
         final PoissonDistribution segmentLengthGenerator = makePoisson(averageHetsPerSegment);
@@ -55,14 +53,9 @@ public final class AlleleFractionSimulatedData {
         final double gammaScale = biasVariance / biasMean;
         final GammaDistribution biasGenerator = new GammaDistribution(rng2, gammaShape, gammaScale);
 
-
-        int startHetOfSegment = 0;
         for (int segment = 0; segment < numSegments; segment++) {
             // calculate the range of het indices for this segment
-            startHetsPerSegment.add(startHetOfSegment);
             final int numHetsInSegment = Math.max(MIN_HETS_PER_SEGMENT, segmentLengthGenerator.sample());
-            numHetsPerSegment.add(numHetsInSegment);
-            startHetOfSegment += numHetsInSegment;
 
             final double minorFraction = minorFractionGenerator.sample();
             minorFractions.add(minorFraction);
@@ -81,7 +74,7 @@ public final class AlleleFractionSimulatedData {
                 final int numReads = readDepthGenerator.sample();
                 final int numAltReads = new BinomialDistribution(numReads, pAlt).sample();
                 final int numRefReads = numReads - numAltReads;
-                alleleCounts.add(new AllelicCount(new Interval(Integer.toString(segment), het, het), numRefReads, numAltReads));
+                alleleCounts.add(new AllelicCount(new SimpleInterval(Integer.toString(segment), het, het), numRefReads, numAltReads));
             }
         }
 

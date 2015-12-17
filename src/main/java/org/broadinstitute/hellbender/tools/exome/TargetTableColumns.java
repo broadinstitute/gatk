@@ -20,7 +20,7 @@ enum TargetTableColumns {
     GC_CONTENT("GC_CONTENT", false),
     REPEAT_FRACTION("REPEAT_FRACTION", false);
 
-    private String columnName;  //store the column names
+    private final String columnName;  //store the column names
 
     private boolean mandatory;
 

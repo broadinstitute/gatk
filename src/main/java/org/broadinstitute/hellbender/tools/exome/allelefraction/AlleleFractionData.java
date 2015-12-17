@@ -55,6 +55,10 @@ public final class AlleleFractionData implements DataCollection {
         return Collections.unmodifiableList(hetIndices.subList(startInclusive, endExclusive));
     }
 
+    public int numHetsInSegment(final int segment) {
+        return numHetsPerSegment.get(segment);
+    }
+
     public int numSegments() { return startHetsPerSegment.size(); }
 
     public AllelicCount count(final int het) { return allelicCounts.get(het); }

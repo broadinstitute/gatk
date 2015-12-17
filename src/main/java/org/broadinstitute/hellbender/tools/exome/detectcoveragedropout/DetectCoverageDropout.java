@@ -101,7 +101,7 @@ public final class DetectCoverageDropout extends CommandLineProgram {
 
         final TargetCollection<TargetCoverage>targetList = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(targetsFile);
 
-        final List<ModeledSegment> segments = SegmentUtils.readModeledSegmentsFromSegfile(segmentsFile);
+        final List<ModeledSegment> segments = SegmentUtils.readModeledSegmentsFromSegmentFile(segmentsFile);
 
         logger.info("Input files loaded.  Targets: " + targetsFile + " and segments: " + segmentsFile);
 

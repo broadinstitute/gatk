@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import htsjdk.samtools.util.Interval;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -30,7 +30,7 @@ import static java.lang.Math.log;
  * @author David Benjamin
  */
 public final class AlleleFractionModellerUnitTest {
-    private static final Interval DUMMY = new Interval("dummy", 1, 2);
+    private static final SimpleInterval DUMMY = new SimpleInterval("dummy", 1, 2);
     private static final double EPSILON = 1e-10;
 
     //if f is very close to 0 we have an analytic result for comparison
