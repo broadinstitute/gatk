@@ -93,5 +93,4 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
             Assert.fail("problems writing in the input coverage file");
         }
     }
-
 }

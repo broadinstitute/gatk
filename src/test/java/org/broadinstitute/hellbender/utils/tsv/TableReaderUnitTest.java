@@ -270,7 +270,7 @@ public class TableReaderUnitTest extends BaseTest {
 
         final TableColumnCollection columns = reader.columns();
         Assert.assertTrue(columns.matchesExactly("col1", "col2", "col3"));
-
+        Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
         Assert.assertTrue(columnNamesAvailableWhenCreatingRecords[0], "the readDataLine code did not get executed");
     }
 
@@ -338,7 +338,7 @@ public class TableReaderUnitTest extends BaseTest {
 
         final boolean[] tested = new boolean[1];
 
-        new TableReader<String[]>(testFile) {
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
             @Override
             protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertNotNull(columns());
@@ -349,6 +349,7 @@ public class TableReaderUnitTest extends BaseTest {
             }
         };
 
+        Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
         Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
     }
 
@@ -361,7 +362,7 @@ public class TableReaderUnitTest extends BaseTest {
 
         final boolean[] tested = new boolean[1];
 
-        new TableReader<String[]>(testFile) {
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
             @Override
             protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertEquals(dataLine.getInt("col1"), 1);
@@ -380,7 +381,8 @@ public class TableReaderUnitTest extends BaseTest {
             }
         };
 
-        Assert.assertTrue(tested[0], "the readDataLine code did not get exected");
+        Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
+        Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
     }
 
     @Test
@@ -392,7 +394,7 @@ public class TableReaderUnitTest extends BaseTest {
 
         final boolean[] tested = new boolean[1];
 
-        new TableReader<String[]>(testFile) {
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
             @Override
             protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertEquals(dataLine.getDouble("col1"), 1.0);
@@ -411,7 +413,8 @@ public class TableReaderUnitTest extends BaseTest {
             }
         };
 
-        Assert.assertTrue(tested[0], "the readDataLine code did not get exected");
+        Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
+        Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
     }
 
     @Test
@@ -423,7 +426,7 @@ public class TableReaderUnitTest extends BaseTest {
 
         final boolean[] tested = new boolean[1];
 
-        new TableReader<String[]>(testFile) {
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
             @Override
             protected String[] createRecord(final DataLine dataLine) {
                 Assert.assertEquals(dataLine.get("col1"), "1");
@@ -442,7 +445,8 @@ public class TableReaderUnitTest extends BaseTest {
             }
         };
 
-        Assert.assertTrue(tested[0], "the readDataLine code did not get exected");
+        Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
+        Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
     }
 
 
