@@ -21,12 +21,15 @@ echo "cd back down"
 cd ..
 
 echo "resetting travis remote"
-git remote set-url origin "git@github.com:broadinstitute/hellbender.git"
+git remote set-url origin "git@github.com:broadinstitute/gatk.git"
 
 echo "install"
 git-lfs/bin/git-lfs install
 
 echo "pull"
+git-lfs/bin/git-lfs pull
+
+echo "pull again to work around https://github.com/github/git-lfs/issues/904"
 git-lfs/bin/git-lfs pull
 
 echo "ls-files"
