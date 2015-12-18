@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 
@@ -31,6 +32,7 @@ public final class BaseRecalibrationEngine implements Serializable {
     private static final long serialVersionUID = 1L;
 
     protected static final Logger logger = LogManager.getLogger(BaseRecalibrationEngine.class);
+    private final CovariateKeyCache keyCache;
 
     /**
      * Reference window function for BQSR. For each read, returns an interval representing the span of
@@ -82,6 +84,7 @@ public final class BaseRecalibrationEngine implements Serializable {
             throw new UserException("Number of read groups must be >= 1, but is " + numReadGroups);
         }
         recalTables = new RecalibrationTables(covariates, numReadGroups);
+        keyCache = new CovariateKeyCache();
     }
 
     public void logCovariatesUsed() {
@@ -115,7 +118,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read, refDS);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
-            final ReadCovariates covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates, true);
+            final ReadCovariates covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates, true, keyCache);
             final boolean[] skip = calculateSkipArray(read, knownSites); // skip known sites of variation as well as low quality and non-regular bases
             final double[] snpErrors = calculateFractionalErrorArray(isSNP, baqArray);
             final double[] insertionErrors = calculateFractionalErrorArray(isInsertion, baqArray);

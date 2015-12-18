@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
@@ -14,11 +13,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public final class ReadGroupCovariateUnitTest {
-
-    @BeforeMethod
-    public void initCache() {
-        ReadCovariates.clearKeysCache();
-    }
 
     @Test
     public void testSingleRecord() {
@@ -80,7 +74,7 @@ public final class ReadGroupCovariateUnitTest {
         GATKRead read = ArtificialReadUtils.createRandomRead(header, 10);
         read.setReadGroup(rg.getReadGroupId());
 
-        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
+        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), expected, covariate);
 

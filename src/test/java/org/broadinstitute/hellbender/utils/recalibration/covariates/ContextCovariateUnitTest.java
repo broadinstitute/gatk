@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCo
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -29,11 +28,6 @@ public final class ContextCovariateUnitTest extends BaseTest {
         covariate = new ContextCovariate(RAC);
     }
 
-    @BeforeMethod
-    public void initCache() {
-        ReadCovariates.clearKeysCache();
-    }
-
     @Test
     public void testSimpleContexts() {
         final Random rnd = Utils.getRandomGenerator();
@@ -43,7 +37,7 @@ public final class ContextCovariateUnitTest extends BaseTest {
             final GATKRead read = ArtificialReadUtils.createRandomRead(header, 1000);
             read.setIsReverseStrand(rnd.nextBoolean());
             final GATKRead clippedRead = ReadClipper.clipLowQualEnds(read, RAC.LOW_QUAL_TAIL, ClippingRepresentation.WRITE_NS);
-            final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
+            final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
             covariate.recordValues(read, header, readCovariates, true);
 
             verifyCovariateArray(readCovariates.getMismatchesKeySet(), RAC.MISMATCHES_CONTEXT_SIZE, clippedRead, covariate, RAC.LOW_QUAL_TAIL);

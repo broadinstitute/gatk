@@ -10,18 +10,12 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.Random;
 
 public final class ReadCovariatesUnitTest extends BaseTest {
-
-    @BeforeMethod
-    public void init() {
-        ReadCovariates.clearKeysCache();
-    }
 
     @Test
     public void testCovariateGeneration() {
@@ -37,6 +31,7 @@ public final class ReadCovariatesUnitTest extends BaseTest {
 
         final int NUM_READS = 100;
         final Random rnd = Utils.getRandomGenerator();
+        final CovariateKeyCache keyCache= new CovariateKeyCache();
 
         for (int idx = 0; idx < NUM_READS; idx++) {
             for (final String readGroupID : readGroups) {
@@ -52,7 +47,7 @@ public final class ReadCovariatesUnitTest extends BaseTest {
                 final byte[] mQuals = read.getBaseQualities();
                 final byte[] iQuals = ReadUtils.getBaseInsertionQualities(read);
                 final byte[] dQuals = ReadUtils.getBaseDeletionQualities(read);
-                ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariates, true);
+                ReadCovariates rc = RecalUtils.computeCovariates(read, header, covariates, true, keyCache);
 
                 // check that the length is correct
                 Assert.assertEquals(rc.getMismatchesKeySet().length, length);

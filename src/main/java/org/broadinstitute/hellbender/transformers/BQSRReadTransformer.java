@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.*;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 
@@ -46,6 +47,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
     private final boolean useOriginalBaseQualities;
 
     private byte[] staticQuantizedMapping;
+    private final CovariateKeyCache keyCache;
 
     /**
      * Constructor using a GATK Report file
@@ -67,7 +69,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param covariates standard covariate set
      * @param args ApplyBQSR arguments
      */
-    public BQSRReadTransformer(final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo, final StandardCovariateList covariates, final ApplyBQSRArgumentCollection args) {
+    private BQSRReadTransformer(final SAMFileHeader header, final RecalibrationTables recalibrationTables, final QuantizationInfo quantizationInfo, final StandardCovariateList covariates, final ApplyBQSRArgumentCollection args) {
         this.header = header;
         this.recalibrationTables = recalibrationTables;
         this.covariates = covariates;
@@ -95,6 +97,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
 
         //Note: We pre-create the varargs arrays that will be used in the calls. Otherwise we're spending a lot of time allocating those int[] objects
         empiricalQualCovsArgs = new RecalDatum[totalCovariateCount - specialCovariateCount];
+        keyCache = new CovariateKeyCache();//one cache per transformer
     }
 
     /**
@@ -139,7 +142,7 @@ public final class BQSRReadTransformer implements ReadTransformer {
             }
         }
 
-        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, header, covariates, false);
+        final ReadCovariates readCovariates = RecalUtils.computeCovariates(read, header, covariates, false, keyCache);
 
         //clear indel qualities
         read.clearAttribute(ReadUtils.BQSR_BASE_INSERTION_QUALITIES);
