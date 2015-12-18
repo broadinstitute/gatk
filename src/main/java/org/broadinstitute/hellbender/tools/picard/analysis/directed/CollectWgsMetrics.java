@@ -13,6 +13,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SamLocusIterator;
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
@@ -128,6 +129,11 @@ public final class CollectWgsMetrics extends PicardCommandLineProgram {
         final ProgressLogger progress = new ProgressLogger(logger, 10000000, "Processed", "loci");
         final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).validationStringency(VALIDATION_STRINGENCY).open(INPUT);
+
+        // Load up the reference sequence and double check sequence dictionaries
+        if (!in.getFileHeader().getSequenceDictionary().isEmpty()) {
+            SequenceUtil.assertSequenceDictionariesEqual(in.getFileHeader().getSequenceDictionary(), refWalker.getSequenceDictionary());
+        }
 
         final SamLocusIterator iterator = new SamLocusIterator(in);
         final List<SamRecordFilter> filters = new ArrayList<>();
