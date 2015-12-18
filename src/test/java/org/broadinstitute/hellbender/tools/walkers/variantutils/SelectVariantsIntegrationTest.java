@@ -661,4 +661,53 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         spec.executeTest("testSetFilteredGtoNocall--" + testFile, this);
     }
+
+    @Test
+    public void testMaxNoCall1() throws IOException {
+        final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" --maxNOCALLnumber 1", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber1.vcf")
+        );
+
+        spec.executeTest("testMaxNoCall1--" + testFile, this);
+    }
+
+    @Test
+    public void testMaxNoCall0_25() throws IOException {
+        final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" --maxNOCALLfraction 0.25", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber1.vcf")
+        );
+
+        spec.executeTest("testMaxNoCall0_25--" + testFile, this);
+    }
+
+    @Test
+    public void testMaxNoCall2() throws IOException {
+        final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" --maxNOCALLnumber 2", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber2.vcf")
+        );
+
+        spec.executeTest("testMaxNoCall2--" + testFile, this);
+    }
+
+    @Test
+    public void testMaxNoCall0_5() throws IOException {
+        final String testFile = getToolTestDataDir() + "vcfexample.forNoCallFiltering.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" --maxNOCALLfraction 0.5", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber2.vcf")
+        );
+
+        spec.executeTest("testMaxNoCall0_25--" + testFile, this);
+    }
+
 }
