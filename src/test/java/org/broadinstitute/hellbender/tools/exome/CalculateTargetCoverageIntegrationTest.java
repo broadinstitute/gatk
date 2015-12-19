@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.ExomeToolsTestUtils;
+import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,14 +15,14 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Integration tests for {@link ExomeReadCounts}.
+ * Integration tests for {@link CalculateTargetCoverage}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest {
+public final class CalculateTargetCoverageIntegrationTest extends CommandLineProgramTest {
 
     private static File testFile(final String fileName) {
-        return new File(ExomeToolsTestUtils.getTestDataDir(),fileName);
+        return new File(TargetsToolsTestUtils.getTestDataDir(),fileName);
     }
 
     //////////////////////
@@ -132,7 +132,7 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
     @Override
     public String getTestedClassName() {
-        return ExomeReadCounts.class.getSimpleName();
+        return CalculateTargetCoverage.class.getSimpleName();
     }
 
     /**
@@ -152,8 +152,8 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                         COHORT_COUNT_EXPECTED_OUTPUT,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
                         new String[0]
                 },
                 {       ALL_BAMS,
@@ -161,26 +161,26 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                         SAMPLE_COUNT_EXPECTED_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_ROW_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.SAMPLE.name()}
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.GROUP_BY_SHORT_NAME, CalculateTargetCoverage.GroupBy.SAMPLE.name()}
                 },
                 {       ALL_BAMS,
                         INTERVALS_LIST,
                         READ_GROUP_COUNT_EXPECTED_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_ROW_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.READ_GROUP.name()}
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.GROUP_BY_SHORT_NAME, CalculateTargetCoverage.GroupBy.READ_GROUP.name()}
                 },
                 {       ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_PCOV_OUTPUT,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.PCOV,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
+                        CalculateTargetCoverage.Transform.PCOV,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
                         new String[0]
                 },
                 {       ALL_BAMS,
@@ -188,27 +188,27 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                         SAMPLE_COUNT_EXPECTED_PCOV_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_ROW_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.PCOV,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.SAMPLE.name()}
+                        CalculateTargetCoverage.Transform.PCOV,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.GROUP_BY_SHORT_NAME, CalculateTargetCoverage.GroupBy.SAMPLE.name()}
                 },
                 {       ALL_BAMS,
                         INTERVALS_LIST,
                         READ_GROUP_COUNT_EXPECTED_PCOV_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_ROW_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.PCOV,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.READ_GROUP.name()}
+                        CalculateTargetCoverage.Transform.PCOV,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.GROUP_BY_SHORT_NAME, CalculateTargetCoverage.GroupBy.READ_GROUP.name()}
                 },
                 {       ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_OUTPUT,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME,INTERVALS_BED.getAbsolutePath()},
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME,INTERVALS_BED.getAbsolutePath()},
                 },
 
                 {       ALL_BAMS,
@@ -216,83 +216,83 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                         SAMPLE_COUNT_EXPECTED_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_ROW_OUTPUT,
                         SAMPLE_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.SAMPLE.name(),
-                                "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME,INTERVALS_BED.getAbsolutePath()}
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.GROUP_BY_SHORT_NAME, CalculateTargetCoverage.GroupBy.SAMPLE.name(),
+                                "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME,INTERVALS_BED.getAbsolutePath()}
                 },
                 {       ALL_BAMS,
                         INTERVALS_LIST,
                         READ_GROUP_COUNT_EXPECTED_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_ROW_OUTPUT,
                         READ_GROUP_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.COORDS,
-                        new String[] { "-" + ExomeReadCounts.GROUP_BY_SHORT_NAME,ExomeReadCounts.GroupBy.READ_GROUP.name(),
-                                "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME,INTERVALS_BED.getAbsolutePath()}
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.COORDS,
+                        new String[] { "-" + CalculateTargetCoverage.GROUP_BY_SHORT_NAME, CalculateTargetCoverage.GroupBy.READ_GROUP.name(),
+                                "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME,INTERVALS_BED.getAbsolutePath()}
                 },{     ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_OUTPUT_WITH_NAMES,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_NAMES,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.FULL,
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.FULL,
                         new String[0]
                 },{     ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_OUTPUT_WITH_NAMES_ONLY,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_NAMES_ONLY,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.NAME,
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.NAME,
                         new String[0]
                 },{     ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.FULL,
-                        new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED.getAbsolutePath() }
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.FULL,
+                        new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED.getAbsolutePath() }
                 },{     ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES_ONLY,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES_ONLY,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.NAME,
-                        new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED.getAbsolutePath() }
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.NAME,
+                        new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED.getAbsolutePath() }
                 },{     ALL_BAMS,
                         INTERVALS_LIST,
                         COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_MISSING_NAMES,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_MISSING_NAMES,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.FULL,
-                        new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED_MISSING_NAMES.getAbsolutePath() }
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.FULL,
+                        new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED_MISSING_NAMES.getAbsolutePath() }
                 },{     DUPREADS_BAM,
                         INTERVALS_LIST_DUPS,
                         COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES_DUPS,
                         COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES_DUPS,
                         COHORT_COUNT_EXPECTED_COLUMN_OUTPUT_DUPS,
-                        ExomeReadCounts.Transform.RAW,
-                        ExomeReadCounts.ExonOutInfo.FULL,
-                        new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED_DUPS.getAbsolutePath(),
-                                "-" + ExomeReadCounts.KEEP_DUPLICATE_READS_SHORT_NAME},
+                        CalculateTargetCoverage.Transform.RAW,
+                        CalculateTargetCoverage.TargetOutInfo.FULL,
+                        new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED_DUPS.getAbsolutePath(),
+                                "-" + CalculateTargetCoverage.KEEP_DUPLICATE_READS_SHORT_NAME},
                 }
         };
     }
 
     @Test(expectedExceptions = UserException.class)
-    public void testMissingExonNameRun() {
+    public void testMissingTargetNameRun() {
         testCorrectRun(ALL_BAMS,
                 INTERVALS_LIST,
                 COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_MISSING_NAMES,
                 COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_MISSING_NAMES,
                 COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                ExomeReadCounts.Transform.RAW,
-                ExomeReadCounts.ExonOutInfo.NAME,
-                new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED_MISSING_NAMES.getAbsolutePath() }
+                CalculateTargetCoverage.Transform.RAW,
+                CalculateTargetCoverage.TargetOutInfo.NAME,
+                new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED_MISSING_NAMES.getAbsolutePath() }
         );
     }
 
@@ -303,56 +303,56 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
                 COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_MISSING_NAMES,
                 COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_MISSING_NAMES,
                 COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                ExomeReadCounts.Transform.RAW,
-                ExomeReadCounts.ExonOutInfo.NAME,
+                CalculateTargetCoverage.Transform.RAW,
+                CalculateTargetCoverage.TargetOutInfo.NAME,
                 new String[0]
         );
     }
 
     @Test
-    public void testExonFileOnly() {
+    public void testTargetFileOnly() {
         testCorrectRun(ALL_BAMS,
                 null,
                 COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES,
                 COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES,
                 COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                ExomeReadCounts.Transform.RAW,
-                ExomeReadCounts.ExonOutInfo.FULL,
-                new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_BED.getAbsolutePath() }
+                CalculateTargetCoverage.Transform.RAW,
+                CalculateTargetCoverage.TargetOutInfo.FULL,
+                new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED.getAbsolutePath() }
         );
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testNonBEDExonFile() {
+    public void testNonBEDTargetFile() {
         testCorrectRun(ALL_BAMS,
                 null,
                 COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_NAMES,
                 COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_NAMES,
                 COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                ExomeReadCounts.Transform.RAW,
-                ExomeReadCounts.ExonOutInfo.FULL,
-                new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, NON_BED_FEATURE_FILE.getAbsolutePath() }
+                CalculateTargetCoverage.Transform.RAW,
+                CalculateTargetCoverage.TargetOutInfo.FULL,
+                new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, NON_BED_FEATURE_FILE.getAbsolutePath() }
         );
     }
 
     @Test(expectedExceptions = UserException.class)
-    public void testBadExonFile() {
+    public void testBadTargetFile() {
         testCorrectRun(ALL_BAMS,
                 INTERVALS_LIST,
                 COHORT_COUNT_EXPECTED_OUTPUT_WITH_BED_MISSING_NAMES,
                 COHORT_COUNT_EXPECTED_ROW_OUTPUT_WITH_BED_MISSING_NAMES,
                 COHORT_COUNT_EXPECTED_COLUMN_OUTPUT,
-                ExomeReadCounts.Transform.RAW,
-                ExomeReadCounts.ExonOutInfo.NAME,
-                new String[] { "-" + ExomeReadCounts.EXOME_FILE_SHORT_NAME, INTERVALS_LIST.getAbsolutePath() }
+                CalculateTargetCoverage.Transform.RAW,
+                CalculateTargetCoverage.TargetOutInfo.NAME,
+                new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_LIST.getAbsolutePath() }
         );
     }
 
 
     @Test(dataProvider = "correctRunData")
     public void testCorrectRun(final File[] bamFiles, final File intervalFile, final File expectedOutputFile, final File expectedRowOutputFile,
-                               final File expectedColumnOutputFile, final ExomeReadCounts.Transform transform,
-                               final ExomeReadCounts.ExonOutInfo exonOutInfo,
+                               final File expectedColumnOutputFile, final CalculateTargetCoverage.Transform transform,
+                               final CalculateTargetCoverage.TargetOutInfo targetOutInfo,
                                final String[] additionalArguments) {
         final File outputFile = createTempFile("cohort-output");
         final File rowOutputFile = createTempFile("cohort-row-output");
@@ -360,10 +360,10 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
         final List<String> arguments = new ArrayList<>(Arrays.asList(
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + ExomeReadCounts.ROW_SUMMARY_OUTPUT_SHORT_NAME, rowOutputFile.getAbsolutePath(),
-                "-" + ExomeReadCounts.COLUMN_SUMMARY_OUTPUT_SHORT_NAME, columnOutputFile.getAbsolutePath(),
-                "-" + ExomeReadCounts.TRANSFORM_SHORT_NAME, transform.name(),
-                "-" + ExomeReadCounts.EXON_OUT_INFO_SHORT_NAME, exonOutInfo.name()
+                "-" + CalculateTargetCoverage.ROW_SUMMARY_OUTPUT_SHORT_NAME, rowOutputFile.getAbsolutePath(),
+                "-" + CalculateTargetCoverage.COLUMN_SUMMARY_OUTPUT_SHORT_NAME, columnOutputFile.getAbsolutePath(),
+                "-" + CalculateTargetCoverage.TRANSFORM_SHORT_NAME, transform.name(),
+                "-" + CalculateTargetCoverage.TARGET_OUT_INFO_SHORT_NAME, targetOutInfo.name()
         ));
         if (intervalFile != null) {
             arguments.add("-L");
@@ -385,17 +385,17 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
 
         switch (transform) {
             case RAW:
-                checkTableRawConsistency(exonOutInfo, outputFile, rowOutputFile, columnOutputFile);
+                checkTableRawConsistency(targetOutInfo, outputFile, rowOutputFile, columnOutputFile);
                 break;
             case PCOV:
-                checkTablePcovConsistency(exonOutInfo, outputFile, rowOutputFile, columnOutputFile);
+                checkTablePcovConsistency(targetOutInfo, outputFile, rowOutputFile, columnOutputFile);
                 break;
             default:
                 Assert.fail("bug in testing code: unexpected transform " + transform.name());
         }
     }
 
-    private void checkTableRawConsistency(final ExomeReadCounts.ExonOutInfo exonOutInfo, final File outputFile, final File rowOutputFile, final File columnOutputFile) {
+    private void checkTableRawConsistency(final CalculateTargetCoverage.TargetOutInfo targetOutInfo, final File outputFile, final File rowOutputFile, final File columnOutputFile) {
         final Table matrix;
         final Table row;
         final Table column;
@@ -417,47 +417,47 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             for (int r = 0; r < matrix.rowCount; r++) {
                 // Check coordinates agree:
                 Assert.assertEquals(matrix.getString(r, 0), row.getString(r, 0));
-                if (exonOutInfo != ExomeReadCounts.ExonOutInfo.NAME) {
+                if (targetOutInfo != CalculateTargetCoverage.TargetOutInfo.NAME) {
                     Assert.assertEquals(matrix.getLong(r, 1), row.getLong(r, 1));
                     Assert.assertEquals(matrix.getLong(r, 2), row.getLong(r, 2));
                 }
                 // Check row sum agree:
                 long rowCount = 0;
-                for (int c = exonOutInfo.columnCount(); c < matrix.columnCount; c++)
+                for (int c = targetOutInfo.columnCount(); c < matrix.columnCount; c++)
                     rowCount += matrix.getLong(r, c);
-                Assert.assertEquals(rowCount, row.getLong(r, exonOutInfo.columnCount()));
+                Assert.assertEquals(rowCount, row.getLong(r, targetOutInfo.columnCount()));
                 // Check consistent average per bp and column epsilon of 0.005 assume two decimal precision (~ %.2f).
-                if (exonOutInfo != ExomeReadCounts.ExonOutInfo.NAME) {
+                if (targetOutInfo != CalculateTargetCoverage.TargetOutInfo.NAME) {
                     final long size = matrix.getLong(r, 2) - matrix.getLong(r, 1) + 1;
-                    Assert.assertEquals(rowCount / ((double) size * (matrix.columnCount - exonOutInfo.columnCount())), row.getDouble(r, exonOutInfo.columnCount() + 1), 0.01);
+                    Assert.assertEquals(rowCount / ((double) size * (matrix.columnCount - targetOutInfo.columnCount())), row.getDouble(r, targetOutInfo.columnCount() + 1), 0.01);
                 }
             }
         }
 
         if (column != null) {
-            Assert.assertEquals(matrix.columnCount - exonOutInfo.columnCount(), column.rowCount,
+            Assert.assertEquals(matrix.columnCount - targetOutInfo.columnCount(), column.rowCount,
                     "main output count column count must match column output rows");
 
-            for (int c = exonOutInfo.columnCount(); c < matrix.columnCount; c++) {
-                Assert.assertEquals(matrix.columnNames[c], column.getString(c - exonOutInfo.columnCount(), 0));
+            for (int c = targetOutInfo.columnCount(); c < matrix.columnCount; c++) {
+                Assert.assertEquals(matrix.columnNames[c], column.getString(c - targetOutInfo.columnCount(), 0));
                 long totalSum = 0;
                 for (int r = 0; r < matrix.rowCount; r++) {
                     totalSum += matrix.getLong(r, c);
                 }
-                Assert.assertEquals(column.getLong(c - exonOutInfo.columnCount(), 1), totalSum);
-                if (exonOutInfo != ExomeReadCounts.ExonOutInfo.NAME) {
+                Assert.assertEquals(column.getLong(c - targetOutInfo.columnCount(), 1), totalSum);
+                if (targetOutInfo != CalculateTargetCoverage.TargetOutInfo.NAME) {
                     long totalBp = 0;
                     for (int r = 0; r < matrix.rowCount; r++) {
                         totalBp += matrix.getLong(r, 2) - matrix.getLong(r, 1) + 1;
                     }
-                    Assert.assertEquals(column.getDouble(c - exonOutInfo.columnCount(), 2), totalSum / (double) totalBp, 0.005);
+                    Assert.assertEquals(column.getDouble(c - targetOutInfo.columnCount(), 2), totalSum / (double) totalBp, 0.005);
                 }
             }
         }
 
     }
 
-    private void checkTablePcovConsistency(final ExomeReadCounts.ExonOutInfo exonOutInfo, final File outputFile, final File rowOutputFile, final File columnOutputFile) {
+    private void checkTablePcovConsistency(final CalculateTargetCoverage.TargetOutInfo targetOutInfo, final File outputFile, final File rowOutputFile, final File columnOutputFile) {
         final Table matrix;
         final Table row;
         final Table column;
@@ -478,8 +478,8 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             return;
         }
 
-        for (int i = exonOutInfo.columnCount(); i < matrix.columnCount; i++) {
-            if (column.getLong(i-exonOutInfo.columnCount(),1) > 0) {
+        for (int i = targetOutInfo.columnCount(); i < matrix.columnCount; i++) {
+            if (column.getLong(i- targetOutInfo.columnCount(),1) > 0) {
                 double sumPcov = 0;
                 for (int j = 0; j < matrix.rowCount; j++) {
                     sumPcov += matrix.getDouble(j,i);
@@ -492,16 +492,16 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             }
         }
 
-        Assert.assertEquals(matrix.columnCount - exonOutInfo.columnCount(), column.rowCount,
+        Assert.assertEquals(matrix.columnCount - targetOutInfo.columnCount(), column.rowCount,
                 "main output count column count must match column output rows");
 
-        for (int c = exonOutInfo.columnCount(); c < matrix.columnCount; c++) {
-            Assert.assertEquals(matrix.columnNames[c], column.getString(c - exonOutInfo.columnCount(), 0));
+        for (int c = targetOutInfo.columnCount(); c < matrix.columnCount; c++) {
+            Assert.assertEquals(matrix.columnNames[c], column.getString(c - targetOutInfo.columnCount(), 0));
             long totalBp = 0;
             for (int r = 0; r < matrix.rowCount; r++) {
                 totalBp += matrix.getLong(r, 2) - matrix.getLong(r, 1) + 1;
             }
-            Assert.assertEquals(column.getDouble(c - exonOutInfo.columnCount(), 2), column.getLong(c - exonOutInfo.columnCount(), 1) / (double) totalBp, 0.005);
+            Assert.assertEquals(column.getDouble(c - targetOutInfo.columnCount(), 2), column.getLong(c - targetOutInfo.columnCount(), 1) / (double) totalBp, 0.005);
         }
 
         if (row != null) {
@@ -511,20 +511,20 @@ public final class ExomeReadCountIntegrationTest extends CommandLineProgramTest 
             for (int r = 0; r < matrix.rowCount; r++) {
                 // Check coordinates agree:
                 Assert.assertEquals(matrix.getString(r, 0), row.getString(r, 0));
-                if (exonOutInfo != ExomeReadCounts.ExonOutInfo.NAME) {
+                if (targetOutInfo != CalculateTargetCoverage.TargetOutInfo.NAME) {
                     Assert.assertEquals(matrix.getLong(r, 1), row.getLong(r, 1));
                     Assert.assertEquals(matrix.getLong(r, 2), row.getLong(r, 2));
                 }
                 // Check row sum agree:
                 long rowCount = 0;
-                for (int c = exonOutInfo.columnCount(); c < matrix.columnCount; c++) {
-                    rowCount += Math.round(matrix.getDouble(r, c) * column.getLong(c - exonOutInfo.columnCount(), 1));
+                for (int c = targetOutInfo.columnCount(); c < matrix.columnCount; c++) {
+                    rowCount += Math.round(matrix.getDouble(r, c) * column.getLong(c - targetOutInfo.columnCount(), 1));
                 }
-                Assert.assertEquals(rowCount, row.getLong(r, exonOutInfo.columnCount()));
+                Assert.assertEquals(rowCount, row.getLong(r, targetOutInfo.columnCount()));
                 // Check consistent average per bp and column epsilon of 0.005 assume two decimal precision (~ %.2f).
-                if (exonOutInfo != ExomeReadCounts.ExonOutInfo.NAME) {
+                if (targetOutInfo != CalculateTargetCoverage.TargetOutInfo.NAME) {
                     final long size = matrix.getLong(r, 2) - matrix.getLong(r, 1) + 1;
-                    Assert.assertEquals(rowCount / ((double) size * (matrix.columnCount - exonOutInfo.columnCount())), row.getDouble(r, exonOutInfo.columnCount() + 1), 0.01);
+                    Assert.assertEquals(rowCount / ((double) size * (matrix.columnCount - targetOutInfo.columnCount())), row.getDouble(r, targetOutInfo.columnCount() + 1), 0.01);
                 }
             }
         }

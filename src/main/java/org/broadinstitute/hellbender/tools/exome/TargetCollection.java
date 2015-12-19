@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
- * target collection.
+ * Target collection.
  * <p>
  *      This interface includes operations to query targets based on genomic coordinates and their names (if provided).
  * </p>
@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
 public interface TargetCollection<E> {
 
     /**
-     * Returns the number of targets in this Exome.
+     * Returns the number of targets in this collection.
      *
      * @return 0 or greater.
      */
@@ -182,11 +182,11 @@ public interface TargetCollection<E> {
     }
 
     /**
-     * Returns the size of the exome in base-pairs (computed as the sum of all its targets sizes).
+     * Returns the total size of this collection in base-pairs (computed as the sum of all its targets sizes).
      *
      * @return 0 or greater.
      */
-    default long exomeSize() {
+    default long totalSize() {
         return IntStream.range(0, targetCount())
                 .map(i -> location(i).size()).sum();
     }

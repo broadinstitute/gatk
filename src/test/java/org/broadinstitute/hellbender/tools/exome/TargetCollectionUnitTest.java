@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.ExomeToolsTestUtils;
+import org.broadinstitute.hellbender.utils.test.TargetsToolsTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -22,49 +22,49 @@ import java.util.*;
 public final class TargetCollectionUnitTest extends BaseTest {
 
     /**
-     * General exon_db_test_data, will contain ExonDB instances as a single arguments.
+     * General target_db_test_data, will contain TargetDB instances as a single arguments.
      *
      *  <p>
      *  Initialized by {@link #setUp} before any tests.
      * </p>
      */
-    private static Object[][] EXON_DB_TEST_DATA;
+    private static Object[][] TARGET_DB_TEST_DATA;
 
     @BeforeClass
     public void setUp() {
         final Random rdn = new Random(11131719);
-        final List<Object[]> exonDBTestData = new ArrayList<>(30);
-        exonDBTestData.add(new Object[] { new TargetCollectionStub(0,rdn) });
-        exonDBTestData.add(new Object[] { new TargetCollectionStub(1,rdn) });
-        exonDBTestData.add(new Object[] { new TargetCollectionStub(33,rdn) });
-        final int maxExonCount = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength() / 50;
-        final int minExonCount = 2;
-        while (exonDBTestData.size() < 30) {
-            final int exonCount = rdn.nextInt(maxExonCount - minExonCount + 1) + minExonCount;
-            exonDBTestData.add(new Object[] { new TargetCollectionStub(exonCount,rdn)});
+        final List<Object[]> targetDBTestData = new ArrayList<>(30);
+        targetDBTestData.add(new Object[]{new TargetCollectionStub(0, rdn)});
+        targetDBTestData.add(new Object[] { new TargetCollectionStub(1,rdn) });
+        targetDBTestData.add(new Object[] { new TargetCollectionStub(33,rdn) });
+        final int maxTargetCount = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength() / 50;
+        final int minTargetCount = 2;
+        while (targetDBTestData.size() < 30) {
+            final int targetCount = rdn.nextInt(maxTargetCount - minTargetCount + 1) + minTargetCount;
+            targetDBTestData.add(new Object[] { new TargetCollectionStub(targetCount,rdn)});
         }
-        EXON_DB_TEST_DATA = exonDBTestData.toArray(new Object[exonDBTestData.size()][]);
+        TARGET_DB_TEST_DATA = targetDBTestData.toArray(new Object[targetDBTestData.size()][]);
     }
 
-    @Test(dataProvider = "exonDBData")
-    public void testExonByName(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "targetDBData")
+    public void testTargetByName(final TargetCollection<SimpleInterval> targetCollection) {
         Assert.assertNull(targetCollection.target("silly-name"));
         for (int i = 0; i < targetCollection.targetCount(); i++) {
             Assert.assertEquals(targetCollection.target("" + i), targetCollection.target(i));
         }
     }
 
-    @Test(dataProvider = "exonDBData")
-    public void testExonByLocationExactMatch(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "targetDBData")
+    public void testTargetByLocationExactMatch(final TargetCollection<SimpleInterval> targetCollection) {
         for (int i = 0; i < targetCollection.targetCount(); i++) {
             final SimpleInterval si = targetCollection.target(i);
             Assert.assertEquals(targetCollection.target(si), si);
         }
     }
 
-    @Test(dataProvider = "exonDBData")
-    public void testExonByLocationNonOverlapping(final TargetCollection<SimpleInterval> targetCollection) {
-        final SimpleInterval otherChromosome =  ExomeToolsTestUtils.createOverEntireContig(2);
+    @Test(dataProvider = "targetDBData")
+    public void testTargetByLocationNonOverlapping(final TargetCollection<SimpleInterval> targetCollection) {
+        final SimpleInterval otherChromosome =  TargetsToolsTestUtils.createOverEntireContig(2);
         Assert.assertNull(targetCollection.target(otherChromosome));
         for (int i = 0; i < targetCollection.targetCount() - 1; i++) {
             final int start = targetCollection.target(i).getEnd() + 1;
@@ -72,17 +72,17 @@ public final class TargetCollectionUnitTest extends BaseTest {
             if (end < start) {   // avoid zero-length intra-target intervals (due to artificial data construction).
                 continue;
             }
-            final SimpleInterval loc = ExomeToolsTestUtils.createInterval(targetCollection.target(i).getContig(), start, end);
+            final SimpleInterval loc = TargetsToolsTestUtils.createInterval(targetCollection.target(i).getContig(), start, end);
             Assert.assertNull(targetCollection.target(loc),"query = " + targetCollection.target(i).getContig() + ":" + start + "-" + end);
         }
     }
 
-    @Test(dataProvider = "twoOrMoreExonDBData")
-    public void testExonByLocationAmbiguousOverlapping(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "twoOrMoreTargetDBData")
+    public void testTargetByLocationAmbiguousOverlapping(final TargetCollection<SimpleInterval> targetCollection) {
         for (int i = 0; i < targetCollection.targetCount() - 1; i++) {
             final int start = targetCollection.target(i).getEnd() - 1;
             final int end = targetCollection.target(i + 1).getStart() + 1;
-            final SimpleInterval loc = ExomeToolsTestUtils.createInterval(targetCollection.target(i).getContig(), start, end);
+            final SimpleInterval loc = TargetsToolsTestUtils.createInterval(targetCollection.target(i).getContig(), start, end);
             try {
                 targetCollection.target(loc);
                 Assert.fail("expected exception. Index == " + i);
@@ -97,18 +97,18 @@ public final class TargetCollectionUnitTest extends BaseTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testForEachNullTask() {
         final TargetCollection<SimpleInterval> targetCollection = new TargetCollectionStub(0,new Random(13));
-        targetCollection.forEachTarget(ExomeToolsTestUtils.createOverEntireContig(0), null);
+        targetCollection.forEachTarget(TargetsToolsTestUtils.createOverEntireContig(0), null);
     }
 
-    @Test(dataProvider = "exonDBData")
+    @Test(dataProvider = "targetDBData")
     public void testForEachSingleCallExactMatch(final TargetCollection<SimpleInterval> targetCollection) {
         for (int i = 0; i < targetCollection.targetCount(); i++) {
             final SimpleInterval simpleInterval = targetCollection.target(i);
-            final SimpleInterval loc = ExomeToolsTestUtils.createInterval(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+            final SimpleInterval loc = TargetsToolsTestUtils.createInterval(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
             final int expectedIdx = i;
             final int[] totalCalls = new int[] { 0 };
-            targetCollection.forEachTarget(loc, (idx, exon) -> {
-                Assert.assertEquals(exon, simpleInterval);
+            targetCollection.forEachTarget(loc, (idx, target) -> {
+                Assert.assertEquals(target, simpleInterval);
                 Assert.assertEquals(idx, expectedIdx);
                 totalCalls[0]++;
             });
@@ -116,7 +116,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
         }
     }
 
-    @Test(dataProvider = "exonDBData")
+    @Test(dataProvider = "targetDBData")
     public void testForEachExhaustiveRanges(final TargetCollection<SimpleInterval> targetCollection) {
         final int min = 0;
         final int max = targetCollection.targetCount();
@@ -134,7 +134,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
                 if (start > end) {
                     continue;
                 }
-                final SimpleInterval loc = ExomeToolsTestUtils.createInterval(contig, start, end);
+                final SimpleInterval loc = TargetsToolsTestUtils.createInterval(contig, start, end);
                 final List<SimpleInterval> visited = new ArrayList<>(j - i + 1);
                 final int iFinal = i;
                 targetCollection.forEachTarget(loc, (idx, e) -> {
@@ -147,18 +147,18 @@ public final class TargetCollectionUnitTest extends BaseTest {
         }
     }
 
-    @Test(dataProvider = "exonDBData", expectedExceptions = IllegalArgumentException.class)
-    public void testExonsByBadIndexRange(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "targetDBData", expectedExceptions = IllegalArgumentException.class)
+    public void testTargetsByBadIndexRange(final TargetCollection<SimpleInterval> targetCollection) {
         targetCollection.targets(new IndexRange(targetCollection.targetCount(), targetCollection.targetCount() + 1));
     }
 
-    @Test(dataProvider = "exonDBData", expectedExceptions = IllegalArgumentException.class)
-    public void testExonsByNullIndexRange(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "targetDBData", expectedExceptions = IllegalArgumentException.class)
+    public void testTargetsByNullIndexRange(final TargetCollection<SimpleInterval> targetCollection) {
         targetCollection.targets((IndexRange) null);
     }
 
 
-    @Test(dataProvider = "exonDBData")
+    @Test(dataProvider = "targetDBData")
     public void testForEachExhaustiveZeroRanges(final TargetCollection<SimpleInterval> targetCollection) {
         final int min = 0;
         final int max = targetCollection.targetCount();
@@ -172,13 +172,13 @@ public final class TargetCollectionUnitTest extends BaseTest {
             if (start < end)
                 continue;
             targetCollection.forEachTarget(
-                    ExomeToolsTestUtils.createInterval(iInterval.getContig(), start, end),
+                    TargetsToolsTestUtils.createInterval(iInterval.getContig(), start, end),
                     (idx, e) -> Assert.fail("no target should be call"));
         }
     }
 
-    @Test(dataProvider = "exonDBData")
-    public void testExonsByLocationExhaustiveZeroRanges(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "targetDBData")
+    public void testTargetsByLocationExhaustiveZeroRanges(final TargetCollection<SimpleInterval> targetCollection) {
         final int min = 0;
         final int max = targetCollection.targetCount();
         for (int i = min; i < max - 1; i++) {
@@ -190,18 +190,18 @@ public final class TargetCollectionUnitTest extends BaseTest {
             final int end = jInterval.getStart() - 1;
             if (start < end)
                 continue;
-            final List<SimpleInterval> observed = targetCollection.targets(ExomeToolsTestUtils.createInterval(iInterval.getContig(), start, end));
+            final List<SimpleInterval> observed = targetCollection.targets(TargetsToolsTestUtils.createInterval(iInterval.getContig(), start, end));
             Assert.assertEquals(observed.size(), 0);
         }
     }
 
-    @Test(dataProvider = "exonDBData")
-    public void testExonSize(final TargetCollection<SimpleInterval> targetCollection) {
+    @Test(dataProvider = "targetDBData")
+    public void testTargetSize(final TargetCollection<SimpleInterval> targetCollection) {
         long totalSize = 0;
         for (int i = 0; i < targetCollection.targetCount(); i++) {
             totalSize += targetCollection.target(i).size();
         }
-        Assert.assertEquals(targetCollection.exomeSize(), totalSize);
+        Assert.assertEquals(targetCollection.totalSize(), totalSize);
     }
 
     @Test
@@ -249,7 +249,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
      * Stub class to test default implementations of {@link TargetCollection}.
      *
      * <p>
-     *     This class should not implement any method that has a default implementation in {@code ExonDB} as
+     *     This class should not implement any method that has a default implementation in {@link TargetCollection} as
      *     that would interfere with its testing.
      * </p>
      */
@@ -257,22 +257,22 @@ public final class TargetCollectionUnitTest extends BaseTest {
 
         private final List<SimpleInterval> intervals;
 
-        public TargetCollectionStub(final int numberOfExons, final Random rdn) {
-            if (numberOfExons == 0) {
+        public TargetCollectionStub(final int numberOfTargets, final Random rdn) {
+            if (numberOfTargets == 0) {
                 this.intervals = Collections.emptyList();
                 return;
             }
-            List<SimpleInterval> intervals = new ArrayList<>(numberOfExons);
-            final String contig = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName();
-            final int contigLength = ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength();
-            final float avgSlotSize = contigLength / numberOfExons;
+            List<SimpleInterval> intervals = new ArrayList<>(numberOfTargets);
+            final String contig = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName();
+            final int contigLength = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength();
+            final float avgSlotSize = contigLength / numberOfTargets;
 
             int nextBasePos = 0;
-            for (int i = 0; i < numberOfExons; i++) {
+            for (int i = 0; i < numberOfTargets; i++) {
                 final int slotLength = (int) Math.max(1,Math.min(3 * avgSlotSize,(rdn.nextGaussian() * avgSlotSize * .5) + avgSlotSize));
-                final int exonLength = (int) Math.max(1,slotLength * rdn.nextDouble());
-                final int start = Math.max(nextBasePos,1 + nextBasePos + ((slotLength - exonLength) >> 1));
-                final int stop = start + exonLength;
+                final int targetLength = (int) Math.max(1,slotLength * rdn.nextDouble());
+                final int start = Math.max(nextBasePos,1 + nextBasePos + ((slotLength - targetLength) >> 1));
+                final int stop = start + targetLength;
                 intervals.add(new SimpleInterval(contig,start,stop));
                 nextBasePos += slotLength;
                 nextBasePos = Math.max(nextBasePos,stop + 1);
@@ -291,11 +291,11 @@ public final class TargetCollectionUnitTest extends BaseTest {
         }
 
         @Override
-        public String name(final SimpleInterval exon) {
-            if (exon == null) {
+        public String name(final SimpleInterval target) {
+            if (target == null) {
                 throw new IllegalArgumentException("the input target cannot be null");
             }
-            return exon.toString();
+            return target.toString();
         }
 
         @Override
@@ -328,13 +328,13 @@ public final class TargetCollectionUnitTest extends BaseTest {
         }
 
         @Override
-        public SimpleInterval location(final SimpleInterval exon) {
-            return Utils.nonNull(exon, "the input target cannot be null");
+        public SimpleInterval location(final SimpleInterval target) {
+            return Utils.nonNull(target, "the input target cannot be null");
         }
 
         @Override
         public IndexRange indexRange(final Locatable location) {
-            if (!location.getContig().equals(ExomeToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName()))
+            if (!location.getContig().equals(TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName()))
                 return new IndexRange(targetCount(), targetCount());
             else {
                 int from = 0;
@@ -359,7 +359,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
     }
 
     @Test
-    public void testExonDBSubOnlyImplementsNonDefaults() throws NoSuchMethodException {
+    public void testTargetDBSubOnlyImplementsNonDefaults() throws NoSuchMethodException {
         final List<Method> overriddenDefaults = new ArrayList<>(10);
         for (final Method method : TargetCollection.class.getMethods()) {
             if (!method.isDefault())
@@ -374,15 +374,15 @@ public final class TargetCollectionUnitTest extends BaseTest {
                 + Utils.join(", ",Arrays.asList(overriddenDefaults.stream().map(Method::getName).toArray())));
     }
 
-    @DataProvider(name="exonDBData")
-    public Object[][] exonDBData() {
-        return EXON_DB_TEST_DATA;
+    @DataProvider(name="targetDBData")
+    public Object[][] targetDBData() {
+        return TARGET_DB_TEST_DATA;
     }
 
-    @DataProvider(name="twoOrMoreExonDBData")
-    public Object[][] twoOrMoreExonDBData() {
-        final List<Object[]> result = new ArrayList<>(EXON_DB_TEST_DATA.length);
-        for (final Object[] params : EXON_DB_TEST_DATA) {
+    @DataProvider(name="twoOrMoreTargetDBData")
+    public Object[][] twoOrMoreTargetDBData() {
+        final List<Object[]> result = new ArrayList<>(TARGET_DB_TEST_DATA.length);
+        for (final Object[] params : TARGET_DB_TEST_DATA) {
             @SuppressWarnings("unchecked")
             final TargetCollection<SimpleInterval> db = (TargetCollection<SimpleInterval>)params[0];
             if (db.targetCount() <= 1)
