@@ -107,9 +107,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.SHARDED);
         int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
         Assert.assertEquals(shards, 2);
-        // check that no local .crc files are created
-        int crcs = outputFile.listFiles((dir, name) -> name.startsWith(".") && name.endsWith(".crc")).length;
-        Assert.assertEquals(crcs, 0);
 
         JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath(), null);
         // reads are not globally sorted, so don't test that
