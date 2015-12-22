@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCo
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -30,11 +29,6 @@ public final class CycleCovariateUnitTest extends BaseTest {
         illuminaReadGroup.setPlatform("illumina");
     }
 
-    @BeforeMethod
-    public void initCache() {
-        ReadCovariates.clearKeysCache();
-    }
-
     @Test
     public void testSimpleCycles() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithReadGroup(illuminaReadGroup);
@@ -44,7 +38,7 @@ public final class CycleCovariateUnitTest extends BaseTest {
         read.setIsPaired(true);
         read.setReadGroup(illuminaReadGroup.getReadGroupId());
 
-        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
+        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, readCovariates, true);
         verifyCovariateArray(readCovariates.getMismatchesKeySet(), 1, (short) 1);
 
@@ -78,7 +72,7 @@ public final class CycleCovariateUnitTest extends BaseTest {
         read.setIsPaired(true);
         read.setReadGroup(illuminaReadGroup.getReadGroupId());
 
-        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
+        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, readCovariates, true);
     }
 
@@ -91,7 +85,7 @@ public final class CycleCovariateUnitTest extends BaseTest {
         read.setIsPaired(true);
         read.setReadGroup(illuminaReadGroup.getReadGroupId());
 
-        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1);
+        ReadCovariates readCovariates = new ReadCovariates(read.getLength(), 1, new CovariateKeyCache());
         covariate.recordValues(read, header, readCovariates, true);
     }
 

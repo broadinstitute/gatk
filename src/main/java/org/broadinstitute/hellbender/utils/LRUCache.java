@@ -9,14 +9,15 @@ import java.util.Map;
 public final class LRUCache<K,V> extends LinkedHashMap<K,V> {
 
     private static final long serialVersionUID = 1L;
-    private final int capacity; // Maximum number of items in the cache.
+    private final int maxCapacity; // Maximum number of items in the cache.
 
-    public LRUCache(int capacity) {
-        super(capacity+1, 1.0f, true); // Pass 'true' for accessOrder.
-        this.capacity = capacity;
+    public LRUCache(int maxCapacity) {
+        super(maxCapacity+1, 1.0f, true); // Pass 'true' for accessOrder.
+        this.maxCapacity = maxCapacity;
     }
 
+    @Override
     protected boolean removeEldestEntry(final Map.Entry<K,V> entry) {
-        return (size() > this.capacity);
+        return size() > this.maxCapacity;
     }
 }

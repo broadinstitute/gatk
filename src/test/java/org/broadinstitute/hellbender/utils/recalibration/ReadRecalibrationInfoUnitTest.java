@@ -4,10 +4,10 @@ import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,10 +17,6 @@ import java.util.EnumMap;
 import java.util.List;
 
 public final class ReadRecalibrationInfoUnitTest extends BaseTest {
-    @BeforeMethod
-    public void init() {
-        ReadCovariates.clearKeysCache();
-    }
 
     @DataProvider(name = "InfoProvider")
     public Object[][] createCombineTablesProvider() {
@@ -34,9 +30,10 @@ public final class ReadRecalibrationInfoUnitTest extends BaseTest {
 
         return tests.toArray(new Object[][]{});
     }
+
     @Test(dataProvider = "InfoProvider")
     public void testReadInfo(final int readLength, final boolean includeIndelErrors) {
-        final ReadCovariates covariates = new ReadCovariates(readLength, 2);
+        final ReadCovariates covariates = new ReadCovariates(readLength, 2, new CovariateKeyCache());
 
         final byte[] bases = new byte[readLength];
         final byte[] baseQuals = new byte[readLength];

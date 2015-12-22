@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
@@ -527,8 +528,8 @@ public final class RecalUtils {
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static ReadCovariates computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues) {
-        final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), covariates.size());
+    public static ReadCovariates computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
+        final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), covariates.size(), keyCache);
         computeCovariates(read, header, covariates, readCovariates, recordIndelValues);
         return readCovariates;
     }

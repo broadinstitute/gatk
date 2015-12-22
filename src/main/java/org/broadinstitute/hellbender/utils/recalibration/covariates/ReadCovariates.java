@@ -2,42 +2,14 @@ package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.LRUCache;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
 /**
  * The object temporarily held by a read that describes all of its covariates.
- *
- * In essence, this is an array of CovariateValues, but it also has some functionality to deal with the optimizations of the NestedHashMap
  */
 public final class ReadCovariates {
     private static final Logger logger = LogManager.getLogger(ReadCovariates.class);
-
-    /**
-     * How big should we let the LRU cache grow
-     */
-    private static final int LRU_CACHE_SIZE = 500;
-
-    /**
-     * Use an LRU cache to keep cache of keys (int[][][]) arrays for each read length we've seen.
-     * The cache allows us to avoid the expense of recreating these arrays for every read.  The LRU
-     * keeps the total number of cached arrays to less than LRU_CACHE_SIZE.
-     *
-     */
-    private static final ThreadLocal<LRUCache<Integer, int[][][]>> keysCache = new ThreadLocal<LRUCache<Integer, int[][][]>>(){
-        @Override
-        protected LRUCache<Integer, int[][][]> initialValue() {
-            return new LRUCache<>(LRU_CACHE_SIZE);
-        }
-    };
-
-    /**
-     * The keys cache is only valid for a single covariate count.  Normally this will remain constant for the analysis.
-     * If running multiple analyses (or the unit test suite), it's necessary to clear the cache.
-     */
-    public static void clearKeysCache() {
-        keysCache.get().clear();
-    }
 
     /**
      * Our keys, indexed by event type x read length x covariate
@@ -49,14 +21,18 @@ public final class ReadCovariates {
      */
     private int currentCovariateIndex = 0;
 
-    public ReadCovariates(final int readLength, final int numberOfCovariates) {
-        final LRUCache<Integer, int[][][]> cache = keysCache.get();
-        final int[][][] cachedKeys = cache.get(readLength);
+    /**
+     * Use an LRU cache to keep cache of keys (int[][][]) arrays for each read length we've seen.
+     * The cache allows us to avoid the expense of recreating these arrays for every read.  The LRU
+     * keeps the total number of cached arrays to less than LRU_CACHE_SIZE.
+     */
+    public ReadCovariates(final int readLength, final int numberOfCovariates, final CovariateKeyCache keysCache) {
+        Utils.nonNull(keysCache);
+        final int[][][] cachedKeys = keysCache.get(readLength);
         if ( cachedKeys == null ) {
-            // There's no cached value for read length so we need to create a new int[][][] array
-            if ( logger.isDebugEnabled() ) logger.debug("Keys cache miss for length " + readLength + " cache size " + cache.size());
+            if ( logger.isDebugEnabled() ) logger.debug("Keys cache miss for length " + readLength + " cache size " + keysCache.size());
             keys = new int[EventType.values().length][readLength][numberOfCovariates];
-            cache.put(readLength, keys);
+            keysCache.put(readLength, keys);
         } else {
             keys = cachedKeys;
         }
