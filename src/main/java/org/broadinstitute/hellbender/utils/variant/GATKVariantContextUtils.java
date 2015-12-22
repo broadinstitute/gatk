@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -13,6 +12,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -155,6 +155,25 @@ public final class GATKVariantContextUtils {
         }
 
         return result;
+    }
+
+    /**
+     * Returns the type of the substitution (transition vs transversion) represented by this variant. Only applicable to bi allelic SNPs.
+     */
+    public static BaseUtils.BaseSubstitutionType getSNPSubstitutionType(final VariantContext context) {
+        Utils.nonNull(context);
+        if (!context.isSNP() || !context.isBiallelic()) {
+            throw new IllegalArgumentException("Requested SNP substitution type for bialleic non-SNP " + context);
+        }
+        return BaseUtils.SNPSubstitutionType(context.getReference().getBases()[0], context.getAlternateAllele(0).getBases()[0]);
+    }
+
+    /**
+     * If this is a BiAllelic SNP, is it a transition?
+     */
+    public static boolean isTransition(final VariantContext context) {
+        Utils.nonNull(context);
+        return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSITION;
     }
 
     public enum GenotypeMergeType {

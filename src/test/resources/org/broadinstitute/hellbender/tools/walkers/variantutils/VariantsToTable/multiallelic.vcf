@@ -1,0 +1,76 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=Dels,Number=1,Type=Float,Description="Fraction of Reads Containing Spanning Deletions">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">
+##INFO=<ID=HaplotypeScore,Number=1,Type=Float,Description="Consistency of the site with at most two segregating haplotypes">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	1148100	rs34108055	G	A,C	469.32	.	AC=1,3;AF=0.0033,0.0099;AN=304;DB;DP=1245;Dels=0.00;InbreedingCoeff=0.0182;MQ=59.11;MQ0=1;QD=13.80
+1	1888193	rs3820011	C	A,T	29693.64	.	AC=101,1;AF=0.3301,0.0033;AN=306;DB;DP=3501;Dels=0.00;InbreedingCoeff=-0.1164;MQ=59.27;MQ0=0;QD=15.70
+1	3662208	.	G	A,T	614.93	.	AC=5,3;AF=0.0163,0.0098;AN=306;DP=1545;Dels=0.00;InbreedingCoeff=0.0182;MQ=59.21;MQ0=0;QD=9.18
+1	12439694	rs41300104	C	A,G	548.41	.	AC=1,1;AF=0.0033,0.0033;AN=306;DB;DP=4057;Dels=0.00;InbreedingCoeff=0.0033;MQ=59.43;MQ0=0;QD=12.46
+1	12837634	rs848578	T	A,C	477571.20	.	AC=242,2;AF=0.7908,0.0065;AN=306;DB;DP=18200;DS;Dels=0.00;InbreedingCoeff=-0.0281;MQ=58.19;MQ0=6;QD=26.94
+1	19597289	.	C	G,T	11174.95	.	AC=6,14;AF=0.0196,0.0458;AN=306;DP=6465;Dels=0.00;InbreedingCoeff=-0.0088;MQ=57.16;MQ0=7;QD=13.75
+1	22986015	.	C	A,T	1006.38	.	AC=2,1;AF=0.0065,0.0033;AN=306;DP=8030;Dels=0.00;InbreedingCoeff=-0.0000;MQ=58.99;MQ0=0;QD=9.96
+1	24122986	rs760941	C	G,T	80069.62	.	AC=1,160;AF=0.0033,0.5229;AN=306;DB;DP=7723;Dels=0.00;InbreedingCoeff=-0.0487;MQ=59.09;MQ0=1;QD=13.83
+1	27676289	.	G	C,T	726.57	.	AC=9,9;AF=0.0294,0.0294;AN=306;DP=792;Dels=0.00;InbreedingCoeff=0.1229;MQ=58.84;MQ0=0;QD=9.69
+1	32136168	rs2292990	G	C,T	7842.61	.	AC=125,58;AF=0.6068,0.2816;AN=206;DB;DP=318;Dels=0.00;InbreedingCoeff=0.6394;MQ=58.49;MQ0=0;QD=26.41
+1	32681070	rs11590013	C	A,T	1585.55	.	AC=1,2;AF=0.0033,0.0065;AN=306;DB;DP=8801;Dels=0.00;InbreedingCoeff=-0.0000;MQ=59.53;MQ0=0;QD=12.39
+1	37356469	rs511852	G	A,C	5178.44	.	AC=3,3;AF=0.0098,0.0098;AN=306;DB;DP=7593;Dels=0.00;InbreedingCoeff=0.6699;MQ=59.50;MQ0=0;QD=20.31
+1	40879808	rs209605	G	C,T	171035.83	.	AC=18,259;AF=0.0588,0.8464;AN=306;DB;DP=5668;Dels=0.00;InbreedingCoeff=0.0928;MQ=59.51;MQ0=0;QD=30.43
+1	42048869	.	G	C,T	1223.07	.	AC=1,1;AF=0.0033,0.0033;AN=306;DP=10365;Dels=0.00;InbreedingCoeff=0.0033;MQ=58.86;MQ0=0;QD=9.20
+1	48697781	rs12161316	C	A,T	3133.21	.	AC=2,2;AF=0.0065,0.0065;AN=306;DB;DP=8265;Dels=0.00;InbreedingCoeff=0.0065;MQ=59.29;MQ0=0;QD=12.48
+1	67561056	rs61782288	C	G,T	9937.98	.	AC=3,30;AF=0.0098,0.0980;AN=306;DB;DP=4031;Dels=0.00;InbreedingCoeff=-0.0163;MQ=59.56;MQ0=0;QD=13.54
+1	68943442	rs3790476	A	C,G	138834.72	.	AC=2,165;AF=0.0065,0.5392;AN=306;DB;DP=8369;Dels=0.00;InbreedingCoeff=-0.1445;MQ=59.49;MQ0=0;QD=20.08
+1	89655681	.	C	A,T	12753.17	.	AC=9,13;AF=0.0294,0.0425;AN=306;DP=6729;Dels=0.00;InbreedingCoeff=0.0179;MQ=59.35;MQ0=0;QD=14.15
+1	111773830	rs2147789	A	C,T	62636.11	.	AC=2,125;AF=0.0065,0.4085;AN=306;DB;DP=5119;Dels=0.00;InbreedingCoeff=-0.0263;MQ=59.60;MQ0=0;QD=18.88
+1	111783982	rs13721	C	A,T	189791.24	.	AC=98,45;AF=0.3203,0.1471;AN=306;DB;DP=13560;Dels=0.00;InbreedingCoeff=0.2554;MQ=59.43;MQ0=1;QD=19.82
+1	115399884	rs17544210	C	G,T	11480.97	.	AC=20,3;AF=0.0654,0.0098;AN=306;DB;DP=7703;Dels=0.00;InbreedingCoeff=0.0546;MQ=58.27;MQ0=0;QD=11.80
+1	118165691	rs1630312	C	G,T	130574.99	.	AC=17,90;AF=0.0556,0.2941;AN=306;DB;DP=12629;Dels=0.00;InbreedingCoeff=0.1310;MQ=59.59;MQ0=1;QD=18.81
+1	118490987	.	C	A,G	727.35	.	AC=1,3;AF=0.0033,0.0098;AN=306;DP=2844;Dels=0.00;InbreedingCoeff=-0.0025;MQ=59.47;MQ0=0;QD=10.24
+1	118497292	rs2295631	G	A,T	11389.76	.	AC=5,4;AF=0.0163,0.0131;AN=306;DB;DP=12107;Dels=0.00;InbreedingCoeff=0.0129;MQ=59.76;MQ0=0;QD=18.92
+1	119923724	rs2275607	T	C,G	483546.66	.	AC=164,1;AF=0.5359,0.0033;AN=306;DB;DP=28081;DS;Dels=0.00;InbreedingCoeff=0.0529;MQ=59.67;MQ0=0;QD=22.42
+1	146714392	rs1890042	G	C,T	12868.17	.	AC=185,65;AF=0.6560,0.2305;AN=282;DB;DP=482;Dels=0.00;InbreedingCoeff=0.4658;MQ=59.23;MQ0=0;QD=27.79
+1	150130983	rs34773647	G	C,T	57100.60	.	AC=10,48;AF=0.0327,0.1569;AN=306;DB;DP=15263;Dels=0.00;InbreedingCoeff=-0.1054;MQ=60.03;MQ0=0;QD=10.54
+1	150130983	rs34875891	G	GT,GCT	91690.78	.	AC=66,3;AF=0.2157,0.0098;AN=306;BaseQRankSum=72.690;DB;DP=15164;FS=18.693;HaplotypeScore=351.4814;InbreedingCoeff=0.2172;MQ=60.03;MQ0=0;MQRankSum=25.710;QD=17.01;ReadPosRankSum=0.374
+1	150477088	.	C	G,T	7734.78	.	AC=1,2;AF=0.0033,0.0065;AN=306;DP=29145;DS;Dels=0.00;InbreedingCoeff=-0.0000;MQ=59.73;MQ0=2;QD=11.92
+1	154744807	rs1051614	C	G,T	90009.17	.	AC=178,6;AF=0.5817,0.0196;AN=306;DB;DP=4622;Dels=0.00;InbreedingCoeff=0.0099;MQ=59.35;MQ0=0;QD=23.23
+1	155160270	rs1611770	C	A,T	576.62	.	AC=1,2;AF=0.0033,0.0065;AN=306;DB;DP=4575;Dels=0.00;InbreedingCoeff=-0.0000;MQ=59.19;MQ0=0;QD=10.88
+1	156533433	.	G	A,T	1544.92	.	AC=2,5;AF=0.0065,0.0163;AN=306;DP=3099;Dels=0.00;InbreedingCoeff=-0.0034;MQ=59.36;MQ0=0;QD=13.67
+1	156706559	rs8658	A	C,G	167288.91	.	AC=109,197;AF=0.3562,0.6438;AN=306;DB;DP=4567;Dels=0.00;InbreedingCoeff=0.5686;MQ=59.44;MQ0=0;QD=36.63
+1	156708244	rs28697076	C	G,T	177579.76	.	AC=9,56;AF=0.0294,0.1830;AN=306;DB;DP=24764;DS;Dels=0.00;InbreedingCoeff=0.1419;MQ=59.61;MQ0=0;QD=18.38
+1	168059866	rs275149	A	C,G	23982.90	.	AC=108,59;AF=0.3553,0.1941;AN=304;DB;DP=3978;Dels=0.02;InbreedingCoeff=-0.0331;MQ=59.08;MQ0=0;QD=6.67
+1	169941761	rs511443	A	C,T	57998.99	.	AC=1,280;AF=0.0033,0.9150;AN=306;DB;DP=1920;Dels=0.00;InbreedingCoeff=-0.0786;MQ=59.46;MQ0=0;QD=30.21
+1	171162438	rs28969551	C	A,T	28047.04	.	AC=1,27;AF=0.0033,0.0882;AN=306;DB;DP=11499;Dels=0.00;InbreedingCoeff=-0.0903;MQ=59.25;MQ0=0;QD=13.07
+1	181018180	rs2236411	C	A,G	25391.03	.	AC=1,29;AF=0.0033,0.0948;AN=306;DB;DP=11674;Dels=0.00;InbreedingCoeff=-0.0225;MQ=36.45;MQ0=1103;QD=10.85
+1	202104616	rs61758714	T	A,C	9963.64	.	AC=3,1;AF=0.0098,0.0033;AN=306;DB;DP=31120;DS;Dels=0.00;InbreedingCoeff=-0.0034;MQ=59.63;MQ0=0;QD=11.08
+1	204234222	rs4076020	T	A,C	148764	.	AC=2,208;AF=0.0065,0.6797;AN=306;DB;DP=7509;Dels=0.00;InbreedingCoeff=0.1664;MQ=58.40;MQ0=0;QD=23.21
+1	207642050	rs61759494	C	A,G	10338.77	.	AC=2,2;AF=0.0065,0.0065;AN=306;DB;DP=30089;DS;Dels=0.00;InbreedingCoeff=0.0065;MQ=59.63;MQ0=0;QD=14.40
+1	208270244	rs3818517	A	C,T	26388.22	.	AC=95,1;AF=0.3105,0.0033;AN=306;DB;DP=3268;Dels=0.00;InbreedingCoeff=0.0678;MQ=59.25;MQ0=0;QD=16.63
+1	211280737	.	A	C,G	5650.08	.	AC=22,4;AF=0.0719,0.0131;AN=306;DP=11279;Dels=0.00;InbreedingCoeff=-0.0511;MQ=59.88;MQ0=0;QD=3.28
+1	211280737	.	AAG	A	16872.42	.	AC=23;AF=0.0752;AN=306;BaseQRankSum=-12.328;DP=11141;FS=542.007;HRun=0;HaplotypeScore=323.9945;InbreedingCoeff=-0.0813;MQ=59.95;MQ0=0;MQRankSum=6.655;QD=11.24;ReadPosRankSum=-15.661
+1	214813782	rs3795524	A	C,G	16590.58	.	AC=1,11;AF=0.0033,0.0359;AN=306;DB;DP=11758;Dels=0.00;InbreedingCoeff=-0.0308;MQ=59.51;MQ0=0;QD=15.92
+1	228494382	rs1150911	T	C,G	37788.01	.	AC=65,148;AF=0.2124,0.4837;AN=306;DB;DP=1640;Dels=0.00;InbreedingCoeff=0.3178;MQ=58.88;MQ0=0;QD=25.24
+1	236702374	rs2472126	G	A,C	244521.93	.	AC=200,12;AF=0.6536,0.0392;AN=306;DB;DP=12001;Dels=0.00;InbreedingCoeff=0.0166;MQ=58.65;MQ0=0;QD=22.33
+1	236902560	rs7527525	C	G,T	215057.79	.	AC=23,183;AF=0.0752,0.5980;AN=306;DB;DP=11941;Dels=0.00;InbreedingCoeff=0.1337;MQ=59.02;MQ0=1;QD=20.07
+1	241964559	rs4658661	C	G,T	114843.77	.	AC=42,153;AF=0.1373,0.5000;AN=306;DB;DP=5331;Dels=0.00;InbreedingCoeff=0.3029;MQ=59.66;MQ0=0;QD=25.27
+2	1842968	rs6728368	T	A,C	45146.15	.	AC=13,108;AF=0.0425,0.3529;AN=306;DB;DP=4138;Dels=0.00;InbreedingCoeff=0.0689;MQ=59.31;MQ0=0;QD=17.53
+2	1926488	rs13399855	C	A,T	6170.25	.	AC=1,10;AF=0.0033,0.0327;AN=306;DB;DP=7613;Dels=0.00;InbreedingCoeff=-0.0273;MQ=59.45;MQ0=0;QD=13.02
+2	10051053	rs10495576	G	A,C	187513.81	.	AC=4,201;AF=0.0131,0.6569;AN=306;DB;DP=8380;Dels=0.00;InbreedingCoeff=0.0820;MQ=59.67;MQ0=0;QD=25.60
