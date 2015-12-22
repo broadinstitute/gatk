@@ -88,6 +88,7 @@ dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
 
     compile 'com.google.guava:guava:18.0'
+    compile 'com.opencsv:opencsv:3.4'
     compile 'com.github.samtools:htsjdk:2.0.1'
     compile ('com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15') {
         // an upstream dependency includes guava-jdk5, but we want the newer version instead.
@@ -132,7 +133,7 @@ dependencies {
     }
     compile('org.apache.hadoop:hadoop-client:2.7.1') // should be a 'provided' dependency
 
-    compile('org.apache.spark:spark-core_2.10:1.4.1') {
+    compile ('org.apache.spark:spark-mllib_2.10:1.4.1') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
