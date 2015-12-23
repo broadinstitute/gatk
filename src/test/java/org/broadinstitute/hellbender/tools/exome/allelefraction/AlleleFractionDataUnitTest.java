@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import htsjdk.samtools.util.Interval;
-import org.apache.commons.lang.math.IntRange;
 import org.broadinstitute.hellbender.tools.exome.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
@@ -19,20 +17,19 @@ public final class AlleleFractionDataUnitTest {
 
     @Test
     public void testData() {
-        final Interval DUMMY_INTERVAL = new Interval("dummy", 1, 2);
         final List<AllelicCount> ac = new ArrayList<>();
         final List<SimpleInterval> segments= new ArrayList<>();
 
         // segment 0: hets 0-2
         segments.add(new SimpleInterval("chr", 1, 5));
-        ac.add(new AllelicCount(new Interval("chr", 1, 1), 0, 5));
-        ac.add(new AllelicCount(new Interval("chr", 2, 2), 5, 0));
-        ac.add(new AllelicCount(new Interval("chr", 3, 3), 5, 5));
+        ac.add(new AllelicCount(new SimpleInterval("chr", 1, 1), 0, 5));
+        ac.add(new AllelicCount(new SimpleInterval("chr", 2, 2), 5, 0));
+        ac.add(new AllelicCount(new SimpleInterval("chr", 3, 3), 5, 5));
 
         // segment 1: hets 3-4
         segments.add(new SimpleInterval("chr", 10, 15));
-        ac.add(new AllelicCount(new Interval("chr", 10, 10), 1, 1));
-        ac.add(new AllelicCount(new Interval("chr", 11, 11), 2, 2));
+        ac.add(new AllelicCount(new SimpleInterval("chr", 10, 10), 1, 1));
+        ac.add(new AllelicCount(new SimpleInterval("chr", 11, 11), 2, 2));
 
         final Genome genome = new Genome(new ArrayList<>(), ac, "SAMPLE");
         final SegmentedModel segmentedModel = new SegmentedModel(segments, genome);

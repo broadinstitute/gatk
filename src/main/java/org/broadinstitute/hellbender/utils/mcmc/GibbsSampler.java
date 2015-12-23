@@ -23,7 +23,7 @@ public final class GibbsSampler<S extends AbstractParameterizedState, T extends 
             RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
     private static final Logger logger = LogManager.getLogger(GibbsSampler.class);
-    private static final int NUMBER_OF_SAMPLES_PER_LOG_ENTRY = 100;
+    private static final int NUMBER_OF_SAMPLES_PER_LOG_ENTRY = 25;
 
     private final int numSamples;
     private int numSamplesPerLogEntry;

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

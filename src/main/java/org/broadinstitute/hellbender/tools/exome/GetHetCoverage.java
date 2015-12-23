@@ -4,6 +4,7 @@ import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
@@ -15,7 +16,8 @@ import java.io.File;
  */
 @CommandLineProgramProperties(
         summary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample.",
-        oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample."
+        oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample.",
+        programGroup = ExomeAnalysisProgramGroup.class
 )
 public final class GetHetCoverage extends CommandLineProgram {
 

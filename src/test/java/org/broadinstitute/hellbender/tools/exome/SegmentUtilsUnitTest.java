@@ -21,8 +21,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
         final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
         final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
 
-
-        List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegfile(TEST_SEGMENTS);
+        List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(TEST_SEGMENTS);
         Assert.assertEquals(segments.size(), 4);
         Assert.assertEquals(segments.get(0).getContig(), "chr");
         Assert.assertEquals(segments.get(1).getStart(), 300);
@@ -34,14 +33,13 @@ public class SegmentUtilsUnitTest extends BaseTest {
         final File file = createTempFile("test",".txt");
         List<ModeledSegment> calledIntervals = Arrays.asList(ci1, ci2, ci3);
 
-        SegmentUtils.writeModeledSegmentsToSegfile(file, calledIntervals, "sample");
-        List<ModeledSegment> sameIntervals = SegmentUtils.readModeledSegmentsFromSegfile(file);
+        SegmentUtils.writeModeledSegmentFile(file, calledIntervals, "sample");
+        List<ModeledSegment> sameIntervals = SegmentUtils.readModeledSegmentsFromSegmentFile(file);
         Assert.assertEquals(calledIntervals, sameIntervals);
     }
 
     @Test
     public void testMeanTargetCoverage() {
-        //a common set of targets for tests
         final TargetCoverage target1 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 1, 2), 1.0);
         final TargetCoverage target2 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 3, 4), 2.0);
         final TargetCoverage target3 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 5, 6), 3.0);
@@ -58,7 +56,6 @@ public class SegmentUtilsUnitTest extends BaseTest {
 
     @Test
     public void testSegmentDifference() {
-        //a common set of targets for tests
         final TargetCoverage target1 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 1, 2), 1.0);
         final TargetCoverage target2 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 3, 4), 2.0);
         final TargetCoverage target3 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 3, 4), 5.0);
@@ -77,100 +74,132 @@ public class SegmentUtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testParsimoniousInterval() {
+    public void testTrimInterval() {
         final SimpleInterval target1 = new SimpleInterval("chr1", 1, 10);
         final SimpleInterval target2 = new SimpleInterval("chr1", 20, 30);
         final SimpleInterval target3 = new SimpleInterval("chr1", 31, 40);
         final SimpleInterval target4 = new SimpleInterval("chr1", 90, 100);
+        final SimpleInterval target5 = new SimpleInterval("chr1", 110, 120);
         final HashedListTargetCollection<SimpleInterval> targets =
-                new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4));
+                new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4, target5));
 
         final SimpleInterval snp1 = new SimpleInterval("chr1", 5, 5);
         final SimpleInterval snp2 = new SimpleInterval("chr1", 42, 42);
         final SimpleInterval snp3 = new SimpleInterval("chr1", 60, 60);
-        final HashedListTargetCollection<SimpleInterval> snps =
-                new HashedListTargetCollection<>(Arrays.asList(snp1, snp2, snp3));
-
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 1, 10), targets, snps),
-                new SimpleInterval("chr1",1,10));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 1, 4), targets, snps),
-                new SimpleInterval("chr1",1,10));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 2, 4), targets, snps),
-                new SimpleInterval("chr1",1,10));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 10, 25), targets, snps),
-                new SimpleInterval("chr1",1,30));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 11, 31), targets, snps),
-                new SimpleInterval("chr1",20,40));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 40, 42), targets, snps),
-                new SimpleInterval("chr1",31,42));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 43, 89), targets, snps),
-                new SimpleInterval("chr1",60,60));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr1", 101, 200), targets, snps),
-                new SimpleInterval("chr1",101,101));
-        Assert.assertEquals(SegmentUtils.parsimoniousInterval(new SimpleInterval("chr2", 1, 10), targets, snps),
-                new SimpleInterval("chr2",1,1));
-    }
-
-    @Test
-    public void testSegmentUnion() {
-        final SimpleInterval target1 = new SimpleInterval("chr1", 1, 10);
-        final SimpleInterval target2 = new SimpleInterval("chr1", 20, 30);
-        final SimpleInterval target3 = new SimpleInterval("chr1", 31, 40);
-        final SimpleInterval target4 = new SimpleInterval("chr1", 90, 100);
-        final HashedListTargetCollection<SimpleInterval> targets =
-                new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4));
-
-        final SimpleInterval snp1 = new SimpleInterval("chr1", 5, 5);
-        final SimpleInterval snp2 = new SimpleInterval("chr1", 42, 42);
-        final SimpleInterval snp3 = new SimpleInterval("chr1", 60, 60);
-        final SimpleInterval snp4 = new SimpleInterval("chr2", 10, 10);
+        final SimpleInterval snp4 = new SimpleInterval("chr1", 91, 91);
         final HashedListTargetCollection<SimpleInterval> snps =
                 new HashedListTargetCollection<>(Arrays.asList(snp1, snp2, snp3, snp4));
+
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 1, 10), targets, snps),
+                new SimpleInterval("chr1", 1, 10));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 2, 4), targets, snps),
+                new SimpleInterval("chr1", 2, 4));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 5, 8), targets, snps),
+                new SimpleInterval("chr1", 5, 8));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 8, 25), targets, snps),
+                new SimpleInterval("chr1", 8, 25));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 11, 31), targets, snps),
+                new SimpleInterval("chr1", 20, 31));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 15, 35), targets, snps),
+                new SimpleInterval("chr1", 20, 35));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 15, 45), targets, snps),
+                new SimpleInterval("chr1", 20, 42));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 40, 42), targets, snps),
+                new SimpleInterval("chr1", 40, 42));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 43, 89), targets, snps),
+                new SimpleInterval("chr1", 60, 60));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 90, 114), targets, snps),
+                new SimpleInterval("chr1", 90, 114));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr1", 101, 200), targets, snps),
+                new SimpleInterval("chr1", 110, 120));
+        Assert.assertEquals(SegmentUtils.trimInterval(new SimpleInterval("chr2", 1, 10), targets, snps),
+                new SimpleInterval("chr2", 1, 10));
+    }
+
+    /**
+     * Test for {@link SegmentUtils#unionSegments}.  Expected behavior:
+     * <p>
+     * On chr1 {@link SegmentUtils#collectBreakpointsByContig} gives:
+     * </p>
+     *      <p>
+     *      1, 5, 10, 20, 40, 40, 42, 90, 91, 115, 125, 140.
+     *      </p>
+     * <p>
+     * Then {@link SegmentUtils#constructUntrimmedSegments} finds the segments:
+     * </p>
+     *      <p>
+     *      [1, 4], [5, 10], [11, 19], [20, 40], [41, 41], [42, 89], [90, 91], [92, 114], [115, 125], [126, 140].
+     *      </p>
+     * <p>
+     * and returns the non-empty segments:
+     * </p>
+     *      <p>
+     *      [1, 4], [5, 10], [20, 40], [42, 89], [90, 91], [92, 114], [115, 125], [126, 140].
+     *      </p>
+     * <p>
+     * Then {@link SegmentUtils#mergeSpuriousStartsAndEnds} merges the last segment left to form [115, 140],
+     * and {@link SegmentMergeUtils#mergeSpuriousMiddles} randomly merges segment [92, 114] left or right.
+     * </p>
+     * <p>
+     * Finally, {@link SegmentUtils#trimInterval} gives:
+     * </p>
+     *      <p>
+     *      [1, 10], [20, 40], [42, 42], [90, 114], [115, 140] (if [92, 114] merged left) or
+     *      </p>
+     *      <p>
+     *      [1, 10], [20, 40], [42, 42], [90, 91], [92, 140] (if [92, 114] merged right)
+     *      </p>
+     * <p>
+     * The remaining empty segment on chr2 is retained.
+     */
+    @Test
+    public void testUnionSegments() {
+        final TargetCoverage target1 = new TargetCoverage("t1", new SimpleInterval("chr1", 1, 10), 0);
+        final TargetCoverage target2 = new TargetCoverage("t2", new SimpleInterval("chr1", 20, 30), 0);
+        final TargetCoverage target3 = new TargetCoverage("t3", new SimpleInterval("chr1", 31, 40), 0);
+        final TargetCoverage target4 = new TargetCoverage("t4", new SimpleInterval("chr1", 90, 100), 0);
+        final TargetCoverage target5 = new TargetCoverage("t5", new SimpleInterval("chr1", 110, 120), 0);
+        final TargetCoverage target6 = new TargetCoverage("t6", new SimpleInterval("chr1", 130, 140), 0);
+        final List<TargetCoverage> targets =
+                Arrays.asList(target1, target2, target3, target4, target5, target6);
+
+        final AllelicCount snp1 = new AllelicCount(new SimpleInterval("chr1", 5, 5), 0, 1);
+        final AllelicCount snp2 = new AllelicCount(new SimpleInterval("chr1", 40, 40), 0, 1);
+        final AllelicCount snp3 = new AllelicCount(new SimpleInterval("chr1", 42, 42), 0, 1);
+        final AllelicCount snp4 = new AllelicCount(new SimpleInterval("chr1", 91, 91), 0, 1);
+        final AllelicCount snp5 = new AllelicCount(new SimpleInterval("chr1", 115, 115), 0, 1);
+        final AllelicCount snp6 = new AllelicCount(new SimpleInterval("chr1", 125, 125), 0, 1);
+        final AllelicCount snp7 = new AllelicCount(new SimpleInterval("chr2", 10, 10), 0, 1);
+        final List<AllelicCount> snps =
+                Arrays.asList(snp1, snp2, snp3, snp4, snp5, snp6, snp7);
 
         final List<SimpleInterval> targetSegments = Arrays.asList(
                 new SimpleInterval("chr1", 1, 10),
                 new SimpleInterval("chr1", 20, 40),
-                new SimpleInterval("chr1", 42, 60),
-                new SimpleInterval("chr1", 50, 60),
-                new SimpleInterval("chr2", 5, 15));
+                new SimpleInterval("chr1", 90, 140));
 
         final List<SimpleInterval> snpSegments = Arrays.asList(
-                new SimpleInterval("chr1", 4, 5),
-                new SimpleInterval("chr1", 5, 6),
-                new SimpleInterval("chr1", 80, 110),
-                new SimpleInterval("chr1", 200, 200),
-                new SimpleInterval("chr2", 5, 15));
-
-
-        /**
-         * Expected behavior: on chr1 we get breakpoints 1,4,5,6,10,20,40,42,50,60,80,110,200.  We now follow the logic of
-         * SegmentUtils.segmentUnion.
-         * [1,4] -> [1,10] under parsimoniousInterval, so the next position to start is 11.
-         * The "intervals" [11,5]; [11,6]; and [11,10] end before they start and are trivially empty.
-         * [11,20] -> [20,30] under parsimoniousInterval, so the next position to start is 31.
-         * [31,40] -> [31,40] and the next start is 41.
-         * [41,42] -> [42,42] and the next start is 43.
-         * [43,50] is empty.
-         * [43,60] -> [60,60] and the next start is 61.
-         * [61,80] is empty.
-         * [61,110] -> [90,100].
-         * [101,200] is empty.
-         * Thus we get [1,10]; [20,30]; [42,42]; [60,60]; [90,100] on chr1
-         * More simply, we get [10,10] on chr2.
-         */
-
-        List<SimpleInterval> segUnion = SegmentUtils.segmentUnion(targetSegments, snpSegments, targets, snps);
-        List<SimpleInterval> expected = Arrays.asList(
-                new SimpleInterval("chr1", 1, 10),
-                new SimpleInterval("chr1", 20, 30),
-                new SimpleInterval("chr1", 31, 40),
-                new SimpleInterval("chr1", 42, 42),
-                new SimpleInterval("chr1", 60, 60),
-                new SimpleInterval("chr1", 90, 100),
+                new SimpleInterval("chr1", 5, 40),
+                new SimpleInterval("chr1", 42, 91),
+                new SimpleInterval("chr1", 115, 125),
                 new SimpleInterval("chr2", 10, 10));
-        Assert.assertEquals(segUnion, expected);
+
+        final List<SimpleInterval> unionedSegments =
+                SegmentUtils.unionSegments(targetSegments, snpSegments, new Genome(targets, snps, "test"));
+        final List<SimpleInterval> expectedLeft = Arrays.asList(
+                new SimpleInterval("chr1", 1, 10),
+                new SimpleInterval("chr1", 20, 40),
+                new SimpleInterval("chr1", 42, 42),
+                new SimpleInterval("chr1", 90, 114),
+                new SimpleInterval("chr1", 115, 140),
+                new SimpleInterval("chr2", 10, 10));
+        final List<SimpleInterval> expectedRight = Arrays.asList(
+                new SimpleInterval("chr1", 1, 10),
+                new SimpleInterval("chr1", 20, 40),
+                new SimpleInterval("chr1", 42, 42),
+                new SimpleInterval("chr1", 90, 91),
+                new SimpleInterval("chr1", 92, 140),
+                new SimpleInterval("chr2", 10, 10));
+        Assert.assertTrue(unionedSegments.equals(expectedLeft) || unionedSegments.equals(expectedRight));
     }
-
-
-
 }

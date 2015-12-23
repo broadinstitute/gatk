@@ -8,6 +8,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.SamLocusIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -68,19 +69,19 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
             final SamLocusIterator locusIterator = new SamLocusIterator(bamReader, intervals);
 
-            Map<Character, Integer> baseCounts1 = makeBaseCounts(0, 0, 0, 0);
-            Map<Character, Integer> baseCounts2 = makeBaseCounts(0, 9, 0, 0);
-            Map<Character, Integer> baseCounts3 = makeBaseCounts(12, 0, 0, 0);
-            Map<Character, Integer> baseCounts4 = makeBaseCounts(0, 0, 8, 9);
+            final Map<Character, Integer> baseCounts1 = makeBaseCounts(0, 0, 0, 0);
+            final Map<Character, Integer> baseCounts2 = makeBaseCounts(0, 9, 0, 0);
+            final Map<Character, Integer> baseCounts3 = makeBaseCounts(12, 0, 0, 0);
+            final Map<Character, Integer> baseCounts4 = makeBaseCounts(0, 0, 8, 9);
 
             if (!locusIterator.hasNext()) {
                 throw new SAMException("Can't get locus to start iteration. Check that " + NORMAL_BAM_FILE.toString()
                         + " contains 1:0-16000.");
             }
-            SamLocusIterator.LocusInfo locus1 = locusIterator.next();
-            SamLocusIterator.LocusInfo locus2 = locusIterator.next();
-            SamLocusIterator.LocusInfo locus3 = locusIterator.next();
-            SamLocusIterator.LocusInfo locus4 = locusIterator.next();
+            final SamLocusIterator.LocusInfo locus1 = locusIterator.next();
+            final SamLocusIterator.LocusInfo locus2 = locusIterator.next();
+            final SamLocusIterator.LocusInfo locus3 = locusIterator.next();
+            final SamLocusIterator.LocusInfo locus4 = locusIterator.next();
             locusIterator.close();
 
             return new Object[][]{
@@ -128,21 +129,21 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @DataProvider(name = "inputGetNormalHetPulldown")
     public Object[][] inputGetNormalHetPulldown() {
-        Pulldown normalHetPulldown1 = new Pulldown(normalHeader);
-        normalHetPulldown1.add(new Interval("1", 10736, 10736), 9, 2);
-        normalHetPulldown1.add(new Interval("1", 11522, 11522), 7, 4);
-        normalHetPulldown1.add(new Interval("1", 12098, 12098), 8, 6);
-        normalHetPulldown1.add(new Interval("1", 14630, 14630), 9, 8);
-        normalHetPulldown1.add(new Interval("2", 14689, 14689), 6, 9);
-        normalHetPulldown1.add(new Interval("2", 14982, 14982), 6, 5);
+        final Pulldown normalHetPulldown1 = new Pulldown(normalHeader);
+        normalHetPulldown1.add(new SimpleInterval("1", 10736, 10736), 9, 2);
+        normalHetPulldown1.add(new SimpleInterval("1", 11522, 11522), 7, 4);
+        normalHetPulldown1.add(new SimpleInterval("1", 12098, 12098), 8, 6);
+        normalHetPulldown1.add(new SimpleInterval("1", 14630, 14630), 9, 8);
+        normalHetPulldown1.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+        normalHetPulldown1.add(new SimpleInterval("2", 14982, 14982), 6, 5);
 
         //changing hetAlleleFraction from 0.5 -> 0.45 removes first het SNP
-        Pulldown normalHetPulldown2 = new Pulldown(normalHeader);
-        normalHetPulldown2.add(new Interval("1", 11522, 11522), 7, 4);
-        normalHetPulldown2.add(new Interval("1", 12098, 12098), 8, 6);
-        normalHetPulldown2.add(new Interval("1", 14630, 14630), 9, 8);
-        normalHetPulldown2.add(new Interval("2", 14689, 14689), 6, 9);
-        normalHetPulldown2.add(new Interval("2", 14982, 14982), 6, 5);
+        final Pulldown normalHetPulldown2 = new Pulldown(normalHeader);
+        normalHetPulldown2.add(new SimpleInterval("1", 11522, 11522), 7, 4);
+        normalHetPulldown2.add(new SimpleInterval("1", 12098, 12098), 8, 6);
+        normalHetPulldown2.add(new SimpleInterval("1", 14630, 14630), 9, 8);
+        normalHetPulldown2.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+        normalHetPulldown2.add(new SimpleInterval("2", 14982, 14982), 6, 5);
 
         return new Object[][]{
                 {0.5, 0.05, normalHetPulldown1},
@@ -165,12 +166,12 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     @DataProvider(name = "inputGetTumorHetPulldown")
     public Object[][] inputGetTumorHetPulldown() {
         //first het SNP in normalHetPulldown1 has <= 10 reads in tumor BAM and hence does not pass read depth filter
-        Pulldown tumorHetPulldown = new Pulldown(normalHeader);
-        tumorHetPulldown.add(new Interval("1", 11522, 11522), 7, 4);
-        tumorHetPulldown.add(new Interval("1", 12098, 12098), 8, 6);
-        tumorHetPulldown.add(new Interval("1", 14630, 14630), 9, 8);
-        tumorHetPulldown.add(new Interval("2", 14689, 14689), 6, 9);
-        tumorHetPulldown.add(new Interval("2", 14982, 14982), 6, 5);
+        final Pulldown tumorHetPulldown = new Pulldown(normalHeader);
+        tumorHetPulldown.add(new SimpleInterval("1", 11522, 11522), 7, 4);
+        tumorHetPulldown.add(new SimpleInterval("1", 12098, 12098), 8, 6);
+        tumorHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
+        tumorHetPulldown.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+        tumorHetPulldown.add(new SimpleInterval("2", 14982, 14982), 6, 5);
 
         final IntervalList normalHetIntervals = new IntervalList(tumorHeader);
         normalHetIntervals.add(new Interval("1", 11522, 11522));

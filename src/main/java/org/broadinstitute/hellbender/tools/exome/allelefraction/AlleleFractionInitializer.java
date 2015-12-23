@@ -113,7 +113,7 @@ public final class AlleleFractionInitializer {
      */
     public AlleleFractionInitializer(final AlleleFractionData data) {
         this.data = data;
-        responsibilities = data.getAllelicCounts().stream().map(c -> new Responsibility(c)).collect(Collectors.toList());
+        responsibilities = data.getAllelicCounts().stream().map(Responsibility::new).collect(Collectors.toList());
         state = new AlleleFractionState(BIAS_MEAN_INITIAL, BIAS_VARIANCE_INITIAL, INITIAL_OUTLIER_PROBABILITY, estimateMinorFractions());
         for (int iteration = 0; iteration < NUMBER_OF_EM_ITERATIONS; iteration++) {
             performSingleEMIteration();
@@ -155,8 +155,8 @@ public final class AlleleFractionInitializer {
                     .mapToDouble(het -> data.altCount(het) * pAltMinor(het) + data.refCount(het) * pRefMinor(het)).sum();
             final double totalReads = data.hetsInSegment(segment).stream().mapToDouble(het -> data.readCount(het) * pNotOutlier(het)).sum();
 
-            // the "+ 1"s correspond to a flat prior on minor fractions
-            result.add((minorReads + 1)/(totalReads + 1));
+            // the "+1" and "+2" correspond to a flat prior on minor fractions
+            result.add((minorReads + 1)/(totalReads + 2));
         }
         return result;
     }

@@ -94,9 +94,9 @@ public final class CallSegments extends CommandLineProgram{
 
         List<ModeledSegment> segments = null;
         if (isLegacyFormatSegFile) {
-            segments = SegmentUtils.readModeledSegmentsFromLegacySegfile(segmentsFile);
+            segments = SegmentUtils.readModeledSegmentsFromLegacySegmentFile(segmentsFile);
         } else {
-            segments = SegmentUtils.readModeledSegmentsFromSegfile(segmentsFile);
+            segments = SegmentUtils.readModeledSegmentsFromSegmentFile(segmentsFile);
         }
 
         //add calls to segments in-place
@@ -106,7 +106,7 @@ public final class CallSegments extends CommandLineProgram{
             ReCapSegCaller.makeCalls(targets, segments);
         }
 
-        SegmentUtils.writeModeledSegmentsToSegfile(outFile, segments, sample);
+        SegmentUtils.writeModeledSegmentFile(outFile, segments, sample);
 
         return "SUCCESS";
     }

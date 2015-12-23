@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
@@ -13,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Represents an ACS segmented model for copy ratio fit to target-coverage data.
@@ -33,6 +36,8 @@ public final class ACSCopyRatioModeller {
     private static final double OUTLIER_PROBABILITY_INITIAL = 0.05;
     private static final double OUTLIER_PROBABILITY_PRIOR_ALPHA = 5.;
     private static final double OUTLIER_PROBABILITY_PRIOR_BETA = 95.;
+
+    private final SegmentedModel segmentedModel;
 
     private final double outlierUniformLogLikelihood;
     private final double varianceSliceSamplingWidth;
@@ -56,6 +61,8 @@ public final class ACSCopyRatioModeller {
      * @param segmentedModel    SegmentedModel with segments and a Genome
      */
     public ACSCopyRatioModeller(final SegmentedModel segmentedModel) {
+        this.segmentedModel = segmentedModel;
+
         //load segmented coverages from SegmentedModel into CopyRatioDataCollection
         final CopyRatioDataCollection data = new CopyRatioDataCollection(segmentedModel);
 
@@ -106,12 +113,7 @@ public final class ACSCopyRatioModeller {
         //  log Beta(alpha + number of outlier targets, beta + number of non-outlier targets) + constant
         final Sampler<Double, CopyRatioState, CopyRatioDataCollection> outlierProbabilitySampler =
                 (rng, state, dataCollection) -> {
-            int numOutliers = 0;
-            for (int target = 0; target < dataCollection.numTargets; target++) {
-                if (state.getOutlierIndicator(target)) {
-                    numOutliers++;
-                }
-            }
+            final int numOutliers = (int) IntStream.range(0, dataCollection.numTargets).filter(state::getOutlierIndicator).count();
             return new BetaDistribution(
                     rng,
                     OUTLIER_PROBABILITY_PRIOR_ALPHA + numOutliers,
@@ -129,21 +131,19 @@ public final class ACSCopyRatioModeller {
                 final int segment = i;
                 final int targetStartInSegment = dataCollection.getStartTargetInSegment(segment);
                 final int numTargetsInSegment = dataCollection.getNumTargetsInSegment(segment);
-                final Function<Double, Double> logConditionalPDF = newMean -> {
-                    double ll = 0.;
-                    for (int target = 0; target < numTargetsInSegment; target++) {
-                        final double coverage = dataCollection.getCoveragesInSegment(segment).get(target);
-                        if (!state.getOutlierIndicator(targetStartInSegment + target)) {
-                            ll -= normalTerm(coverage, newMean, state.variance());
-                        }
-                    }
-                    return ll;
-                };
+                if (numTargetsInSegment == 0) {
+                    means.add(Double.NaN);
+                } else {
+                    final Function<Double, Double> logConditionalPDF = newMean -> IntStream.range(0, numTargetsInSegment)
+                            .filter(target -> !state.getOutlierIndicator(targetStartInSegment + target))
+                            .mapToDouble(target -> dataCollection.getCoveragesInSegment(segment).get(target))
+                            .map(coverage -> -normalTerm(coverage, newMean, state.variance()))
+                            .sum();
 
-                final SliceSampler sampler =
-                        new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment),
-                                meanSliceSamplingWidth);
-                means.add(sampler.sample());
+                    final SliceSampler sampler =
+                            new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment), meanSliceSamplingWidth);
+                    means.add(sampler.sample());
+                }
             }
             return new SegmentMeans(means);
         };
@@ -213,6 +213,14 @@ public final class ACSCopyRatioModeller {
     }
 
     /**
+     * Returns the {@link SegmentedModel} held internally.
+     * @return the {@link SegmentedModel} held internally
+     */
+    public SegmentedModel getSegmentedModel() {
+        return segmentedModel;
+    }
+
+    /**
      * Returns an unmodifiable view of the list of samples of the variance posterior.
      * @return  unmodifiable view of the list of samples of the variance posterior
      */
@@ -238,6 +246,26 @@ public final class ACSCopyRatioModeller {
     }
 
     /**
+     * Returns a list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment.
+     * Should only be called after {@link ACSCopyRatioModeller#fitMCMC(int, int)} has been called.
+     * @return  list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment
+     */
+    public List<PosteriorSummary> getSegmentMeansPosteriorSummaries() {
+        final int numSegments = segmentedModel.getSegments().size();
+        final List<PosteriorSummary> posteriorSummaries = new ArrayList<>(numSegments);
+        for (int segment = 0; segment < numSegments; segment++) {
+            final int j = segment;
+            final double[] meanSamples =
+                    Doubles.toArray(segmentMeansSamples.stream().map(s -> s.getMeanInSegment(j))
+                            .collect(Collectors.toList()));
+            final double posteriorMean = new Mean().evaluate(meanSamples);
+            final double posteriorStandardDeviation = new StandardDeviation().evaluate(meanSamples);
+            posteriorSummaries.add(new PosteriorSummary(posteriorMean, posteriorStandardDeviation));
+        }
+        return posteriorSummaries;
+    }
+
+    /**
      * Returns an unmodifiable view of the list of samples of the outlier-indicators posterior, represented as a list of
      * {@link org.broadinstitute.hellbender.tools.exome.ACSCopyRatioModeller.OutlierIndicators} objects.
      * @return  unmodifiable view of the list of samples of the outlier-indicators posterior
@@ -246,7 +274,7 @@ public final class ACSCopyRatioModeller {
         return Collections.unmodifiableList(outlierIndicatorsSamples);
     }
 
-    protected final class SegmentMeans {
+    private final class SegmentMeans {
         private final List<Double> segmentMeans;
 
         private SegmentMeans(final List<Double> segmentMeans) {
@@ -259,6 +287,7 @@ public final class ACSCopyRatioModeller {
         }
     }
 
+    @VisibleForTesting
     protected final class OutlierIndicators {
         private final List<Boolean> outlierIndicators;
 
@@ -326,6 +355,9 @@ public final class ACSCopyRatioModeller {
         private final List<Integer> startTargetsPerSegment = new ArrayList<>();
 
         private CopyRatioDataCollection(final SegmentedModel segmentedModel) {
+            if (segmentedModel.getGenome().getTargets().targetCount() == 0) {
+                throw new IllegalArgumentException("Cannot construct CopyRatioDataCollection with no target-coverage data.");
+            }
             //construct coverages and number of targets per segment from the segments and Genome in SegmentedModel
             final TargetCollection<TargetCoverage> targetCoverages = segmentedModel.getGenome().getTargets();
             //construct list of coverages (in order corresponding to that of segments in SegmentedModel;
@@ -335,7 +367,6 @@ public final class ACSCopyRatioModeller {
                     .flatMap(s -> targetCoverages.targets(s).stream())
                     .map(TargetCoverage::getCoverage)
                     .collect(Collectors.toList());
-
             numTargetsPerSegment = segmentedModel.getSegments().stream()
                     .map(s -> targetCoverages.targets(s).size())
                     .collect(Collectors.toList());

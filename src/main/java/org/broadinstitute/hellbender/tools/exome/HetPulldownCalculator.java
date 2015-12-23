@@ -7,12 +7,14 @@ import htsjdk.samtools.filter.DuplicateReadFilter;
 import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
-import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.SamLocusIterator;
 import org.apache.commons.math3.stat.inference.AlternativeHypothesis;
 import org.apache.commons.math3.stat.inference.BinomialTest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +26,8 @@ import java.util.*;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class HetPulldownCalculator {
+    private final Logger logger = LogManager.getLogger(HetPulldownCalculator.class);
+
     private final File refFile;
     private final IntervalList snpIntervals;
 
@@ -156,18 +160,18 @@ public final class HetPulldownCalculator {
      * @return                  Pulldown of heterozygous SNP sites in 1-based format
      */
     private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, SampleType sampleType,
-                                           final double hetAlleleFraction, final double pvalThreshold) {
+                                    final double hetAlleleFraction, final double pvalThreshold) {
         try (final SamReader bamReader = SamReaderFactory.makeDefault().open(bamFile);
-             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)
-        ) {
+             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
                 throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");
             }
 
             final Pulldown hetPulldown = new Pulldown(bamReader.getFileHeader());
 
+            final int totalNumberOfSNPs = snpIntervals.size();
             final SamLocusIterator locusIterator = new SamLocusIterator(bamReader, snpIntervals,
-                    snpIntervals.size() < MAX_INTERVALS_FOR_INDEX);
+                    totalNumberOfSNPs < MAX_INTERVALS_FOR_INDEX);
 
             //set read and locus filters [note: read counts match IGV, but off by a few from pysam.mpileup]
             final List<SamRecordFilter> samFilters = Arrays.asList(new NotPrimaryAlignmentFilter(),
@@ -177,7 +181,15 @@ public final class HetPulldownCalculator {
             locusIterator.setQualityScoreCutoff(MIN_QUALITY);
             locusIterator.setIncludeNonPfReads(false);
 
+            logger.info("Examining " + totalNumberOfSNPs + " sites...");
+            final int iterationsPerStatus = Math.max((int) Math.floor(totalNumberOfSNPs / 20.), 1);
+            int locusCount = 1;
             for (final SamLocusIterator.LocusInfo locus : locusIterator) {
+                if (locusCount % iterationsPerStatus == 0) {
+                    logger.info("Examined " + locusCount + " out of " + totalNumberOfSNPs + " sites.");
+                }
+                locusCount++;
+
                 //include N, etc. reads here
                 final int totalReadCount = locus.getRecordAndPositions().size();
                 if (totalReadCount <= READ_DEPTH_THRESHOLD) {
@@ -197,11 +209,12 @@ public final class HetPulldownCalculator {
                 final int refReadCount = baseCounts.get(refBase);
                 final int altReadCount = totalBaseCount - refReadCount;
 
-                hetPulldown.add(new Interval(locus.getSequenceName(), locus.getPosition(), locus.getPosition()),
+                hetPulldown.add(new SimpleInterval(locus.getSequenceName(), locus.getPosition(), locus.getPosition()),
                         refReadCount, altReadCount);
             }
+            logger.info("Examined " + totalNumberOfSNPs + " sites.");
             return hetPulldown;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UserException(e.getMessage());
         }
     }

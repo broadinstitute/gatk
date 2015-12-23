@@ -11,10 +11,10 @@ import org.broadinstitute.hellbender.utils.Utils;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class AllelicCount implements Locatable {
-    private final Interval interval;
+    private final SimpleInterval interval;
     private final int refReadCount, altReadCount;
 
-    public AllelicCount(final Interval interval, final int refReadCount, final int altReadCount) {
+    public AllelicCount(final SimpleInterval interval, final int refReadCount, final int altReadCount) {
         Utils.nonNull(interval, "Can't construct AllelicCount with null interval.");
         if (refReadCount < 0 || altReadCount < 0) {
             throw new IllegalArgumentException("Can't construct AllelicCount with negative read counts.");
@@ -36,7 +36,9 @@ public final class AllelicCount implements Locatable {
     @Override
     public int getEnd() {return interval.getEnd(); }
 
-    public Interval getInterval() { return interval;    }
+    public Interval getInterval() {
+        return new Interval(interval.getContig(), interval.getStart(), interval.getEnd());
+    }
 
     public int getRefReadCount() {  return refReadCount;        }
 
@@ -60,12 +62,13 @@ public final class AllelicCount implements Locatable {
     }
 
     /**
-     * Returns a TargetCoverage with coverage given by minor allele fraction.
+     * Returns a TargetCoverage with coverage given by minor allele fraction (plus epsilon, to avoid issues caused by
+     * taking logs).
      * @param name  target name
      * @return      TargetCoverage with coverage given by minor allele fraction
      */
     public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name) {
-        return new TargetCoverage(name, new SimpleInterval(interval), toMinorAlleleFraction());
+        return new TargetCoverage(name, new SimpleInterval(interval), toMinorAlleleFraction() + Double.MIN_VALUE);
     }
 
     @Override

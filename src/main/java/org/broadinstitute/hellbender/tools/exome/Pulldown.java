@@ -25,7 +25,6 @@ public final class Pulldown extends AllelicCountCollection {
      * uses external SAMFile header to construct Pulldown.
      * @param inputFile     file to read from
      * @param header        SAMFile header for IntervalList
-     * TODO remove dependency from IntervalList/SamLocusIterator on external header once LocusWalker implemented?
      */
     public Pulldown(final File inputFile, final SAMFileHeader header) {
         super(inputFile);
@@ -37,7 +36,7 @@ public final class Pulldown extends AllelicCountCollection {
      * AllelicCounts.  This IntervalList is modifiable and does not change with the state of the Pulldown.   */
     public IntervalList getIntervals() {
         final IntervalList intervals = new IntervalList(header);
-        intervals.addall(getCounts().stream().map(count -> count.getInterval()).collect(Collectors.toList()));
+        intervals.addall(getCounts().stream().map(AllelicCount::getInterval).collect(Collectors.toList()));
         return intervals;
     }
 

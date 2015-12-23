@@ -32,9 +32,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(arguments);
 
-        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(TEST_TARGETS);
-
-        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegfile(outputFile);
+        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
 
         Assert.assertEquals(calls.get(0).getCall(), "+");
         Assert.assertEquals(calls.get(1).getCall(), "-");
@@ -56,9 +54,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(arguments);
 
-        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(TEST_TARGETS);
-
-        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegfile(outputFile);
+        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
 
         Assert.assertEquals(calls.get(0).getCall(), "+");
         Assert.assertEquals(calls.get(1).getCall(), "-");
@@ -80,9 +76,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(arguments);
 
-        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(TEST_TARGETS);
-
-        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegfile(outputFile);
+        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
 
         Assert.assertEquals(calls.get(0).getCall(), "+");
         Assert.assertEquals(calls.get(1).getCall(), "-");
@@ -104,9 +98,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(arguments);
 
-        final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(TEST_TARGETS);
-
-        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegfile(outputFile);
+        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
 
         Assert.assertEquals(calls.get(0).getCall(), "+");
         Assert.assertEquals(calls.get(1).getCall(), "-");
