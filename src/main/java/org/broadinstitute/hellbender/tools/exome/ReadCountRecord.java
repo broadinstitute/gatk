@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 
@@ -10,7 +11,7 @@ import java.util.stream.LongStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ReadCountRecord {
+public final class ReadCountRecord implements Feature {
 
     /**
      * Holds a reference to the target.
@@ -123,5 +124,26 @@ public final class ReadCountRecord {
     public double getDouble(final int index) {
         Utils.validIndex(index, counts.length);
         return counts[index];
+    }
+
+    @Override
+    @Deprecated
+    public String getChr() {
+        return target.getContig();
+    }
+
+    @Override
+    public String getContig() {
+        return target.getContig();
+    }
+
+    @Override
+    public int getStart() {
+        return target.getStart();
+    }
+
+    @Override
+    public int getEnd() {
+        return target.getEnd();
     }
 }

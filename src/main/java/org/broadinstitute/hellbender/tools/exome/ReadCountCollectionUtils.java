@@ -17,8 +17,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -251,118 +249,8 @@ public final class ReadCountCollectionUtils {
     public static <E> ReadCountCollection parse(final File file, final TargetCollection<E> targets, final boolean ignoreMissingTargets) throws IOException {
         Utils.nonNull(file, "the input file cannot be null");
 
-        final List<String> countColumnNames = new ArrayList<>();
-
-        final TableReader<ReadCountRecord> tableReader = new TableReader<ReadCountRecord>(file) {
-
-            private Function<DataLine, ReadCountRecord> recordExtractor;
-
-            @Override
-            protected void processColumns(final TableColumnCollection columns) {
-                countColumnNames.clear();
-                countColumnNames.addAll(columns.names().stream()
-                        .filter(name -> !TargetTableColumns.isStandardTargetColumnName(name))
-                        .collect(Collectors.toList()));
-
-                @SuppressWarnings("all")
-                final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns, (message) -> formatException(message));
-                final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns);
-                final Function<DataLine, double[]> countExtractor = countExtractor(columns);
-                recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
-            }
-
-            private Function<DataLine, ReadCountRecord> composeRecordExtractor(final Function<DataLine, SimpleInterval> intervalExtractor,
-                        final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor,
-                        final TargetCollection<E> targets) {
-                if (targetNameExtractor == null && (targets == null || intervalExtractor == null)) {
-                    throw formatException("the input files does not contain a target name column and no target file was provided");
-                } else if (targetNameExtractor != null && intervalExtractor != null) {
-                    if (targets == null) {
-                        return (v) -> new ReadCountRecord(new Target(targetNameExtractor.apply(v), intervalExtractor.apply(v)), countExtractor.apply(v));
-                    } else {
-                        return (v) -> extractRecordWithTargetNameAndIntervalExtractorsAndTargetCollection(v, intervalExtractor, targetNameExtractor, countExtractor);
-                    }
-                } else if (targetNameExtractor != null) {
-                    if (targets == null) {
-                        return (v) -> new ReadCountRecord(new Target(targetNameExtractor.apply(v), null), countExtractor.apply(v));
-                    } else {
-                        return (v) -> extractRecordWithTargetNameExtractorAndTargetCollection(v, targetNameExtractor, countExtractor);
-                    }
-                } else { // at this point targets != null && intervalExtractor != null.
-                    return (v) -> extractRecordWithIntervalExtractorAndTargetCollection(v, intervalExtractor, countExtractor);
-                }
-            }
-
-            private ReadCountRecord extractRecordWithTargetNameExtractorAndTargetCollection(final DataLine v,
-                    final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor) {
-                final String name = targetNameExtractor.apply(v);
-                final E nameTarget = targets.target(name);
-                if (nameTarget == null) {
-                    if (ignoreMissingTargets) {
-                        return null;
-                    } else {
-                        throw formatException(String.format("unknown target '%s' not present in the target collection", name));
-                    }
-                } else {
-                    return new ReadCountRecord(new Target(name, targets.location(nameTarget)), countExtractor.apply(v));
-                }
-            }
-
-            private ReadCountRecord extractRecordWithIntervalExtractorAndTargetCollection(final DataLine v,
-                    final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, double[]> countExtractor) {
-                final SimpleInterval interval = intervalExtractor.apply(v);
-                final E intervalTarget = targets.target(interval);
-                if (intervalTarget == null) {
-                    if (ignoreMissingTargets) {
-                        return null;
-                    } else {
-                        throw formatException(String.format("unknown target with interval %s", interval));
-                    }
-                } else if (!targets.location(intervalTarget).equals(interval)) {
-                    throw formatException(String.format("mismatching yet overlapping intervals in the input (%s) and the target collection (%s)", interval, targets.location(intervalTarget)));
-                } else {
-                    return new ReadCountRecord(new Target(targets.name(intervalTarget), interval), countExtractor.apply(v));
-                }
-            }
-
-            private ReadCountRecord extractRecordWithTargetNameAndIntervalExtractorsAndTargetCollection(final DataLine data,
-                        final Function<DataLine, SimpleInterval> intervalExtractor, final Function<DataLine, String> targetNameExtractor,
-                        final Function<DataLine, double[]> countExtractor) {
-                    final String name = targetNameExtractor.apply(data);
-                    final SimpleInterval interval = intervalExtractor.apply(data);
-                    final E nameTarget = targets.target(name);
-                    final E intervalTarget = targets.target(interval);
-                    if (!Objects.equals(nameTarget, intervalTarget)) {
-                        throw formatException(String.format("conflicting target resolution from the name (%s) and interval (%s) provided", name, interval));
-                    } else if (nameTarget == null) {
-                        return ignoreMissingTargets ? null : new ReadCountRecord(new Target(name, interval), countExtractor.apply(data));
-                    } else if (!targets.location(intervalTarget).equals(interval)) {
-                        throw formatException(String.format("mismatch interval from input (%s) and target collection (%s) for target '%s'", interval, targets.location(intervalTarget), name));
-                    } else {
-                        return new ReadCountRecord(new Target(name, interval), countExtractor.apply(data));
-                    }
-            }
-
-            @Override
-            protected ReadCountRecord createRecord(final DataLine dataLine) {
-                return recordExtractor.apply(dataLine);
-            }
-
-            private Function<DataLine, double[]> countExtractor(final TableColumnCollection columns) {
-                final int[] countColumnIndexes = IntStream.range(0, columns.columnCount())
-                        .filter(i -> !TargetTableColumns.isStandardTargetColumnName(columns.nameAt(i))).toArray();
-                return (v) -> {
-                    final double[] result = new double[countColumnIndexes.length];
-                    for (int i = 0; i < countColumnIndexes.length; i++) {
-                        result[i] = v.getDouble(countColumnIndexes[i]);
-                    }
-                    return result;
-                };
-            }
-        };
-
-        return readCounts(file, tableReader, countColumnNames);
-
+        final ReadCountsReader reader = new ReadCountsReader(file, targets, ignoreMissingTargets);
+        return readCounts(file, reader, reader.getCountColumnNames());
     }
 
     /**
@@ -390,78 +278,8 @@ public final class ReadCountCollectionUtils {
         if (buffer.getTargets().size() == 0) {
             throw new UserException.BadInput("there is no counts (zero targets) in the input file " + file);
         }
-        return new ReadCountCollection(buffer.getTargets(), SetUniqueList.setUniqueList(columnNames),
+        return new ReadCountCollection(buffer.getTargets(), SetUniqueList.setUniqueList(new ArrayList<>(columnNames)),
                 new Array2DRowRealMatrix(buffer.getCounts(),false));
-    }
-
-    /**
-     * Composes a lambda to extract the name of the target given a row of values from the input read-count file.
-     * <p>
-     * This method will return {@code null} if it is not possible to extract the target name from the input directly; for
-     * example the input only contain the coordinates of the target and not the target name itself (
-     * (i.e. the {@link TargetTableColumns#NAME NAME} column is missing).
-     * </p>
-     *
-     * @param columns the column-name array for that file.
-     * @return non-{@code null} iff is not possible to extract the target name from the input directly.
-     */
-    private static Function<DataLine, String> targetNameExtractor(final TableColumnCollection columns) {
-        final int nameColumnIndex = columns.indexOf(TargetTableColumns.NAME.toString());
-        return nameColumnIndex < 0 ? null : (v) -> v.get(nameColumnIndex);
-    }
-
-    /**
-     * Constructs an per line interval extractor given the header column names.
-     *
-     * @param columns               the header column names.
-     * @param errorExceptionFactory the error handler to be called when there is any problem resoling the interval.
-     * @return never {@code null} if there is enough columns to extract the coordinate information, {@code null} otherwise.
-     */
-    private static Function<DataLine, SimpleInterval> intervalExtractor(final TableColumnCollection columns,
-                                                                        final Function<String, RuntimeException> errorExceptionFactory) {
-
-        final int contigColumnNumber = columns.indexOf(TargetTableColumns.CONTIG.toString());
-        final int startColumnNumber = columns.indexOf(TargetTableColumns.START.toString());
-        final int endColumnNumber = columns.indexOf(TargetTableColumns.END.toString());
-        return composeIntervalBuilder(contigColumnNumber, startColumnNumber, endColumnNumber, errorExceptionFactory);
-    }
-
-    /**
-     * Returns a function that translate an source line string value array into
-     * into a interval.
-     *
-     * @param contigColumnNumber    the number of the input column that contains the
-     *                              contig name. {@code -1} if missing.
-     * @param startColumnNumber     the number of the input column that contains the
-     *                              start position. {@code -1} if missing.
-     * @param endColumnNumber       the number of the input column that contains the
-     *                              end position. {@code -1} if missing.
-     * @param errorExceptionFactory instantiates the exception to thrown in case
-     *                              of a formatting error. cannot be {@code null}.
-     * @return not a {@code null} if there is enough information to find out the
-     * sample intervals, {@code null} if it is insufficient.
-     */
-    private static Function<DataLine, SimpleInterval> composeIntervalBuilder(final int contigColumnNumber,
-                                                                             final int startColumnNumber,
-                                                                             final int endColumnNumber,
-                                                                             final Function<String, RuntimeException> errorExceptionFactory) {
-        if (contigColumnNumber == -1 || startColumnNumber == -1 || endColumnNumber == -1) {
-            return null;
-        }
-
-        return (v) -> {
-            final String contig = v.get(contigColumnNumber);
-            final int start = v.getInt(startColumnNumber);
-            final int end = v.getInt(endColumnNumber);
-            if (start <= 0) {
-                throw errorExceptionFactory.apply(String.format("start position must be greater than 0: %d", start));
-            } else if (start > end) {
-                throw errorExceptionFactory.apply(String.format("end position '%d' must equal or greater than the start position '%d'", end, start));
-            } else {
-                return new SimpleInterval(contig, start, end);
-            }
-        };
-
     }
 
     /**
