@@ -47,6 +47,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -94,9 +95,13 @@ import java.util.stream.Collectors;
 public class SelectVariants extends VariantWalker {
 
     private static final int MAX_FILTERED_GENOTYPES_DEFAULT_VALUE  = Integer.MAX_VALUE;
-    private static final int MIN_FILTERED_GENOTYPES_DEFAULT_VALUE  = 0;
     private static final double MAX_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE = 1.0;
+
+    private static final int MIN_FILTERED_GENOTYPES_DEFAULT_VALUE  = 0;
     private static final double MIN_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE = 0.0;
+
+    private static final int MAX_NOCALL_NUMBER_DEFAULT_VALUE = Integer.MAX_VALUE;
+    private static final double MAX_NOCALL_FRACTION_DEFAULT_VALUE = 1.0;
 
     /**
      * A site is considered discordant if there exists some sample in the variant track that has a non-reference
@@ -371,6 +376,20 @@ public class SelectVariants extends VariantWalker {
     private double minFractionFilteredGenotypes = MIN_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE;
 
     /**
+     * If this argument is provided, select sites where at most the given number of samples have no-call genotypes.
+     */
+    @Argument(fullName="maxNOCALLnumber", optional=true,
+            doc="Maximum number of samples with no-call genotypes")
+    private int maxNOCALLnumber = MAX_NOCALL_NUMBER_DEFAULT_VALUE;
+
+    /**
+     * If this argument is provided, select sites where at most the given number of samples have no-call genotypes.
+     */
+    @Argument(fullName="maxNOCALLfraction", optional=true,
+            doc="Maximum fraction of samples with no-call genotypes")
+    private double maxNOCALLfraction = MAX_NOCALL_FRACTION_DEFAULT_VALUE;
+
+    /**
      * If this argument is provided, set filtered genotypes to no-call (./.).
      */
     @Argument(fullName="setFilteredGtToNocall", optional=true, doc="Set filtered genotypes to no-call")
@@ -524,11 +543,18 @@ public class SelectVariants extends VariantWalker {
             return;
         }
 
-        if (needNumFilteredGenotypes()) {
+        if (considerFilteredGenotypes()) {
             final int numFilteredSamples = numFilteredGenotypes(vc);
             final double fractionFilteredGenotypes = samples.isEmpty() ? 0.0 : numFilteredSamples / samples.size();
             if (numFilteredSamples > maxFilteredGenotypes || numFilteredSamples < minFilteredGenotypes ||
                     fractionFilteredGenotypes > maxFractionFilteredGenotypes || fractionFilteredGenotypes < minFractionFilteredGenotypes)
+                return;
+        }
+
+        if (considerNoCallGenotypes()) {
+            final int numNoCallSamples = numNoCallGenotypes(vc);
+            final double fractionNoCallGenotypes = samples.isEmpty() ? 0.0 : ((double) numNoCallSamples) / samples.size();
+            if (numNoCallSamples > maxNOCALLnumber || fractionNoCallGenotypes > maxNOCALLfraction)
                 return;
         }
 
@@ -884,26 +910,34 @@ public class SelectVariants extends VariantWalker {
     }
 
     /**
+     * Find the number of no-call genotypes
+     *
+     * @param vc the variant context
+     * @return number of filtered samples
+     */
+    private int numNoCallGenotypes(final VariantContext vc) {
+        return numGenotypes(vc, Genotype::isNoCall);
+    }
+
+    /**
      * Find the number of filtered samples
      *
-     * @param vc the variant rod VariantContext
+     * @param vc the variant context
      * @return number of filtered samples
      */
     private int numFilteredGenotypes(final VariantContext vc)  {
-        if (vc == null) {
-            return 0;
-        }
+        return numGenotypes(vc, g -> g.isFiltered() && !g.getFilters().isEmpty());
+    }
 
-        int numFiltered = 0;
-        // check if we find it in the variant rod
-        final GenotypesContext genotypes = vc.getGenotypes(samples);
-        for (final Genotype g : genotypes) {
-            if (g.isFiltered() && !g.getFilters().isEmpty()) {
-                numFiltered++;
-            }
-        }
-
-        return numFiltered;
+    /**
+     * Find the number of samples passing the given filter.
+     *
+     * @param vc the variant
+     * @param f predicate by which to filter genotypes
+     * @return number of filtered samples
+     */
+    private int numGenotypes(final VariantContext vc, final Predicate<Genotype> f)  {
+        return vc == null ? 0 : (int)vc.getGenotypes(samples).stream().filter(f).count();
     }
 
     /**
@@ -1201,14 +1235,24 @@ public class SelectVariants extends VariantWalker {
     }
 
     /**
-     * Need the number of filtered genotypes samples?
+     * Should the number of filtered genotypes be considered for filtering?
      *
      * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
      */
-    private boolean needNumFilteredGenotypes(){
+    private boolean considerFilteredGenotypes(){
         return maxFilteredGenotypes != MAX_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 minFilteredGenotypes != MIN_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 maxFractionFilteredGenotypes != MAX_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 minFractionFilteredGenotypes != MIN_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE;
+    }
+
+    /**
+     * Should the number of no-call genotypes be considered for filtering?
+     *
+     * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
+     */
+    private boolean considerNoCallGenotypes(){
+        return maxNOCALLnumber != MAX_NOCALL_NUMBER_DEFAULT_VALUE ||
+                maxNOCALLfraction != MAX_NOCALL_FRACTION_DEFAULT_VALUE;
     }
 }
