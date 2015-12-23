@@ -39,10 +39,7 @@ import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
-import org.broadinstitute.hellbender.utils.variant.ChromosomeCountConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -92,7 +89,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Select a subset of variants from a larger callset in a VCF file",
         programGroup = VariantProgramGroup.class
 )
-public class SelectVariants extends VariantWalker {
+public final class SelectVariants extends VariantWalker {
 
     private static final int MAX_FILTERED_GENOTYPES_DEFAULT_VALUE  = Integer.MAX_VALUE;
     private static final double MAX_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE = 1.0;
@@ -418,7 +415,7 @@ public class SelectVariants extends VariantWalker {
         MULTIALLELIC
     }
 
-    private TreeSet<String> samples = new TreeSet<>();
+    private SortedSet<String> samples = new TreeSet<>();
     private boolean noSamplesSpecified = false;
 
     private Set<VariantContext.Type> selectedTypes = new HashSet<>();
@@ -448,8 +445,7 @@ public class SelectVariants extends VariantWalker {
      */
     @Override
     public void onTraversalStart() {
-        final Map<String, VCFHeader> vcfHeaders = new HashMap<>();
-        vcfHeaders.put(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
+        final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
 
         // Initialize VCF header lines
         final Set<VCFHeaderLine> headerLines = createVCFHeaderLineList(vcfHeaders);
@@ -623,8 +619,8 @@ public class SelectVariants extends VariantWalker {
     /**
      * Prepare the sample names to be included(/excluded) in the output by the names filter.
      */
-    private TreeSet<String> createSampleNameInclusionList(Map<String, VCFHeader> vcfHeaders) {
-        final TreeSet<String> vcfSamples = new TreeSet<>(getSampleList(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE));
+    private SortedSet<String> createSampleNameInclusionList(Map<String, VCFHeader> vcfHeaders) {
+        final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
         final Collection<String> samplesFromFile = getSamplesFromFiles(sampleFiles);
         final Collection<String> samplesFromExpressions = matchSamplesExpressions(vcfSamples, sampleExpressions);
 
@@ -792,18 +788,6 @@ public class SelectVariants extends VariantWalker {
         final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
         sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
         return sampleDBBuilder.getFinalSampleDB();
-    }
-
-
-    private static Set<String> getSampleList(Map<String, VCFHeader> headers, GATKVariantContextUtils.GenotypeMergeType mergeOption) {
-        final Set<String> samples = new TreeSet<>();
-        for (final Map.Entry<String, VCFHeader> val : headers.entrySet()) {
-            VCFHeader header = val.getValue();
-            samples.addAll(header.getGenotypeSamples().stream().map(sample -> GATKVariantContextUtils.mergedSampleName(val.getKey(), sample,
-                    mergeOption == GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY)).collect(Collectors.toList()));
-        }
-
-        return samples;
     }
 
     /**
