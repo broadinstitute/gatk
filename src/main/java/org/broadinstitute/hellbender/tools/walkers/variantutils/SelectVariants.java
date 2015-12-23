@@ -543,7 +543,7 @@ public class SelectVariants extends VariantWalker {
             return;
         }
 
-        if (needNumFilteredGenotypes()) {
+        if (considerFilteredGenotypes()) {
             final int numFilteredSamples = numFilteredGenotypes(vc);
             final double fractionFilteredGenotypes = samples.isEmpty() ? 0.0 : numFilteredSamples / samples.size();
             if (numFilteredSamples > maxFilteredGenotypes || numFilteredSamples < minFilteredGenotypes ||
@@ -551,7 +551,7 @@ public class SelectVariants extends VariantWalker {
                 return;
         }
 
-        if (needNoCallGenotypes()) {
+        if (considerNoCallGenotypes()) {
             final int numNoCallSamples = numNoCallGenotypes(vc);
             final double fractionNoCallGenotypes = samples.isEmpty() ? 0.0 : ((double) numNoCallSamples) / samples.size();
             if (numNoCallSamples > maxNOCALLnumber || fractionNoCallGenotypes > maxNOCALLfraction)
@@ -916,7 +916,7 @@ public class SelectVariants extends VariantWalker {
      * @return number of filtered samples
      */
     private int numNoCallGenotypes(final VariantContext vc) {
-        return numFilteredGenotypes(vc, Genotype::isNoCall);
+        return numGenotypes(vc, Genotype::isNoCall);
     }
 
     /**
@@ -926,16 +926,17 @@ public class SelectVariants extends VariantWalker {
      * @return number of filtered samples
      */
     private int numFilteredGenotypes(final VariantContext vc)  {
-        return numFilteredGenotypes(vc, g -> g.isFiltered() && !g.getFilters().isEmpty());
+        return numGenotypes(vc, g -> g.isFiltered() && !g.getFilters().isEmpty());
     }
 
     /**
-     * Find the number of filtered samples
+     * Find the number of samples passing the given filter.
      *
-     * @param vc the variant rod VariantContext
+     * @param vc the variant
+     * @param f predicate by which to filter genotypes
      * @return number of filtered samples
      */
-    private int numFilteredGenotypes(final VariantContext vc, final Predicate<Genotype> f)  {
+    private int numGenotypes(final VariantContext vc, final Predicate<Genotype> f)  {
         return vc == null ? 0 : (int)vc.getGenotypes(samples).stream().filter(f).count();
     }
 
@@ -1234,11 +1235,11 @@ public class SelectVariants extends VariantWalker {
     }
 
     /**
-     * Need the number of filtered genotypes samples?
+     * Should the number of filtered genotypes be considered for filtering?
      *
      * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
      */
-    private boolean needNumFilteredGenotypes(){
+    private boolean considerFilteredGenotypes(){
         return maxFilteredGenotypes != MAX_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 minFilteredGenotypes != MIN_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 maxFractionFilteredGenotypes != MAX_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE ||
@@ -1246,11 +1247,11 @@ public class SelectVariants extends VariantWalker {
     }
 
     /**
-     * Need the number of no-call genotyped samples?
+     * Should the number of no-call genotypes be considered for filtering?
      *
      * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
      */
-    private boolean needNoCallGenotypes(){
+    private boolean considerNoCallGenotypes(){
         return maxNOCALLnumber != MAX_NOCALL_NUMBER_DEFAULT_VALUE ||
                 maxNOCALLfraction != MAX_NOCALL_FRACTION_DEFAULT_VALUE;
     }
