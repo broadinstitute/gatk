@@ -199,7 +199,7 @@ A segment is considered to be small if the number of targets it contains is stri
 
 \subsection{Using Panel of Normals for Allelic Fraction Model} \label{allelic-PoN}
 
-The \ACS~model learns a global distribution on allelic biases and uses it as a shared prior for the allelic biases of SNPs.  While better than nothing, it would be much more powerful to use prior knowledge of the allelic bias at each SNP individually.  We can learn these per-SNP biases from a panel of normals using the \ACS~model, but with the simplification that minor allele fractions are always $1/2$.  The overall likelihood is
+The \ACS~model learns a global distribution on allelic biases and uses it as a shared prior for the allelic biases of SNPs.  While better than nothing, it would be much more powerful to use prior knowledge of the allelic bias at each SNP individually.  We can learn these per-SNP biases from a panel of normals using the \ACS~model, but with two simplifications.  First, minor allele fractions are always $1/2$ since normal samples are diploid and do not exhibit subclonality.  Second, we do not account for outliers; that is, we set the outlier probability $\pi = 0$.  The reason for this is that the panel of normals reflects typical distributions of allelic biases and censoring data via an outlier classification could render these distributions artificially tight.  If the allelic bias at some SNP site varies a lot we want to know about it. The overall likelihood is
 %
 \begin{align}
 & \prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha - 1} e^{-\beta \lambda_j}
@@ -207,9 +207,10 @@ The \ACS~model learns a global distribution on allelic biases and uses it as a s
  \frac{  \lambda_j^{r_{sj}}}{ \left( 1 + \lambda_j \right)^{n_{sj}}}  \\
  = & \prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} e^{-\beta \lambda_j}
  \frac{  \lambda_j^{\alpha + r_{ \cdot j} - 1}}{ \left( 1 + \lambda_j \right)^{n_{\cdot j}}} 
+ \label{ACSponlikelihood}
 \end{align}
 %
-where $\lambda_j$ is the allelic bias ratio of SNP $j$ (for samples sequenced and mapped using the same technology as the panel of normals), $\mathcal{H}_j$ is the set of samples in the panel of normals that are heterozygous at SNP $j$, $r_{\cdot j} = \sum_{s \in \mathcal{H}_j} r_{sj}$, and $n_{\cdot j} = \sum_{s \in \mathcal{H}_j} n_{sj}$.  As before, the biases are assumed to come from a common distribution ${\rm Gamma}(\alpha, \beta)$, but due to the number of samples in the panel of normals the data will yield a posterior distribution on each $\lambda_j$ that may be quite different from the global prior.  It is these posteriors that we will use as input to \ACS.  Although they are the object of interest, however, we will first marginalize them out of the likelihood in order to obtain maximum likelihood estimates of $\alpha$ and $\beta$.  We have in fact already performed this marginalization -- it is the special case $f = 1/2$ of the \ACS likelihood, and thus we have
+where $\lambda_j$ is the allelic bias ratio of SNP $j$ (for samples sequenced and mapped using the same technology as the panel of normals), $\mathcal{H}_j$ is the set of samples in the panel of normals that are heterozygous at SNP $j$, $r_{\cdot j} = \sum_{s \in \mathcal{H}_j} r_{sj}$, and $n_{\cdot j} = \sum_{s \in \mathcal{H}_j} n_{sj}$.  As before, the biases are assumed to come from a common distribution ${\rm Gamma}(\alpha, \beta)$, but due to the large number of samples in the panel of normals the data will yield a posterior distribution on each $\lambda_j$ that may be quite different from the global prior.  It is these posteriors that we will use as input to \ACS.  Although they are the object of interest, however, we will first marginalize them out of the likelihood in order to obtain maximum likelihood estimates of $\alpha$ and $\beta$.  We have in fact already performed this marginalization -- Equation \ref{ACSponlikelihood} is the special case $f = 1/2$, $\pi = 0$ of the \ACS~likelihood, Equation \ref{likelihood}, and thus its marginalization over latent variables is obtained by substituting $f = 1/2$, $\pi = 0$ into Equation \ref{collapsed}, which yields
 %
 \begin{equation}
 p(\alpha, \beta) = \prod_j \phi(\alpha, \beta, f = 1/2, n_{\cdot j} - r_{\cdot j}, r_{\cdot j}).
@@ -224,7 +225,7 @@ p(f, \pi) \propto \prod_j
 \left[    \frac{1-\pi}{2} \phi(\rho_j, \tau_j, f_j, a_j, r_j)  +
 \frac{1-\pi}{2} \phi(\rho_j, \tau_j, 1 - f_j, a_j, r_j)  +
  \frac{ \pi a_j! r_j!}{(n_j + 1)!}    \right]
- \label{collapsed}
+ \label{collapsed_using_pon}
 \end{equation}
 %
 where $f$ and $\pi$ may once again be sampled via adaptive Metropolis.
