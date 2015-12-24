@@ -197,6 +197,40 @@ A segment is considered to be small if the number of targets it contains is stri
 
 \section{Proposed Methods for $\texttt{hellbender}$} \label{proposed-methods-for-texttthellbender}
 
+\subsection{Using Panel of Normals for Allelic Fraction Model} \label{allelic-PoN}
+
+The \ACS~model learns a global distribution on allelic biases and uses it as a shared prior for the allelic biases of SNPs.  While better than nothing, it would be much more powerful to use prior knowledge of the allelic bias at each SNP individually.  We can learn these per-SNP biases from a panel of normals using the \ACS~model, but with two simplifications.  First, minor allele fractions are always $1/2$ since normal samples are diploid and do not exhibit subclonality.  Second, we do not account for outliers; that is, we set the outlier probability $\pi = 0$.  The reason for this is that the panel of normals reflects typical distributions of allelic biases and censoring data via an outlier classification could render these distributions artificially tight.  If the allelic bias at some SNP site varies a lot we want to know about it. The overall likelihood is
+%
+\begin{align}
+& \prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha - 1} e^{-\beta \lambda_j}
+\prod_{s \in \mathcal{H}_j}
+ \frac{  \lambda_j^{r_{sj}}}{ \left( 1 + \lambda_j \right)^{n_{sj}}}  \\
+ = & \prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} e^{-\beta \lambda_j}
+ \frac{  \lambda_j^{\alpha + r_{ \cdot j} - 1}}{ \left( 1 + \lambda_j \right)^{n_{\cdot j}}} 
+ \label{ACSponlikelihood}
+\end{align}
+%
+where $\lambda_j$ is the allelic bias ratio of SNP $j$ (for samples sequenced and mapped using the same technology as the panel of normals), $\mathcal{H}_j$ is the set of samples in the panel of normals that are heterozygous at SNP $j$, $r_{\cdot j} = \sum_{s \in \mathcal{H}_j} r_{sj}$, and $n_{\cdot j} = \sum_{s \in \mathcal{H}_j} n_{sj}$.  As before, the biases are assumed to come from a common distribution ${\rm Gamma}(\alpha, \beta)$, but due to the large number of samples in the panel of normals the data will yield a posterior distribution on each $\lambda_j$ that may be quite different from the global prior.  It is these posteriors that we will use as input to \ACS.  Although they are the object of interest, however, we will first marginalize them out of the likelihood in order to obtain maximum likelihood estimates of $\alpha$ and $\beta$.  We have in fact already performed this marginalization -- Equation \ref{ACSponlikelihood} is the special case $f = 1/2$, $\pi = 0$ of the \ACS~likelihood, Equation \ref{likelihood}, and thus its marginalization over latent variables is obtained by substituting $f = 1/2$, $\pi = 0$ into Equation \ref{collapsed}, which yields
+%
+\begin{equation}
+p(\alpha, \beta) = \prod_j \phi(\alpha, \beta, f = 1/2, n_{\cdot j} - r_{\cdot j}, r_{\cdot j}).
+\end{equation}
+%
+This likelihood is easily maximized numerically to obtain MLE values of $\alpha$ and $\beta$.  Having done this, we can then approximate the posterior on each $\lambda_j$ as a gamma distribution using the method of Appendix \ref{marginalizing}.  As shown there, the posterior on $\lambda_j$ is ${\rm Gamma}(\rho_j, \tau_j)$ where $\rho_j$ and $\tau_j$ are computed in Algorithm \ref{phi_calculation}, with $a \rightarrow n_{\cdot j} - r_{\cdot j}$ and $r \rightarrow r_{\cdot j}$.
+
+Once we have the posteriors on each $\lambda_j$ from the panel of normals, they are used as priors for $\lambda_j$ in the \ACS~model.  This obviates the hyperparameters $\alpha$ and $\beta$, and Equation \ref{collapsed} becomes
+%
+\begin{equation}
+p(f, \pi) \propto \prod_j 
+\left[    \frac{1-\pi}{2} \phi(\rho_j, \tau_j, f_j, a_j, r_j)  +
+\frac{1-\pi}{2} \phi(\rho_j, \tau_j, 1 - f_j, a_j, r_j)  +
+ \frac{ \pi a_j! r_j!}{(n_j + 1)!}    \right]
+ \label{collapsed_using_pon}
+\end{equation}
+%
+where $f$ and $\pi$ may once again be sampled via adaptive Metropolis.
+
+
 \subsection{Bayesian het pulldown} \label{bayesian-het-pulldown}
 
 We are given a large data set of ref and alt read counts over many potential SNP sites and we wish to infer which sites are hets and with what probabilities.  This problem is naturally represented as a mixture model in which the hidden labels are genotypes -- hom ref, het, and hom alt.  Since the observed data are ref and alt counts is seems natural to use a binomial mixture model in which the binomial parameters are the probability of an alt read.  Then the binomial parameters are the error rate for hom ref genotypes, $1/2$ times the allelic bias for het genotypes, and $1$ minus the error rate for hom alt genotypes.  However, actual data are overdispersed because the error rate and allelic bias are random variables, not single parameters.  For example, sequencing error rates and allelic bias (for concreteness, consider mapping bias) depend on context.  Thus a beta-binomial mixture model is more appropriate.  A maximum-likelihood (MLE) approach will yield posterior probabilities on the genotypes at each locus, in particular the het probability.  It also gives the parameters of a beta distribution of allelic bias, which is useful downstream in ACS.
