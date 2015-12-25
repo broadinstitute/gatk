@@ -41,6 +41,15 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
         checkPCAOutputFile(outputFile);
     }
 
+    /**
+     * Runs the {@link CalculateCoverageComponents} tool.
+     * @param args the arguments to pass to the tool.
+     * @return may be {@code null}.
+     */
+    public static Object runTool(final String ... args) {
+        return new CalculateCoverageComponentsIntegrationTest().runCommandLine(args);
+    }
+
     //TODO Once we fix the problem when using Spark for SVD/PCA, we can enable the test again.
     //TODO Corresponding issue number #242.
     @Test(enabled = false)
@@ -77,7 +86,7 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
         }
     }
 
-    private void writeReadCounts(final File outputFile, final double[][] testMatrix) {
+    static void writeReadCounts(final File outputFile, final double[][] testMatrix) {
         final List<String> sampleNames = IntStream.range(0, testMatrix[0].length)
                 .mapToObj(i -> "SAMPLE_" + i)
                 .collect(Collectors.toList());

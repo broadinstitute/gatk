@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.pca;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -13,6 +14,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -137,6 +139,50 @@ public final class PCAUnitTest extends BaseTest {
         assertEquals(centers, new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
         assertEquals(variances, new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
         assertEqualEigenVectors(eigenVectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
+    }
+
+    @Test(dependsOnMethods = "testResidentSVDOnTestMatrix")
+    public void testReadHDF5() throws IOException {
+        final RealMatrix dataMatrix = new Array2DRowRealMatrix(TEST_MATRIX);
+        final List<String> variableNames = createVariableNames(dataMatrix.getRowDimension());
+        final List<String> sampleNames = createSampleNames(dataMatrix.getColumnDimension());
+        final PCA pca = PCA.createPCA(variableNames, sampleNames, dataMatrix, SVDFactory::createSVD);
+        final File outputFile = createTempFile("pca-test", ".hd5");
+        final File outputFile2 = createTempFile("pca-test-2", ".hd5");
+        try (final HDF5File outFile = new HDF5File(outputFile, HDF5File.OpenMode.CREATE)) {
+            PCA.writeHDF5(pca, outFile);
+        }
+        // We will read out of a copy to make sure there is caching magic playing part.
+        FileUtils.copyFile(outputFile, outputFile2);
+        try (final HDF5File inFile = new HDF5File(outputFile2, HDF5File.OpenMode.READ_ONLY)) {
+            final PCA readPCA = PCA.readHDF5(inFile);
+            Assert.assertEquals(readPCA.getVariables(), variableNames);
+            Assert.assertEquals(readPCA.getSamples(), sampleNames);
+            assertEquals(readPCA.getCenters(), new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
+            assertEquals(readPCA.getVariances(), new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
+            assertEqualEigenVectors(readPCA.getEigenVectors(), new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), readPCA.getVariances(), EPSILON);
+        }
+    }
+
+    @Test(dependsOnMethods = "testResidentSVDOnTestMatrixWithoutVariableNorSampleNames")
+    public void testReadHDF5WithoutVariableNorSampleNames() throws IOException {
+        final RealMatrix dataMatrix = new Array2DRowRealMatrix(TEST_MATRIX);
+        final PCA pca = PCA.createPCA(dataMatrix, SVDFactory::createSVD);
+        final File outputFile = createTempFile("pca-test", ".hd5");
+        final File outputFile2 = createTempFile("pca-test-2",".hd5");
+        try (final HDF5File outFile = new HDF5File(outputFile, HDF5File.OpenMode.CREATE)) {
+            PCA.writeHDF5(pca, outFile);
+        }
+        // We will read out of a copy to make sure there is caching magic playing part.
+        FileUtils.copyFile(outputFile, outputFile2);
+        try (final HDF5File inFile = new HDF5File(outputFile2, HDF5File.OpenMode.READ_ONLY)) {
+            final PCA readPCA = PCA.readHDF5(inFile);
+            Assert.assertNull(readPCA.getVariables());
+            Assert.assertNull(readPCA.getSamples());
+            assertEquals(readPCA.getCenters(), new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
+            assertEquals(readPCA.getVariances(), new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
+            assertEqualEigenVectors(readPCA.getEigenVectors(), new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), readPCA.getVariances(), EPSILON);
+        }
     }
 
     @Test()

@@ -80,6 +80,37 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         Assert.fail("Exception not thrown: case " + caseName);
     }
 
+    @Test(dataProvider="targetArrangeData")
+    public void testArrangeTargets(final ReadCountCollectionInfo info, final List<String> newOrder) {
+        final List<Target> targetsNewOrder = newOrder.stream()
+                .map(Target::new).collect(Collectors.toList());
+        final ReadCountCollection subject = info.newInstance();
+        final ReadCountCollection result = subject.arrangeTargets(targetsNewOrder);
+        final List<Target> afterTargets = result.targets();
+        Assert.assertEquals(afterTargets.size(),  targetsNewOrder.size());
+        Assert.assertFalse(afterTargets.stream().anyMatch(t -> !targetsNewOrder.contains(t)));
+        final RealMatrix beforeCounts = subject.counts();
+        final RealMatrix afterCounts = result.counts();
+        Assert.assertEquals(beforeCounts.getColumnDimension(), afterCounts.getColumnDimension());
+        Assert.assertEquals(afterCounts.getRowDimension(), targetsNewOrder.size());
+        final int[] beforeIndexes = new int[targetsNewOrder.size()];
+        final int[] afterIndexes = new int[targetsNewOrder.size()];
+        int nextIdx = 0;
+        for (final Target target : targetsNewOrder) {
+            final int beforeIndex = subject.targets().indexOf(target);
+            final int afterIndex = result.targets().indexOf(target);
+            beforeIndexes[nextIdx] = beforeIndex;
+            afterIndexes[nextIdx++] = afterIndex;
+        }
+        // check that the counts are exactly the same.
+        for (int i = 0; i < beforeIndexes.length; i++) {
+            final double[] before = beforeCounts.getRow(beforeIndexes[i]);
+            final double[] after = afterCounts.getRow(afterIndexes[i]);
+            Assert.assertEquals(before, after);
+        }
+    }
+
+
     @Test(dataProvider="targetSubsetData")
     public void testSubsetTargets(final ReadCountCollectionInfo info, final Set<String> targetNamesToKeep) {
         final Set<Target> targetsToKeep = targetNamesToKeep.stream()
@@ -124,6 +155,16 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         } else {
             final Set<Target> targets = targetNamesToKeep.stream().map(Target::new).collect(Collectors.toSet());
             info.newInstance().subsetTargets(targets);
+        }
+    }
+
+    @Test(dataProvider="wrongTargetArrangeData", expectedExceptions = IllegalArgumentException.class)
+    public void testTargetSubsetColumns(final ReadCountCollectionInfo info, final List<String> newOrder) {
+        if (newOrder == null) {
+            info.newInstance().subsetTargets(null);
+        } else {
+            final List<Target> targets = newOrder.stream().map(Target::new).collect(Collectors.toList());
+            info.newInstance().arrangeTargets(targets);
         }
     }
 
@@ -300,6 +341,29 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         return result;
     }
 
+    @DataProvider(name="targetArrangeData")
+    public Object[][] targetArrangeData() {
+        final Object[][] correctInstantiationData = correctInstantiationData();
+        final Random random = new Random(13);
+        final List<Object[]> result = new ArrayList<>(correctInstantiationData.length * 4);
+        for (final Object[] params : correctInstantiationData) {
+            final ReadCountCollectionInfo info = (ReadCountCollectionInfo) params[0];
+            final List<String> targetNames = info.targetNames;
+            // no actual sub-setting.
+            if (info.targetNames.size() > 0) {
+                final List<String> shuffledTargetNames = new ArrayList<>(targetNames);
+                Collections.shuffle(shuffledTargetNames, random);
+                        result.add(new Object[]{info, shuffledTargetNames });
+                result.add(new Object[]{info, Collections.singletonList(targetNames.get(0))});
+                result.add(new Object[]{info, Collections.singletonList(targetNames.get(0))});
+                if (info.targetNames.size() >= 2) {
+                    result.add(new Object[]{info, shuffledTargetNames.subList(0, targetNames.size() / 2)});
+                }
+            }
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
+
     @DataProvider(name="targetSubsetData")
     public Object[][] targetSubsetData() {
         final Object[][] correctInstantiationData = correctInstantiationData();
@@ -375,6 +439,21 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
             result.add(new Object[] { info, Collections.singleton("NOT_A_TARGET")});
             result.add(new Object[] { info, null });
             result.add(new Object[] { info, Collections.singleton(null)});
+        }
+        return result.toArray(new Object[result.size()][]);
+    }
+
+    @DataProvider(name="wrongTargetArrangeData")
+    public Object[][] wrongTargetArrangeData() {
+        final Object[][] correctInstantiationData = correctInstantiationData();
+        final List<Object[]> result = new ArrayList<>(correctInstantiationData.length * 4);
+        for (final Object[] params : correctInstantiationData) {
+            final ReadCountCollectionInfo info = (ReadCountCollectionInfo) params[0];
+            // try to remove all columns:
+            result.add(new Object[] { info, new ArrayList<>( ) });
+            result.add(new Object[] { info, Collections.singletonList("NOT_A_TARGET")});
+            result.add(new Object[] { info, null });
+            result.add(new Object[] { info, Collections.singletonList(null)});
         }
         return result.toArray(new Object[result.size()][]);
     }

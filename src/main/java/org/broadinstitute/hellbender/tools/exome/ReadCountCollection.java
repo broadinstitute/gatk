@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -257,6 +259,37 @@ public final class ReadCountCollection {
             }
         }
         return new ReadCountCollection(targets, Collections.unmodifiableList(resultColumnNames), new Array2DRowRealMatrix(resultCounts, false));
+    }
+
+    /**
+     * Rearrange the targets so that they are in a particular order.
+     * @return a new collection.
+     * @throws IllegalArgumentException if any of the following is true:
+     * <ul>
+     *     <li>{@code targetsInOrder} is {@code null},</li>
+     *     <li>is empty,</li>
+     *     <li>it contains {@code null},</li>
+     *     <li>contains any target not present in this collection.</li>
+     * </ul>
+     */
+    public ReadCountCollection arrangeTargets(final List<Target> targetsInOrder) {
+        Utils.nonNull(targetsInOrder);
+        if (targetsInOrder.isEmpty()) {
+            throw new IllegalArgumentException(String.format("the input targets list cannot be empty"));
+        }
+        final RealMatrix counts = new Array2DRowRealMatrix(targetsInOrder.size(), columnNames.size());
+        final Object2IntMap<Target> targetToIndex = new Object2IntOpenHashMap<>(targets.size());
+        for (int i = 0; i < targets.size(); i++) {
+            targetToIndex.put(targets.get(i), i);
+        }
+        for (int i = 0; i < targetsInOrder.size(); i++) {
+            final Target target = targetsInOrder.get(i);
+            if (!targetToIndex.containsKey(target)) {
+                throw new IllegalArgumentException(String.format("target '%s' is not present in the collection", target.getName()));
+            }
+            counts.setRow(i, this.counts.getRow(targetToIndex.getInt(target)));
+        }
+        return new ReadCountCollection(new ArrayList<>(targetsInOrder), columnNames, counts);
     }
 
     /**
