@@ -56,6 +56,16 @@ public final class DataLine {
     private Function<String, RuntimeException> formatErrorFactory;
 
     /**
+     * String accepted as a "false" as parsed from a table file cell value.
+     */
+    private static final String FALSE_STRING = Boolean.toString(false);
+
+    /**
+     * String accepted as a "true" as parsed from a table file cell value.
+     */
+    private static final String TRUE_STRING = Boolean.toString(true);
+
+    /**
      * Creates a new data-line instance.
      * <p>
      * The value array passed is not copied and will be used directly to store the data-line values.
@@ -329,18 +339,15 @@ public final class DataLine {
      *                                  {@link DataLine}.
      */
     public boolean getBoolean(final int index) {
-        try {
-            String b = get(index);
-            final String FALSE = Boolean.toString(false);
-            final String TRUE = Boolean.toString(true);
-
-            if (!(b.equals(TRUE)) && !(b.equals(FALSE))) {
-                throw formatErrorFactory.apply(String.format("Boolean value must be '%s' or '%s' (case sensitive) for column %s but found %s", TRUE, FALSE,
+        final String string = get(index);
+        if (string.equals(TRUE_STRING)) {
+            return true;
+        } else if (string.equals(FALSE_STRING)) {
+            return false;
+        } else {
+            throw formatErrorFactory.apply(String.format("Boolean value must be '%s' or '%s' (case sensitive) " +
+                    "for column %s but found %s", TRUE_STRING, FALSE_STRING,
                         columns.nameAt(index), get(index)));
-            }
-            return Boolean.parseBoolean(get(index));
-        } catch (final NumberFormatException ex) {
-            throw formatErrorFactory.apply(String.format("expected boolean value for column %s but found %s", columns.nameAt(index), get(index)));
         }
     }
 
@@ -459,6 +466,22 @@ public final class DataLine {
      */
     public long getLong(final String columnName) {
         return getLong(columnIndex(columnName));
+    }
+
+    /**
+     * Returns the long value in a column by its name expressed as
+     * an enum constant.
+     *
+     * @param column the target column name.
+     * @return any long value.
+     * @throws IllegalArgumentException if {@code column} is {@code null} or an unknown column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a long.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link DataLine}.
+     */
+    public long getLong(final Enum<?> column) {
+        return getLong(Utils.nonNull(column).toString());
     }
 
     /**

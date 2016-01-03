@@ -28,12 +28,12 @@ public final class ModeledSegmentUnitTest extends BaseTest{
         final ModeledSegment ci = new ModeledSegment(interval, call, originalProbeCount, segmentMean);
         Assert.assertEquals(ci.getSimpleInterval(), interval);
         Assert.assertEquals(ci.getCall(), call);
-        Assert.assertEquals(ci.getOriginalProbeCount(), originalProbeCount);
+        Assert.assertEquals(ci.getTargetCount(), originalProbeCount);
         Assert.assertEquals(ci.getSegmentMean(), segmentMean);
         Assert.assertEquals(ci.getSegmentMeanInCRSpace(), Math.pow(2, segmentMean));
 
-        ci.setOriginalProbeCount(5);
-        Assert.assertEquals(ci.getOriginalProbeCount(), 5);
+        ci.setTargetCount(5);
+        Assert.assertEquals(ci.getTargetCount(), 5);
 
         double segmentMeanInCRSpace = 2;
         ci.setSegmentMeanInCRSpace(segmentMeanInCRSpace);
@@ -96,6 +96,6 @@ public final class ModeledSegmentUnitTest extends BaseTest{
         final long originalProbeCount = 100;
 
         final ModeledSegment ci = new ModeledSegment(interval, call, originalProbeCount, segmentMean);
-        ci.setOriginalProbeCount(-100);
+        ci.setTargetCount(-100);
     }
 }

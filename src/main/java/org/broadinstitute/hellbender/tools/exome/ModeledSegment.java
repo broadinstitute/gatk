@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -12,71 +11,52 @@ import java.util.Arrays;
  *
  * @author lichtens &lt;lichtens@broadinstitute.org&gt;
  */
-public class ModeledSegment implements Locatable {
+public class ModeledSegment extends Segment<String> {
 
     public static final String NO_CALL = "";
-    protected SimpleInterval simpleInterval;
 
-    /**
-     * Segment mean in log copy ratio space as determined by whatever model generated this segment.
-     */
-    private double segmentMean;
-
-    private String call;
-
-    private long originalProbeCount;
-
-    public ModeledSegment(final SimpleInterval interval, final String call, final long originalProbeCount, final double segmentMeanInLogCR) {
-        this.simpleInterval = Utils.nonNull(interval, "The input interval cannot be null");
-        this.call = Utils.nonNull(call, String.format("The input call cannot be null.  Use empty string, instead (\"%s\")", NO_CALL));
-        this.segmentMean = ParamUtils.isFinite(segmentMeanInLogCR, "Segment Mean must be finite.");
-        this.originalProbeCount = ParamUtils.isPositiveOrZero(originalProbeCount, "Number of original probes must be positive or zero.");
+    public ModeledSegment(final SimpleInterval interval, final String call, final long targetCount, final double segmentMeanInLogCR) {
+        super(interval, targetCount, segmentMeanInLogCR, call);
+        Utils.nonNull(interval, "The input interval cannot be null");
+        Utils.nonNull(call, String.format("The input call cannot be null.  Use empty string, instead (\"%s\")", NO_CALL));
+        ParamUtils.isFinite(segmentMeanInLogCR, "Segment Mean must be finite.");
     }
 
-    public ModeledSegment(final SimpleInterval interval, final long originalProbeCount, final double segmentMean) {
-        this(interval, NO_CALL, originalProbeCount, segmentMean);
+    public ModeledSegment(final SimpleInterval interval, final long targetCount, final double segmentMean) {
+        this(interval, NO_CALL, targetCount, segmentMean);
     }
 
     public double getSegmentMean() {
-        return segmentMean;
+        return mean;
     }
 
     public void setSegmentMean(final double segmentMean) {
-        this.segmentMean = segmentMean;
+        this.mean = segmentMean;
     }
 
     public double getSegmentMeanInCRSpace() {
-        return Math.pow(2, segmentMean);
+        return Math.pow(2, mean);
     }
 
     public void setSegmentMeanInCRSpace(final double segmentMeanInCRSpace) {
-        this.segmentMean = Math.log(segmentMeanInCRSpace)/Math.log(2);
+        this.mean = Math.log(segmentMeanInCRSpace)/Math.log(2);
     }
 
     @Override
-    public String getContig() {return simpleInterval.getContig(); }
+    public String getContig() {return interval.getContig(); }
 
     @Override
-    public int getStart() {return simpleInterval.getStart(); }
+    public int getStart() {return interval.getStart(); }
 
     @Override
-    public int getEnd() {return simpleInterval.getEnd(); }
+    public int getEnd() {return interval.getEnd(); }
 
     public SimpleInterval getSimpleInterval() {
-        return simpleInterval;
+        return interval;
     }
 
     public void setSimpleInterval(final SimpleInterval simpleInterval) {
-        this.simpleInterval = Utils.nonNull(simpleInterval, "The input interval cannot be null");
-    }
-
-    /**
-     * Returns the call.  Returns null for uncalled segments.
-     *
-     * @return never {@code null}
-     */
-    public String getCall() {
-        return this.call;
+        this.interval = Utils.nonNull(simpleInterval, "The input interval cannot be null");
     }
 
     /**
@@ -86,16 +66,12 @@ public class ModeledSegment implements Locatable {
         this.call = Utils.nonNull(call, String.format("The input call cannot be null.  Use empty string, (\"%s\")", NO_CALL));
     }
 
-    public long getOriginalProbeCount() {
-        return originalProbeCount;
-    }
-
-    public void setOriginalProbeCount(final long originalProbeCount) {
-        this.originalProbeCount = ParamUtils.isPositiveOrZero(originalProbeCount, "Number of Probes must be positive or zero.");
+    public void setTargetCount(final long targetCount) {
+        this.targetCount = ParamUtils.isPositiveOrZero(targetCount, "Number of targets must be positive or zero.");
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }
@@ -104,15 +80,15 @@ public class ModeledSegment implements Locatable {
         }
 
         final ModeledSegment modeledSegment = (ModeledSegment) o;
-        return simpleInterval.equals(modeledSegment.simpleInterval) && call.equals(modeledSegment.call)
-                && Math.abs(segmentMean - modeledSegment.segmentMean) < 2 * Math.ulp(segmentMean)
-                && originalProbeCount == modeledSegment.originalProbeCount;
+        return interval.equals(modeledSegment.interval) && call.equals(modeledSegment.call)
+                && Math.abs(mean - modeledSegment.mean) < 2 * Math.ulp(mean)
+                && targetCount == modeledSegment.targetCount;
     }
 
     @Override
     public int hashCode() {
-        final int[] hashes = new int[]{simpleInterval.hashCode(), call.hashCode(), Double.hashCode(segmentMean),
-                Long.hashCode(originalProbeCount)};
+        final int[] hashes = new int[]{ interval.hashCode(), call.hashCode(), Double.hashCode(mean),
+                Long.hashCode(targetCount)};
         return Arrays.hashCode(hashes);
     }
 }

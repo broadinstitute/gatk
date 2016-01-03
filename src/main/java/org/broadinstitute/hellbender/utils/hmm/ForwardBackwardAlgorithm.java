@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 /**
@@ -53,34 +54,34 @@ public final class ForwardBackwardAlgorithm {
 
         /**
          * Returns the forward probability of the hidden state at certain position.
-         * @param state the query hidden state.
          * @param position the query position.
+         * @param state the query hidden state.
          * @return a valid probability in log scale (from -Inf to 0).
          *
          * @throws IllegalArgumentException if either the {@code state} or the {@code position} are not
          *  recognized by the model or were not passed to the forward-backward algorithm.
          */
-        double logForwardProbability(final S state, final T position);
+        double logForwardProbability(final T position, final S state);
 
         /**
          * Returns the backward probability of the hidden state at certain position.
-         * @param state the query hidden state.
          * @param position the query position.
+         * @param state the query hidden state.
          * @return a valid probability in log scale (from -Inf to 0)
          * @throws IllegalArgumentException if either the {@code state} or the {@code position} are not
          *  recognized by the model or were not passed to the forward-backward algorithm.
          */
-        double logBackwardProbability(final S state, final T position);
+        double logBackwardProbability(final T position, final S state);
 
         /**
          * Returns the posterior probability of the hidden state at certain position.
-         * @param state the query hidden state.
          * @param position the query position.
+         * @param state the query hidden state.
          * @return a valid probability in log scale (from -Inf to 0)
          * @throws IllegalArgumentException if either the {@code state} or the {@code position} are not
          *  recognized by the model or were not passed to the forward-backward algorithm.
          */
-        double logProbability(final S state, final T position);
+        double logProbability(final T position, final S state);
 
         /**
          * Returns the posterior probability of a full sequence of hidden states given the original data
@@ -93,11 +94,57 @@ public final class ForwardBackwardAlgorithm {
         double logProbability(final List<S> states);
 
         /**
+         * Returns the posterior probability of a sequence of hidden states starting at a particular position.
+         * @param from the starting position, so that the first element in {@code states} corresponds to the
+         *             state at this position.
+         * @param states the list of states.
+         * @return a valid probability in log scale (from -Inf to 0)
+         * @throws IllegalArgumentException if {@code states}, is {@code null}, contains some value not recognized
+         * as a hidden state by the model, or the {@code states} sequence is too long and would go beyond the last
+         * position.
+         */
+        double logProbability(final T from, final List<S> states);
+
+
+        /**
+         * Return the posterior probability of a sequence of hidden state constraints.
+         *
+         * @param from the first target, that corresponds to the first constraint in {@code stateConstraints}
+         * @param stateConstraints the query constrain sequence.
+         * @return a log scaled probability between 0 and -Inf.
+         * @throws IllegalArgumentException if {@code stateConstraints} is {@code null}, it contains a {@code null}
+         *  set or any of the states in any of the sets in {@code stateConstraints} is not recognized by the model or
+         *  {@code from} is not a valid position in the original data/position sequence.
+         */
+        double logConstrainedProbability(final T from, final List<Set<S>> stateConstraints);
+
+        /**
          * Returns the likelihood of the original data given the model.
          *
          * @return a valid probability in log scale (from -Inf to 0)
          */
         double logDataLikelihood();
+
+        /**
+         * Returns the likelihood of the original data given the model as evaluated at a particular
+         * position.
+         *
+         * <p>
+         * Although in theory one does not need to indicate a position to evaluate the data-likelihood
+         * in practice, lack of float point precision may make those small differences important (e.g.
+         * some computations with small probabilities may result in a probability just over 1.0 which makes
+         * no sense).
+         * </p>
+         * <p>
+         * As a rule of thumb, to avoid such problems you should request the data-likelihood at the target
+         * from which you evaluate the backward probability.
+         * </p>
+         *
+         * @param target the position.
+         * @return a valid log scaled probability from -Inf to 0.
+         * @throws IllegalArgumentException if {@code target} is unknown to the model.
+         */
+        double logDataLikelihood(final T target);
     }
 
     /**
@@ -196,7 +243,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logTransitionProbability(states.get(previousStateIndex),
                                         previousPosition, thisState, thisPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumNaturalLog(logSumBuffer)
+                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumExp(logSumBuffer)
                         + model.logEmissionProbability(data.get(thisPositionIndex), thisState, thisPosition);
             }
         }
@@ -241,7 +288,7 @@ public final class ForwardBackwardAlgorithm {
         // = 0 (i.e. log(1))
         // thus we proceed directly to t_L - 1.
 
-        // "small" buffer array reused to do the log-sum-exp-log trick:
+        // "small" buffer array reused to do the log-sum-exp trick:
         final double[] logSumBuffer = new double[states.size()];
 
         for (int thisPositionIndex = length - 2; thisPositionIndex >= 0; --thisPositionIndex) {
@@ -257,7 +304,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logEmissionProbability(dataList.get(nextPositionIndex),
                                                 states.get(nextStateIndex), nextPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumNaturalLog(logSumBuffer);
+                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumExp(logSumBuffer);
             }
         }
         return result;
@@ -285,7 +332,7 @@ public final class ForwardBackwardAlgorithm {
         private final double[][] logForwardProbabilities;
 
         private final double[][] logBackwardProbabilities;
-        private final double logDataLikelihood;
+        private final double[] logDataLikelihood;
 
         private ArrayResult(final List<D> data, final List<T> positions,
                             final HiddenMarkovModel<D, T, S> model,
@@ -315,14 +362,16 @@ public final class ForwardBackwardAlgorithm {
          * @param logBackwardProbabilities the log backward probabilities array.
          * @return a valid probability in log scale (between -Inf and 0 inclusive).
          */
-        private static double calculateLogDataLikelihood(final double[][] logForwardProbabilities,
+        private static double[] calculateLogDataLikelihood(final double[][] logForwardProbabilities,
                                                          final double[][] logBackwardProbabilities) {
-            if (logForwardProbabilities.length == 0) {
-                return 0;
-            } else {
-                return GATKProtectedMathUtils.naturalLogSumNaturalLog(IntStream.range(0, logForwardProbabilities[0].length)
-                        .mapToDouble(i -> logBackwardProbabilities[0][i] + logForwardProbabilities[0][i]).toArray());
-            }
+            return IntStream.range(0, logForwardProbabilities.length)
+                    .mapToObj(i ->
+                            IntStream.range(0, logForwardProbabilities[i].length)
+                                    .mapToDouble(j -> logBackwardProbabilities[i][j]
+                                                    + logForwardProbabilities[i][j])
+                                    .toArray())
+                    .mapToDouble(GATKProtectedMathUtils::naturalLogSumExp)
+                    .toArray();
         }
 
         /**
@@ -357,7 +406,7 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
-        public double logForwardProbability(final S state, final T position) {
+        public double logForwardProbability(final T position, final S state) {
             final int stateIndex = this.stateIndex.getOrDefault(state, -1);
             final int positionIndex = this.positionIndex.getOrDefault(position, -1);
             if (stateIndex == -1) {
@@ -370,7 +419,7 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
-        public double logBackwardProbability(final S state, final T position) {
+        public double logBackwardProbability(final T position, final S state) {
             final int stateIndex = this.stateIndex.getOrDefault(state, -1);
             final int positionIndex = this.positionIndex.getOrDefault(position, -1);
             if (stateIndex == -1) {
@@ -383,7 +432,7 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
-        public double logProbability(final S state, final T position) {
+        public double logProbability(final T position, final S state) {
             final int stateIndex = this.stateIndex.getOrDefault(state, -1);
             final int positionIndex = this.positionIndex.getOrDefault(position, -1);
             if (stateIndex == -1) {
@@ -392,33 +441,116 @@ public final class ForwardBackwardAlgorithm {
                 throw new IllegalArgumentException("unknown input position");
             } else {
                 return logBackwardProbabilities[positionIndex][stateIndex]
-                        + logForwardProbabilities[positionIndex][stateIndex] - logDataLikelihood;
+                        + logForwardProbabilities[positionIndex][stateIndex] - logDataLikelihood[positionIndex];
             }
         }
 
         @Override
         public double logProbability(final List<S> states) {
-            Utils.nonNull(states, "the input states sequence cannot be null");
-            if (states.size() != positions.size()) {
+            Utils.nonNull(states);
+            if (states.size() != data.size()) {
                 throw new IllegalArgumentException("the input states sequence does not have the same length as the data sequence");
             } else if (states.size() == 0) {
                 return 0;
             } else {
-                final int lastIndex = states.size() - 1;
-                double result = logForwardProbability(states.get(0), positions.get(0));
-                result += logBackwardProbability(states.get(lastIndex), positions.get(lastIndex));
-                for (int i = 1; i <= lastIndex; i++) {
-                    result += model.logTransitionProbability(states.get(i - 1), positions.get(i - 1), states.get(i), positions.get(i));
-                    result += model.logEmissionProbability(data.get(i), states.get(i), positions.get(i));
+                return logProbability(positions.get(0), states);
+            }
+        }
+
+        @Override
+        public double logProbability(final T position, final List<S> states) {
+            Utils.nonNull(states, "the input states sequence cannot be null");
+            if (states.size() == 0) {
+                return 0;
+            } else {
+                final int statesLength = states.size();
+                final int startIndex = positionIndex.get(position);
+                final int lastIndex = statesLength + startIndex - 1;
+                if (startIndex == -1) {
+                    throw new IllegalArgumentException("the input position " + position + " is nowhere to be found in the original position sequence");
+                } else if (lastIndex >= data.size()) {
+                    throw new IllegalArgumentException("the input state sequence is too long");
                 }
-                result -= logDataLikelihood;
+                double result = logForwardProbability(positions.get(startIndex), states.get(0));
+                for (int statesOffset = 1, dataOffset = startIndex + 1; dataOffset <= lastIndex; statesOffset++, dataOffset++) {
+                    result += model.logTransitionProbability(states.get(statesOffset - 1), positions.get(dataOffset - 1), states.get(statesOffset), positions.get(dataOffset));
+                    result += model.logEmissionProbability(data.get(dataOffset), states.get(statesOffset), positions.get(dataOffset));
+                }
+                result += logBackwardProbability(positions.get(lastIndex), states.get(statesLength - 1));
+                result -= logDataLikelihood[lastIndex];
                 return result;
             }
         }
 
         @Override
+        public double logConstrainedProbability(final T position, final List<Set<S>> stateConstraints) {
+            Utils.nonNull(stateConstraints, "the input state constraints sequence cannot be null");
+            if (stateConstraints.size() == 0) {
+                return 0;
+            } else {
+                final int length = stateConstraints.size();
+                final int startIndex = positionIndex.get(position);
+                final int lastIndex = length + startIndex - 1;
+                if (startIndex == -1) {
+                    throw new IllegalArgumentException("the input position " + position + " is nowhere to be found in the original position sequence");
+                } else if (lastIndex >= data.size()) {
+                    throw new IllegalArgumentException("the input state sequence is too long");
+                }
+                // calculate the likelihoods of each state at the first position using the forward-probabilities.
+                List<S>  currentStates = new ArrayList<>(Utils.nonNull(stateConstraints.get(0)));
+                double[] currentLikelihoods = currentStates.stream()
+                        .mapToInt(stateIndex::getInt)
+                        .mapToDouble(i -> logForwardProbabilities[startIndex][i])
+                        .toArray();
+                // We move forward across contiguous positions updating the current state likelihoods
+                // with the previous ones honoring transition and emission probabilities:
+                for (int statesOffset = 1, dataOffset = startIndex + 1; dataOffset <= lastIndex; statesOffset++, dataOffset++) {
+                    final double[] previousLikelihoods = currentLikelihoods;
+                    final List<S> previousStates = currentStates;
+                    final T previousPosition = positions.get(dataOffset - 1);
+                    final T thisPosition = positions.get(dataOffset);
+                    final D thisData = data.get(dataOffset);
+
+                    currentStates = new ArrayList<>(Utils.nonNull(stateConstraints.get(statesOffset)));
+                    // The update likelihoods are calculated per current state
+                    // by adding the likelihoods of previous states multiply by the transition
+                    // probabilities from those state to the current one and then multiplying it
+                    // by the emission probability of the current datum.
+                    currentLikelihoods = currentStates.stream()
+                            .mapToDouble(thisState ->
+                                GATKProtectedMathUtils.naturalLogSumExp(IntStream.range(0, previousStates.size())
+                                        .mapToDouble(previousStateIndex -> {
+                                            final S previousState = previousStates.get(previousStateIndex);
+                                            return previousLikelihoods[previousStateIndex]
+                                                 + model.logTransitionProbability(previousState, previousPosition,
+                                                                                     thisState, thisPosition);
+                                        }).toArray())
+                                    + model.logEmissionProbability(thisData, thisState, thisPosition)
+                            ).toArray();
+                }
+
+                // finally we add the backward-probabilities at the last position.
+                final List<S> lastStates = currentStates;
+                for (int i = 0; i < currentLikelihoods.length; i++) {
+                    currentLikelihoods[i] += logBackwardProbabilities[lastIndex][stateIndex.getInt(lastStates.get(i))];
+                }
+                return GATKProtectedMathUtils.naturalLogSumExp(currentLikelihoods) - logDataLikelihood[lastIndex];
+            }
+        }
+
+        @Override
         public double logDataLikelihood() {
-            return logDataLikelihood;
+            return logDataLikelihood.length == 0 ? 0 : logDataLikelihood[0];
+        }
+
+        @Override
+        public double logDataLikelihood(final T target) {
+            final int targetIndex = this.positionIndex.getOrDefault(target, -1);
+            if (targetIndex == -1) {
+                throw new IllegalArgumentException("unknown target " + target);
+            } else {
+                return logDataLikelihood[targetIndex];
+            }
         }
     }
 

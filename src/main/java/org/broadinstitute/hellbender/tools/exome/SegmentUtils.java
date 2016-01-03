@@ -230,7 +230,7 @@ public final class SegmentUtils {
                 //lambda for appending segment fields to a DataLine
                 (segment, dataLine) ->
                     dataLine.append(segment.getContig()).append(segment.getStart(), segment.getEnd())
-                            .append(segment.getOriginalProbeCount())
+                            .append(segment.getTargetCount())
                             .append(segment.getSegmentMeanInCRSpace())
                             .append(segment.getCall()));
     }
