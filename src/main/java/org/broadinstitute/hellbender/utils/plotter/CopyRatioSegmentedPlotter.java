@@ -19,13 +19,14 @@ public final class CopyRatioSegmentedPlotter {
      * @param outputDir Full path to the outputted segment file
      * @param log Input tangent file has had a log2 transform applied
      */
-    public static void writeSegmentedCopyRatioPlot(final String sample_name, final String tnFile, final String preTnFile, final String segFile, final String outputDir, final Boolean log) {
+    public static void writeSegmentedCopyRatioPlot(final String sample_name, final String tnFile, final String preTnFile, final String segFile, final String outputDir, final Boolean log, final Boolean sexChrs) {
         String logArg = log ? "TRUE" : "FALSE";
+        String schr = sexChrs ? "TRUE" : "FALSE";
         final RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new Resource(R_SCRIPT, CopyRatioSegmentedPlotter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
         executor.addArgs("--args", "--sample_name="+sample_name, "--targets_file="+tnFile, "--pre_tn_file="+preTnFile, "--seg_file="+segFile,
-                "--output_dir="+outputDir, "--log2_input="+logArg);
+                "--output_dir="+outputDir, "--log2_input="+logArg, "--sex_chrs="+schr);
         executor.exec();
     }
 }

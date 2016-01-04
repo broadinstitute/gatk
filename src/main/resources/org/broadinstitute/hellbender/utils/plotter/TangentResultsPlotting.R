@@ -1,5 +1,5 @@
 # Useful for debugging
-#options(error = quote({dump.frames(dumpto = "plotting_dump", to.file = TRUE); q()}))
+options(error = quote({dump.frames(dumpto = "plotting_dump", to.file = TRUE); q()}))
 
 library(optparse)
 
@@ -9,7 +9,8 @@ option_list = list(
     make_option(c("--pre_tn_file", "-pre_tn_file"), dest="pre_tn_file", action="store"),
     make_option(c("--seg_file", "-seg_file"), dest="seg_file", action="store"),
     make_option(c("--output_dir", "-output_dir"), dest="output_dir", action="store"),
-    make_option(c("--log2_input", "-log"), dest="log2_input", action="store"))
+    make_option(c("--log2_input", "-log"), dest="log2_input", action="store"),
+    make_option(c("--sex_chrs", "-sexchrs"), dest="sex_chrs", action="store"))
 
 opt = parse_args(OptionParser(option_list=option_list))
 print(opt)
@@ -21,9 +22,10 @@ pre_tn_file=opt[["pre_tn_file"]]
 seg_file=opt[["seg_file"]]
 output_file=opt[["output_dir"]]
 log_input=as.logical(opt[["log2_input"]])
+sex_chrs=as.logical(opt[["sex_chrs"]])
 
 # Use a function for debugging purposes
-create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, seg_file, output_dir, log_input) {
+create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, seg_file, output_dir, log_input, sex_chrs) {
 	# Read in file and extract needed data
 	seg = read.table(seg_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
@@ -37,8 +39,17 @@ create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, seg_file
 	    preTnDat = preTn[,sample_name]
 	}
     tnContig = tn[,"contig"]
+    tnContig[tnContig=="X"]=23
+    tnContig[tnContig=="Y"]=24
+    tnContig=as.numeric(tnContig)
     tnPos = tn[,"stop"]
     preTnContig = preTn[,"contig"]
+    preTnContig[preTnContig=="X"]=23
+    preTnContig[preTnContig=="Y"]=24
+    preTnContig=as.numeric(preTnContig)
+    seg[seg["Chromosome"]=="X","Chromosome"]=23
+    seg[seg["Chromosome"]=="Y","Chromosome"]=24
+    seg[,"Chromosome"]=as.numeric(seg[,"Chromosome"])
     preTnPos = preTn[,"stop"]
     preQc = QC(preTnDat)
     postQc = QC(tnDat)
@@ -51,7 +62,7 @@ create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, seg_file
 
     plot.fn = file.path( output_dir, paste(sample_name, "_FullGenome", ".png", sep=""))
     png(plot.fn, 12, 7, units="in", type="cairo", res=300, bg="white")
-    chr.dat = SetUpPlot("Total copy ratio", 0, 4, "", TRUE)
+    chr.dat = SetUpPlot("Total copy ratio", 0, 4, "", TRUE, sex_chrs)
     TotalCopyRatioWithSegments(tnDat, tnPos, tnContig, seg, chr.dat)
     dev.off()
 
@@ -60,20 +71,20 @@ create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, seg_file
     plot.fn = file.path( output_dir, paste(sample_name, "_Before_After_CR_Lim_4", ".png", sep=""))
     png(plot.fn, 12, 7, units="in", type="cairo", res=300, bg="white")
     par( mfrow=c(2,1), cex=0.75, las=1 )
-    SetUpPlot("Copy-Ratio", 0, 4, paste("Pre Tangent Normalization, pre-Qc = ", round(preQc, 3), sep=""), FALSE)
+    SetUpPlot("Copy-Ratio", 0, 4, paste("Pre Tangent Normalization, pre-Qc = ", round(preQc, 3), sep=""), FALSE, sex_chrs)
     TotalCopyRatio(preTnDat, preTnPos, preTnContig, chr.dat, sample_name, pre_color_blue)
     SetUpPlot("Copy-Ratio", 0, 4, paste("Post Tangent Normalization, post-Qc = ", round(postQc, 3), ", dQc = ",
-        round(preQc-postQc,3), ", scaled_Qc = ", round((preQc-postQc)/preQc,3), sep=""), TRUE)
+        round(preQc-postQc,3), ", scaled_Qc = ", round((preQc-postQc)/preQc,3), sep=""), TRUE, sex_chrs)
     TotalCopyRatio(tnDat, tnPos, tnContig, chr.dat, sample_name, post_color_green)
     dev.off()
 
     plot.fn = file.path( output_dir, paste(sample_name, "_Before_After", ".png", sep=""))
     png(plot.fn, 12, 7, units="in", type="cairo", res=300, bg="white")
     par( mfrow=c(2,1), cex=0.75, las=1 )
-    SetUpPlot("Copy-Ratio", 0, max(preTnDat), paste("Pre Tangent Normalization, pre-Qc = ", round(preQc, 3), sep=""), FALSE)
+    SetUpPlot("Copy-Ratio", 0, max(preTnDat), paste("Pre Tangent Normalization, pre-Qc = ", round(preQc, 3), sep=""), FALSE, sex_chrs)
     TotalCopyRatio(preTnDat, preTnPos, preTnContig, chr.dat, sample_name, pre_color_blue)
     SetUpPlot("Copy-Ratio", 0, max(tnDat), paste("Post Tangent Normalization, post-Qc = ", round(postQc, 3),
-        ", dQc = ", round(preQc-postQc,3), ", scaled_dQc = ", round((preQc-postQc)/preQc,3), sep=""), TRUE)
+        ", dQc = ", round(preQc-postQc,3), ", scaled_dQc = ", round((preQc-postQc)/preQc,3), sep=""), TRUE, sex_chrs)
     TotalCopyRatio(tnDat, tnPos, tnContig, chr.dat, sample_name, post_color_green)
     dev.off()
 }
@@ -83,7 +94,7 @@ QC = function(dat) {
 }
 
 ## Chromosome Background for data
-SetUpPlot = function(y.lab, y.min, y.max, x.lab, lab.chr){
+SetUpPlot = function(y.lab, y.min, y.max, x.lab, lab.chr, sex_chrs){
   ## Via http://genome.ucsc.edu/cgi-bin/hgTables
   ## HG19 chromosome lengths
   chr.lens = c(249250621, 243199373, 198022430, 191154276, 180915260, 171115067, 159138663,
@@ -99,15 +110,17 @@ SetUpPlot = function(y.lab, y.min, y.max, x.lab, lab.chr){
 	29369569, 14288129, 16000000)
 
   ###Add sex chromosomes###
-  ## Add X - DISABLED
-  #chr.lens = c(chr.lens, 155270560)
-  #cent.posS = c(cent.posS, 58632012)
-  #cent.posE = c(cent.posE, 61632012)
+  if(sex_chrs){
+      ## Add X
+      chr.lens = c(chr.lens, 155270560)
+      cent.posS = c(cent.posS, 58632012)
+      cent.posE = c(cent.posE, 61632012)
 
-  ## Add Y - DISABLED
-  #chr.lens = c(chr.lens, 59373566)
-  #cent.posS = c(cent.posS, 10104553)
-  #cent.posE = c(cent.posE, 13104553)
+      ## Add Y
+      chr.lens = c(chr.lens, 59373566)
+      cent.posS = c(cent.posS, 10104553)
+      cent.posE = c(cent.posE, 13104553)
+  }
 
   genome.len = sum(chr.lens)
   chr.w = chr.lens / genome.len
@@ -120,6 +133,10 @@ SetUpPlot = function(y.lab, y.min, y.max, x.lab, lab.chr){
   if(lab.chr){
   	lab.vals = (c(1:length(chr.w)))
   	odd.ix = lab.vals %% 2 == 1
+  	if(sex_chrs){
+  	    lab.vals[23]="X"
+  	    lab.vals[24]="Y"
+  	}
   	mtext(text = lab.vals[odd.ix], side = 1, line = -0.45, at = chr.mids[odd.ix],
     		las = 1, cex = par("cex.axis") * par("cex") * 0.7)
   	mtext(text = lab.vals[!odd.ix], side = 1, line = 0, at = chr.mids[!odd.ix],
@@ -171,4 +188,4 @@ TotalCopyRatio = function(dat, pos, contig, chr.dat, sample_name, color){
   points(genome.crds, dat, col=color, pch=16, cex=0.2)
 }
 
-create_tangent_plots_file(sample_name, tn_file, pre_tn_file, seg_file, output_file, log_input)
+create_tangent_plots_file(sample_name, tn_file, pre_tn_file, seg_file, output_file, log_input, sex_chrs)
