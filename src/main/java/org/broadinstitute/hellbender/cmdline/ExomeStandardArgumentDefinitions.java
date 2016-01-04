@@ -38,6 +38,9 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String LOG2_LONG_NAME= "log2Input";
     public static final String LOG2_SHORT_NAME = "LOG";
 
+    public static final String INCLUDE_SEX_CHROMOSOMES_LONG_NAME= "sexChromosomes";
+    public static final String INCLUDE_SEX_CHROMOSOMES_SHORT_NAME = "schr";
+
     public static final String PRE_TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME = "preTangentNormalized";
     public static final String PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME = "PTN";
 

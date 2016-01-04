@@ -58,13 +58,21 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
     )
     protected Boolean log = false;
 
+    @Argument(
+            doc = "Plot sex chromosomes",
+            shortName = ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_LONG_NAME,
+            optional = true
+    )
+    protected Boolean sexChrs = false;
+
     @Override
     protected Object doWork() {
-        createPlot(sampleName, tangentFile, preTangentFile, segmentFile, plotDir, log);
+        createPlot(sampleName, tangentFile, preTangentFile, segmentFile, plotDir, log, sexChrs);
         return "Success";
     }
 
-    private void createPlot(String sampleName, String tangentFile, String preTangentFile, String segmentFile, String outFile, boolean log){
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, tangentFile, preTangentFile, segmentFile, outFile, log);
+    private void createPlot(String sampleName, String tangentFile, String preTangentFile, String segmentFile, String outFile, boolean log, boolean sexChrs){
+        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, tangentFile, preTangentFile, segmentFile, outFile, log, sexChrs);
     }
 }
