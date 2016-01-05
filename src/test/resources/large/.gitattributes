@@ -10,3 +10,5 @@ exampleLargeFile.txt filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.1.1-65M.vcf filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.1.1-65M.vcf.idx filter=lfs diff=lfs merge=lfs -text
 human_g1k_v37.20.21.2bit filter=lfs diff=lfs merge=lfs -text
+*.bam filter=lfs diff=lfs merge=lfs -text
+*.bai filter=lfs diff=lfs merge=lfs -text
