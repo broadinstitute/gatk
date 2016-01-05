@@ -67,45 +67,39 @@ public final class MathUtils {
     }
 
     /**
-     * A helper class to maintain a cache of log values
+     * A helper class to maintain a cache of log values.
+     * The cache is immutable after creation.
      */
     public static final class LogCache {
-        /**
-         * Get the value of log(n), expanding the cache as necessary
-         * @param n operand
-         * @return log(n)
-         */
-        public static double get(final int n) {
-            if (n < 0)
-                throw new GATKException(String.format("Can't take the log of a negative number: %d", n));
-            if (n >= cache.length)
-                ensureCacheContains(Math.max(n+10, 2*cache.length));
-            /*
-               Array lookups are not atomic.  It's possible that the reference to cache could be
-               changed between the time the reference is loaded and the data is fetched from the correct
-               offset.  However, the value retrieved can't change, and it's guaranteed to be present in the
-               old reference by the conditional above.
-             */
-            return cache[n];
+
+        private final double[] cache;
+
+        public LogCache(final int capacity){
+            cache = new double[capacity + 1];
+            cache[0] = Double.NEGATIVE_INFINITY;    //initialize with the special case: log(0) = NEGATIVE_INFINITY
+            for (int i= 1; i < cache.length; i++) {
+                cache[i] = Math.log(i);
+            }
         }
 
         /**
-         * Ensures that the cache contains a value for n.  After completion of ensureCacheContains(n),
-         * #get(n) is guaranteed to return without causing a cache expansion
-         * @param n desired value to be precomputed
+         * Get the value of log(n), fetching it from the cache or computing it afresh
+         * @param i operand
+         * @return log(i)
          */
-        public static void ensureCacheContains(final int n) {
-            if (n < cache.length)
-                return;
-            final double[] newCache = new double[n + 1];
-            System.arraycopy(cache, 0, newCache, 0, cache.length);
-            for (int i=cache.length; i < newCache.length; i++)
-                newCache[i] = Math.log(i);
-            cache = newCache;
+        public double get(final int i) {
+            if (i < 0) {
+                throw new IllegalArgumentException(String.format("Can't take the log of a negative number: %d", i));
+            }
+            if (i >= cache.length) {
+                return  Math.log(i);
+            }
+            return cache[i];
         }
 
-        //initialize with the special case: log(0) = NEGATIVE_INFINITY
-        private static double[] cache = { Double.NEGATIVE_INFINITY };
+        public int size() {
+            return cache.length;
+        }
     }
 
     /**
@@ -509,41 +503,46 @@ public final class MathUtils {
     //
 
     public static double logFactorial(final int x) {
-        if (x >= LogFactorialCache.size() || x < 0)
-            return Gamma.logGamma(x + 1);
-        else
-            return LogFactorialCache.get(x);
+        return logFactorialCache.get(x);
     }
+
+    /**
+     * The size of the precomputed cache of logs.
+     * The caches are immutable after creation and so it's no big deal that they are static.
+     */
+    private static final int PRECOMPUTED_LOGS = 10_000;
+    private static final LogCache logCache = new LogCache(PRECOMPUTED_LOGS);
+    private static final LogFactorialCache logFactorialCache = new LogFactorialCache(logCache);
+
 
     /**
      * Wrapper class so that the logFactorial array is only calculated if it's used
      */
-    private static class LogFactorialCache {
+    private static final class LogFactorialCache {
 
-        /**
-         * The size of the precomputed cache.  Must be a positive number!
-         */
-        private static final int CACHE_SIZE = 10_000;
+        private final double[] cache;
 
-        public static int size() { return CACHE_SIZE; }
-
-        public static double get(final int n) {
-            if (cache == null)
-                initialize();
-            return cache[n];
-        }
-
-        private static void initialize() {
-            if (cache == null) {
-                LogCache.ensureCacheContains(CACHE_SIZE);
-                cache = new double[CACHE_SIZE];
-                cache[0] = 0.0;
-                for (int k = 1; k < cache.length; k++)
-                    cache[k] = cache[k-1] + LogCache.get(k);
+        public LogFactorialCache(final LogCache logCache){
+            cache = new double[logCache.size()];
+            cache[0] = 0.0;
+            for (int k = 1; k < cache.length; k++) {
+                cache[k] = cache[k - 1] + logCache.get(k);
             }
         }
 
-        private static double[] cache = null;
+        public int size() { return cache.length; }
+
+        /**
+         * Retrieves the precomputed result or computes it afresh.
+         * @return log of factorial.
+         */
+        public double get(final int n) {
+            if (n >= size() || n < 0) {
+                return Gamma.logGamma(n + 1);
+            } else {
+                return cache[n];
+            }
+        }
     }
 
     /**
