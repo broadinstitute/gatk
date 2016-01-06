@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -55,9 +54,6 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String output;
 
-    @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
-    private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
-
     /**
      * all the command line arguments for BQSR and its covariates
      */
@@ -77,7 +73,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+        if (! getReference().isCompatibleWithSparkBroadcast()){
             throw new UserException.Require2BitReferenceForBroadcast();
         }
         // TODO: workaround for known bug in List version of getParallelVariants
@@ -96,7 +92,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         final JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
 
-        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(filteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
+        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(filteredReadsForBQSR, getReference(), bqsrKnownVariants);
         //note: we use the reference dictionary from the reads themselves.
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getHeaderForReads().getSequenceDictionary(), bqsrArgs);
 

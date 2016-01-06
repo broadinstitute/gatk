@@ -5,7 +5,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
@@ -26,23 +25,16 @@ import scala.Tuple2;
 public class AddContextDataToReadSpark {
     public static JavaPairRDD<GATKRead, ReadContextData> add(
             final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceDataflowSource,
-            final JavaRDD<Variant> variants, final JoinStrategy joinStrategy) {
+            final JavaRDD<Variant> variants) {
         // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
         JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
         JavaPairRDD<GATKRead, Tuple2<Iterable<Variant>, ReferenceBases>> withVariantsWithRef;
-        if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
-            // Join Reads and Variants
-            JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
-            // Join Reads with ReferenceBases
-            withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
-        } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
-            // Join Reads and Variants
-            JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);
-            // Join Reads with ReferenceBases
-            withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
-        } else {
-            throw new UserException("Unknown JoinStrategy");
-        }
+
+        // Join Reads and Variants
+        JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
+
+        // Join Reads with ReferenceBases
+        withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         return withVariantsWithRef.mapToPair(in -> new Tuple2<>(in._1(), new ReadContextData(in._2()._2(), in._2()._1())));
     }
 }
