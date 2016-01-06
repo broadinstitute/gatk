@@ -14,7 +14,7 @@ import java.util.List;
  *      3.  the mean allelic bias <p>
  *      4.  the rate (mean / variance) of the allelic bias <p>
  * <p>
- * See docs/AllelicCapSeg/ACS-methods.pdf for details.
+ * See docs/CNVs/CNV-methods.pdf for details.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */

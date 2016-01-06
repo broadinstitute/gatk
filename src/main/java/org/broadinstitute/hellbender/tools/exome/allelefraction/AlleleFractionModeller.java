@@ -43,7 +43,7 @@ import static org.broadinstitute.hellbender.utils.MathUtils.logFactorial;
  * the three hyperparameters of the model: the two parameters of the gamma distribution
  * along with the global outlier probability.
  *
- * See docs/AllelicCapSeg/ACS-methods.pdf for a thorough description of the model.
+ * See docs/CNVs/CNV-methods.pdf for a thorough description of the model.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
@@ -179,7 +179,7 @@ public final class AlleleFractionModeller {
      * latent variable corresponding to the allelic bias at this site has been marginalized out but the indicator
      * variable has not been marginalized out.
      * <p>
-     * See docs/ACS-methods.pdf for derivation.
+     * See docs/CNVs/CNV-methods.pdf for derivation.
      * <p>
      * Finally, note that this is a static method and does not get mu, beta, and minorFraction from an AlleleFractionState object
      * We need such functionality because MCMC evaluates the likelihood under proposed parameter changes.
@@ -337,7 +337,7 @@ public final class AlleleFractionModeller {
      * posterior moments we also multiply the integrand by bias raised to an integer power.  This order can be set to zero to obtain
      * the marginalized log-likelihood.
      * <p>
-     * See docs/ACS-methods.pdf for derivation.
+     * See docs/CNVs/CNV-methods.pdf for derivation.
      * <p>
      * Finally, note that this is a static method and does not get mu, beta, and minorFraction from an AlleleFractionState object
      * We need such functionality because MCMC evaluates the likelihood under proposed parameter changes.

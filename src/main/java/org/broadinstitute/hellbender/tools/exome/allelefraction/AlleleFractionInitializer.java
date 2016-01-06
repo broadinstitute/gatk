@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * The Allele Fraction Model (after marginalizing latent parameters as described in docs/AllelicCapSeg/ACS-methods.pdf)
+ * The Allele Fraction Model (after marginalizing latent parameters as described in docs/CNVs/CNV-methods.pdf)
  * contains the following parameters:
  *      1.  minor allele fractions for each segment
  *      2.  a global outlier probability

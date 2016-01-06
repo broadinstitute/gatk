@@ -21,15 +21,20 @@
 
 \begin{document}
 
-\title{Notes on $\ACS$}
+\title{Notes on CNV Methods}
 \author{Samuel K. Lee}
-\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
 \email{slee@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+
+\author{David Benjamin}
+\email{davidben@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
 \date{\today}
 
 \begin{abstract}
-Some notes on the methods used in the current \texttt{python} implementation and proposed methods for the \texttt{hellbender}
-port.
+Some notes on current and proposed methods used in the GATK CNV workflow.
 \end{abstract}
 
 \maketitle
@@ -38,27 +43,78 @@ port.
 
 \section{Introduction}\label{introduction}
 
-\SL{A brief intro here would be nice.}
-
-\section{$\RCS$ Overview} \label{recapseg-overview}
-
-We first summarize the portions of the $\RCS$ workflow that generate the input for $\ACS$.  The below is copied/paraphrased from the documentation at \url{http://gatkforums.broadinstitute.org/discussion/5640/recapseg-overview}.
-
-$\RCS$ is a copy-number--variant detector that runs on user-defined target regions, which can correspond to exomes, gene panels, or arbitrary windows. $\RCS$ uses a Panel of Normal (PoN) samples to model noise and normalize the coverage calls of the target sample. These methods were designed for copy-number calling (amplification and deletion) of somatic events with a resolution of two or more targets. $\RCS$ does not need a matched normal, but operates on a panel of normal samples representing similar library preparation to agnostically remove noise. $\RCS$ is the production version of the \texttt{CapSeg} algorithm.
-
-Given an DNA-Seq alignment BAM file and a BED file of target genomic intervals, the $\RCS$ algorithms estimate copy ratio by performing the following steps:
+The GATK uses two types of information from sequencing data to detect copy number variations (CNVs).  First, targets (usually exons but in principle any genomic locus) with abnormally high or low coverage suggest amplifications or deletions, respectively.  Second, sites that are heterozygous in a normal sample and have allele ration significantly different from 1:1 in the matched tumor sample imply a CNV event involving one or both alleles.  The workflow is as follows:
 
 \begin{enumerate}
-\item
-Generate proportional coverage: First, the per sample normalized coverage is calculated by normalizing the read coverage spanning a
-target segment with the total number of aligned reads (for every read group: number of reads over segment/total number of aligned reads).  The proportional coverage is then calculated by normalizing every segment with the median normalized coverage across the PoN for the given segment.
-\item
-Tangent normalization: This normalization procedure projects the sample proportional coverage to a hyperplane defined by the PoN. This normalization procedure results in a copy-ratio estimate with reduced noise.
-\item
-Segment: The target regions are then merged into continuous segments that represent the same copy-number event. The segmentation is performed by a circular-binary-segmentation (CBS) algorithm described by Olshen et al. 2004 that was originally developed to segment noisy array copy-number data.\footnote{Specifically, the CBS implementation provided by the \texttt{R} package \texttt{DNACopy} is used. Note that even though the \texttt{DNACopy} parameter \texttt{data.type} is set to \texttt{logratio}, the tangent-normalized \emph{linear} copy ratios are used instead.  \SL{Check this?  If true, it is unclear to me how this affects the resulting segmentation, if at all.}} Currently, $\RCS$ considers only segments that include two or more targets (a target usually represents a single exon).
+
+\item Partition targets into continuous segments that represent the same copy-number event using coverage data.  The segmentation is performed by a circular-binary-segmentation (CBS) algorithm described by Olshen et al. 2004 that was originally developed to segment noisy array copy-number data.\footnote{Specifically, the CBS implementation provided by the \texttt{R} package \texttt{DNACopy} is used.}
+
+\item Find heterozygous sites in the normal case sample and segment these, again using CBS, according to their ref:alt allele ratios in the tumor sample.
+
+\item Combine the two sets of segments in a liberal manner that tends to produce too many segments.
+
+\item Alternate between modeling the copy ratio and minor allele fraction of each segment with merging adjacent segments that are sufficiently similar according to this model.
+
 \end{enumerate}
 
-To summarize, given coverage data for a set of targets, $\RCS$ produces 1) $\log_2$ copy-ratio estimates for each target, and 2) corresponding segments, which are specified by a set of genomic intervals.  The segment files produced by $\RCS$ also contain segment ``means,'' which are given by the mean linear copy ratio of all targets contained within each segment.
+\section{Segmentation by Coverage and Minor Allele Fraction} \label{recapseg-overview}
+
+\subsection{Panel of Normals}
+We cannot simply divide the coverage of each target by the average sequencing depth to obtain an estimate of its copy ratio.  The coverage of different targets is heavily-biased by factors including the efficiency of their baits, GC content, and mappability.  In order to detect CNVs we must model the coverage of each target in the absence of CNVs, which requires a panel of normal samples (PoN) that are representative of the sequencing conditions of the case sample.  PoN samples must be created using the same baits as the case sample.  The steps for creating a panel of normals are
+
+\begin{enumerate}
+
+\item  Obtain the coverage (total number of overlapping reads) of every target and sample.
+
+\item Calculate the median coverage of each target over all samples.
+
+\item  Filter out targets whose median coverage is below a given percentile (by default 25\%) of target medians.
+
+\item  Divide all coverages by their corresponding target medians.
+
+\item Filter out samples with too great a proportion of zero-coverage targets (by default 5\%).
+
+\item Filter out targets with zero coverage in too great a proportion of samples (by default 2\%).
+
+\item Filter out samples whose median coverage is above or below certain percentiles (by default 2.5\% and 97.5\%) of sample medians.
+
+\item Replace all remaining zero coverages with their corresponding target median. 
+
+\item Calculate the range of coverage from percentile $p$\% to $(100 - p)$\% for each target and truncate coverages at each target to lie within these ranges.  By default $p = 0.1$.
+
+\item Divide each coverage by its sample median.
+
+\item Take the $\log_2$ of each coverage.
+
+\item Calculate the median of each sample and take the median of these over all targets.  Subtract this median of medians from each coverage.
+
+\item Perform a singular value decomposition (SVD) of the resulting matrix and calculate its pseudo-inverse truncated to the space spanned by the $k$ right eigenvectors with largest singular values. Choose $k$ using Jollife's heuristic of retaining singular values greater than 0.7 times the mean singular value.
+
+\end{enumerate}
+
+The output is: a $N \times k$ matrix $P$, the columns of which are the the retained right eigenvectors (eigensamples), and its pseudoinverse $P^+$; and the target medians (before any transformations).  Here $N$ denotes the number of targets.
+
+\subsection{Normalizing case samples}
+We first divide the integer coverage of the case sample at each target by the corresponding target median from the PoN and take the $\log_2$ transformation to obtain an $N \times 1$ column matrix ${\bf x}$.  We then calculate the ``tangent-normalized'' coverage: ${\bf x} - PP^+ {\bf x}$.  The meaning of this is as follows: $PP^+$ is an operator that projects onto the column space of $P$.  That is, it projects onto the space spanned by the $k$ most significant eigensamples representing the (non-CNV-related) variability of the coverage.  Subtracting the projection $PP^+ {\bf x}$ therefore isolates the CNV signal and removes noise due to fluctuations in sequencing bias.
+
+Finally, the tangent-normalized coverage vector is passed to CBS to obtain coverage segments.
+
+\subsection{Segmentation by Minor Allele Fraction}
+Given a large database of common SNPs, we search the normal case sample for heterozygous sites.  To determine whether a site with $r$ ref reads and $a$ alt reads is heterozygous, we calculate the two-sided $p$-value under the null hypothesis that the number of alt reads follows a binomial distribution: $a \sim {\rm Binom}(a + r, 1/2)$.  If the $p$-value is not too small we consider the site heterozygous.
+
+To obtain allele fraction segments, we estimate the minor allele fraction of a het site as ${\rm min}(a,r)/(a + r)$, where $a$ and $r$ are counts for the tumor case sample, and pass the resulting list to CBS.
+
+\subsection{Target/SNP segment union} \label{targetsnp-segment-union}
+
+\SL{DB can fill this in.}
+
+\subsection{Small-segment merging} \label{small-segment-merging}
+
+\SL{SL to update this to the new method.}
+
+Using CBS to segment the targets in $\RCS$ results in segments that are \SL{always?} larger than $\sim$2--3 targets.  However, after taking the union of target and SNP segments, small segments with less than $\sim$2--3 targets may be introduced.  To be consistent with CBS and $\RCS$, $\ACS$ treats these small segments as spurious, and removes them by merging them with adjacent segments.
+
+A segment is considered to be small if the number of targets it contains is strictly less than a threshold number of targets $n_t$; we take $n_t = 3$.  The small-segment merging algorithm checks each $i$th segment in turn, starting with the first, leftmost segment.  If the segment is small, it is repeatedly merged with the adjacent segment that is closer in the $L_1$ distance $|\tau_i - \tau_{i \pm 1}| + |f_i - f_{i \pm 1}|$ in copy-ratio--allele-fraction space until it is no longer small.\footnote{To be explicit, segments are reindexed after each merge, so that the new segment formed by merging segment $i$ and segment $i \pm 1$ retains the index $i$.}  Exceptions occur for adjacent segments on different chromosomes, which are never merged; in practice, this is enforced by setting the $L_1$ distance between segments on different chromosomes to be infinite.  After all segments have been checked and merged, any remaining small segments (which will be present if any chromosome contains less than $n_t$ targets) are dropped.
 
 \section{Current Hellbender $\ACS$ Workflow} \label{current-alleliccapseg-workflow}
 
@@ -177,23 +233,9 @@ Integrating out the latent variables removes the strongest correlations from the
 \label{ACS_MCMC}
 \end{algorithm}
 
-\subsection{Target/SNP segment union} \label{targetsnp-segment-union}
-
-\SL{DB can fill this in.}
-
-\subsection{Small-segment merging} \label{small-segment-merging}
-
-\SL{SL to update this to the new method.}
-
-Using CBS to segment the targets in $\RCS$ results in segments that are \SL{always?} larger than $\sim$2--3 targets.  However, after taking the union of target and SNP segments, small segments with less than $\sim$2--3 targets may be introduced.  To be consistent with CBS and $\RCS$, $\ACS$ treats these small segments as spurious, and removes them by merging them with adjacent segments.
-
-A segment is considered to be small if the number of targets it contains is strictly less than a threshold number of targets $n_t$; we take $n_t = 3$.  The small-segment merging algorithm checks each $i$th segment in turn, starting with the first, leftmost segment.  If the segment is small, it is repeatedly merged with the adjacent segment that is closer in the $L_1$ distance $|\tau_i - \tau_{i \pm 1}| + |f_i - f_{i \pm 1}|$ in copy-ratio--allele-fraction space until it is no longer small.\footnote{To be explicit, segments are reindexed after each merge, so that the new segment formed by merging segment $i$ and segment $i \pm 1$ retains the index $i$.}  Exceptions occur for adjacent segments on different chromosomes, which are never merged; in practice, this is enforced by setting the $L_1$ distance between segments on different chromosomes to be infinite.  After all segments have been checked and merged, any remaining small segments (which will be present if any chromosome contains less than $n_t$ targets) are dropped.
-
-\subsection{Parameter optimization}\label{parameter-optimization}
 
 \subsection{Similar-segment merging} \label{similar-segment-merging}
 
-\subsection{Final parameter optimization} \label{final-parameter-optimization}
 
 \section{Proposed Methods for $\texttt{hellbender}$} \label{proposed-methods-for-texttthellbender}
 
