@@ -380,7 +380,7 @@ public final class SelectVariants extends VariantWalker {
     private int maxNOCALLnumber = MAX_NOCALL_NUMBER_DEFAULT_VALUE;
 
     /**
-     * If this argument is provided, select sites where at most the given number of samples have no-call genotypes.
+     * If this argument is provided, select sites where at most the given fraction of samples have no-call genotypes.
      */
     @Argument(fullName="maxNOCALLfraction", optional=true,
             doc="Maximum fraction of samples with no-call genotypes")
