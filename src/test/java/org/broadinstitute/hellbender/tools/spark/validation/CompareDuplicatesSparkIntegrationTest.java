@@ -9,11 +9,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class CompareDuplicatesIntegrationTest extends CommandLineProgramTest {
+public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "CompareIdenticalDuplicatesProvider")
     public Object[][] makeCompareIdenticalDuplicatesProvider() {
-        final String resourceDir = getTestDataDir() + "/spark/validation/";
+        final String resourceDir = getTestDataDir() + "/validation/";
         final File legacyBam = new File(resourceDir, "tmp.legacy.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam");
         final File gatk4Bam = new File(resourceDir, "tmp.gatk4.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam");
         return new Object[][]{
@@ -24,7 +24,7 @@ public class CompareDuplicatesIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "CompareDifferentDuplicatesProvider")
     public Object[][] makeCompareDifferentDuplicatesProvider() {
-        final String resourceDir = getTestDataDir() + "/spark/validation/";
+        final String resourceDir = getTestDataDir() + "/validation/";
         final File gatk4Bam = new File(resourceDir, "tmp.gatk4.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam");
         final File singleReadBam = new File(resourceDir, "single.read.bam");
         final File ceuTrioBam = new File(resourceDir, "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam");

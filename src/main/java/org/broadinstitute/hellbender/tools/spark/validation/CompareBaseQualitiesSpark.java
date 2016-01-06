@@ -13,19 +13,17 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.validation.CompareMatrix;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.List;
 
 @CommandLineProgramProperties(summary = "Compares two the quality scores of BAMs", oneLineSummary = "Diff qs of the BAMs",
         programGroup = TestSparkProgramGroup.class)
 
-final public class CompareBaseQualities extends GATKSparkTool  {
+final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
     private static final long serialVersionUID = 1L;
 
     @Override
@@ -33,12 +31,6 @@ final public class CompareBaseQualities extends GATKSparkTool  {
 
     @Argument(doc="the second BAM", shortName = "I2", fullName = "input2", optional = false)
     protected String input2;
-
-    @Argument(doc="print matrix", shortName = "pm", fullName = "printMatrix", optional = true)
-    protected boolean printMatrix = false;
-
-    @Argument(doc="print summary", shortName = "ps", fullName = "printSummary", optional = true)
-    protected boolean printSummary = true;
 
     @Argument(doc="summary output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = true)
     protected String outputFilename = null;
@@ -91,26 +83,7 @@ final public class CompareBaseQualities extends GATKSparkTool  {
                 (Function2<CompareMatrix, CompareMatrix, CompareMatrix>) CompareMatrix::add);
 
 
-        if (outputFilename != null) {
-            try (OutputStream os = new FileOutputStream(outputFilename)) {
-                if (printSummary) {
-                    finalMatrix.printSummary(os);
-                }
-                if (printMatrix) {
-                    finalMatrix.print(os);
-                }
-            } catch (IOException e) {
-                throw new GATKException("unable to write to output file: " + outputFilename);
-            }
-        } else {
-            // Print to stdout instead
-            if (printSummary) {
-                finalMatrix.printSummary(System.out);
-            }
-            if (printMatrix) {
-                finalMatrix.print(System.out);
-            }
-        }
+        finalMatrix.printOutput(outputFilename);
 
         if (throwOnDiff && finalMatrix.hasNonDiagonalElements()) {
             throw new UserException("Quality scores from the two BAMs do not match");
