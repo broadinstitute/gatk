@@ -4,6 +4,8 @@ import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
+import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
@@ -263,6 +265,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         final ReadCountCollection preTangentNormalized = convertToReadCountCollection(preTangentNormalizedAsTargetCollection, "SAMPLE1");
         assertPreTangentNormalizedValues(factorNormalized, preTangentNormalized);
         assertBetaHats(preTangentNormalized, betaHats, TEST_PON);
+        assertBetaHatsRobustToOutliers(preTangentNormalized, TEST_PON);
 
         // Test the tangent normalized output
         final TargetCollection<TargetCoverage> tangentNormalizedAsTargetCollection = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(tangentNormalizationOutput);
@@ -348,6 +351,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         assertFactorNormalizedValues(input, factorNormalized);
         assertPreTangentNormalizedValues(factorNormalized, preTangentNormalized);
         assertBetaHats(preTangentNormalized, betaHats, TEST_PON);
+        assertBetaHatsRobustToOutliers(preTangentNormalized, TEST_PON);
         assertTangentNormalized(tangentNormalized, preTangentNormalized, betaHats, TEST_PON);
     }
 
@@ -504,6 +508,43 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                 expected[j][i] -= median;
                 Assert.assertEquals(outCounts.getEntry(j,i),expected[j][i],0.000001," Row " + j + " col " + i);
             }
+        }
+    }
+
+    /**
+     * Asserts that the calculation of beta hats is not significantly affected by zero-coverage outlier counts
+     * We perform this check by randomly setting some coverages to zero in copy ratio space (-infinity in log space).
+     * betaHats imputes 0 in log space (1 in copy ratio space) whenever coverage is below a certain low threshold
+     * and should thus be robust to this type of noise.
+     */
+    private void assertBetaHatsRobustToOutliers(final ReadCountCollection preTangentNormalized, final File ponFile) {
+        try (final HDF5File ponReader = new HDF5File(ponFile)) {
+            final PoN pon = new HDF5PoN(ponReader);
+            final List<String> ponTargets = pon.getPanelTargetNames();
+
+            final RealMatrix input = reorderTargetsToPoNOrder(preTangentNormalized, ponTargets);
+
+            // randomly set some entries to zero in copy-ratio space (-infinity in log space)
+            final Random random = new Random(13);
+            final double noiseProportion = 0.01;
+            final RealMatrix noisyInput = input.copy();
+            noisyInput.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+                @Override
+                public double visit(final int row, final int column, final double value) {
+                    return random.nextDouble() < noiseProportion ? Double.NEGATIVE_INFINITY : value;
+                }
+            });
+
+            final RealMatrix betaHats = pon.betaHats(input, true, NormalizeSomaticReadCounts.EPSILON);
+            final RealMatrix noisyBetaHats = pon.betaHats(noisyInput, true, NormalizeSomaticReadCounts.EPSILON);
+            final RealMatrix difference = betaHats.subtract(noisyBetaHats);
+
+            difference.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
+                @Override
+                public void visit(final int row, int column, double value) {
+                    Assert.assertEquals(value, 0, 0.01);
+                }
+            });
         }
     }
 
