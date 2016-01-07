@@ -3,24 +3,15 @@ package org.broadinstitute.hellbender.tools.spark.transforms.bqsr;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.ReadContextData;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
-import org.broadinstitute.hellbender.engine.ContextShard;
-import org.broadinstitute.hellbender.engine.AuthHolder;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
-import org.broadinstitute.hellbender.utils.recalibration.QuantizationInfo;
-import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
-import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
+import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.Variant;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -72,7 +63,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
         }
         StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
         try ( PrintStream reportStream = new PrintStream(oStream) ) {
-            RecalUtils.outputRecalibrationReport(reportStream, recalArgs, qi, rt, covariates, recalArgs.SORT_BY_ALL_COLUMNS);
+            RecalUtils.outputRecalibrationReport(reportStream, recalArgs, qi, rt, covariates);
         }
     }
 

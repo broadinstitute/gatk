@@ -29,10 +29,6 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     //It makes no sense to run BQSR without sites. so we remove this option.
     public static final boolean RUN_WITHOUT_DBSNP = false;
 
-    //It makes no sense to not sort the report by all columns so we remove this option.
-    public static final boolean SORT_BY_ALL_COLUMNS  = true;
-
-
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base mismatches. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
      */
@@ -142,11 +138,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
 
     public GATKReportTable generateReportTable(final String covariateNames) {
         GATKReportTable argumentsTable;
-        if(SORT_BY_ALL_COLUMNS) {
-            argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2, GATKReportTable.TableSortingWay.SORT_BY_COLUMN);
-        } else {
-            argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2);
-        }
+        argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2, GATKReportTable.TableSortingWay.SORT_BY_COLUMN);
         argumentsTable.addColumn("Argument");
         argumentsTable.addColumn(RecalUtils.ARGUMENT_VALUE_COLUMN_NAME);
         argumentsTable.addRowID("covariate", true);

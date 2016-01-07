@@ -190,7 +190,7 @@ public final class RecalUtils {
         p.close();
     }
 
-    public static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
+    public static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
         List<GATKReportTable> result = new LinkedList<>();
         int rowIndex = 0;
 
@@ -217,7 +217,7 @@ public final class RecalUtils {
 
             final String reportTableName = getReportTableName(recalibrationTables, table);
 
-            final GATKReportTable.TableSortingWay sort = sortByCols ? GATKReportTable.TableSortingWay.SORT_BY_COLUMN : GATKReportTable.TableSortingWay.DO_NOT_SORT;
+            final GATKReportTable.TableSortingWay sort = GATKReportTable.TableSortingWay.SORT_BY_COLUMN;
 
             final GATKReportTable reportTable;
             final boolean addToList;
@@ -299,10 +299,9 @@ public final class RecalUtils {
      * @param quantizationInfo Quantization info
      * @param recalibrationTables Recalibration tables
      * @param covariates The list of requested covariates
-     * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      */
-    public static void outputRecalibrationReport(final PrintStream recalTableStream, final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, boolean sortByCols) {
-        final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, covariates, sortByCols));
+    public static void outputRecalibrationReport(final PrintStream recalTableStream, final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
+        final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(), generateReportTables(recalibrationTables, covariates));
         report.print(recalTableStream);
     }
 
@@ -326,11 +325,10 @@ public final class RecalUtils {
      * @param quantizationInfo Quantization info
      * @param recalibrationTables Recalibration tables
      * @param covariates The list of covariates
-     * @param sortByCols True to use GATKReportTable.TableSortingWay.SORT_BY_COLUMN, false to use GATKReportTable.TableSortingWay.DO_NOT_SORT
      * @return GATK report
      */
-    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates, final boolean sortByCols) {
-        return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(sortByCols), generateReportTables(recalibrationTables, covariates, sortByCols));
+    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
+        return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(), generateReportTables(recalibrationTables, covariates));
     }
 
     /**
