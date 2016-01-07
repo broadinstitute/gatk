@@ -322,6 +322,10 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
         for ( final Locatable knownSite : knownSites ) {
+            if (knownSite.getEnd() <  ReadUtils.getSoftStart(read) || knownSite.getStart() > ReadUtils.getSoftEnd(read)) {
+                // knownSite is outside clipping window for the read, ignore
+                continue;
+            }
             int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), knownSite.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;

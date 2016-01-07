@@ -68,6 +68,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
         final String hg19Ref = ReferenceAPISource.HG19_REF_ID;
         final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
         final String HiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
+        final String hiSeqBam_1read = localResources + "overlappingRead.bam";
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files (FIXME - this file is bogus because uses chr17)
 
@@ -78,6 +79,7 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
                 // See RecalDatum for explanation of why the multiplier is needed.
 
                 // local computation and files (except for the reference)
+                {new BQSRTest(GRCh37Ref, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, " --joinStrategy SHUFFLE", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy SHUFFLE", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
 
                 // Currently disabled because BaseRecalibratorSpark can't handle more than 1 knownSites file: https://github.com/broadinstitute/gatk/issues/1085
@@ -110,9 +112,11 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
         final String GRCh37Ref2bit_chr2021 = b37_2bit_reference_20_21;
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String hiSeqBam_1read = getResourceDir() + "overlappingRead.bam";
 
         return new Object[][]{
                 // input local, computation local.
+                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, "--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST --indels_context_size 4", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST --low_quality_tail 5", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
@@ -135,9 +139,11 @@ public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest
         final String GRCh37Ref_chr2021 = b37_reference_20_21;
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String hiSeqBam_1read = getResourceDir() + "overlappingRead.bam";
 
         return new Object[][]{
                 // input local, computation local.
+                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, "--joinStrategy SHUFFLE", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy SHUFFLE", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy SHUFFLE --indels_context_size 4", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy SHUFFLE --low_quality_tail 5", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
