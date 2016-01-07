@@ -29,6 +29,10 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     //It makes no sense to run BQSR without sites. so we remove this option.
     public static final boolean RUN_WITHOUT_DBSNP = false;
 
+    //It makes no sense to not sort the report by all columns so we remove this option.
+    public static final boolean SORT_BY_ALL_COLUMNS  = true;
+
+
     /**
      * The context covariate will use a context of this size to calculate its covariate value for base mismatches. Must be between 1 and 13 (inclusive). Note that higher values will increase runtime and required java heap size.
      */
@@ -84,12 +88,6 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
      */
     @Argument(fullName = "binary_tag_name", shortName = "bintag", optional = true, doc = "the binary tag covariate name if using it")
     public String BINARY_TAG_NAME = null;
-
-    /*
-     * whether GATK report tables should have rows in sorted order, starting from leftmost column
-     */
-    @Argument(fullName = "sort_by_all_columns", shortName = "sortAllCols", doc = "Sort the rows in the tables of reports", optional = true)
-    public Boolean SORT_BY_ALL_COLUMNS  = false;
 
     @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName="bqsrBAQGOP", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
     public double BAQGOP = BAQ.DEFAULT_GOP;

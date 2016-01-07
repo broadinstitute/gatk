@@ -37,8 +37,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
-                    " -O %s" +
-                    " -sortAllCols";
+                    " -O %s";
         }
 
         @Override
@@ -73,7 +72,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                 // See MathUtilsUniTest.testAddDoubles for a demonstration how that can change the results.
                 // See RecalDatum for explanation of why the multiplier is needed.
 
-                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--sort_by_all_columns", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--indels_context_size 4",  getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--low_quality_tail 5",     getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--quantizing_levels 6",    getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
@@ -108,14 +107,14 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final File actualHiSeqBam_recalibrated_chr17 = createTempFile("actual.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = "-R " + hg18Reference + " --knownSites " + dbSNPb37_chr17 + " -I " + HiSeqBam_chr17 + " -O " + tablePre + " --sort_by_all_columns true";
+        final String argPre = "-R " + hg18Reference + " --knownSites " + dbSNPb37_chr17 + " -I " + HiSeqBam_chr17 + " -O " + tablePre + " ";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argPre));
 
         final String argApply = "-I " + HiSeqBam_chr17 + " --bqsr_recal_file " + tablePre+ " -O " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath();
         new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = "-R " + hg18Reference + " --knownSites " + dbSNPb37_chr17 + " -I " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath() + " -O " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true";
+        final String argsPost = "-R " + hg18Reference + " --knownSites " + dbSNPb37_chr17 + " -I " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath() + " -O " + actualTablePost.getAbsolutePath() + " ";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argsPost));
 
         final File expectedHiSeqBam_recalibrated_chr17 = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");
