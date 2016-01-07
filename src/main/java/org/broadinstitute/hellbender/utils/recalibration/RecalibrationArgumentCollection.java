@@ -85,12 +85,6 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     @Argument(fullName = "binary_tag_name", shortName = "bintag", optional = true, doc = "the binary tag covariate name if using it")
     public String BINARY_TAG_NAME = null;
 
-    /*
-     * whether GATK report tables should have rows in sorted order, starting from leftmost column
-     */
-    @Argument(fullName = "sort_by_all_columns", shortName = "sortAllCols", doc = "Sort the rows in the tables of reports", optional = true)
-    public Boolean SORT_BY_ALL_COLUMNS  = false;
-
     @Argument(fullName = "bqsrBAQGapOpenPenalty", shortName="bqsrBAQGOP", doc="BQSR BAQ gap open penalty (Phred Scaled).  Default value is 40.  30 is perhaps better for whole genome call sets", optional = true)
     public double BAQGOP = BAQ.DEFAULT_GOP;
 
@@ -144,11 +138,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
 
     public GATKReportTable generateReportTable(final String covariateNames) {
         GATKReportTable argumentsTable;
-        if(SORT_BY_ALL_COLUMNS) {
-            argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2, GATKReportTable.TableSortingWay.SORT_BY_COLUMN);
-        } else {
-            argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2);
-        }
+        argumentsTable = new GATKReportTable("Arguments", "Recalibration argument collection values used in this run", 2, GATKReportTable.TableSortingWay.SORT_BY_COLUMN);
         argumentsTable.addColumn("Argument");
         argumentsTable.addColumn(RecalUtils.ARGUMENT_VALUE_COLUMN_NAME);
         argumentsTable.addRowID("covariate", true);

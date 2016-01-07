@@ -195,7 +195,7 @@ public final class BaseRecalibrator extends ReadWalker {
 
     private void generateReport() {
         try ( PrintStream recalTableStream = new PrintStream(recalTableFile) ) {
-            RecalUtils.outputRecalibrationReport(recalTableStream, recalArgs, quantizationInfo, recalibrationEngine.getFinalRecalibrationTables(), recalibrationEngine.getCovariates(), recalArgs.SORT_BY_ALL_COLUMNS);
+            RecalUtils.outputRecalibrationReport(recalTableStream, recalArgs, quantizationInfo, recalibrationEngine.getFinalRecalibrationTables(), recalibrationEngine.getCovariates());
         }
         catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(recalTableFile, e);

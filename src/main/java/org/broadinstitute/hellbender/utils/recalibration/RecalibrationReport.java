@@ -323,9 +323,6 @@ public final class RecalibrationReport {
 
             else if (argument.equals("binary_tag_name"))
                 RAC.BINARY_TAG_NAME = (value == null) ? null : (String) value;
-
-            else if (argument.equals("sort_by_all_columns"))
-                RAC.SORT_BY_ALL_COLUMNS = decodeBoolean(value);
         }
 
         return RAC;
@@ -358,7 +355,7 @@ public final class RecalibrationReport {
      * @return newly created recalibration report
      */
     public GATKReport createGATKReport() {
-        return RecalUtils.createRecalibrationGATKReport(argumentTable, quantizationInfo, recalibrationTables, covariates, RAC.SORT_BY_ALL_COLUMNS);
+        return RecalUtils.createRecalibrationGATKReport(argumentTable, quantizationInfo, recalibrationTables, covariates);
     }
 
     public RecalibrationArgumentCollection getRAC() {

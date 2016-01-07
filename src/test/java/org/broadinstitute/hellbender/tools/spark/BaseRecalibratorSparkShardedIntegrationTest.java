@@ -40,8 +40,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
                     " -I " + bam +
                     " " + args +
                     (knownSites.isEmpty() ? "": " -knownSites " + knownSites) +
-                    " -O %s" +
-                    " -sortAllCols";
+                    " -O %s";
         }
 
         public String getCommandLine() {
@@ -138,7 +137,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
         final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + " -knownSites " + dbSNPb37 + " -I " + HiSeqBam
-                + " -O " + tablePre + " --sort_by_all_columns true" + " --apiKey " + getGCPTestApiKey();
+                + " -O " + tablePre + " " + " --apiKey " + getGCPTestApiKey();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
         final String argApply = "-I " + HiSeqBam + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated.getAbsolutePath() + " --apiKey " + getGCPTestApiKey();
@@ -146,7 +145,7 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
         final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + " -knownSites " + dbSNPb37 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
-                + " -O " + actualTablePost.getAbsolutePath() + " --sort_by_all_columns true" + " --apiKey " + getGCPTestApiKey();
+                + " -O " + actualTablePost.getAbsolutePath() + " " + " --apiKey " + getGCPTestApiKey();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
         final File expectedHiSeqBam_recalibrated = new File(resourceDir + "expected.NA12878.chr17_69k_70k.dictFix.recalibrated.DIQ.bam");

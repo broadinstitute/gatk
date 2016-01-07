@@ -7,8 +7,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
@@ -49,7 +47,6 @@ public final class BaseRecalibratorSparkFn {
         final QuantizationInfo quantizationInfo = new QuantizationInfo(combinedTables, recalArgs.QUANTIZING_LEVELS);
 
         final StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
-        final boolean sortByCols = recalArgs.SORT_BY_ALL_COLUMNS;
-        return RecalUtils.createRecalibrationReport(recalArgs.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(sortByCols), RecalUtils.generateReportTables(combinedTables, covariates, sortByCols));
+        return RecalUtils.createRecalibrationReport(recalArgs.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(), RecalUtils.generateReportTables(combinedTables, covariates));
     }
 }
