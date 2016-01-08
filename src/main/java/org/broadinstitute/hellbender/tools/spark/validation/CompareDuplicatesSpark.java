@@ -34,7 +34,7 @@ import java.util.Set;
 @CommandLineProgramProperties(summary = "Compares two BAMs for duplicates", oneLineSummary = "Compares two BAMs for duplicates",
         programGroup = TestSparkProgramGroup.class)
 
-public final class CompareDuplicates extends GATKSparkTool {
+public final class CompareDuplicatesSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @Override
