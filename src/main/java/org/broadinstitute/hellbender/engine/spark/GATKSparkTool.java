@@ -13,12 +13,16 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
 import java.util.List;
@@ -63,12 +67,20 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
     @Argument(doc = "maximum number of bytes to read from a file into each partition of reads. " +
-            "Setting this higher will result in fewer partitions. Note that this will not be equal to the size of the partition in memory",
+            "Setting this higher will result in fewer partitions. Note that this will not be equal to the size of the partition in memory. " +
+            "Defaults to 0, which uses the default split size (determined by the Hadoop input format, typically the size of one HDFS block).",
             fullName = "bamPartitionSize", shortName = "bps", optional = true)
-    protected long bamPartitionSplitSize = ReadsSparkSource.DEFAULT_SPLIT_SIZE;
+    protected long bamPartitionSplitSize = 0;
 
     @Argument(fullName = "disableSequenceDictionaryValidation", shortName = "disableSequenceDictionaryValidation", doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
     private boolean disableSequenceDictionaryValidation = false;
+
+    @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
+    protected boolean shardedOutput = false;
+
+    @Argument(doc="For tools that shuffle data or write an output, sets the number of reducers. Defaults to 0, which gives one partition per 10MB of input.",
+            shortName = "numReducers", fullName = "numReducers", optional = true)
+    protected int numReducers = 0;
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
@@ -209,6 +221,47 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
             return readsSource.getParallelReads(readInput, refPath, intervals, bamPartitionSplitSize);
         }
+    }
+
+    /**
+     * Writes the reads from a {@link JavaRDD} to an output file.
+     * @param ctx the JavaSparkContext to write.
+     * @param outputFile path to the output bam.
+     * @param reads reads to write.
+     */
+    public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads) {
+        try {
+            ReadsSparkSink.writeReads(ctx, outputFile, reads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, getRecommendedNumReducers());
+        } catch (IOException e) {
+            throw new GATKException("unable to write bam: " + e);
+        }
+    }
+
+    /**
+     * Return the recommended number of reducers for a pipeline processing the reads. The number is
+     * calculated by finding the total size (in bytes) of all the files in the input path, then
+     * dividing by the target split size (determined by {@link #getTargetPartitionSize()}.
+     * Subclasses that want to control the recommended number of reducers should typically override
+     * {@link #getTargetPartitionSize()} rather than this method.
+     * @return the recommended number of reducers
+     */
+    public int getRecommendedNumReducers() {
+        if (numReducers != 0) {
+            return numReducers;
+        }
+        return 1 + (int) (BucketUtils.dirSize(getReadSourceName(), null) / getTargetPartitionSize());
+    }
+
+    /**
+     * Returns the size of each input partition (in bytes) that is used to determine the recommended number of reducers
+     * for running a processing pipeline. The larger the number of reducers used, the smaller the amount of memory
+     * each one needs.
+     *
+     * Defaults to 10MB, but subclasses can override to change the value. Memory intensive pipelines should decrease
+     * the partition size, while pipelines with lighter memory requirements may increase the partition size.
+     */
+    public int getTargetPartitionSize() {
+        return 10 * 1024 * 1024; // 10MB
     }
 
     /**

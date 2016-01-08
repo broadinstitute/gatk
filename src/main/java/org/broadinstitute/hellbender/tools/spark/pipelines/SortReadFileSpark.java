@@ -10,14 +10,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
-
-import java.io.IOException;
 
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",
@@ -31,10 +26,6 @@ public final class SortReadFileSpark extends GATKSparkTool {
     @Argument(doc="the output file path", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String outputFile;
 
-    @Argument(doc="The output parallelism, sets the number of reducers. Defaults to the number of partitions in the input.",
-            shortName = "P", fullName = "parallelism", optional = true)
-    protected int parallelism = 0;
-
     @Override
     public ReadFilter makeReadFilter() {
         return ReadFilterLibrary.ALLOW_ALL_READS;
@@ -43,23 +34,21 @@ public final class SortReadFileSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
-        if (parallelism == 0) { // use the number of partitions in the input
-            parallelism = reads.partitions().size();
-        }
-        System.out.println("Using parallelism of " + parallelism);
+        int numReducers = getRecommendedNumReducers();
+        logger.info("Using %s reducers" + numReducers);
 
         final SAMFileHeader readsHeader = getHeaderForReads();
         ReadCoordinateComparator comparator = new ReadCoordinateComparator(readsHeader);
-        JavaRDD<GATKRead> sortedReads = reads
-                .mapToPair(read -> new Tuple2<>(read, null))
-                .sortByKey(comparator, true, parallelism)
-                .keys();
-        try {
-            readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            ReadsSparkSink.writeReads(
-                    ctx, outputFile, sortedReads, readsHeader, parallelism == 1 ? ReadsWriteFormat.SINGLE : ReadsWriteFormat.SHARDED);
-        } catch (IOException e) {
-            throw new GATKException("unable to write bam: " + e);
+        JavaRDD<GATKRead> sortedReads;
+        if (shardedOutput) {
+            sortedReads = reads
+                    .mapToPair(read -> new Tuple2<>(read, null))
+                    .sortByKey(comparator, true, numReducers)
+                    .keys();
+        } else {
+            sortedReads = reads; // sorting is done by writeReads below
         }
+        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        writeReads(ctx, outputFile, sortedReads);
     }
 }

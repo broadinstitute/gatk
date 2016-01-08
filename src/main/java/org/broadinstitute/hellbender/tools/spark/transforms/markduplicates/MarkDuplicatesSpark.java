@@ -12,16 +12,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
-
-import java.io.IOException;
 
 @CommandLineProgramProperties(
         summary ="Marks duplicates on spark",
@@ -47,26 +42,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
-    @Argument(doc = "If specified, shard the output bam", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
-    private boolean shardedOutput = false;
-
-    @Argument(doc="The output parallelism, sets the number of reducers. Defaults to the number of partitions in the input.",
-            shortName = "P", fullName = "parallelism", optional = true)
-    protected int parallelism = 0;
-
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
-                                         final OpticalDuplicateFinder opticalDuplicateFinder) {
-        return mark(reads, header, scoringStrategy, opticalDuplicateFinder, reads.partitions().size());
-    }
-
-    public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
-                                         final MarkDuplicatesScoringStrategy scoringStrategy,
-                                         final OpticalDuplicateFinder opticalDuplicateFinder, final int parallelism) {
+                                         final OpticalDuplicateFinder opticalDuplicateFinder, final int numReducers) {
 
         JavaRDD<GATKRead> primaryReads = reads.filter(v1 -> !ReadUtils.isNonPrimary(v1));
         JavaRDD<GATKRead> nonPrimaryReads = reads.filter(v1 -> ReadUtils.isNonPrimary(v1));
-        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, scoringStrategy, opticalDuplicateFinder, primaryReads, parallelism);
+        JavaRDD<GATKRead> primaryReadsTransformed = MarkDuplicatesSparkUtils.transformReads(header, scoringStrategy, opticalDuplicateFinder, primaryReads, numReducers);
 
         return primaryReadsTransformed.union(nonPrimaryReads);
     }
@@ -74,13 +56,10 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
-        if (parallelism == 0) { // use the number of partitions in the input
-            parallelism = reads.partitions().size();
-        }
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
 
-        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, parallelism);
+        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, getHeaderForReads(), duplicatesScoringStrategy, finder, getRecommendedNumReducers());
 
         if (metricsFile != null) {
             final JavaPairRDD<String, DuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(getHeaderForReads(), finalReadsForMetrics);
@@ -89,12 +68,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
 
         final JavaRDD<GATKRead> finalReads = cleanupTemporaryAttributes(finalReadsForMetrics);
-
-        try {
-            ReadsSparkSink.writeReads(ctx, output, finalReads, getHeaderForReads(), shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
-        } catch (final IOException e) {
-            throw new GATKException("unable to write bam: " + e);
-        }
+        writeReads(ctx, output, finalReads);
     }
 
 

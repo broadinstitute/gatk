@@ -40,7 +40,6 @@ import java.util.List;
 public final class ReadsSparkSource implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final String HADOOP_PART_PREFIX = "part-";
-    public static final int DEFAULT_SPLIT_SIZE = 10485760;
 
     private transient final JavaSparkContext ctx;
     public ReadsSparkSource(JavaSparkContext ctx) {
@@ -57,7 +56,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals) {
-        return getParallelReads(readFileName, referencePath, intervals, DEFAULT_SPLIT_SIZE);
+        return getParallelReads(readFileName, referencePath, intervals, 0);
     }
 
     /**
@@ -66,13 +65,15 @@ public final class ReadsSparkSource implements Serializable {
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @param intervals intervals of reads to include.
-     * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions
+     * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
+     *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals, long splitSize) {
         final Configuration conf = new Configuration();
-        // reads take more space in memory than on disk so we need to limit the split size
-        conf.set("mapreduce.input.fileinputformat.split.maxsize", Long.toString(splitSize));
+        if (splitSize > 0) {
+            conf.set("mapreduce.input.fileinputformat.split.maxsize", Long.toString(splitSize));
+        }
 
         final JavaPairRDD<LongWritable, SAMRecordWritable> rdd2;
 
@@ -116,7 +117,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath) {
-        return getParallelReads(readFileName, referencePath, DEFAULT_SPLIT_SIZE);
+        return getParallelReads(readFileName, referencePath, 0);
     }
 
     /**
@@ -124,7 +125,8 @@ public final class ReadsSparkSource implements Serializable {
      * i.e., file:///path/to/bam.bam. This excludes unmapped reads.
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
-     * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions
+     * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
+     *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, int splitSize) {

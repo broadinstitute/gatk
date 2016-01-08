@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.UUID;
 
 /**
@@ -90,6 +91,22 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
+        writeReads(ctx, outputFile, reads, header, format, 0);
+    }
+
+    /**
+     * writeReads writes rddReads to outputFile with header as the file header.
+     * @param ctx the JavaSparkContext to write.
+     * @param outputFile path to the output bam.
+     * @param reads reads to write.
+     * @param header the header to put at the top of the files
+     * @param format should the output be a single file, sharded, ADAM, etc.
+     * @param numReducers the number of reducers to use when writing a single file. A value of zero indicates that the default
+     *                    should be used.
+     */
+    public static void writeReads(
+            final JavaSparkContext ctx, final String outputFile, final JavaRDD<GATKRead> reads,
+            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers) throws IOException {
 
         if (IOUtils.isCramFileName(outputFile)) {
             throw new UserException("Writing CRAM files in Spark tools is not supported yet.");
@@ -103,7 +120,7 @@ public final class ReadsSparkSink {
 
         if (format == ReadsWriteFormat.SINGLE) {
             header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            writeReadsSingle(ctx, outputFile, samReads, header);
+            writeReadsSingle(ctx, outputFile, samReads, header, numReducers);
         } else if (format == ReadsWriteFormat.SHARDED) {
             writeReadsSharded(ctx, outputFile, samReads, header);
         } else if (format == ReadsWriteFormat.ADAM) {
@@ -161,7 +178,7 @@ public final class ReadsSparkSink {
 
     private static void writeReadsSingle(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
-            final SAMFileHeader header) throws IOException {
+            final SAMFileHeader header, final int numReducers) throws IOException {
         // Set the header on the main thread.
         SparkBAMOutputFormat.setHeader(header);
 
@@ -170,8 +187,9 @@ public final class ReadsSparkSink {
         final JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final JavaPairRDD<SAMRecord, Void> out =
-                rddReadPairs.sortByKey(new HeaderlessSAMRecordCoordinateComparator(header));
+        Comparator<SAMRecord> comparator = new HeaderlessSAMRecordCoordinateComparator(header);
+        final JavaPairRDD<SAMRecord, Void> out = numReducers > 0 ?
+                rddReadPairs.sortByKey(comparator, true, numReducers) : rddReadPairs.sortByKey(comparator);
 
         // MyOutputFormat is a static class, so we need to copy the header to each worker then call
         // MyOutputFormat.setHeader.
