@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.tribble.*;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import htsjdk.tribble.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
+import org.broadinstitute.hellbender.utils.IndexUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.io.IOException;
@@ -384,6 +387,27 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         this.codec = codec;
         this.name = name;
         this.hasIndex = featureReader.hasIndex(); // Cache this result, as it's fairly expensive to determine
+    }
+
+    /**
+     * Returns the sequence dictionary for this source of Features.
+     * Uses the dictionary from the VCF header (if present) for variant inputs,
+     * otherwise attempts to create a sequence dictionary from the index file (if present).
+     * Returns null if no dictionary could be created from either the header or the index.
+     */
+    public SAMSequenceDictionary getSequenceDictionary() {
+        SAMSequenceDictionary dict = null;
+        final Object header = getHeader();
+        if (header instanceof VCFHeader) {
+            dict = ((VCFHeader) header).getSequenceDictionary();
+        }
+        if (dict != null && !dict.isEmpty()) {
+            return dict;
+        }
+        if (hasIndex) {
+            return IndexUtils.createSequenceDictionaryFromFeatureIndex(featureFile);
+        }
+        return null;
     }
 
     /**

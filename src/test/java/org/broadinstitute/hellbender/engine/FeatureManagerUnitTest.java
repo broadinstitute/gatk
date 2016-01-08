@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.bed.BEDCodec;
@@ -185,6 +187,22 @@ public final class FeatureManagerUnitTest extends BaseTest {
 
         Assert.assertEquals(vcFeatures.size(), 14, "Wrong number of Features returned from VariantContext test Feature file");
         Assert.assertEquals(bedFeatures.size(), 1, "Wrong number of Features returned from BED test Feature file");
+    }
+
+
+    @Test
+    public void testGetAllSequenceDictionaries() {
+        ValidFeatureArgumentSource toolInstance = new ValidFeatureArgumentSource();
+
+        // Initialize two of the FeatureInput fields as they would be initialized by the argument-parsing
+        // system to simulate a run of the tool with two FeatureInputs.
+        toolInstance.variantContextFeatureInput = new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test.vcf");
+        toolInstance.bedListFeatureInput.add(new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "minimal_bed_file.bed"));
+
+        FeatureManager manager = new FeatureManager(toolInstance);
+        final List<SAMSequenceDictionary> dictionaries = manager.getAllSequenceDictionaries();
+        Assert.assertEquals(dictionaries.size(), 2);
+        Assert.assertEquals(dictionaries.stream().map(dict -> dict.size()).collect(Collectors.toSet()), Sets.newHashSet(1, 4));
     }
 
     @Test
