@@ -1,11 +1,9 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -94,17 +92,20 @@ public final class IntegrationTestSpec {
             tmpFiles.add(fl);
         }
 
-        final String args = String.format(getArgs(), tmpFiles.toArray());
+        final String preFormattedArgs = getArgs();
+        final String formattedArgs = String.format(preFormattedArgs, tmpFiles.toArray());
         System.out.println(StringUtils.repeat('-', 80));
 
         if (expectsException()) {
             // this branch handles the case were we are testing that a walker will fail as expected
-            executeTest(name, test, null, null, tmpFiles, args, getExpectedException());
+            executeTest(name, test, null, null, tmpFiles, formattedArgs, getExpectedException());
         } else {
-            List<String> expectedFileNames = new ArrayList<>();
-            expectedFileNames.addAll(expectedFileNames());
+            final List<String> expectedFileNames = new ArrayList<>(expectedFileNames());
+            if (!expectedFileNames.isEmpty() && preFormattedArgs.equals(formattedArgs)){
+                throw new GATKException("Incorrect test specification - you're expecting " + expectedFileNames.size() + " file(s) the specified arguments do not contain the same number of \"%s\" placeholders");
+            }
 
-            executeTest(name, test, null, expectedFileNames, tmpFiles, args, null);
+            executeTest(name, test, null, expectedFileNames, tmpFiles, formattedArgs, null);
         }
     }
 
