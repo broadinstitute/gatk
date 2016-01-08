@@ -55,6 +55,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String hg18Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
         final String b36Reference = getResourceDir() + "human_b36_both.chr1_1k.fasta";
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
+        final String hiSeqBam_1read = getResourceDir() + "overlappingRead.bam";
         final String HiSeqBam_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
         final String HiSeqCram_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.cram";
         final String trickyBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.bam";
@@ -63,7 +64,6 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String origQualsBam_chr1 = getResourceDir() + "originalQuals.1kg.chr1.1-1K.1RG.dictFix.bam";
         final String dbSNPb36_chr1 = getResourceDir() + "dbsnp_132.b36.excluding_sites_after_129.chr1_1k.vcf";
         final String GRCh37Ref_chr2021 = "src/test/resources/large/human_g1k_v37.20.21.fasta";
-
         final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
 
         return new Object[][]{
@@ -73,6 +73,8 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                 // See RecalDatum for explanation of why the multiplier is needed.
 
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
+
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--indels_context_size 4",  getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--low_quality_tail 5",     getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--quantizing_levels 6",    getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
