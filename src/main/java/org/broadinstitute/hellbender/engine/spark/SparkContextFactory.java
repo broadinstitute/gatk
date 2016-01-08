@@ -25,7 +25,10 @@ public final class SparkContextFactory {
      */
     public static final Map<String, String> MANDATORY_PROPERTIES = ImmutableMap.<String,String>builder()
             .put("spark.serializer", KryoSerializer.class.getCanonicalName())
-            .put("spark.kryo.registrator", "org.broadinstitute.hellbender.engine.spark.GATKRegistrator")
+            .put("spark.kryo.registrator", GATKRegistrator.class.getCanonicalName())
+            // remap the Hadoop FS implementation for file:// URIs to avoid writing CRC files for local files
+            // note that we don't use Hadoop's RawLocalFileSystem since it doesn't extend LocalFileSystem
+            .put("spark.hadoop.fs.file.impl", NonChecksumLocalFileSystem.class.getCanonicalName())
             .build();
 
     /**
@@ -44,6 +47,7 @@ public final class SparkContextFactory {
     public static final Map<String, String> DEFAULT_TEST_PROPERTIES = ImmutableMap.<String, String>builder()
             .put("spark.ui.enabled", Boolean.toString(SPARK_DEBUG_ENABLED))
             .put("spark.kryoserializer.buffer.max", "256m")
+            .put("spark.hadoop.fs.file.impl.disable.cache", "true") // so NonChecksumLocalFileSystem is not cached between tests
             .build();
 
     private static boolean testContextEnabled;
