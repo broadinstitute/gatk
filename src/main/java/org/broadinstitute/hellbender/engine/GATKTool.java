@@ -162,7 +162,7 @@ public abstract class GATKTool extends CommandLineProgram {
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
             if ( sequenceDictionary == null ) {
-                throw new UserException("We currently require a sequence dictionary (from a reference or source of reads) " +
+                throw new UserException("We currently require a sequence dictionary (from a reference, a source of reads, or a source of variants) " +
                                         "to process intervals. This restriction may be removed in the future.");
             }
 
@@ -251,16 +251,33 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Returns the "best available" sequence dictionary. This will be the reference sequence dictionary if
-     * there is a reference, otherwise it will be the sequence dictionary constructed from the reads if
-     * there are reads, otherwise it will be null.
+     * Returns the "best available" sequence dictionary or {@code null} if there is no single best dictionary.
+     *
+     * The algorithm for selecting the best dictionary is as follows:
+     * 1) if there is a reference, then the best dictionary is the reference sequence dictionary
+     * 2) Otherwise, if there are reads, then the best dictionary is the sequence dictionary constructed from the reads.
+     * 3) Otherwise, if there are features and the feature data source has only one dictionary, then that one is the best dictionary.
+     * 4) Otherwise, the result is {@code null}.
      *
      * TODO: check interval file(s) as well for a sequence dictionary
      *
-     * @return best available sequence dictionary given our inputs
+     * Subclasses may override if they prefer a different algorithm.
+     *
+     * @return best available sequence dictionary given our inputs or {@code null} if no one dictionary is the best one.
      */
-    public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
-        return reference != null ? reference.getSequenceDictionary() : (reads != null ? reads.getSequenceDictionary() : null);
+    public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+        if (hasReference()){
+            return reference.getSequenceDictionary();
+        } else if (hasReads()){
+            return reads.getSequenceDictionary();
+        } else if (hasFeatures()){
+            final List<SAMSequenceDictionary> dictionaries = features.getVariantSequenceDictionaries();
+            //If there is just one, it clearly is the best. Otherwise, noone is best.
+            if (dictionaries.size() == 1){
+                return dictionaries.get(0);
+            }
+        }
+        return null;
     }
 
     /**
@@ -307,9 +324,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeReads(); // Must be initialized after reference, in case we are dealing with CRAM and a reference is required
 
-        initializeIntervals(); // Must be initialized after reference and reads, since intervals currently require a sequence dictionary from another data source
-
         initializeFeatures();
+
+        initializeIntervals(); // Must be initialized after reference, reads and features, since intervals currently require a sequence dictionary from another data source
 
         if ( ! disableSequenceDictionaryValidation ) {
             validateSequenceDictionaries();
