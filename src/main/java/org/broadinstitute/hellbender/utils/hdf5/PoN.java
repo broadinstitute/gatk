@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
@@ -220,20 +222,17 @@ public interface PoN {
         if (Double.isNaN(epsilon) || epsilon <= 0) {
             throw new IllegalArgumentException(String.format("invalid epsilon value must be > 0: %f", epsilon));
         }
+        final double targetThreshold = (Math.log(epsilon) / Math.log(2)) + 1;
         final RealMatrix normalsInverse = useReduced ? getReducedPanelPInverseCounts() : getLogNormalizedPInverseCounts();
-        final double relevantTargetThreshold = (Math.log(epsilon) / Math.log(2)) + 1;
-        final RealMatrix normalsInverseTranspose = normalsInverse.transpose();
-        final RealMatrix result = new Array2DRowRealMatrix(normalsInverse.getRowDimension(),input.getColumnDimension());
-        final int[] allNormalSampleIndices = IntStream.range(0, normalsInverseTranspose.getColumnDimension()).toArray();
-        for (int i = 0; i < input.getColumnDimension(); i++) {
-            final RealMatrix columnValues = input.getColumnMatrix(i).transpose();
-            final int[] relevantTargets = IntStream.range(0, columnValues.getColumnDimension()).filter(j -> columnValues.getEntry(0,j) > relevantTargetThreshold).toArray();
-            final RealMatrix relevantColumnValues = relevantTargets.length == columnValues.getColumnDimension() ? columnValues : columnValues.getSubMatrix(new int[] { 0 }, relevantTargets);
-            final RealMatrix relevantNormalsInverseTranspose = relevantTargets.length == columnValues.getColumnDimension() ? normalsInverseTranspose : normalsInverseTranspose.getSubMatrix(relevantTargets, allNormalSampleIndices );
-            final RealMatrix columnBetaHats = relevantColumnValues.multiply(relevantNormalsInverseTranspose);
-            result.setColumnMatrix(i, columnBetaHats.transpose());
-        }
-        return result;
+
+        // copy case samples in order to mask targets in-place and mask (set to zero) targets with coverage below threshold
+        final RealMatrix maskedInput = input.copy();
+        maskedInput.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) { return value > targetThreshold ? value : 0; }
+        });
+
+        return normalsInverse.multiply(maskedInput);
     }
 
     /**
