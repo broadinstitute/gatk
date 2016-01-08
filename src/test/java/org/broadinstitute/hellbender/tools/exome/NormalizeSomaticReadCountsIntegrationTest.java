@@ -535,8 +535,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                 }
             });
 
-            final RealMatrix betaHats = pon.betaHats(input, true, NormalizeSomaticReadCounts.EPSILON);
-            final RealMatrix noisyBetaHats = pon.betaHats(noisyInput, true, NormalizeSomaticReadCounts.EPSILON);
+            final RealMatrix betaHats = pon.betaHats(input, true, TangentNormalizer.EPSILON);
+            final RealMatrix noisyBetaHats = pon.betaHats(noisyInput, true, TangentNormalizer.EPSILON);
             final RealMatrix difference = betaHats.subtract(noisyBetaHats);
 
             difference.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
