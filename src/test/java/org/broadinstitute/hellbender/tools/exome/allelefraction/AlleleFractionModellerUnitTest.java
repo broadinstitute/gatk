@@ -8,10 +8,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.log;
@@ -146,34 +143,12 @@ public final class AlleleFractionModellerUnitTest {
         Assert.assertEquals(lk3 - lk2, log(1 - pi3) - log(1 - pi2), EPSILON);
     }
 
-    //when read counts are very high the posterior on lambda ought to be very tight, so we can check moments analytically
-    @Test
-    public void testBiasPosteriorMoment() {
-        final double pi = 0.01;
-
-        for (final double f : Arrays.asList(0.1, 0.2, 0.3)) {
-            for (final double meanBias : Arrays.asList(0.8, 0.9, 1.0, 1.1, 1.2)) {
-                final double biasVariance = 0.01;  //prior average bias agrees with the MLE
-                final AlleleFractionState state = AlleleFractionModeller.makeSingleSegmentState(meanBias, biasVariance, pi, f);
-                for (final double n : Arrays.asList(1000, 2000, 3000)) {
-                    final int a = (int) (n * f / (f + (1 - f) * meanBias));
-                    final int r = (int) (n - a);
-                    final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                    final double actualMean = AlleleFractionModeller.biasPosteriorMoment(state, 0, count, AlleleFractionIndicator.ALT_MINOR, 1);
-                    final double actualMeanSquare = AlleleFractionModeller.biasPosteriorMoment(state, 0, count, AlleleFractionIndicator.ALT_MINOR, 2);
-                    Assert.assertEquals(actualMean, meanBias, 1e-2);
-                    Assert.assertEquals(actualMeanSquare, meanBias*meanBias, 5e-2);
-                }
-            }
-        }
-    }
-
     @Test
     public void testMCMC() {
         final int numSamples = 300;
         final int numBurnIn = 100;
 
-        final double averageHetsPerSegment = 20;
+        final double averageHetsPerSegment = 50;
         final int numSegments = 100;
         final int averageDepth = 50;
 
@@ -183,10 +158,10 @@ public final class AlleleFractionModellerUnitTest {
 
         // note: the following tolerances could actually be made much smaller if we used more segments and/or
         // more hets -- most of the error is the sampling error of a finite simulated data set, not numerical error of MCMC
-        final double minorFractionTolerance = 0.03;
-        final double meanBiasTolerance = 0.03;
-        final double biasVarianceTolerance = 0.04;
-        final double outlierProbabilityTolerance = 0.03;
+        final double minorFractionTolerance = 0.02;
+        final double meanBiasTolerance = 0.02;
+        final double biasVarianceTolerance = 0.01;
+        final double outlierProbabilityTolerance = 0.02;
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments,
                 averageDepth, meanBias, biasVariance, outlierProbability);
 
@@ -263,13 +238,13 @@ public final class AlleleFractionModellerUnitTest {
         final AlleleFractionData DATA = new AlleleFractionData(SIMULATED_DATA.getSegmentedModel());
 
         final AlleleFractionModeller.MeanBiasSampler meanBiasSampler =
-                new AlleleFractionModeller.MeanBiasSampler(INITIAL_STATE.meanBias());
+                new AlleleFractionModeller.MeanBiasSampler(INITIAL_STATE.meanBias(), 0.01);
         final AlleleFractionModeller.BiasVarianceSampler biasVarianceSampler =
-                new AlleleFractionModeller.BiasVarianceSampler(INITIAL_STATE.biasVariance());
+                new AlleleFractionModeller.BiasVarianceSampler(INITIAL_STATE.biasVariance(), 0.01);
         final AlleleFractionModeller.OutlierProbabilitySampler outlierProbabilitySampler =
-                new AlleleFractionModeller.OutlierProbabilitySampler(INITIAL_STATE.outlierProbability());
+                new AlleleFractionModeller.OutlierProbabilitySampler(INITIAL_STATE.outlierProbability(), 0.01);
         final AlleleFractionModeller.MinorFractionsSampler minorFractionsSampler =
-                new AlleleFractionModeller.MinorFractionsSampler(INITIAL_STATE.minorFractions());
+                new AlleleFractionModeller.MinorFractionsSampler(INITIAL_STATE.minorFractions(), Collections.nCopies(numSegments,0.01));
 
         final AlleleFractionState state = INITIAL_STATE.copy(AlleleFractionState.class);
         final List<Double> meanBiasSamples = new ArrayList<>();

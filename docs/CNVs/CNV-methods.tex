@@ -212,16 +212,11 @@ p(f,\alpha, \beta, \pi) \propto \prod_j
  \label{collapsed}
 \end{equation}
 %
-Integrating out the latent variables removes the strongest correlations from the model -- intuitively, $f$ should not be too sensitive to $\alpha$ and $\beta$, for example -- and significantly improves mixing.  The exception is $\alpha$ and $\beta$, since adjusting one with the other fixed changes the mean of the prior on $\lambda$.  Thus we reparameterize in terms of $\mu$ and $\beta$, where $\alpha = \mu \beta$ ($\mu$ is the mean of ${\rm Gamma}(\alpha, \beta)$.  Due to the weak correlations our MCMC method does not need to be very sophisticated.  We choose to sample each variable with one-dimensional adaptive Metropolis, tuning the proposal step size to achieve some reasonable acceptance rate like $0.4$ or so.  Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACS_MCMC}:
+Integrating out the latent variables removes the strongest correlations from the model -- intuitively, $f$ should not be too sensitive to $\alpha$ and $\beta$, for example -- and significantly improves mixing.  The exception is $\alpha$ and $\beta$, since adjusting one with the other fixed changes the mean of the prior on $\lambda$.  Thus we reparameterize in terms of $\mu$ and $\sigma^2$, the mean and variance of the common gamma distribution of biases, where $\alpha = \mu^2 / \sigma^2$ and $\beta = \mu / \sigma^2$.  Due to the weak correlations our MCMC method does not need to be very sophisticated.  We choose to sample each variable with one-dimensional adaptive Metropolis, tuning the proposal step size to achieve some reasonable acceptance rate like $0.4$ or so.  Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACS_MCMC}:
 
 \begin{algorithm}
 \begin{algorithmic}[1]
-\ForAll{segments $s$}
-	\State Initialize $f_s = \sum_{j \in s} {\rm min}(a_j, r_j) / \sum_{j \in s} n_j$
-\EndFor
-\State Initialize $\mu = 1$
-\State Initialize $\beta = 10$
-\State Initialize $\pi = 0.01$
+\State Initialize all parameters to a maximum likelihood initial guess (see below).
 \Repeat
 	\State Sample each $f_s$ with adaptive Metropolis
 	\State Sample $\pi$ with adaptive Metropolis
@@ -233,6 +228,21 @@ Integrating out the latent variables removes the strongest correlations from the
 \label{ACS_MCMC}
 \end{algorithm}
 
+We initialize the model by finding the mode of likelihood.  This significantly reduces burn-in time of our MCMC sampling.  Also, it allows us to give the adaptive Metropolis samplers better initial guesses for their step sizes.  Since in practice there is a single global maximum of the likelihood it is easy to find.  After initializing the initialization with rough guesses for the parameters, we successively find one-dimensional maxima adjusting one parameter at a time until the likelihood converges.  One could use multidimensional optimization to obtain faster convergence, but after marginalizing out latent parameters the remaining correlations are weak and thus this simple approach performs quite well.  Since we may delegate one-dimensional maximization to mathematical libraries, the only thing left to describe is our initial coarse guess.
+
+In the initial guess we set the outlier probability $\pi_o = 0.01$, $\mu = 1.0$, and $\sigma^2 = 0.1$.  With the exception of $\sigma^2$ these are all reasonable guesses.  We choose $\sigma^2$ to be larger than what we actually believe because $\mu$ converges more slowly from a bad initial guess if $\sigma^2$ is too small.  The only non-trivial part of the initial guess is the minor allele fractions.  For each segment, we wish to set the minor allele fraction to the number of reads from minor alleles divided by to total number of reads -- this is an unbiased estimator if allelic bias is absent.  The problem is that we have counts of alt and ref reads, not minor and major reads.  Our solution is to weight the alt and ref read counts on each het by probabilities that the het is alt and ref minor, respectively.  That is, we set
+%
+\begin{equation}
+f_S \approx \frac{ \sum_{j \in S} a_j P(z_{ja} = 1) + r_j  P(z_{jr} = 1) }{ \sum_{j \in S} (a_j + r_j) (P(z_{ja} = 1) +  P(z_{jr}=1))}
+\end{equation}
+%
+For this coarse guess we ignore the possibility of outliers, so that $P(z_{ja} = 1) +  P(z_{jr}=1) = 1$.  Ignoring bias and outliers the alt minor likelihood of het $j$ is proportional to $f_j^{a_j} (1-f_j)^{r_j}$.  Since we don't know $f$ yet, we integrate this (including the normalization) from $f=0$ to $f=1/2$ in order to get $P(z_{ja} = 1)$.  This quantity is called the incomplete regularized beta function $I$.  Thus we have
+%
+\begin{equation}
+P(z_{ja} = 1) \approx I(1/2, a_j + 1, r_j + 1), \quad P(z_{jr} = 1) = 1 - P(z_{ja} = 1).
+\end{equation}
+
+\subsection{Target/SNP segment union} \label{targetsnp-segment-union}
 
 \subsection{Similar-segment merging} \label{similar-segment-merging}
 
@@ -444,100 +454,6 @@ Algorithm \ref{phi_calculation} shows the entire computation.
 \end{algorithmic}
 \caption{Calculating $\phi(\alpha, \beta, f, a, r)$}
 \label{phi_calculation}
-\end{algorithm}
-
-\section{Initializing the \ACS ~ Model} \label{initializing}
-A very reasonable way to initialize the model would be to find the mode of the likelihood via the EM algorithm, where in the E step we compute expectations of the posterior on latent variables $z$ and $\lambda$ and in the M step we maximize the log likelihood averaged over the E step posterior.  We know the E step is feasible because it involves the same computations as marginalizing over the latent variables, which we accomplished above.  Although the M step is intractable, we can perform a poor-man's EM in which we employ a heuristically reasonable M step.  This will suffice to significantly reduce burn-in time of our MCMC sampling.
-
-The first E step quantities required are the responsibilities for each locus to be alt minor, ref minor, or outlier, that is, the posteriors $\bar{z}_{ja} = {\rm P}(z_{ja} = 1)$ etc.  These are easily read off from Equation \ref{marginalized}, which contains the unnormalized posteriors.
-%
-\begin{equation}
-\left( \bar{z}_{ja}, \bar{z}_{jr}, \bar{z}_{jo} \right) \propto
-\left(  (1-\pi)\phi(\alpha, \beta, f_j, a_j, r_j) , (1-\pi)\phi(\alpha, \beta, 1-f_j, a_j, r_j) ,  \frac{2 \pi a_j! r_j!}{(n_j + 1)!} \frac{\Gamma(\alpha)}{\beta^\alpha}  \right)
-\label{responsibilities}
-\end{equation}
-%
-To initialize minor allele fractions set $f_S$ to the responsibility-weighted number of minor read alleles divided by the total number of reads in segment $S$:
-%
-\begin{equation}
-f_S = \frac{\sum_{j \in S} \bar{z}_{ja} a_j + \bar{z}_{jr} r_j}{\sum_{j \in S} \bar{z}_{ja} + \bar{z}_{jr}}
-\end{equation}
-%
-In fact, it is easily shown that this is the exact M step when $\lambda_j = 1$ for all $j$.  Similarly, we initialize $\pi$ to the responsibility-weighted proportion of outliers
-\begin{equation}
-\pi = \frac{1}{N} \sum_j \bar{z}_{jo}
-\end{equation}
-%
-This, is, in fact, the exact M step for $\pi$.  Our initialization of $\mu$ and $\beta$ is somewhat more heuristic but is based on moment matching and is probably asymptotically exact as $N \rightarrow \infty$.  We set $\mu$ to the responsibility-weighted posterior sample mean of $\{ \lambda \}$ and $\mu/\beta$ to the sample variance.  Since the outlier distribution is determined by $\mu$ and $\beta$ alone we exclude outliers in order to make our initialization depend more on the data and less on our initial guess.  Thus we have $\mu = \ave{\lambda}$, $\mu/\beta = \ave{\lambda^2} - \ave{\lambda}^2$, where
-%
-\begin{equation}
-\ave{\lambda^k} = \frac{\sum_j \left( \bar{z}_{ja} \ave{\lambda^k_j}_a +  \bar{z}_{jr} \ave{\lambda^k_j}_r \right)}{\sum_j \left( \bar{z}_{ja} +  \bar{z}_{jr} \right)}
-\end{equation}
-and $\ave{\lambda^k_j}_{a(r)}$ is the posterior expectation of $\lambda^k_j$ given $z_{ja(r)} = 1$.  These can be calculated quite easily using our previous work.  Recall that the unnormalized conditional distribution on $\lambda_j$ in the alt minor case was
-%
-\begin{equation}
-g(\lambda_j, \alpha, \beta, f_j, a_j, r_j) = \frac{ f_j^{a_j} (1 - f_j)^{r_j}  \lambda_j^{\alpha + r_j - 1} e^{-\beta \lambda_j}}{ \left( f_j + (1-f_j) \lambda_j \right)^{n_j}},
-\end{equation}
-%
-and that we can efficiently compute $\phi(\alpha, \beta, f_j, a_j, r_j) = \int_0^\infty g(\lambda_j, \alpha, \beta, f_j, a_j, r_j) \, d \lambda$.  The posterior expectation of $\lambda^k_j$ is therefore
-%
-\begin{equation}
-\ave{\lambda^k_j}_a = \frac{\int_0^\infty \lambda^k g(\lambda, \alpha, \beta, f, a, r) \, d \lambda}{ \int_0^\infty g(\lambda, \alpha, \beta, f, a, r) \, d \lambda}
-= \frac{\int_0^\infty \lambda^k g(\lambda, \alpha + k, \beta, f, a, r) \, d \lambda}{ \int_0^\infty g(\lambda, \alpha, \beta, f, a, r) \, d \lambda}
-= \frac{ \phi(\alpha + k, \beta, f, a, r) }{ \phi(\alpha, \beta, f, a, r) }
-\end{equation}
-%
-As before, the ref minor case is obtained from $f \leftrightarrow 1 - f$.  We present the complete initialization process in Algorithm \ref{initialization}.
-
-\begin{algorithm}
-\begin{algorithmic}[1]
-\State Set $\bar{z}_{ja} = 1$ if $a_j < r_j$, else $\bar{z}_{jr} = 1$.
-\State \textproc{initializeAlleleFraction}
-\State Set $\pi = 0.01$
-\State Set $\mu = 1$
-\State Set $\beta = 10$
-
-\Statex
-
-\Repeat
-	\State \textproc{calculateResponsibilities}
-	\State \textproc{initializeAlleleFraction}
-	\State \textproc{initializeOutlierProbability}
-	\State \textproc{initializeGammaHyperparameters}
-\Until{a low standard of convergence}
-
-\Statex
-
-\Procedure{calculateResponsibilities}{}
-  	\State $(p_{ja}, p_{jr}, p_{jo}) = \left(  (1-\pi)\phi(\alpha, \beta, f_j, a_j, r_j) , (1-\pi)\phi(\alpha, \beta, 1-f_j, a_j, r_j) ,  \frac{2 \pi a_j! r_j!}{(n_j + 1)!} \frac{\Gamma(\alpha)}{\beta^\alpha}  \right)$ for each $j$.
-	\State $\left( \bar{z}_{ja}, \bar{z}_{jr}, \bar{z}_{jo} \right) = (p_{ja}, p_{jr}, r_{jo}) / (p_{ja} + p_{jr} + p_{jo}) $ for each $j$
-\EndProcedure
-
-\Statex
-
-\Procedure{initializeAlleleFraction}{}
-  	\State Set $f_S = \sum_{j \in S} \left( \bar{z}_{ja} a_j + \bar{z}_{jr} r_j \right) / \sum_{j \in S} \left( \bar{z}_{ja} + \bar{z}_{jr} \right) $ for each $S$
-\EndProcedure
-
-\Statex
-
-\Procedure{initializeOutlierProbability}{}
-	\State Set $\pi = \sum_j \bar{z}_{jo} / N$
-\EndProcedure
-
-\Statex
-
-\Procedure{initializeGammaHyperparameters}{}
-	\State $\ave{\lambda^k_j}_a = \phi(\alpha + k, \beta, f_j, a_j, r_j) / \phi(\alpha, \beta, f, a, r)$ for $k = 1, \, 2$ for all $j$
-	\State $\ave{\lambda^k_j}_r = \phi(\alpha + k, \beta, 1 - f_j, a_j, r_j) / \phi(\alpha, \beta, 1 - f_j, a_j, r_j)$ for $k = 1, \, 2$ for all $j$
-	\State $\ave{\lambda^k} = \sum_j \left( \bar{z}_{ja} \ave{\lambda^k_j}_a +  \bar{z}_{jr} \ave{\lambda^k_j}_r \right) / \sum_j \left( \bar{z}_{ja} +  \bar{z}_{jr} \right)$ for $k = 1, \, 2$
-	\State Set $\mu = \ave{\lambda}$
-	\State Set $\beta = \ave{\lambda}/ \left(\ave{\lambda^2} - \ave{\lambda}^2 \right)$
-\EndProcedure
-
-\end{algorithmic}
-\caption{Initializing the \ACS ~ Model}
-\label{initialization}
 \end{algorithm}
 
 \section{Finding Tight Lower Bounds on Convex and Non-convex Functions} \label{bounds}
