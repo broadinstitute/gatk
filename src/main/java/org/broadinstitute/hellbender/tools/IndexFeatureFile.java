@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -8,6 +9,8 @@ import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.index.tabix.TabixIndex;
+import htsjdk.tribble.util.LittleEndianOutputStream;
+import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.vcf.VCF3Codec;
 import htsjdk.variant.vcf.VCFCodec;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +23,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 
@@ -48,7 +52,6 @@ public final class IndexFeatureFile extends CommandLineProgram {
 
     public static final int OPTIMAL_GVCF_INDEX_BIN_SIZE = 128000;
     public static final String GVCF_FILE_EXTENSION = ".gvcf";
-    public static final String TABIX_INDEX_EXTENSION = ".tbi";
 
     @Override
     protected Object doWork() {
@@ -64,7 +67,15 @@ public final class IndexFeatureFile extends CommandLineProgram {
         final File indexFile = determineFileName(index);
 
         try{
-            IndexFactory.writeIndex(index, indexFile);
+            /*
+             * Note: IndexFactory.writeIndex is incorrect for tabix indexes (does not use BlockCompressedOutputStream)
+             * The workaround is to use the BlockCompressedOutputStream ourselves.
+             */
+            if (index instanceof TabixIndex) {
+                writeTabixIndex((TabixIndex) index, indexFile);
+            } else {
+                IndexFactory.writeIndex(index, indexFile);
+            }
         } catch ( final IOException e ) {
             throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexFile.getAbsolutePath(), e);
         }
@@ -73,11 +84,21 @@ public final class IndexFeatureFile extends CommandLineProgram {
         return indexFile.getAbsolutePath();
     }
 
+    private void writeTabixIndex(final TabixIndex idx, final File idxFile) throws IOException {
+        if (!idxFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
+            //Creating tabix indices with a non standard extensions can cause problems so we disable it
+            throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");
+        }
+        try (final LittleEndianOutputStream stream = new LittleEndianOutputStream(new BufferedOutputStream(new BlockCompressedOutputStream(idxFile)))){
+            idx.write(stream);
+        } //auto closing
+    }
+
     private File determineFileName(final Index index) {
         if (outputFile != null){
             return outputFile;
         } else if (index instanceof TabixIndex){
-            return new File(featureFile.getAbsolutePath() + TABIX_INDEX_EXTENSION);
+            return new File(featureFile.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
         } else {
             return Tribble.indexFile(featureFile);
         }

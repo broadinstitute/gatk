@@ -6,6 +6,7 @@ import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.linear.LinearIndex;
 import htsjdk.tribble.index.tabix.TabixIndex;
+import htsjdk.tribble.util.TabixUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -81,10 +82,22 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test
-    public void testVCFGZIndex() {
+    @Test(expectedExceptions = UserException.class)
+    public void testVCFGZIndex_tabixRequires_tbi_name() {
         final File ORIG_FILE = new File(getToolTestDataDir(), "test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final File outName = BaseTest.createTempFile("test_variants_for_index.blockgz.gz.", ".idx");
+
+        final String[] args = {
+                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "-O" ,  outName.getAbsolutePath()
+        };
+        this.runCommandLine(args);
+    }
+
+    @Test
+    public void testVCFGZIndex_tabix() {
+        final File ORIG_FILE = new File(getToolTestDataDir(), "test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
+        final File outName = BaseTest.createTempFile("test_variants_for_index.blockgz.gz.", TabixUtils.STANDARD_INDEX_EXTENSION);
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -101,35 +114,22 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testVCFGZIndex_inferredName_onlyCreate() {
-        final File ORIG_FILE = new File(getToolTestDataDir(), "test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
-        final String[] args = {
-                "--feature_file", ORIG_FILE.getAbsolutePath(),
-        };
-        final Object res = this.runCommandLine(args);
-        final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + IndexFeatureFile.TABIX_INDEX_EXTENSION);
-        Assert.assertEquals(res, tabixIndex.getAbsolutePath());
-        tabixIndex.deleteOnExit();
-
-        Assert.assertTrue(tabixIndex.exists(), tabixIndex + " does not exists");
-
-        //NOTE: We can create this index but we can't read it (see  testVCFGZIndex_inferredName)
-    }
-
-    @Test(enabled = false) //TODO enable when this is fixed: https://github.com/broadinstitute/gatk/issues/1187
-    public void testVCFGZIndex_inferredName() throws IOException {
+    public void testVCFGZIndex_inferredName(){
         final File ORIG_FILE = new File(getToolTestDataDir(), "test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
-        final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + IndexFeatureFile.TABIX_INDEX_EXTENSION);
+        final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
         Assert.assertEquals(res, tabixIndex.getAbsolutePath());
         tabixIndex.deleteOnExit();
 
         Assert.assertTrue(tabixIndex.exists(), tabixIndex + " does not exists");
-        final Index index0 = IndexFactory.loadIndex(tabixIndex.toString()); //BUG <- this blows up "TribbleException: Problem detecting index type"
-        final Index index1 = new TabixIndex(tabixIndex);             //BUG <- this blows up  "Unexpected compressed block length: 3"
+        final Index index = IndexFactory.loadIndex(tabixIndex.toString());
+        Assert.assertTrue(index instanceof TabixIndex);
+
+        Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
+        checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
     @Test(expectedExceptions = TribbleException.MalformedFeatureFile.class)
