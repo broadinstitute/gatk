@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.detectcoveragedropout;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.*;
 
@@ -20,7 +21,8 @@ import java.util.List;
                 " expected in the PoN.  This is a good measure of whether the PoN matches the case samples.  In " +
                 "previous presentations and discussions with the Clinical Sequencing Platform, this was referred to" +
                 " as the 'rainfall issue'.",
-        oneLineSummary = "Detect whether a sample has coverage dropouts using segmentation (CNV) results."
+        oneLineSummary = "Detect whether a sample has coverage dropouts using segmentation (CNV) results.",
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class DetectCoverageDropout extends CommandLineProgram {
     protected static final String SEGFILE_SHORT_NAME = "S";

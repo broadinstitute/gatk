@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
@@ -50,7 +50,7 @@ import java.util.stream.IntStream;
 @CommandLineProgramProperties(
         summary = "Creates a Panel of Normals (PoN) given the proportional read counts for the samples that are part of the panel.  Supports Apache Spark for some operations.",
         oneLineSummary = "Creates a Panel of Normals.",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
 

@@ -16,6 +16,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -128,7 +129,7 @@ public final class PCAUnitTest extends BaseTest {
     @Test()
     public void testSparkSVDOnTestMatrix() {
         final RealMatrix dataMatrix = new Array2DRowRealMatrix(TEST_MATRIX);
-        final JavaSparkContext sparkContext = SparkContextFactory.getSparkContext("test", SparkContextFactory.DEFAULT_SPARK_MASTER);
+        final JavaSparkContext sparkContext = SparkContextFactory.getSparkContext("test", new HashMap<>(), SparkContextFactory.DEFAULT_SPARK_MASTER);
         final List<String> variables = createVariableNames(TEST_MATRIX.length);
         final List<String> sampleNames = createSampleNames(TEST_MATRIX[0].length);
         final PCA pca = PCA.createPCA(variables, sampleNames, dataMatrix, dm -> SVDFactory.createSVD(dm, sparkContext));

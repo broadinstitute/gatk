@@ -59,7 +59,7 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
         arguments.add("-" + DecomposeSingularValues.OUTPUT_U_FILE_SHORT_NAME);
         arguments.add(outputFileU.toString());
 
-        arguments.add("--VERBOSITY");
+        arguments.add("--verbosity");
         arguments.add("WARNING");
         return arguments;
     }

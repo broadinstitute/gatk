@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.utils.plotter.CopyRatioSegmentedPlotter;
 
 @CommandLineProgramProperties(
         summary = "Create plots of copy number variant data.  Please note that this tool is only supported for hg19 and b37 references.  All other references may fail.",
         oneLineSummary = "Create plots of copy number variant data.",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class PlotSegmentedCopyRatio extends CommandLineProgram {
 

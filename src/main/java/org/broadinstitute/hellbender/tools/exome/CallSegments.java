@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 
 import java.io.File;
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.List;
         summary = "Call segments as amplified, deleted, or copy number neutral given files containing tangent-normalized" +
                 " read counts by target and a list of segments",
         oneLineSummary = "Call segments as amplified, deleted, or copy number neutral",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class CallSegments extends CommandLineProgram{
 

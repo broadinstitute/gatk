@@ -36,6 +36,9 @@ repositories {
     maven {
         url "https://repository.cloudera.com/artifactory/cloudera-repos/" // spark-dataflow
     }
+    maven {
+        url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
+    }
 
     // Locations for finding HDF and HDFJava jar files
     //  Please note that this is only for the jar files, not the jni shared native libraries (.so files --
@@ -110,7 +113,7 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:hellbender:4.pre-alpha-94-g7a9ca05-SNAPSHOT'
+    compile 'org.broadinstitute:gatk:4.alpha-14-g49e944d-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
     compile ('org.apache.spark:spark-mllib_2.10:1.4.1') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop

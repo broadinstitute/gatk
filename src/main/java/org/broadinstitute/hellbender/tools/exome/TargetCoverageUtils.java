@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.SortedMap;
 import java.util.stream.Collectors;
 
 
@@ -112,6 +114,65 @@ public final class TargetCoverageUtils {
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
+    }
+
+    /**
+     * Write a list of targets with coverage to file with dummy names
+     * @param outFile File to write targets with coverage. Never {@code null}
+     * @param sampleName Name of sample being written. Never {@code null}
+     * @param byKeySorted Map of simple-intervals to their copy-ratio. Never {@code null}
+     * @param comments Comments to add to header of coverage file.
+     */
+    public static void writeTargetsWithCoverageFromSimpleInterval(final File outFile, final String sampleName,
+                                                                  final SortedMap<SimpleInterval, Long> byKeySorted,
+                                                                  final String[] comments) {
+
+        Utils.nonNull(outFile, "Output file cannot be null.");
+        Utils.nonNull(sampleName, "Sample name cannot be null.");
+        Utils.nonNull(byKeySorted, "Targets cannot be null.");
+        Utils.nonNull(comments, "Comments cannot be null.");
+
+        final boolean areTargetIntervalsAllPopulated = byKeySorted.keySet().stream().allMatch(t -> t != null);
+        if (!areTargetIntervalsAllPopulated) {
+            throw new UserException("Cannot write target coverage file with any null intervals.");
+        }
+
+        try (final TableWriter<TargetCoverage> writer = TableUtils.writer(outFile,
+                new TableColumnCollection(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, sampleName),
+                //lambda for filling an initially empty DataLine
+                (target, dataLine) -> {
+                    final SimpleInterval interval = target.getInterval();
+                    final String contig = interval.getContig();
+                    final int start = interval.getStart();
+                    final int end = interval.getEnd();
+                    final String name = target.getName();
+                    final long coverage = (long) target.getCoverage();
+                    dataLine.append(name, contig).append(start, end).append(coverage);
+                })) {
+
+            for (String comment : comments) {
+                writer.writeComment(comment);
+            }
+            for (final Locatable locatable : byKeySorted.keySet()) {
+                final String targetName = createDummyTargetName(locatable);
+                final SimpleInterval targetInterval = new SimpleInterval(locatable);
+                final double targetCoverage = byKeySorted.get(locatable);
+                final TargetCoverage target = new TargetCoverage(targetName, targetInterval, targetCoverage);
+                writer.writeRecord(target);
+            }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
+    }
+
+    /**
+     * Creates a string for a locatable that can be used when creating dummy target names
+     * @param locatable The genome region to create a unique dummy target name. Never {@code null}
+     * @return never {@code null}
+     */
+    public static String createDummyTargetName(final Locatable locatable){
+        Utils.nonNull(locatable, "Output file cannot be null.");
+        return "target_" + locatable.getContig() + "_" + String.valueOf(locatable.getStart()) + "_" + String.valueOf(locatable.getEnd());
     }
 
     /**

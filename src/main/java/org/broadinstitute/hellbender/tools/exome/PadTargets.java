@@ -6,14 +6,14 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 
 import java.io.File;
 
 @CommandLineProgramProperties(
         summary = "Creates a new target BED file with targets extended on both sides by the specified number of bases.  IMPORTANT:  This tool will only preserve contig, start, end, and name columns.",
         oneLineSummary = "Create a new target file with padded targets.",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class PadTargets extends CommandLineProgram {
 

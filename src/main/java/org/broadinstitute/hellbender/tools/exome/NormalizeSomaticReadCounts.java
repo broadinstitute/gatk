@@ -8,7 +8,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -44,7 +44,7 @@ import java.util.stream.IntStream;
 @CommandLineProgramProperties(
         summary = "Normalizes PCOV read counts using a panel of normals",
         oneLineSummary = "Normalizes proportional coverage (PCOV) read counts using a panel of normals",
-        programGroup = ExomeAnalysisProgramGroup.class
+        programGroup = CopyNumberProgramGroup.class
 )
 public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 

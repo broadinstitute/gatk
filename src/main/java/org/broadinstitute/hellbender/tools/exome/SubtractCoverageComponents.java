@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.pca.PCA;
@@ -46,7 +46,7 @@ import java.util.stream.Stream;
 @CommandLineProgramProperties(
     summary = "Normalizes coverage counts by subtracting principal coverage components",
     oneLineSummary = "Normalizes coverage by subtracting principal components",
-    programGroup = ExomeAnalysisProgramGroup.class
+    programGroup = CopyNumberProgramGroup.class
 )
 public final class SubtractCoverageComponents extends CommandLineProgram {
 
