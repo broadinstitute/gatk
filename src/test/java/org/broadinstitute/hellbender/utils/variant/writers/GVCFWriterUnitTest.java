@@ -20,7 +20,9 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
@@ -28,6 +30,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -446,7 +449,25 @@ public class GVCFWriterUnitTest extends BaseTest {
 
     private static VCFHeader getMinimalVCFHeader() {
         final Set<VCFHeaderLine> headerlines = new HashSet<>();
-        VCFStandardHeaderLines.addStandardFormatLines(headerlines, true, VCFConstants.GENOTYPE_KEY, VCFConstants.DEPTH_KEY, VCFConstants.GENOTYPE_QUALITY_KEY, VCFConstants.GENOTYPE_PL_KEY, VCFConstants.GENOTYPE_ALLELE_DEPTHS);
+        VCFStandardHeaderLines.addStandardFormatLines(headerlines, true,
+                VCFConstants.GENOTYPE_KEY, VCFConstants.DEPTH_KEY,
+                VCFConstants.GENOTYPE_QUALITY_KEY, VCFConstants.GENOTYPE_PL_KEY,
+                VCFConstants.GENOTYPE_ALLELE_DEPTHS);
+
+        VCFStandardHeaderLines.addStandardInfoLines(headerlines, true,
+                VCFConstants.DEPTH_KEY,
+                VCFConstants.RMS_MAPPING_QUALITY_KEY,
+                VCFConstants.MAPPING_QUALITY_ZERO_KEY );
+
+        Arrays.asList(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY,
+               GATKVCFConstants.CLIPPING_RANK_SUM_KEY,
+               GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
+               GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY,
+               GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY,
+               GATKVCFConstants.READ_POS_RANK_SUM_KEY)
+               .forEach( c -> headerlines.add(GATKVCFHeaderLines.getInfoLine(c)));
+
+        headerlines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
         return new VCFHeader(headerlines, Sets.newHashSet(SAMPLE_NAME));
     }
 
@@ -478,4 +499,82 @@ public class GVCFWriterUnitTest extends BaseTest {
         }
 
     }
+
+    @Test
+    public void testAgainstExampleGVCF() throws IOException {
+        final List<Integer> gqPartitions = Arrays.asList(1, 10, 20, 30, 40, 50, 60);
+        final File comparisonFile = new File("src/test/resources/org/broadinstitute/hellbender/utils/variant/writers/small.g.vcf");
+        final File outputFile = createTempFile("generated", ".gvcf");
+        final VariantContextBuilder chr = new VariantContextBuilder().chr(CHR1);
+        final Allele REF_C = Allele.create("C", true);
+        final Allele REF_G = Allele.create("G", true);
+        final Allele C = Allele.create("C", false);
+
+        final GenotypeBuilder block1GenotypeBuilder = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF_C, REF_C))
+                .DP(35)
+                .GQ(57)
+                .PL(new int[]{0, 57, 855});
+        final VariantContextBuilder block1 = new VariantContextBuilder(null, "1", 14663, 14663, Arrays.asList(REF_C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+                .genotypes(block1GenotypeBuilder.make());
+
+        final VariantContextBuilder block2 = new VariantContextBuilder(null, "1", 14667, 14667, Arrays.asList(REF_G, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+                .genotypes(new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF_G,REF_G))
+                        .DP(34)
+                        .GQ(60)
+                        .PL(new int[]{0, 60, 900})
+                        .make());
+
+        final VariantContext snp = new VariantContextBuilder(null, "1", 14673, 14673, Arrays.asList(REF_G, C, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+                .log10PError(541.77 / -10 )
+                .attribute(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY, "-1.814")
+                .attribute(GATKVCFConstants.CLIPPING_RANK_SUM_KEY, "2.599")
+                .attribute(VCFConstants.DEPTH_KEY,30)
+                .attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, new int[]{1,0})
+                .attribute(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, new double[]{0.500, 0.00})
+                .attribute(VCFConstants.RMS_MAPPING_QUALITY_KEY, 26.87)
+                .attribute(VCFConstants.MAPPING_QUALITY_ZERO_KEY, 0)
+                .attribute(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, 0.245)
+                .attribute(GATKVCFConstants.READ_POS_RANK_SUM_KEY, 0.294)
+                .genotypes(new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF_G, C))
+                        .AD(new int[]{7,23,0})
+                        .DP(30)
+                        .GQ(99)
+                        .PL(new int[] {570, 0, 212, 591, 281, 872})
+                        .attribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, new int[]{4,3,23,0})
+                        .make())
+                .make();
+
+        final GenotypeBuilder block3genotypeBuilder = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF_G, REF_G))
+                .DP(29)
+                .GQ(54)
+                .PL(new int[]{0, 54, 810});
+
+        final VariantContextBuilder block3 = new VariantContextBuilder(null, "1", 14674, 14674, Arrays.asList(REF_G, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+                .genotypes(block3genotypeBuilder.make());
+
+        try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
+             GVCFWriter gvcfWriter = new GVCFWriter(writer, gqPartitions, HomoSapiensConstants.DEFAULT_PLOIDY))
+        {
+            gvcfWriter.writeHeader(getMinimalVCFHeader());
+
+            gvcfWriter.add(block1.genotypes(block1GenotypeBuilder.DP(35).make()).make()); // add with different DP's so that the DP and MIN_DP are correct
+            gvcfWriter.add(block1.start(14664).stop(14664).genotypes(block1GenotypeBuilder.DP(35).make()).make());
+            gvcfWriter.add(block1.start(14665).stop(14665).genotypes(block1GenotypeBuilder.DP(33).make()).make());
+            gvcfWriter.add(block1.start(14666).stop(14666).genotypes(block1GenotypeBuilder.DP(35).make()).make());
+
+            for(int i = 14667; i < 14673; i++){
+                gvcfWriter.add(block2.start(i).stop(i).make());
+            }
+
+            gvcfWriter.add(snp);
+
+            gvcfWriter.add(block3.start(14674).stop(14674).genotypes(block3genotypeBuilder.DP(28).PL(new int[] { 1, 54, 980}).make()).make()); //vary both DP and PL so that MIN_DP and MIN_PL are both correct
+            gvcfWriter.add(block3.start(14675).stop(14675).genotypes(block3genotypeBuilder.DP(29).PL(new int[] { 0, 56, 900}).make()).make());
+            gvcfWriter.add(block3.start(14676).stop(14676).genotypes(block3genotypeBuilder.DP(29).PL(new int[] { 0, 59, 810}).make()).make());
+        }
+
+        IntegrationTestSpec.assertEqualTextFiles(outputFile, comparisonFile);
+
+    }
+
 }

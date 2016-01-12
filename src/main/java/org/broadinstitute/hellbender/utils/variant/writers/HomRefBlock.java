@@ -78,7 +78,12 @@ final class HomRefBlock implements Locatable {
             throw new GATKException("This should be a home ref block, but the lowest pl was not for hom ref");
         }
 
-        return sortedPls[1] - sortedPls[0];
+        final int rawQuality = sortedPls[1] - sortedPls[0];
+
+        // cap the quality to the highest quality that will be emitted by the VCFEncoder
+        // this isn't strictly necessary since it will be capped when written anyway
+        // it should help avoid confusion by preventing the quality from changing when written and loaded from disk
+        return Math.min(rawQuality, VCFConstants.MAX_GENOTYPE_QUAL);
     }
 
     /**
@@ -130,12 +135,12 @@ final class HomRefBlock implements Locatable {
         if( minPLs == null ) {
             minPLs = genotype.getPL();
         } else { // otherwise take the min with the provided genotype's PLs
-            final int[] PL = genotype.getPL();
-            if (PL.length != minPLs.length) {
-                throw new GATKException("trying to merge different PL array sizes: " + PL.length + " != " + minPLs.length);
+            final int[] pls = genotype.getPL();
+            if (pls.length != minPLs.length) {
+                throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
             }
-            for (int i = 0; i < PL.length; i++) {
-                minPLs[i] = Math.min(minPLs[i], PL[i]);
+            for (int i = 0; i < pls.length; i++) {
+                minPLs[i] = Math.min(minPLs[i], pls[i]);
             }
         }
         end = pos;
