@@ -24,6 +24,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
                 "-" + SparkGenomeReadCounts.OUTPUT_FILE_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.BINSIZE_SHORT_NAME, "10000",
         };
         runCommandLine(arguments);
         Assert.assertTrue(outputFile.exists());
@@ -37,6 +38,31 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals(bedFeatureCollection.targets().size(), 8);
         Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
         Assert.assertEquals(bedFeatureCollection.target(5).getName(), "target_3_10001_16000");
+        Assert.assertEquals(targetCoverages.size(), bedFeatureCollection.targetCount());
+    }
+
+    @Test
+    public void testSparkGenomeReadCountsBigBins() {
+        final File outputFile = createTempFile(BAM_FILE.getName(),".cov");
+        final String[] arguments = {
+                "--disableSequenceDictionaryValidation",
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.OUTPUT_FILE_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.BINSIZE_SHORT_NAME, "16000",
+        };
+        runCommandLine(arguments);
+        Assert.assertTrue(outputFile.exists());
+        Assert.assertTrue(outputFile.length() > 0);
+        List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(outputFile);
+        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
+        Assert.assertTrue(bedFile.exists());
+        Assert.assertTrue(bedFile.length() > 0);
+
+        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollections.fromBEDFeatureFile(bedFile, new BEDCodec());
+        Assert.assertEquals(bedFeatureCollection.targets().size(), 4);
+        Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
+        Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_3_1_16000");
         Assert.assertEquals(targetCoverages.size(), bedFeatureCollection.targetCount());
     }
 }
