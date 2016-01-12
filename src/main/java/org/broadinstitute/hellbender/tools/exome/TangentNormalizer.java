@@ -65,11 +65,11 @@ public final class TangentNormalizer {
         Utils.nonNull(pon, "PoN cannot be null.");
         Utils.nonNull(targetFactorNormalizedCounts, "targetFactorNormalizedCounts cannot be null.");
         Utils.nonNull(targetFactorNormalizedCounts.columnNames(), "targetFactorNormalizedCounts column names cannot be null.");
-        ParamUtils.isGreaterThanZero(targetFactorNormalizedCounts.columnNames().size(), "targetFactorNormalizedCounts column names cannot be an empty list.");
+        ParamUtils.isPositive(targetFactorNormalizedCounts.columnNames().size(), "targetFactorNormalizedCounts column names cannot be an empty list.");
 
         final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(targetFactorNormalizedCounts.targets(), pon.getPanelTargetNames());
 
-        // The input counts with row (targets) sorted so that the match the PoN's matrix order.
+        // The input counts with rows (targets) sorted so that they match the PoN's order.
         final RealMatrix tangentNormalizationRawInputCounts = targetMapper.fromCaseToPoNCounts(targetFactorNormalizedCounts.counts());
 
         // We prepare the counts for tangent normalization.
@@ -151,7 +151,7 @@ public final class TangentNormalizer {
     public static TangentNormalizationResult tangentNormalizePcov(final PoN pon, final ReadCountCollection pcov, final JavaSparkContext ctx) {
         Utils.nonNull(pon, "PoN cannot be null.");
         Utils.nonNull(pcov, "input pcov read counts cannot be null when creating a coverage profile.");
-        ParamUtils.isGreaterThanZero(pcov.columnNames().size(), "input cov profile column names cannot be an empty list.");
+        ParamUtils.isPositive(pcov.columnNames().size(), "input cov profile column names cannot be an empty list.");
         final ReadCountCollection coverageProfile = createCoverageProfile(pon, pcov);
         return TangentNormalizer.tangentNormalize(pon, coverageProfile, ctx);
     }
@@ -170,7 +170,7 @@ public final class TangentNormalizer {
     private static ReadCountCollection createCoverageProfile(final PoN pon, final ReadCountCollection inputReadCounts) {
         Utils.nonNull(pon, "PoN cannot be null.");
         Utils.nonNull(inputReadCounts, "input read counts cannot be null when creating a coverage profile.");
-        ParamUtils.isGreaterThanZero(inputReadCounts.columnNames().size(), "inputReadCounts column names cannot be an empty list.");
+        ParamUtils.isPositive(inputReadCounts.columnNames().size(), "inputReadCounts column names cannot be an empty list.");
         final Case2PoNTargetMapper targetMapper = new Case2PoNTargetMapper(inputReadCounts.targets(), pon.getTargetNames());
         final RealMatrix inputCounts = targetMapper.fromCaseToPoNCounts(inputReadCounts.counts());
         final RealMatrix targetNormalizedCounts = pon.factorNormalization(inputCounts);
@@ -212,9 +212,9 @@ public final class TangentNormalizer {
     /**
      * Prepares the data to perform tangent factor normalization.
      * <p>
-     * This is done count group or column:
+     * This is done by count group or column:
      *   <ol>
-     *     </li>we change counts to their ratio versus the column mean,</li>
+     *     </li>we divide counts by the column mean,</li>
      *     </li>then we transform value to their log_2,</li>
      *     </li>and finally we center then around the median.</li>
      *   </ol>

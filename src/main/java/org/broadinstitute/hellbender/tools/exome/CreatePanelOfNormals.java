@@ -225,11 +225,11 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
 
         // Check parameters and load values to meet the backend PoN creation interface
         final TargetCollection<Target> targets = targetArguments.readTargetCollection(true);
-        final double targetFactorPercentileThreshold = calculateTargetFactorsPercentileThreshold();
-        final double extremeColumnMedianCountPercentileThreshold = calculateExtremeColumnMedianCountsPercentileThreshold();
+        final double targetFactorPercentileThreshold = checkTargetFactorsPercentileThreshold();
+        final double extremeColumnMedianCountPercentileThreshold = checkExtremeColumnMedianCountsPercentileThreshold();
         final double countTruncatePercentile = checkCountTruncatePercentile();
-        final double maximumPercentageZeroTargets = checkTargetPercentage();
-        final double maximumPercentageZeroColumns = checkColumnPercentage();
+        final double maximumPercentageZeroTargets = checkTargetMaximumZeroPercentage();
+        final double maximumPercentageZeroColumns = checkColumnMaximumZeroPercentage();
         final OptionalInt numberOfEigenSamples = calculatePreferredNumberOfEigenSamples();
 
         // Create the PoN, including QC, if specified.
@@ -299,14 +299,14 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
         }
     }
 
-    private double calculateExtremeColumnMedianCountsPercentileThreshold() {
+    private double checkExtremeColumnMedianCountsPercentileThreshold() {
         if (columnExtremeThresholdPercentile < 0 || columnExtremeThresholdPercentile > 50 || Double.isNaN(columnExtremeThresholdPercentile)) {
             throw new UserException.BadArgumentValue(COLUMN_EXTREME_THRESHOLD_PERCENTILE_FULL_NAME, "the value must be in the range [0, 50]");
         }
         return columnExtremeThresholdPercentile;
     }
 
-    private double calculateTargetFactorsPercentileThreshold() {
+    private double checkTargetFactorsPercentileThreshold() {
         if (targetFactorThreshold < 0 || targetFactorThreshold > 100 || Double.isNaN(targetFactorThreshold)) {
             throw new UserException.BadArgumentValue(TARGET_FACTOR_THRESHOLD_PERCENTILE_FULL_NAME, "the value must be in the range [0, 100]");
         }
@@ -324,14 +324,14 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
         return outlierTruncatePercentileThresh;
     }
 
-    private double checkTargetPercentage() {
+    private double checkTargetMaximumZeroPercentage() {
         if (maximumPercentZerosInTarget < 0 || maximumPercentZerosInTarget > 100 || Double.isNaN(maximumPercentZerosInTarget)) {
             throw new UserException.BadArgumentValue(MAXIMUM_PERCENT_ZEROS_IN_TARGET_FULL_NAME, "the value must be in the [0, 100.0) range");
         }
         return maximumPercentZerosInTarget;
     }
 
-    private double checkColumnPercentage() {
+    private double checkColumnMaximumZeroPercentage() {
         if (maximumPercentZerosInColumn < 0 || maximumPercentZerosInColumn > 100 || Double.isNaN(maximumPercentZerosInColumn)) {
             throw new UserException.BadArgumentValue(MAXIMUM_PERCENT_ZEROS_IN_COLUMN_FULL_NAME, "the value must be in the [0, 100.0) range");
         }

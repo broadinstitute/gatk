@@ -234,7 +234,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                 }
             }
         }
-        HDF5PoNCreator.imputeZerosCounts(readCounts, NULL_LOGGER);
+        HDF5PoNCreator.imputeZeroCountsAsTargetMedians(readCounts, NULL_LOGGER);
         final RealMatrix newCounts = readCounts.counts();
         Assert.assertEquals(newCounts.getColumnDimension(), expected[0].length);
         Assert.assertEquals(newCounts.getRowDimension(), expected.length);

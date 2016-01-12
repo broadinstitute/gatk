@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ExomeAnalysisProgramGroup;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 
 import java.io.File;
@@ -48,7 +48,9 @@ public final class PerformSegmentation extends CommandLineProgram {
     protected Boolean log = false;
 
     @Argument(
-            doc = "File with target weights.  Typically, 1/var(target).  Listed one value per line in plain text.  Values of zero or less, Nan, Inf, and -Inf are not acceptable.  Must have the same number of values as there are in the tangentFile.",
+            doc = "File with target weights.  This is the 1/var(post-projected targets for each normal).  " +
+                    "Listed one value per line in plain text.  Values of zero or less, Nan, Inf, and -Inf are not " +
+                    "acceptable.  Must have the same number of values as there are in the tangentFile.",
             shortName = TARGET_WEIGHT_FILE_SHORT_NAME,
             fullName = TARGET_WEIGHT_FILE_LONG_NAME,
             optional = true

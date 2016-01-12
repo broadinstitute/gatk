@@ -18,8 +18,8 @@ for j = 1:length(filenames)
         sample = log2(sample);
         sample = sample - median(sample);
         
-        beta_hat = sample' * reduced_pinv';
-        orig_plane_projection = reduced_panel * beta_hat';
+        beta_hat = reduced_pinv * sample;
+        orig_plane_projection = reduced_panel * beta_hat;
         tangent_norm_results(:,i) = sample - orig_plane_projection;
     end
 

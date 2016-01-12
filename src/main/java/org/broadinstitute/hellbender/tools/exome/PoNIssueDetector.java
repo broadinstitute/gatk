@@ -7,6 +7,7 @@ import com.google.common.primitives.Doubles;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -99,11 +100,11 @@ public final class PoNIssueDetector {
         final List<String> allContigsPresent = retrieveAllContigsPresent(singleSampleTangentNormalized);
         for (String contig: allContigsPresent) {
             final ReadCountCollection oneContigReadCountCollection = singleSampleTangentNormalized.subsetTargets(singleSampleTangentNormalized.targets().stream().filter(t -> t.getContig().equals(contig)).collect(Collectors.toSet()));
-            final RealMatrix counts = oneContigReadCountCollection.counts();
-
+            final RealMatrix countsAsMatrix = oneContigReadCountCollection.counts();
+            final RealVector counts = countsAsMatrix.getColumnVector(0);
             for (int i = 0; i < 4; i++) {
-                final RealMatrix partitionCounts = counts.getSubMatrix(i * counts.getRowDimension() / 4, ((i + 1) * counts.getRowDimension() / 4) - 1, 0, 0);
-                final double[] partitionArray = DoubleStream.of(partitionCounts.getColumn(0)).map(d -> Math.pow(2, d)).sorted().toArray();
+                final RealVector partitionCounts = counts.getSubVector(i * counts.getDimension() / 4, counts.getDimension() / 4);
+                final double[] partitionArray = DoubleStream.of(partitionCounts.toArray()).map(d -> Math.pow(2, d)).sorted().toArray();
                 double median = new Median().evaluate(partitionArray);
                 final double medianShiftInCRSpace = contigToMedian.getOrDefault(contig, 1.0) - 1.0;
                 median -= medianShiftInCRSpace;

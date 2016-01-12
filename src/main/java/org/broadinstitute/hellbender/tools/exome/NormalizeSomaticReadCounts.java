@@ -121,10 +121,10 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     }
 
     private void outputTangentNormalizationResult(final TangentNormalizationResult tangentNormalizationResult){
-        writeTangentNormalizedOutput(tangentNormalizationResult.getTangentNormalized());
+        writeTargetFactorNormalizedOutput(tangentNormalizationResult.getTargetFactorNormalizedCounts());
         writePreTangentNormalizationOutput(tangentNormalizationResult.getPreTangentNormalized());
         writeTangentBetaHats(tangentNormalizationResult.getTangentBetaHats(), tangentNormalizationResult.getTargetFactorNormalizedCounts().columnNames());
-        writeTargetFactorNormalizedOutput(tangentNormalizationResult.getTargetFactorNormalizedCounts());
+        writeTangentNormalizedOutput(tangentNormalizationResult.getTangentNormalized());
     }
 
     /**

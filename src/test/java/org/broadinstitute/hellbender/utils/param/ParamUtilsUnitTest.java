@@ -112,12 +112,12 @@ public class ParamUtilsUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
     public void testNegativeIsGreaterThanZero(){
-        ParamUtils.isGreaterThanZero(Double.NEGATIVE_INFINITY, "That is negative!");
+        ParamUtils.isPositive(Double.NEGATIVE_INFINITY, "That is negative!");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "ERROR")
     public void testNaNIsGreaterThanZero(){
-        ParamUtils.isGreaterThanZero(Double.NaN, "ERROR");
+        ParamUtils.isPositive(Double.NaN, "ERROR");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
@@ -133,32 +133,32 @@ public class ParamUtilsUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
     public void testNegativeIsGreaterThanZero2(){
-        ParamUtils.isGreaterThanZero(-4.2, "That is negative!");
+        ParamUtils.isPositive(-4.2, "That is negative!");
     }
 
     @Test
     public void testPositiveIsGreaterThanZero(){
-        ParamUtils.isGreaterThanZero(4.2, "That is negative!");
+        ParamUtils.isPositive(4.2, "That is negative!");
     }
 
     @Test
     public void testPositiveIsGreaterThanZero2(){
-        ParamUtils.isGreaterThanZero(4, "That is negative!");
+        ParamUtils.isPositive(4, "That is negative!");
     }
 
     @Test
     public void testPositiveIsGreaterThanZeroWithInf(){
-        ParamUtils.isGreaterThanZero(Double.POSITIVE_INFINITY, "That is negative!");
+        ParamUtils.isPositive(Double.POSITIVE_INFINITY, "That is negative!");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
     public void testZeroIsGreaterThanZero2(){
-        ParamUtils.isGreaterThanZero(0, "That is zero!");
+        ParamUtils.isPositive(0, "That is zero!");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
     public void testZeroIsGreaterThanZero3(){
-        ParamUtils.isGreaterThanZero(0.0, "That is zero!");
+        ParamUtils.isPositive(0.0, "That is zero!");
     }
 
     @Test

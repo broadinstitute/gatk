@@ -22,11 +22,11 @@ import java.util.stream.IntStream;
  *     is provided by a {@link PoN}.
  * </p>
  * <p>
- *     This class contains method to re-organized a matrix rows that is based on one list to match the order
- *     impose by the other list.
+ *     This class contains methods to re-organize matrix rows, based on one list, to match the order
+ *     imposed by the other list.
  * </p>
  * <p>
- *     It also provided methods to create a PoN re-organized count matrix directly from a {@link ReadCountCollection}.
+ *     It also provides methods to create a PoN re-organized count matrix directly from a {@link ReadCountCollection}.
  *     object and the reverse operation, that is to create a new {@link ReadCountCollection} from a count matrix
  *     whose rows have been reorganized to satisfy the {@link PoN} target order.
  * </p>

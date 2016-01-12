@@ -73,7 +73,7 @@ public interface PoN {
      * Log normal selected samples listed by their numerical index in the log-normal matrices.
      *
      * <p>
-     * The return matrix is a unmodifiable detached copy of the values in the
+     * The return matrix is an unmodifiable detached copy of the values in the
      * PoN.
      * </p>
      *
@@ -90,7 +90,7 @@ public interface PoN {
      * </p>
      *
      * <p>
-     * The return matrix is a unmodifiable detached copy of the values in the
+     * The return matrix is an unmodifiable detached copy of the values in the
      * PoN.
      * </p>
      *

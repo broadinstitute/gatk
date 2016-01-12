@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.hdf5;
 
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
-import htsjdk.samtools.util.IOUtil;
+import com.google.common.primitives.Doubles;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -15,9 +15,11 @@ import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.MatrixUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
@@ -26,7 +28,7 @@ import org.broadinstitute.hellbender.utils.svd.SVDFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Supplier;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -60,11 +62,11 @@ final public class HDF5PoNCreator {
      * @param outputHDF5Filename  final filename for the output PoN HDF5 file
      * @param isDryRun  whether this is a dry run.  If you wish to do diagnostics and skip the actual writing of a PoN file, set this to true.
      * @param initialTargets  the set of targets that was used to generate the {@code inputPCovFile}.
-     * @param targetFactorPercentileThreshold  The percentile to of extreme target factor values to cut.
-     * @param extremeColumnMedianCountPercentileThreshold Percentile to cut columns that after they are ranked by median value
+     * @param targetFactorPercentileThreshold  the percentile of extreme target factor values to cut.
+     * @param extremeColumnMedianCountPercentileThreshold Percentile to cut columns after they are ranked by median value
      * @param countTruncatePercentile percentile (on either end) to truncate extreme values (i.e. extreme high or low values will be set to the high or low count truncation value, which is based on this percentlie)
-     * @param maximumPercentageZeroTargets  the maximum percentage zero values in a target (across samples) before the target is filtered.
-     * @param maximumPercentageZeroColumns  the maximum percentage zero values in a sample (across targets) before the sample is filtered.
+     * @param maximumPercentageZeroTargets  the maximum percentage of zero values in a target (across samples) before the target is filtered.
+     * @param maximumPercentageZeroColumns  the maximum percentage of zero values in a sample (across targets) before the sample is filtered.
      */
     public static void createPoN(final JavaSparkContext ctx, final File inputPCovFile, final OptionalInt numberOfEigenSamples,
                                  final List<String> sampleNameBlacklist, final File outputHDF5Filename,
@@ -99,8 +101,7 @@ final public class HDF5PoNCreator {
             writeTargetFactorNormalizeReadCountsAndTargetFactors(outputHDF5Filename, readCounts, targetFactors, initialTargets.targets());
         }
 
-        // Remove column and targets with too many zeros and targets with
-        // extreme median coverage:
+        // Remove column and targets with too many zeros and targets with extreme median coverage:
         final int maximumColumnZerosCount = calculateMaximumZerosCount(readCounts.targets().size(), maximumPercentageZeroColumns);
         final int maximumTargetZerosCount = calculateMaximumZerosCount(readCounts.columnNames().size(), maximumPercentageZeroTargets);
         readCounts = removeColumnsWithTooManyZeros(readCounts, maximumColumnZerosCount, logger);
@@ -109,13 +110,13 @@ final public class HDF5PoNCreator {
 
         // Impute zero counts to be same as the median for the same target.
         // This happens in-place.
-        imputeZerosCounts(readCounts, logger);
+        imputeZeroCountsAsTargetMedians(readCounts, logger);
 
         // Truncate extreme count values.
         // This happens in-place.
         truncateExtremeCounts(readCounts, countTruncatePercentile, logger);
 
-        // Normalized by the median and log scale the read counts.
+        // Normalize by the median and log scale the read counts.
         normalizeAndLogReadCounts(readCounts, logger);
         subtractBGSCenter(readCounts, logger);
 
@@ -220,20 +221,23 @@ final public class HDF5PoNCreator {
 
         final int numberOfEigenSamples = determineNumberOfEigenSamples(requestedNumberOfEigenSamples, numberOfCountColumns, logNormalsSVD, logger);
         logger.info(String.format("Including %d eigen samples in the reduced PoN", numberOfEigenSamples));
-        final RealMatrix logNormalsV = logNormalsSVD.getV();
-        final RealMatrix logNormalsEigenV = logNormalsV.getSubMatrix(0, numberOfCountColumns - 1, 0, numberOfEigenSamples - 1);
 
-        final RealMatrix reducedCounts = logNormalCounts.multiply(logNormalsEigenV);
+        final double[] singularValues = logNormalsSVD.getSingularValues();
+        final RealMatrix reducedCounts = logNormalsSVD.getU().getSubMatrix(0, logNormalCounts.getRowDimension()-1, 0, numberOfEigenSamples - 1).copy();
+        reducedCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) { return singularValues[column]*value; }
+        });
 
         // The Pseudo inverse comes nearly for free from having run the SVD decomposition.
         final RealMatrix logNormalsPseudoInverse = logNormalsSVD.getPinv();
 
         logger.info("Calculating the reduced PoN inverse matrix...");
         final long riStartTime = System.currentTimeMillis();
-        final RealMatrix reducedCountsInverse = SVDFactory.createSVD(reducedCounts, ctx).getPinv();
+        final RealMatrix reducedCountsPseudoInverse = SVDFactory.createSVD(reducedCounts, ctx).getPinv();
         final long riEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished calculating the reduced PoN inverse matrix. Elapse of %d seconds", (riEndTime - riStartTime) / 1000));
-        return new ReductionResult(logNormalsPseudoInverse, reducedCounts, reducedCountsInverse, logNormalsSVD.getSingularValues());
+        return new ReductionResult(logNormalsPseudoInverse, reducedCounts, reducedCountsPseudoInverse, logNormalsSVD.getSingularValues());
     }
 
     /**
@@ -271,17 +275,9 @@ final public class HDF5PoNCreator {
     @VisibleForTesting
     static double subtractBGSCenter(final ReadCountCollection readCounts, final Logger logger) {
         final RealMatrix counts = readCounts.counts();
-        final int columnCount = counts.getColumnDimension();
-        final double[] columnMedians = new double[columnCount];
-        final double[][] data = counts.getData();
         final Median medianCalculator = new Median();
-        final double[] columnData = new double[data.length];
-        for (int i = 0; i < columnCount; i++) {
-            for (int j = 0; j < data.length; j++) {
-                columnData[j] = data[j][i];
-            }
-            columnMedians[i] = medianCalculator.evaluate(columnData);
-        }
+        final double[] columnMedians = MatrixUtils.getColumnMedians(counts);
+
         final double medianOfMedians = medianCalculator.evaluate(columnMedians);
         counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
@@ -294,7 +290,7 @@ final public class HDF5PoNCreator {
     }
 
     /**
-     * Final pre-panel normalization that consists on dividing all counts by the median of
+     * Final pre-panel normalization that consists of dividing all counts by the median of
      * its column and log it with base 2.
      * <p>
      *     The normalization occurs in-place.
@@ -305,18 +301,17 @@ final public class HDF5PoNCreator {
     @VisibleForTesting
     static void normalizeAndLogReadCounts(final ReadCountCollection readCounts, final Logger logger) {
         final RealMatrix counts = readCounts.counts();
-        final int columnCount = counts.getColumnDimension();
         final Median medianCalculator = new Median();
-        for (int i = 0; i < columnCount; i++) {
-            final double[] colCounts = counts.getColumn(i);
-            final double median = medianCalculator.evaluate(colCounts);
-            final double invMedian = 1.0 / median;
-            for (int j = 0; j < colCounts.length; j++) {
-                colCounts[j] = Math.log(Math.max(EPSILON, colCounts[j] * invMedian)) * INV_LN_2;
+
+        final double[] medians = IntStream.range(0, counts.getColumnDimension()).mapToDouble(col -> medianCalculator.evaluate(counts.getColumn(col))).toArray();
+        counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return Math.log(Math.max(EPSILON, value / medians[column])) * INV_LN_2;
             }
-            counts.setColumn(i, colCounts);
-        }
-        logger.info("Counts normalized by the column median and changed into bits.");
+        });
+
+        logger.info("Counts normalized by the column median and log2'd.");
     }
 
 
@@ -328,56 +323,49 @@ final public class HDF5PoNCreator {
      * @param readCounts the input and output read-count matrix.
      */
     @VisibleForTesting
-    static void imputeZerosCounts(final ReadCountCollection readCounts, final Logger logger) {
+    static void imputeZeroCountsAsTargetMedians(final ReadCountCollection readCounts, final Logger logger) {
 
         final RealMatrix counts = readCounts.counts();
         final int targetCount = counts.getRowDimension();
-        final int columnCount = counts.getColumnDimension();
 
-        // Declared once outside loop to reuse across rows:
-        final int[] zeroIndexes = new int[columnCount];
-        final double[] nonZeroValues = new double[columnCount];
         final Median medianCalculator = new Median();
-        int totalCounts = 0;
-        int totalZeroCounts = 0;
+        int totalCounts = counts.getColumnDimension() * counts.getRowDimension();
 
-        // for each row aka target:
-        for (int i = 0; i < targetCount; i++) {
-            // We classify columns as having a zero or not.
-            // we accumulate nonZero values in nonZeroValues to calculate the median
-            // where as we accumulate zero indexes that need to be updated later.
-            final double[] rowCounts = counts.getRow(i);
-            int zeroCount = 0;
-            int nonZeroCount = 0;
-            for (int j = 0; j <  rowCounts.length; j++) {
-                if (rowCounts[j] != 0.0) {
-                    nonZeroValues[nonZeroCount++] = rowCounts[j];
-                } else {
-                    zeroIndexes[zeroCount++] = j;
-                }
+        // Get the number of zeroes contained in the counts.
+        final long totalZeroCounts = IntStream.range(0, targetCount)
+                .mapToLong(t -> DoubleStream.of(counts.getRow(t))
+                        .filter(c -> c == 0.0).count()).sum();
+
+        // Get the median of each row, not including any entries that are zero.
+        final double[] medians = IntStream.range(0, targetCount)
+                .mapToDouble(t -> medianCalculator.evaluate(
+                        DoubleStream.of(counts.getRow(t))
+                                .filter(c -> c != 0.0)
+                                .toArray()
+                )).toArray();
+
+        // Change any zeros in the counts to the median for the row.
+        counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return value != 0 ? value : medians[row];
             }
-            totalCounts += rowCounts.length;
-            if (zeroCount > 0) { // We only have to do anything if if there is any zeros in the row.
-                final double nonZeroMedian = medianCalculator.evaluate(nonZeroValues, 0, nonZeroCount);
-                for (int j = 0; j < zeroCount; j++) {
-                    counts.setEntry(i, zeroIndexes[j], nonZeroMedian);
-                }
-                totalZeroCounts += zeroCount;
-            }
-        }
+        });
+
         if (totalZeroCounts > 0) {
-            logger.info(String.format("Some 0.0 counts, %d of %d (%.2f%%), where imputed to their enclosing target non-zero median", totalZeroCounts, totalZeroCounts, 100.0 * (totalZeroCounts / totalCounts)));
+            logger.info(String.format("Some 0.0 counts, %d of %d (%.2f%%), were imputed to their enclosing target non-zero median", totalZeroCounts, totalZeroCounts, 100.0 * (totalZeroCounts / totalCounts)));
         } else {
             logger.info("No count is 0.0 thus no count needed to be imputed.");
         }
     }
+
     /**
      * Truncates the extreme count values in the input read-count collection.
      * Values are forced to be bound by the percentile indicated with the input {@code percentile} which must be
      * in the range [0 .. 50.0]. Values under that percentile and the complementary (1 - percentile) are set to the
      * corresponding threshold value.
      *
-     * <p>The imputation is done in-place, thus the input matrix is well be modified as a result of this call.</p>
+     * <p>The imputation is done in-place, thus the input matrix is modified as a result of this call.</p>
      *
      * @param readCounts the input and output read-count matrix.
      */
@@ -387,11 +375,10 @@ final public class HDF5PoNCreator {
         final RealMatrix counts = readCounts.counts();
         final int targetCount = counts.getRowDimension();
         final int columnCount = counts.getColumnDimension();
-        final double[] values = new double[targetCount * columnCount];
-        for (int i = 0; i < targetCount; i++) {
-            final double[] rowCounts = counts.getRow(i);
-            System.arraycopy(rowCounts, 0, values, i * columnCount, columnCount);
-        }
+
+        // Create a row major array of the counts.
+        final double[] values = Doubles.concat(counts.getData());
+
         final Percentile bottomPercentileEvaluator = new Percentile(percentile);
         final Percentile topPercentileEvaluator = new Percentile(100.0 - percentile);
         final double bottomPercentileThreshold = bottomPercentileEvaluator.evaluate(values);
@@ -424,24 +411,20 @@ final public class HDF5PoNCreator {
     }
 
     /**
-     * Creates a new read-count collection that is a copy of the input but
-     * dropping columns with extreme median coverage.
+     * Creates a new read-count collection that is a copy of the input but dropping columns with extreme median coverage.
      *
      * @param readCounts the input read-counts.
-     * @param extremeColumnMedianCountPercentileThreshold bottom percentile to use as a exclusion threshold.
+     * @param extremeColumnMedianCountPercentileThreshold bottom percentile to use as an exclusion threshold.
      * @return never {@code null}. It might be a reference to the input read-counts if
-     * there is no columns to be dropped.
+     * there are no columns to be dropped.
      */
     @VisibleForTesting
     static ReadCountCollection removeColumnsWithExtremeMedianCounts(final ReadCountCollection readCounts, final double extremeColumnMedianCountPercentileThreshold, final Logger logger) {
         final List<String> columnNames = readCounts.columnNames();
-        final double[] columnMedians = new double[columnNames.size()];
         final RealMatrix counts = readCounts.counts();
         final Median medianCalculator = new Median();
-        for (int i = 0; i < columnMedians.length; i++) {
-            final double[] columnCounts = counts.getColumn(i);
-            columnMedians[i] = medianCalculator.evaluate(columnCounts);
-        }
+        final double[] columnMedians = IntStream.range(0, counts.getColumnDimension())
+                .mapToDouble(col -> medianCalculator.evaluate(counts.getColumn(col))).toArray();
 
         // Calculate thresholds:
         final double bottomExtremeThreshold = new Percentile(extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
@@ -473,6 +456,10 @@ final public class HDF5PoNCreator {
 
     }
 
+    private static long countZeroes(final double[] data) {
+       return DoubleStream.of(data).filter(d -> d == 0.0).count();
+    }
+
     /**
      * Remove targets that have too many counts equal to 0.
      * <p>
@@ -486,20 +473,12 @@ final public class HDF5PoNCreator {
      */
     @VisibleForTesting
     static ReadCountCollection removeTargetsWithTooManyZeros(final ReadCountCollection readCounts, final int maximumTargetZeros, final Logger logger) {
-        final Set<Target> targetsToKeep = new HashSet<>(readCounts.targets().size());
+
         final RealMatrix counts = readCounts.counts();
-        for (int i = 0; i < counts.getRowDimension(); i++) {
-            final double[] rowCounts = counts.getRow(i);
-            int zeroCounts = 0;
-            for (final double rowCount : rowCounts) {
-                if (rowCount == 0.0) {
-                    zeroCounts++;
-                }
-            }
-            if (zeroCounts <= maximumTargetZeros) {
-                targetsToKeep.add(readCounts.targets().get(i));
-            }
-        }
+
+        final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
+                .filter(i -> countZeroes(counts.getRow(i)) <= maximumTargetZeros)
+                .map(i -> readCounts.targets().get(i)).collect(Collectors.toSet());
 
         final int targetsToDropCount = readCounts.targets().size() - targetsToKeep.size();
         if (targetsToDropCount == 0) {
@@ -529,20 +508,12 @@ final public class HDF5PoNCreator {
      */
     @VisibleForTesting
     static ReadCountCollection removeColumnsWithTooManyZeros(final ReadCountCollection readCounts, final int maximumColumnZeros, final Logger logger) {
-        final Set<String> columnsToKeep = new HashSet<>(readCounts.columnNames().size());
+
         final RealMatrix counts = readCounts.counts();
-        for (int i = 0; i < counts.getColumnDimension(); i++) {
-            final double[] columnCounts = counts.getColumn(i);
-            int zeroCounts = 0;
-            for (final double columnCount : columnCounts) {
-                if (columnCount == 0.0) {
-                    zeroCounts++;
-                }
-            }
-            if (zeroCounts <= maximumColumnZeros) {
-                columnsToKeep.add(readCounts.columnNames().get(i));
-            }
-        }
+
+        final Set<String> columnsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
+                .filter(i -> countZeroes(counts.getRow(i)) <= maximumColumnZeros)
+                .map(i -> readCounts.columnNames().get(i)).collect(Collectors.toSet());
 
         final int columnsToDropCount = readCounts.columnNames().size() - columnsToKeep.size();
         if (columnsToDropCount == 0) {
@@ -563,7 +534,7 @@ final public class HDF5PoNCreator {
     /**
      * Normalizes read-counts values by the target factors in-place.
      * <p>
-     *    Thi basically consists in dividing each count by the corresponding target factor
+     *    This basically consists in dividing each count by the corresponding target factor
      *    (which in turn is typically the median across columns although this is not assured by this method.).
      * </p>
      * @param readCounts read-counts to normalize.
@@ -572,15 +543,16 @@ final public class HDF5PoNCreator {
     @VisibleForTesting
     static void normalizeReadCountsByTargetFactors(final ReadCountCollection readCounts, final double[] targetFactors) {
         final RealMatrix counts = readCounts.counts();
-        final int targetCount = counts.getRowDimension();
-        final int columnCount = counts.getColumnDimension();
-        for (int i = 0; i < targetCount; i++) {
-            final double factorInverse = 1.0 / targetFactors[i];
-
-            for (int j = 0; j < columnCount; j++) {
-                counts.setEntry(i, j, counts.getEntry(i, j) * factorInverse);
-            }
+        if (targetFactors.length != counts.getRowDimension()) {
+            throw new GATKException("Number of target factors does not correspond to the number of rows.");
         }
+        // Divide all counts by the target factor for the row.
+        counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return value / targetFactors[row];
+            }
+        });
     }
 
     /**
@@ -643,17 +615,11 @@ final public class HDF5PoNCreator {
      * @return never {@code null}, with as many elements as targets in {@code readCounts}.
      */
     private static double[] calculateTargetFactors(final ReadCountCollection readCounts) {
-        final double[] result = new double[readCounts.targets().size()];
-        final RealMatrix counts = readCounts.counts();
-        final Median medianCalculator = new Median();
-        for (int i = 0; i < result.length; i++) {
-            result[i] = medianCalculator.evaluate(counts.getRow(i));
-        }
-        return result;
+        return MatrixUtils.getRowMedians(readCounts.counts());
     }
 
     /**
-     * Calculates the absolute number of zero tolerated given the user requested percentage
+     * Calculates the absolute number of zeroes tolerated given the user requested percentage
      * and the number of counts involved.
      * @param totalCounts number of counts to check.
      * @param percentage a value from 0 to 100, otherwise a exception will be thrown.
@@ -684,13 +650,7 @@ final public class HDF5PoNCreator {
      */
     static double[] calculateRowVariances(final RealMatrix m) {
         Utils.nonNull(m, "Cannot calculate variances for a null matrix.");
-        final StandardDeviation std = new StandardDeviation();
-        final double[] result = new double[m.getRowDimension()];
-        for (int i = 0; i <  m.getRowDimension(); i++) {
-            final double [] row = m.getRow(i);
-            result[i] = Math.pow(std.evaluate(row), 2);
-        }
-        return result;
+        return MatrixUtils.getRowVariances(m);
     }
 
     /**

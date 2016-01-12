@@ -109,7 +109,7 @@ public class ParamUtils {
      * @return the same value
      * @throws IllegalArgumentException
      */
-    public static long isGreaterThanZero(final long val, final String message) {
+    public static long isPositive(final long val, final String message) {
         if (!(val > 0)){
             throw new IllegalArgumentException(message);
         }
@@ -123,7 +123,7 @@ public class ParamUtils {
      * @return the same value
      * @throws IllegalArgumentException
      */
-    public static double isGreaterThanZero(final double val, final String message) {
+    public static double isPositive(final double val, final String message) {
         if (!(val > 0)){
             throw new IllegalArgumentException(message);
         }
@@ -173,13 +173,13 @@ public class ParamUtils {
     /**
      *  Writes a list of strings to the given filename.  The file will be overwritten if it exists.
      *
-     * @param stringList Strings that will be written (one to a line)
+     * @param stringIterator Strings that will be written (one to a line)
      * @param outputFile File to write
      */
-    public static void writeStringListToFile(final List<String> stringList, final File outputFile) {
-        Utils.nonNull(stringList, "String list cannot be null");
+    public static void writeStringListToFile(final Iterable<String> stringIterator, final File outputFile) {
+        Utils.nonNull(stringIterator, "String list cannot be null");
         try (final FileWriter writer = new FileWriter(outputFile.getAbsolutePath())) {
-            for (String str : stringList) {
+            for (String str : stringIterator) {
                 writer.write(str);
             }
         } catch (final IOException ioe) {
