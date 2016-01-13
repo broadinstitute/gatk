@@ -33,7 +33,14 @@ import java.util.stream.Collectors;
 public class SparkGenomeReadCounts extends GATKSparkTool {
     private static final long serialVersionUID = 1l;
 
-    private static final int binsize = 10000;
+    protected static final String BINSIZE_SHORT_NAME = "bins";
+    protected static final String BINSIZE_LONG_NAME = "binsize";
+
+    @Argument(doc = "The size of bins in bases to collect coverage into",
+            fullName = BINSIZE_LONG_NAME,
+            shortName = BINSIZE_SHORT_NAME,
+            optional = true)
+    protected static int binsize = 10000;
 
     protected static final String OUTPUT_FILE_SHORT_NAME = "o";
     protected static final String OUTPUT_FILE_LONG_NAME = "outputFile";
@@ -68,7 +75,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
         logger.info("Starting Spark coverage collection...");
         final long coverageCollectionStartTime = System.currentTimeMillis();
-        final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, referenceArguments.getReferenceFileName());
+        final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, referenceArguments.getReferenceFileName(), (int) this.bamPartitionSplitSize);
         final JavaRDD<GATKRead> reads = rawReads.filter(read -> filter.test(read));
         final SAMSequenceDictionary sequenceDictionary = getReferenceSequenceDictionary();
         final Map<SimpleInterval, Long> byKey = reads.map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary)).countByValue();
