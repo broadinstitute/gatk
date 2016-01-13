@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.api.services.storage.Storage;
+import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Iterators;
+import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.UnmodifiableIterator;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
+import com.google.cloud.genomics.gatk.htsjdk.SamReaderExample;
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.CloseableIterator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -35,8 +39,13 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
@@ -257,4 +266,123 @@ public final class ReadsSparkSource implements Serializable {
         }
         return false;
     }
+
+    public static SamReader samReader(final String readFileName, final ValidationStringency validationStringency) {
+        // TODO: optimize single file to just delegate to BAM
+
+        // TODO: SamReader.PrimitiveSamReaderToSamReaderAdapter is not public so we can't easily create a SamReader
+        // from a PrimitiveSamReader
+
+        return null;
+    }
+
+    private static class ShardedPrimitiveSamReader implements SamReader.PrimitiveSamReader {
+
+        private final List<Path> bamFragments;
+        private final FileSystem fs;
+        private final ValidationStringency validationStringency;
+        private final SamReaderFactory factory = SamReaderFactory.make();
+
+
+        public ShardedPrimitiveSamReader(final String readFileName, final ValidationStringency validationStringency) throws IOException {
+            this.validationStringency = validationStringency;
+
+            // TODO: move to nio Path API - see #1426
+            Path path = new Path(readFileName);
+            this.fs = path.getFileSystem(new Configuration());
+            this.bamFragments = Arrays.asList(ReadsSparkSink.getBamFragments(path, fs)).stream().map(stat -> stat.getPath()).collect(Collectors.toList());
+        }
+
+        @Override
+        public SamReader.Type type() {
+            return SamReader.Type.BAM_TYPE;
+        }
+
+        @Override
+        public boolean hasIndex() {
+            return false;
+        }
+
+        @Override
+        public BAMIndex getIndex() {
+            throw new SAMException("No index is available for sharded BAM files.");
+        }
+
+        @Override
+        public SAMFileHeader getFileHeader() {
+            return null; // TODO: read from first fragment
+        }
+
+        private InputStream open(Path fragment) {
+            try {
+                return fs.open(fragment);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private static CloseableIterator<SAMRecord> combine(List<SAMRecordIterator> partIterators) {
+            SAMRecordCoordinateComparator comparator = new SAMRecordCoordinateComparator();
+            final UnmodifiableIterator<SAMRecord> combinedIterator = Iterators.mergeSorted(partIterators, comparator);
+            return new CloseableIterator<SAMRecord>() {
+                @Override
+                public void close() {
+                    for (CloseableIterator<SAMRecord> closableIterator : partIterators) {
+                        closableIterator.close();
+                    }
+                }
+                @Override
+                public boolean hasNext() {
+                    return combinedIterator.hasNext();
+                }
+                @Override
+                public SAMRecord next() {
+                    return combinedIterator.next();
+                }
+            };
+        }
+
+        @Override
+        public CloseableIterator<SAMRecord> getIterator() {
+            return combine(bamFragments.stream().map(bamFragment ->
+                    factory.open(SamInputResource.of(open(bamFragment))).iterator()).collect(Collectors.toList()));
+        }
+
+        @Override
+        public CloseableIterator<SAMRecord> getIterator(SAMFileSpan fileSpan) {
+            return null; // indexing not supported
+        }
+
+        @Override
+        public SAMFileSpan getFilePointerSpanningReads() {
+            return null; // indexing not supported
+        }
+
+        @Override
+        public CloseableIterator<SAMRecord> query(QueryInterval[] intervals, boolean contained) {
+            // query each BAM, then combine
+            return null; // indexing not supported
+        }
+
+        @Override
+        public CloseableIterator<SAMRecord> queryAlignmentStart(String sequence, int start) {
+            return null; // indexing not supported
+        }
+
+        @Override
+        public CloseableIterator<SAMRecord> queryUnmapped() {
+            return null; // indexing not supported
+        }
+
+        @Override
+        public void close() {
+
+        }
+
+        @Override
+        public ValidationStringency getValidationStringency() {
+            return validationStringency;
+        }
+    }
+
 }
