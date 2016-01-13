@@ -74,13 +74,13 @@ create_allele_fraction_plots_file = function(sample_name, snp_counts_file, segme
 
     plot_file_name = file.path( output_dir, paste(sample_name, "_FullGenome", ".png", sep=""))
     png(plot_file_name, 12, 7, units="in", type="cairo", res=300, bg="white")
-    SetUpPlot("Allele Fraction", "", TRUE)
+    SetUpPlot("Allele Fraction", 0, 1, "Chromosome", TRUE)
     AlleleFractionPlot(snp_counts, segments)
     dev.off()
 }
 
 ## Chromosome Background for data
-SetUpPlot = function(y.lab, x.lab, label_chromosomes){
+SetUpPlot = function(y.lab, y.min, y.max, x.lab, label_chromosomes){
   suppressWarnings( par( mar=c(3.1,3.6,0.1,0),mgp=c(2,-0.2,-1.1) ) )
   plot(0, type = "n", bty = "n", xlim = c(0, 1), ylim = c(0, 1),
        xlab = "", ylab = "", main = "", xaxt = "n")
@@ -96,20 +96,18 @@ SetUpPlot = function(y.lab, x.lab, label_chromosomes){
       	las = 1, cex = par("cex.axis") * par("cex") * 0.7)
   }
 
-  for (i in 1:num_chromosomes) {
+  for (i in 1:(num_chromosomes - 1)) {
     use.col = ifelse(i%%2 == 1, "grey90", "white")
-    rect(xleft = chromosome_starts[i], ybottom = 0, xright = chromosome_ends[i], ytop = 1, col = use.col, border = NA)
-
-    #draw vertical lines to gate off centromeres
-    lines(y = c(0, 1), x = rep(centromere_starts[i], 2), lty = 3, lwd = 0.5)
-    lines(y = c(0, 1), x = rep(centromere_ends[i], 2), lty = 3, lwd = 0.5)
+    rect(xleft = chromosome_starts[i], ybottom = y.min, xright = chromosome_ends[i],
+    		ytop = y.max, col = use.col, border = NA)
+    lines(y = c(y.min, y.max), x = rep(centromere_starts[i], 2), lty = 3, lwd = 0.5)
+    lines(y = c(y.min, y.max), x = rep(centromere_ends[i], 2), lty = 3, lwd = 0.5)
   }
 }
 
 AlleleFractionPlot = function(snp_df, segments_df){
   for( s in 1:nrow(segments_df)) {
      snp_indices=which(snp_df[,"CONTIG"]==segments_df[s,"Chromosome"] & snp_df[,"POS"] > segments_df[s,"Start"] & snp_df[,"POS"] < segments_df[s,"End"])
-     write.table(snp_indices, "/Users/davidben/Desktop/seg_index.txt")
      genomic_coordinates = chromosome_starts[snp_df[snp_indices,"CONTIG"]] + snp_df[snp_indices,"POS"] / genome_length
      ref_counts = snp_df[snp_indices, "REF_COUNT"]
      alt_counts = snp_df[snp_indices, "ALT_COUNT"]
@@ -117,7 +115,14 @@ AlleleFractionPlot = function(snp_df, segments_df){
 
      colors=c("coral", "dodgerblue")
      points(x=genomic_coordinates, y=MAF, col=colors[s%%2+1], pch=16, cex=0.2)
+
      lines(x=range(genomic_coordinates), y=rep(segments_df[s, "MAF_Post_Mean"], 2), col="black", lwd=1, lty=2)
+
+     #draw error bars
+     segment_mean = segments_df[s, "MAF_Post_Mean"]
+     segment_std = segments_df[s, "MAF_Post_Std"]
+     middle_of_segment = (max(genomic_coordinates) + min(genomic_coordinates))/2
+     arrows(middle_of_segment,segment_mean - segment_std,middle_of_segment,segment_mean + segment_std, code=3, length=0.02, angle = 90)
   }
 }
 

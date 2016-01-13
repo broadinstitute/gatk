@@ -134,23 +134,19 @@ QC = function(dat) {
 }
 
 ## Chromosome Background for data
-SetUpPlot = function(y.lab, y.min, y.max, x.lab, lab.chr, sex_chrs){
+SetUpPlot = function(y.lab, y.min, y.max, x.lab, label_chromosomes, sex_chrs){
   suppressWarnings( par( mar=c(3.1,3.6,0.1,0),mgp=c(2,-0.2,-1.1) ) )
   plot(0, type = "n", bty = "n", xlim = c(0, 1), ylim = c(y.min, y.max),
        xlab = "", ylab = "", main = "", xaxt = "n")
   mtext(side=1, line=1.5, x.lab, cex=0.75, outer=FALSE)
   mtext(side=2.2, line=1.5, y.lab, cex=0.75, las=FALSE, outer=FALSE)
 
-  if(lab.chr){
-  	lab.vals = (c(1:num_chromosomes))
-  	odd.ix = lab.vals %% 2 == 1
-  	if(sex_chrs){
-  	    lab.vals[23]="X"
-  	    lab.vals[24]="Y"
-  	}
-  	mtext(text = lab.vals[odd.ix], side = 1, line = -0.45, at = chromosome_centers[odd.ix],
+  if(label_chromosomes){
+  	labels = c(1:num_chromosomes)
+  	odd_indices = labels %% 2 == 1
+  	mtext(text = labels[odd_indices], side = 1, line = -0.45, at = chromosome_centers[odd_indices],
     		las = 1, cex = par("cex.axis") * par("cex") * 0.7)
-  	mtext(text = lab.vals[!odd.ix], side = 1, line = 0, at = chromosome_centers[!odd.ix],
+  	mtext(text = labels[!odd_indices], side = 1, line = 0, at = chromosome_centers[!odd_indices],
       	las = 1, cex = par("cex.axis") * par("cex") * 0.7)
   }
 
