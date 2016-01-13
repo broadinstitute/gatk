@@ -4,12 +4,14 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -219,5 +221,17 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
 
         runCommandLine(args.getArgsArray());
         SamAssertionUtils.assertSamsEqual(outBam, new File(getTestDataDir(), "expected.print_reads_one_malformed_read.bam"));
+    }
+
+    @Test
+    public void testReadFiltering_asIntegrationTestSpec() throws IOException {
+        final File samWithOneMalformedRead = new File(getTestDataDir(), "print_reads_one_malformed_read.sam");
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --" + StandardArgumentDefinitions.INPUT_LONG_NAME + " " + samWithOneMalformedRead.getCanonicalPath() +
+                " --" + StandardArgumentDefinitions.OUTPUT_LONG_NAME + " " + "%s",
+                Arrays.asList(new File(getTestDataDir(), "expected.print_reads_one_malformed_read.bam").getCanonicalPath())
+        );
+        spec.executeTest("testReadFiltering_asIntegrationTestSpec", this);
     }
 }
