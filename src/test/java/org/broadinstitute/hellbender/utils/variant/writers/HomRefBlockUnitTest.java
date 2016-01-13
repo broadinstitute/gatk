@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -148,7 +149,8 @@ public class HomRefBlockUnitTest extends BaseTest {
         return new Object[][] {
                 {new int[] {0, 1, 5}, 1},
                 {new int[] {10, 50, 30}, 20},
-                {new int[] {0, 10, 20, 10, 5, 50}, 5}
+                {new int[] {0, 10, 20, 10, 5, 50}, 5},
+                {new int[] {0, 1000, 1000000}, VCFConstants.MAX_GENOTYPE_QUAL} //check that QG is capped at MAX_GENOTYPE_QUAL
         };
     }
 
