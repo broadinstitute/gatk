@@ -33,3 +33,9 @@ gatk-protected.iml
 
 # Spark log file
 adam.log
+debug.RData
+foo.patch
+
+# odt temp file
+/docs/PoN/.~lock.TangentNormalizationInSparkNotes.odt#
+

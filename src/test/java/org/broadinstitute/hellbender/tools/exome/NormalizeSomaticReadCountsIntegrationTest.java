@@ -477,7 +477,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
      * @param factorNormalized input.
      */
     private void assertPreTangentNormalizedValues(final ReadCountCollection factorNormalized, final ReadCountCollection preTangentNormalized) {
-        final double epsilon = NormalizeSomaticReadCounts.EPSILON;
+        final double epsilon = TangentNormalizer.EPSILON;
         final RealMatrix outCounts = preTangentNormalized.counts();
         final RealMatrix inCounts = factorNormalized.counts();
         final double[] columnMeans = new double[inCounts.getColumnDimension()];
@@ -535,8 +535,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                 }
             });
 
-            final RealMatrix betaHats = pon.betaHats(input, true, NormalizeSomaticReadCounts.EPSILON);
-            final RealMatrix noisyBetaHats = pon.betaHats(noisyInput, true, NormalizeSomaticReadCounts.EPSILON);
+            final RealMatrix betaHats = pon.betaHats(input, true, TangentNormalizer.EPSILON);
+            final RealMatrix noisyBetaHats = pon.betaHats(noisyInput, true, TangentNormalizer.EPSILON);
             final RealMatrix difference = betaHats.subtract(noisyBetaHats);
 
             difference.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
@@ -555,7 +555,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private void assertBetaHats(final ReadCountCollection preTangentNormalized,
                                 final RealMatrix actual, final File ponFile) {
         Assert.assertEquals(actual.getColumnDimension(), preTangentNormalized.columnNames().size());
-        final double epsilon = NormalizeSomaticReadCounts.EPSILON;
+        final double epsilon = TangentNormalizer.EPSILON;
 
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);

@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.utils.segmenter;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.R.RScriptExecutorException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -8,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +46,96 @@ public class SegmenterUnitTest extends BaseTest {
         final File output = createTempFile("recapseg.HCC1143", ".seg");
         String sampleName = "Simple";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
+        assertEqualSegments(output,EXPECTED);
+    }
+
+    @Test
+    public void testSimpleWithWeights() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        String sampleName = "Simple";
+        final double [] weights = new double[20];
+        Arrays.fill(weights, 1.0);
+        final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
+        ParamUtils.writeValuesToFile(weights, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        assertEqualSegments(output,EXPECTED);
+    }
+
+    @Test
+    public void testSimpleWithWeightsBig() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        String sampleName = "Simple";
+        final double [] weights = new double[20];
+        Arrays.fill(weights, 10.0);
+        weights[10] = 200;
+        final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
+        ParamUtils.writeValuesToFile(weights, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        assertEqualSegments(output,EXPECTED);
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testSimpleWithWeightsPosInf() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        String sampleName = "Simple";
+        final double [] weights = new double[20];
+        Arrays.fill(weights, 1.0);
+        weights[10] = Double.POSITIVE_INFINITY;
+        final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
+        ParamUtils.writeValuesToFile(weights, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        assertEqualSegments(output,EXPECTED);
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testSimpleWithWeightsNegInf() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        String sampleName = "Simple";
+        final double [] weights = new double[20];
+        Arrays.fill(weights, 1.0);
+        weights[10] = Double.NEGATIVE_INFINITY;
+        final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
+        ParamUtils.writeValuesToFile(weights, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true, 2, weightsTmpFile);
+        assertEqualSegments(output,EXPECTED);
+    }
+
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testSimpleWithWeightsNegInfNotLogged() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        String sampleName = "Simple";
+        final double [] weights = new double[20];
+        Arrays.fill(weights, 1.0);
+        weights[10] = Double.NEGATIVE_INFINITY;
+        final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
+        ParamUtils.writeValuesToFile(weights, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        assertEqualSegments(output,EXPECTED);
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testSimpleWithWeightsNan() throws IOException {
+        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv");
+        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg");
+        final File output = createTempFile("recapseg.HCC1143", ".seg");
+        String sampleName = "Simple";
+        final double [] weights = new double[20];
+        Arrays.fill(weights, 1.0);
+        weights[10] = Double.NaN;
+        final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
+        ParamUtils.writeValuesToFile(weights, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 

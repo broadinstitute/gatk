@@ -12,7 +12,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-enum TargetTableColumns {
+public enum TargetTableColumns {
     NAME("NAME", true),
     CONTIG("CONTIG", true),
     START("START", true),

@@ -5,6 +5,8 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
+
 /**
  * Exome analysis target.
  *
@@ -12,7 +14,9 @@ import org.broadinstitute.hellbender.utils.Utils;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class Target implements Locatable, Feature {
+public class Target implements Locatable, Feature, Serializable {
+
+    static final long serialVersionUID = 11337337337L;
 
     /**
      * The target name. Always specified; never {@code null}.

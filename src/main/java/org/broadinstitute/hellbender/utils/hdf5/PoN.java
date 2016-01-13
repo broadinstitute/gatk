@@ -3,9 +3,14 @@ package org.broadinstitute.hellbender.utils.hdf5;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.hellbender.tools.exome.Target;
 import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -27,6 +32,18 @@ public interface PoN {
      * @return never {@code null}.
      */
     List<String> getTargetNames();
+
+    /**
+     * Initial target names listed by their numerical index in this PoN.
+     *
+     * <p>
+     * The returned list cannot be modified and its content might change to reflect
+     * changes in the underlying PoN storing resource depending on the implementation.
+     * </p>
+     *
+     * @return never {@code null}.
+     */
+    List<String> getRawTargetNames();
 
     /**
      * Reduced PoN Target names listed by their numerical index in the reduced PoN.
@@ -56,7 +73,7 @@ public interface PoN {
      * Log normal selected samples listed by their numerical index in the log-normal matrices.
      *
      * <p>
-     * The return matrix is a modifiable detached copy of the values in the
+     * The return matrix is an unmodifiable detached copy of the values in the
      * PoN.
      * </p>
      *
@@ -73,7 +90,7 @@ public interface PoN {
      * </p>
      *
      * <p>
-     * The return matrix is a modifiable detached copy of the values in the
+     * The return matrix is an unmodifiable detached copy of the values in the
      * PoN.
      * </p>
      *
@@ -81,6 +98,35 @@ public interface PoN {
      * is the number of targets in this PoN.
      */
     RealMatrix getTargetFactors();
+
+    /**
+     *  Get a list of the targets that are in this PoN (some filtering will have been applied).
+     *
+     * @return never {@code null} List of Target instances that are a copy (modifiable; not references) of what was in the PoN.
+     */
+    List<Target> getTargets();
+
+   /**
+     *  Get a list of the targets that were initially submitted to this PoN (no filtering will have been applied).
+     *
+     * @return never {@code null} List of Target instances that are a copy (modifiable; not references) of what was in the PoN.
+     */
+    List<Target> getRawTargets();
+
+    /**
+     *  Get a list of the targets that are in the final hyperplane after all filtering has been applied..
+     *
+     * @return never {@code null} List of Target instances that are a copy (modifiable; not references) of what was in the PoN.
+     */
+    List<Target> getPanelTargets();
+
+    /**
+     *  Get a target variances (post-tangent normalization) that are in the final hyperplane after all filtering has been applied..
+     *
+     * These entries will correspond to the list of Targets in {@link PoN :: getPanelTargets}
+     * @return never {@code null} Array of doubles that are a copy (modifiable) of what is in the PoN
+     */
+    double[] getTargetVariances();
 
     /**
      * Set the target factors in the pon.
@@ -123,11 +169,6 @@ public interface PoN {
 
     /**
      * Returns the log-normal matrix.
-     *
-     * <p>
-     * The return matrix is a modifiable detached copy of the values in the
-     * PoN.
-     * </p>
      *
      * <p>
      * The return matrix is a modifiable detached copy of the values in the

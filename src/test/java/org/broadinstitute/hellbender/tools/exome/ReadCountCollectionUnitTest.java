@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.TestUtil;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -9,6 +10,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -456,5 +458,15 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
             result.add(new Object[] { info, Collections.singletonList(null)});
         }
         return result.toArray(new Object[result.size()][]);
+    }
+
+    @Test(dataProvider = "correctInstantiationData")
+    public void testSerializeDeserialize(final ReadCountCollectionInfo info) {
+        final ReadCountCollection newInstance = info.newInstance();
+        try {
+            TestUtil.serializeAndDeserialize(newInstance);
+        } catch (final IOException | ClassNotFoundException e) {
+            Assert.fail("Exception thrown", e);
+        }
     }
 }

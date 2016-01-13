@@ -7,6 +7,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,7 +19,9 @@ import java.util.stream.Collectors;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ReadCountCollection {
+public final class ReadCountCollection implements Serializable {
+
+    static final long serialVersionUID = 337337337L;
 
     /**
      * Unmodifiable target list in the row order of their counts in {@link #counts}.
@@ -250,15 +253,13 @@ public final class ReadCountCollection {
         if (nextIndex < columnsToKeep.size()) {
             throw unknownColumnToKeepNames(columnsToKeep);
         }
-        // compose the new counts:
-        final double[][] resultCounts = new double[counts.getRowDimension()][columnsToKeepIndices.length];
-        for (int i = 0; i < resultCounts.length; i++) {
-            final double[] rowCounts = counts.getRow(i);
-            for (int j = 0; j < columnsToKeepIndices.length; j++) {
-                resultCounts[i][j] = rowCounts[columnsToKeepIndices[j]];
-            }
+
+        final RealMatrix resultCountsM = new Array2DRowRealMatrix(counts.getRowDimension(), columnsToKeepIndices.length);
+        for (int i = 0; i < columnsToKeepIndices.length; i++) {
+            resultCountsM.setColumn(i, counts.getColumn(columnsToKeepIndices[i]));
         }
-        return new ReadCountCollection(targets, Collections.unmodifiableList(resultColumnNames), new Array2DRowRealMatrix(resultCounts, false));
+
+        return new ReadCountCollection(targets, Collections.unmodifiableList(resultColumnNames), resultCountsM);
     }
 
     /**

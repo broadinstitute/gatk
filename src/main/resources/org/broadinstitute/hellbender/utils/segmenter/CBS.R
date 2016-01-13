@@ -10,7 +10,9 @@ option_list <- list(
     make_option(c("--sample_name", "-sample_name"), dest="sample_name", action="store"),
     make_option(c("--targets_file", "-targets_file"), dest="targets_file", action="store"),
     make_option(c("--output_file", "-output_file"), dest="output_file", action="store"),
-    make_option(c("--log2_input", "-log"), dest="log2_input", action="store"))
+    make_option(c("--log2_input", "-log"), dest="log2_input", action="store"),
+    make_option(c("--min_width", "-mw"), dest="min_width", action="store", default=2),
+    make_option(c("--weights_file", "-w"), dest="weights_file", action="store", default=NULL))
 
 opt <- parse_args(OptionParser(option_list=option_list))
 print(opt)
@@ -20,9 +22,11 @@ sample_name=opt[["sample_name"]]
 tn_file=opt[["targets_file"]]
 output_file=opt[["output_file"]]
 log_input=as.logical(opt[["log2_input"]])
+min_width=opt[["min_width"]]
+weights_file = opt[["weights_file"]]
 
 # Use a function for debugging purposes
-segment_data = function(sample_name, tn_file, output_file, log_input) {
+segment_data = function(sample_name, tn_file, output_file, log_input, weights_file) {
 	# Read in file and extract needed data
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	contig = tn[,"contig"]
@@ -34,12 +38,25 @@ segment_data = function(sample_name, tn_file, output_file, log_input) {
 	    dat = log2(tn[,sample_name])
 	}
 
+	if (is.null(weights_file)) {
+		weights = NULL
+	} else {
+		# weights needs to be in a row vector, so transpose (t(...)) is needed
+		weights = t(read.table(weights_file, sep="\t", header=FALSE))
+	}
+
 	# Create CNA object
 	cna_dat = CNA(dat, contig, pos, data.type="logratio", sampleid=sample_name)
 
 	# Perform segmentation
 	set.seed(25)
-	segmented = segment(smooth.CNA(cna_dat))$output
+
+	# segment has an issue with passing in weights of NULL.  Better to not specify.
+	if (! is.null(weights_file)) {
+		segmented = segment(smooth.CNA(cna_dat), min.width=min_width, weights=weights)$output
+	} else {
+		segmented = segment(smooth.CNA(cna_dat), min.width=min_width)$output
+	}
 
 	# Ensure that there are no too-small values which will be problematic for downstream tools.
 	segmented[,"seg.mean"] = 2^segmented[,"seg.mean"]
@@ -61,4 +78,4 @@ segment_data = function(sample_name, tn_file, output_file, log_input) {
 	write.table(segmented, file=output_file, sep="\t", quote=FALSE, row.names=FALSE)
 }
 
-segment_data(sample_name, tn_file, output_file, log_input)
+segment_data(sample_name, tn_file, output_file, log_input, weights_file)

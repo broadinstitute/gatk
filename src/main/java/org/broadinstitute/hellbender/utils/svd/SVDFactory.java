@@ -30,7 +30,7 @@ public class SVDFactory {
     public static SVD createSVD(final RealMatrix m, final JavaSparkContext ctx){
         Utils.nonNull(m, "Cannot create SVD from a null matrix.");
         if (ctx == null) {
-            return ApacheSingularValueDecomposer.createSVD(m);
+            return OjAlgoSingularValueDecomposer.createSVD(m);
         }
         return SparkSingularValueDecomposer.createSVD(ctx, m);
     }

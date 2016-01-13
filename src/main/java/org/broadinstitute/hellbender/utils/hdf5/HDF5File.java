@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
+import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.ObjectArrays;
 import ncsa.hdf.hdf5lib.H5;
 import ncsa.hdf.hdf5lib.HDF5Constants;
 import ncsa.hdf.hdf5lib.exceptions.HDF5Exception;
 import ncsa.hdf.hdf5lib.exceptions.HDF5LibraryException;
 import ncsa.hdf.hdf5lib.structs.H5G_info_t;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -235,6 +237,32 @@ public final class HDF5File implements AutoCloseable {
             return result;
         });
     }
+
+    /**
+     * Reads a String matrix from a particular position in the underlying HDF5 file.
+     *
+     * @param fullPath the path.
+     * @return never {@code null}, non-existing data or the wrong type in the HDF5
+     * file will result in a {@link GATKException} instead.
+     * @throws IllegalArgumentException if {@code fullPath} is {@code null}.
+     * @throws GATKException if {@code fullPath} does not exist, contains the wrong data type (non-String) or
+     *    its dimension is not 2.
+     */
+    public String[][] readStringMatrix(final String fullPath, final String numColsFullPath) {
+        final String[] rowMajorStringMatrix = readStringArray(fullPath);
+        final int numCols = (int) readDouble(numColsFullPath);
+        final int numRows = rowMajorStringMatrix.length/numCols;
+        if ((rowMajorStringMatrix.length % numCols) != 0) {
+            throw new GATKException("PoN has inconsistent data.  Target data does not have correct number of entries (" + rowMajorStringMatrix.length + ") for number of columns (" + numCols + ")");
+        }
+
+        final String[][] result = new String[numRows][numCols];
+        for (int i = 0; i < numRows; i++) {
+            System.arraycopy(rowMajorStringMatrix, i*numCols, result[i], 0, numCols);
+        }
+        return result;
+    }
+
 
     /**
      * Functional interface for lambda used to read a HDF5 data-set using {@link #readDataset}.
@@ -712,6 +740,45 @@ public final class HDF5File implements AutoCloseable {
     }
 
     /**
+     * Creates or overwrites a string matrix dataset given its full path within the HDF5 file and values.
+     *
+     * <p>Dev note:  Because H5 does not support 2d string arrays, the 2d array is written as two fields.  The first
+     * is the number of columns (second length of the array) and the second is a 1d array in row major order.</p>
+     *
+     * @param fullPath the full path of the dataset inside the HDF5 file.
+     * @param values the string array to write in the file.
+     * @param numColsPath the full path to the number columns inside the HDF5 file.
+     * @return {@code true} if a new data-set need to be created.
+     * @throws IllegalArgumentException if {@code values} is {@code null} or contains {@code null}.
+     * @throws GATKException if there was any low-level issue accessing the HDF5 file.
+     */
+    public boolean makeStringMatrix(final String fullPath, final String[][] values, final String numColsPath) {
+        Utils.nonNull(values, "the value provided cannot be null");
+        if (values.length == 0) {
+            throw new IllegalArgumentException("the value provided must have some elements");
+        }
+        final int columnCount = Utils.nonNull(values[0], "the input value array cannot contain nulls: 0").length;
+        if (columnCount == 0) {
+            throw new IllegalArgumentException("the value provided must have some elements");
+        }
+        for (int i = 1; i < values.length; i++) {
+            if (Utils.nonNull(values[i], "some row data is null: " + i).length != columnCount) {
+                throw new IllegalArgumentException("some rows in the input value matrix has different number of elements");
+            }
+        }
+        final long[] dimensions = new long[] { values.length * columnCount };
+
+        makeDouble(numColsPath, columnCount);
+
+        final String[] rowMajorValues = new String[values.length * columnCount];
+        for (int i = 0; i < values.length; i++) {
+            System.arraycopy(values[i], 0, rowMajorValues, i*columnCount, columnCount);
+        }
+
+        return makeDataset(fullPath, basicStringArrayTypeIdSupplier(), dimensions, rowMajorValues);
+    }
+
+    /**
      * Creates or overwrites a string array dataset given its full path within the HDF5 file and values.
      * @param fullPath the full path of the dataset inside the HDF5 file.
      * @param values the string array to write in the file.
@@ -917,5 +984,4 @@ public final class HDF5File implements AutoCloseable {
             throw new UnsupportedOperationException("this HDF5 file handle is not able to write");
         }
     }
-
 }

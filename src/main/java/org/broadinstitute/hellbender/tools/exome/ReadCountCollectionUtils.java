@@ -188,7 +188,7 @@ public final class ReadCountCollectionUtils {
      * @param collection -- ReadCountCollection that contains one sample only
      * @return never {@code null}.
      */
-    private static List<TargetCoverage> convertToTargetCoverageList(final ReadCountCollection collection) {
+    public static List<TargetCoverage> convertToTargetCoverageList(final ReadCountCollection collection) {
 
         Utils.nonNull(collection, "Cannot convert a null ReadCountCollection to TargetCoverage.");
 
