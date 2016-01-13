@@ -9,7 +9,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.logging.log4j.LogManager;
@@ -19,7 +18,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.MatrixUtils;
+import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
@@ -28,7 +27,6 @@ import org.broadinstitute.hellbender.utils.svd.SVDFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -276,7 +274,7 @@ final public class HDF5PoNCreator {
     static double subtractBGSCenter(final ReadCountCollection readCounts, final Logger logger) {
         final RealMatrix counts = readCounts.counts();
         final Median medianCalculator = new Median();
-        final double[] columnMedians = MatrixUtils.getColumnMedians(counts);
+        final double[] columnMedians = MatrixSummaryUtils.getColumnMedians(counts);
 
         final double medianOfMedians = medianCalculator.evaluate(columnMedians);
         counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
@@ -511,8 +509,8 @@ final public class HDF5PoNCreator {
 
         final RealMatrix counts = readCounts.counts();
 
-        final Set<String> columnsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
-                .filter(i -> countZeroes(counts.getRow(i)) <= maximumColumnZeros)
+        final Set<String> columnsToKeep = IntStream.range(0, counts.getColumnDimension()).boxed()
+                .filter(i -> countZeroes(counts.getColumn(i)) <= maximumColumnZeros)
                 .map(i -> readCounts.columnNames().get(i)).collect(Collectors.toSet());
 
         final int columnsToDropCount = readCounts.columnNames().size() - columnsToKeep.size();
@@ -615,7 +613,7 @@ final public class HDF5PoNCreator {
      * @return never {@code null}, with as many elements as targets in {@code readCounts}.
      */
     private static double[] calculateTargetFactors(final ReadCountCollection readCounts) {
-        return MatrixUtils.getRowMedians(readCounts.counts());
+        return MatrixSummaryUtils.getRowMedians(readCounts.counts());
     }
 
     /**
@@ -650,7 +648,7 @@ final public class HDF5PoNCreator {
      */
     static double[] calculateRowVariances(final RealMatrix m) {
         Utils.nonNull(m, "Cannot calculate variances for a null matrix.");
-        return MatrixUtils.getRowVariances(m);
+        return MatrixSummaryUtils.getRowVariances(m);
     }
 
     /**

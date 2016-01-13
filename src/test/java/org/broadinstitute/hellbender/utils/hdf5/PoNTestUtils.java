@@ -69,7 +69,7 @@ public class PoNTestUtils {
     }
 
     /**
-     * Test whether two double arrays are equal.
+     * Test whether two double arrays are equal.  For this method NaN is considered to equal NaN
      *
      * @param actual never {@code null}
      * @param gt never {@code null}
@@ -77,7 +77,11 @@ public class PoNTestUtils {
     public static void assertEqualsDoubleArrays(final double[] actual, final double[] gt) {
         Assert.assertEquals(actual.length, gt.length);
         for (int i = 0; i < actual.length; i++) {
-            Assert.assertEquals(actual[i], gt[i], 1e-8, "Arrays were not equal (within tolerance 1e-8) at index " + i);
+            if (Double.isNaN(gt[i])) {
+                Assert.assertTrue(Double.isNaN(actual[i]));
+            } else {
+                Assert.assertEquals(actual[i], gt[i], 1e-8, "Arrays were not equal (within tolerance 1e-8) at index " + i);
+            }
         }
     }
 

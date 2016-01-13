@@ -54,7 +54,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         final File outputFile = createTempFile("pon-",".hd5");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
-        arguments.add("--VERBOSITY");
+        arguments.add("--verbosity");
         arguments.add("INFO");
         arguments.add("-" + CreatePanelOfNormals.DISABLE_SPARK_SHORT_NAME);
         arguments.add("-" + CreatePanelOfNormals.NO_QC_SHORT_NAME);
@@ -106,7 +106,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         final File outputFile = createTempFile("pon-", ".hd5");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
-        arguments.add("--VERBOSITY");
+        arguments.add("--verbosity");
         arguments.add("INFO");
 
         runCommandLine(arguments);
