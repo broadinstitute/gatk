@@ -4,6 +4,9 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -18,6 +21,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 public class ReadsSparkSourceUnitTest extends BaseTest {
@@ -96,6 +100,34 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         JavaRDD<GATKRead> smallPartitions = readSource.getParallelReads(bam, null, ReadsSparkSource.DEFAULT_SPLIT_SIZE / 100);
         Assert.assertEquals(allInOnePartition.partitions().size(), 1);
         Assert.assertEquals(smallPartitions.partitions().size(), 2);
+    }
+
+    @Test
+    public void testReadFromFileAndHDFS() throws IOException {
+        final File bam = new File( getToolTestDataDir(), "hdfs_file_test.bam");
+        final File bai = new File( getToolTestDataDir(), "hdfs_file_test.bai");
+        MiniDFSCluster cluster = null;
+        try {
+            cluster = new MiniDFSCluster.Builder(new Configuration()).build();
+            final Path workingDirectory = cluster.getFileSystem().getWorkingDirectory();
+            final Path bamPath = new Path(workingDirectory,"hdfs.bam");
+            final Path baiPath = new Path(workingDirectory, "hdfs.bai");
+            cluster.getFileSystem().copyFromLocalFile(new Path(bam.toURI()), bamPath);
+            cluster.getFileSystem().copyFromLocalFile(new Path(bai.toURI()), baiPath);
+
+            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+            final ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
+            final List<GATKRead> localReads = readsSparkSource.getParallelReads(bam.toURI().toString(), null).collect();
+            final List<GATKRead> hdfsReads = readsSparkSource.getParallelReads(bamPath.toUri().toString(), null).collect();
+
+            Assert.assertFalse(localReads.isEmpty());
+            Assert.assertEquals(localReads, hdfsReads);
+        } finally {
+
+            if (cluster != null) {
+                cluster.shutdown();
+            }
+        }
     }
 
     /**
