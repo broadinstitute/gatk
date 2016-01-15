@@ -9,15 +9,15 @@ import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class ACSModeledSegment implements Locatable {
+public class ACNVModeledSegment implements Locatable {
 
     private final SimpleInterval interval;
     private final PosteriorSummary segmentMeanPosteriorSummary;
     private final PosteriorSummary minorAlleleFractionPosteriorSummary;
 
-    public ACSModeledSegment(final SimpleInterval interval,
-                             final PosteriorSummary segmentMeanPosteriorSummary,
-                             final PosteriorSummary minorAlleleFractionPosteriorSummary) {
+    public ACNVModeledSegment(final SimpleInterval interval,
+                              final PosteriorSummary segmentMeanPosteriorSummary,
+                              final PosteriorSummary minorAlleleFractionPosteriorSummary) {
         this.interval = interval;
         this.segmentMeanPosteriorSummary = segmentMeanPosteriorSummary;
         this.minorAlleleFractionPosteriorSummary = minorAlleleFractionPosteriorSummary;

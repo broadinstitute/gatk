@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Represents an ACS segmented model for copy ratio fit to target-coverage data.
+ * Represents an ACNV segmented model for copy ratio fit to target-coverage data.
  * The log_2 coverages in each segment are fit by a mixture model with a normal-distribution component
  * and a uniform outlier component.  The variance of the normal-distribution component and the relative
  * contribution of the uniform outlier component in all segments are both assumed to be global parameters.
@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ACSCopyRatioModeller {
+public final class ACNVCopyRatioModeller {
     private static final double EPSILON = 1E-10;
     private static final double VARIANCE_MIN = EPSILON;
     private static final double VARIANCE_MAX = 10.;
@@ -60,7 +60,7 @@ public final class ACSCopyRatioModeller {
      * parameters are set to empirical estimates where available.
      * @param segmentedModel    SegmentedModel with segments and a Genome
      */
-    public ACSCopyRatioModeller(final SegmentedModel segmentedModel) {
+    public ACNVCopyRatioModeller(final SegmentedModel segmentedModel) {
         this.segmentedModel = segmentedModel;
 
         //load segmented coverages from SegmentedModel into CopyRatioDataCollection
@@ -238,7 +238,7 @@ public final class ACSCopyRatioModeller {
 
     /**
      * Returns an unmodifiable view of the list of samples of the segment-means posterior, represented as a list of
-     * {@link org.broadinstitute.hellbender.tools.exome.ACSCopyRatioModeller.SegmentMeans} objects.
+     * {@link ACNVCopyRatioModeller.SegmentMeans} objects.
      * @return  unmodifiable view of the list of samples of the segment-means posterior
      */
     public List<SegmentMeans> getSegmentMeansSamples() {
@@ -247,7 +247,7 @@ public final class ACSCopyRatioModeller {
 
     /**
      * Returns a list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment.
-     * Should only be called after {@link ACSCopyRatioModeller#fitMCMC(int, int)} has been called.
+     * Should only be called after {@link ACNVCopyRatioModeller#fitMCMC(int, int)} has been called.
      * @return  list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment
      */
     public List<PosteriorSummary> getSegmentMeansPosteriorSummaries() {
@@ -267,7 +267,7 @@ public final class ACSCopyRatioModeller {
 
     /**
      * Returns an unmodifiable view of the list of samples of the outlier-indicators posterior, represented as a list of
-     * {@link org.broadinstitute.hellbender.tools.exome.ACSCopyRatioModeller.OutlierIndicators} objects.
+     * {@link ACNVCopyRatioModeller.OutlierIndicators} objects.
      * @return  unmodifiable view of the list of samples of the outlier-indicators posterior
      */
     public List<OutlierIndicators> getOutlierIndicatorsSamples() {

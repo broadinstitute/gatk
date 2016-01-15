@@ -1,6 +1,6 @@
 function [reduced_panel, reduced_pinv, fnt_control_matrix, log_normals] = create_pon_data_from_gatk_hdf5(pon_filename)
 %
-% [reduced_panel, reduced_pinv, fnt_control_matrix] = create_pon_data_from_recapseg_hdf5(pon_filename)
+% [reduced_panel, reduced_pinv, fnt_control_matrix] = create_pon_data_from_gatk_hdf5(pon_filename)
 %
 % pon_filename -- v5 PoN created by GATK CNV
 % 

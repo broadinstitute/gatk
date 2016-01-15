@@ -11,20 +11,20 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Detects copy-number events using allelic-count data and ReCapSeg output.
+ * Detects copy-number events using allelic-count data and GATK CNV output.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Detect copy-number events in a tumor sample using allelic-count data and ReCapSeg output. " +
+        summary = "Detect copy-number events in a tumor sample using allelic-count data and GATK CNV output. " +
                 "Allelic-count data (reference/alternate counts from the GetHetCoverage tool) is segmented using " +
                 "circular binary segmentation; the result is combined with the target coverages " +
-                "and segments found by the ReCapSeg tool. Bayesian parameter estimation of models for the " +
+                "and segments found by the GATK CNV tool. Bayesian parameter estimation of models for the " +
                 "copy ratios and minor allele fractions in each segment is performed using Markov chain Monte Carlo.",
-        oneLineSummary = "Detect copy-number events using allelic-count data and ReCapSeg output.",
+        oneLineSummary = "Detect copy-number events using allelic-count data and GATK CNV output.",
         programGroup = CopyNumberProgramGroup.class
 )
-public class AllelicCapSegger extends CommandLineProgram {
+public class AllelicCNV extends CommandLineProgram {
     protected static final String SNP_MAF_SEG_FILE_TAG = "MAF";
     protected static final String UNION_SEG_FILE_TAG = "union";
     protected static final String SMALL_MERGED_SEG_FILE_TAG = "no-small";
@@ -62,7 +62,7 @@ public class AllelicCapSegger extends CommandLineProgram {
     protected File snpCountsFile;
 
     @Argument(
-            doc = "Input file for tumor-sample target coverages (output of ReCapSeg tool).",
+            doc = "Input file for tumor-sample target coverages (output of GATK CNV tool).",
             fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME,
             optional = false
@@ -70,7 +70,7 @@ public class AllelicCapSegger extends CommandLineProgram {
     protected File targetCoveragesFile;
 
     @Argument(
-            doc = "Input file for tumor-sample target-coverage segments (output of ReCapSeg tool).",
+            doc = "Input file for tumor-sample target-coverage segments (output of GATK CNV tool).",
             fullName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME,
             optional = false
@@ -191,7 +191,7 @@ public class AllelicCapSegger extends CommandLineProgram {
 
         //initial model fitting
         logger.info("Fitting initial model...");
-        final ACSModeller modeller = new ACSModeller(segmentedModel, outputPrefix,
+        final ACNVModeller modeller = new ACNVModeller(segmentedModel, outputPrefix,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
 
         //similar-segment merging (segment files are output for each merge iteration)
