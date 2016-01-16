@@ -91,7 +91,7 @@ public final class InbreedingCoeff extends InfoFieldAnnotation {
             } else {
                 continue;
             }
-            final double[] normalizedLikelihoods = MathUtils.normalizeFromLog(g.getLikelihoods().getAsVector());
+            final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10(g.getLikelihoods().getAsVector());
             if (doMultiallelicMapping){
                 if (g.isHetNonRef()) {
                     //all likelihoods go to homCount

@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -28,8 +24,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * offsets.
      * Note: This constructor keeps an alias to the given list.
      */
-    @VisibleForTesting
-    ReadPileup(final Locatable loc, final List<PileupElement> pileup) {
+    public ReadPileup(final Locatable loc, final List<PileupElement> pileup) {
         Utils.nonNull(loc, "loc is null");
         Utils.nonNull(pileup, "element list is null");
         this.loc = loc;
@@ -104,13 +99,13 @@ public final class ReadPileup implements Iterable<PileupElement>{
         return makeFilteredPileup(p -> {
             final GATKRead read = p.getRead();
             final String readGroupID = read.getReadGroup();
-            if (laneID == null && readGroupID == null) {
+            if (laneID == null && readGroupID == null){
                 return true;
             }
-            if (laneID != null && readGroupID != null) {
+            if (laneID != null && readGroupID != null){
                 final boolean laneSame = readGroupID.startsWith(laneID + "."); // lane is the same, but sample identifier is different
                 final boolean exactlySame = readGroupID.equals(laneID);        // in case there is no sample identifier, they have to be exactly the same
-                if (laneSame || exactlySame) {
+                if (laneSame || exactlySame){
                     return true;
                 }
             }
@@ -240,14 +235,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Note: this call costs O(n) and allocates fresh array each time
      */
     public byte[] getBases() {
-        //Note: Java does not have a proper way of handling byte for
-        // example there's no mapToByte function on stream, and no ByteStream
-        //so we have to do this by hand
-        final byte[] result = new byte[pileupElements.size()];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = pileupElements.get(i).getBase();
-        }
-        return result;
+        return toByteArray(extractIntArray(pe -> pe.getBase()));
     }
 
     /**
@@ -255,14 +243,16 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Note: this call costs O(n) and allocates fresh array each time
      */
     public byte[] getBaseQuals() {
-        //Note: Java does not have a proper way of handling byte for
-        // example there's no mapToByte function on stream, and no ByteStream
-        //so we have to do this by hand
-        final byte[] result = new byte[pileupElements.size()];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = pileupElements.get(i).getQual();
+        return toByteArray(extractIntArray(pe -> pe.getQual()));
+    }
+
+    //Converts array of ints to array of bytes by hard casting (loses precision if ints are large).
+    private byte[] toByteArray(final int[] ints) {
+        final byte[] bytes = new byte[ints.length];
+        for (int i = 0; i < ints.length; i++) {
+            bytes[i] = (byte)ints[i];
         }
-        return result;
+        return bytes;
     }
 
     /**

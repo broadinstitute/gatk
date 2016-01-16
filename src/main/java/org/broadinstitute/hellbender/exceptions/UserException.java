@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.exceptions;
 
-import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
@@ -10,7 +9,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Set;
 
@@ -246,33 +244,6 @@ public class UserException extends RuntimeException {
         }
     }
 
-    /**
-     * Class for handling common failures of dynamic class resolution
-     */
-    public static class DynamicClassResolutionException extends UserException {
-        private static final long serialVersionUID = 0L;
-        public DynamicClassResolutionException(Class<?> c, Exception ex) {
-            super(String.format("Could not create module %s because %s caused by exception %s",
-                    c.getSimpleName(), moreInfo(ex), ex.getMessage()));
-        }
-
-        private static String moreInfo(Exception ex) {
-            try {
-                throw ex;
-            } catch (InstantiationException e) {
-                return "BUG: cannot instantiate class: must be concrete class";
-            } catch (NoSuchMethodException e) {
-                return "BUG: Cannot find expected constructor for class";
-            } catch (IllegalAccessException e) {
-                return "Cannot instantiate class (Illegal Access)";
-            } catch (InvocationTargetException e) {
-                return "Cannot instantiate class (Invocation failure)";
-            } catch ( Exception e ) {
-                return String.format("an exception of type %s occurred",e.getClass().getSimpleName());
-            }
-        }
-    }
-
     public static class CannotExecuteRScript extends UserException {
         private static final long serialVersionUID = 0L;
         public CannotExecuteRScript(String message) {
@@ -290,20 +261,6 @@ public class UserException extends RuntimeException {
     }
 
 
-    public static class UnsupportedCigarOperatorException extends MalformedRead {
-        private static final long serialVersionUID = 0L;
-
-        public UnsupportedCigarOperatorException(final CigarOperator co, final GATKRead read, final String message) {
-            super(read, String.format(
-                    "Unsupported CIGAR operator %s in read %s at %s:%d. %s",
-                    co,
-                    read.getName(),
-                    read.getContig(),
-                    read.getStart(),
-                    message));
-        }
-    }
-
     public static class MalformedBAM extends UserException {
         private static final long serialVersionUID = 1l;
 
@@ -317,14 +274,6 @@ public class UserException extends RuntimeException {
 
         public MalformedBAM(String source, String message) {
             super(String.format("SAM/BAM/CRAM file %s is malformed: %s", source, message));
-        }
-    }
-
-    public static class ReadMissingReadGroup extends MalformedBAM {
-        private static final long serialVersionUID = 1l;
-
-        public ReadMissingReadGroup(final GATKRead read) {
-            super(read, String.format("Read %s is missing the read group (RG) tag, which is required by the GATK.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getName()));
         }
     }
 
@@ -430,6 +379,6 @@ public class UserException extends RuntimeException {
         public WrongFeatureType( final File featureFile, final Class<? extends Feature> requiredFeatureType, final List<String> actualFeatureTypes ) {
             super(String.format("File %s is of the wrong type. It should contain Features of type %s, but instead contains Features of type(s): %s",
                                 featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
-        }
+	    }
     }
 }

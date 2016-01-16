@@ -51,6 +51,16 @@ public final class PairHMMModel {
     public static final int deletionToDeletion = 5;
 
     /**
+      * Convenient ln10 constant.
+      */
+    private static final double LN10 = Math.log(10);
+
+    /**
+      * Convenient (ln10)^-1 constant.
+      */
+     private static final double INV_LN10 = 1.0 / LN10;
+
+    /**
      * Holds pre-calculated the matchToMath probability values in linear scale.
      *
      * <p/>
@@ -61,14 +71,14 @@ public final class PairHMMModel {
     private static final double[] matchToMatchProb = new double[((QualityUtils.MAX_QUAL + 1) * (QualityUtils.MAX_QUAL + 2)) >> 1];
 
     /**
-     * Holds pre-calculated the matchToMatch log-probabilities.
+     * Holds pre-calculated the matchToMatch log10-probabilities.
      *
      * <p/>
      * This is a triangular matrix stored in a unidimentional array like so:
      * <p/>
      * (0,0), (0,1), (1,1), (0,2), (1,2), (2,2), (0,3) ... ({@link QualityUtils#MAX_QUAL},{@link QualityUtils#MAX_QUAL})
      */
-    private static final double[] matchToMatchLog = new double[((QualityUtils.MAX_QUAL + 1) * (QualityUtils.MAX_QUAL + 2)) >> 1];
+    private static final double[] matchToMatchLog10 = new double[((QualityUtils.MAX_QUAL + 1) * (QualityUtils.MAX_QUAL + 2)) >> 1];
 
     /**
      * Initialize matchToMatch cache tables {@link #matchToMatch} and {@link #matchToMatchLog}
@@ -76,10 +86,10 @@ public final class PairHMMModel {
     static {
         for (int i = 0, offset = 0; i <= QualityUtils.MAX_QUAL; offset += ++i)
             for (int j = 0; j <= i; j++) {
-                final double logSum = approximateLogSumPhred(i, j);
-                matchToMatchLog[offset + j] =
-                        Math.log1p(-Math.min(1, Math.exp(logSum)));
-                matchToMatchProb[offset + j] = Math.exp(matchToMatchLog[offset + j]);
+                final double log10Sum = MathUtils.approximateLog10SumLog10(-0.1 * i, -0.1 * j);
+                matchToMatchLog10[offset + j] =
+                        Math.log1p(-Math.min(1, Math.pow(10, log10Sum))) * INV_LN10;
+                matchToMatchProb[offset + j] = Math.pow(10, matchToMatchLog10[offset + j]);
             }
     }
 
@@ -191,7 +201,7 @@ public final class PairHMMModel {
     }
 
     /**
-     * Fills a transition log-probability array given the different quality scores affecting a read site.
+     * Fills a transition log10-probability array given the different quality scores affecting a read site.
      *
      * @param insQual the insertion quality score as a byte.
      * @param delQual the deletion quality score as a byte.
@@ -201,21 +211,21 @@ public final class PairHMMModel {
      * @throws ArrayIndexOutOfBoundsException if {@code dest} is not large enough.
      * @throws IllegalArgumentException if {@code insQual}, {@code delQual} or {@code gcp} is less than negative.
      */
-    public static void qualToLogTransProbs(final double[] dest, final byte insQual, final byte delQual, final byte gcp) {
+    public static void qualToTransProbsLog10(final double[] dest, final byte insQual, final byte delQual, final byte gcp) {
         Utils.nonNull(dest, "dest array null");
         if (insQual < 0) throw new IllegalArgumentException("insert quality cannot less than 0: " + insQual);
         if (delQual < 0) throw new IllegalArgumentException("deletion quality cannot be less than 0: " + delQual);
         if (gcp < 0) throw new IllegalArgumentException("gcp cannot be less than 0: " + gcp);
-        dest[matchToMatch] = matchToMatchLogProb(insQual, delQual);
-        dest[matchToInsertion] = QualityUtils.qualToLogErrorProb(insQual);
-        dest[matchToDeletion] = QualityUtils.qualToLogErrorProb(delQual);
-        dest[indelToMatch] = QualityUtils.qualToLogProb(gcp);
-        dest[insertionToInsertion] = QualityUtils.qualToLogErrorProb(gcp);
-        dest[deletionToDeletion] = QualityUtils.qualToLogErrorProb(gcp);
+        dest[matchToMatch] = matchToMatchProbLog10(insQual, delQual);
+        dest[matchToInsertion] = QualityUtils.qualToErrorProbLog10(insQual);
+        dest[matchToDeletion] = QualityUtils.qualToErrorProbLog10(delQual);
+        dest[indelToMatch] = QualityUtils.qualToProbLog10(gcp);
+        dest[insertionToInsertion] = QualityUtils.qualToErrorProbLog10(gcp);
+        dest[deletionToDeletion] = QualityUtils.qualToErrorProbLog10(gcp);
     }
 
     /**
-     * Returns a transition log probability array given the different quality scores affecting a read site.
+     * Returns a transition log10 probability array given the different quality scores affecting a read site.
      *
      * @param insQual the insertion quality score as a byte.
      * @param delQual the deletion quality score as a byte.
@@ -227,14 +237,14 @@ public final class PairHMMModel {
      *
      * @return never {@code null}. An array of length {@link #TRANS_PROB_ARRAY_LENGTH}.
      */
-    public static double[] qualToLogTransProbs(final byte insQual, final byte delQual, final byte gcp) {
+    public static double[] qualToTransProbsLog10(final byte insQual, final byte delQual, final byte gcp) {
         final double[] dest = new double[TRANS_PROB_ARRAY_LENGTH];
-        qualToLogTransProbs(dest,insQual,delQual,gcp);
+        qualToTransProbsLog10(dest, insQual, delQual, gcp);
         return dest;
     }
 
     /**
-     * Fills a matrix with the log transition probabilities for a number of bases.
+     * Fills a matrix with the log10 transition probabilities for a number of bases.
      *
      * <p/>
      * The first dimension of the matrix correspond to the different bases where the first one is stored in position 1.
@@ -252,7 +262,7 @@ public final class PairHMMModel {
      * @throws ArrayIndexOutOfBoundsException if {@code dest} or any of its elements is not large enough to contain the
      *  transition  matrix.
      */
-    public static void qualToLogTransProbs(final double[][] dest, final byte[] insQuals, final byte[] delQuals, final byte[] gcps) {
+    public static void qualToTransProbsLog10(final double[][] dest, final byte[] insQuals, final byte[] delQuals, final byte[] gcps) {
         Utils.nonNull(dest,     "dest array null");
         Utils.nonNull(insQuals, "insQuals array null");
         Utils.nonNull(delQuals, "delQuals array null");
@@ -264,12 +274,12 @@ public final class PairHMMModel {
         if (dest.length < readLength + 1) throw new IllegalArgumentException("destination length is not enough for the read length: " + dest.length + " < " + readLength + " + 1");
 
         for (int i = 0; i < readLength; i++) {
-            qualToLogTransProbs(dest[i + 1], insQuals[i], delQuals[i], gcps[i]);
+            qualToTransProbsLog10(dest[i + 1], insQuals[i], delQuals[i], gcps[i]);
         }
     }
 
     /**
-     * Returns a matrix with the log transition probabilities for a number of bases.
+     * Returns a matrix with the log10 transition probabilities for a number of bases.
      *
      * <p/>
      * The first dimension of the matrix correspond to the different bases where the first one is stored in position 1.
@@ -287,13 +297,13 @@ public final class PairHMMModel {
      *
      * @return never {@code null}, an matrix of the dimensions explained above.
      */
-    public static double[][] qualToLogTransProbs(final byte[] insQuals, final byte[] delQuals, final byte[] gcps) {
+    public static double[][] qualToTransProbsLog10(final byte[] insQuals, final byte[] delQuals, final byte[] gcps) {
         Utils.nonNull(insQuals, "insQuals array null");
         Utils.nonNull(delQuals, "delQuals array null");
         Utils.nonNull(gcps,     "gcps array null");
 
         final double[][] dest = createTransitionMatrix(insQuals.length);
-        qualToLogTransProbs(dest,insQuals,delQuals,gcps);
+        qualToTransProbsLog10(dest,insQuals,delQuals,gcps);
         return dest;
     }
 
@@ -330,7 +340,7 @@ public final class PairHMMModel {
     }
 
     /**
-     * Returns the log probability that neither of two events, insertion and deletion, takes place.
+     * Returns the log10 probability that neither of two events, insertion and deletion, takes place.
      * <p/>
      *
      * We assume that both event never occur together so that the probability of no event is: <br/>
@@ -342,8 +352,8 @@ public final class PairHMMModel {
      *
      * @return a value between 0 and -Inf.
      */
-    public static double matchToMatchLogProb(final byte insQual, final byte delQual) {
-        return matchToMatchLogProb((insQual & 0xFF), (delQual & 0xFF));
+    public static double matchToMatchProbLog10(final byte insQual, final byte delQual) {
+        return matchToMatchProbLog10((insQual & 0xFF), (delQual & 0xFF));
     }
 
     /**
@@ -373,7 +383,7 @@ public final class PairHMMModel {
 
         if (minQual < 0) throw new IllegalArgumentException("quality cannot be negative: " + minQual + " and " + maxQual);
 
-        return (QualityUtils.MAX_QUAL < maxQual) ?  1.0 - Math.exp(approximateLogSumPhred(minQual, maxQual)) :
+        return (QualityUtils.MAX_QUAL < maxQual) ?  1.0 - Math.pow(10, MathUtils.approximateLog10SumLog10(-0.1 * minQual, -0.1 * maxQual)) :
                 matchToMatchProb[((maxQual * (maxQual + 1)) >> 1) + minQual];
     }
 
@@ -391,7 +401,7 @@ public final class PairHMMModel {
      *
      * @return a value between 0 and -Inf.
      */
-    public static double matchToMatchLogProb(final int insQual, final int delQual) {
+    public static double matchToMatchProbLog10(final int insQual, final int delQual) {
         final int minQual;
         final int maxQual;
         if (insQual <= delQual) {
@@ -402,14 +412,8 @@ public final class PairHMMModel {
             maxQual = insQual;
         }
         return (QualityUtils.MAX_QUAL < maxQual) ? Math.log1p (
-                -Math.min(1, Math.exp(approximateLogSumPhred(minQual, maxQual))))  :
-                matchToMatchLog[((maxQual * (maxQual + 1)) >> 1) + minQual];
-    }
-
-    /**
-     * Utility function for computing the log sum of log probabilities corresponding to two given phred scores
-     */
-    private static double approximateLogSumPhred(final int q1, final int q2) {
-        return MathUtils.approximateLogSumLog(q1 * QualityUtils.PHRED_TO_LOG_PROB_MULTIPLIER, q2 * QualityUtils.PHRED_TO_LOG_PROB_MULTIPLIER);
+                -Math.min(1, Math.pow(10,
+                        MathUtils.approximateLog10SumLog10(-.1 * minQual, -.1 * maxQual)))) * INV_LN10 :
+                matchToMatchLog10[((maxQual * (maxQual + 1)) >> 1) + minQual];
     }
 }

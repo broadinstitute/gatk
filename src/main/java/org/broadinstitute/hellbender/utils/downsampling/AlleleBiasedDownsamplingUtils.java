@@ -105,8 +105,7 @@ public final class AlleleBiasedDownsamplingUtils {
      * @param contaminationFraction      the fraction of total reads to remove per allele
      * @return list of reads TO REMOVE from allele biased down-sampling
      */
-    @VisibleForTesting
-    static <A extends Allele> List<GATKRead> selectAlleleBiasedReads(final Map<A, List<GATKRead>> alleleReadMap, final int totalReads, final double contaminationFraction) {
+    public static <A extends Allele> List<GATKRead> selectAlleleBiasedReads(final Map<A, List<GATKRead>> alleleReadMap, final int totalReads, final double contaminationFraction) {
         //no checks here - done on the public level
         final int numReadsToRemove = (int)(totalReads * contaminationFraction);
 
@@ -135,8 +134,7 @@ public final class AlleleBiasedDownsamplingUtils {
     /**
      * Returns the sum of length of the lists.
      */
-    @VisibleForTesting
-    static int totalReads(final Map<?, List<GATKRead>> alleleReadMap){
+    public static int totalReads(final Map<?, List<GATKRead>> alleleReadMap){
         return Utils.nonNull(alleleReadMap).values().stream().mapToInt(list -> list.size()).sum();
     }
 

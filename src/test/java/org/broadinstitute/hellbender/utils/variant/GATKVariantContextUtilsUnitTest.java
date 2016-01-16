@@ -1198,7 +1198,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
                                                   final List<Allele> allelesToUse,
                                                   final List<Allele> expectedAlleles) {
         final GenotypeBuilder gb = new GenotypeBuilder("test");
-        final double[] logLikelhoods = MathUtils.normalizeFromLog(likelihoods, true, false);
+        final double[] logLikelhoods = MathUtils.normalizeFromLog10(likelihoods, true, false);
         GATKVariantContextUtils.updateGenotypeAfterSubsetting(originalGT, gb, mode, logLikelhoods, allelesToUse);
         final Genotype g = gb.make();
         Assert.assertEquals(new HashSet<>(g.getAlleles()), new HashSet<>(expectedAlleles));

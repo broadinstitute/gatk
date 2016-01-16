@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import htsjdk.tribble.Feature;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -136,9 +136,26 @@ public final class FeatureContext {
         return getValues(featureDescriptor, getQueryInterval(windowLeadingBases, windowTrailingBases));
     }
 
-    private <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final SimpleInterval queryInterval) {
+    /**
+     * Gets all Features from the source represented by the provided FeatureInput argument that overlap the given interval.
+     * Returns an empty List if this FeatureContext has no backing source of Features and/or interval.
+     *
+     * Returned Features are not guaranteed to be in any particular order.
+     *
+     * Note: if query lookahead caching is enabled for the underlying FeatureDataSource,
+     * there will be a cache miss on almost every call, since the current caching scheme prefetches Features after
+     * the current query interval but not before it (on the assumption that
+     * the common access pattern involves gradually increasing query intervals).
+     *
+     * @param featureDescriptor FeatureInput argument for which to fetch Features
+     * @param <T> type of Feature in the data source backing the provided FeatureInput
+     * @return All Features in the data source backing the provided FeatureInput that overlap
+     *         this FeatureContext's query interval as expanded by the specified number of leading/trailing bases.
+     *         Empty List if there is no backing data source and/or interval.
+     */
+    public <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final SimpleInterval queryInterval) {
         if (featureManager == null || queryInterval == null || featureDescriptor == null) {
-            return Collections.<T>emptyList();
+            return Collections.emptyList();
         }
         return featureManager.getFeatures(featureDescriptor, queryInterval);
     }
@@ -152,8 +169,8 @@ public final class FeatureContext {
      *         (will be null if this context has no interval)
      */
     private SimpleInterval getQueryInterval(final int windowLeadingBases, final int windowTrailingBases){
-        if(windowLeadingBases < 0) throw new GATKException("Window starts after the current interval");
-        if(windowTrailingBases < 0) throw new GATKException("Window ends before the current interval");
+        if(windowLeadingBases < 0) throw new IllegalArgumentException("Window starts after the current interval");
+        if(windowTrailingBases < 0) throw new IllegalArgumentException("Window ends before the current interval");
 
         if (interval == null) {
             return null;
@@ -205,7 +222,7 @@ public final class FeatureContext {
      */
     public <T extends Feature> List<T> getValues(final FeatureInput<T> featureDescriptor, final int featureStart) {
         if (featureManager == null || interval == null) {
-            return Collections.<T>emptyList();
+            return Collections.emptyList();
         }
 
         return subsetToStartPosition(getValues(featureDescriptor), featureStart);
@@ -226,7 +243,7 @@ public final class FeatureContext {
      */
     public <T extends Feature> List<T> getValues(final Collection<FeatureInput<T>> featureDescriptors) {
         if (featureManager == null || interval == null) {
-            return Collections.<T>emptyList();
+            return Collections.emptyList();
         }
 
         List<T> features = new ArrayList<>();
@@ -254,7 +271,7 @@ public final class FeatureContext {
      */
     public <T extends Feature> List<T> getValues(final Collection<FeatureInput<T>> featureDescriptors, final int featureStart) {
         if (featureManager == null || interval == null) {
-            return Collections.<T>emptyList();
+            return Collections.emptyList();
         }
 
         return subsetToStartPosition(getValues(featureDescriptors), featureStart);

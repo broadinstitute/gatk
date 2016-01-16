@@ -75,15 +75,14 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends BaseTest {
 
     static double[][] normalizeDiploidLikelihoodMatrixFromLog10( final double[][] log10_likelihoodMatrix ) {
         final double[] genotypeLog10Likelihoods = copyLowerTriangleToArray(log10_likelihoodMatrix);
-        //Note: normalizing from log10 is the same as normalizing from log
-        final double[] normalizedGenotypeLikelihoods = MathUtils.normalizeFromLog(genotypeLog10Likelihoods, false, true);
+        final double[] normalizedGenotypeLikelihoods = MathUtils.normalizeFromLog10(genotypeLog10Likelihoods, false, true);
         copyArrayToLowerTriangle(normalizedGenotypeLikelihoods, log10_likelihoodMatrix);
         return log10_likelihoodMatrix;
     }
 
     private static double[] copyLowerTriangleToArray(final double[][] from) {
         final int n = from.length;
-        final double[] to = new double[n*(n+1)/2]; //one triagle
+        final double[] to = new double[n*(n+1)/2]; //one triangle
         int index = 0;
         for( int i = 0; i < n; i++ ) {
             for( int j = 0; j <= i; j++ ){
@@ -167,7 +166,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends BaseTest {
         PairHMMLikelihoodCalculationEngine.writeLikelihoodsToFile = true;
 
         final ReadLikelihoodCalculationEngine lce = new PairHMMLikelihoodCalculationEngine((byte) SAMUtils.MAX_PHRED_SCORE,
-                PairHMM.Implementation.LOGLESS_CACHING, MathUtils.logToLog10(QualityUtils.qualToLogErrorProb(LEAC.phredScaledGlobalReadMismappingRate)),
+                PairHMM.Implementation.LOGLESS_CACHING, MathUtils.logToLog10(QualityUtils.qualToErrorProbLog10(LEAC.phredScaledGlobalReadMismappingRate)),
                 PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE);
 
         final Map<String, List<GATKRead>> perSampleReadList= new HashMap<>();

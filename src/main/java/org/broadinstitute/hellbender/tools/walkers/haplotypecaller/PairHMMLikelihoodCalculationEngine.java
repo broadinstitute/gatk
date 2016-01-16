@@ -214,7 +214,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final Map<GATKRead, byte[]> gapContinuationPenalties = buildGapContinuationPenalties(processedReads, constantGCP);
 
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
-        pairHMM.computeLogLikelihoods(likelihoods, processedReads, gapContinuationPenalties);
+        pairHMM.computeLog10Likelihoods(likelihoods, processedReads, gapContinuationPenalties);
 
         writeDebugLikelihoods(likelihoods);
     }
