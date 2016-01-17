@@ -66,7 +66,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     private boolean indicesAvailable;
 
     /**
-     * Initialize this data source with a single SAM/BAM file
+     * Initialize this data source with a single SAM/BAM file without a reference and validation stringency SILENT.
      *
      * @param samFile SAM/BAM file, not null.
      */
@@ -75,7 +75,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     }
 
     /**
-     * Initialize this data source with multiple SAM/BAM files
+     * Initialize this data source with multiple SAM/BAM files without a reference and validation stringency SILENT.
      *
      * @param samFiles SAM/BAM files, not null.
      */
@@ -87,7 +87,8 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * Initialize this data source with a single SAM/BAM file and a custom SamReaderFactory
      *
      * @param samFile SAM/BAM file, not null.
-     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with validation stringency SILENT is used.
+     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
+     *                               stringency SILENT is used.
      */
     public ReadsDataSource( final File samFile, SamReaderFactory customSamReaderFactory) {
         this(samFile != null ? Arrays.asList(samFile) : null, customSamReaderFactory);
@@ -97,7 +98,8 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * Initialize this data source with multiple SAM/BAM files and a custom SamReaderFactory
      *
      * @param samFiles SAM/BAM files, not null.
-     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with validation stringency SILENT is used.
+     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
+     *                               stringency SILENT is used.
      */
     public ReadsDataSource( final List<File> samFiles, SamReaderFactory customSamReaderFactory) {
         if ( samFiles == null || samFiles.size() == 0 ) {

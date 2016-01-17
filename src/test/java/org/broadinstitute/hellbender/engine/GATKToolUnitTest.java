@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -11,11 +12,14 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Iterator;
 
 public final class GATKToolUnitTest extends BaseTest{
 
@@ -58,6 +62,30 @@ public final class GATKToolUnitTest extends BaseTest{
         }
     }
 
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolValidationStringency",
+            oneLineSummary = "TestGATKToolValidationStringency",
+            programGroup = ReadProgramGroup.class
+    )
+    private static final class TestGATKToolValidationStringency extends GATKTool {
+        private int count = 0;
+
+        @Override
+        public boolean requiresReads() {
+            return true;
+        }
+
+        @Override
+        public void traverse() {
+            Iterator<GATKRead> iterator = reads.iterator();
+            while (iterator.hasNext()) {
+                GATKRead read = iterator.next();
+                count++;
+            }
+        }
+
+        public int getCount() { return count; }
+    }
 
     @Test
     public void testReadsHeader() throws Exception {
@@ -117,4 +145,50 @@ public final class GATKToolUnitTest extends BaseTest{
         // that it does not throw despite the lexicographically-sorted sequence dictionary in the vcf.
         tool.onStartup();
     }
+
+    @DataProvider(name="validationStringency")
+    public Object[][] validationStringency() {
+        return new Object[][]{
+                {NA12878_chr17_1k_CRAM, v37_chr17_1Mb_Reference, 493}
+        };
+    }
+
+    private void testValidationStringency(
+            final String bamFileName,
+            final String referenceFileName,
+            final String validationStringency, final int count) throws SAMFormatException
+    {
+        final TestGATKToolValidationStringency tool = new TestGATKToolValidationStringency();
+        final CommandLineParser clp = new CommandLineParser(tool);
+        final File bamFile = new File(NA12878_chr17_1k_CRAM);
+        final File refFile = new File(v37_chr17_1Mb_Reference);
+        final String[] args = {
+                "-I", bamFileName,
+                "-R", referenceFileName,
+                "-VS", validationStringency
+        };
+
+        clp.parseArguments(System.out, args);
+        tool.onStartup();
+        tool.doWork();
+        tool.onShutdown();
+
+        Assert.assertEquals(tool.getCount(), count);
+    }
+
+    @Test(dataProvider = "validationStringency", expectedExceptions=SAMFormatException.class)
+    public void testReadsValidationStringencyStrict(final String bamFileName, final String referenceFileName, int count) throws Exception {
+        testValidationStringency(bamFileName, referenceFileName, "STRICT", count);
+    }
+
+    @Test(dataProvider = "validationStringency")
+    public void testReadsValidationStringencyLenient(final String bamFileName, final String referenceFileName, int count) throws Exception {
+        testValidationStringency(bamFileName, referenceFileName, "LENIENT", count);
+    }
+
+    @Test(dataProvider = "validationStringency")
+    public void testReadsValidationStringencySilent(final String bamFileName, final String referenceFileName, int count) throws Exception {
+        testValidationStringency(bamFileName, referenceFileName, "SILENT", count);
+    }
+
 }

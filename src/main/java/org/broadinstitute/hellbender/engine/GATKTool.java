@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.vcf.VCFHeader;
@@ -105,13 +104,19 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     void initializeReads() {
         SamReaderFactory factory = null;
-        if (hasReference()){
-            // pass in reference if available, because CRAM files need it
-            factory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).referenceSequence(referenceArguments.getReferenceFile());
-        } else if (hasCramInput()) {
-            throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+        if (! readArguments.getReadFiles().isEmpty()) {
+            factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
+            if (hasReference()) { // pass in reference if available, because CRAM files need it
+                factory = factory.referenceSequence(referenceArguments.getReferenceFile());
+            }
+            else if (hasCramInput()) {
+                throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+            }
+            reads = new ReadsDataSource(readArguments.getReadFiles(), factory);
         }
-        reads = ! readArguments.getReadFiles().isEmpty() ? new ReadsDataSource(readArguments.getReadFiles(), factory) : null;
+        else {
+            reads = null;
+        }
     }
 
     /**
