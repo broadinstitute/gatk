@@ -258,22 +258,22 @@ public final class SegmentUtils {
     }
 
     /**
-     * Writes a list of segments represented by {@link ACSModeledSegment} to a file with header:
+     * Writes a list of segments represented by {@link ACNVModeledSegment} to a file with header:
      * <p>
      *      Sample  Chromosome  Start   End     Num_Targets     Num_SNPs
      *      Segment_Mean_Post_Mean  Segment_Mean_Post_Std   MAF_Post_Mean   MAF_Post_Std
      * </p>
      */
-    public static void writeACSModeledSegmentFile(final File outFile,
-                                                  final List<ACSModeledSegment> segments,
-                                                  final Genome genome) {
+    public static void writeACNVModeledSegmentFile(final File outFile,
+                                                   final List<ACNVModeledSegment> segments,
+                                                   final Genome genome) {
         Utils.nonNull(genome, "The genome cannot be null.");
 
         final TargetCollection<TargetCoverage> targets = genome.getTargets();
         final TargetCollection<AllelicCount> snps = genome.getSNPs();
         final String sampleName = genome.getSampleName();
 
-        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumns.ACS_MODELED_SEGMENT_COLUMN_NAME_ARRAY,
+        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY,
                 //lambda for appending segment fields to a DataLine
                 (segment, dataLine) ->
                         dataLine.append(segment.getContig()).append(segment.getStart(), segment.getEnd())

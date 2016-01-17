@@ -38,7 +38,7 @@ enum SegmentTableColumns {
     private static final SegmentTableColumns[] NUM_TARGETS_AND_SNPS_ENUM_ARRAY =
             new SegmentTableColumns[]{SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS};
 
-    private static final SegmentTableColumns[] ACS_MODELED_SEGMENT_ENUM_ARRAY =
+    private static final SegmentTableColumns[] ACNV_MODELED_SEGMENT_ENUM_ARRAY =
             new SegmentTableColumns[]{SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS,
                     SEGMENT_MEAN_POSTERIOR_MEAN, SEGMENT_MEAN_POSTERIOR_STANDARD_DEVIATION,
                     MINOR_ALLELE_FRACTION_POSTERIOR_MEAN, MINOR_ALLELE_FRACTION_POSTERIOR_STANDARD_DEVIATION};
@@ -51,7 +51,7 @@ enum SegmentTableColumns {
 
     public static final String[] NUM_TARGETS_AND_SNPS_COLUMN_NAME_ARRAY = toStringArray(NUM_TARGETS_AND_SNPS_ENUM_ARRAY);
 
-    public static final String[] ACS_MODELED_SEGMENT_COLUMN_NAME_ARRAY = toStringArray(ACS_MODELED_SEGMENT_ENUM_ARRAY);
+    public static final String[] ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY = toStringArray(ACNV_MODELED_SEGMENT_ENUM_ARRAY);
 
     private static String[] toStringArray(final SegmentTableColumns[] enumArray) {
         return Stream.of(enumArray).map(SegmentTableColumns::toString).toArray(String[]::new);

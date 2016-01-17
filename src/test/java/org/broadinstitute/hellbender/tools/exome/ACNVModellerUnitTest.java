@@ -10,11 +10,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Unit tests for {@link ACSModeller}.
+ * Unit tests for {@link ACNVModeller}.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ACSModellerUnitTest extends BaseTest {
+public final class ACNVModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final String SAMPLE_NAME = "test";
@@ -50,8 +50,8 @@ public final class ACSModellerUnitTest extends BaseTest {
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
         //run MCMC
-        final ACSModeller modeller =
-                new ACSModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
+        final ACNVModeller modeller =
+                new ACNVModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
                         NUM_SAMPLES, NUM_BURN_IN, 10, 0);
         modeller.mergeSimilarSegments(SIGMA_THRESHOLD, Double.POSITIVE_INFINITY,
                 NUM_SAMPLES, NUM_BURN_IN, 10, 0);
@@ -59,7 +59,7 @@ public final class ACSModellerUnitTest extends BaseTest {
         //check equality of segments
         final List<SimpleInterval> segmentsResult =
                 SegmentUtils.readIntervalsFromSegmentFile(new File(tempDirFile.getAbsolutePath() +
-                        "/test-" + ACSModeller.FINAL_SEG_FILE_TAG + ".seg"));
+                        "/test-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg"));
         final List<SimpleInterval> segmentsTruth =
                 SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
         Assert.assertEquals(segmentsResult, segmentsTruth);
@@ -80,8 +80,8 @@ public final class ACSModellerUnitTest extends BaseTest {
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
         //run MCMC
-        final ACSModeller modeller =
-                new ACSModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
+        final ACNVModeller modeller =
+                new ACNVModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
                         NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN);
         modeller.mergeSimilarSegments(SIGMA_THRESHOLD, SIGMA_THRESHOLD,
                 NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN);
@@ -89,7 +89,7 @@ public final class ACSModellerUnitTest extends BaseTest {
         //check equality of segments
         final List<SimpleInterval> segmentsResult =
                 SegmentUtils.readIntervalsFromSegmentFile(new File(tempDirFile.getAbsolutePath() +
-                        "/test-" + ACSModeller.FINAL_SEG_FILE_TAG + ".seg"));
+                        "/test-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg"));
         final List<SimpleInterval> segmentsTruth =
                 SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
         Assert.assertEquals(segmentsResult, segmentsTruth);

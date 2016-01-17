@@ -163,12 +163,12 @@ public final class SegmentMergeUtils {
      * between posterior means is less than sigmaThreshold times the posterior standard deviation of either summary)
      * merged.  The list of segments is traversed once from beginning to end, and each segment is checked for similarity
      * with the segment to the right and merged until it is no longer similar.
-     * @param segments                          list of {@link ACSModeledSegment} to be merged
+     * @param segments                          list of {@link ACNVModeledSegment} to be merged
      * @param sigmaThresholdSegmentMean         threshold number of standard deviations for segment-mean similarity
      * @param sigmaThresholdMinorAlleleFraction threshold number of standard deviations for minor-allele-fraction similarity
      * @return      new list of modeled segments with similar segments merged, never {@code null}
      */
-    public static List<ACSModeledSegment> mergeSimilarSegments(final List<ACSModeledSegment> segments,
+    public static List<ACNVModeledSegment> mergeSimilarSegments(final List<ACNVModeledSegment> segments,
                                                                final double sigmaThresholdSegmentMean,
                                                                final double sigmaThresholdMinorAlleleFraction) {
         Utils.nonNull(segments, "The list of segments cannot be null.");
@@ -177,11 +177,11 @@ public final class SegmentMergeUtils {
         ParamUtils.isPositiveOrZero(sigmaThresholdMinorAlleleFraction,
                 "The threshold for minor-allele-fraction similar-segment merging cannot be negative.");
 
-        final List<ACSModeledSegment> mergedSegments = new ArrayList<>(segments);
+        final List<ACNVModeledSegment> mergedSegments = new ArrayList<>(segments);
         int index = 0;
         while (index < mergedSegments.size() - 1) {
-            final ACSModeledSegment segment1 = mergedSegments.get(index);
-            final ACSModeledSegment segment2 = mergedSegments.get(index + 1);
+            final ACNVModeledSegment segment1 = mergedSegments.get(index);
+            final ACNVModeledSegment segment2 = mergedSegments.get(index + 1);
             if (segment1.getContig().equals(segment2.getContig()) &&
                     SimilarSegments.areSimilar(segment1, segment2,
                             sigmaThresholdSegmentMean, sigmaThresholdMinorAlleleFraction)) {
@@ -656,7 +656,7 @@ public final class SegmentMergeUtils {
         }
 
         //checks similarity of modeled segments to within sigma thresholds for segment mean and minor allele fraction
-        private static boolean areSimilar(final ACSModeledSegment segment1, final ACSModeledSegment segment2,
+        private static boolean areSimilar(final ACNVModeledSegment segment1, final ACNVModeledSegment segment2,
                                           final double sigmaThresholdSegmentMean, final double sigmaThresholdMinorAlleleFraction) {
             return areSimilar(segment1.getSegmentMeanPosteriorSummary(), segment2.getSegmentMeanPosteriorSummary(), sigmaThresholdSegmentMean) &&
                     areSimilar(segment1.getMinorAlleleFractionPosteriorSummary(), segment2.getMinorAlleleFractionPosteriorSummary(), sigmaThresholdMinorAlleleFraction);
@@ -680,8 +680,8 @@ public final class SegmentMergeUtils {
         }
 
         //merges modeled segments naively
-        private static ACSModeledSegment merge(final ACSModeledSegment segment1, final ACSModeledSegment segment2) {
-            return new ACSModeledSegment(SegmentMergeUtils.mergeSegments(segment1.getInterval(), segment2.getInterval()),
+        private static ACNVModeledSegment merge(final ACNVModeledSegment segment1, final ACNVModeledSegment segment2) {
+            return new ACNVModeledSegment(SegmentMergeUtils.mergeSegments(segment1.getInterval(), segment2.getInterval()),
                     merge(segment1.getSegmentMeanPosteriorSummary(), segment2.getSegmentMeanPosteriorSummary()),
                     merge(segment1.getMinorAlleleFractionPosteriorSummary(), segment2.getMinorAlleleFractionPosteriorSummary()));
         }

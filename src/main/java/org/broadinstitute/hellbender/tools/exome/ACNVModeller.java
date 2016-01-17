@@ -11,21 +11,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents an ACS segmented model for copy ratio and allele fraction.
+ * Represents an ACNV segmented model for copy ratio and allele fraction.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ACSModeller {
+public final class ACNVModeller {
     protected static final String INITIAL_SEG_FILE_TAG = "sim-0";
     protected static final String INTERMEDIATE_SEG_FILE_TAG = "sim";
     protected static final String FINAL_SEG_FILE_TAG = "sim-final";
 
     private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
 
-    public static final Logger logger = LogManager.getLogger(ACSModeller.class);
+    public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 
     private SegmentedModel segmentedModel;
-    private final List<ACSModeledSegment> segments = new ArrayList<>();
+    private final List<ACNVModeledSegment> segments = new ArrayList<>();
 
     private final String outputPrefix;
 
@@ -46,9 +46,9 @@ public final class ACSModeller {
      * @param numSamplesAlleleFraction  number of total samples for allele-fraction model MCMC
      * @param numBurnInAlleleFraction   number of burn-in samples to discard for allele-fraction model MCMC
      */
-    public ACSModeller(final SegmentedModel segmentedModel, final String outputPrefix,
-                       final int numSamplesCopyRatio, final int numBurnInCopyRatio,
-                       final int numSamplesAlleleFraction, final int numBurnInAlleleFraction) {
+    public ACNVModeller(final SegmentedModel segmentedModel, final String outputPrefix,
+                        final int numSamplesCopyRatio, final int numBurnInCopyRatio,
+                        final int numSamplesAlleleFraction, final int numBurnInAlleleFraction) {
         this.segmentedModel = segmentedModel;
         this.outputPrefix = outputPrefix;
         this.numSamplesCopyRatio = numSamplesCopyRatio;
@@ -59,17 +59,17 @@ public final class ACSModeller {
     }
 
     /**
-     * Performs similar-segment merging on the list of {@link ACSModeledSegment} held internally until convergence,
+     * Performs similar-segment merging on the list of {@link ACNVModeledSegment} held internally until convergence,
      * specifying number of total samples and number of burn-in samples for Markov-Chain Monte Carlo model fitting
      * performed after each iteration.
      * <p>
-     *     First, the list of {@link ACSModeledSegment) (i.e., the list of {@link PosteriorSummary} for each
+     *     First, the list of {@link ACNVModeledSegment ) (i.e., the list of {@link PosteriorSummary} for each
      *     segment copy-ratio mean and minor allele fraction) is taken from the initial model fit.
      *     Then, {@link SegmentMergeUtils#mergeSimilarSegments} is used to merge segments in this
      *     list given specified copy-ratio and minor-allele-fraction merging thresholds, after which another MCMC
      *     fit is performed; this is repeated until convergence (i.e., no more similar segments are found).
      * </p>
-     * Segment files (with filenames specified by {@link ACSModeller#outputPrefix} are output for the initial
+     * Segment files (with filenames specified by {@link ACNVModeller#outputPrefix} are output for the initial
      * model fit and the model fits after each merge iteration as a side effect.
      *
      * @param sigmaThresholdSegmentMean         threshold number of standard deviations for segment-mean similarity
@@ -85,11 +85,11 @@ public final class ACSModeller {
                                      final int numSamplesAlleleFraction, final int numBurnInAlleleFraction) {
         logger.info("Starting similar-segment merging...");
         logger.info("Initial number of segments: " + segments.size());
-        List<ACSModeledSegment> mergedSegments = new ArrayList<>(segments);
+        List<ACNVModeledSegment> mergedSegments = new ArrayList<>(segments);
 
         //write initial model fit to file
         final File initialModeledSegmentsFile = new File(outputPrefix + "-" + INITIAL_SEG_FILE_TAG + ".seg");
-        SegmentUtils.writeACSModeledSegmentFile(initialModeledSegmentsFile, mergedSegments, segmentedModel.getGenome());
+        SegmentUtils.writeACNVModeledSegmentFile(initialModeledSegmentsFile, mergedSegments, segmentedModel.getGenome());
 
         //perform iterations of similar-segment merging until all similar segments are merged
         int prevNumSegments;
@@ -108,20 +108,20 @@ public final class ACSModeller {
             //refit model and write to file after each iteration
             fitModel(numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
             final File modeledSegmentsFile = new File(outputPrefix + "-" + INTERMEDIATE_SEG_FILE_TAG + "-" + numIterations + ".seg");
-            SegmentUtils.writeACSModeledSegmentFile(modeledSegmentsFile, segments, segmentedModel.getGenome());
+            SegmentUtils.writeACNVModeledSegmentFile(modeledSegmentsFile, segments, segmentedModel.getGenome());
         }
 
         //perform final model fit and write to file
         fitModel(this.numSamplesCopyRatio, this.numBurnInCopyRatio, this.numSamplesAlleleFraction, this.numBurnInAlleleFraction);
         final File finalModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + ".seg");
-        SegmentUtils.writeACSModeledSegmentFile(finalModeledSegmentsFile, segments, segmentedModel.getGenome());
+        SegmentUtils.writeACNVModeledSegmentFile(finalModeledSegmentsFile, segments, segmentedModel.getGenome());
     }
 
-    //fits copy-ratio and allele-fraction models using MCMC and reinitializes internal list of ACSModeledSegments
+    //fits copy-ratio and allele-fraction models using MCMC and reinitializes internal list of ACNVModeledSegments
     private void fitModel(final int numSamplesCopyRatio, final int numBurnInCopyRatio,
                           final int numSamplesAlleleFraction, final int numBurnInAlleleFraction) {
         logger.info("Fitting copy-ratio model...");
-        final ACSCopyRatioModeller copyRatioModeller = new ACSCopyRatioModeller(segmentedModel);
+        final ACNVCopyRatioModeller copyRatioModeller = new ACNVCopyRatioModeller(segmentedModel);
         copyRatioModeller.fitMCMC(numSamplesCopyRatio, numBurnInCopyRatio);
         logger.info("Fitting allele-fraction model...");
         final AlleleFractionModeller alleleFractionModeller = new AlleleFractionModeller(segmentedModel);
@@ -134,15 +134,15 @@ public final class ACSModeller {
         final List<PosteriorSummary> minorAlleleFractionsPosteriorSummaries =
                 alleleFractionModeller.getMinorAlleleFractionsPosteriorSummaries();
         for (int segment = 0; segment < unmodeledSegments.size(); segment++) {
-            segments.add(new ACSModeledSegment(unmodeledSegments.get(segment),
+            segments.add(new ACNVModeledSegment(unmodeledSegments.get(segment),
                     segmentMeansPosteriorSummaries.get(segment), minorAlleleFractionsPosteriorSummaries.get(segment)));
         }
     }
 
-    //converts list of ACSModeledSegments to list of SimpleIntervals
-    private List<SimpleInterval> toUnmodeledSegments(final List<ACSModeledSegment> segments) {
+    //converts list of ACNVModeledSegments to list of SimpleIntervals
+    private List<SimpleInterval> toUnmodeledSegments(final List<ACNVModeledSegment> segments) {
         final List<SimpleInterval> unmodeledSegments = new ArrayList<>();
-        for (final ACSModeledSegment segment : segments) {
+        for (final ACNVModeledSegment segment : segments) {
             unmodeledSegments.add(segment.getInterval());
         }
         return unmodeledSegments;

@@ -979,12 +979,12 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
     public static final class SimilarSegmentsTestHelper {
         private static final double SIGMA_THRESHOLD = 2;
 
-        private static ACSModeledSegment constructSegment(final String contig, final int start, final int end,
+        private static ACNVModeledSegment constructSegment(final String contig, final int start, final int end,
                                                           final double segmentMeanPosteriorMean,
                                                           final double segmentMeanPosteriorStandardDeviation,
                                                           final double minorAlleleFractionPosteriorMean,
                                                           final double minorAlleleFractionPosteriorStandardDeviation) {
-            return new ACSModeledSegment(new SimpleInterval(contig, start, end),
+            return new ACNVModeledSegment(new SimpleInterval(contig, start, end),
                     new PosteriorSummary(segmentMeanPosteriorMean, segmentMeanPosteriorStandardDeviation),
                     new PosteriorSummary(minorAlleleFractionPosteriorMean, minorAlleleFractionPosteriorStandardDeviation));
         }
@@ -1030,14 +1030,14 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         }
 
         @Test(dataProvider = "dataSimilarSegmentMerging")
-        public void testSimilarSegmentMerging(final List<ACSModeledSegment> segments,
-                                              final List<ACSModeledSegment> expectedMergedSegments) {
-            final List<ACSModeledSegment> resultMergedSegments =
+        public void testSimilarSegmentMerging(final List<ACNVModeledSegment> segments,
+                                              final List<ACNVModeledSegment> expectedMergedSegments) {
+            final List<ACNVModeledSegment> resultMergedSegments =
                     SegmentMergeUtils.mergeSimilarSegments(segments, SIGMA_THRESHOLD, SIGMA_THRESHOLD);
             Assert.assertTrue(resultMergedSegments.size() == expectedMergedSegments.size());
             for (int i = 0; i < resultMergedSegments.size(); i++) {
-                final ACSModeledSegment resultSegment = resultMergedSegments.get(i);
-                final ACSModeledSegment expectedSegment = expectedMergedSegments.get(i);
+                final ACNVModeledSegment resultSegment = resultMergedSegments.get(i);
+                final ACNVModeledSegment expectedSegment = expectedMergedSegments.get(i);
                 Assert.assertEquals(resultSegment.getInterval(), expectedSegment.getInterval());
                 Assert.assertEquals(
                         resultSegment.getSegmentMeanPosteriorSummary().mean(),
