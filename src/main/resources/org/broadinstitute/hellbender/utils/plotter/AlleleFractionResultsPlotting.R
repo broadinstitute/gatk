@@ -89,7 +89,13 @@ SetUpPlot = function(y.lab, y.min, y.max, x.lab, label_chromosomes){
 
   if(label_chromosomes){
   	labels = c(1:num_chromosomes)
+
   	odd_indices = labels %% 2 == 1
+  	if(sex_chrs){
+        labels[23]="X"
+        labels[24]="Y"
+    }
+
   	mtext(text = labels[odd_indices], side = 1, line = -0.45, at = chromosome_centers[odd_indices],
     		las = 1, cex = par("cex.axis") * par("cex") * 0.7)
   	mtext(text = labels[!odd_indices], side = 1, line = 0, at = chromosome_centers[!odd_indices],
