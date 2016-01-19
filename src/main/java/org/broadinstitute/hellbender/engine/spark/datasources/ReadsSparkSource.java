@@ -177,8 +177,8 @@ public final class ReadsSparkSource implements Serializable {
 
         // local file or HDFs case
         try {
-            FileSystem fs = FileSystem.get(ctx.hadoopConfiguration());
-            Path path = fs.makeQualified(new Path(filePath));
+            Path path = new Path(filePath);
+            FileSystem fs = path.getFileSystem(ctx.hadoopConfiguration());
             if (fs.isDirectory(path)) {
                 FileStatus[] bamFiles = fs.listStatus(path, new PathFilter() {
                     private static final long serialVersionUID = 1L;
