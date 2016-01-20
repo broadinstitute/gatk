@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -249,5 +250,12 @@ public final class SimpleIntervalUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.class)
     public void testBadParsePosition() throws Exception {
         new SimpleInterval("chr1:fred");
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testNotContiguousLocs() {
+        final SimpleInterval loc1 = new SimpleInterval("1", 10, 20);
+        final SimpleInterval loc3 = new SimpleInterval("1", 31, 40);
+        loc1.mergeWithContiguous(loc3);
     }
 }

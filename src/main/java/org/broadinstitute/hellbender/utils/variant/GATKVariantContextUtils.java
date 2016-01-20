@@ -20,10 +20,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 
 import java.io.File;
 import java.io.Serializable;
@@ -218,6 +215,26 @@ public final class GATKVariantContextUtils {
         return variantContext.getContig().equals(region.getContig());
     }
 
+    /**
+     * Checks whether a variant-context overlaps with a region.
+     *
+     * @param variantContext variant-context to test the overlap with.
+     * @param region region to test the overlap with.
+     *
+     * @throws IllegalArgumentException if either region or event is {@code null}.
+     *
+     * @return {@code true} if there is an overlap between the event described and the active region provided.
+     */
+    public static boolean overlapsRegion(final VariantContext variantContext, final SimpleInterval region) {
+        if (region == null) throw new IllegalArgumentException("the active region provided cannot be null");
+        if (variantContext == null) throw new IllegalArgumentException("the variant context provided cannot be null");
+        if (variantContext.getEnd() < region.getStart())
+            return false;
+        if (variantContext.getStart() > region.getEnd())
+            return false;
+        return variantContext.getContig().equals(region.getContig());
+    }
+
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();
         final Iterator<Allele> it2 = alleleSet2.iterator();
@@ -296,6 +313,25 @@ public final class GATKVariantContextUtils {
     public static boolean isTransition(final VariantContext context) {
         Utils.nonNull(context);
         return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSITION;
+    }
+
+
+    /**
+     * Returns a homozygous call allele list given the only allele and the ploidy.
+     *
+     * @param allele the only allele in the allele list.
+     * @param ploidy the ploidy of the resulting allele list.
+     *
+     * @throws IllegalArgumentException if {@code allele} is {@code null} or ploidy is negative.
+     *
+     * @return never {@code null}.
+     */
+    public static List<Allele> homozygousAlleleList(final Allele allele, final int ploidy) {
+        Utils.nonNull(allele);
+        Utils.validateArg(ploidy >= 0, "ploidy cannot be negative");
+
+        // Use a tailored inner class to implement the list:
+        return Collections.nCopies(ploidy,allele);
     }
 
     public enum GenotypeMergeType {

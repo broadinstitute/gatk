@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.LinearAlignment;
+import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.StringUtil;
@@ -113,6 +113,21 @@ public final class ArtificialReadUtils {
     }
 
     /**
+     * Create an artificial GATKRead based on the parameters.  The cigar string will be *M, where * is the length of the read
+     *
+     * @param header         the SAM header to associate the read with
+     * @param name           the name of the read
+     * @param contig         the contig to which the read is aligned
+     * @param alignmentStart where to start the alignment
+     * @param bases          the sequence of the read
+     * @param qual           the qualities of the read
+     * @return the artificial GATKRead
+     */
+    public static GATKRead createArtificialRead(SAMFileHeader header, String name, String contig, int alignmentStart, byte[] bases, byte[] qual) {
+        return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(header, name, header.getSequenceIndex(contig), alignmentStart, bases, qual));
+    }
+
+    /**
      * Create an artificial GATKRead based on the parameters
      *
      * @param header         the SAM header to associate the read with
@@ -126,6 +141,23 @@ public final class ArtificialReadUtils {
      */
     public static GATKRead createArtificialRead(SAMFileHeader header, String name, int refIndex, int alignmentStart, byte[] bases, byte[] qual, String cigar) {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(header, name, refIndex, alignmentStart, bases, qual, cigar));
+    }
+
+
+    /**
+     * Create an artificial GATKRead based on the parameters
+     *
+     * @param header         the SAM header to associate the read with
+     * @param name           the name of the read
+     * @param contig         the contig to which the read is aligned
+     * @param alignmentStart where to start the alignment
+     * @param bases          the sequence of the read
+     * @param qual           the qualities of the read
+     * @param cigar          the cigar string of the read
+     * @return the artificial GATKRead
+     */
+    public static GATKRead createArtificialRead(SAMFileHeader header, String name, String contig, int alignmentStart, byte[] bases, byte[] qual, String cigar) {
+        return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(header, name, header.getSequenceIndex(contig), alignmentStart, bases, qual, cigar));
     }
 
     /**
@@ -455,6 +487,31 @@ public final class ArtificialReadUtils {
         right.setFragmentLength(-isize);
 
         return Arrays.asList(left, right);
+    }
+
+    /**
+     * Create a collection of identical artificial reads based on the parameters.  The cigar string for each
+     * read will be *M, where * is the length of the read.
+     *
+     * Useful for testing things like positional downsampling where you care only about the position and
+     * number of reads, and not the other attributes.
+     *
+     * @param size           number of identical reads to create
+     * @param header         the SAM header to associate each read with
+     * @param name           name associated with each read
+     * @param refIndex       the reference index, i.e. what chromosome to associate them with
+     * @param alignmentStart where to start each alignment
+     * @param length         the length of each read
+     *
+     * @return a collection of stackSize reads all sharing the above properties
+     */
+    public static Collection<GATKRead> createIdenticalArtificialReads(final int size, final SAMFileHeader header, final String name, final int refIndex, final int alignmentStart, final int length ) {
+        Utils.validateArg(size >= 0, "size must be non-negative");
+        final Collection<GATKRead> coll = new ArrayList<>(size);
+        for ( int i = 1; i <= size; i++ ) {
+            coll.add(createArtificialRead(header, name, refIndex, alignmentStart, length));
+        }
+        return coll;
     }
 
     public static GATKRead createRandomRead(SAMFileHeader header, int length) {

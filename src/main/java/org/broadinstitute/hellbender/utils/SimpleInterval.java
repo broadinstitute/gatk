@@ -2,6 +2,7 @@
 
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.Serializable;
@@ -247,4 +248,37 @@ public final class SimpleInterval implements Locatable, Serializable {
 
         return this.contig.equals(other.getContig()) && this.start <= other.getStart() && this.end >= other.getEnd();
     }
-}
+
+     /**
+      * Returns the intersection of the two intervals. The intervals must overlap or IllegalArgumentException will be thrown.
+      */
+     public SimpleInterval intersect( final Locatable that ) throws GATKException {
+         if (!this.overlaps(that)) {
+             throw new IllegalArgumentException("SimpleInterval::intersect(): The two intervals need to overlap " + this + " " + that);
+         }
+
+         return new SimpleInterval(getContig(),
+                 Math.max(getStart(), that.getStart()),
+                 Math.min( getEnd(), that.getEnd()) );
+     }
+
+     /**
+      * Returns a new SimpleInterval that represents the entire span of this and that.  Requires that
+      * this and that SimpleInterval are contiguous.
+      */
+     public SimpleInterval mergeWithContiguous( final Locatable that ) throws GATKException {
+         Utils.nonNull(that);
+         if (!this.contiguous(that)) {
+             throw new GATKException("The two intervals need to be contiguous: " + this + " " + that);
+         }
+
+         return new SimpleInterval(getContig(),
+                 Math.min( getStart(), that.getStart() ),
+                 Math.max( getEnd(), that.getEnd()) );
+     }
+
+     private boolean contiguous(final Locatable that) {
+         Utils.nonNull(that);
+         return this.getContig().equals(that.getContig()) && this.getStart() <= that.getEnd() + 1 && that.getStart() <= this.getEnd() + 1;
+     }
+ }

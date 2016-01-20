@@ -30,7 +30,7 @@ public abstract class AFCalculator {
      */
     public AFCalculationResult getLog10PNonRef(final VariantContext vc, final int defaultPloidy, final int maximumAlternativeAlleles, final double[] log10AlleleFrequencyPriors) {
         Utils.nonNull(vc, "VariantContext cannot be null");
-        Utils.nonNull( log10AlleleFrequencyPriors == null, "priors vector cannot be null");
+        Utils.nonNull(log10AlleleFrequencyPriors, "priors vector cannot be null");
         if ( vc.getNAlleles() == 1 ) {
             throw new IllegalArgumentException("VariantContext has only a single reference allele, but getLog10PNonRef requires at least one at all " + vc);
         }

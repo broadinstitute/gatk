@@ -2,9 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -36,22 +35,17 @@ public final class AssemblyRegion {
     /**
      * The raw span of this active region, not including the active region extension
      */
-    private final GenomeLoc activeRegionLoc;
+    private final SimpleInterval activeRegionLoc;
 
     /**
      * The span of this active region on the genome, including the active region extension
      */
-    private final GenomeLoc extendedLoc;
+    private final SimpleInterval extendedLoc;
 
     /**
      * The extension, in bp, of this active region.
      */
     private final int extension;
-
-    /**
-     * A genomeLocParser so we can create genomeLocs
-     */
-    private final GenomeLocParser genomeLocParser;
 
     /**
      * Does this region represent an active region (all isActiveProbs above threshold) or
@@ -66,7 +60,7 @@ public final class AssemblyRegion {
      * Must be at least as large as extendedLoc, but may be larger when reads
      * partially overlap this region.
      */
-    private GenomeLoc spanIncludingReads;
+    private SimpleInterval spanIncludingReads;
 
     /**
      * Indicates whether the region has been finalized
@@ -79,13 +73,11 @@ public final class AssemblyRegion {
      * @param activeRegionLoc the span of this active region
      * @param supportingStates the states that went into creating this region, or null / empty if none are available.
      *                         If not empty, must have exactly one state for each bp in activeRegionLoc
-     * @param isActive indicates whether this is an active region, or an inactve one
-     * @param genomeLocParser a non-null parser to let us create new genome locs
+     * @param isActive indicates whether this is an active region, or an inactive one
      * @param extension the active region extension to use for this active region
      */
-    public AssemblyRegion( final GenomeLoc activeRegionLoc, final List<ActivityProfileState> supportingStates, final boolean isActive, final GenomeLocParser genomeLocParser, final int extension , final SAMFileHeader header) {
+    public AssemblyRegion( final SimpleInterval activeRegionLoc, final List<ActivityProfileState> supportingStates, final boolean isActive, final int extension , final SAMFileHeader header) {
         Utils.nonNull(activeRegionLoc, "activeRegionLoc cannot be null");
-        Utils.nonNull(genomeLocParser, "genomeLocParser cannot be null");
         Utils.nonNull(header, "header cannot be null");
         if ( activeRegionLoc.size() == 0 ) {
             throw new IllegalArgumentException("Active region cannot be of zero size, but got " + activeRegionLoc);
@@ -97,25 +89,41 @@ public final class AssemblyRegion {
         this.header = header;
         this.reads = new ArrayList<>();
         this.activeRegionLoc = activeRegionLoc;
-        this.supportingStates = supportingStates == null ? Collections.<ActivityProfileState>emptyList() : Collections.unmodifiableList(new ArrayList<>(supportingStates));
+        this.supportingStates = supportingStates == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(supportingStates));
         this.isActive = isActive;
-        this.genomeLocParser = genomeLocParser;
         this.extension = extension;
-        this.extendedLoc = genomeLocParser.createGenomeLocOnContig(activeRegionLoc.getContig(), activeRegionLoc.getStart() - extension, activeRegionLoc.getStop() + extension);
+        this.extendedLoc = trimIntervalToContig(activeRegionLoc.getContig(), activeRegionLoc.getStart() - extension, activeRegionLoc.getEnd() + extension);
         this.spanIncludingReads = extendedLoc;
 
         checkStates(activeRegionLoc);
     }
 
-    private void checkStates(final GenomeLoc activeRegionLoc) {
+    /**
+     * Create a new genome loc, bounding start and stop by the start and end of contig
+     *
+     * This function will return null if start and stop cannot be adjusted in any reasonable way
+     * to be on the contig.  For example, if start and stop are both past the end of the contig,
+     * there's no way to fix this, and null will be returned.
+     *
+     * @param contig our contig
+     * @param start our start as an arbitrary integer (may be negative, etc)
+     * @param stop our stop as an arbitrary integer (may be negative, etc)
+     * @return a valid genome loc over contig, or null if a meaningful genome loc cannot be created
+     */
+    private SimpleInterval trimIntervalToContig(final String contig, final int start, final int stop) {
+        final int contigLength = header.getSequence(contig).getSequenceLength();
+        return IntervalUtils.trimIntervalToContig(contig, start, stop, contigLength);
+    }
+
+    private void checkStates(final SimpleInterval activeRegionLoc) {
         if ( ! this.supportingStates.isEmpty() ) {
             if ( this.supportingStates.size() != activeRegionLoc.size() ) {
                 throw new IllegalArgumentException("Supporting states wasn't empty but it doesn't have exactly one state per bp in the active region: states " + this.supportingStates.size() + " vs. bp in region = " + activeRegionLoc.size());
             }
-            GenomeLoc lastStateLoc = null;
+            SimpleInterval lastStateLoc = null;
             for ( final ActivityProfileState state : this.supportingStates ) {
                 if ( lastStateLoc != null ) {
-                    if ( state.getLoc().getStart() != lastStateLoc.getStart() + 1 || state.getLoc().getContigIndex() != lastStateLoc.getContigIndex()) {
+                    if ( state.getLoc().getStart() != lastStateLoc.getStart() + 1 || !state.getLoc().getContig().equals(lastStateLoc.getContig())) {
                         throw new IllegalArgumentException("Supporting state has an invalid sequence: last state was " + lastStateLoc + " but next state was " + state);
                     }
                 }
@@ -127,8 +135,8 @@ public final class AssemblyRegion {
     /**
      * Simple interface to create an active region that isActive without any profile state
      */
-    public AssemblyRegion( final GenomeLoc activeRegionLoc, final GenomeLocParser genomeLocParser, final int extension, final SAMFileHeader header) {
-        this(activeRegionLoc, Collections.<ActivityProfileState>emptyList(), true, genomeLocParser, extension, header);
+    public AssemblyRegion(final SimpleInterval activeRegionLoc, final int extension, final SAMFileHeader header) {
+        this(activeRegionLoc, Collections.<ActivityProfileState>emptyList(), true, extension, header);
     }
 
     @Override
@@ -148,13 +156,13 @@ public final class AssemblyRegion {
      * Get the span of this active region including the extension value
      * @return a non-null GenomeLoc
      */
-    public GenomeLoc getExtendedSpan() { return extendedLoc; }
+    public SimpleInterval getExtendedSpan() { return extendedLoc; }
 
     /**
      * Get the raw span of this active region (excluding the extension)
      * @return a non-null genome loc
      */
-    public GenomeLoc getSpan() { return activeRegionLoc; }
+    public SimpleInterval getSpan() { return activeRegionLoc; }
 
     /**
      * Get an unmodifiable copy of the list of reads currently in this active region.
@@ -164,6 +172,13 @@ public final class AssemblyRegion {
     */
     public List<GATKRead> getReads(){
         return Collections.unmodifiableList(new ArrayList<>(reads));
+    }
+
+    /**
+     * Returns the header for the reads in this region.
+     */
+    public SAMFileHeader getHeader(){
+        return header;
     }
 
     /**
@@ -179,8 +194,9 @@ public final class AssemblyRegion {
      * @param intervals a non-null set of intervals that are allowed
      * @return an ordered list of active region where each interval is contained within intervals
      */
-    public List<AssemblyRegion> splitAndTrimToIntervals(final GenomeLocSortedSet intervals) {
-        return intervals.getOverlapping(getSpan()).stream()
+    public List<AssemblyRegion> splitAndTrimToIntervals(final Set<SimpleInterval> intervals) {
+        return intervals.stream()
+                .filter(loc -> loc.overlaps(activeRegionLoc))
                 .map(gl -> trim(gl, extension))
                 .collect(Collectors.toList());
     }
@@ -192,15 +208,15 @@ public final class AssemblyRegion {
      * @param extensionSize the extensionSize size we want for the newly trimmed active region
      * @return a non-null, empty active region
      */
-    private AssemblyRegion trim(final GenomeLoc span, final int extensionSize) {
+    private AssemblyRegion trim(final SimpleInterval span, final int extensionSize) {
         Utils.nonNull(span, "Active region extent cannot be null");
         if ( extensionSize < 0) {
             throw new IllegalArgumentException("the extensionSize size must be 0 or greater");
         }
         final int extendStart = Math.max(1,span.getStart() - extensionSize);
-        final int maxStop = genomeLocParser.getSequenceDictionary().getSequence(span.getContigIndex()).getSequenceLength();
-        final int extendStop = Math.min(span.getStop() + extensionSize, maxStop);
-        final GenomeLoc extendedSpan = genomeLocParser.createGenomeLoc(span.getContig(), extendStart, extendStop);
+        final int maxStop = header.getSequence(span.getContig()).getSequenceLength();
+        final int extendStop = Math.min(span.getEnd() + extensionSize, maxStop);
+        final SimpleInterval extendedSpan = new SimpleInterval(span.getContig(), extendStart, extendStop);
         return trim(span, extendedSpan);
 
 //TODO - Inconsiste support of substates trimming. Check lack of consistency!!!!
@@ -215,7 +231,7 @@ public final class AssemblyRegion {
     /**
      * Equivalent to trim(span,span).
      */
-    public AssemblyRegion trim(final GenomeLoc span) {
+    public AssemblyRegion trim(final SimpleInterval span) {
         return trim(span, span);
     }
 
@@ -241,24 +257,24 @@ public final class AssemblyRegion {
      * @param span the new extend of the active region we want
      * @return a non-null, empty active region
      */
-    private AssemblyRegion trim(final GenomeLoc span, final GenomeLoc extendedSpan) {
+    private AssemblyRegion trim(final SimpleInterval span, final SimpleInterval extendedSpan) {
         Utils.nonNull(span, "Active region extent cannot be null");
         Utils.nonNull(extendedSpan, "Active region extended span cannot be null");
-        if ( ! extendedSpan.containsP(span)) {
+        if ( ! extendedSpan.contains(span)) {
             throw new IllegalArgumentException("The requested extended must fully contain the requested span");
         }
 
-        final GenomeLoc subActive = getSpan().intersect(span);
-        final int requiredOnRight = Math.max(extendedSpan.getStop() - subActive.getStop(), 0);
+        final SimpleInterval subActive = getSpan().intersect(span);
+        final int requiredOnRight = Math.max(extendedSpan.getEnd() - subActive.getEnd(), 0);
         final int requiredOnLeft = Math.max(subActive.getStart() - extendedSpan.getStart(), 0);
         final int requiredExtension = Math.min(Math.max(requiredOnLeft, requiredOnRight), getExtension());
 
-        final AssemblyRegion result = new AssemblyRegion( subActive, Collections.<ActivityProfileState>emptyList(), isActive, genomeLocParser, requiredExtension, header );
+        final AssemblyRegion result = new AssemblyRegion( subActive, Collections.<ActivityProfileState>emptyList(), isActive, requiredExtension, header );
 
         final List<GATKRead> myReads = getReads();
-        final GenomeLoc resultExtendedLoc = result.getExtendedSpan();
+        final SimpleInterval resultExtendedLoc = result.getExtendedSpan();
         final int resultExtendedLocStart = resultExtendedLoc.getStart();
-        final int resultExtendedLocStop = resultExtendedLoc.getStop();
+        final int resultExtendedLocStop = resultExtendedLoc.getEnd();
 
         final List<GATKRead> trimmedReads = new ArrayList<>(myReads.size());
         for( final GATKRead read : myReads ) {
@@ -280,8 +296,8 @@ public final class AssemblyRegion {
      * @return true if read can be added to this region, false otherwise
      */
     private boolean readOverlapsRegion(final GATKRead read) {
-        final GenomeLoc readLoc = genomeLocParser.createGenomeLoc( read );
-        return readLoc.overlapsP(extendedLoc);
+        final SimpleInterval readLoc = new SimpleInterval( read );
+        return readLoc.overlaps(extendedLoc);
     }
 
     /**
@@ -296,12 +312,12 @@ public final class AssemblyRegion {
     public void add( final GATKRead read ) {
         Utils.nonNull(read, "Read cannot be null");
 
-        final GenomeLoc readLoc = genomeLocParser.createGenomeLoc( read );
+        final SimpleInterval readLoc = new SimpleInterval( read );
         if ( ! readOverlapsRegion(read) ) {
             throw new IllegalArgumentException("Read location " + readLoc + " doesn't overlap with active region extended span " + extendedLoc);
         }
 
-        spanIncludingReads = spanIncludingReads.union( readLoc );
+        spanIncludingReads = spanIncludingReads.mergeWithContiguous( readLoc );
 
         if ( ! reads.isEmpty() ) {
             final GATKRead lastRead = reads.get(size() - 1);
@@ -339,7 +355,7 @@ public final class AssemblyRegion {
         reads.removeAll(readsToRemove);
         spanIncludingReads = extendedLoc;
         for (final GATKRead read : reads) {
-            spanIncludingReads = spanIncludingReads.union(genomeLocParser.createGenomeLoc(read));
+            spanIncludingReads = spanIncludingReads.mergeWithContiguous(read);
         }
     }
 
@@ -360,7 +376,7 @@ public final class AssemblyRegion {
      */
     public int getExtension() { return extension; }
 
-    public GenomeLoc getReadSpanLoc() {
+    public SimpleInterval getReadSpanLoc() {
         return spanIncludingReads;
     }
 
@@ -401,7 +417,7 @@ public final class AssemblyRegion {
      * @param genomeLoc a non-null genome loc indicating the base span of the bp we'd like to get the reference for
      * @return a non-null array of bytes holding the reference bases in referenceReader
      */
-    private static byte[] getReference(final IndexedFastaSequenceFile referenceReader, final int padding, final GenomeLoc genomeLoc) {
+    private static byte[] getReference(final IndexedFastaSequenceFile referenceReader, final int padding, final SimpleInterval genomeLoc) {
         Utils.nonNull(referenceReader, "referenceReader cannot be null");
         Utils.nonNull(genomeLoc, "genomeLoc cannot be null");
         if ( padding < 0 ) {
@@ -413,7 +429,7 @@ public final class AssemblyRegion {
 
         return referenceReader.getSubsequenceAt( genomeLoc.getContig(),
                 Math.max(1, genomeLoc.getStart() - padding),
-                Math.min(referenceReader.getSequenceDictionary().getSequence(genomeLoc.getContig()).getSequenceLength(), genomeLoc.getStop() + padding) ).getBases();
+                Math.min(referenceReader.getSequenceDictionary().getSequence(genomeLoc.getContig()).getSequenceLength(), genomeLoc.getEnd() + padding) ).getBases();
     }
 
     /**
@@ -448,19 +464,16 @@ public final class AssemblyRegion {
      * @return true if this region is equal, excluding any reads and derived values, to other
      */
     public boolean equalsIgnoreReads(final AssemblyRegion other) {
-        if ( activeRegionLoc.compareTo(other.activeRegionLoc) != 0 ) {
+        if ( ! activeRegionLoc.equals(other.activeRegionLoc)) {
             return false;
         }
         if ( isActive() != other.isActive()) {
             return false;
         }
-        if ( genomeLocParser != other.genomeLocParser ) {
-            return false;
-        }
         if ( extension != other.extension ) {
             return false;
         }
-        return extendedLoc.compareTo(other.extendedLoc) == 0;
+        return extendedLoc.equals(other.extendedLoc);
     }
 
     public void setFinalized(final boolean value) {

@@ -139,12 +139,12 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
 
     @Test
     public void testLoadContaminationFileDetails() throws IOException {
-        Logger logger=org.apache.log4j.Logger.getRootLogger();
+        final Logger logger=org.apache.log4j.Logger.getRootLogger();
 
         final File ContamFile1=new File(TEST_DATA_DIR, "contamination.case.1.txt");
 
-        Map<String,Double> Contam1=new HashMap<>();
-        Set<String> Samples1= new HashSet<>();
+        final Map<String,Double> Contam1=new HashMap<>();
+        final Set<String> Samples1= new HashSet<>();
 
         Contam1.put("NA11918",0.15);
         Samples1.addAll(Contam1.keySet());
@@ -158,8 +158,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
         testLoadFile(ContamFile1,Samples1,Contam1,logger);
    }
 
-    private static void testLoadFile(final File file, final Set<String> Samples, final Map<String,Double> map, Logger logger) throws IOException {
-        Map<String,Double> loadedMap = AlleleBiasedDownsamplingUtils.loadContaminationFile(file,0.0,Samples,logger);
+    private static void testLoadFile(final File file, final Set<String> Samples, final Map<String,Double> map, final Logger logger) throws IOException {
+        final Map<String,Double> loadedMap = AlleleBiasedDownsamplingUtils.loadContaminationFile(file,0.0,Samples,logger);
         Assert.assertTrue(loadedMap.equals(map));
     }
 

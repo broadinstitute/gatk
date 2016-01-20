@@ -10,7 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -88,7 +88,7 @@ public final class ReadThreadingAssembler {
     public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion,
                                               final Haplotype refHaplotype,
                                               final byte[] fullReferenceWithPadding,
-                                              final GenomeLoc refLoc,
+                                              final SimpleInterval refLoc,
                                               final List<VariantContext> givenAlleles,
                                               final SAMFileHeader header) {
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
@@ -109,7 +109,7 @@ public final class ReadThreadingAssembler {
         resultSet.setRegionForGenotyping(assemblyRegion);
         resultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
         resultSet.setPaddedReferenceLoc(refLoc);
-        final GenomeLoc activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
+        final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getExtendedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
         final Map<SeqGraph,AssemblyResult> assemblyResultByGraph = new HashMap<>();
@@ -139,7 +139,7 @@ public final class ReadThreadingAssembler {
      *
      * @return a non-null list of haplotypes
      */
-    private static List<Haplotype> composeGivenHaplotypes(final Haplotype refHaplotype, final List<VariantContext> givenHaplotypes, final GenomeLoc activeRegionWindow) {
+    private static List<Haplotype> composeGivenHaplotypes(final Haplotype refHaplotype, final List<VariantContext> givenHaplotypes, final SimpleInterval activeRegionWindow) {
         Utils.nonNull(refHaplotype, "the reference haplotype cannot be null");
         Utils.nonNull(givenHaplotypes, "given haplotypes cannot be null");
         Utils.nonNull(activeRegionWindow, "active region window cannot be null");
@@ -165,7 +165,7 @@ public final class ReadThreadingAssembler {
         return new ArrayList<>(returnHaplotypes);
     }
 
-    private List<Haplotype> findBestPaths(final Collection<SeqGraph> graphs, final Haplotype refHaplotype, final GenomeLoc refLoc, final GenomeLoc activeRegionWindow,
+    private List<Haplotype> findBestPaths(final Collection<SeqGraph> graphs, final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
                                             final Map<SeqGraph,AssemblyResult> assemblyResultByGraph, final AssemblyResultSet assemblyResultSet) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
