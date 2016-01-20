@@ -1,35 +1,12 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.downsampling;
 
-package org.broadinstitute.gatk.utils.downsampling;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.gatk.utils.Utils;
-import org.broadinstitute.gatk.utils.exceptions.ReviewedGATKException;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Reservoir Downsampler: Selects n reads out of a stream whose size is not known in advance, with
@@ -39,7 +16,7 @@ import java.util.*;
  *
  * @author David Roazen
  */
-public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<T> {
+public final class ReservoirDownsampler<T extends GATKRead> extends ReadsDownsampler<T> {
 
     /**
      * size of our reservoir -- ie., the maximum number of reads from the stream that will be retained
@@ -62,14 +39,6 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
      * data and whether or not we're expecting few overflows
      */
     private List<T> reservoir;
-
-    /**
-     * Certain items (eg., reduced reads) cannot be discarded at all during downsampling. We store
-     * these items separately so as not to impact the fair selection of items for inclusion in the
-     * reservoir. These items are returned (and cleared) along with any items in the reservoir in
-     * calls to consumeFinalizedItems().
-     */
-    private List<T> undiscardableItems;
 
     /**
      * Are we currently using a linked list for the reservoir?
@@ -97,9 +66,9 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
      *                           the cost of allocation if we often use targetSampleSize or more
      *                           elements.
      */
-    public ReservoirDownsampler ( final int targetSampleSize, final boolean expectFewOverflows ) {
+    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows ) {
         if ( targetSampleSize <= 0 ) {
-            throw new ReviewedGATKException("Cannot do reservoir downsampling with a sample size <= 0");
+            throw new IllegalArgumentException("Cannot do reservoir downsampling with a sample size <= 0");
         }
 
         this.targetSampleSize = targetSampleSize;
@@ -114,26 +83,22 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
      * @param targetSampleSize Size of the reservoir used by this downsampler. Number of items retained
      *                         after downsampling will be min(totalReads, targetSampleSize)
      */
-    public ReservoirDownsampler ( final int targetSampleSize ) {
+    public ReservoirDownsampler(final int targetSampleSize ) {
         this(targetSampleSize, false);
     }
 
     @Override
     public void submit ( final T newRead ) {
-        if ( doNotDiscardItem(newRead) ) {
-            undiscardableItems.add(newRead);
-            return;
-        }
+        Utils.nonNull(newRead, "newRead");
 
         // Only count reads that are actually eligible for discarding for the purposes of the reservoir downsampling algorithm
         totalDiscardableReadsSeen++;
 
         if ( totalDiscardableReadsSeen <= targetSampleSize ) {
             reservoir.add(newRead);
-        }
-        else {
+        } else {
             if ( isLinkedList ) {
-                reservoir = new ArrayList<T>(reservoir);
+                reservoir = new ArrayList<>(reservoir);
                 isLinkedList = false;
             }
 
@@ -147,20 +112,19 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
 
     @Override
     public boolean hasFinalizedItems() {
-        return ! reservoir.isEmpty() || ! undiscardableItems.isEmpty();
+        return ! reservoir.isEmpty();
     }
 
     @Override
     public List<T> consumeFinalizedItems() {
-        if ( ! hasFinalizedItems() ) {
-            // if there's nothing here, don't bother allocating a new list
-            return Collections.emptyList();
-        } else {
+        if (hasFinalizedItems()) {
             // pass reservoir by reference rather than make a copy, for speed
             final List<T> downsampledItems = reservoir;
-            downsampledItems.addAll(undiscardableItems);
             clearItems();
             return downsampledItems;
+        } else {
+            // if there's nothing here, don't bother allocating a new list
+            return Collections.emptyList();
         }
     }
 
@@ -171,7 +135,7 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
 
     @Override
     public T peekFinalized() {
-        return ! reservoir.isEmpty() ? reservoir.get(0) : (! undiscardableItems.isEmpty() ? undiscardableItems.get(0) : null);
+        return reservoir.isEmpty() ? null : reservoir.get(0);
     }
 
     @Override
@@ -181,7 +145,7 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
 
     @Override
     public int size() {
-        return reservoir.size() + undiscardableItems.size();
+        return reservoir.size();
     }
 
     @Override
@@ -195,10 +159,7 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
     @Override
     public void clearItems() {
         // if we aren't expecting many overflows, allocate a linked list not an arraylist
-        reservoir = expectFewOverflows ? new LinkedList<T>() : new ArrayList<T>(targetSampleSize);
-
-        // there's no possibility of overflow with the undiscardable items, so we always use a linked list for them
-        undiscardableItems = new LinkedList<>();
+        reservoir = expectFewOverflows ? new LinkedList<>() : new ArrayList<>(targetSampleSize);
 
         // it's a linked list if we allocate one
         isLinkedList = expectFewOverflows;
@@ -213,7 +174,8 @@ public class ReservoirDownsampler<T extends SAMRecord> extends ReadsDownsampler<
     }
 
     @Override
-    public void signalNoMoreReadsBefore( T read ) {
+    public void signalNoMoreReadsBefore(final T read ) {
+        Utils.nonNull(read);
         // NO-OP
     }
 }

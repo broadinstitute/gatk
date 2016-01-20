@@ -1,43 +1,19 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.downsampling;
 
-package org.broadinstitute.gatk.engine.downsampling;
-
-import org.broadinstitute.gatk.utils.BaseTest;
-import org.broadinstitute.gatk.utils.Utils;
-import org.broadinstitute.gatk.utils.downsampling.Downsampler;
-import org.broadinstitute.gatk.utils.downsampling.LevelingDownsampler;
-import org.testng.annotations.Test;
-import org.testng.annotations.DataProvider;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 
-public class LevelingDownsamplerUnitTest extends BaseTest {
+public final class LevelingDownsamplerUnitTest extends BaseTest {
 
-    private static class LevelingDownsamplerUniformStacksTest extends TestDataProvider {
+    private static final class LevelingDownsamplerUniformStacksTest extends TestDataProvider {
         public enum DataStructure { LINKED_LIST, ARRAY_LIST }
 
         int targetSize;
@@ -46,7 +22,7 @@ public class LevelingDownsamplerUnitTest extends BaseTest {
         DataStructure dataStructure;
         int expectedSize;
 
-        public LevelingDownsamplerUniformStacksTest( int targetSize, int numStacks, int stackSize, DataStructure dataStructure ) {
+        public LevelingDownsamplerUniformStacksTest(final int targetSize, final int numStacks, final int stackSize, final DataStructure dataStructure ) {
             super(LevelingDownsamplerUniformStacksTest.class);
 
             this.targetSize = targetSize;
@@ -60,10 +36,10 @@ public class LevelingDownsamplerUnitTest extends BaseTest {
         }
 
         public Collection<List<Object>> createStacks() {
-            Collection<List<Object>> stacks = new ArrayList<List<Object>>();
+            final Collection<List<Object>> stacks = new ArrayList<List<Object>>();
 
             for ( int i = 1; i <= numStacks; i++ ) {
-                List<Object> stack = dataStructure == DataStructure.LINKED_LIST ? new LinkedList<Object>() : new ArrayList<Object>();
+                final List<Object> stack = dataStructure == DataStructure.LINKED_LIST ? new LinkedList<>() : new ArrayList<>();
 
                 for ( int j = 1; j <= stackSize; j++ ) {
                     stack.add(new Object());
@@ -76,7 +52,7 @@ public class LevelingDownsamplerUnitTest extends BaseTest {
         }
 
         private int calculateExpectedDownsampledStackSize() {
-            int numItemsToRemove = numStacks * stackSize - targetSize;
+            final int numItemsToRemove = numStacks * stackSize - targetSize;
 
             if ( numStacks == 0 ) {
                 return 0;
@@ -94,7 +70,7 @@ public class LevelingDownsamplerUnitTest extends BaseTest {
         for ( int targetSize = 1; targetSize <= 10000; targetSize *= 10 ) {
             for ( int numStacks = 0; numStacks <= 10; numStacks++ ) {
                 for ( int stackSize = 1; stackSize <= 1000; stackSize *= 10 ) {
-                    for ( LevelingDownsamplerUniformStacksTest.DataStructure dataStructure : LevelingDownsamplerUniformStacksTest.DataStructure.values() ) {
+                    for ( final LevelingDownsamplerUniformStacksTest.DataStructure dataStructure : LevelingDownsamplerUniformStacksTest.DataStructure.values() ) {
                         new LevelingDownsamplerUniformStacksTest(targetSize, numStacks, stackSize, dataStructure);
                     }
                 }
@@ -105,14 +81,20 @@ public class LevelingDownsamplerUnitTest extends BaseTest {
     }
 
     @Test( dataProvider = "UniformStacksDataProvider" )
-    public void testLevelingDownsamplerWithUniformStacks( LevelingDownsamplerUniformStacksTest test ) {
+    public void testLevelingDownsamplerWithUniformStacks(final LevelingDownsamplerUniformStacksTest test ) {
         logger.warn("Running test: " + test);
 
         Utils.resetRandomGenerator();
 
-        Downsampler<List<Object>> downsampler = new LevelingDownsampler<List<Object>, Object>(test.targetSize);
+        final Downsampler<List<Object>> downsampler = new LevelingDownsampler<>(test.targetSize);
 
-        downsampler.submit(test.createStacks());
+        final Collection<List<Object>> stacks = test.createStacks();
+        if (stacks.size() == 1){
+            downsampler.submit(stacks.iterator().next()); //This is only done to exercise the 1 element code path in 'submit'
+        } else {
+            downsampler.submit(stacks);
+        }
+
 
         if ( test.numStacks > 0 ) {
             Assert.assertFalse(downsampler.hasFinalizedItems());
@@ -139,21 +121,21 @@ public class LevelingDownsamplerUnitTest extends BaseTest {
         }
 
         final int sizeFromDownsampler = downsampler.size();
-        List<List<Object>> downsampledStacks = downsampler.consumeFinalizedItems();
+        final List<List<Object>> downsampledStacks = downsampler.consumeFinalizedItems();
         Assert.assertFalse(downsampler.hasFinalizedItems() || downsampler.hasPendingItems());
         Assert.assertTrue(downsampler.peekFinalized() == null && downsampler.peekPending() == null);
 
         Assert.assertEquals(downsampledStacks.size(), test.numStacks);
 
         int totalRemainingItems = 0;
-        for ( List<Object> stack : downsampledStacks ) {
+        for ( final List<Object> stack : downsampledStacks ) {
             Assert.assertTrue(Math.abs(stack.size() - test.expectedSize) <= 1);
             totalRemainingItems += stack.size();
         }
 
         Assert.assertEquals(sizeFromDownsampler, totalRemainingItems);
-        int numItemsReportedDiscarded = downsampler.getNumberOfDiscardedItems();
-        int numItemsActuallyDiscarded = test.numStacks * test.stackSize - totalRemainingItems;
+        final int numItemsReportedDiscarded = downsampler.getNumberOfDiscardedItems();
+        final int numItemsActuallyDiscarded = test.numStacks * test.stackSize - totalRemainingItems;
 
         Assert.assertEquals(numItemsReportedDiscarded, numItemsActuallyDiscarded);
 

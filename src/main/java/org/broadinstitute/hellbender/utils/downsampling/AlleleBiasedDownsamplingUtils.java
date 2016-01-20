@@ -154,7 +154,7 @@ public final class AlleleBiasedDownsamplingUtils {
         }
 
         final List<GATKRead> elementsToRemove = new ArrayList<>(numElementsToRemove);
-        for (int idx : MathUtils.sampleIndicesWithoutReplacement(reads.size(), numElementsToRemove)){
+        for (final int idx : MathUtils.sampleIndicesWithoutReplacement(reads.size(), numElementsToRemove)){
             elementsToRemove.add(reads.get(idx));
         }
         return Collections.unmodifiableList(elementsToRemove);

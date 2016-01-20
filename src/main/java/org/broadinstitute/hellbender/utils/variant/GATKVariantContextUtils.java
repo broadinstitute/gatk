@@ -298,6 +298,25 @@ public final class GATKVariantContextUtils {
         return getSNPSubstitutionType(context) == BaseUtils.BaseSubstitutionType.TRANSITION;
     }
 
+
+    /**
+     * Returns a homozygous call allele list given the only allele and the ploidy.
+     *
+     * @param allele the only allele in the allele list.
+     * @param ploidy the ploidy of the resulting allele list.
+     *
+     * @throws IllegalArgumentException if {@code allele} is {@code null} or ploidy is negative.
+     *
+     * @return never {@code null}.
+     */
+    public static List<Allele> homozygousAlleleList(final Allele allele, final int ploidy) {
+        Utils.nonNull(allele);
+        Utils.validateArg(ploidy >= 0, "ploidy cannot be negative");
+
+        // Use a tailored inner class to implement the list:
+        return Collections.nCopies(ploidy,allele);
+    }
+
     public enum GenotypeMergeType {
         /**
          * Make all sample genotypes unique by file. Each sample shared across RODs gets named sample.ROD.

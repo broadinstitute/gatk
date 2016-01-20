@@ -1,37 +1,12 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.downsampling;
 
-package org.broadinstitute.gatk.utils.downsampling;
-
-import org.broadinstitute.gatk.utils.exceptions.UserException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 
 /**
  * Describes the method for downsampling reads at a given locus.
  */
-
-public class DownsamplingMethod {
+public final class DownsamplingMethod {
     /**
      * Type of downsampling to perform.
      */
@@ -39,11 +14,13 @@ public class DownsamplingMethod {
 
     /**
      * Actual downsampling target is specified as an integer number of reads.
+     * This field is null if no downsampling is to be done.
      */
     public final Integer toCoverage;
 
     /**
      * Actual downsampling target is specified as a fraction of total available reads.
+     * This field is null if no downsampling is to be done.
      */
     public final Double toFraction;
 
@@ -58,20 +35,19 @@ public class DownsamplingMethod {
     public static final DownsampleType DEFAULT_DOWNSAMPLING_TYPE = DownsampleType.BY_SAMPLE;
 
     /**
-     * Don't allow dcov values below this threshold for locus-based traversals (ie., Locus
-     * and ActiveRegion walkers), as they can result in problematic downsampling artifacts
+     * If type is null, then DEFAULT_DOWNSAMPLING_TYPE will be used.
+     * If type is not NONE, then either toFraction or toCoverage must be not null.
+     * At most one of toFraction or toCoverage can be specified.
+     * If specified, toCoverage must be > 0.
+     * If specified, toFraction must be >= 0.0 and <= 1.0
      */
-    public static final int MINIMUM_SAFE_COVERAGE_TARGET_FOR_LOCUS_BASED_TRAVERSALS = 200;
-
-
-    public DownsamplingMethod( DownsampleType type, Integer toCoverage, Double toFraction ) {
+    public DownsamplingMethod(final DownsampleType type, final Integer toCoverage, final Double toFraction ) {
         this.type = type != null ? type : DEFAULT_DOWNSAMPLING_TYPE;
 
         if ( type == DownsampleType.NONE ) {
             this.toCoverage = null;
             this.toFraction = null;
-        }
-        else {
+        } else {
             this.toCoverage = toCoverage;
             this.toFraction = toFraction;
         }
@@ -81,12 +57,14 @@ public class DownsamplingMethod {
 
     private void validate() {
         // Can't leave toFraction and toCoverage null unless type is NONE
-        if ( type != DownsampleType.NONE && toFraction == null && toCoverage == null )
+        if ( type != DownsampleType.NONE && toFraction == null && toCoverage == null ) {
             throw new UserException("Must specify either toFraction or toCoverage when downsampling.");
+        }
 
         // Fraction and coverage cannot both be specified.
-        if ( toFraction != null && toCoverage != null )
+        if ( toFraction != null && toCoverage != null ) {
             throw new UserException("Downsampling coverage and fraction are both specified. Please choose only one.");
+        }
 
         // toCoverage must be > 0 when specified
         if ( toCoverage != null && toCoverage <= 0 ) {
@@ -100,22 +78,29 @@ public class DownsamplingMethod {
     }
 
     public String toString() {
-        StringBuilder builder = new StringBuilder("Downsampling Settings: ");
+        final StringBuilder builder = new StringBuilder("Downsampling Settings: ");
 
         if ( type == DownsampleType.NONE ) {
             builder.append("No downsampling");
-        }
-        else {
+        } else {
             builder.append(String.format("Method: %s, ", type));
 
             if ( toCoverage != null ) {
                 builder.append(String.format("Target Coverage: %d", toCoverage));
-            }
-            else {
+            } else {
                 builder.append(String.format("Target Fraction: %.2f", toFraction));
             }
         }
 
         return builder.toString();
+    }
+
+    public static LIBSDownsamplingInfo toDownsamplingInfo(final DownsamplingMethod downsamplingMethod) {
+        final boolean performDownsampling = downsamplingMethod != null &&
+                downsamplingMethod.type == DownsampleType.BY_SAMPLE &&
+                downsamplingMethod.toCoverage != null;
+        final int coverage = performDownsampling ? downsamplingMethod.toCoverage : 0;
+
+        return new LIBSDownsamplingInfo(performDownsampling, coverage);
     }
 }

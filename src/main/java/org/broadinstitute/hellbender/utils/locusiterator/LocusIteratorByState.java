@@ -1,47 +1,18 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.locusiterator;
 
-package org.broadinstitute.gatk.utils.locusiterator;
-
-import com.google.java.contract.Ensures;
-import com.google.java.contract.Requires;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileReader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.Locatable;
 import org.apache.log4j.Logger;
-import org.broadinstitute.gatk.utils.contexts.AlignmentContext;
-import org.broadinstitute.gatk.utils.downsampling.DownsampleType;
-import org.broadinstitute.gatk.utils.sam.GATKSAMRecordIterator;
-import org.broadinstitute.gatk.utils.GenomeLoc;
-import org.broadinstitute.gatk.utils.GenomeLocParser;
-import org.broadinstitute.gatk.utils.downsampling.DownsamplingMethod;
-import org.broadinstitute.gatk.utils.pileup.PileupElement;
-import org.broadinstitute.gatk.utils.pileup.ReadBackedPileupImpl;
-import org.broadinstitute.gatk.utils.sam.GATKSAMRecord;
-import org.broadinstitute.gatk.utils.sam.ReadUtils;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 
@@ -70,14 +41,14 @@ import java.util.*;
  * occurs, if requested.  This allows users of LIBS to see both a ReadBackedPileup view of the data as well as
  * a stream of unique, sorted reads
  */
-public final class LocusIteratorByState extends LocusIterator {
+public final class LocusIteratorByState implements Iterable<AlignmentContext>, Iterator<AlignmentContext>{
     /** Indicates that we shouldn't do any downsampling */
-    public final static LIBSDownsamplingInfo NO_DOWNSAMPLING = new LIBSDownsamplingInfo(false, -1);
+    public static final LIBSDownsamplingInfo NO_DOWNSAMPLING = new LIBSDownsamplingInfo(false, -1);
 
     /**
      * our log, which we want to capture anything from this class
      */
-    private final static Logger logger = Logger.getLogger(LocusIteratorByState.class);
+    private static final Logger logger = Logger.getLogger(LocusIteratorByState.class);
 
     // -----------------------------------------------------------------------------------------------------------------
     //
@@ -94,7 +65,7 @@ public final class LocusIteratorByState extends LocusIterator {
      * A complete list of all samples that may come out of the reads.  Must be
      * comprehensive.
      */
-    private final ArrayList<String> samples;
+    private final List<String> samples;
 
     /**
      * The system that maps incoming reads from the iterator to their pileup states
@@ -134,37 +105,20 @@ public final class LocusIteratorByState extends LocusIterator {
      *                list of samples may contain a null element, and all reads without read groups will
      *                be mapped to this null sample
      */
-    public LocusIteratorByState(final Iterator<GATKSAMRecord> samIterator,
+    public LocusIteratorByState(final Iterator<GATKRead> samIterator,
                                 final DownsamplingMethod downsamplingMethod,
                                 final boolean includeReadsWithDeletionAtLoci,
                                 final boolean keepUniqueReadListInLIBS,
                                 final GenomeLocParser genomeLocParser,
-                                final Collection<String> samples) {
+                                final Collection<String> samples,
+                                final SAMFileHeader header) {
         this(samIterator,
-                toDownsamplingInfo(downsamplingMethod),
+                DownsamplingMethod.toDownsamplingInfo(downsamplingMethod),
                 includeReadsWithDeletionAtLoci,
                 genomeLocParser,
                 samples,
-                keepUniqueReadListInLIBS);
-    }
-
-    /**
-     * Create a new LocusIteratorByState based on a SAMFileReader using reads in an iterator it
-     *
-     * Simple constructor that uses the samples in the reader, doesn't do any downsampling,
-     * and makes a new GenomeLocParser using the reader.  This constructor will be slow(ish)
-     * if you continually invoke this constructor, but it's easy to make.
-     *
-     * @param reader a non-null reader
-     * @param it an iterator from reader that has the reads we want to use to create ReadBackPileups
-     */
-    public LocusIteratorByState(final SAMFileReader reader, final CloseableIterator<SAMRecord> it) {
-        this(new GATKSAMRecordIterator(it),
-                new LIBSDownsamplingInfo(false, 0),
-                true,
-                new GenomeLocParser(reader.getFileHeader().getSequenceDictionary()),
-                ReadUtils.getSAMFileSamples(reader.getFileHeader()),
-                false);
+                keepUniqueReadListInLIBS,
+                header);
     }
 
     /**
@@ -181,16 +135,18 @@ public final class LocusIteratorByState extends LocusIterator {
      * @param maintainUniqueReadsList if true, we will keep the unique reads from off the samIterator and make them
      *                                available via the transferReadsFromAllPreviousPileups interface
      */
-    public LocusIteratorByState(final Iterator<GATKSAMRecord> samIterator,
+    public LocusIteratorByState(final Iterator<GATKRead> samIterator,
                                 final LIBSDownsamplingInfo downsamplingInfo,
                                 final boolean includeReadsWithDeletionAtLoci,
                                 final GenomeLocParser genomeLocParser,
                                 final Collection<String> samples,
-                                final boolean maintainUniqueReadsList) {
-        if ( samIterator == null ) throw new IllegalArgumentException("samIterator cannot be null");
-        if ( downsamplingInfo == null ) throw new IllegalArgumentException("downsamplingInfo cannot be null");
-        if ( genomeLocParser == null ) throw new IllegalArgumentException("genomeLocParser cannot be null");
-        if ( samples == null ) throw new IllegalArgumentException("Samples cannot be null");
+                                final boolean maintainUniqueReadsList,
+                                final SAMFileHeader header) {
+        Utils.nonNull(samIterator, "samIterator cannot be null");
+        Utils.nonNull(downsamplingInfo, "downsamplingInfo cannot be null");
+        Utils.nonNull(genomeLocParser, "genomeLocParser cannot be null");
+        Utils.nonNull(samples == null, "Samples cannot be null");
+        Utils.nonNull(header == null, "header cannot be null");
 
         // currently the GATK expects this LocusIteratorByState to accept empty sample lists, when
         // there's no read data.  So we need to throw this error only when samIterator.hasNext() is true
@@ -200,8 +156,8 @@ public final class LocusIteratorByState extends LocusIterator {
 
         this.genomeLocParser = genomeLocParser;
         this.includeReadsWithDeletionAtLoci = includeReadsWithDeletionAtLoci;
-        this.samples = new ArrayList<String>(samples);
-        this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, maintainUniqueReadsList);
+        this.samples = new ArrayList<>(samples);
+        this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, maintainUniqueReadsList, header);
     }
 
     @Override
@@ -229,9 +185,7 @@ public final class LocusIteratorByState extends LocusIterator {
 
     /**
      * Is there another pileup available?
-     * @return
      */
-    @Override
     public boolean hasNext() {
         lazyLoadNextAlignmentContext();
         return nextAlignmentContext != null;
@@ -243,11 +197,11 @@ public final class LocusIteratorByState extends LocusIterator {
      * @return a non-null AlignmentContext of the pileup after to the next genomic position covered by
      * at least one read.
      */
-    @Override
     public AlignmentContext next() {
         lazyLoadNextAlignmentContext();
-        if (!hasNext())
+        if (!hasNext()) {
             throw new NoSuchElementException("LocusIteratorByState: out of elements.");
+        }
         AlignmentContext currentAlignmentContext = nextAlignmentContext;
         nextAlignmentContext = null;
         return currentAlignmentContext;
@@ -271,15 +225,18 @@ public final class LocusIteratorByState extends LocusIterator {
         while ( hasNext() ) {
             final AlignmentContext context = next();
 
-            if ( context == null )
+            if ( context == null ){
                 // we ran out of data
                 return null;
+            }
 
-            if ( context.getPosition() == position )
+            if ( context.getPosition() == position ) {
                 return context;
+            }
 
-            if ( context.getPosition() > position)
+            if ( context.getPosition() > position) {
                 return stopAtFirstNonEmptySiteAfterPosition ? context : null;
+            }
         }
 
         return null;
@@ -294,23 +251,24 @@ public final class LocusIteratorByState extends LocusIterator {
         while (nextAlignmentContext == null && readStates.hasNext()) {
             readStates.collectPendingReads();
 
-            final GenomeLoc location = getLocation();
-            final Map<String, ReadBackedPileupImpl> fullPileup = new HashMap<String, ReadBackedPileupImpl>();
+            final Locatable location = getLocation();
+            final Map<String, ReadPileup> fullPileupPerSample = new HashMap<>();
 
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates ) {
                 final String sample = sampleStatePair.getKey();
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();
                 final Iterator<AlignmentStateMachine> iterator = readState.iterator();
-                final List<PileupElement> pile = new ArrayList<PileupElement>(readState.size());
+                final List<PileupElement> pile = new ArrayList<>(readState.size());
 
                 while (iterator.hasNext()) {
                     // state object with the read/offset information
                     final AlignmentStateMachine state = iterator.next();
-                    final GATKSAMRecord read = state.getRead();
+                    final GATKRead read = state.getRead();
                     final CigarOperator op = state.getCigarOperator();
 
-                    if (op == CigarOperator.N) // N's are never added to any pileup
+                    if (op == CigarOperator.N){ // N's are never added to any pileup
                         continue;
+                    }
 
                     if (!dontIncludeReadInPileup(read, location.getStart())) {
                         if ( ! includeReadsWithDeletionAtLoci && op == CigarOperator.D ) {
@@ -321,21 +279,34 @@ public final class LocusIteratorByState extends LocusIterator {
                     }
                 }
 
-                if (! pile.isEmpty() ) // if this pileup added at least one base, add it to the full pileup
-                    fullPileup.put(sample, new ReadBackedPileupImpl(location, pile));
+                if (! pile.isEmpty() ){ // if this pileup added at least one base, add it to the full pileup
+                    fullPileupPerSample.put(sample, new ReadPileup(location, pile));
+                }
             }
 
             readStates.updateReadStates(); // critical - must be called after we get the current state offsets and location
-            if (!fullPileup.isEmpty()) // if we got reads with non-D/N over the current position, we are done
-                nextAlignmentContext = new AlignmentContext(location, new ReadBackedPileupImpl(location, fullPileup), false);
+            if (!fullPileupPerSample.isEmpty()){ // if we got reads with non-D/N over the current position, we are done
+                if (fullPileupPerSample.keySet().size() > 1){
+                    throw new UnsupportedOperationException("Multiple samples are currently not supported in GATK4. Samples here:" + fullPileupPerSample.keySet());
+                }
+                final ReadPileup singlePileup = fullPileupPerSample.values().iterator().next();
+                nextAlignmentContext = new AlignmentContext(location, singlePileup);
+            }
         }
     }
 
-    // -----------------------------------------------------------------------------------------------------------------
-    //
-    // getting the list of reads
-    //
-    // -----------------------------------------------------------------------------------------------------------------
+    /**
+     * Should this read be excluded from the pileup?
+     *
+     * Generic place to put per-base filters appropriate to LocusIteratorByState
+     *
+     * @param rec the read to potentially exclude
+     * @param pos the genomic position of the current alignment
+     * @return true if the read should be excluded from the pileup, false otherwise
+     */
+    private boolean dontIncludeReadInPileup(final GATKRead rec, final long pos) {
+        return ReadUtils.isBaseInsideAdaptor(rec, pos);
+    }
 
     /**
      * Transfer current list of all unique reads that have ever been used in any pileup, clearing old list
@@ -362,8 +333,7 @@ public final class LocusIteratorByState extends LocusIterator {
      *
      * @return the current list
      */
-    @Ensures("result != null")
-    public List<GATKSAMRecord> transferReadsFromAllPreviousPileups() {
+    public List<GATKRead> transferReadsFromAllPreviousPileups() {
         return readStates.transferSubmittedReads();
     }
 
@@ -371,87 +341,8 @@ public final class LocusIteratorByState extends LocusIterator {
      * Get the underlying list of tracked reads.  For testing only
      * @return a non-null list
      */
-    @Ensures("result != null")
-    protected List<GATKSAMRecord> getReadsFromAllPreviousPileups() {
+    protected List<GATKRead> getReadsFromAllPreviousPileups() {
         return readStates.getSubmittedReads();
     }
 
-    // -----------------------------------------------------------------------------------------------------------------
-    //
-    // utility functions
-    //
-    // -----------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Should this read be excluded from the pileup?
-     *
-     * Generic place to put per-base filters appropriate to LocusIteratorByState
-     *
-     * @param rec the read to potentially exclude
-     * @param pos the genomic position of the current alignment
-     * @return true if the read should be excluded from the pileup, false otherwise
-     */
-    @Requires({"rec != null", "pos > 0"})
-    private boolean dontIncludeReadInPileup(final GATKSAMRecord rec, final long pos) {
-        return ReadUtils.isBaseInsideAdaptor(rec, pos);
-    }
-
-    /**
-     * Create a LIBSDownsamplingInfo object from the requested info in DownsamplingMethod
-     *
-     * LIBS will invoke the Reservoir and Leveling downsamplers on the read stream if we're
-     * downsampling to coverage by sample. SAMDataSource will have refrained from applying
-     * any downsamplers to the read stream in this case, in the expectation that LIBS will
-     * manage the downsampling. The reason for this is twofold: performance (don't have to
-     * split/re-assemble the read stream in SAMDataSource), and to enable partial downsampling
-     * of reads (eg., using half of a read, and throwing the rest away).
-     *
-     * @param downsamplingMethod downsampling information about what should be done to the reads
-     * @return a LIBS specific info holder about downsampling only
-     */
-    @Requires("downsamplingMethod != null")
-    @Ensures("result != null")
-    private static LIBSDownsamplingInfo toDownsamplingInfo(final DownsamplingMethod downsamplingMethod) {
-        final boolean performDownsampling = downsamplingMethod != null &&
-                downsamplingMethod.type == DownsampleType.BY_SAMPLE &&
-                downsamplingMethod.toCoverage != null;
-        final int coverage = performDownsampling ? downsamplingMethod.toCoverage : 0;
-
-        return new LIBSDownsamplingInfo(performDownsampling, coverage);
-    }
-
-    /**
-     * Create a pileup element for read at offset
-     *
-     * offset must correspond to a valid read offset given the read's cigar, or an IllegalStateException will be throw
-     *
-     * @param read a read
-     * @param offset the offset into the bases we'd like to use in the pileup
-     * @return a valid PileupElement with read and at offset
-     */
-    @Ensures("result != null")
-    public static PileupElement createPileupForReadAndOffset(final GATKSAMRecord read, final int offset) {
-        if ( read == null ) throw new IllegalArgumentException("read cannot be null");
-        if ( offset < 0 || offset >= read.getReadLength() ) throw new IllegalArgumentException("Invalid offset " + offset + " outside of bounds 0 and " + read.getReadLength());
-
-        final AlignmentStateMachine stateMachine = new AlignmentStateMachine(read);
-
-        while ( stateMachine.stepForwardOnGenome() != null ) {
-            if ( stateMachine.getReadOffset() == offset )
-                return stateMachine.makePileupElement();
-        }
-
-        throw new IllegalStateException("Tried to create a pileup for read " + read + " with offset " + offset +
-                " but we never saw such an offset in the alignment state machine");
-    }
-
-    /**
-     * For testing only.  Assumes that the incoming SAMRecords have no read groups, so creates a dummy sample list
-     * for the system.
-     */
-    public static List<String> sampleListForSAMWithoutReadGroups() {
-        List<String> samples = new ArrayList<String>();
-        samples.add(null);
-        return samples;
-    }
 }

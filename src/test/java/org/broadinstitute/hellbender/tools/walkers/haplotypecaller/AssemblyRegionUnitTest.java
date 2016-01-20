@@ -20,7 +20,7 @@ import java.util.*;
 
 
 public final class AssemblyRegionUnitTest extends BaseTest {
-    private final static boolean DEBUG = false;
+    private static final boolean DEBUG = false;
     private GenomeLocParser genomeLocParser;
     private IndexedFastaSequenceFile seq;
     private String contig;
@@ -44,6 +44,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
         Assert.assertEquals(ar.getExtension(), 2);
         Assert.assertEquals(ar.isActive(), true);
         Assert.assertEquals(ar.getSpan(), loc);
+        Assert.assertEquals(ar.getHeader(), header);
     }
 
     @DataProvider(name = "ActionRegionCreationTest")

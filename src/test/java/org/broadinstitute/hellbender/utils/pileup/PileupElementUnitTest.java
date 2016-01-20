@@ -52,7 +52,11 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
                 Assert.assertEquals(pe.isBeforeDeletionStart(), tester.isBeforeDeletionStart);
             }
 
+            Assert.assertEquals(pe.getOffsetInCurrentCigar(), tester.getCurrentPositionOnOperatorBase0(), "CigarElement index failure");
+            Assert.assertTrue(pe.getOffsetInCurrentCigar() >= 0, "Offset into current cigar too small");
+            Assert.assertTrue(pe.getOffsetInCurrentCigar() < pe.getCurrentCigarElement().getLength(), "Offset into current cigar too big");
 
+            Assert.assertNotNull(pe.toString());
 
             Assert.assertEquals(pe.atEndOfCurrentCigar(), state.getOffsetIntoCurrentCigarElement() == state.getCurrentCigarElement().getLength() - 1, "atEndOfCurrentCigar failed");
             Assert.assertEquals(pe.atStartOfCurrentCigar(), state.getOffsetIntoCurrentCigarElement() == 0, "atStartOfCurrentCigar failed");
@@ -63,9 +67,10 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
             Assert.assertEquals(pe.getCurrentCigarElement(), state.getCurrentCigarElement());
             Assert.assertEquals(pe.getCurrentCigarOffset(), state.getCurrentCigarElementOffset());
 
-            // tested in libs
-            //pe.getLengthOfImmediatelyFollowingIndel();
-            //pe.getBasesOfImmediatelyFollowingInsertion();
+            final int lengthOfImmediatelyFollowingIndel = pe.getLengthOfImmediatelyFollowingIndel();
+            final String basesOfImmediatelyFollowingInsertion = pe.getBasesOfImmediatelyFollowingInsertion();
+            Assert.assertTrue(lengthOfImmediatelyFollowingIndel != 0 || basesOfImmediatelyFollowingInsertion == null);
+            Assert.assertTrue(basesOfImmediatelyFollowingInsertion == null || basesOfImmediatelyFollowingInsertion.length() == lengthOfImmediatelyFollowingIndel);
 
             // Don't test -- pe.getBaseIndex();
             if ( pe.atEndOfCurrentCigar() && state.getCurrentCigarElementOffset() < read.getCigar().numCigarElements() - 1 ) {

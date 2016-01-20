@@ -1,31 +1,7 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.downsampling;
 
-package org.broadinstitute.gatk.utils.downsampling;
-
-import org.broadinstitute.gatk.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
@@ -46,7 +22,7 @@ import java.util.*;
  *
  * @author David Roazen
  */
-public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
+public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
     private final int minElementsPerStack;
 
     private final int targetSize;
@@ -64,7 +40,7 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
      *                   this value -- if it does, items are removed from Lists evenly until the total size
      *                   is <= this value
      */
-    public LevelingDownsampler( final int targetSize ) {
+    public LevelingDownsampler(final int targetSize ) {
         this(targetSize, 1);
     }
 
@@ -78,7 +54,7 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
      *                            if a stack has only 3 elements and minElementsPerStack is 3, no matter what
      *                            we'll not reduce this stack below 3.
      */
-    public LevelingDownsampler( final int targetSize, final int minElementsPerStack ) {
+    public LevelingDownsampler(final int targetSize, final int minElementsPerStack ) {
         if ( targetSize < 0 ) throw new IllegalArgumentException("targetSize must be >= 0 but got " + targetSize);
         if ( minElementsPerStack < 0 ) throw new IllegalArgumentException("minElementsPerStack must be >= 0 but got " + minElementsPerStack);
 
@@ -90,11 +66,14 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
 
     @Override
     public void submit( final T item ) {
+        Utils.nonNull(item, "item");
         groups.add(item);
     }
 
     @Override
     public void submit( final Collection<T> items ){
+        Utils.nonNull(items, "items");
+        Utils.validateArg(!items.contains(null), "null item");
         groups.addAll(items);
     }
 
@@ -106,7 +85,7 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
     @Override
     public List<T> consumeFinalizedItems() {
         if ( ! hasFinalizedItems() ) {
-            return new ArrayList<T>();
+            return new ArrayList<>();
         }
 
         // pass by reference rather than make a copy, for speed
@@ -132,11 +111,7 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
 
     @Override
     public int size() {
-        int s = 0;
-        for ( final List<E> l : groups ) {
-            s += l.size();
-        }
-        return s;
+        return groups.stream().mapToInt(g -> g.size()).sum();
     }
 
     @Override
@@ -147,7 +122,7 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
 
     @Override
     public void clearItems() {
-        groups = new ArrayList<T>();
+        groups = new ArrayList<>();
         groupsAreFinalized = false;
     }
 
@@ -203,19 +178,19 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
         }
 
         final BitSet itemsToKeep = new BitSet(group.size());
-        for ( Integer selectedIndex : MathUtils.sampleIndicesWithoutReplacement(group.size(), numItemsToKeep) ) {
+        for ( final Integer selectedIndex : MathUtils.sampleIndicesWithoutReplacement(group.size(), numItemsToKeep) ) {
             itemsToKeep.set(selectedIndex);
         }
 
         int currentIndex = 0;
 
         // If our group is a linked list, we can remove the desired items in a single O(n) pass with an iterator
-        if ( group instanceof LinkedList ) {
+        if ( group instanceof LinkedList) {
             final Iterator<E> iter = group.iterator();
             while ( iter.hasNext() ) {
                 final E item = iter.next();
 
-                if ( ! itemsToKeep.get(currentIndex) && ! doNotDiscardItem(item) ) {
+                if ( ! itemsToKeep.get(currentIndex) ) {
                     iter.remove();
                     numDiscardedItems++;
                 }
@@ -226,10 +201,10 @@ public class LevelingDownsampler<T extends List<E>, E> extends Downsampler<T> {
         // If it's not a linked list, it's more efficient to copy the desired items into a new list and back rather
         // than suffer O(n^2) of item shifting
         else {
-            final List<E> keptItems = new ArrayList<E>(group.size());
+            final List<E> keptItems = new ArrayList<>(group.size());
 
             for ( final E item : group ) {
-                if ( itemsToKeep.get(currentIndex) || doNotDiscardItem(item) ) {
+                if ( itemsToKeep.get(currentIndex) ) {
                     keptItems.add(item);
                 }
                 currentIndex++;

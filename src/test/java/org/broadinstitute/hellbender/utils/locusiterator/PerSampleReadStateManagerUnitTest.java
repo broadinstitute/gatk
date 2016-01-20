@@ -1,34 +1,8 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.locusiterator;
 
-package org.broadinstitute.gatk.utils.locusiterator;
-
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.gatk.utils.MathUtils;
-import org.broadinstitute.gatk.utils.sam.ArtificialSAMUtils;
-import org.broadinstitute.gatk.utils.sam.GATKSAMRecord;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,21 +12,21 @@ import java.util.*;
 /**
  * testing of the new (non-legacy) version of LocusIteratorByState
  */
-public class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseTest {
-    private class PerSampleReadStateManagerTest extends TestDataProvider {
+public final class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseTest {
+    private static final class PerSampleReadStateManagerTester extends TestDataProvider {
         private List<Integer> readCountsPerAlignmentStart;
-        private List<SAMRecord> reads;
+        private List<GATKRead> reads;
         private List<ArrayList<AlignmentStateMachine>> recordStatesByAlignmentStart;
         private int removalInterval;
 
-        public PerSampleReadStateManagerTest( List<Integer> readCountsPerAlignmentStart, int removalInterval ) {
-            super(PerSampleReadStateManagerTest.class);
+        public PerSampleReadStateManagerTester(List<Integer> readCountsPerAlignmentStart, int removalInterval ) {
+            super(PerSampleReadStateManagerTester.class);
 
             this.readCountsPerAlignmentStart = readCountsPerAlignmentStart;
             this.removalInterval = removalInterval;
 
-            reads = new ArrayList<SAMRecord>();
-            recordStatesByAlignmentStart = new ArrayList<ArrayList<AlignmentStateMachine>>();
+            reads = new ArrayList<>();
+            recordStatesByAlignmentStart = new ArrayList<>();
 
             setName(String.format("%s: readCountsPerAlignmentStart: %s  removalInterval: %d",
                     getClass().getSimpleName(), readCountsPerAlignmentStart, removalInterval));
@@ -64,13 +38,13 @@ public class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseT
             makeReads();
 
             for ( ArrayList<AlignmentStateMachine> stackRecordStates : recordStatesByAlignmentStart ) {
-                perSampleReadStateManager.addStatesAtNextAlignmentStart(new LinkedList<AlignmentStateMachine>(stackRecordStates));
+                perSampleReadStateManager.addStatesAtNextAlignmentStart(new LinkedList<>(stackRecordStates));
             }
 
             // read state manager should have the right number of reads
             Assert.assertEquals(reads.size(), perSampleReadStateManager.size());
 
-            Iterator<SAMRecord> originalReadsIterator = reads.iterator();
+            Iterator<GATKRead> originalReadsIterator = reads.iterator();
             Iterator<AlignmentStateMachine> recordStateIterator = perSampleReadStateManager.iterator();
             int recordStateCount = 0;
             int numReadStatesRemoved = 0;
@@ -80,10 +54,10 @@ public class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseT
             while ( recordStateIterator.hasNext() ) {
                 AlignmentStateMachine readState = recordStateIterator.next();
                 recordStateCount++;
-                SAMRecord readFromPerSampleReadStateManager = readState.getRead();
+                GATKRead readFromPerSampleReadStateManager = readState.getRead();
 
                 Assert.assertTrue(originalReadsIterator.hasNext());
-                SAMRecord originalRead = originalReadsIterator.next();
+                GATKRead originalRead = originalReadsIterator.next();
 
                 // The read we get back should be literally the same read in memory as we put in
                 Assert.assertTrue(originalRead == readFromPerSampleReadStateManager);
@@ -111,11 +85,11 @@ public class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseT
                 while ( recordStateIterator.hasNext() ) {
                     AlignmentStateMachine readState = recordStateIterator.next();
                     readStateCount++;
-                    SAMRecord readFromPerSampleReadStateManager = readState.getRead();
+                    GATKRead readFromPerSampleReadStateManager = readState.getRead();
 
                     Assert.assertTrue(originalReadsIterator.hasNext());
 
-                    SAMRecord originalRead = originalReadsIterator.next();
+                    GATKRead originalRead = originalReadsIterator.next();
                     readCount++;
 
                     if ( readCount % removalInterval == 0 ) {
@@ -140,10 +114,10 @@ public class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseT
             int alignmentStart = 1;
 
             for ( int readsThisStack : readCountsPerAlignmentStart ) {
-                ArrayList<GATKSAMRecord> stackReads = new ArrayList<GATKSAMRecord>(ArtificialSAMUtils.createStackOfIdenticalArtificialReads(readsThisStack, header, "foo", 0, alignmentStart, MathUtils.randomIntegerInRange(50, 100)));
-                ArrayList<AlignmentStateMachine> stackRecordStates = new ArrayList<AlignmentStateMachine>();
+                ArrayList<GATKRead> stackReads = new ArrayList<>(ArtificialReadUtils.createIdenticalArtificialReads(readsThisStack, header, "foo", 0, alignmentStart, MathUtils.randomIntegerInRange(50, 100)));
+                ArrayList<AlignmentStateMachine> stackRecordStates = new ArrayList<>();
 
-                for ( GATKSAMRecord read : stackReads ) {
+                for ( GATKRead read : stackReads ) {
                     stackRecordStates.add(new AlignmentStateMachine(read));
                 }
 
@@ -172,15 +146,15 @@ public class PerSampleReadStateManagerUnitTest extends LocusIteratorByStateBaseT
         ) ) {
 
             for ( int removalInterval : Arrays.asList(0, 2, 3) ) {
-                new PerSampleReadStateManagerTest(thisTestReadStateCounts, removalInterval);
+                new PerSampleReadStateManagerTester(thisTestReadStateCounts, removalInterval);
             }
         }
 
-        return PerSampleReadStateManagerTest.getTests(PerSampleReadStateManagerTest.class);
+        return PerSampleReadStateManagerTester.getTests(PerSampleReadStateManagerTester.class);
     }
 
     @Test(dataProvider = "PerSampleReadStateManagerTestDataProvider")
-    public void runPerSampleReadStateManagerTest( PerSampleReadStateManagerTest test ) {
+    public void runPerSampleReadStateManagerTest( PerSampleReadStateManagerTester test ) {
         logger.warn("Running test: " + test);
 
         test.run();

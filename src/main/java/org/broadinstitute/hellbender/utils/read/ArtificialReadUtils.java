@@ -442,6 +442,31 @@ public final class ArtificialReadUtils {
         return Arrays.asList(left, right);
     }
 
+    /**
+     * Create a collection of identical artificial reads based on the parameters.  The cigar string for each
+     * read will be *M, where * is the length of the read.
+     *
+     * Useful for testing things like positional downsampling where you care only about the position and
+     * number of reads, and not the other attributes.
+     *
+     * @param size           number of identical reads to create
+     * @param header         the SAM header to associate each read with
+     * @param name           name associated with each read
+     * @param refIndex       the reference index, i.e. what chromosome to associate them with
+     * @param alignmentStart where to start each alignment
+     * @param length         the length of each read
+     *
+     * @return a collection of stackSize reads all sharing the above properties
+     */
+    public static Collection<GATKRead> createIdenticalArtificialReads(final int size, final SAMFileHeader header, final String name, final int refIndex, final int alignmentStart, final int length ) {
+        Utils.validateArg(size >= 0, "size must be non-negative");
+        final Collection<GATKRead> coll = new ArrayList<>(size);
+        for ( int i = 1; i <= size; i++ ) {
+            coll.add(createArtificialRead(header, name, refIndex, alignmentStart, length));
+        }
+        return coll;
+    }
+
     public static GATKRead createRandomRead(SAMFileHeader header, int length) {
         List<CigarElement> cigarElements = new LinkedList<>();
         cigarElements.add(new CigarElement(length, CigarOperator.M));

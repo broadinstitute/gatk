@@ -26,6 +26,8 @@ public final class MathUtils {
 
     public static final double LOG10_ONE_HALF = Math.log10(0.5);
 
+    public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
+
     private static final double LN_10 = Math.log(10);
 
     private static final double LOG1MEXP_THRESHOLD = Math.log(0.5);
@@ -39,6 +41,19 @@ public final class MathUtils {
      * Private constructor.  No instantiating this class!
      */
     private MathUtils() {
+    }
+
+    /**
+     * Get a random int between min and max (inclusive) using the global GATK random number generator.
+     * It is required that max > min - 1.
+     *
+     * @param min lower bound of the range
+     * @param max upper bound of the range
+     * @return a random int >= min and <= max
+     */
+    public static int randomIntegerInRange( final int min, final int max ) {
+        Utils.validateArg(max > min - 1, "invalid arguments min:" + min + " max:" + max);
+        return Utils.getRandomGenerator().nextInt(max - min + 1) + min;
     }
 
     /**

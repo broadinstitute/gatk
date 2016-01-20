@@ -2,13 +2,14 @@ package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentStateMachine;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
+
+import static org.broadinstitute.hellbender.utils.BaseUtils.Base.D;
 
 /**
  * Represents an individual base in a reads pileup.
@@ -18,7 +19,7 @@ public final class PileupElement {
     private static final EnumSet<CigarOperator> ON_GENOME_OPERATORS =
             EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.D);
 
-    public static final byte DELETION_BASE = BaseUtils.Base.D.base;
+    public static final byte DELETION_BASE = D.base;
     public static final byte DELETION_QUAL = (byte) 16;
     public static final byte A_FOLLOWED_BY_INSERTION_BASE = (byte) 87;
     public static final byte C_FOLLOWED_BY_INSERTION_BASE = (byte) 88;
@@ -31,20 +32,6 @@ public final class PileupElement {
     private final CigarElement currentCigarElement;
     private final int currentCigarOffset;
     private final int offsetInCurrentCigar;
-
-    public static final Comparator<PileupElement> COMPARATOR = (p1, p2) -> {
-        if (p1.offset < p2.offset) {
-            return -1;
-        } else if (p1.offset > p2.offset) {
-            return 1;
-        } else if (p1.read.getStart() < p2.read.getStart()) {
-            return -1;
-        } else if (p1.read.getStart() > p2.read.getStart()) {
-            return 1;
-        } else {
-            return 0;
-        }
-    };
 
     /**
      * Create a new pileup element
@@ -153,7 +140,7 @@ public final class PileupElement {
 
     /**
      * Get the base aligned to the genome at this location
-     * If the current element is a deletion returns {@link DELETION_BASE}.
+     * If the current element is a deletion returns {@link org.broadinstitute.hellbender.utils.pileup.PileupElement#DELETION_BASE}.
      * @return a base encoded as a byte
      */
     public byte getBase() {
@@ -270,6 +257,56 @@ public final class PileupElement {
      */
     public LinkedList<CigarElement> getBetweenNextPosition() {
         return atEndOfCurrentCigar() ? getBetween(Direction.NEXT) : new LinkedList<>();
+    }
+
+    /**
+     * Get the length of an immediately following insertion or deletion event, or 0 if no such event exists
+     *
+     * Only returns a positive value when this pileup element is immediately before an indel.  Being
+     * immediately before a deletion means that this pileup element isn't an deletion, and that the
+     * next genomic alignment for this read is a deletion.  For the insertion case, this means
+     * that an insertion cigar occurs immediately after this element, between this one and the
+     * next genomic position.
+     *
+     * Note this function may be expensive, so multiple uses should be cached by the caller
+     *
+     * @return length of the event (number of inserted or deleted bases), or 0
+     */
+    public int getLengthOfImmediatelyFollowingIndel() {
+        final CigarElement element = getNextIndelCigarElement();
+        return element == null ? 0 : element.getLength();
+    }
+
+    /**
+     * Get the bases for an insertion that immediately follows this alignment state, or null if none exists
+     *
+     * @see #getLengthOfImmediatelyFollowingIndel() for details on the meaning of immediately.
+     *
+     * If the immediately following state isn't an insertion, returns null
+     *
+     * @return actual sequence of inserted bases, or a null if the event is a deletion or if there is no event in the associated read.
+     */
+    public String getBasesOfImmediatelyFollowingInsertion() {
+        final CigarElement element = getNextIndelCigarElement();
+        if ( element != null && element.getOperator() == CigarOperator.I ) {
+            final int getFrom = offset + 1;
+            final byte[] bases = Arrays.copyOfRange(read.getBases(), getFrom, getFrom + element.getLength());
+            return new String(bases);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Get the offset into the *current* cigar element for this alignment position
+     *
+     * We can be anywhere from offset 0 (first position) to length - 1 of the current
+     * cigar element aligning us to this genomic position.
+     *
+     * @return a valid offset into the current cigar element
+     */
+    public int getOffsetInCurrentCigar() {
+        return offsetInCurrentCigar;
     }
 
     /** for some helper functions */

@@ -1,34 +1,9 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.locusiterator;
 
-package org.broadinstitute.gatk.utils.locusiterator;
-
-import com.google.java.contract.Ensures;
-import com.google.java.contract.Requires;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.PeekableIterator;
-import org.broadinstitute.gatk.utils.sam.GATKSAMRecord;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 
@@ -37,49 +12,50 @@ import java.util.*;
  *
  * Optionally can keep track of all of the reads pulled off the iterator and
  * that appeared at any point in the list of SAMRecordAlignmentState for any reads.
- * This functionaly is only possible at this stage, as this object does the popping of
+ * This functionality is only possible at this stage, as this object does the popping of
  * reads off the underlying source iterator, and presents only a pileup-like interface
  * of samples -> SAMRecordAlignmentStates.  Reconstructing the unique set of reads
  * used across all pileups is extremely expensive from that data structure.
- *
- * User: depristo
- * Date: 1/5/13
- * Time: 2:02 PM
  */
 final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleReadStateManager>> {
     private final List<String> samples;
-    private final PeekableIterator<GATKSAMRecord> iterator;
-    private final SamplePartitioner<GATKSAMRecord> samplePartitioner;
+    private final PeekableIterator<GATKRead> iterator;
+    private final SamplePartitioner<GATKRead> samplePartitioner;
 
     /**
      * A mapping from sample name -> the per sample read state manager that manages
      *
      * IT IS CRITICAL THAT THIS BE A LINKED HASH MAP, SO THAT THE ITERATION OF THE MAP OCCURS IN THE SAME
-     * ORDER AS THE ORIGINL SAMPLES
+     * ORDER AS THE ORIGINAL SAMPLES
      */
-    private final Map<String, PerSampleReadStateManager> readStatesBySample = new LinkedHashMap<String, PerSampleReadStateManager>();
+    private final Map<String, PerSampleReadStateManager> readStatesBySample = new LinkedHashMap<>();
 
-    private LinkedList<GATKSAMRecord> submittedReads;
+    private List<GATKRead> submittedReads;
     private final boolean keepSubmittedReads;
 
     private int totalReadStates = 0;
 
-    public ReadStateManager(final Iterator<GATKSAMRecord> source,
+    public ReadStateManager(final Iterator<GATKRead> source,
                             final List<String> samples,
-                            final LIBSDownsamplingInfo LIBSDownsamplingInfo,
-                            final boolean keepSubmittedReads) {
+                            final LIBSDownsamplingInfo info,
+                            final boolean keepSubmittedReads,
+                            final SAMFileHeader header) {
+        Utils.nonNull(source, "source");
+        Utils.nonNull(samples, "samples");
+        Utils.nonNull(info, "downsampling info");
+        Utils.nonNull(header, "header");
         this.samples = samples;
-        this.iterator = new PeekableIterator<GATKSAMRecord>(source);
+        this.iterator = new PeekableIterator<>(source);
 
         this.keepSubmittedReads = keepSubmittedReads;
-        this.submittedReads = new LinkedList<GATKSAMRecord>();
+        this.submittedReads = new LinkedList<>();
 
         for (final String sample : samples) {
             // because this is a linked hash map the order of iteration will be in sample order
-            readStatesBySample.put(sample, new PerSampleReadStateManager(LIBSDownsamplingInfo));
+            readStatesBySample.put(sample, new PerSampleReadStateManager(info));
         }
 
-        samplePartitioner = new SamplePartitioner<GATKSAMRecord>(LIBSDownsamplingInfo, samples);
+        samplePartitioner = new SamplePartitioner<>(info, samples, header);
     }
 
     /**
@@ -115,13 +91,15 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * @return Total number of reads in the given sample.
      */
     public int size(final String sample) {
+        Utils.nonNull(sample);
         return readStatesBySample.get(sample).size();
     }
 
     public AlignmentStateMachine getFirst() {
         for ( final PerSampleReadStateManager manager : readStatesBySample.values() ) {
-            if ( ! manager.isEmpty() )
+            if ( ! manager.isEmpty() ) {
                 return manager.getFirst();
+            }
         }
         return null;
     }
@@ -144,13 +122,13 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * Does read start at the same position as described by currentContextIndex and currentAlignmentStart?
      *
      * @param read the read we want to test
-     * @param currentContigIndex the contig index (from the read's getReferenceIndex) of the reads in this state manager
+     * @param currentContig the contig of the reads in this state manager
      * @param currentAlignmentStart the alignment start of the of the left-most position on the
      *                           genome of the reads in this read state manager
      * @return true if read has contig index and start equal to the current ones
      */
-    private boolean readStartsAtCurrentPosition(final GATKSAMRecord read, final int currentContigIndex, final int currentAlignmentStart) {
-        return read.getAlignmentStart() == currentAlignmentStart && read.getReferenceIndex() == currentContigIndex;
+    private boolean readStartsAtCurrentPosition(final GATKRead read, final String currentContig, final int currentAlignmentStart) {
+        return read.getStart() == currentAlignmentStart && read.getContig().equals(currentContig);
     }
 
     /**
@@ -158,39 +136,41 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * reads this ReadStateManager
      */
     public void collectPendingReads() {
-        if (!iterator.hasNext())
+        if (!iterator.hasNext()) {
             return;
+        }
 
         // determine the left-most boundary that determines which reads to keep in this new pileup
-        final int firstContigIndex;
+        final String firstContig;
         final int firstAlignmentStart;
         if ( isEmpty() ) {
             // there are no reads here, so our next state is the next read in the stream
-            firstContigIndex = iterator.peek().getReferenceIndex();
-            firstAlignmentStart = iterator.peek().getAlignmentStart();
+            firstContig = iterator.peek().getContig();
+            firstAlignmentStart = iterator.peek().getStart();
         } else {
             // there's a read in the system, so it's our targeted first read
             final AlignmentStateMachine firstState = getFirst();
-            firstContigIndex = firstState.getReferenceIndex();
+            firstContig = firstState.getContig();
             // note this isn't the alignment start of the read, but rather the alignment start position
             firstAlignmentStart = firstState.getGenomePosition();
         }
 
-        while ( iterator.hasNext() && readStartsAtCurrentPosition(iterator.peek(), firstContigIndex, firstAlignmentStart) ) {
+        while ( iterator.hasNext() && readStartsAtCurrentPosition(iterator.peek(), firstContig, firstAlignmentStart) ) {
             submitRead(iterator.next());
         }
 
         samplePartitioner.doneSubmittingReads();
 
         for (final String sample : samples) {
-            final Collection<GATKSAMRecord> newReads = samplePartitioner.getReadsForSample(sample);
+            final Collection<GATKRead> newReads = samplePartitioner.getReadsForSample(sample);
 
             // if we're keeping reads, take the (potentially downsampled) list of new reads for this sample
             // and add to the list of reads.  Note this may reorder the list of reads someone (it groups them
             // by sample, but it cannot change their absolute position on the genome as they all must
             // start at the current location
-            if ( keepSubmittedReads )
+            if ( keepSubmittedReads ) {
                 submittedReads.addAll(newReads);
+            }
 
             final PerSampleReadStateManager statesBySample = readStatesBySample.get(sample);
             addReadsToSample(statesBySample, newReads);
@@ -203,8 +183,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * Add a read to the sample partitioner, potentially adding it to all submitted reads, if appropriate
      * @param read a non-null read
      */
-    @Requires("read != null")
-    protected void submitRead(final GATKSAMRecord read) {
+    void submitRead(final GATKRead read) {
         samplePartitioner.submitRead(read);
     }
 
@@ -226,25 +205,13 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      *
      * @return the current list of submitted reads
      */
-    @Ensures({
-            "result != null",
-            "result != submittedReads" // result and previous submitted reads are not == objects
-    })
-    public List<GATKSAMRecord> transferSubmittedReads() {
-        if ( ! keepSubmittedReads ) throw new UnsupportedOperationException("cannot transferSubmittedReads if you aren't keeping them");
+    public List<GATKRead> transferSubmittedReads() {
+        if ( ! keepSubmittedReads ) throw new IllegalArgumentException("cannot transferSubmittedReads if you aren't keeping them");
 
-        final List<GATKSAMRecord> prevSubmittedReads = submittedReads;
-        this.submittedReads = new LinkedList<GATKSAMRecord>();
+        final List<GATKRead> prevSubmittedReads = submittedReads;
+        this.submittedReads = new LinkedList<>();
 
         return prevSubmittedReads;
-    }
-
-    /**
-     * Are we keeping submitted reads, or not?
-     * @return true if we are keeping them, false otherwise
-     */
-    public boolean isKeepingSubmittedReads() {
-        return keepSubmittedReads;
     }
 
     /**
@@ -260,8 +227,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      *
      * @return a non-null list of reads that have been submitted to this ReadStateManager
      */
-    @Ensures({"result != null","keepSubmittedReads || result.isEmpty()"})
-    protected List<GATKSAMRecord> getSubmittedReads() {
+    protected List<GATKRead> getSubmittedReads() {
         return submittedReads;
     }
 
@@ -271,17 +237,19 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * @param readStates The list of read states to add this collection of reads.
      * @param reads      Reads to add.  Selected reads will be pulled from this source.
      */
-    private void addReadsToSample(final PerSampleReadStateManager readStates, final Collection<GATKSAMRecord> reads) {
-        if (reads.isEmpty())
+    private void addReadsToSample(final PerSampleReadStateManager readStates, final Collection<GATKRead> reads) {
+        if (reads.isEmpty()) {
             return;
+        }
 
-        final LinkedList<AlignmentStateMachine> newReadStates = new LinkedList<AlignmentStateMachine>();
+        final LinkedList<AlignmentStateMachine> newReadStates = new LinkedList<>();
 
-        for (final GATKSAMRecord read : reads) {
+        for (final GATKRead read : reads) {
             final AlignmentStateMachine state = new AlignmentStateMachine(read);
-            if ( state.stepForwardOnGenome() != null ) // todo -- should be an assertion not a skip
+            if ( state.stepForwardOnGenome() != null ){ // todo -- should be an assertion not a skip
                 // explicitly filter out reads that are all insertions / soft clips
                 newReadStates.add(state);
+            }
         }
 
         totalReadStates += readStates.addStatesAtNextAlignmentStart(newReadStates);

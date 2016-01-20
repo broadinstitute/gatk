@@ -167,6 +167,13 @@ public final class AssemblyRegion {
     }
 
     /**
+     * Returns the header for the reads in this region.
+     */
+    public SAMFileHeader getHeader(){
+        return header;
+    }
+
+    /**
      * Intersect this active region with the allowed intervals, returning a list of active regions
      * that only contain locations present in intervals
      *

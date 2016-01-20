@@ -1,36 +1,12 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.locusiterator;
 
-package org.broadinstitute.gatk.utils.locusiterator;
-
-import com.google.java.contract.Ensures;
-import com.google.java.contract.Requires;
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.gatk.utils.downsampling.Downsampler;
-import org.broadinstitute.gatk.utils.downsampling.PassThroughDownsampler;
-import org.broadinstitute.gatk.utils.downsampling.ReservoirDownsampler;
+import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.Downsampler;
+import org.broadinstitute.hellbender.utils.downsampling.PassThroughDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.ReservoirDownsampler;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
 
@@ -40,17 +16,19 @@ import java.util.*;
  *
  * Note: stores reads by sample ID string, not by sample object
  */
-class SamplePartitioner<T extends SAMRecord> {
+final class SamplePartitioner<T extends GATKRead> {
     /**
      * Map from sample name (as a string) to a downsampler of reads for that sample
      */
-    final private Map<String, Downsampler<T>> readsBySample;
+    private final Map<String, Downsampler<T>> readsBySample;
 
     /**
      * Are we in a state where we're done submitting reads and have semi-finalized the
      * underlying per sample downsampler?
      */
     boolean doneSubmittingReads = false;
+
+    private final SAMFileHeader header;
 
     /**
      * Create a new SamplePartitioner capable of splitting reads up into buckets of reads for
@@ -66,18 +44,16 @@ class SamplePartitioner<T extends SAMRecord> {
      *                empty, but in that case this code cannot function properly if you
      *                attempt to add data to it.
      */
-    @Ensures({
-            "readsBySample != null",
-            "readsBySample.size() == new HashSet(samples).size()"
-    })
-    public SamplePartitioner(final LIBSDownsamplingInfo LIBSDownsamplingInfo, final List<String> samples) {
-        if ( LIBSDownsamplingInfo == null ) throw new IllegalArgumentException("LIBSDownsamplingInfo cannot be null");
-        if ( samples == null ) throw new IllegalArgumentException("samples must be a non-null list");
+    public SamplePartitioner(final LIBSDownsamplingInfo LIBSDownsamplingInfo, final List<String> samples, final SAMFileHeader header) {
+        Utils.nonNull(LIBSDownsamplingInfo, "LIBSDownsamplingInfo cannot be null");
+        Utils.nonNull(samples, "samples must be a non-null list");
+        Utils.nonNull(header, "header must be not null");
 
-        readsBySample = new LinkedHashMap<String, Downsampler<T>>(samples.size());
+        readsBySample = new LinkedHashMap<>(samples.size());
         for ( final String sample : samples ) {
             readsBySample.put(sample, createDownsampler(LIBSDownsamplingInfo));
         }
+        this.header = header;
     }
 
     /**
@@ -86,12 +62,10 @@ class SamplePartitioner<T extends SAMRecord> {
      * @return a downsampler appropriate for LIBSDownsamplingInfo.  If no downsampling is requested,
      *   uses the PassThroughDownsampler, which does nothing at all.
      */
-    @Requires("LIBSDownsamplingInfo != null")
-    @Ensures("result != null")
     private Downsampler<T> createDownsampler(final LIBSDownsamplingInfo LIBSDownsamplingInfo) {
         return LIBSDownsamplingInfo.isPerformDownsampling()
-                ? new ReservoirDownsampler<T>(LIBSDownsamplingInfo.getToCoverage(), true)
-                : new PassThroughDownsampler<T>();
+                ? new ReservoirDownsampler<>(LIBSDownsamplingInfo.getToCoverage(), true)
+                : new PassThroughDownsampler<>();
     }
 
     /**
@@ -105,10 +79,9 @@ class SamplePartitioner<T extends SAMRecord> {
      *
      * @param read the read to add to the sample's list of reads
      */
-    @Requires("read != null")
-    @Ensures("doneSubmittingReads == false")
     public void submitRead(final T read) {
-        final String sampleName = read.getReadGroup() != null ? read.getReadGroup().getSample() : null;
+        Utils.nonNull(read);
+        final String sampleName = read.getReadGroup() != null ? ReadUtils.getSampleName(read, header) : null;
         final Downsampler<T> downsampler = readsBySample.get(sampleName);
         if ( downsampler == null )
             throw new IllegalStateException("Offered read with sample name " + sampleName + " to SamplePartitioner " +
@@ -125,7 +98,6 @@ class SamplePartitioner<T extends SAMRecord> {
      * Note that we *must* call this function before getReadsForSample, or else that
      * function will exception out.
      */
-    @Ensures("doneSubmittingReads == true")
     public void doneSubmittingReads() {
         for ( final Downsampler<T> downsampler : readsBySample.values() ) {
             downsampler.signalEndOfInput();
@@ -144,10 +116,9 @@ class SamplePartitioner<T extends SAMRecord> {
      * Note that this function can only be called once per cycle, as underlying
      * collection of reads is cleared.
      *
-     * @param sampleName the sample we want reads for, must be present in the original samples
+     * @param sampleName the sample we want reads for, must be present in the original samples. Can be null.
      * @return a non-null collection of reads for sample in this cycle
      */
-    @Ensures("result != null")
     public Collection<T> getReadsForSample(final String sampleName) {
         if ( ! doneSubmittingReads ) throw new IllegalStateException("getReadsForSample called before doneSubmittingReads was called");
 
@@ -161,7 +132,6 @@ class SamplePartitioner<T extends SAMRecord> {
      * Resets this SamplePartitioner, indicating that we're starting a new
      * cycle of adding reads to each underlying downsampler.
      */
-    @Ensures("doneSubmittingReads == false")
     public void reset() {
         for ( final Downsampler<T> downsampler : readsBySample.values() ) {
             downsampler.clearItems();

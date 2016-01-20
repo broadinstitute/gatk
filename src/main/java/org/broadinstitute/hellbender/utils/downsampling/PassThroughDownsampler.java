@@ -1,31 +1,7 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.downsampling;
 
-package org.broadinstitute.gatk.utils.downsampling;
-
-import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -35,10 +11,8 @@ import java.util.List;
  * downsampling whatsoever, and instead simply "passes-through" all the reads it's given.
  * Useful for situations where you want to disable downsampling, but still need to use
  * the downsampler interface.
- *
- * @author David Roazen
  */
-public class PassThroughDownsampler<T extends SAMRecord> extends ReadsDownsampler<T> {
+public final class PassThroughDownsampler<T extends GATKRead> extends ReadsDownsampler<T> {
 
     private LinkedList<T> selectedReads;
 
@@ -47,7 +21,8 @@ public class PassThroughDownsampler<T extends SAMRecord> extends ReadsDownsample
     }
 
     @Override
-    public void submit( T newRead ) {
+    public void submit(final T newRead ) {
+        Utils.nonNull(newRead);
         // All reads pass-through, no reads get downsampled
         selectedReads.add(newRead);
     }
@@ -59,7 +34,6 @@ public class PassThroughDownsampler<T extends SAMRecord> extends ReadsDownsample
 
     /**
      * Note that this list is a linked list and so doesn't support fast random access
-     * @return
      */
     @Override
     public List<T> consumeFinalizedItems() {
@@ -96,7 +70,7 @@ public class PassThroughDownsampler<T extends SAMRecord> extends ReadsDownsample
 
     @Override
     public void clearItems() {
-        selectedReads = new LinkedList<T>();
+        selectedReads = new LinkedList<>();
     }
 
     @Override
@@ -105,7 +79,8 @@ public class PassThroughDownsampler<T extends SAMRecord> extends ReadsDownsample
     }
 
     @Override
-    public void signalNoMoreReadsBefore( T read ) {
+    public void signalNoMoreReadsBefore(final T read ) {
+        Utils.nonNull(read);
         // NO-OP
     }
 }

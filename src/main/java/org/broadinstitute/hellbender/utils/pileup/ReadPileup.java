@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Represents a pileup of reads at a given position.
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public final class ReadPileup implements Iterable<PileupElement>{
     private final Locatable loc;
     private final List<PileupElement> pileupElements;
+
 
     /**
      * Create a new pileup at loc, using the reads and their corresponding
@@ -44,7 +46,6 @@ public final class ReadPileup implements Iterable<PileupElement>{
     public ReadPileup(final Locatable loc, final List<GATKRead> reads, final int offset) {
         this(loc, readsOffsetsToPileup(reads, offset));
     }
-
 
     /**
      * Create a new pileup with the given reads.
@@ -85,7 +86,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
      */
     public ReadPileup makeFilteredPileup(final Predicate<PileupElement> filter){
         Utils.nonNull(filter);
-        return new ReadPileup(loc, pileupElements.stream().filter(filter).collect(Collectors.toList()));
+        return new ReadPileup(loc, getElementStream().filter(filter).collect(Collectors.toList()));
     }
 
     /**
@@ -118,7 +119,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Note: contains null if a read has a null read group.
      */
     public Set<String> getReadGroupIDs() {
-        return pileupElements.stream().map(pe -> pe.getRead().getReadGroup()).collect(Collectors.toSet());
+        return getElementStream().map(pe -> pe.getRead().getReadGroup()).collect(Collectors.toSet());
     }
 
     /**
@@ -126,9 +127,8 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Note: contains null if a read has a null read group or a null sample name.
      */
     public Set<String> getSamples(final SAMFileHeader header) {
-        return pileupElements.stream().map(pe -> pe.getRead()).map(r -> ReadUtils.getSampleName(r, header)).collect(Collectors.toSet());
+        return getElementStream().map(pe -> pe.getRead()).map(r -> ReadUtils.getSampleName(r, header)).collect(Collectors.toSet());
     }
-
 
     /**
      * The best way to access PileupElements where you only care about the bases and quals in the pileup.
@@ -137,17 +137,9 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * <p>
      * Provides efficient iteration of the data.
      */
+    @Override
     public Iterator<PileupElement> iterator() {
         return Collections.unmodifiableList(pileupElements).iterator();
-    }
-
-    /**
-     * Returns the element at given index.
-     * @throws IndexOutOfBoundsException if the index is out of range
-     *         (<tt>index &lt; 0 || index &gt;= size()</tt>)
-     */
-    public PileupElement get(final int index){
-        return pileupElements.get(index);
     }
 
     /**
@@ -205,7 +197,11 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Returns a list of the reads in this pileup. Note this call costs O(n) and allocates fresh lists each time
      */
     public List<GATKRead> getReads() {
-        return pileupElements.stream().map(pe -> pe.getRead()).collect(Collectors.toList());
+        return getElementStream().map(pe -> pe.getRead()).collect(Collectors.toList());
+    }
+
+    private Stream<PileupElement> getElementStream() {
+        return pileupElements.stream();
     }
 
     /**
@@ -214,7 +210,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
     public int getNumberOfElements(final Predicate<PileupElement> peFilter){
         Utils.nonNull(peFilter);
         //Note: pileups are small so int is fine.
-        return (int)pileupElements.stream().filter(peFilter).count();
+        return (int)getElementStream().filter(peFilter).count();
     }
 
     /**
@@ -222,12 +218,12 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Note: this call costs O(n) and allocates fresh lists each time
      */
     public List<Integer> getOffsets() {
-        return pileupElements.stream().map(pe -> pe.getOffset()).collect(Collectors.toList());
+        return getElementStream().map(pe -> pe.getOffset()).collect(Collectors.toList());
     }
 
     //Extracts an int array by mapping each element in the pileup to int.
     private int[] extractIntArray(final ToIntFunction<PileupElement> map){
-        return pileupElements.stream().mapToInt(map).toArray();
+        return getElementStream().mapToInt(map).toArray();
     }
 
     /**
@@ -268,15 +264,5 @@ public final class ReadPileup implements Iterable<PileupElement>{
             quals[i] = (byte) (33 + quals[i]);  //as per SAM spec
         }
         return new String(quals);
-    }
-
-    /**
-     * Returns a new ReadBackedPileup that is sorted by start coordinate of the reads and then by read name.
-     * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
-     */
-    public ReadPileup getStartSortedPileup() {
-        final List<PileupElement> sortedElements = new ArrayList<>(pileupElements);
-        sortedElements.sort(Comparator.comparingInt((PileupElement pe) -> pe.getRead().getStart()).thenComparing(pe -> pe.getRead().getName()));
-        return new ReadPileup(loc, sortedElements);
     }
 }
