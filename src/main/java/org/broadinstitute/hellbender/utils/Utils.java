@@ -853,14 +853,6 @@ public final class Utils {
         return destClazz;
     }
 
-    public static byte [] arrayFromArrayWithLength(final byte[] array, final int length) {
-        final byte [] output = new byte[length];
-        for (int j = 0; j < length; j++) {
-            output[j] = array[(j % array.length)];
-        }
-        return output;
-    }
-
     /**
      * Checks if the read header contains any reads groups from non-Illumina and issue a warning of that's the case.
      */
@@ -870,5 +862,16 @@ public final class Utils {
         if (readsHeader.getReadGroups().stream().anyMatch(rg -> NGSPlatform.fromReadGroupPL(rg.getPlatform()) !=  NGSPlatform.ILLUMINA)){
             logger.warn("This tool has only been well tested on ILLUMINA-based sequencing data. For other data use at your own risk.");
         }
+    }
+
+    /**
+     * Boolean xor operation.  Only true if x != y.
+     *
+     * @param x a boolean
+     * @param y a boolean
+     * @return true if x != y
+     */
+    public static boolean xor(final boolean x, final boolean y) {
+        return x != y;
     }
 }

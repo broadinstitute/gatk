@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * This is pulled out so that every caller isn't exposed to the arguments from every other caller.
@@ -47,7 +49,22 @@ public class StandardCallerArgumentCollection {
     @Argument(fullName = "contamination_fraction_per_sample_file", shortName = "contaminationFile", doc = "Tab-separated File containing fraction of contamination in sequencing data (per sample) to aggressively remove. Format should be \"<SampleID><TAB><Contamination>\" (Contamination is double) per line; No header.", optional = true)
     public File CONTAMINATION_FRACTION_FILE = null;
 
+    /**
+     * Returns true if there is some sample contamination present, false otherwise.
+     * @return {@code true} iff there is some sample contamination
+     */
+    public boolean isSampleContaminationPresent() {
+        return (!Double.isNaN(CONTAMINATION_FRACTION) && CONTAMINATION_FRACTION > 0.0) || (sampleContamination != null && !sampleContamination.isEmpty());
+    }
+
     private DefaultedMap<String,Double> sampleContamination;
+
+    /**
+     * Returns an unmodifiable view of the map of SampleId -> contamination.
+     */
+    public Map<String,Double> getSampleContamination() {
+        return Collections.unmodifiableMap(sampleContamination);
+    }
 
     /**
      * Returns the sample contamination or CONTAMINATION_FRACTION if no contamination level was specified for this sample.

@@ -1,15 +1,10 @@
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.Log.LogLevel;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.Main;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -25,6 +20,24 @@ import static java.util.Arrays.asList;
  *
  */
 public final class UtilsUnitTest extends BaseTest {
+
+    @Test
+    public void testXor()  {
+        Assert.assertEquals(Utils.xor(false, false), false);
+        Assert.assertEquals(Utils.xor(false, true),  true);
+        Assert.assertEquals(Utils.xor(true, false),  true);
+        Assert.assertEquals(Utils.xor(true, true),   false);
+    }
+
+    @Test
+    public void testRepeatBytes() throws Exception {
+        Assert.assertEquals(Utils.repeatBytes((byte)112, 4), new byte[]{112,112,112,112});
+    }
+
+    @Test
+    public void testRepeatChars() throws Exception {
+        Assert.assertEquals(Utils.repeatChars('a', 4), new byte[]{'a','a','a','a'});
+    }
 
     @Test
     public void testMakePermutations(){
