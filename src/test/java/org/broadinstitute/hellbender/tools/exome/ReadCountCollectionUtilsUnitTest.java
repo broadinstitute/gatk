@@ -199,7 +199,7 @@ public class ReadCountCollectionUtilsUnitTest {
         writer.close();
 
         final ReadCountCollection subject = ReadCountCollectionUtils.parse(testFile,
-                TargetCollections.fromBEDFeatureFile(targetFile, new BEDCodec()), false);
+                TargetCollectionUtils.fromBEDFeatureFile(targetFile, new BEDCodec()), false);
         Assert.assertNotNull(subject);
         Assert.assertEquals(subject.columnNames(), Arrays.asList("SAMPLE3", "SAMPLE2"));
         Assert.assertEquals(subject.targets().stream().map(Target::getInterval).collect(Collectors.toList()), Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("2", 200, 300)));

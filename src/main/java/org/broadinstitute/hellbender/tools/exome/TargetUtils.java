@@ -33,7 +33,7 @@ public class TargetUtils {
         if (BEDFeature.class.isAssignableFrom(featureType)) {
             @SuppressWarnings("unchecked")
             final FeatureCodec<? extends BEDFeature, ?> bedFeatureCodec = (FeatureCodec<? extends BEDFeature, ?>) codec;
-            resultAsBEDFeatures = TargetCollections.fromBEDFeatureFile(exomeFile, bedFeatureCodec);
+            resultAsBEDFeatures = TargetCollectionUtils.fromBEDFeatureFile(exomeFile, bedFeatureCodec);
         } else {
             throw new UserException.BadInput(String.format("currently only BED formatted exome file are supported. '%s' does not seem to be a BED file", exomeFile.getAbsolutePath()));
         }

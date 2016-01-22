@@ -17,7 +17,8 @@ import java.util.stream.IntStream;
 
 import static java.lang.Math.log;
 import static java.lang.Math.sqrt;
-import static org.broadinstitute.hellbender.utils.MathUtils.logFactorial;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
 
 /**
  * Given a {@link org.broadinstitute.hellbender.tools.exome.SegmentedModel} and counts of alt and ref reads over a list of het sites,
@@ -227,7 +228,7 @@ public final class AlleleFractionModeller {
         final int r = count.getRefReadCount();
 
         if (indicator == AlleleFractionIndicator.OUTLIER) {
-            return log(pi) + logFactorial(a) + logFactorial(r) - logFactorial(a + r + 1);
+            return log(pi) + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
         } else {
             final double f = indicator == AlleleFractionIndicator.ALT_MINOR ? minorFraction : 1 - minorFraction;
             final int n = a + r;

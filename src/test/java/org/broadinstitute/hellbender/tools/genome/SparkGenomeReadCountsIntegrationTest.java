@@ -6,7 +6,10 @@ import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.TargetCollection;
+import org.broadinstitute.hellbender.tools.exome.TargetCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.TargetCoverage;
+import org.broadinstitute.hellbender.tools.exome.TargetCoverageUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -40,7 +43,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(bedFile.exists());
         Assert.assertTrue(bedFile.length() > 0);
 
-        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollections.fromBEDFeatureFile(bedFile, new BEDCodec());
+        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
         Assert.assertEquals(bedFeatureCollection.targets().size(), 8);
         Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
         Assert.assertEquals(bedFeatureCollection.target(5).getName(), "target_3_10001_16000");
@@ -49,7 +52,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
 
     @Test
     public void testSparkGenomeReadCountsBigBins() {
-        final File outputFile = createTempFile(BAM_FILE.getName(),".cov");
+        final File outputFile = createTempFile(BAM_FILE.getName(), ".cov");
         final String[] arguments = {
                 "--disableSequenceDictionaryValidation",
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
@@ -65,10 +68,38 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(bedFile.exists());
         Assert.assertTrue(bedFile.length() > 0);
 
-        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollections.fromBEDFeatureFile(bedFile, new BEDCodec());
+        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
         Assert.assertEquals(bedFeatureCollection.targets().size(), 4);
         Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
         Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_3_1_16000");
+        Assert.assertEquals(targetCoverages.size(), bedFeatureCollection.targetCount());
+
+    }
+
+    @Test
+    public void testSparkGenomeReadCountsSmallBins() {
+        final File outputFile = createTempFile(BAM_FILE.getName(), ".cov");
+        final String[] arguments = {
+                "--disableSequenceDictionaryValidation",
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.OUTPUT_FILE_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.BINSIZE_SHORT_NAME, "2000",
+        };
+        runCommandLine(arguments);
+        Assert.assertTrue(outputFile.exists());
+        Assert.assertTrue(outputFile.length() > 0);
+        List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(outputFile);
+        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
+        Assert.assertTrue(bedFile.exists());
+        Assert.assertTrue(bedFile.length() > 0);
+
+        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
+        Assert.assertEquals(bedFeatureCollection.targets().size(), 16000/2000 * 4); // 4 is the number of contigs in the fasta file
+        Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 4000);
+        Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_1_4001_6000");
+        Assert.assertEquals(bedFeatureCollection.target(8).getName(), "target_2_1_2000");
+        Assert.assertEquals(bedFeatureCollection.target(17).getName(), "target_3_2001_4000");
         Assert.assertEquals(targetCoverages.size(), bedFeatureCollection.targetCount());
     }
 
@@ -77,9 +108,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         final Set<String> testContigsToDrop = new HashSet<>(Arrays.asList("3"));
         ReferenceFileSource testFasta = new ReferenceFileSource(REFERENCE_FILE.getAbsolutePath());
         final SAMSequenceDictionary originalSequenceDictionary = testFasta.getReferenceSequenceDictionary(null);
-        SAMSequenceDictionary modifiedSequenceDictionary = originalSequenceDictionary;
-        modifiedSequenceDictionary = SparkGenomeReadCounts.dropContigsFromSequence(originalSequenceDictionary, testContigsToDrop);
-        SAMSequenceDictionary finalSequenceDictionary = modifiedSequenceDictionary;
+        SAMSequenceDictionary finalSequenceDictionary = SparkGenomeReadCounts.dropContigsFromSequence(originalSequenceDictionary, testContigsToDrop);
         Assert.assertEquals(finalSequenceDictionary.size(), 3);
 
     }

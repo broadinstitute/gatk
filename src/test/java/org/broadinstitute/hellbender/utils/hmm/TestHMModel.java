@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.util.Pair;
+import org.broadinstitute.hellbender.utils.ExtraMathUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -37,17 +38,17 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
 
         final DoubleUnaryOperator phredToLog = d -> d * -.1 * LN_OF_10;
         final double[] logPriorsRaw = DoubleStream.of(priors).map(phredToLog).toArray();
-        final double logPriorsSum = MathUtils.approximateLogSumLog(logPriorsRaw);
+        final double logPriorsSum = ExtraMathUtils.naturalLogSumNaturalLog(logPriorsRaw);
         final double[] logPriors = DoubleStream.of(logPriorsRaw).map(d -> d - logPriorsSum).toArray();
 
         final double[][] logEmissionProbs = Stream.of(emission)
                 .map(x -> { final double[] result = DoubleStream.of(x).map(phredToLog).toArray();
-                            final double sum = MathUtils.approximateLogSumLog(result);
+                            final double sum = ExtraMathUtils.naturalLogSumNaturalLog(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
         final double[][] logTransitionProbs = Stream.of(transition)
                 .map(x -> { final double[] result = DoubleStream.of(x).map(phredToLog).toArray();
-                            final double sum = MathUtils.approximateLogSumLog(result);
+                            final double sum = ExtraMathUtils.naturalLogSumNaturalLog(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
         return new TestHMModel(logPriors, logEmissionProbs, logTransitionProbs);
@@ -188,7 +189,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
         for (int i = 0; i < logTransitionProbs.length; i++) {
             logTransitionProbs[i] = logTransitionProbability(previousState, previousPosition, State.values()[i], nextPosition);
         }
-        final double total = Math.exp(MathUtils.approximateLogSumLog(logTransitionProbs));
+        final double total = Math.exp(ExtraMathUtils.naturalLogSumNaturalLog(logTransitionProbs));
         final double uniform = rdn.nextDouble() * total;
         double accumulative = 0;
         for (int i = 0; i < logTransitionProbs.length; i++) {
@@ -205,7 +206,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
         for (int i = 0; i < logEmissionProbs.length; i++) {
             logEmissionProbs[i] = logEmissionProbability(Datum.values()[i], state, position);
         }
-        final double total = Math.exp(MathUtils.approximateLogSumLog(logEmissionProbs));
+        final double total = Math.exp(ExtraMathUtils.naturalLogSumNaturalLog(logEmissionProbs));
 
         final double uniform = rdn.nextDouble() * total;
         double accumulate = 0;
@@ -219,7 +220,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
     }
 
     private State generateFirstState(final Integer firstPosition, final Random rdn) {
-        final double uniform = rdn.nextDouble() * Math.exp(MathUtils.approximateLogSumLog(priors));
+        final double uniform = rdn.nextDouble() * Math.exp(ExtraMathUtils.naturalLogSumNaturalLog(priors));
         double accumulative = 0;
         for (int i = 0; i < priors.length; i++) {
             accumulative += Math.exp(logPriorProbability(State.values()[i], firstPosition));
