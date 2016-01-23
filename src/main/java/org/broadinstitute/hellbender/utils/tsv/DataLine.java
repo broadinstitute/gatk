@@ -199,7 +199,7 @@ public final class DataLine {
      * @throws IllegalArgumentException if {@code name} is {@code null} or it does not match an actual column name.
      */
     public DataLine set(final String name, final double value) {
-        return set(name, Double.toString(value));
+        return set(columnIndex(name), value);
     }
 
     /**
@@ -246,7 +246,7 @@ public final class DataLine {
     }
 
     /**
-     * Sets the int value of a column given its index.
+     * Sets the value for a column to a double given its index.
      *
      * @param index the target column index.
      * @param value the new value for that column.
@@ -254,6 +254,12 @@ public final class DataLine {
      * @throws IllegalArgumentException if {@code index} is not a valid column index.
      */
     public DataLine set(final int index, final double value) {
+        final long rounded = Math.round(value);
+        if (rounded == value) {
+            set(index, Long.toString(rounded));
+        } else {
+            set(index, Double.toString(value));
+        }
         return set(index, Double.toString(value));
     }
 
@@ -624,7 +630,12 @@ public final class DataLine {
      * @throws IllegalStateException if the next column to set is beyond the last column.
      */
     public DataLine append(final double value) {
-        return append(Double.toString(value));
+        final long rounded = Math.round(value);
+        if (rounded == value) {
+            return append(Long.toString(rounded));
+        } else {
+            return append(Double.toString(value));
+        }
     }
 
     /**
