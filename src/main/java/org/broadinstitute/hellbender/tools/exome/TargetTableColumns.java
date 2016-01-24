@@ -18,13 +18,15 @@ public enum TargetTableColumns {
     START("START", true),
     END("END", true),
     GC_CONTENT("GC_CONTENT", false),
-    REPEAT_FRACTION("REPEAT_FRACTION", false);
+    REPEAT_FRACTION("REPEAT_FRACTION", false),
+    MEAN_COVERAGE("MEAN_COVERAGE", false),
+    COVERAGE_VARIANCE("COVERAGE_VARIANCE", false);
 
     private final String columnName;  //store the column names
 
     private boolean mandatory;
 
-    TargetTableColumns(String columnName, boolean mandatory) {
+    TargetTableColumns(final String columnName, final boolean mandatory) {
         this.columnName = Utils.nonNull(columnName);
         this.mandatory = mandatory;
     }

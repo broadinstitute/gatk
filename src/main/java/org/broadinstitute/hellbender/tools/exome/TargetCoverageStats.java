@@ -12,12 +12,12 @@ public final class TargetCoverageStats {
     /**
      * Name of the column for the means.
      */
-    public static final String MEAN_COLUMN_NAME = "COVERAGE_MEAN";
+    public static final String MEAN_COLUMN_NAME = TargetTableColumns.MEAN_COVERAGE.toString();
 
     /**
      * Name of the column for the variance.
      */
-    public static final String VARIANCE_COLUMN_NAME = "COVERAGE_VARIANCE";
+    public static final String VARIANCE_COLUMN_NAME = TargetTableColumns.COVERAGE_VARIANCE.toString();
 
     /**
      * Target the coverage statistics makes reference to.
