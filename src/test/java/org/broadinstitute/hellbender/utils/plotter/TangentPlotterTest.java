@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class PlotterTest extends BaseTest {
+public class TangentPlotterTest extends BaseTest {
 
     @Test
     public void testTangentPlotting() throws IOException {
