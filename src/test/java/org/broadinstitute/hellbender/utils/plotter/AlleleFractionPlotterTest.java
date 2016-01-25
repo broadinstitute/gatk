@@ -15,7 +15,6 @@ public class AlleleFractionPlotterTest extends BaseTest {
         final File SEGMENTS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/allelic.seg");
         String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        System.out.println(tDir);
         AlleleFractionSegmentedPlotter.writeSegmentedAlleleFractionPlot(sampleName, SNP_COUNTS_FILE.getAbsolutePath(),
                 SEGMENTS_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", false);
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());
@@ -28,7 +27,6 @@ public class AlleleFractionPlotterTest extends BaseTest {
         final File SEGMENTS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/allelic.seg");
         String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        System.out.println(tDir);
         AlleleFractionSegmentedPlotter.writeSegmentedAlleleFractionPlot(sampleName, SNP_COUNTS_FILE.getAbsolutePath(),
                 SEGMENTS_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", true);
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());

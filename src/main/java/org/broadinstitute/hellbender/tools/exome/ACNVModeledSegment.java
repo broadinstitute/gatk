@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 
 /**
- * Represents a segment with copy-ratio segment mean and minor allele fraction posterior summaries.
+ * Represents a segment with copy-ratio--segment-mean and minor-allele-fraction posterior summaries.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */

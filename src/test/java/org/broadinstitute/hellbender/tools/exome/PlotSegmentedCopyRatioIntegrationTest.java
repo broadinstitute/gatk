@@ -20,7 +20,6 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        System.out.println(tDir);
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, TN_FILE.getAbsolutePath(),
                 PRE_TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath() + "/", true, false);
         final String[] arguments = {
@@ -52,7 +51,6 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        System.out.println(tDir);
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, TN_FILE.getAbsolutePath(),
                 PRE_TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath() + "/", true, false);
         final String[] arguments = {

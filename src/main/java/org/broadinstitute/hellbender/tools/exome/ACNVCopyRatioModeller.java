@@ -4,8 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
@@ -250,19 +250,20 @@ public final class ACNVCopyRatioModeller {
     /**
      * Returns a list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment.
      * Should only be called after {@link ACNVCopyRatioModeller#fitMCMC(int, int)} has been called.
-     * @return  list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment
+     * @param credibleIntervalAlpha credible-interval alpha, must be in (0, 1)
+     * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
+     * @return                      list of {@link PosteriorSummary} elements summarizing the
+     *                              segment-mean posterior for each segment
      */
-    public List<PosteriorSummary> getSegmentMeansPosteriorSummaries() {
+    public List<PosteriorSummary> getSegmentMeansPosteriorSummaries(final double credibleIntervalAlpha,
+                                                                    final JavaSparkContext ctx) {
         final int numSegments = segmentedModel.getSegments().size();
         final List<PosteriorSummary> posteriorSummaries = new ArrayList<>(numSegments);
         for (int segment = 0; segment < numSegments; segment++) {
             final int j = segment;
-            final double[] meanSamples =
-                    Doubles.toArray(segmentMeansSamples.stream().map(s -> s.getMeanInSegment(j))
-                            .collect(Collectors.toList()));
-            final double posteriorMean = new Mean().evaluate(meanSamples);
-            final double posteriorStandardDeviation = new StandardDeviation().evaluate(meanSamples);
-            posteriorSummaries.add(new PosteriorSummary(posteriorMean, posteriorStandardDeviation));
+            final List<Double> meanSamples =
+                    segmentMeansSamples.stream().map(s -> s.getMeanInSegment(j)).collect(Collectors.toList());
+            posteriorSummaries.add(PosteriorSummary.calculateHighestPosteriorDensitySummary(meanSamples, credibleIntervalAlpha, ctx));
         }
         return posteriorSummaries;
     }

@@ -13,7 +13,7 @@ import java.util.stream.IntStream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AbstractParameterizedStateTest {
+public final class AbstractParameterizedStateUnitTest {
     private final class TestSubstate extends AbstractParameterizedState {
         private static final String SUBSTATE_PARAMETER_PREFIX = "theta";
 

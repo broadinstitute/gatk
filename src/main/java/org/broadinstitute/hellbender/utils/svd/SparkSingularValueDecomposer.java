@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.utils.svd;
 
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.*;
 import org.apache.spark.mllib.linalg.distributed.RowMatrix;
@@ -12,7 +10,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.spark.SparkConverter;
 
 import java.util.Arrays;
-import java.util.LinkedList;
 
 class SparkSingularValueDecomposer {
 

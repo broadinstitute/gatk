@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
@@ -24,7 +25,9 @@ import java.util.List;
         oneLineSummary = "Detect copy-number events using allelic-count data and GATK CNV output.",
         programGroup = CopyNumberProgramGroup.class
 )
-public class AllelicCNV extends CommandLineProgram {
+public class AllelicCNV extends SparkCommandLineProgram {
+    private static final long serialVersionUID = 1l;
+
     protected static final String SNP_MAF_SEG_FILE_TAG = "MAF";
     protected static final String UNION_SEG_FILE_TAG = "union";
     protected static final String SMALL_MERGED_SEG_FILE_TAG = "no-small";
@@ -47,11 +50,11 @@ public class AllelicCNV extends CommandLineProgram {
     protected static final String NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME = "numBurnInAlleleFraction";
     protected static final String NUM_BURN_IN_ALLELE_FRACTION_SHORT_NAME = "numBurnAF";
 
-    protected static final String SIGMA_THRESHOLD_COPY_RATIO_LONG_NAME = "sigmaThresholdCopyRatio";
-    protected static final String SIGMA_THRESHOLD_COPY_RATIO_SHORT_NAME = "simThCR";
+    protected static final String INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME = "intervalThresholdCopyRatio";
+    protected static final String INTERVAL_THRESHOLD_COPY_RATIO_SHORT_NAME = "simThCR";
 
-    protected static final String SIGMA_THRESHOLD_ALLELE_FRACTION_LONG_NAME = "sigmaThresholdAlleleFraction";
-    protected static final String SIGMA_THRESHOLD_ALLELE_FRACTION_SHORT_NAME = "simThAF";
+    protected static final String INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME = "intervalThresholdAlleleFraction";
+    protected static final String INTERVAL_THRESHOLD_ALLELE_FRACTION_SHORT_NAME = "simThAF";
 
     @Argument(
             doc = "Input file for tumor-sample ref/alt read counts at normal-sample heterozygous-SNP sites (output of GetHetCoverage tool).",
@@ -135,23 +138,27 @@ public class AllelicCNV extends CommandLineProgram {
     protected int numBurnInAlleleFraction = 50;
 
     @Argument(
-            doc = "Threshold number of standard deviations for copy-ratio similar-segment merging.",
-            fullName = SIGMA_THRESHOLD_COPY_RATIO_LONG_NAME,
-            shortName = SIGMA_THRESHOLD_COPY_RATIO_SHORT_NAME,
+            doc = "Number of 95% credible-interval widths to use for copy-ratio similar-segment merging.",
+            fullName = INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME,
+            shortName = INTERVAL_THRESHOLD_COPY_RATIO_SHORT_NAME,
             optional = true
     )
-    protected double sigmaThresholdCopyRatio = 4;
+    protected double intervalThresholdCopyRatio = 1;
 
     @Argument(
-            doc = "Threshold number of standard deviations for allele-fraction similar-segment merging.",
-            fullName = SIGMA_THRESHOLD_ALLELE_FRACTION_LONG_NAME,
-            shortName = SIGMA_THRESHOLD_ALLELE_FRACTION_SHORT_NAME,
+            doc = "Number of 95% credible-interval widths to use for allele-fraction similar-segment merging.",
+            fullName = INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME,
+            shortName = INTERVAL_THRESHOLD_ALLELE_FRACTION_SHORT_NAME,
             optional = true
     )
-    protected double sigmaThresholdAlleleFraction = 2;
+    protected double intervalThresholdAlleleFraction = 1;
 
     @Override
-    protected Object doWork() {
+    protected void runPipeline(final JavaSparkContext ctx) {
+        final String originalLogLevel =
+                (ctx.getLocalProperty("logLevel") != null) ? ctx.getLocalProperty("logLevel") : "INFO";
+        ctx.setLogLevel("WARN");
+
         if (sampleName == null) {
             sampleName = outputPrefix;
         }
@@ -192,16 +199,16 @@ public class AllelicCNV extends CommandLineProgram {
         //initial model fitting
         logger.info("Fitting initial model...");
         final ACNVModeller modeller = new ACNVModeller(segmentedModel, outputPrefix,
-                numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
+                numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
 
         //similar-segment merging (segment files are output for each merge iteration)
         logger.info("Merging similar segments...");
-        modeller.mergeSimilarSegments(sigmaThresholdCopyRatio, sigmaThresholdAlleleFraction,
+        modeller.mergeSimilarSegments(intervalThresholdCopyRatio, intervalThresholdAlleleFraction,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
 
         //TODO model-parameter output and plotting
 
-        logger.info("AllelicCapSeg run complete for sample " + sampleName + ".");
-        return "SUCCESS";
+        ctx.setLogLevel(originalLogLevel);
+        logger.info("SUCCESS: Allelic CNV run complete for sample " + sampleName + ".");
     }
 }

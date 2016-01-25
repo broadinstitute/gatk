@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.param;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.primitives.Doubles;
+import com.google.common.primitives.Doubles;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
 import org.apache.commons.math3.util.MathUtils;

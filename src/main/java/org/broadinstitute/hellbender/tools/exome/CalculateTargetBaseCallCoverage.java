@@ -30,7 +30,10 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.IntBinaryOperator;
 import java.util.function.ToIntFunction;
-import java.util.stream.*;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.LongStream;
+import java.util.stream.StreamSupport;
 
 /**
  * Calculates the coverage for each target at each input sample.

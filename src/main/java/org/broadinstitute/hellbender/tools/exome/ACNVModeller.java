@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionModeller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -22,6 +23,9 @@ public final class ACNVModeller {
 
     private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
 
+    //use 95% HPD interval to construct {@link PosteriorSummary} for segment means and minor allele fractions
+    private static final double CREDIBLE_INTERVAL_ALPHA = 0.05;
+
     public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 
     private SegmentedModel segmentedModel;
@@ -33,6 +37,7 @@ public final class ACNVModeller {
     private final int numBurnInCopyRatio;
     private final int numSamplesAlleleFraction;
     private final int numBurnInAlleleFraction;
+    private final JavaSparkContext ctx;
 
     /**
      * Constructs a copy-ratio and allele-fraction modeller for a {@link SegmentedModel},
@@ -45,16 +50,19 @@ public final class ACNVModeller {
      * @param numBurnInCopyRatio        number of burn-in samples to discard for copy-ratio model MCMC
      * @param numSamplesAlleleFraction  number of total samples for allele-fraction model MCMC
      * @param numBurnInAlleleFraction   number of burn-in samples to discard for allele-fraction model MCMC
+     * @param ctx                       JavaSparkContext, used for kernel density estimation in {@link PosteriorSummary}
      */
     public ACNVModeller(final SegmentedModel segmentedModel, final String outputPrefix,
                         final int numSamplesCopyRatio, final int numBurnInCopyRatio,
-                        final int numSamplesAlleleFraction, final int numBurnInAlleleFraction) {
+                        final int numSamplesAlleleFraction, final int numBurnInAlleleFraction,
+                        final JavaSparkContext ctx) {
         this.segmentedModel = segmentedModel;
         this.outputPrefix = outputPrefix;
         this.numSamplesCopyRatio = numSamplesCopyRatio;
         this.numBurnInCopyRatio = numBurnInCopyRatio;
         this.numSamplesAlleleFraction = numSamplesAlleleFraction;
         this.numBurnInAlleleFraction = numBurnInAlleleFraction;
+        this.ctx = ctx;
         fitModel(numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
     }
 
@@ -63,7 +71,7 @@ public final class ACNVModeller {
      * specifying number of total samples and number of burn-in samples for Markov-Chain Monte Carlo model fitting
      * performed after each iteration.
      * <p>
-     *     First, the list of {@link ACNVModeledSegment ) (i.e., the list of {@link PosteriorSummary} for each
+     *     First, the list of {@link ACNVModeledSegment} (i.e., the list of {@link PosteriorSummary} for each
      *     segment copy-ratio mean and minor allele fraction) is taken from the initial model fit.
      *     Then, {@link SegmentMergeUtils#mergeSimilarSegments} is used to merge segments in this
      *     list given specified copy-ratio and minor-allele-fraction merging thresholds, after which another MCMC
@@ -72,15 +80,15 @@ public final class ACNVModeller {
      * Segment files (with filenames specified by {@link ACNVModeller#outputPrefix} are output for the initial
      * model fit and the model fits after each merge iteration as a side effect.
      *
-     * @param sigmaThresholdSegmentMean         threshold number of standard deviations for segment-mean similarity
-     * @param sigmaThresholdMinorAlleleFraction threshold number of standard deviations for minor-allele-fraction similarity
+     * @param intervalThresholdSegmentMean         threshold number of credible intervals for segment-mean similarity
+     * @param intervalThresholdMinorAlleleFraction threshold number of credible intervals for minor-allele-fraction similarity
      * @param numSamplesCopyRatio       number of total samples for copy-ratio model MCMC (for each iteration)
      * @param numBurnInCopyRatio        number of burn-in samples to discard for copy-ratio model MCMC (for each iteration)
      * @param numSamplesAlleleFraction  number of total samples for allele-fraction model MCMC (for each iteration)
      * @param numBurnInAlleleFraction   number of burn-in samples to discard for allele-fraction model MCMC (for each iteration)
      */
-    public void mergeSimilarSegments(final double sigmaThresholdSegmentMean,
-                                     final double sigmaThresholdMinorAlleleFraction,
+    public void mergeSimilarSegments(final double intervalThresholdSegmentMean,
+                                     final double intervalThresholdMinorAlleleFraction,
                                      final int numSamplesCopyRatio, final int numBurnInCopyRatio,
                                      final int numSamplesAlleleFraction, final int numBurnInAlleleFraction) {
         logger.info("Starting similar-segment merging...");
@@ -99,7 +107,7 @@ public final class ACNVModeller {
             prevNumSegments = mergedSegments.size();
             mergedSegments =
                     SegmentMergeUtils.mergeSimilarSegments(segments,
-                            sigmaThresholdSegmentMean, sigmaThresholdMinorAlleleFraction);
+                            intervalThresholdSegmentMean, intervalThresholdMinorAlleleFraction);
             logger.info("Number of segments after merging: " + mergedSegments.size());
             segmentedModel = new SegmentedModel(toUnmodeledSegments(mergedSegments), segmentedModel.getGenome());
             if (mergedSegments.size() == prevNumSegments) {
@@ -130,9 +138,9 @@ public final class ACNVModeller {
         segments.clear();
         final List<SimpleInterval> unmodeledSegments = copyRatioModeller.getSegmentedModel().getSegments();
         final List<PosteriorSummary> segmentMeansPosteriorSummaries =
-                copyRatioModeller.getSegmentMeansPosteriorSummaries();
+                copyRatioModeller.getSegmentMeansPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         final List<PosteriorSummary> minorAlleleFractionsPosteriorSummaries =
-                alleleFractionModeller.getMinorAlleleFractionsPosteriorSummaries();
+                alleleFractionModeller.getMinorAlleleFractionsPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         for (int segment = 0; segment < unmodeledSegments.size(); segment++) {
             segments.add(new ACNVModeledSegment(unmodeledSegments.get(segment),
                     segmentMeansPosteriorSummaries.get(segment), minorAlleleFractionsPosteriorSummaries.get(segment)));

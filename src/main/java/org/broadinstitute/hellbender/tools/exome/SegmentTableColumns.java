@@ -12,11 +12,12 @@ enum SegmentTableColumns {
     SAMPLE("Sample"), CONTIG("Chromosome"), START("Start"), END("End"),
     NUM_PROBES("Num_Probes"), MEAN("Segment_Mean"), SD("Segment_Std"), CALL("Segment_Call"),
     NUM_TARGETS("Num_Targets"), NUM_SNPS("Num_SNPs"),
-    SEGMENT_MEAN_POSTERIOR_MEAN("Segment_Mean_Post_Mean"),
-    SEGMENT_MEAN_POSTERIOR_STANDARD_DEVIATION("Segment_Mean_Post_Std"),
-    MINOR_ALLELE_FRACTION_POSTERIOR_MEAN("MAF_Post_Mean"),
-    MINOR_ALLELE_FRACTION_POSTERIOR_STANDARD_DEVIATION("MAF_Post_Std"),
-
+    SEGMENT_MEAN_POSTERIOR_MODE("Segment_Mean_Post_Mode"),
+    SEGMENT_MEAN_POSTERIOR_LOWER("Segment_Mean_Post_Lo"),
+    SEGMENT_MEAN_POSTERIOR_UPPER("Segment_Mean_Post_Hi"),
+    MINOR_ALLELE_FRACTION_POSTERIOR_MODE("MAF_Post_Mode"),
+    MINOR_ALLELE_FRACTION_POSTERIOR_LOWER("MAF_Post_Lo"),
+    MINOR_ALLELE_FRACTION_POSTERIOR_UPPER("MAF_Post_Hi"),
 
     // Germline Segments quality scores:
 
@@ -78,8 +79,9 @@ enum SegmentTableColumns {
 
     private static final SegmentTableColumns[] ACNV_MODELED_SEGMENT_ENUM_ARRAY =
             new SegmentTableColumns[]{SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS,
-                    SEGMENT_MEAN_POSTERIOR_MEAN, SEGMENT_MEAN_POSTERIOR_STANDARD_DEVIATION,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_MEAN, MINOR_ALLELE_FRACTION_POSTERIOR_STANDARD_DEVIATION};
+                    SEGMENT_MEAN_POSTERIOR_MODE, SEGMENT_MEAN_POSTERIOR_LOWER, SEGMENT_MEAN_POSTERIOR_UPPER,
+                    MINOR_ALLELE_FRACTION_POSTERIOR_MODE, MINOR_ALLELE_FRACTION_POSTERIOR_LOWER,
+                    MINOR_ALLELE_FRACTION_POSTERIOR_UPPER};
 
     private static final SegmentTableColumns[] GERMLINE_CALL_OUTPUT_COLUMNS =
             new SegmentTableColumns[]{

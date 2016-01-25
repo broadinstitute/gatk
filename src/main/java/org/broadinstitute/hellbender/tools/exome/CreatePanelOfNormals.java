@@ -9,12 +9,17 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hdf5.*;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator;
+import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.OptionalInt;
 
 /**
  * Tool to create a panel of normals (PoN) given a collection of read-counts
