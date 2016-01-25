@@ -170,8 +170,10 @@ public final class ACNVCopyRatioModeller {
                     final double notOutlierUnnormalizedLogProbability =
                             notOutlierUnnormalizedLogProbabilityPrefactor
                                     - normalTerm(coverage, state.getMeanInSegment(segment), state.variance());
+                    //note: we are working in natural log space, but this differs from log10 by a multiplicative
+                    //constant which is absorbed into the normalization.  Thus normalizeFromLog10 works here.
                     final double conditionalProbability =
-                            MathUtils.normalizeFromLog(new double[]{
+                            MathUtils.normalizeFromLog10(new double[]{
                                     outlierUnnormalizedLogProbability,
                                     notOutlierUnnormalizedLogProbability})[0];
                     indicators.add(rng.nextDouble() < conditionalProbability);

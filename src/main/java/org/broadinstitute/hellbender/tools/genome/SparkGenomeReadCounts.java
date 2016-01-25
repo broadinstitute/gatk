@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.genome;
 
-import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
@@ -49,16 +48,15 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
     private static final Logger logger = LogManager.getLogger(SparkGenomeReadCounts.class);
     protected static final String BINSIZE_SHORT_NAME = "bins";
-
     protected static final String BINSIZE_LONG_NAME = "binsize";
 
     @Argument(doc = "The size of bins in bases to collect coverage into",
             fullName = BINSIZE_LONG_NAME,
             shortName = BINSIZE_SHORT_NAME,
             optional = true)
-    protected static int binsize = 10000;
-    protected static final String OUTPUT_FILE_SHORT_NAME = "o";
+    protected int binsize = 10000;
 
+    protected static final String OUTPUT_FILE_SHORT_NAME = "o";
     protected static final String OUTPUT_FILE_LONG_NAME = "outputFile";
 
     @Argument(doc = "Output tsv file for the coverage counts",
@@ -96,10 +94,13 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         final long coverageCollectionStartTime = System.currentTimeMillis();
         final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, referenceArguments.getReferenceFileName(), (int) this.bamPartitionSplitSize);
         final JavaRDD<GATKRead> reads = rawReads.filter(read -> filter.test(read));
-        final Map<SimpleInterval, Long> byKey = reads.map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary)).countByValue();
+        final Map<SimpleInterval, Long> byKey = reads
+                .filter(read -> sequenceDictionary.getSequence(read.getContig()) != null)
+                .map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary, binsize)).countByValue();
+        final Set<SimpleInterval> readIntervalKeySet = byKey.keySet();
         final long coverageCollectionEndTime = System.currentTimeMillis();
-        logger.info(String.format("Finished the spark coverage collection. Elapse of %d seconds",
-                (coverageCollectionEndTime - coverageCollectionStartTime) / 1000));
+        logger.info(String.format("Finished the spark coverage collection with %d targets. Elapse of %d seconds",
+                readIntervalKeySet.size(), (coverageCollectionEndTime - coverageCollectionStartTime) / 1000));
 
         logger.info("Creating full genome bins...");
         final long createGenomeBinsStartTime = System.currentTimeMillis();
@@ -112,10 +113,13 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
         logger.info("Creating missing genome bins...");
         final long createMissingGenomeBinsStartTime = System.currentTimeMillis();
-        final Set<SimpleInterval> missingGenomeBins = Sets.difference( new HashSet<>(fullGenomeBins),byKey.keySet());
+        logger.info("Creating missing genome bins: Creating a mutable mapping...");
         final Map<SimpleInterval, Long> byKeyMutable = new HashMap<>();
         byKeyMutable.putAll(byKey);
-        missingGenomeBins.stream().forEach(m -> byKeyMutable.put(m, 0l));
+
+        logger.info("Creating missing genome bins: Populating mutable mapping with zero counts for empty regions...");
+        fullGenomeBins.stream().forEach(b -> byKeyMutable.putIfAbsent(b, 0l));
+
         final long createMissingGenomeBinsEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished creating missing genome bins. Elapse of %d seconds",
                 (createMissingGenomeBinsEndTime - createMissingGenomeBinsStartTime) / 1000));
@@ -128,7 +132,14 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         logger.info(String.format("Finished creating final map. Elapse of %d seconds",
                 (createFinalMapEndTime - createFinalMapStartTime) / 1000));
 
+        logger.info("Writing coverage file ...");
+        final long writingCovFileStartTime = System.currentTimeMillis();
         TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(outputFile, sampleName, byKeySorted, comments);
+        final long writingCovFileEndTime = System.currentTimeMillis();
+        logger.info("Done writing coverage file ...");
+        logger.info(String.format("Finished writing coverage file. Elapse of %d seconds",
+                (writingCovFileEndTime - writingCovFileStartTime) / 1000));
+
     }
 
     protected static SAMSequenceDictionary dropContigsFromSequence(final SAMSequenceDictionary originalSequenceDictionary, final Set<String> nonAutosomalContigs) {
@@ -142,7 +153,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         return IntervalUtils.cutToShards(sequenceIntervals, binsize);
     }
 
-    private static SimpleInterval createKey(final GATKRead read, final SAMSequenceDictionary sequenceDictionary){
+    private static SimpleInterval createKey(final GATKRead read, final SAMSequenceDictionary sequenceDictionary, final int binsize){
         final String contig = read.getContig();
         final int newStart = (read.getStart()/binsize)*binsize+1;
         final int newEnd = Math.min(newStart + binsize - 1, sequenceDictionary.getSequence(contig).getSequenceLength());

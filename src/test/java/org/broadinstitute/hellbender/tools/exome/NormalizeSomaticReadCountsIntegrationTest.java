@@ -405,7 +405,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-        final TargetCollection<? extends BEDFeature> exons = TargetCollections.fromBEDFeatureFile(TEST_TARGETS, new BEDCodec());
+        final TargetCollection<? extends BEDFeature> exons = TargetCollectionUtils.fromBEDFeatureFile(TEST_TARGETS, new BEDCodec());
         final ReadCountCollection input = ReadCountCollectionUtils.parse(COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE, exons, false);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, exons, false);
 

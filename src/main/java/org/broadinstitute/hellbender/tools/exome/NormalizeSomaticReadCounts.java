@@ -194,7 +194,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
             if (BEDFeature.class.isAssignableFrom(featureType)) {
                 @SuppressWarnings("unchecked")
                 final FeatureCodec<? extends BEDFeature, ?> bedCodec = (FeatureCodec<? extends BEDFeature, ?>) codec;
-                final TargetCollection<? extends BEDFeature> result = TargetCollections.fromBEDFeatureFile(targetFile, bedCodec);
+                final TargetCollection<? extends BEDFeature> result = TargetCollectionUtils.fromBEDFeatureFile(targetFile, bedCodec);
                 logger.log(Level.INFO, String.format("Found %d targets to analyze.", result.targetCount()));
                 return result;
             } else {

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -196,7 +196,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logTransitionProbability(states.get(previousStateIndex),
                                         previousPosition, thisState, thisPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = MathUtils.approximateLogSumLog(logSumBuffer)
+                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumNaturalLog(logSumBuffer)
                         + model.logEmissionProbability(data.get(thisPositionIndex), thisState, thisPosition);
             }
         }
@@ -257,7 +257,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logEmissionProbability(dataList.get(nextPositionIndex),
                                                 states.get(nextStateIndex), nextPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = MathUtils.approximateLogSumLog(logSumBuffer);
+                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumNaturalLog(logSumBuffer);
             }
         }
         return result;
@@ -268,7 +268,6 @@ public final class ForwardBackwardAlgorithm {
      * @param <D> the observed data type.
      * @param <T> the observation time/position type.
      * @param <S> the hidden state type.
-     * @return never {@code null}.
      */
     private static class ArrayResult<D, T, S> implements Result<D, T, S> {
 
@@ -321,7 +320,7 @@ public final class ForwardBackwardAlgorithm {
             if (logForwardProbabilities.length == 0) {
                 return 0;
             } else {
-                return MathUtils.approximateLogSumLog(IntStream.range(0, logForwardProbabilities[0].length)
+                return GATKProtectedMathUtils.naturalLogSumNaturalLog(IntStream.range(0, logForwardProbabilities[0].length)
                         .mapToDouble(i -> logBackwardProbabilities[0][i] + logForwardProbabilities[0][i]).toArray());
             }
         }
@@ -335,7 +334,7 @@ public final class ForwardBackwardAlgorithm {
         private <E> Object2IntMap<E> composeIndexMap(final List<E> list) {
             return IntStream.range(0, list.size())
                     .collect(
-                            () -> new Object2IntOpenHashMap<E>(list.size()),
+                            () -> new Object2IntOpenHashMap<>(list.size()),
                             (map, i) -> map.put(list.get(i), i),
                             (map1, map2) -> map2.object2IntEntrySet().forEach(
                                     e -> map1.put(e.getKey(), e.getIntValue())
@@ -422,4 +421,5 @@ public final class ForwardBackwardAlgorithm {
             return logDataLikelihood;
         }
     }
+
 }

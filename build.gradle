@@ -24,7 +24,10 @@ apply plugin: 'com.github.johnrengelman.shadow'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
-import org.gradle.internal.os.*
+
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.internal.os.OperatingSystem
+
 def isMacOsX = OperatingSystem.current().macOsX
 def customJarPath = hasProperty("custom.jar.dir") ? property("custom.jar.dir") : null;
 
@@ -113,10 +116,10 @@ check.dependsOn installApp
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:gatk:4.alpha-14-g49e944d-SNAPSHOT'
+    compile 'org.broadinstitute:gatk:4.alpha-60-g98f01b0-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
     compile 'org.ojalgo:ojalgo:39.0'
-    compile ('org.apache.spark:spark-mllib_2.10:1.4.1') {
+    compile ('org.apache.spark:spark-mllib_2.10:1.5.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -180,6 +183,27 @@ def String deriveVersion(){
         logger.error("Couldn't determine version.  " + e.getMessage())
     }
     return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
+}
+
+def createSymlinks(archivePath, symlinkLocation) {
+    exec {
+        commandLine 'ln', '-fs', archivePath, symlinkLocation
+        ignoreExitValue = false
+    }
+}
+
+// Suffix is what will be added to the symlink
+def createAllSymlinks(destinationDir, archivePath, suffix) {
+    def finalSuffix = "-" + suffix
+    if (suffix == "") {
+        finalSuffix = ""
+    }
+
+    def symlinkLocation = destinationDir.toString() + "/hellbender-protected" + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.toString() + "/gatk-protected" + finalSuffix + ".jar"
+
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
 }
 
 version = deriveVersion()
@@ -256,29 +280,6 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.7'
 }
 
-task fatJar(type: Jar) {
-    manifest {
-        attributes 'Implementation-Title': 'Hellbender',
-                'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
-    }
-    baseName = project.name + '-all'
-    zip64 true
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
-
-    doLast {
-        // Create a symlink to the newly created jar.  The name will be hellbender-protected-fat.jar and
-        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
-        // Please note that this will cause failures in Windows, which does not support symlinks.
-        def symlinkLocation = destinationDir.toString() + "/hellbender-protected-fat.jar"
-        exec {
-            commandLine 'ln', '-fs', archivePath, symlinkLocation
-            ignoreExitValue = false
-        }
-    }
-}
-
 shadowJar {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
@@ -287,7 +288,7 @@ shadowJar {
     }
     baseName = project.name + '-all'
     mergeServiceFiles()
-    classifier = 'spark'
+    classifier = 'spark_standalone'
     zip64 true
 
     // Suggested by the akka devs to make sure that we do not get the spark configuration error.
@@ -303,11 +304,50 @@ shadowJar {
         // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        def symlinkLocation = destinationDir.toString() + "/hellbender-protected.jar"
-        exec {
-            commandLine 'ln', '-fs', archivePath, symlinkLocation
-            ignoreExitValue = false
-        }
+        createAllSymlinks(destinationDir.toString(), archivePath, "")
+    }
+}
+
+tasks.withType(ShadowJar) {
+    manifest {
+        attributes 'Implementation-Title': 'Hellbender',
+                'Implementation-Version': version,
+                'Main-Class': 'org.broadinstitute.hellbender.Main'
+    }
+    from(project.sourceSets.main.output)
+    baseName = project.name + '-all'
+    mergeServiceFiles()
+    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
+    zip64 true
+    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
+}
+
+configurations {
+    sparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.10'
+        exclude group: 'org.slf4j'
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+        exclude group: 'com.esotericsoftware.kryo'
+        exclude module: 'spark-mllib_2.10'
+        exclude group: 'org.scala-lang'
+        exclude module: 'kryo'
+    }
+}
+
+task sparkJar(type: ShadowJar) {
+    configurations = [project.configurations.sparkConfiguration]
+    classifier = 'spark'
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createAllSymlinks(destinationDir.toString(), archivePath, "spark")
     }
 }
 
