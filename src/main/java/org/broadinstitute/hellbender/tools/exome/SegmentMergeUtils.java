@@ -392,7 +392,7 @@ public final class SegmentMergeUtils {
          */
         private static List<Double> calculateAAFs(final SimpleInterval segment,
                                                   final TargetCollection<AllelicCount> snps) {
-            return snps.targets(segment).stream().map(AllelicCount::toAltAlleleFraction).collect(Collectors.toList());
+            return snps.targets(segment).stream().map(AllelicCount::estimateAltAlleleFraction).collect(Collectors.toList());
         }
 
         /**
@@ -405,7 +405,7 @@ public final class SegmentMergeUtils {
          */
         private static List<Double> calculateInverseMAFs(final SimpleInterval segment,
                                                          final TargetCollection<AllelicCount> snps) {
-            return snps.targets(segment).stream().map(a -> 1. / (Double.MIN_VALUE + a.toMinorAlleleFraction()))
+            return snps.targets(segment).stream().map(a -> 1. / (Double.MIN_VALUE + a.estimateMinorAlleleFraction()))
                     .collect(Collectors.toList());
         }
 
