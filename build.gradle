@@ -119,7 +119,7 @@ dependencies {
     compile 'org.broadinstitute:gatk:4.alpha-60-g98f01b0-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
     compile 'org.ojalgo:ojalgo:39.0'
-    compile ('org.apache.spark:spark-mllib_2.10:1.4.1') {
+    compile ('org.apache.spark:spark-mllib_2.10:1.5.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -183,6 +183,27 @@ def String deriveVersion(){
         logger.error("Couldn't determine version.  " + e.getMessage())
     }
     return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
+}
+
+def createSymlinks(archivePath, symlinkLocation) {
+    exec {
+        commandLine 'ln', '-fs', archivePath, symlinkLocation
+        ignoreExitValue = false
+    }
+}
+
+// Suffix is what will be added to the symlink
+def createAllSymlinks(destinationDir, archivePath, suffix) {
+    def finalSuffix = "-" + suffix
+    if (suffix == "") {
+        finalSuffix = ""
+    }
+
+    def symlinkLocation = destinationDir.toString() + "/hellbender-protected" + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.toString() + "/gatk-protected" + finalSuffix + ".jar"
+
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
+    createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
 }
 
 version = deriveVersion()
@@ -259,31 +280,6 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.7'
 }
 
-task fatJar(type: Jar) {
-    manifest {
-        attributes 'Implementation-Title': 'Hellbender',
-                'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
-    }
-    baseName = project.name + '-all'
-    zip64 true
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
-
-    doLast {
-        // Create a symlink to the newly created jar.  The name will be hellbender-protected-fat.jar and
-        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
-        // Please note that this will cause failures in Windows, which does not support symlinks.
-        def symlinkLocation = destinationDir.toString() + "/hellbender-protected-fat.jar"
-        def symlinkLocation2 = destinationDir.toString() + "/gatk-protected-fat.jar"
-        exec {
-            commandLine 'ln', '-fs', archivePath, symlinkLocation
-            commandLine 'ln', '-fs', archivePath, symlinkLocation2
-            ignoreExitValue = false
-        }
-    }
-}
-
 shadowJar {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
@@ -308,13 +304,7 @@ shadowJar {
         // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        def symlinkLocation = destinationDir.toString() + "/hellbender-protected.jar"
-        def symlinkLocation2 = destinationDir.toString() + "/gatk-protected.jar"
-        exec {
-            commandLine 'ln', '-fs', archivePath, symlinkLocation
-            commandLine 'ln', '-fs', archivePath, symlinkLocation2
-            ignoreExitValue = false
-        }
+        createAllSymlinks(destinationDir.toString(), archivePath, "")
     }
 }
 
@@ -357,13 +347,7 @@ task sparkJar(type: ShadowJar) {
         // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        def symlinkLocation = destinationDir.toString() + "/hellbender-protected-spark.jar"
-        def symlinkLocation2 = destinationDir.toString() + "/gatk-protected-spark.jar"
-        exec {
-            commandLine 'ln', '-fs', archivePath, symlinkLocation
-            commandLine 'ln', '-fs', archivePath, symlinkLocation2
-            ignoreExitValue = false
-        }
+        createAllSymlinks(destinationDir.toString(), archivePath, "spark")
     }
 }
 
