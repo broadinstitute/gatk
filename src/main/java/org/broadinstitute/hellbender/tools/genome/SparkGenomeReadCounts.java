@@ -59,12 +59,16 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     protected static final String OUTPUT_FILE_SHORT_NAME = "o";
     protected static final String OUTPUT_FILE_LONG_NAME = "outputFile";
 
-    @Argument(doc = "Output tsv file for the coverage counts",
+    public static final String RAW_COV_OUTPUT_EXTENSION = ".raw_cov";
+
+    @Argument(doc = "Output tsv file for the proportional coverage counts.  Raw coverage counts will also be written with extension '" + RAW_COV_OUTPUT_EXTENSION + "'",
             fullName = OUTPUT_FILE_LONG_NAME,
             shortName = OUTPUT_FILE_SHORT_NAME,
             optional = false
     )
     protected File outputFile;
+
+
 
     public void collectReads(final JavaSparkContext ctx) {
         if ( readArguments.getReadFilesNames().size() != 1 ) {
@@ -78,7 +82,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
             throw new UserException.BadInput("We do not support bams with more than one sample.");
         }
         final String sampleName = sampleCollection.sampleIds().get(0);
-        final String[] comments = {"##fileFormat  = tsv",
+        final String[] commentsForRawCoverage = {"##fileFormat  = tsv",
                 "##commandLine = " + getCommandLine(),
                 String.format("##title = Coverage counts in %d base bins for WGS", binsize)};
 
@@ -94,13 +98,19 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         final long coverageCollectionStartTime = System.currentTimeMillis();
         final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, referenceArguments.getReferenceFileName(), (int) this.bamPartitionSplitSize);
         final JavaRDD<GATKRead> reads = rawReads.filter(read -> filter.test(read));
-        final Map<SimpleInterval, Long> byKey = reads
+        final JavaRDD<SimpleInterval> readIntervals = reads
                 .filter(read -> sequenceDictionary.getSequence(read.getContig()) != null)
-                .map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary, binsize)).countByValue();
+                .map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary, binsize));
+        final Map<SimpleInterval, Long> byKey = readIntervals.countByValue();
         final Set<SimpleInterval> readIntervalKeySet = byKey.keySet();
+        final long totalReads = byKey.values().stream().mapToLong(v -> v).sum();
         final long coverageCollectionEndTime = System.currentTimeMillis();
-        logger.info(String.format("Finished the spark coverage collection with %d targets. Elapse of %d seconds",
-                readIntervalKeySet.size(), (coverageCollectionEndTime - coverageCollectionStartTime) / 1000));
+        logger.info(String.format("Finished the spark coverage collection with %d targets and %d reads. Elapse of %d seconds",
+                readIntervalKeySet.size(), totalReads, (coverageCollectionEndTime - coverageCollectionStartTime) / 1000));
+
+        final String[] commentsForProportionalCoverage = {commentsForRawCoverage[0], commentsForRawCoverage[1],
+                String.format("##title = Proportional coverage counts in %d base bins for WGS (total reads: %d)",
+                        binsize, totalReads)};
 
         logger.info("Creating full genome bins...");
         final long createGenomeBinsStartTime = System.currentTimeMillis();
@@ -132,14 +142,28 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         logger.info(String.format("Finished creating final map. Elapse of %d seconds",
                 (createFinalMapEndTime - createFinalMapStartTime) / 1000));
 
+        logger.info("Creating proportional coverage... ");
+        final long pCovFileStartTime = System.currentTimeMillis();
+        final SortedMap<SimpleInterval, Double> byKeyProportionalSorted = new TreeMap<>(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR);
+        byKeySorted.entrySet().stream().forEach(e -> byKeyProportionalSorted.put(e.getKey(), (double) e.getValue() / totalReads));
+        final long pCovFileEndTime = System.currentTimeMillis();
+        logger.info(String.format("Finished creating proportional coverage map. Elapse of %d seconds",
+                (pCovFileEndTime - pCovFileStartTime) / 1000));
+
         logger.info("Writing coverage file ...");
         final long writingCovFileStartTime = System.currentTimeMillis();
-        TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(outputFile, sampleName, byKeySorted, comments);
+        TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(new File(outputFile.getAbsolutePath() + RAW_COV_OUTPUT_EXTENSION), sampleName, byKeySorted, commentsForRawCoverage);
         final long writingCovFileEndTime = System.currentTimeMillis();
-        logger.info("Done writing coverage file ...");
         logger.info(String.format("Finished writing coverage file. Elapse of %d seconds",
                 (writingCovFileEndTime - writingCovFileStartTime) / 1000));
 
+        logger.info("Writing proportional coverage file ...");
+        final long writingPCovFileStartTime = System.currentTimeMillis();
+        TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(outputFile, sampleName, byKeyProportionalSorted,
+                commentsForProportionalCoverage);
+        final long writingPCovFileEndTime = System.currentTimeMillis();
+        logger.info(String.format("Finished writing proportional coverage file. Elapse of %d seconds",
+                (writingPCovFileEndTime - writingPCovFileStartTime) / 1000));
     }
 
     protected static SAMSequenceDictionary dropContigsFromSequence(final SAMSequenceDictionary originalSequenceDictionary, final Set<String> nonAutosomalContigs) {

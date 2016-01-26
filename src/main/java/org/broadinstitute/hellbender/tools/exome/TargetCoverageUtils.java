@@ -123,8 +123,8 @@ public final class TargetCoverageUtils {
      * @param byKeySorted Map of simple-intervals to their copy-ratio. Never {@code null}
      * @param comments Comments to add to header of coverage file.
      */
-    public static void writeTargetsWithCoverageFromSimpleInterval(final File outFile, final String sampleName,
-                                                                  final SortedMap<SimpleInterval, Long> byKeySorted,
+    public static <N extends Number> void writeTargetsWithCoverageFromSimpleInterval(final File outFile, final String sampleName,
+                                                                  final SortedMap<SimpleInterval, N> byKeySorted,
                                                                   final String[] comments) {
 
         Utils.nonNull(outFile, "Output file cannot be null.");
@@ -146,7 +146,7 @@ public final class TargetCoverageUtils {
                     final int start = interval.getStart();
                     final int end = interval.getEnd();
                     final String name = target.getName();
-                    final long coverage = (long) target.getCoverage();
+                    final double coverage = target.getCoverage();
                     dataLine.append(name, contig).append(start, end).append(coverage);
                 })) {
 
@@ -156,7 +156,7 @@ public final class TargetCoverageUtils {
             for (final Locatable locatable : byKeySorted.keySet()) {
                 final String targetName = createDummyTargetName(locatable);
                 final SimpleInterval targetInterval = new SimpleInterval(locatable);
-                final double targetCoverage = byKeySorted.get(locatable);
+                final double targetCoverage = byKeySorted.get(locatable).doubleValue();
                 final TargetCoverage target = new TargetCoverage(targetName, targetInterval, targetCoverage);
                 writer.writeRecord(target);
             }
@@ -164,6 +164,7 @@ public final class TargetCoverageUtils {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
     }
+
 
     /**
      * Creates a string for a locatable that can be used when creating dummy target names
