@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.BlockCompressedStreamConstants;
@@ -24,6 +25,7 @@ import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
@@ -35,6 +37,7 @@ import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMOutputPreparer;
 import scala.Tuple2;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -112,6 +115,8 @@ public final class ReadsSparkSink {
             throw new UserException("Writing CRAM files in Spark tools is not supported yet.");
         }
 
+        String absoluteOutputFile = makeFilePathAbsolute(outputFile);
+
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already
         // SAMRecords, this will effectively be a no-op. The SAMRecords will be headerless
@@ -120,11 +125,11 @@ public final class ReadsSparkSink {
 
         if (format == ReadsWriteFormat.SINGLE) {
             header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            writeReadsSingle(ctx, outputFile, samReads, header, numReducers);
+            writeReadsSingle(ctx, absoluteOutputFile, samReads, header, numReducers);
         } else if (format == ReadsWriteFormat.SHARDED) {
-            writeReadsSharded(ctx, outputFile, samReads, header);
+            writeReadsSharded(ctx, absoluteOutputFile, samReads, header);
         } else if (format == ReadsWriteFormat.ADAM) {
-            writeReadsADAM(ctx, outputFile, samReads, header);
+            writeReadsADAM(ctx, absoluteOutputFile, samReads, header);
         }
     }
 
@@ -209,7 +214,7 @@ public final class ReadsSparkSink {
         deleteHadoopFile(outputFile);
         // Use SparkHeaderlessBAMOutputFormat so that the header is not written for each part file
         finalOut.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, SparkHeaderlessBAMOutputFormat.class);
-        mergeBam(outputFile, header);
+        mergeHeaderlessBamShards(outputFile, header);
     }
 
     private static void deleteHadoopFile(String fileToObliterate) throws IOException {
@@ -218,7 +223,7 @@ public final class ReadsSparkSink {
         fs.delete(new Path(fileToObliterate), true);
     }
 
-    private static void mergeBam(String outputFile, SAMFileHeader header) throws IOException {
+    private static void mergeHeaderlessBamShards(String outputFile, SAMFileHeader header) throws IOException {
         // At this point, the part files (part-r-00000, part-r-00001, etc) are in a directory named outputFile.
         // Each part file is a BAM file with no header or terminating end-of-file marker (Hadoop-BAM does not add
         // end-of-file markers), so to merge into a single BAM we concatenate the header with the part files and a
@@ -248,9 +253,14 @@ public final class ReadsSparkSink {
         fs.delete(tmpPath, true);
     }
 
-    private static void mergeInto(OutputStream out, Path directory, Configuration conf) throws IOException {
+    @VisibleForTesting
+    static void mergeInto(OutputStream out, Path directory, Configuration conf) throws IOException {
         final FileSystem fs = directory.getFileSystem(conf);
         final FileStatus[] parts = getBamFragments(directory, fs);
+
+        if( parts.length == 0){
+            throw new GATKException("Could not write bam file because no part files were found.");
+        }
 
         for (final FileStatus part : parts) {
             try (final InputStream in = fs.open(part.getPath())) {
@@ -262,7 +272,8 @@ public final class ReadsSparkSink {
         }
     }
 
-    protected static FileStatus[] getBamFragments( final Path directory, final FileSystem fs ) throws IOException {
+    @VisibleForTesting
+    static FileStatus[] getBamFragments( final Path directory, final FileSystem fs ) throws IOException {
         final FileStatus[] parts = fs.globStatus(new Path(directory, "part-r-[0-9][0-9][0-9][0-9][0-9]*"));
 
         // FileSystem.globStatus() has a known bug that causes it to not sort the array returned by
@@ -272,5 +283,13 @@ public final class ReadsSparkSink {
         Arrays.sort(parts);
 
         return parts;
+    }
+
+    private static String makeFilePathAbsolute(String path){
+        if(BucketUtils.isCloudStorageUrl(path) || BucketUtils.isHadoopUrl(path)){
+            return path;
+        } else {
+            return new File(path).getAbsolutePath();
+        }
     }
 }
