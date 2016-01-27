@@ -235,7 +235,7 @@ public final class HMMUnitTest extends BaseTest {
         for (final Integer position : positions) {
             for (final TestHMModel.State state : TestHMModel.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
-                final double observedValue = forwardBackwardResult.logForwardProbability(state, position);
+                final double observedValue = forwardBackwardResult.logForwardProbability(position, state);
                 final double epsilon = 0.001 * Math.min(Math.abs(expectedValue),
                         Math.abs(observedValue));
                 Assert.assertEquals(observedValue, expectedValue, epsilon);
@@ -252,7 +252,7 @@ public final class HMMUnitTest extends BaseTest {
         for (int position = positions.size() - 1; position >= 0; position--) {
             for (final TestHMModel.State state : TestHMModel.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
-                final double observedValue = forwardBackwardResult.logBackwardProbability(state, position);
+                final double observedValue = forwardBackwardResult.logBackwardProbability(position, state);
                 final double epsilon = 0.001 * Math.min(Math.abs(expectedValue),
                         Math.abs(observedValue));
                 Assert.assertEquals(observedValue, expectedValue, epsilon, " " + state + " " + position);
@@ -269,7 +269,7 @@ public final class HMMUnitTest extends BaseTest {
         for (final Integer position : positions) {
             for (final TestHMModel.State state : TestHMModel.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
-                final double observedValue = forwardBackwardResult.logProbability(state, position);
+                final double observedValue = forwardBackwardResult.logProbability(position, state);
                 // When probs are close to 1, is better to compare them after exp. them.
                 if (Math.exp(observedValue) > .5) {
                     final double epsilon = 0.001 * Math.min(Math.exp(observedValue),
@@ -323,6 +323,9 @@ public final class HMMUnitTest extends BaseTest {
            increasePath(nextPath, numStates);
            final double logProb = fbResult.logProbability(nextPath);
            Assert.assertEquals(logProb, expectedPathProb, epsilon);
+       }
+       for (final Integer position : positions) {
+           Assert.assertEquals(fbResult.logDataLikelihood(position), 0.0, 0.000001);
        }
     }
 
@@ -382,7 +385,7 @@ public final class HMMUnitTest extends BaseTest {
         for (int p = 0; p < positions.size(); p++) {
             final RealVector expectedProbs = transitions.power(p).preMultiply(priors);
             for (int i = 0; i < numStates; i++) {
-                Assert.assertEquals(fbResult.logProbability(i, positions.get(p)),
+                Assert.assertEquals(fbResult.logProbability(positions.get(p), i),
                         Math.log(expectedProbs.getEntry(i)), 0.0001, "p = " + p + " i = " + i);
             }
         }
@@ -466,7 +469,22 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(null, 2);
+        result.logProbability(2, (TestHMModel.State)null);
+    }
+
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testLogDataLikelihoodWithWrongTarget() {
+        final TestHMModel model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        try {
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+                    new ArrayList<>(Arrays.asList(1, 2, 3)), model);
+        } catch (final Exception ex) {
+            Assert.fail("this part of the test must not fail");
+
+        }
+        result.logDataLikelihood(14);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -481,7 +499,7 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logBackwardProbability(null, 2);
+        result.logBackwardProbability(2, null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -496,7 +514,7 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logForwardProbability(null, 2);
+        result.logForwardProbability(2, null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -511,7 +529,37 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(TestHMModel.State.A, null);
+        result.logProbability(null, TestHMModel.State.A);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testLogProbabilityWithMadeUpPosition() {
+        final TestHMModel model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        try {
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+                    new ArrayList<>(Arrays.asList(1, 2, 3)), model);
+        } catch (final Exception ex) {
+            Assert.fail("this part of the test must not fail");
+
+        }
+        Assert.assertNotNull(result);
+        result.logProbability(14, TestHMModel.State.A);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testLogProbabilityWithASequenceThatIsTwoLong() {
+        final TestHMModel model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        try {
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+                    new ArrayList<>(Arrays.asList(1, 2, 3)), model);
+        } catch (final Exception ex) {
+            Assert.fail("this part of the test must not fail");
+
+        }
+        Assert.assertNotNull(result);
+        result.logProbability(2, Arrays.asList(TestHMModel.State.A, TestHMModel.State.A, TestHMModel.State.B));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -526,7 +574,7 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logBackwardProbability(TestHMModel.State.A, null);
+        result.logBackwardProbability(null, TestHMModel.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -541,7 +589,7 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logForwardProbability(TestHMModel.State.A, null);
+        result.logForwardProbability(null, TestHMModel.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -556,7 +604,7 @@ public final class HMMUnitTest extends BaseTest {
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(TestHMModel.State.A, 4);
+        result.logProbability(4, TestHMModel.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

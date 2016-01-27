@@ -50,6 +50,18 @@ public class DataLineUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
+    public void testSetLong(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(columns.nameAt(i), (long) i), subject);
+        }
+        final String[] array = subject.toArray();
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(array[i], "" + i);
+        }
+    }
+
+    @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testToArray")
     public void testSetInt(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
         for (int i = 0; i < columns.columnCount(); i++) {
@@ -58,6 +70,18 @@ public class DataLineUnitTest extends BaseTest {
         final String[] array = subject.toArray();
         for (int i = 0; i < columns.columnCount(); i++) {
             Assert.assertEquals(array[i], "" + i);
+        }
+    }
+
+    @Test(dataProvider = "tableColumnsData", dependsOnMethods = "testSetLong")
+    public void testGetLong(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(columns.nameAt(i),((long) Integer.MAX_VALUE) + 1L + (long)i), subject);
+        }
+        final String[] array = subject.toArray();
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(subject.getLong(i), ((long) Integer.MAX_VALUE) + 1L + (long)i);
         }
     }
 
@@ -238,6 +262,64 @@ public class DataLineUnitTest extends BaseTest {
     public void testColumns(final TableColumnCollection columns) {
         final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
         Assert.assertSame(subject.columns(), columns);
+    }
+
+    @Test(dataProvider = "tableColumnsData")
+    public void testSetAndGetBoolean(final TableColumnCollection columns) {
+        final DataLine subject = new DataLine(columns, IllegalArgumentException::new);
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertSame(subject.set(columns.nameAt(i), (i & 1) == 0), subject);
+        }
+        for (int i = 0; i < columns.columnCount(); i++) {
+            Assert.assertEquals(subject.getBoolean(i), 0 == (i & 1));
+        }
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testGetBadBoolean() {
+        final DataLine subject = new DataLine(new TableColumnCollection("column1"), GATKException::new);
+        subject.set(0, "nono");
+        subject.getBoolean(0);
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testGetBadDouble() {
+        final DataLine subject = new DataLine(new TableColumnCollection("column1"), GATKException::new);
+        subject.set(0, "nono");
+        subject.getDouble(0);
+    }
+
+    @Test(expectedExceptions = GATKException.class)
+    public void testGetBadLong() {
+        final DataLine subject = new DataLine(new TableColumnCollection("column1"), GATKException::new);
+        subject.set(0, "nono");
+        subject.getLong(0);
+    }
+
+    @Test
+    public void testLineNumber() {
+        final DataLine subject = new DataLine(((long)Integer.MAX_VALUE) + 1, new TableColumnCollection("column1"), GATKException::new);
+        Assert.assertEquals(subject.getLineNumber(), ((long)Integer.MAX_VALUE) + 1);
+    }
+
+    @Test
+    public void testAppendLong() {
+        final DataLine subject = new DataLine(new TableColumnCollection("column1", "column2", "column3"), GATKException::new);
+        subject.append(100L + (long) Integer.MAX_VALUE);
+        subject.append(200L + (long) Integer.MAX_VALUE);
+        subject.append(300L + (long) Integer.MAX_VALUE);
+        Assert.assertEquals(subject.getLong(0), 100L + (long) Integer.MAX_VALUE);
+        Assert.assertEquals(subject.getLong(1), 200L + (long) Integer.MAX_VALUE);
+        Assert.assertEquals(subject.getLong(2), 300L + (long) Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void testAppendLongArray() {
+        final DataLine subject = new DataLine(new TableColumnCollection("column1", "column2", "column3"), GATKException::new);
+        subject.append(100L + (long) Integer.MAX_VALUE, 200L + (long) Integer.MAX_VALUE, 300L + (long) Integer.MAX_VALUE);
+        Assert.assertEquals(subject.getLong(0), 100L + (long) Integer.MAX_VALUE);
+        Assert.assertEquals(subject.getLong(1), 200L + (long) Integer.MAX_VALUE);
+        Assert.assertEquals(subject.getLong(2), 300L + (long) Integer.MAX_VALUE);
     }
 
     @Test(dataProvider = "tableColumnsData")

@@ -10,12 +10,50 @@ import java.util.stream.Stream;
  */
 enum SegmentTableColumns {
     SAMPLE("Sample"), CONTIG("Chromosome"), START("Start"), END("End"),
-    NUM_PROBES("Num_Probes"), MEAN("Segment_Mean"), CALL("Segment_Call"),
+    NUM_PROBES("Num_Probes"), MEAN("Segment_Mean"), SD("Segment_Std"), CALL("Segment_Call"),
     NUM_TARGETS("Num_Targets"), NUM_SNPS("Num_SNPs"),
     SEGMENT_MEAN_POSTERIOR_MEAN("Segment_Mean_Post_Mean"),
     SEGMENT_MEAN_POSTERIOR_STANDARD_DEVIATION("Segment_Mean_Post_Std"),
     MINOR_ALLELE_FRACTION_POSTERIOR_MEAN("MAF_Post_Mean"),
-    MINOR_ALLELE_FRACTION_POSTERIOR_STANDARD_DEVIATION("MAF_Post_Std");
+    MINOR_ALLELE_FRACTION_POSTERIOR_STANDARD_DEVIATION("MAF_Post_Std"),
+
+
+    // Germline Segments quality scores:
+
+    /**
+     * The Phred posterior probability of an event with the same sign as the call that covers all the targets in the
+     * segment without interruptions.
+     */
+    EXACT_QUALITY("Exact_Quality"),
+
+    /**
+     * The Phred posterior probability of an event with the same sign as the call that cover at least one target in
+     * the segment.
+     */
+    SOME_QUALITY("Some_Quality"),
+
+    /**
+     * The Phred posterior probability of an event with any sign that covers al the target in the segment.
+     */
+    EVENT_QUALITY("Event_Quality"),
+
+    /**
+     * The Phred posterior probability that there is no event of any sign anywhere in the called segment.
+     */
+    NOEVENT_QUALITY("NoEvent_Quality"),
+
+    /**
+     * The Phred posterior probability of an event with the same sign as the call to start exactly at the first
+     * target in the segment.
+     */
+    START_QUALITY("Start_Quality"),
+
+    /**
+     * The Phred posterior probability of an event with the same sign as the call to end exactly at the last target
+     * in the segment (inclusive).
+     */
+    END_QUALITY("End_Quality")
+    ;
 
     private final String columnName;  //store the column names
 
@@ -42,6 +80,12 @@ enum SegmentTableColumns {
             new SegmentTableColumns[]{SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS,
                     SEGMENT_MEAN_POSTERIOR_MEAN, SEGMENT_MEAN_POSTERIOR_STANDARD_DEVIATION,
                     MINOR_ALLELE_FRACTION_POSTERIOR_MEAN, MINOR_ALLELE_FRACTION_POSTERIOR_STANDARD_DEVIATION};
+
+    private static final SegmentTableColumns[] GERMLINE_CALL_OUTPUT_COLUMNS =
+            new SegmentTableColumns[]{
+                    SAMPLE, CONTIG, START, END, NUM_TARGETS, MEAN, SD, EXACT_QUALITY, SOME_QUALITY,
+                    EVENT_QUALITY, NOEVENT_QUALITY, START_QUALITY, END_QUALITY
+            };
 
     public static final String[] INTERVAL_COLUMN_NAME_ARRAY = toStringArray(INTERVAL_COLUMN_NAME_ENUM_ARRAY);
 

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.param;
 
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.primitives.Doubles;
+import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
 import org.apache.commons.math3.util.MathUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -130,7 +131,6 @@ public class ParamUtils {
         return val;
     }
 
-
     /**
      * Checks that the  input is not infinity nor NaN or throws an {@link IllegalArgumentException}
      * @param val value to check
@@ -221,6 +221,30 @@ public class ParamUtils {
             return Doubles.toArray(listDouble);
         } catch (final IOException ioe) {
             throw new GATKException("Cannot write to file.", ioe);
+        }
+    }
+
+    /**
+     * Validates the value of a parameter.
+     * <p>
+     * An invalid value will result in an {@link IllegalArgumentException}.
+     * </p>
+     * <p>
+     *   Notice that {@link Double#NaN nan} are always considered invalid whereas negative or infinity values
+     *   will depends on the declared input range extreme values.
+     * </p>
+     *
+     * @param validRange the valid range for the parameter value.
+     * @param value the parameter value itself.
+     * @param definition a human friendly description of the parameter to be used in an explanatory exception.
+     *
+     * @throws IllegalArgumentException if the value provided is in-valid.
+     */
+    public static void inRange(final DoubleRange validRange, final double value, final String definition) {
+        Utils.nonNull(validRange);
+        if (!validRange.containsDouble(value)) {
+            throw new IllegalArgumentException(String.format("invalid value for %s: %g is not in [%g, %g]",
+                    definition, value, validRange.getMinimumDouble(), validRange.getMaximumDouble()));
         }
     }
 }
