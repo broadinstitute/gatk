@@ -42,7 +42,7 @@ final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> firstReads = getReads();
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, null, getIntervals());
+        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, null, getIntervals(), bamPartitionSplitSize);
 
         long firstBamSize = firstReads.count();
         long secondBamSize = secondReads.count();
@@ -64,7 +64,7 @@ final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
             return new Tuple2<>(getReadKey(read), new Quals(read.getBaseQualities()));
         });
 
-        JavaPairRDD<String, Tuple2<Iterable<Quals>, Iterable<Quals>>> cogroup = firstQuals.cogroup(secondQuals);
+        JavaPairRDD<String, Tuple2<Iterable<Quals>, Iterable<Quals>>> cogroup = firstQuals.cogroup(secondQuals, getRecommendedNumReducers());
         CompareMatrix finalMatrix = cogroup.map(v1 -> {
             List<Quals> lFirstQuals = Lists.newArrayList(v1._2()._1());
             List<Quals> lSecondQuals = Lists.newArrayList(v1._2()._2());

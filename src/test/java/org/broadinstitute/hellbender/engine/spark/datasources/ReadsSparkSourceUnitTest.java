@@ -97,7 +97,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> allInOnePartition = readSource.getParallelReads(bam, null);
-        JavaRDD<GATKRead> smallPartitions = readSource.getParallelReads(bam, null, ReadsSparkSource.DEFAULT_SPLIT_SIZE / 100);
+        JavaRDD<GATKRead> smallPartitions = readSource.getParallelReads(bam, null,  100 * 1024); // 100 kB
         Assert.assertEquals(allInOnePartition.partitions().size(), 1);
         Assert.assertEquals(smallPartitions.partitions().size(), 2);
     }

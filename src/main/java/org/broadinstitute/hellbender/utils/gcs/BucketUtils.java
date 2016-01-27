@@ -11,6 +11,7 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
@@ -275,6 +276,45 @@ public final class BucketUtils {
             return fs.getFileStatus(hadoopPath).getLen();
         } else {
             return new File(path).length();
+        }
+    }
+
+    /**
+     * Returns the total file size of all files in a directory, or the file size if the path specifies a file.
+     * Note that sub-directories are ignored - they are not recursed into.
+     * Only supports HDFS and local paths.
+     *
+     * @param path The URL to the file or directory whose size to return
+     * @param popts PipelineOptions for GCS (if relevant; otherwise pass null)
+     * @return the total size of all files in bytes
+     */
+    public static long dirSize(String path, PipelineOptions popts) {
+        // GCS case
+        if (isCloudStorageUrl(path)) {
+            // TODO: implement directory listing
+            throw new UnsupportedOperationException("Directory size listing not supported on GCS.");
+        }
+        // local file or HDFS case
+        try {
+            Path hadoopPath = new Path(path);
+            FileSystem fs = new Path(path).getFileSystem(new Configuration());
+            FileStatus status = fs.getFileStatus(hadoopPath);
+            if (status == null) {
+                throw new UserException.CouldNotReadInputFile(path, "File not found.");
+            }
+            long size = 0;
+            if (status.isDirectory()) {
+                for (FileStatus st : fs.listStatus(status.getPath())) {
+                    if (st.isFile()) {
+                        size += st.getLen();
+                    }
+                }
+            } else {
+                size += status.getLen();
+            }
+            return size;
+        } catch (IOException e) {
+            throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
         }
     }
 }

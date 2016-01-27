@@ -10,16 +10,11 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
-
-import java.io.IOException;
 
 @CommandLineProgramProperties(summary="Apply Base Quality Recalibration to a SAM/BAM/CRAM file using Spark",
         oneLineSummary="ApplyBQSR on Spark",
@@ -45,20 +40,12 @@ public final class ApplyBQSRSpark extends GATKSparkTool {
     @ArgumentCollection
     private ApplyBQSRArgumentCollection applyBQSRArgs = new ApplyBQSRArgumentCollection();
 
-    @Argument(doc = "If specified, shard the output bam", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
-    private boolean shardedOutput = false;
-
     @Override
     protected void runTool(JavaSparkContext ctx) {
         JavaRDD<GATKRead> initialReads = getReads();
         final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
         Broadcast<RecalibrationReport> recalibrationReportBroadCast = ctx.broadcast(new RecalibrationReport(BucketUtils.openFile(bqsrRecalFile, gcsOptions)));
         final JavaRDD<GATKRead> recalibratedReads = ApplyBQSRSparkFn.apply(initialReads, recalibrationReportBroadCast, getHeaderForReads(), applyBQSRArgs);
-
-        try {
-            ReadsSparkSink.writeReads(ctx, output, recalibratedReads, getHeaderForReads(), shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
-        } catch (IOException e) {
-            throw new GATKException("unable to write bam: " + e);
-        }
+        writeReads(ctx, output, recalibratedReads);
     }
 }

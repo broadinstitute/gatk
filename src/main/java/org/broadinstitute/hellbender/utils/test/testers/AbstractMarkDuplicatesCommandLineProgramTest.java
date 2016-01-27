@@ -593,7 +593,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
     @Test(dataProvider = "testMDdata")
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
-        // This method is overridden in MarkDuplicatesSparkIntegrationTest to provide a --parallelism argument
+        // This method is overridden in MarkDuplicatesSparkIntegrationTest to provide a --numReducers argument
         testMDOrderImpl(input, expectedOutput, "");
     }
 
