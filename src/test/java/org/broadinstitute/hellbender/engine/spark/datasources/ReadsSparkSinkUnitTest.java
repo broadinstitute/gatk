@@ -11,7 +11,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -22,7 +22,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -69,7 +68,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkTest(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
-        outputFile.deleteOnExit();
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
@@ -96,7 +94,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkShardedTest(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
-        outputFile.deleteOnExit();
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
@@ -121,8 +118,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         // Since the test requires that we not create the actual output directory in advance,
         // we instead create its parent directory and mark it for deletion on exit. This protects
         // us from naming collisions across multiple instances of the test suite.
-        final File outputParentDirectory = Files.createTempDirectory(outputDirectoryName + "_parent").toFile();
-        IOUtils.deleteRecursivelyOnExit(outputParentDirectory);
+        final File outputParentDirectory = createTempDir(outputDirectoryName + "_parent");
         final File outputDirectory = new File(outputParentDirectory, outputDirectoryName);
 
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
@@ -159,7 +155,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
     @Test
     public void testGetBamFragments() throws IOException {
-        final Path fragmentDir = new Path(publicTestDir + "org/broadinstitute/hellbender/engine/spark/ReadSparkSink_fragments_test");
+        final Path fragmentDir = new Path(getToolTestDataDir(), "fragments_test");
         final FileSystem fs = fragmentDir.getFileSystem(new Configuration());
 
         final FileStatus[] bamFragments = ReadsSparkSink.getBamFragments(fragmentDir, fs);
@@ -169,5 +165,10 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         for ( int i = 0; i < bamFragments.length; ++i ) {
             Assert.assertEquals(bamFragments[i].getPath().getName(), expectedFragmentNames.get(i), "Fragments are not in correct order");
         }
+    }
+
+    @Test( expectedExceptions = GATKException.class )
+    public void testMergeIntoThrowsIfNoPartFiles() throws IOException {
+        ReadsSparkSink.mergeInto(null, new Path(getToolTestDataDir() + "directoryWithNoPartFiles"), new Configuration());
     }
 }
