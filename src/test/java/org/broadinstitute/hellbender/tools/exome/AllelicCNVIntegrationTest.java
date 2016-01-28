@@ -1,11 +1,15 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
@@ -19,7 +23,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
     private static final String SAMPLE_NAME = "test";
 
     @Test
-    public void testAllelicCapSegger() {
+    public void testACNV() {
         final File tempDir = createTempDir("allelic-integration-" + SAMPLE_NAME);
         final String tempDirPath = tempDir.getAbsolutePath();
         final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
@@ -45,10 +49,31 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + ACNVModeller.INITIAL_SEG_FILE_TAG + ".seg");
         final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg");
 
-        Assert.assertTrue(snpSegmentsFile.isFile());
-        Assert.assertTrue(unionedSegmentsFile.isFile());
-        Assert.assertTrue(noSmallSegmentsFile.isFile());
-        Assert.assertTrue(initialSimilarSegmentsFile.isFile());
-        Assert.assertTrue(finalSimilarSegmentsFile.isFile());
+        final List<File> outputFileList = new ArrayList<>();
+        outputFileList.add(snpSegmentsFile);
+        outputFileList.add(unionedSegmentsFile);
+        outputFileList.add(noSmallSegmentsFile);
+        outputFileList.add(initialSimilarSegmentsFile);
+        outputFileList.add(finalSimilarSegmentsFile);
+
+        for (final File outputFile: outputFileList) {
+
+            // Check that all files are files with a size greater than 0.
+            Assert.assertTrue(outputFile.isFile());
+            Assert.assertTrue(outputFile.length() > 0);
+            try {
+
+                //Check that all files have:
+                //  - at least two lines and all either start with "#" or contain at least one "\t"
+                //  - at least two lines with tab (header + 1 segment)
+                final List<String> outputLines = FileUtils.readLines(outputFile);
+                Assert.assertTrue(outputLines.size() > 2);
+                Assert.assertEquals(outputLines.stream().filter(l -> l.contains("\t") || l.startsWith("#")).count(), outputLines.size());
+                Assert.assertTrue(outputLines.stream().filter(l -> l.split("\t").length > 2).count() > 2, "File: " + outputFile + " does not seem to have at least one segment and a header.");
+
+            } catch (final IOException ioe) {
+                Assert.fail("Could not read file: " + outputFile, ioe);
+            }
+        }
     }
 }
