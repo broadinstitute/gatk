@@ -48,6 +48,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final File noSmallSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SMALL_MERGED_SEG_FILE_TAG + ".seg");
         final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + ACNVModeller.INITIAL_SEG_FILE_TAG + ".seg");
         final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg");
+        final File finalSimilarSegmentsFileAsGATKCNV = new File(outputPrefix + "-" + ACNVModeller.FINAL_SEG_FILE_TAG + "." +  ACNVModeller.GATK_SEG_FILE_TAG + ".seg");
 
         final List<File> outputFileList = new ArrayList<>();
         outputFileList.add(snpSegmentsFile);
@@ -55,6 +56,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         outputFileList.add(noSmallSegmentsFile);
         outputFileList.add(initialSimilarSegmentsFile);
         outputFileList.add(finalSimilarSegmentsFile);
+        outputFileList.add(finalSimilarSegmentsFileAsGATKCNV);
 
         for (final File outputFile: outputFileList) {
 
@@ -75,5 +77,11 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 Assert.fail("Could not read file: " + outputFile, ioe);
             }
         }
+
+        // This is being done to make sure no exception is thrown
+        // GATK CNV segs are not log2'd.  ACNV seg means are log2'd
+        // TODO: Adjust this code once the credible mean functionality is introduced.  Then add testing for actual values.
+        final List<ModeledSegment> modeledSegments = SegmentUtils.readModeledSegmentsFromSegmentFile(finalSimilarSegmentsFileAsGATKCNV);
+        Assert.assertTrue(modeledSegments.size() > 0);
     }
 }

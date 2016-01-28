@@ -20,6 +20,7 @@ public final class ACNVModeller {
     protected static final String INITIAL_SEG_FILE_TAG = "sim-0";
     protected static final String INTERMEDIATE_SEG_FILE_TAG = "sim";
     protected static final String FINAL_SEG_FILE_TAG = "sim-final";
+    protected static final String GATK_SEG_FILE_TAG = "cnv";
 
     private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
 
@@ -123,6 +124,10 @@ public final class ACNVModeller {
         fitModel(this.numSamplesCopyRatio, this.numBurnInCopyRatio, this.numSamplesAlleleFraction, this.numBurnInAlleleFraction);
         final File finalModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + ".seg");
         SegmentUtils.writeACNVModeledSegmentFile(finalModeledSegmentsFile, segments, segmentedModel.getGenome());
+
+        // Write file for GATK CNV formatted seg file
+        final File finalModeledSegmentsFileAsGatkCNV = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + "." + GATK_SEG_FILE_TAG + ".seg");
+        SegmentUtils.writeModeledSegmentFile(finalModeledSegmentsFileAsGatkCNV, segments, segmentedModel.getGenome().getSampleName());
     }
 
     //fits copy-ratio and allele-fraction models using MCMC and reinitializes internal list of ACNVModeledSegments

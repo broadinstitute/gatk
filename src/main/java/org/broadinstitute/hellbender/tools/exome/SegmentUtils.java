@@ -219,20 +219,36 @@ public final class SegmentUtils {
      *      Sample  Chromosome  Start   End     Num_Probes  Segment_Mean    Segment_Call
      * </p>
      *
-     * Note that Segment_Mean is output in CR space (not log2).
+     * Note that Segment_Mean is output in CR space (not log2) if isLog2Output is false
      *
      * If there is no call, the corresponding field is populated with a blank value.
      */
-    public static void writeModeledSegmentFile(final File outFile,
-                                               final List<ModeledSegment> segments,
-                                               final String sampleName) {
+    public static <S extends ModeledSegment> void writeModeledSegmentFile(final File outFile,
+                                               final List<S> segments,
+                                               final String sampleName, final boolean isLog2Output) {
         writeSegmentFile(outFile, segments, sampleName, SegmentTableColumns.MEAN_AND_CALL_COLUMN_NAME_ARRAY,
                 //lambda for appending segment fields to a DataLine
                 (segment, dataLine) ->
                     dataLine.append(segment.getContig()).append(segment.getStart(), segment.getEnd())
                             .append(segment.getTargetCount())
-                            .append(segment.getSegmentMeanInCRSpace())
+                            .append(isLog2Output ? segment.getSegmentMean(): segment.getSegmentMeanInCRSpace())
                             .append(segment.getCall()));
+    }
+
+    /**
+     * Writes a list of segments with calls represented by {@link ModeledSegment} to a file with header:
+     * <p>
+     *      Sample  Chromosome  Start   End     Num_Probes  Segment_Mean    Segment_Call
+     * </p>
+     *
+     * Note that Segment_Mean is output in CR space (not log2)
+     *
+     * If there is no call, the corresponding field is populated with a blank value.
+     */
+    public static <S extends ModeledSegment> void writeModeledSegmentFile(final File outFile,
+                                                                          final List<S> segments,
+                                                                          final String sampleName) {
+        writeModeledSegmentFile(outFile, segments, sampleName, false);
     }
 
     /**
