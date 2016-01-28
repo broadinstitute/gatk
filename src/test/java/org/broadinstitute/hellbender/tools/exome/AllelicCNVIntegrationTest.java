@@ -65,11 +65,11 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
 
                 //Check that all files have:
                 //  - at least two lines and all either start with "#" or contain at least one "\t"
-                //  - at least two lines with tab (header + 1 segment)
+                //  - at least two lines with tab (column names + 1 segment)
                 final List<String> outputLines = FileUtils.readLines(outputFile);
-                Assert.assertTrue(outputLines.size() > 2);
+                Assert.assertTrue(outputLines.size() >= 2);
                 Assert.assertEquals(outputLines.stream().filter(l -> l.contains("\t") || l.startsWith("#")).count(), outputLines.size());
-                Assert.assertTrue(outputLines.stream().filter(l -> l.split("\t").length > 2).count() > 2, "File: " + outputFile + " does not seem to have at least one segment and a header.");
+                Assert.assertTrue(outputLines.stream().filter(l -> l.split("\t").length > 2 && !l.startsWith("#")).count() > 2, "File: " + outputFile + " does not seem to have at least one segment and a header.");
 
             } catch (final IOException ioe) {
                 Assert.fail("Could not read file: " + outputFile, ioe);
