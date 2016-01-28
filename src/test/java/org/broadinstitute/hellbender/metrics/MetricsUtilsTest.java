@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.metrics;
 
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -21,15 +21,13 @@ public class MetricsUtilsTest extends BaseTest {
 
     @BeforeClass(alwaysRun = true)
     private void setupMiniCluster() throws IOException {
-        cluster = new MiniDFSCluster.Builder(new Configuration()).build();
-        hdfsWorkingDir = cluster.getFileSystem().getWorkingDirectory().toString();
+        cluster = MiniClusterUtils.getMiniCluster();
+        hdfsWorkingDir = MiniClusterUtils.getWorkingDir(cluster).toString();
     }
 
     @AfterClass(alwaysRun = true)
     private void shutdownMiniCluster() {
-        if (cluster != null) {
-            cluster.shutdown();
-        }
+       MiniClusterUtils.stopCluster(cluster);
     }
 
     @DataProvider(name = "metricsPaths")

@@ -2,9 +2,8 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -34,6 +33,13 @@ public final class BucketUtilsTest extends BaseTest {
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("gs://a_bucket/bucket"));
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isRemoteStorageUrl("localFile"));
+    }
+
+    @Test
+    public void testIsFileURL(){
+        Assert.assertTrue(BucketUtils.isFileUrl("file:///somefile/something"));
+        Assert.assertTrue(BucketUtils.isFileUrl("file:/something"));
+        Assert.assertFalse(BucketUtils.isFileUrl("gs://a_bucket"));
     }
 
     @Test
@@ -71,15 +77,12 @@ public final class BucketUtilsTest extends BaseTest {
     }
 
     @Test
-    public void testCopyAndDeleteHDFS() throws IOException, GeneralSecurityException {
+    public void testCopyAndDeleteHDFS() throws Exception {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
 
-        MiniDFSCluster cluster = null;
-        try {
-            cluster = new MiniDFSCluster.Builder(new Configuration()).build();
-            String staging = cluster.getFileSystem().getWorkingDirectory().toString();
-            final String intermediate = BucketUtils.randomRemotePath(staging, "test-copy-empty", ".vcf");
+        MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
+            final String intermediate = BucketUtils.randomRemotePath(MiniClusterUtils.getWorkingDir(cluster).toString(), "test-copy-empty", ".vcf");
             Assert.assertTrue(BucketUtils.isHadoopUrl(intermediate), "!BucketUtils.isHadoopUrl(intermediate)");
 
             PipelineOptions popts = null;
@@ -89,11 +92,7 @@ public final class BucketUtilsTest extends BaseTest {
             Assert.assertTrue(BucketUtils.fileExists(intermediate, popts));
             BucketUtils.deleteFile(intermediate, popts);
             Assert.assertFalse(BucketUtils.fileExists(intermediate, popts));
-        } finally {
-            if (cluster != null) {
-                cluster.shutdown();
-            }
-        }
+        });
     }
 
     @Test
