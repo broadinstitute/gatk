@@ -1,0 +1,13 @@
+{
+  "type":"record",
+  "name":"SiteInSample",
+  "doc":"represents a site in a sample",
+  "fields":[
+    {"name": "sampleName", "type": "string"},
+    {"name": "contig", "type": "string"},
+    {"name": "pos", "type": "int"},
+    {"name": "REF", "type": "string"},
+    {"name": "NREF", "type": "int"},
+    {"name": "NALT", "type": "int"}
+  ]
+}

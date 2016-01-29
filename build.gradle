@@ -36,6 +36,7 @@ repositories {
 
     maven {
         url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
+        url "https://repository.cloudera.com/artifactory/cloudera-repos/"
     }
 }
 
@@ -74,6 +75,7 @@ compileTestJava {
 }
 
 dependencies {
+    compile 'org.knowm.xchart:xchart:3.0.1'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:2.1.0'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
@@ -91,6 +93,7 @@ dependencies {
     compile 'it.unimi.dsi:fastutil:7.0.6'
     compile 'com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
+    compile 'com.databricks:spark-csv_2.10:1.3.0'
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
     compile('org.bdgenomics.adam:adam-core_2.10:0.18.0') {
@@ -109,12 +112,12 @@ dependencies {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
-    compile('org.apache.hadoop:hadoop-client:2.7.1') // should be a 'provided' dependency
+    compile('org.apache.hadoop:hadoop-client:2.6.0-mr1-cdh5.5') // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.1')
 
-    compile('org.apache.spark:spark-core_2.10:1.5.0') {
+    compile('org.apache.spark:spark-sql_2.10:1.5.0-cdh5.5.1') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
-        exclude module: 'jul-to-slf4j'
+//        exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
     }
@@ -126,6 +129,7 @@ dependencies {
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.apache.hadoop:hadoop-minicluster:2.6.0-mr1-cdh5.5.1' //the version of minicluster should match the version of hadoop
     testCompile "org.mockito:mockito-core:1.10.19"
 }
 
@@ -275,12 +279,15 @@ configurations {
 }
 
 shadowJar {
+
     configurations = [project.configurations.runtime]
     classifier = 'shadowJar'
     mergeServiceFiles('reference.conf')
 }
 
 task sparkJar(type: ShadowJar) {
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA' 
+
     group = "Shadow"
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
