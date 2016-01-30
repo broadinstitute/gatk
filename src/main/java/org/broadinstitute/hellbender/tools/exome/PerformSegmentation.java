@@ -16,6 +16,40 @@ public final class PerformSegmentation extends CommandLineProgram {
     public static final String TARGET_WEIGHT_FILE_LONG_NAME= "targetWeights";
     public static final String TARGET_WEIGHT_FILE_SHORT_NAME = "tw";
 
+    public final static String ALPHA_LONG_NAME="alpha";
+    public final static String ALPHA_SHORT_NAME="alpha";
+
+    public final static String NPERM_LONG_NAME="nperm";
+    public final static String NPERM_SHORT_NAME="nperm";
+
+    public final static String PMETHOD_LONG_NAME="pmethod";
+    public final static String PMETHOD_SHORT_NAME="pmethod";
+
+    public final static String MINWIDTH_LONG_NAME="minWidth";
+    public final static String MINWIDTH_SHORT_NAME="minWidth";
+
+    public final static String KMAX_LONG_NAME="kmax";
+    public final static String KMAX_SHORT_NAME="kmax";
+
+    public final static String NMIN_LONG_NAME="nmin";
+    public final static String NMIN_SHORT_NAME="nmin";
+
+    public final static String ETA_LONG_NAME="eta";
+    public final static String ETA_SHORT_NAME="eta";
+
+    public final static String TRIM_LONG_NAME="trim";
+    public final static String TRIM_SHORT_NAME="trim";
+
+    public final static String UNDOSPLITS_LONG_NAME="undoSplits";
+    public final static String UNDOSPLITS_SHORT_NAME="undoSplits";
+
+    public final static String UNDOPRUNE_LONG_NAME="undoPrune";
+    public final static String UNDOPRUNE_SHORT_NAME="undoPrune";
+
+    public final static String UNDOSD_LONG_NAME="undoSD";
+    public final static String UNDOSD_SHORT_NAME="undoSD";
+
+
     @Argument(
             doc = "Name of the sample being segmented",
             fullName = ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME,
@@ -57,6 +91,94 @@ public final class PerformSegmentation extends CommandLineProgram {
     )
     protected File weightFile = null;
 
+    @Argument(
+            doc = "Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = ALPHA_SHORT_NAME,
+            fullName = ALPHA_LONG_NAME,
+            optional = true
+    )
+    protected Double alpha = 0.01;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = NPERM_SHORT_NAME,
+            fullName = NPERM_LONG_NAME,
+            optional = true
+    )
+    protected Integer nperm = 10000;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = PMETHOD_SHORT_NAME,
+            fullName = PMETHOD_LONG_NAME,
+            optional = true
+    )
+    protected RCBSSegmenter.PMethod pmethod = RCBSSegmenter.PMethod.HYBRID;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = MINWIDTH_SHORT_NAME,
+            fullName = MINWIDTH_LONG_NAME,
+            optional = true
+    )
+    protected Integer minWidth = 2;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = KMAX_SHORT_NAME,
+            fullName = KMAX_LONG_NAME,
+            optional = true
+    )
+    protected Integer kmax = 25;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = NMIN_SHORT_NAME,
+            fullName = NMIN_LONG_NAME,
+            optional = true
+    )
+    protected Integer nmin = 200;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = ETA_SHORT_NAME,
+            fullName = ETA_LONG_NAME,
+            optional = true
+    )
+    protected Double eta = 0.05;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = TRIM_SHORT_NAME,
+            fullName = TRIM_LONG_NAME,
+            optional = true
+    )
+    protected Double trim = 0.025;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = UNDOSPLITS_SHORT_NAME,
+            fullName = UNDOSPLITS_LONG_NAME,
+            optional = true
+    )
+    protected RCBSSegmenter.UndoSplits undoSplits = RCBSSegmenter.UndoSplits.NONE;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = UNDOPRUNE_SHORT_NAME,
+            fullName = UNDOPRUNE_LONG_NAME,
+            optional = true
+    )
+    protected Double undoPrune = 0.05;
+
+    @Argument(
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            shortName = UNDOSD_SHORT_NAME,
+            fullName = UNDOSD_LONG_NAME,
+            optional = true
+    )
+    protected Integer undoSD = 3;
+
     @Override
     protected Object doWork() {
         applySegmentation(sampleName, tangentFile, outFile);
@@ -64,6 +186,7 @@ public final class PerformSegmentation extends CommandLineProgram {
     }
 
     private void applySegmentation(String sampleName, String tangentFile, String outFile) {
-        RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile, log, 2, weightFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile, log, weightFile, alpha, nperm, pmethod,
+                minWidth, kmax, nmin, eta, trim, undoSplits, undoPrune, undoSD);
     }
 }

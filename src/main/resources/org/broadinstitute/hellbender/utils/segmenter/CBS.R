@@ -12,7 +12,18 @@ option_list <- list(
     make_option(c("--output_file", "-output_file"), dest="output_file", action="store"),
     make_option(c("--log2_input", "-log"), dest="log2_input", action="store"),
     make_option(c("--min_width", "-mw"), dest="min_width", action="store", default=2),
-    make_option(c("--weights_file", "-w"), dest="weights_file", action="store", default=NULL))
+    make_option(c("--weights_file", "-w"), dest="weights_file", action="store", default=NULL),
+    make_option(c("--alpha" , "-alpha" ), dest="alpha" , action="store", type="double"),
+    make_option(c("--nperm" , "-nperm" ), dest="nperm" , action="store", type="integer"),
+    make_option(c("--pmethod" , "-pmethod" ), dest="pmethod" , action="store"),
+    make_option(c("--kmax" , "-kmax" ), dest="kmax" , action="store", type="integer"),
+    make_option(c("--nmin" , "-nmin" ), dest="nmin" , action="store", type="integer"),
+    make_option(c("--eta" , "-eta" ), dest="eta" , action="store", type="double"),
+    make_option(c("--trim" , "-trim" ), dest="trim" , action="store", type="double"),
+    make_option(c("--undosplits" , "-undosplits" ), dest="undosplits" , action="store"),
+    make_option(c("--undoprune" , "-undoprune" ), dest="undoprune" , action="store"),
+    make_option(c("--undoSD" , "-undoSD" ), dest="undoSD" , action="store", type="integer")
+    )
 
 opt <- parse_args(OptionParser(option_list=option_list))
 print(opt)
@@ -24,9 +35,25 @@ output_file=opt[["output_file"]]
 log_input=as.logical(opt[["log2_input"]])
 min_width=opt[["min_width"]]
 weights_file = opt[["weights_file"]]
+alpha=opt[["alpha" ]]
+nperm=opt[["nperm" ]]
+pmethod=opt[["pmethod" ]]
+kmax=opt[["kmax" ]]
+nmin=opt[["nmin" ]]
+eta=opt[["eta" ]]
+trim=opt[["trim" ]]
+undosplits=opt[["undosplits" ]]
+undoprune=opt[["undoprune" ]]
+undoSD=opt[["undoSD" ]]
+
+# segment(x, weights = NULL, alpha = 0.01, nperm = 10000, p.method =
+#  c("hybrid", "perm"), min.width=2, kmax=25, nmin=200,
+#  eta=0.05, sbdry=NULL, trim = 0.025, undo.splits =
+#  c("none", "prune", "sdundo"), undo.prune=0.05,
+#  undo.SD=3, verbose=1)
 
 # Use a function for debugging purposes
-segment_data = function(sample_name, tn_file, output_file, log_input, weights_file) {
+segment_data = function(sample_name, tn_file, output_file, log_input, weights_file, min_width, alpha, nperm, pmethod, kmax, nmin, eta, trim, undosplits, undoprune, undoSD) {
 	# Read in file and extract needed data
 	tn = read.table(tn_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	contig = tn[,"contig"]
@@ -53,9 +80,9 @@ segment_data = function(sample_name, tn_file, output_file, log_input, weights_fi
 
 	# segment has an issue with passing in weights of NULL.  Better to not specify.
 	if (! is.null(weights_file)) {
-		segmented = segment(smooth.CNA(cna_dat), min.width=min_width, weights=weights)$output
+		segmented = segment(smooth.CNA(cna_dat), min.width=min_width, weights=weights,alpha=alpha, nperm=nperm, p.method=pmethod, kmax=kmax, nmin=nmin, eta=eta, trim=trim, undo.splits=undosplits, undo.prune=undoprune, undo.SD=undoSD)$output
 	} else {
-		segmented = segment(smooth.CNA(cna_dat), min.width=min_width)$output
+		segmented = segment(smooth.CNA(cna_dat), min.width=min_width, alpha=alpha, nperm=nperm, p.method=pmethod, kmax=kmax, nmin=nmin, eta=eta, trim=trim, undo.splits=undosplits, undo.prune=undoprune, undo.SD=undoSD)$output
 	}
 
 	# Ensure that there are no too-small values which will be problematic for downstream tools.
@@ -78,4 +105,4 @@ segment_data = function(sample_name, tn_file, output_file, log_input, weights_fi
 	write.table(segmented, file=output_file, sep="\t", quote=FALSE, row.names=FALSE)
 }
 
-segment_data(sample_name, tn_file, output_file, log_input, weights_file)
+segment_data(sample_name, tn_file, output_file, log_input, weights_file, min_width, alpha, nperm, pmethod, kmax, nmin, eta, trim, undosplits, undoprune, undoSD)
