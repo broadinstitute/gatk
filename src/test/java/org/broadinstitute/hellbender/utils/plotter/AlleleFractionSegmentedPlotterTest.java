@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class AlleleFractionPlotterTest extends BaseTest {
+public class AlleleFractionSegmentedPlotterTest extends BaseTest {
     @Test
     public void testAlleleFractionPlotting() throws IOException {
         final File SNP_COUNTS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/snps.tsv");
