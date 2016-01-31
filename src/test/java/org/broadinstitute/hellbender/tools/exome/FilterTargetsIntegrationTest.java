@@ -32,34 +32,35 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         return FilterTargets.class.getSimpleName();
     }
 
-    @Test(dataProvider = "targetMinimumSizeFilterData")
-    public void testTargetMinimumSizeFilter(final List<Target> targets, final int minimumTargetSize)
+    @Test(dataProvider = "targetTargetSizeFilterData")
+    public void testTargetSizeFilter(final int min, final int max, final List<Target> targets)
         throws IOException
     {
         final File targetFile = createTargetFile(targets, Collections.emptySet());
         final List<Target> leftInTargets = targets.stream()
-                .filter(t -> t.getInterval().size() >= minimumTargetSize)
+                .filter(t -> t.getInterval().size() >= min && t.getInterval().size() <= max)
                 .collect(Collectors.toList());
         final List<Target> leftOutTargets = targets.stream()
-                .filter(t -> t.getInterval().size() < minimumTargetSize)
+                .filter(t -> t.getInterval().size() < min || t.getInterval().size() > max)
                 .collect(Collectors.toList());
         final File outputFile = createTempFile("output", ".tab");
         final File rejectionFile = createTempFile("reject", ".tab");
         runCommandLine(new String[] {
                 "-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME, targetFile.getPath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
-                "-" + FilterTargets.MINIMUM_TARGET_SIZE_SHORT_NAME, String.valueOf(minimumTargetSize),
+                "-" + FilterTargets.MINIMUM_TARGET_SIZE_SHORT_NAME, String.valueOf(min),
+                "-" + FilterTargets.MAXIMUM_TARGET_SIZE_SHORT_NAME, String.valueOf(max),
                 "-" + FilterTargets.REJECT_OUTPUT_FILE_SHORT_NAME, rejectionFile.getPath(),
         });
 
         checkLeftInTargets(leftInTargets, outputFile);
-        checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.MinimumTargetSize);
+        checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.ExtremeTargetSize);
     }
 
     private void checkLeftInTargets(List<Target> leftInTargets, File outputFile) {
         final TargetCollection<Target> outputTargetCollection = TargetArgumentCollection.readTargetCollection(outputFile);
         final List<Target> outputTargets = outputTargetCollection.targets();
-        Assert.assertEquals(leftInTargets.size(), outputTargets.size());
+        Assert.assertEquals(outputTargets.size(), leftInTargets.size());
         for (int i = 0; i < outputTargets.size(); i++) {
             Assert.assertEquals(outputTargets.get(i), leftInTargets.get(i));
             Assert.assertEquals(outputTargets.get(i).getInterval(),
@@ -67,19 +68,19 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider = "targetMinimumSizeFilterData")
-    public void testTargetMinimumSizeFilterWithoutRejectionFile(final List<Target> targets,
-                                            final int minimumTargetSize) throws IOException
+    @Test(dataProvider = "targetTargetSizeFilterData")
+    public void testTargetSizeFilterWithoutRejectionFile(final int min, final int max, final List<Target> targets) throws IOException
     {
         final File targetFile = createTargetFile(targets, Collections.emptySet());
         final List<Target> leftInTargets = targets.stream()
-                .filter(t -> t.getInterval().size() >= minimumTargetSize)
+                .filter(t -> t.getInterval().size() >= min && t.getInterval().size() <= max)
                 .collect(Collectors.toList());
         final File outputFile = createTempFile("output", ".tab");
         runCommandLine(new String[] {
                 "-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME, targetFile.getPath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
-                "-" + FilterTargets.MINIMUM_TARGET_SIZE_SHORT_NAME, String.valueOf(minimumTargetSize),
+                "-" + FilterTargets.MAXIMUM_TARGET_SIZE_SHORT_NAME, String.valueOf(max),
+                "-" + FilterTargets.MINIMUM_TARGET_SIZE_SHORT_NAME, String.valueOf(min),
         });
         checkLeftInTargets(leftInTargets, outputFile);
     }
@@ -262,8 +263,8 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @DataProvider(name = "targetMinimumSizeFilterData")
-    public Object[][] targetMinimumSizeFilterData() {
+    @DataProvider(name = "targetTargetSizeFilterData")
+    public Object[][] targetTargetSizeFilterData() {
         final Random rdn = new Random(1313);
         final List<Target> targets = IntStream.range(1, 1001)
                 .mapToObj(i -> new Target("target_" + i,
@@ -271,12 +272,12 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
                 .collect(Collectors.toList());
 
         return new Object[][] {
-                { targets,  -1},
-                { targets,   0},
-                { targets,   1},
-                { targets,  10},
-                { targets, 100},
-                { targets, 500},
+                { -1, 10000, targets},
+                { 0, Integer.MAX_VALUE, targets},
+                { 1, 100, targets},
+                { 10, 500, targets},
+                { 100, 200, targets},
+                { 500, 1001, targets},
         };
     }
 
