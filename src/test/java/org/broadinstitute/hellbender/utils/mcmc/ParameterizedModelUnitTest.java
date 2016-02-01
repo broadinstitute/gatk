@@ -11,7 +11,7 @@ import java.util.List;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class ParameterizedModelTest {
+public final class ParameterizedModelUnitTest {
     private static final ParameterizedState SIMPLE_STATE =
             new ParameterizedState(Collections.singletonList(new Parameter<>("parameter", 1.)));
     private static final TestDataCollection EMPTY_DATA =

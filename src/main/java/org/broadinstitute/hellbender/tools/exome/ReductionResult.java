@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.linear.RealMatrix;
 
 /**

@@ -35,7 +35,7 @@ public abstract class SparkToggleCommandLineProgram extends SparkCommandLineProg
             logger.info("Spark disabled.  sparkMaster option (" + sparkArgs.getSparkMaster() + ") ignored.");
         }
 
-        try{
+        try {
             runPipeline(ctx);
             return null;
         } finally {

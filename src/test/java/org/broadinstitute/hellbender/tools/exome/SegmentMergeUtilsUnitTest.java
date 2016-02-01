@@ -977,16 +977,22 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
      * Tests for similar-segment merging.
      */
     public static final class SimilarSegmentsTestHelper {
-        private static final double SIGMA_THRESHOLD = 2;
+        private static final double INTERVAL_THRESHOLD = 1.;    //merge when parameter modes are within 95% HPD interval
 
         private static ACNVModeledSegment constructSegment(final String contig, final int start, final int end,
-                                                          final double segmentMeanPosteriorMean,
-                                                          final double segmentMeanPosteriorStandardDeviation,
+                                                          final double segmentMeanPosteriorCenter,
+                                                          final double segmentMeanPosteriorHalfWidth,
                                                           final double minorAlleleFractionPosteriorMean,
-                                                          final double minorAlleleFractionPosteriorStandardDeviation) {
+                                                          final double minorAlleleFractionPosteriorHalfWidth) {
             return new ACNVModeledSegment(new SimpleInterval(contig, start, end),
-                    new PosteriorSummary(segmentMeanPosteriorMean, segmentMeanPosteriorStandardDeviation),
-                    new PosteriorSummary(minorAlleleFractionPosteriorMean, minorAlleleFractionPosteriorStandardDeviation));
+                    new PosteriorSummary(
+                            segmentMeanPosteriorCenter,
+                            segmentMeanPosteriorCenter - segmentMeanPosteriorHalfWidth,
+                            segmentMeanPosteriorCenter + segmentMeanPosteriorHalfWidth),
+                    new PosteriorSummary(
+                            minorAlleleFractionPosteriorMean,
+                            minorAlleleFractionPosteriorMean - minorAlleleFractionPosteriorHalfWidth,
+                            minorAlleleFractionPosteriorMean + minorAlleleFractionPosteriorHalfWidth));
         }
 
         @DataProvider(name = "dataSimilarSegmentMerging")
@@ -1033,24 +1039,30 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         public void testSimilarSegmentMerging(final List<ACNVModeledSegment> segments,
                                               final List<ACNVModeledSegment> expectedMergedSegments) {
             final List<ACNVModeledSegment> resultMergedSegments =
-                    SegmentMergeUtils.mergeSimilarSegments(segments, SIGMA_THRESHOLD, SIGMA_THRESHOLD);
+                    SegmentMergeUtils.mergeSimilarSegments(segments, INTERVAL_THRESHOLD, INTERVAL_THRESHOLD);
             Assert.assertTrue(resultMergedSegments.size() == expectedMergedSegments.size());
             for (int i = 0; i < resultMergedSegments.size(); i++) {
                 final ACNVModeledSegment resultSegment = resultMergedSegments.get(i);
                 final ACNVModeledSegment expectedSegment = expectedMergedSegments.get(i);
                 Assert.assertEquals(resultSegment.getInterval(), expectedSegment.getInterval());
                 Assert.assertEquals(
-                        resultSegment.getSegmentMeanPosteriorSummary().mean(),
-                        expectedSegment.getSegmentMeanPosteriorSummary().mean(), 0.001);
+                        resultSegment.getSegmentMeanPosteriorSummary().center(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().center(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getSegmentMeanPosteriorSummary().standardDeviation(),
-                        expectedSegment.getSegmentMeanPosteriorSummary().standardDeviation(), 0.001);
+                        resultSegment.getSegmentMeanPosteriorSummary().lower(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().lower(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getMinorAlleleFractionPosteriorSummary().mean(),
-                        expectedSegment.getMinorAlleleFractionPosteriorSummary().mean(), 0.001);
+                        resultSegment.getSegmentMeanPosteriorSummary().upper(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().upper(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getMinorAlleleFractionPosteriorSummary().standardDeviation(),
-                        expectedSegment.getMinorAlleleFractionPosteriorSummary().standardDeviation(), 0.001);
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().center(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().center(), 0.001);
+                Assert.assertEquals(
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().lower(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().lower(), 0.001);
+                Assert.assertEquals(
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().upper(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().upper(), 0.001);
             }
         }
     }

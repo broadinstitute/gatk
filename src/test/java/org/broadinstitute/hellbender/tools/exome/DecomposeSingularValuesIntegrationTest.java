@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 
-import au.com.bytecode.opencsv.CSVWriter;
-import com.opencsv.CSVReader;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DiagonalMatrix;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -17,10 +14,8 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTest {

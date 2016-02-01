@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import akka.io.Udp;
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
-import com.google.api.services.genomics.model.Read;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
-import org.apache.commons.collections.map.HashedMap;
-import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -14,16 +10,15 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 

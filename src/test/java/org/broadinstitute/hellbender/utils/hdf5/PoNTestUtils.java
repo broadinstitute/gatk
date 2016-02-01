@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.hdf5;
 
 import au.com.bytecode.opencsv.CSVWriter;
 import com.opencsv.CSVReader;
-import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;

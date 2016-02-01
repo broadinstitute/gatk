@@ -1,6 +1,3 @@
-#fileFormat = tsv
-#commandLine = org.broadinstitute.hellbender.tools.exome.NormalizeSomaticReadCounts  --input /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/cov/HCC1143-coverage.tsv --targets /Users/aaronc/Documents/recapseg-hb-eval/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.targets_germline_copy_number_variants_X_Y_removed.bed --panelOfNormals /Users/aaronc/Documents/recapseg-hb-eval/Mega_PoN_v2.6.pon --factorNormalizedOutput /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.fnt.tsv --output /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.tn.tsv --betaHatsOutput /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.betaHats.tsv --preTangentNormalizationOutput /Users/aaronc/Documents/recapseg-hb-eval/cluster_queue_out/tumor_pcov/HCC1143.preTN.tsv  --help false --version false --verbosity INFO --QUIET false
-#title = Pre tangent normalized coverage profile
 name	contig	start	stop	HCC1143
 target_1_None	1	30366	30503	-0.5672720283943717
 target_2_None	1	69089	70010	-0.2298798434421816

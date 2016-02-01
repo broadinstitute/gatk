@@ -16,7 +16,6 @@ public class TangentPlotterTest extends BaseTest {
         final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
         String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        System.out.println(tDir);
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, INPUT_FILE.getAbsolutePath(),
                 INPUT_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", false, false);
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());
@@ -39,7 +38,6 @@ public class TangentPlotterTest extends BaseTest {
         final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
         String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        System.out.println(tDir);
         CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, INPUT_FILE.getAbsolutePath(),
                 INPUT_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", false, true);
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());

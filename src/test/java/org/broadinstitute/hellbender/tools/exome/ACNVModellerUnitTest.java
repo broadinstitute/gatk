@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Log;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -30,7 +34,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
     private static final int NUM_SAMPLES = 100;
     private static final int NUM_BURN_IN = 50;
 
-    private static final double SIGMA_THRESHOLD = 3.;
+    private static final double INTERVAL_THRESHOLD = 1.; //merge when parameter modes are within 95% HPD interval
 
     /**
      * Test of similar-segment merging using only copy-ratio data (simulated coverages and segments).
@@ -39,6 +43,9 @@ public final class ACNVModellerUnitTest extends BaseTest {
      */
     @Test
     public void testMergeSimilarSegmentsCopyRatio() {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+
         final String tempDir = publicTestDir + "similar-segment-copy-ratio-test";
         final File tempDirFile = createTempDir(tempDir);
 
@@ -52,8 +59,8 @@ public final class ACNVModellerUnitTest extends BaseTest {
         //run MCMC
         final ACNVModeller modeller =
                 new ACNVModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
-                        NUM_SAMPLES, NUM_BURN_IN, 10, 0);
-        modeller.mergeSimilarSegments(SIGMA_THRESHOLD, Double.POSITIVE_INFINITY,
+                        NUM_SAMPLES, NUM_BURN_IN, 10, 0, ctx);
+        modeller.mergeSimilarSegments(INTERVAL_THRESHOLD, Double.POSITIVE_INFINITY,
                 NUM_SAMPLES, NUM_BURN_IN, 10, 0);
 
         //check equality of segments
@@ -72,6 +79,9 @@ public final class ACNVModellerUnitTest extends BaseTest {
      */
     @Test
     public void testMergeSimilarSegments() {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+
         final String tempDir = publicTestDir + "similar-segment-test";
         final File tempDirFile = createTempDir(tempDir);
 
@@ -82,8 +92,8 @@ public final class ACNVModellerUnitTest extends BaseTest {
         //run MCMC
         final ACNVModeller modeller =
                 new ACNVModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
-                        NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN);
-        modeller.mergeSimilarSegments(SIGMA_THRESHOLD, SIGMA_THRESHOLD,
+                        NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
+        modeller.mergeSimilarSegments(INTERVAL_THRESHOLD, INTERVAL_THRESHOLD,
                 NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN);
 
         //check equality of segments

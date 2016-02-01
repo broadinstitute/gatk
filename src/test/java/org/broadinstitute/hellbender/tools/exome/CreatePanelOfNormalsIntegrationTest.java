@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.math.IntRange;
-import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -13,7 +12,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.IntStream;
 

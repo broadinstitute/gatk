@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.annotations.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.special.Gamma;
-import org.apache.commons.math3.stat.descriptive.moment.Mean;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
 import org.broadinstitute.hellbender.utils.mcmc.*;
@@ -17,8 +16,8 @@ import java.util.stream.IntStream;
 
 import static java.lang.Math.log;
 import static java.lang.Math.sqrt;
-import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
+import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 
 /**
  * Given a {@link org.broadinstitute.hellbender.tools.exome.SegmentedModel} and counts of alt and ref reads over a list of het sites,
@@ -321,19 +320,19 @@ public final class AlleleFractionModeller {
     /**
      * Returns a list of {@link PosteriorSummary} elements summarizing the minor-allele-fraction posterior for each segment.
      * Should only be called after {@link AlleleFractionModeller#fitMCMC(int, int)} has been called.
-     * @return  list of {@link PosteriorSummary} elements summarizing the minor-allele-fraction posterior for each segment
+     * @param credibleIntervalAlpha credible-interval alpha, must be in (0, 1)
+     * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
+     * @return                      list of {@link PosteriorSummary} elements summarizing the
+     *                              minor-allele-fraction posterior for each segment
      */
-    public List<PosteriorSummary> getMinorAlleleFractionsPosteriorSummaries() {
+    public List<PosteriorSummary> getMinorAlleleFractionsPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
         final int numSegments = segmentedModel.getSegments().size();
         final List<PosteriorSummary> posteriorSummaries = new ArrayList<>(numSegments);
         for (int segment = 0; segment < numSegments; segment++) {
             final int j = segment;
-            final double[] minorFractionSamples =
-                    Doubles.toArray(minorFractionsSamples.stream().map(s -> s.get(j))
-                            .collect(Collectors.toList()));
-            final double posteriorMean = new Mean().evaluate(minorFractionSamples);
-            final double posteriorStandardDeviation = new StandardDeviation().evaluate(minorFractionSamples);
-            posteriorSummaries.add(new PosteriorSummary(posteriorMean, posteriorStandardDeviation));
+            final List<Double> minorFractionSamples =
+                    minorFractionsSamples.stream().map(s -> s.get(j)).collect(Collectors.toList());
+            posteriorSummaries.add(PosteriorSummary.calculateHighestPosteriorDensitySummary(minorFractionSamples, credibleIntervalAlpha, ctx));
         }
         return posteriorSummaries;
     }

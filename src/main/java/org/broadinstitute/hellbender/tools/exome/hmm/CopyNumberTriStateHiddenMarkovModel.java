@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.hmm;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.annotations.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.broadinstitute.hellbender.tools.exome.Target;

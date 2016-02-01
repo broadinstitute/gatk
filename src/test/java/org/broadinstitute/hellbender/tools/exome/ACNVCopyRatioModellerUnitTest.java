@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.primitives.Doubles;
+import htsjdk.samtools.util.Log;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -41,6 +45,8 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
             + "segment-means-truth-for-copy-ratio-modeller.txt");
     private static final File OUTLIER_INDICATORS_TRUTH_FILE = new File(TEST_SUB_DIR
             + "outlier-indicators-truth-for-copy-ratio-modeller.txt");
+
+    private static final double CREDIBLE_INTERVAL_ALPHA = 0.32;
 
     private static final double VARIANCE_TRUTH = 1.;
     private static final double OUTLIER_PROBABILITY_TRUTH = 0.025;
@@ -100,6 +106,9 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
      */
     @Test
     public void testRunMCMCOnCopyRatioSegmentedModel() {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+
         //load data (coverages and number of targets in each segment)
         final List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(COVERAGES_FILE);
         final Genome genome = new Genome(targetCoverages, Collections.emptyList(), SAMPLE_NAME); //Genome with no SNPs
@@ -137,11 +146,15 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
         int numMeansOutsideTwoSigma = 0;
         int numMeansOutsideThreeSigma = 0;
         final int numSegments = meansTruth.size();
-        final List<PosteriorSummary> meanPosteriorSummaries = modeller.getSegmentMeansPosteriorSummaries();
+        //segment-mean posteriors are expected to be Gaussian, so PosteriorSummary for CREDIBLE_INTERVAL_ALPHA=0.32 is
+        //(posterior mean, posterior mean - posterior standard devation, posterior mean + posterior standard deviation)
+        final List<PosteriorSummary> meanPosteriorSummaries =
+                modeller.getSegmentMeansPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         final double[] meanPosteriorStandardDeviations = new double[numSegments];
         for (int segment = 0; segment < numSegments; segment++) {
-            final double meanPosteriorMean = meanPosteriorSummaries.get(segment).mean();
-            final double meanPosteriorStandardDeviation = meanPosteriorSummaries.get(segment).standardDeviation();
+            final double meanPosteriorMean = meanPosteriorSummaries.get(segment).center();
+            final double meanPosteriorStandardDeviation =
+                    (meanPosteriorSummaries.get(segment).upper() - meanPosteriorSummaries.get(segment).lower()) / 2.;
             meanPosteriorStandardDeviations[segment] = meanPosteriorStandardDeviation;
             final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorMean - meansTruth.get(segment));
             if (absoluteDifferenceFromTruth > meanPosteriorStandardDeviation) {

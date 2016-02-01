@@ -3,16 +3,10 @@ package org.broadinstitute.hellbender.utils.hdf5;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.tools.exome.Target;
-import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.IntStream;
 
 /**
  * Panel of Normal data structure.

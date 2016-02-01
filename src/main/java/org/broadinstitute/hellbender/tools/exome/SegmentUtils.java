@@ -278,10 +278,15 @@ public final class SegmentUtils {
                 (segment, dataLine) ->
                         dataLine.append(segment.getContig()).append(segment.getStart(), segment.getEnd())
                                 .append(targets.targetCount(segment)).append(snps.targetCount(segment))
-                                .append(String.format("%6.4f", segment.getSegmentMeanPosteriorSummary().mean()))
-                                .append(String.format("%6.4f", segment.getSegmentMeanPosteriorSummary().standardDeviation()))
-                                .append(String.format("%6.4f", segment.getMinorAlleleFractionPosteriorSummary().mean()))
-                                .append(String.format("%6.4f", segment.getMinorAlleleFractionPosteriorSummary().standardDeviation())));
+                                .append(String.format("%6.4f", segment.getSegmentMeanPosteriorSummary().center()))
+                                .append(String.format("%6.4f", segment.getSegmentMeanPosteriorSummary().lower()))
+                                .append(String.format("%6.4f", segment.getSegmentMeanPosteriorSummary().upper()))
+                                .append(String.format("%6.4f", segment.getMinorAlleleFractionPosteriorSummary().center())
+                                        .replaceAll("\\s+", ""))
+                                .append(String.format("%6.4f", segment.getMinorAlleleFractionPosteriorSummary().lower())
+                                        .replaceAll("\\s+", ""))
+                                .append(String.format("%6.4f", segment.getMinorAlleleFractionPosteriorSummary().upper())
+                                        .replaceAll("\\s+","")));
     }
 
     /*===============================================================================================================*

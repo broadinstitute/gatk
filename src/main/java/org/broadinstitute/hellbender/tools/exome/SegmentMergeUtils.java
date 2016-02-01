@@ -159,22 +159,22 @@ public final class SegmentMergeUtils {
 
     /**
      * Returns a new, modifiable list of segments with similar segments (i.e., adjacent segments with both
-     * segment-mean and minor-allele-fractions posteriors similar; posteriors are similar if the difference
-     * between posterior means is less than sigmaThreshold times the posterior standard deviation of either summary)
+     * segment-mean and minor-allele-fractions posteriors similar; posteriors are similar if the difference between
+     * posterior central tendencies is less than intervalThreshold times the posterior credible interval of either summary)
      * merged.  The list of segments is traversed once from beginning to end, and each segment is checked for similarity
      * with the segment to the right and merged until it is no longer similar.
      * @param segments                          list of {@link ACNVModeledSegment} to be merged
-     * @param sigmaThresholdSegmentMean         threshold number of standard deviations for segment-mean similarity
-     * @param sigmaThresholdMinorAlleleFraction threshold number of standard deviations for minor-allele-fraction similarity
+     * @param intervalThresholdSegmentMean         threshold number of credible intervals for segment-mean similarity
+     * @param intervalThresholdMinorAlleleFraction threshold number of credible intervals for minor-allele-fraction similarity
      * @return      new list of modeled segments with similar segments merged, never {@code null}
      */
     public static List<ACNVModeledSegment> mergeSimilarSegments(final List<ACNVModeledSegment> segments,
-                                                               final double sigmaThresholdSegmentMean,
-                                                               final double sigmaThresholdMinorAlleleFraction) {
+                                                               final double intervalThresholdSegmentMean,
+                                                               final double intervalThresholdMinorAlleleFraction) {
         Utils.nonNull(segments, "The list of segments cannot be null.");
-        ParamUtils.isPositiveOrZero(sigmaThresholdSegmentMean,
+        ParamUtils.isPositiveOrZero(intervalThresholdSegmentMean,
                 "The threshold for segment-mean similar-segment merging cannot be negative.");
-        ParamUtils.isPositiveOrZero(sigmaThresholdMinorAlleleFraction,
+        ParamUtils.isPositiveOrZero(intervalThresholdMinorAlleleFraction,
                 "The threshold for minor-allele-fraction similar-segment merging cannot be negative.");
 
         final List<ACNVModeledSegment> mergedSegments = new ArrayList<>(segments);
@@ -184,7 +184,7 @@ public final class SegmentMergeUtils {
             final ACNVModeledSegment segment2 = mergedSegments.get(index + 1);
             if (segment1.getContig().equals(segment2.getContig()) &&
                     SimilarSegments.areSimilar(segment1, segment2,
-                            sigmaThresholdSegmentMean, sigmaThresholdMinorAlleleFraction)) {
+                            intervalThresholdSegmentMean, intervalThresholdMinorAlleleFraction)) {
                 mergedSegments.set(index, SimilarSegments.merge(segment1, segment2));
                 mergedSegments.remove(index + 1);
                 index--; //if merge performed, stay on current segment during next iteration
@@ -642,41 +642,44 @@ public final class SegmentMergeUtils {
      * Contains private methods for similar-segment merging.
      */
     private static final class SimilarSegments {
-        //checks similarity of posterior summaries to within a sigma threshold;
-        //posterior summaries are similar if the difference between posterior means is less than
-        //sigmaThreshold times the posterior standard deviation of either summary
+        //checks similarity of posterior summaries to within a credible-interval threshold;
+        //posterior summaries are similar if the difference between posterior central tendencies is less than
+        //intervalThreshold times the credible-interval width of either summary
         private static boolean areSimilar(final PosteriorSummary summary1, final PosteriorSummary summary2,
-                                          final double sigmaThreshold) {
-            if (Double.isNaN(summary1.mean()) || Double.isNaN(summary2.mean())) {
+                                          final double intervalThreshold) {
+            if (Double.isNaN(summary1.center()) || Double.isNaN(summary2.center())) {
                 return true;
             }
-            final double absoluteDifference = Math.abs(summary1.mean() - summary2.mean());
-            return absoluteDifference < sigmaThreshold * summary1.standardDeviation() ||
-                    absoluteDifference < sigmaThreshold * summary2.standardDeviation();
+            final double absoluteDifference = Math.abs(summary1.center() - summary2.center());
+            return absoluteDifference < intervalThreshold * (summary1.upper() - summary1.lower()) ||
+                    absoluteDifference < intervalThreshold * (summary2.upper() - summary2.lower());
         }
 
-        //checks similarity of modeled segments to within sigma thresholds for segment mean and minor allele fraction
+        //checks similarity of modeled segments to within credible-interval thresholds for segment mean and minor allele fraction
         private static boolean areSimilar(final ACNVModeledSegment segment1, final ACNVModeledSegment segment2,
-                                          final double sigmaThresholdSegmentMean, final double sigmaThresholdMinorAlleleFraction) {
-            return areSimilar(segment1.getSegmentMeanPosteriorSummary(), segment2.getSegmentMeanPosteriorSummary(), sigmaThresholdSegmentMean) &&
-                    areSimilar(segment1.getMinorAlleleFractionPosteriorSummary(), segment2.getMinorAlleleFractionPosteriorSummary(), sigmaThresholdMinorAlleleFraction);
+                                          final double intervalThresholdSegmentMean, final double intervalThresholdMinorAlleleFraction) {
+            return areSimilar(segment1.getSegmentMeanPosteriorSummary(), segment2.getSegmentMeanPosteriorSummary(), intervalThresholdSegmentMean) &&
+                    areSimilar(segment1.getMinorAlleleFractionPosteriorSummary(), segment2.getMinorAlleleFractionPosteriorSummary(), intervalThresholdMinorAlleleFraction);
         }
 
-        //merges posterior summaries naively
+        //merges posterior summaries naively by approximating posteriors as normal
         private static PosteriorSummary merge(final PosteriorSummary summary1, final PosteriorSummary summary2) {
-            if (Double.isNaN(summary1.mean()) && !Double.isNaN(summary2.mean())) {
-                return new PosteriorSummary(summary2);
+            if (Double.isNaN(summary1.center()) && !Double.isNaN(summary2.center())) {
+                return summary2;
             }
-            if ((!Double.isNaN(summary1.mean()) && Double.isNaN(summary2.mean())) ||
-                    (Double.isNaN(summary1.mean()) && Double.isNaN(summary2.mean()))) {
-                return new PosteriorSummary(summary1);
+            if ((!Double.isNaN(summary1.center()) && Double.isNaN(summary2.center())) ||
+                    (Double.isNaN(summary1.center()) && Double.isNaN(summary2.center()))) {
+                return summary1;
             }
-            final double variance = 1. / (1. / Math.pow(summary1.standardDeviation(), 2.) + 1. / Math.pow(summary2.standardDeviation(), 2.));
+            //use credible half-interval as standard deviation
+            final double standardDeviation1 = (summary1.upper() - summary1.lower()) / 2.;
+            final double standardDeviation2 = (summary2.upper() - summary2.lower()) / 2.;
+            final double variance = 1. / (1. / Math.pow(standardDeviation1, 2.) + 1. / Math.pow(standardDeviation2, 2.));
             final double mean =
-                    (summary1.mean() / Math.pow(summary1.standardDeviation(), 2.) + summary2.mean() / Math.pow(summary2.standardDeviation(), 2.))
+                    (summary1.center() / Math.pow(standardDeviation1, 2.) + summary2.center() / Math.pow(standardDeviation2, 2.))
                             * variance;
             final double standardDeviation = Math.sqrt(variance);
-            return new PosteriorSummary(mean, standardDeviation);
+            return new PosteriorSummary(mean, mean - standardDeviation, mean + standardDeviation);
         }
 
         //merges modeled segments naively

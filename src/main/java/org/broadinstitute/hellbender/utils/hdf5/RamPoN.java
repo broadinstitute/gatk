@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.hdf5;
 
 import org.apache.commons.math3.linear.RealMatrix;
-import org.broadinstitute.hellbender.tools.exome.CreatePanelOfNormals;
 import org.broadinstitute.hellbender.tools.exome.ReductionResult;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.SimpleInterval;

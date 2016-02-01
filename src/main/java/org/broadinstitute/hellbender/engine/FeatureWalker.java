@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
