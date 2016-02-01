@@ -92,7 +92,7 @@ public final class PerformSegmentation extends CommandLineProgram {
     protected File weightFile = null;
 
     @Argument(
-            doc = "Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
+            doc = "(Advanced) Please see https://www.bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf",
             shortName = ALPHA_SHORT_NAME,
             fullName = ALPHA_LONG_NAME,
             optional = true
