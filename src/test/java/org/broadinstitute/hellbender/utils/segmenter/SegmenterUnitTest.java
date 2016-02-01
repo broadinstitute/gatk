@@ -58,7 +58,7 @@ public class SegmenterUnitTest extends BaseTest {
         Arrays.fill(weights, 1.0);
         final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
         ParamUtils.writeValuesToFile(weights, weightsTmpFile);
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -73,7 +73,7 @@ public class SegmenterUnitTest extends BaseTest {
         weights[10] = 200;
         final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
         ParamUtils.writeValuesToFile(weights, weightsTmpFile);
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -88,7 +88,7 @@ public class SegmenterUnitTest extends BaseTest {
         weights[10] = Double.POSITIVE_INFINITY;
         final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
         ParamUtils.writeValuesToFile(weights, weightsTmpFile);
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -103,7 +103,7 @@ public class SegmenterUnitTest extends BaseTest {
         weights[10] = Double.NEGATIVE_INFINITY;
         final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
         ParamUtils.writeValuesToFile(weights, weightsTmpFile);
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true, 2, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -119,7 +119,7 @@ public class SegmenterUnitTest extends BaseTest {
         weights[10] = Double.NEGATIVE_INFINITY;
         final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
         ParamUtils.writeValuesToFile(weights, weightsTmpFile);
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -134,7 +134,7 @@ public class SegmenterUnitTest extends BaseTest {
         weights[10] = Double.NaN;
         final File weightsTmpFile = IOUtils.createTempFile("weights-simple", ".txt");
         ParamUtils.writeValuesToFile(weights, weightsTmpFile);
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, 2, weightsTmpFile);
+        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false, weightsTmpFile);
         assertEqualSegments(output,EXPECTED);
     }
 
@@ -143,15 +143,34 @@ public class SegmenterUnitTest extends BaseTest {
      * @param actualOutput the actual segmenter output containing file.
      * @param expectedOutput the expected segmenter output containing file.
      * @throws NullPointerException if either {@code actualOutput} or {@code expectedOutput} is {@code null}.
-     * @throws IOException if any was thrown when reading the input files.
      * @throws AssertionError if there are significant between both files.
      */
-    public static void assertEqualSegments(final File actualOutput, final File expectedOutput) throws IOException {
+    public static void assertEqualSegments(final File actualOutput, final File expectedOutput) {
         try (final SegmentReader actual = new SegmentReader(actualOutput);
              final SegmentReader expected = new SegmentReader(expectedOutput)) {
             final List<SegmentMean> actualSegmentMeans = actual.stream().collect(Collectors.toList());
             final List<SegmentMean> expectedSegmentMeans = expected.stream().collect(Collectors.toList());
             Assert.assertEquals(actualSegmentMeans, expectedSegmentMeans);
+        } catch (final IOException ioe) {
+            Assert.fail("Unit test threw exception trying to read segments.", ioe);
+        }
+    }
+
+    /**
+     * Compares the content of two segmenter output files and makes sure that they are NOT the same..
+     * @param left the actual segmenter output containing file.
+     * @param right the expected segmenter output containing file.
+     * @throws NullPointerException if either {@code left} or {@code right} is {@code null}.
+     * @throws AssertionError if the files are the same between both files.
+     */
+    public static void assertNotEqualSegments(final File left, final File right) {
+        try (final SegmentReader actual = new SegmentReader(left);
+             final SegmentReader expected = new SegmentReader(right)) {
+            final List<SegmentMean> actualSegmentMeans = actual.stream().collect(Collectors.toList());
+            final List<SegmentMean> expectedSegmentMeans = expected.stream().collect(Collectors.toList());
+            Assert.assertNotEquals(actualSegmentMeans, expectedSegmentMeans, "Segments were the same when should have been different.");
+        } catch (final IOException ioe) {
+            Assert.fail("Unit test threw exception trying to read segments.", ioe);
         }
     }
 
