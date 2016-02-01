@@ -58,11 +58,12 @@ public class FilterTargets extends CommandLineProgram {
      * Enum with possible filter targets.
      */
     public enum TargetFilter {
-        MinimumTargetSize, ExtremeGCContent, ExtremeRepeatContent,
+        ExtremeTargetSize, ExtremeGCContent, ExtremeRepeatContent,
         ExtremeCoverageMean, ExtremeCoverageVariance;
     }
 
     public static final int DEFAULT_MINIMUM_TARGET_SIZE = 0;
+    public static final int DEFAULT_MAXIMUM_TARGET_SIZE = Integer.MAX_VALUE;
     public static final double DEFAULT_MAXIMUM_GC_CONTENT = 1.0;
     public static final double DEFAULT_MINIMUM_GC_CONTENT = 0.0;
     public static final double DEFAULT_MAXIMUM_REPEAT_CONTENT = 1.0;
@@ -73,6 +74,8 @@ public class FilterTargets extends CommandLineProgram {
 
     public static final String MINIMUM_TARGET_SIZE_FULL_NAME = "minimumSize";
     public static final String MINIMUM_TARGET_SIZE_SHORT_NAME = "minSize";
+    public static final String MAXIMUM_TARGET_SIZE_FULL_NAME = "maximumSize";
+    public static final String MAXIMUM_TARGET_SIZE_SHORT_NAME = "maxSize";
     public static final String MINIMUM_GC_CONTENT_FULL_NAME = "minimumGCContent";
     public static final String MINIMUM_GC_CONTENT_SHORT_NAME = "minGC";
     public static final String MAXIMUM_GC_CONTENT_FULL_NAME = "maximumGCContent";
@@ -94,9 +97,18 @@ public class FilterTargets extends CommandLineProgram {
     @Argument(
             doc = "Minimum target size; targets spanning fewer base-pairs are filtered out",
             fullName = MINIMUM_TARGET_SIZE_FULL_NAME,
-            shortName = MINIMUM_TARGET_SIZE_SHORT_NAME
+            shortName = MINIMUM_TARGET_SIZE_SHORT_NAME,
+            optional = true
     )
     protected int minimumTargetSize = DEFAULT_MINIMUM_TARGET_SIZE;
+
+    @Argument(
+            doc = "Maximum target size; targets spanning more base-pairs are filtered out",
+            fullName = MAXIMUM_TARGET_SIZE_FULL_NAME,
+            shortName = MAXIMUM_TARGET_SIZE_SHORT_NAME,
+            optional = true
+    )
+    protected int maximumTargetSize = DEFAULT_MAXIMUM_TARGET_SIZE;
 
     @Argument(
             doc = "Minimum GC content; targets with less GC content will be excluded",
@@ -205,8 +217,8 @@ public class FilterTargets extends CommandLineProgram {
      */
     private List<TargetFilterPredicate> composeFilterPredicateList() {
         final List<TargetFilterPredicate> result = new ArrayList<>(3);
-        if (minimumTargetSize > 0) {
-            result.add(new TargetMinimumSize());
+        if (minimumTargetSize > 0 || maximumTargetSize < Integer.MAX_VALUE) {
+            result.add(new ExtremeTargetSize());
         }
         if (minimumGCContent > 0.0 || maximumGCContent < 1.0) {
             result.add(new ExtremeTargetGCContent());
@@ -412,28 +424,28 @@ public class FilterTargets extends CommandLineProgram {
      * Filters targets that are too small as per
      * the {@link #minimumTargetSize} user argument.
      */
-    private class TargetMinimumSize implements TargetFilterPredicate {
+    private class ExtremeTargetSize implements TargetFilterPredicate {
 
         /**
          * Creates the filter.
          */
-        public TargetMinimumSize() {}
+        public ExtremeTargetSize() {}
 
         @Override
         public TargetFilter getFilter() {
-            return TargetFilter.MinimumTargetSize;
+            return TargetFilter.ExtremeTargetSize;
         }
 
         @Override
         public String reasonToFilter(final Target target) {
-            return String.format("the target size (%d) is too small (<%d)",
-                    target.getInterval().size(), minimumTargetSize);
+            return String.format("the target size (%d) is out of range [%d, %d]",
+                    target.getInterval().size(), minimumTargetSize, maximumTargetSize);
         }
 
         @Override
         public boolean test(final Target target) {
             final SimpleInterval interval = target.getInterval();
-            return interval.size() >= minimumTargetSize;
+            return interval.size() >= minimumTargetSize && interval.size() <= maximumTargetSize;
         }
     }
 
