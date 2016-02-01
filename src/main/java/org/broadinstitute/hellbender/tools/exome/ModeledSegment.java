@@ -26,16 +26,39 @@ public class ModeledSegment extends Segment<String> {
         this(interval, NO_CALL, targetCount, segmentMean);
     }
 
+    /**
+     *  Get segment mean in log2 space
+     * @return
+     */
     public double getSegmentMean() {
         return mean;
     }
 
+    /**
+     * Set the segment mean in log2 space
+     *
+     * @param segmentMean
+     */
     public void setSegmentMean(final double segmentMean) {
         this.mean = segmentMean;
     }
 
+    /**
+     * Get the segment mean in non-logged space
+     *
+     * @return
+     */
     public double getSegmentMeanInCRSpace() {
         return Math.pow(2, mean);
+    }
+
+    /**
+     * Get the segment mean in logged space
+     *
+     * @return
+     */
+    public double getSegmentMeanInLog2CRSpace() {
+        return getSegmentMean();
     }
 
     public void setSegmentMeanInCRSpace(final double segmentMeanInCRSpace) {
@@ -63,7 +86,7 @@ public class ModeledSegment extends Segment<String> {
      * Sets the call.
      */
     public void setCall(final String call) {
-        this.call = Utils.nonNull(call, String.format("The input call cannot be null.  Use empty string, (\"%s\")", NO_CALL));
+        this.call = Utils.nonNull(call, String.format("The input call cannot be null.  For no-calls use: \"%s\" ", NO_CALL));
     }
 
     public void setTargetCount(final long targetCount) {
