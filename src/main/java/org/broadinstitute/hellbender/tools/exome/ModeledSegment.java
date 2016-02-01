@@ -52,6 +52,15 @@ public class ModeledSegment extends Segment<String> {
         return Math.pow(2, mean);
     }
 
+    /**
+     * Get the segment mean in logged space
+     *
+     * @return
+     */
+    public double getSegmentMeanInLog2CRSpace() {
+        return getSegmentMean();
+    }
+
     public void setSegmentMeanInCRSpace(final double segmentMeanInCRSpace) {
         this.mean = Math.log(segmentMeanInCRSpace)/Math.log(2);
     }

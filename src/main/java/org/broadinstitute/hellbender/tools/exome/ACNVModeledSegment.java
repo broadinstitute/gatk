@@ -16,7 +16,7 @@ public class ACNVModeledSegment extends ModeledSegment {
     public ACNVModeledSegment(final SimpleInterval interval,
                               final PosteriorSummary segmentMeanPosteriorSummary,
                               final PosteriorSummary minorAlleleFractionPosteriorSummary) {
-        super(interval, ModeledSegment.NO_CALL, 0, segmentMeanPosteriorSummary.mean());
+        super(interval, ModeledSegment.NO_CALL, 0, segmentMeanPosteriorSummary.center());
         this.segmentMeanPosteriorSummary = segmentMeanPosteriorSummary;
         this.minorAlleleFractionPosteriorSummary = minorAlleleFractionPosteriorSummary;
     }
@@ -24,26 +24,27 @@ public class ACNVModeledSegment extends ModeledSegment {
 
     /**
      *  Get segment mean in log2 space
-     * @return
+     * @return estimate of the mean for this modeled segment
      */
     @Override
     public double getSegmentMean() {
-        return segmentMeanPosteriorSummary.mean();
+        return segmentMeanPosteriorSummary.center();
     }
 
     /**
      * Get the segment mean in non-logged space
      *
-     * @return
+     * @return estimate of the mean for this modeled segment
      */
+    @Override
     public double getSegmentMeanInCRSpace() {
-        return Math.pow(2, mean);
+        return Math.pow(2, segmentMeanPosteriorSummary.center());
     }
 
     /**
      * Not supported in this class
      *
-     * @param segmentMean
+     * @param segmentMean desired log2 mean
      */
     @Override
     public void setSegmentMean(final double segmentMean) {
@@ -53,7 +54,7 @@ public class ACNVModeledSegment extends ModeledSegment {
     /**
      * Not supported in this class
      *
-     * @param segmentMean
+     * @param segmentMean desired mean
      */
     @Override
     public void setSegmentMeanInCRSpace(final double segmentMean) {
