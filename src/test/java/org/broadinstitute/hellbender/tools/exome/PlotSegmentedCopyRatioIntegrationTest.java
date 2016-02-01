@@ -14,14 +14,12 @@ import java.io.IOException;
 public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTest{
 
     @Test()
-    public void testUnLoggedCommandLine() throws IOException {
+    public void testUnLoggedCommandLine() {
         final File TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.tn.tsv");
         final File PRE_TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.preTN.tsv");
         final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, TN_FILE.getAbsolutePath(),
-                PRE_TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath() + "/", true, false);
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
@@ -45,14 +43,12 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").length() > 0);
     }
     @Test()
-    public void testUnLoggedCommandLineSexChrs() throws IOException {
+    public void testUnLoggedCommandLineSexChrs() {
         final File TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.tn.tsv");
         final File PRE_TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.preTN.tsv");
         final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, TN_FILE.getAbsolutePath(),
-                PRE_TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath() + "/", true, false);
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
