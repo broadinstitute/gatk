@@ -1,6 +1,7 @@
 /**
  * Utility classes to read and write tab separated value (tsv) files.
- * <h3>File format description</h3>
+ * <h3>File format description<a name="format"></a></h3>
+ *
  * <p>
  * Tab separated values may contain any number of <i>comment lines</i> (started with {@value org.broadinstitute.hellbender.utils.tsv.TableUtils#COMMENT_PREFIX}),
  * a column name containing line (aka. the <i>header line</i>) and any number of <i>data lines</i> one per record.
