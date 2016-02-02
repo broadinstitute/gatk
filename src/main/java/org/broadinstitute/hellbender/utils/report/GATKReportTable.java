@@ -22,7 +22,7 @@ public final class GATKReportTable {
     private final String tableName;
     private final String tableDescription;
 
-    private final TableSortingWay sortingWay;
+    private final Sorting sortingWay;
 
     private final List<Object[]> underlyingData;
     private final List<GATKReportColumn> columnInfo;
@@ -47,7 +47,7 @@ public final class GATKReportTable {
         public int index() { return index; }
     }
 
-    public enum TableSortingWay {
+    public enum Sorting {
         SORT_BY_ROW,
         SORT_BY_COLUMN,
         DO_NOT_SORT
@@ -87,7 +87,7 @@ public final class GATKReportTable {
                 tableDescription = (tableNameData.length <= TableNameHeaderFields.DESCRIPTION.index()) ? "" : tableNameData[TableNameHeaderFields.DESCRIPTION.index()];                                           // table may have no description! (and that's okay)
 
                 // when reading from a file, we do not re-sort the rows
-                sortingWay = TableSortingWay.DO_NOT_SORT;
+                sortingWay = Sorting.DO_NOT_SORT;
 
                 // initialize the data
                 final int nColumns = Integer.parseInt(tableData[TableDataHeaderFields.COLS.index()]);
@@ -151,17 +151,6 @@ public final class GATKReportTable {
     }
 
     /**
-     * Construct a new GATK report table with the specified name and description
-     *
-     * @param tableName        the name of the table
-     * @param tableDescription the description of the table
-     * @param numColumns       the number of columns in this table
-     */
-    public GATKReportTable(final String tableName, final String tableDescription, final int numColumns) {
-        this(tableName, tableDescription, numColumns, TableSortingWay.SORT_BY_ROW);
-    }
-
-    /**
      * Construct a new GATK report table with the specified name and description and whether to sort rows by the row ID.
      *
      * @param tableName          the name of the table
@@ -169,7 +158,7 @@ public final class GATKReportTable {
      * @param numColumns         the number of columns in this table
      * @param sortingWay         in what way to sort rows (instead of the order in which they were added)
      */
-    public GATKReportTable(final String tableName, final String tableDescription, final int numColumns, final TableSortingWay sortingWay) {
+    public GATKReportTable(final String tableName, final String tableDescription, final int numColumns, final Sorting sortingWay) {
         if ( !isValidName(tableName) ) {
             throw new GATKException("Attempted to set a GATKReportTable name of '" + tableName + "'.  GATKReportTable names must be purely alphanumeric - no spaces or special characters are allowed.");
         }
