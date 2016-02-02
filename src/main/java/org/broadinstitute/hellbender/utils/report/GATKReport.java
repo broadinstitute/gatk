@@ -103,7 +103,7 @@ public final class GATKReport {
      * @param numColumns       the number of columns in this table
      */
     public void addTable(final String tableName, final String tableDescription, final int numColumns) {
-        addTable(tableName, tableDescription, numColumns, GATKReportTable.Sorting.DO_NOT_SORT);
+        addTable(tableName, tableDescription, numColumns, GATKReportTable.TableSortingWay.DO_NOT_SORT);
     }
 
     /**
@@ -114,7 +114,7 @@ public final class GATKReport {
      * @param numColumns       the number of columns in this table
      * @param sortingWay       way to sort table
      */
-    public void addTable(final String tableName, final String tableDescription, final int numColumns, final GATKReportTable.Sorting sortingWay) {
+    public void addTable(final String tableName, final String tableDescription, final int numColumns, final GATKReportTable.TableSortingWay sortingWay) {
         GATKReportTable table = new GATKReportTable(tableName, tableDescription, numColumns, sortingWay);
         tables.put(tableName, table);
     }
@@ -246,15 +246,19 @@ public final class GATKReport {
      * @param columns   The names of the columns in your table
      * @return a simplified GATK report
      */
-    public static GATKReport newSimpleReport(final String tableName, GATKReportTable.Sorting sorting, final String... columns) {
-        return newSimpleReportWithDescription(tableName, "A simplified GATK table report", sorting, columns);
+    public static GATKReport newSimpleReport(final String tableName, final String... columns) {
+        return newSimpleReportWithDescription(tableName, "A simplified GATK table report", columns);
     }
 
     /**
-     * @see #newSimpleReport(String, GATKReportTable.Sorting, String...) but with a customized description
+     * @see #newSimpleReport(String, String...) but with a customized description
+     * @param tableName
+     * @param desc
+     * @param columns
+     * @return
      */
-    public static GATKReport newSimpleReportWithDescription(final String tableName, final String desc, GATKReportTable.Sorting sorting, final String... columns) {
-        GATKReportTable table = new GATKReportTable(tableName, desc, columns.length, sorting);
+    public static GATKReport newSimpleReportWithDescription(final String tableName, final String desc, final String... columns) {
+        GATKReportTable table = new GATKReportTable(tableName, desc, columns.length);
 
         for (String column : columns) {
             table.addColumn(column, "");

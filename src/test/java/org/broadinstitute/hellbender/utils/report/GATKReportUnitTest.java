@@ -5,17 +5,12 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.Random;
 
 
 public final class GATKReportUnitTest extends BaseTest {
-
-    private static final String TABLE_NAME = "TableName";
-
     @Test
     public void testParse() throws Exception {
         String reportPath = publicTestDir + "exampleGATKReportv2.tbl";
@@ -59,56 +54,80 @@ public final class GATKReportUnitTest extends BaseTest {
         Assert.assertEquals(GATKReportColumn.isRightAlign(value), expected, "right align of '" + value + "'");
     }
 
-    private GATKReport getTableWithRandomValues() {
+    private GATKReportTable getTableWithRandomValues() {
         Random number = new Random(123L);
-        final int MAX_VALUE = 20;
+        final int VALUESRANGE = 10;
 
-        GATKReport report = GATKReport.newSimpleReportWithDescription(TABLE_NAME, "table with random values sorted by columns", GATKReportTable.Sorting.SORT_BY_COLUMN, "col1", "col2", "col3");
+        GATKReport report = GATKReport.newSimpleReport("TableName", "col1", "col2", "col3");
+        GATKReportTable table = new GATKReportTable("testSortingTable", "table with random values sorted by columns", 3, GATKReportTable.TableSortingWay.SORT_BY_COLUMN );
 
-        final int NUM_ROWS = 100;
-        for (int x = 0; x < NUM_ROWS; x++) {
-            report.addRow(number.nextInt(MAX_VALUE), number.nextInt(MAX_VALUE), number.nextInt(MAX_VALUE));
+        final int NUMROWS = 100;
+        for (int x = 0; x < NUMROWS; x++) {
+            report.addRow(number.nextInt(VALUESRANGE), number.nextInt(VALUESRANGE), number.nextInt(VALUESRANGE));
         }
-        return report;
+        return table;
     }
 
     @Test
-    public void testSortingByColumn() throws IOException {
-        assertTableSortsCorrectly(getTableWithRandomValues());
+    public void testSortingByColumn() {
+        Assert.assertTrue(isSorted(getTableWithRandomValues()));
     }
 
-    private void assertTableSortsCorrectly(GATKReport inputReport) throws IOException {
+    private boolean isSorted(GATKReportTable table) {
+        boolean result = true;
         File testingSortingTableFile = createTempFile("testSortingFile",".txt");
 
         // Connect print stream to the output stream
         try (final PrintStream ps = new PrintStream(testingSortingTableFile)) {
-            inputReport.print(ps);
+            table.write(ps);
+        }
+        catch (Exception e){
+            System.err.println ("Error: " + e.getMessage());
         }
 
-        final GATKReport reloaded = new GATKReport(testingSortingTableFile);
-        final GATKReportTable reloadedTable = reloaded.getTable(TABLE_NAME);
-        final int numRows = reloadedTable.getNumRows();
-        for( int row = 0; row < numRows-1; row++){
-            Assert.assertTrue(compareRows(reloadedTable, row, row+1) <= 0);
-        }
-    }
+        ArrayList<int[]> rows = new ArrayList<>();
+        try (// Open the file
+             final FileInputStream fStream = new FileInputStream(testingSortingTableFile);
+             // Get the object of DataInputStream
+             final DataInputStream in = new DataInputStream(fStream);
+             final BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
 
-    private static int compareRows(GATKReportTable table, int firstRow, int secondRow){
-        for( int i = 0; i < table.getNumColumns(); i++){
-            final Integer first = Integer.parseInt((String) table.get(firstRow, i));
-            final Integer second = Integer.parseInt((String) table.get(secondRow, i));
-            final int comparison = first.compareTo(second);
-            if (comparison != 0)  {
-                return comparison;
+            String strLine;
+            //Read File Line By Line
+            while ((strLine = br.readLine()) != null) {
+
+                String[] parts = strLine.split(" ");
+                int l = parts.length;
+                int[] row = new int[l];
+                for(int n = 0; n < l; n++) {
+                    row[n] = Integer.parseInt(parts[n]);
+                }
+                rows.add(row);
             }
+        } catch (Exception e){//Catch exception if any
+            System.err.println("Error: " + e.getMessage());
         }
-        return 0;
+        for (int x = 1; x < rows.size() && result; x++)    {
+            result = checkRowOrder(rows.get(x - 1), rows.get(x));
+        }
+        return result;
     }
 
+    private boolean checkRowOrder(int[] row1, int[] row2) {
+        int l = row1.length;
+        final int EQUAL = 0;
+
+        int result = EQUAL;
+
+        for(int x = 0; x < l && ( result <= EQUAL); x++) {
+            result = ((Integer)row1[x]).compareTo(row2[x]);
+        }
+        return result <= EQUAL;
+    }
 
     private GATKReportTable makeBasicTable() {
-        GATKReport report = GATKReport.newSimpleReport(TABLE_NAME, GATKReportTable.Sorting.SORT_BY_COLUMN, "sample", "value");
-        GATKReportTable table = report.getTable(TABLE_NAME);
+        GATKReport report = GATKReport.newSimpleReport("TableName", "sample", "value");
+        GATKReportTable table = report.getTable("TableName");
         report.addRow("foo.1", "hello");
         report.addRow("foo.2", "world");
         return table;
@@ -122,9 +141,9 @@ public final class GATKReportUnitTest extends BaseTest {
     }
 
     @Test
-    public void testSimpleGATKReport() throws FileNotFoundException {
+    public void testSimpleGATKReport() {
         // Create a new simple GATK report named "TableName" with columns: Roger, is, and Awesome
-        GATKReport report = GATKReport.newSimpleReport(TABLE_NAME, GATKReportTable.Sorting.SORT_BY_COLUMN, "Roger", "is", "Awesome");
+        GATKReport report = GATKReport.newSimpleReport("TableName", "Roger", "is", "Awesome");
 
         // Add data to simple GATK report
         report.addRow(12, 23.45, true);
@@ -134,43 +153,47 @@ public final class GATKReportUnitTest extends BaseTest {
         // Print the report to console
         //report.print(System.out);
 
-        File file = createTempFile("GATKReportGatherer-UnitTest", ".tbl");
-        //System.out.format("The temporary file" + " has been created: %s%n", file);
-        try (PrintStream ps = new PrintStream(file)) {
-            report.print(ps);
-            //System.out.println("File successfully outputted!");
-            GATKReport inputRead = new GATKReport(file);
-            //System.out.println("File successfully read!");
-            //inputRead.print(System.out);
-            Assert.assertTrue(report.isSameFormat(inputRead));
+        try {
+            File file = createTempFile("GATKReportGatherer-UnitTest", ".tbl");
+            //System.out.format("The temporary file" + " has been created: %s%n", file);
+            try (PrintStream ps = new PrintStream(file)) {
+                report.print(ps);
+                //System.out.println("File successfully outputted!");
+                GATKReport inputRead = new GATKReport(file);
+                //System.out.println("File successfully read!");
+                //inputRead.print(System.out);
+                Assert.assertTrue(report.isSameFormat(inputRead));
+            }
+        } catch (IOException x) {
+            System.err.format("IOException: %s%n", x);
         }
 
     }
 
     @Test
-    public void testGATKReportGatherer() throws FileNotFoundException {
+    public void testGATKReportGatherer() {
 
         GATKReport report1, report2, report3;
         report1 = new GATKReport();
-        report1.addTable(TABLE_NAME, "Description", 2);
-        report1.getTable(TABLE_NAME).addColumn("colA", "%s");
-        report1.getTable(TABLE_NAME).addColumn("colB", "%c");
-        report1.getTable(TABLE_NAME).set(0, "colA", "NotNum");
-        report1.getTable(TABLE_NAME).set(0, "colB", (char) 64);
+        report1.addTable("TableName", "Description", 2);
+        report1.getTable("TableName").addColumn("colA", "%s");
+        report1.getTable("TableName").addColumn("colB", "%c");
+        report1.getTable("TableName").set(0, "colA", "NotNum");
+        report1.getTable("TableName").set(0, "colB", (char) 64);
 
         report2 = new GATKReport();
-        report2.addTable(TABLE_NAME, "Description", 2);
-        report2.getTable(TABLE_NAME).addColumn("colA", "%s");
-        report2.getTable(TABLE_NAME).addColumn("colB", "%c");
-        report2.getTable(TABLE_NAME).set(0, "colA", "df3");
-        report2.getTable(TABLE_NAME).set(0, "colB", 'A');
+        report2.addTable("TableName", "Description", 2);
+        report2.getTable("TableName").addColumn("colA", "%s");
+        report2.getTable("TableName").addColumn("colB", "%c");
+        report2.getTable("TableName").set(0, "colA", "df3");
+        report2.getTable("TableName").set(0, "colB", 'A');
 
         report3 = new GATKReport();
-        report3.addTable(TABLE_NAME, "Description", 2);
-        report3.getTable(TABLE_NAME).addColumn("colA", "%s");
-        report3.getTable(TABLE_NAME).addColumn("colB", "%c");
-        report3.getTable(TABLE_NAME).set(0, "colA", "df5f");
-        report3.getTable(TABLE_NAME).set(0, "colB", 'c');
+        report3.addTable("TableName", "Description", 2);
+        report3.getTable("TableName").addColumn("colA", "%s");
+        report3.getTable("TableName").addColumn("colB", "%c");
+        report3.getTable("TableName").set(0, "colA", "df5f");
+        report3.getTable("TableName").set(0, "colB", 'c');
 
         report1.concat(report2);
         report1.concat(report3);
@@ -193,7 +216,7 @@ public final class GATKReportUnitTest extends BaseTest {
         table.set("RZ", "SomeFloat", 535646345.657453464576);
         table.set("RZ", "TrueFalse", true);
 
-        report1.addTable("Table3", "blah", 1, GATKReportTable.Sorting.SORT_BY_ROW);
+        report1.addTable("Table3", "blah", 1, GATKReportTable.TableSortingWay.SORT_BY_ROW);
         report1.getTable("Table3").addColumn("a");
         report1.getTable("Table3").addRowIDMapping("q", 2);
         report1.getTable("Table3").addRowIDMapping("5", 3);
@@ -204,18 +227,20 @@ public final class GATKReportUnitTest extends BaseTest {
         report1.getTable("Table3").set("573s", "a", "fDlwueg");
         report1.getTable("Table3").set("ZZZ", "a", "Dfs");
 
-
-        File file = createTempFile("GATKReportGatherer-UnitTest", ".tbl");
-        //System.out.format("The temporary file" + " has been created: %s%n", file);
-        try (final PrintStream ps = new PrintStream(file)) {
-            report1.print(ps);
-            //System.out.println("File successfully outputted!");
-            GATKReport inputRead = new GATKReport(file);
-            //System.out.println("File successfully read!");
-            //inputRead.print(System.out);
-            Assert.assertTrue(report1.isSameFormat(inputRead));
-            Assert.assertTrue(report1.equals(inputRead));
+        try {
+            File file = createTempFile("GATKReportGatherer-UnitTest", ".tbl");
+            //System.out.format("The temporary file" + " has been created: %s%n", file);
+            try (final PrintStream ps = new PrintStream(file)) {
+                report1.print(ps);
+                //System.out.println("File successfully outputted!");
+                GATKReport inputRead = new GATKReport(file);
+                //System.out.println("File successfully read!");
+                //inputRead.print(System.out);
+                Assert.assertTrue(report1.isSameFormat(inputRead));
+                Assert.assertTrue(report1.equals(inputRead));
+            }
+        } catch (IOException x) {
+            System.err.format("IOException: %s%n", x);
         }
-
     }
 }
