@@ -1,9 +1,16 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import htsjdk.samtools.ValidationStringency;
+
 /**
  * Constants for use with the GATKRead interface
  */
 public final class ReadConstants {
+
+    /**
+     * Value used as the default validation stringency for all read input
+     */
+    public static ValidationStringency DEFAULT_READ_VALIDATION_STRINGENCY = ValidationStringency.SILENT;
 
     /**
      * Value used to represent the absence of a defined start/end position in a read

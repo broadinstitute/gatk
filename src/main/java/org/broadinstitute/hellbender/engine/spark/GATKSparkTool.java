@@ -313,9 +313,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Initialize standard tool inputs.
      */
-    private void initializeToolInputs(JavaSparkContext sparkContext) {
-        initializeReads(sparkContext);
+    private void initializeToolInputs(final JavaSparkContext sparkContext) {
         initializeReference();
+        initializeReads(sparkContext); // reference must be initialized before reads
         initializeIntervals();
     }
 
@@ -323,7 +323,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Initializes our reads source (but does not yet load the reads into a {@link JavaRDD}).
      * Does nothing if no reads inputs are present.
      */
-    private void initializeReads(JavaSparkContext sparkContext) {
+    private void initializeReads(final JavaSparkContext sparkContext) {
         if ( readArguments.getReadFilesNames().isEmpty() ) {
             return;
         }
@@ -333,8 +333,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         }
 
         readInput = readArguments.getReadFilesNames().get(0);
-        readsSource = new ReadsSparkSource(sparkContext);
-        readsHeader = ReadsSparkSource.getHeader(sparkContext, readInput, getAuthHolder());
+        readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
+        readsHeader = readsSource.getHeader(
+                readInput,
+                hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null,
+                getAuthHolder());
     }
 
     /**

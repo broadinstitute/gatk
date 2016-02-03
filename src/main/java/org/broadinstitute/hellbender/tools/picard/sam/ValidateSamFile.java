@@ -114,7 +114,7 @@ public final class ValidateSamFile extends PicardCommandLineProgram {
             validator.setBisulfiteSequenced(IS_BISULFITE_SEQUENCED);
         }
         if (VALIDATE_INDEX) {
-            validator.setValidateIndex(VALIDATE_INDEX);
+            validator.setIndexValidationStringency(BamIndexValidator.IndexValidationStringency.EXHAUSTIVE);
         }
         if (IOUtil.isRegularPath(INPUT)) {
             // Do not check termination if reading from a stream

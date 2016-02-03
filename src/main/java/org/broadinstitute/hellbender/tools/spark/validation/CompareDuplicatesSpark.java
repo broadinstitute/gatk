@@ -54,7 +54,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
 
         JavaRDD<GATKRead> firstReads = filteredReads(getReads(), readArguments.getReadFilesNames().get(0));
 
-        ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx);
+        ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, getIntervals(), bamPartitionSplitSize), input2);
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.

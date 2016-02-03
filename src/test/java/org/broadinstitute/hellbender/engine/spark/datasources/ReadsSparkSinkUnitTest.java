@@ -116,7 +116,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
-        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, null, null);
 
         ReadsSparkSink.writeReads(ctx, outputPath, rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
@@ -147,7 +147,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
         rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
-        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, null, null);
 
         ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.SHARDED);
         int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
@@ -173,7 +173,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
-        SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, null, null);
 
         ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.ADAM);
 

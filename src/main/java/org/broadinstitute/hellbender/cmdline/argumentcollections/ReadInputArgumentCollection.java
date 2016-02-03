@@ -4,6 +4,7 @@ import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
 import java.util.List;
@@ -23,7 +24,7 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
                     "do not otherwise need to be decoded.",
             common=true,
             optional=true)
-    public ValidationStringency readValidationStringency = ValidationStringency.SILENT;
+    public ValidationStringency readValidationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line

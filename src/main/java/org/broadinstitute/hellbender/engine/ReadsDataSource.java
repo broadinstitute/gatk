@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
 import java.io.IOException;
@@ -112,7 +113,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
         final SamReaderFactory samReaderFactory =
                 customSamReaderFactory == null ?
-                    SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT) :
+                    SamReaderFactory.makeDefault().validationStringency(ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY) :
                     customSamReaderFactory;
 
         for ( final File samFile : samFiles ) {
