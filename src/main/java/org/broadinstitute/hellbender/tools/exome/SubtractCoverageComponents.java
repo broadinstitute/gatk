@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pca.PCA;
 
 import java.io.File;
@@ -54,6 +55,10 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
 
     public static final String PCA_INPUT_SHORT_NAME = "pca";
 
+    public static final String NUM_COMPONENTS_FULL_NAME = "numberOfComponents";
+
+    public static final String NUM_COMPONENTS_SHORT_NAME = "top";
+
     @Argument(
             doc = "Input target coverage to normalize",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
@@ -78,8 +83,17 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
     )
     protected File outputFile;
 
+    @Argument(
+            doc = "Number of principal components to use",
+            fullName = NUM_COMPONENTS_FULL_NAME,
+            shortName = NUM_COMPONENTS_SHORT_NAME,
+            optional = true
+    )
+    protected int numberOfComponentsToUse = Integer.MAX_VALUE;
+
     @Override
     protected Object doWork() {
+        ParamUtils.isPositiveOrZero(numberOfComponentsToUse, "number of components to use must be positive or zero.");
         final PCA pca = readPcaInputFile(pcaFile);
         final ReadCountCollection coverage = readInputCoverage(inputFile);
 
@@ -154,7 +168,7 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
     private RealMatrix subtractComponentProjectionsAndTranspose(final RealMatrix projection, final RealMatrix transposedCoverage, final RealMatrix eigenVectors) {
         final int sampleCount = projection.getRowDimension();
         final int targetCount = transposedCoverage.getColumnDimension();
-        final int componentCount = projection.getColumnDimension();
+        final int componentCount = Math.min(numberOfComponentsToUse, projection.getColumnDimension());
         final RealMatrix result = new Array2DRowRealMatrix(targetCount, sampleCount);
         for (int i = 0; i < sampleCount; i++) {
             final double[] newCoverage = transposedCoverage.getRow(i);
