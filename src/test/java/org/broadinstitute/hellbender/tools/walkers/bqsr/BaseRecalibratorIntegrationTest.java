@@ -112,7 +112,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String argPre = "-R " + hg18Reference + " --knownSites " + dbSNPb37_chr17 + " -I " + HiSeqBam_chr17 + " -O " + tablePre + " ";
         new BaseRecalibrator().instanceMain(Utils.escapeExpressions(argPre));
 
-        final String argApply = "-I " + HiSeqBam_chr17 + " --bqsr_recal_file " + tablePre+ " -O " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath();
+        final String argApply = "-I " + HiSeqBam_chr17 + " --bqsr_recal_file " + tablePre + " -O " + actualHiSeqBam_recalibrated_chr17.getAbsolutePath();
         new ApplyBQSR().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
