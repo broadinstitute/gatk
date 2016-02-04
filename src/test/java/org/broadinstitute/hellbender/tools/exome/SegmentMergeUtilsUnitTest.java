@@ -37,6 +37,68 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         SegmentMergeUtils.mergeSegments(segment1, segment4);
     }
 
+    @DataProvider(name = "dataNeutralSegmentMerging")
+    public Object[][] dataNeutralSegmentMerging() {
+        return new Object[][]{
+                //=================================================================================================
+                {
+                        //segments to merge
+                        Arrays.asList(
+                                //no calls, merge all
+                                new ModeledSegment(new SimpleInterval("1", 1, 10), 1, 0),
+                                new ModeledSegment(new SimpleInterval("1", 11, 20), 1, 0),
+                                new ModeledSegment(new SimpleInterval("1", 21, 30), 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 1, 10), 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 11, 20), 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 21, 30), 1, 0)
+                        ),
+                        //expected merged segments
+                        Arrays.asList(
+                                new SimpleInterval("1", 1, 30),
+                                new SimpleInterval("2", 1, 30)
+                        )
+                },
+                //=================================================================================================
+                {
+                        //segments to merge
+                        Arrays.asList(
+                                new ModeledSegment(new SimpleInterval("1", 1, 10), ReCapSegCaller.AMPLIFICATION_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("1", 11, 20), ReCapSegCaller.NEUTRAL_CALL, 1, 0),  //merge right
+                                new ModeledSegment(new SimpleInterval("1", 21, 30), ReCapSegCaller.NEUTRAL_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("1", 31, 40), ReCapSegCaller.DELETION_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("1", 41, 50), ReCapSegCaller.AMPLIFICATION_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("1", 51, 60), ReCapSegCaller.NEUTRAL_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 1, 10), ReCapSegCaller.AMPLIFICATION_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 11, 20), ReCapSegCaller.NEUTRAL_CALL, 1, 0),  //merge right twice
+                                new ModeledSegment(new SimpleInterval("2", 21, 30), ReCapSegCaller.NEUTRAL_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 31, 40), ReCapSegCaller.NEUTRAL_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 41, 50), ReCapSegCaller.AMPLIFICATION_CALL, 1, 0),
+                                new ModeledSegment(new SimpleInterval("2", 51, 60), ReCapSegCaller.NEUTRAL_CALL, 1, 0)
+                        ),
+                        //expected merged segments
+                        Arrays.asList(
+                                new SimpleInterval("1", 1, 10),
+                                new SimpleInterval("1", 11, 30),
+                                new SimpleInterval("1", 31, 40),
+                                new SimpleInterval("1", 41, 50),
+                                new SimpleInterval("1", 51, 60),
+                                new SimpleInterval("2", 1, 10),
+                                new SimpleInterval("2", 11, 40),
+                                new SimpleInterval("2", 41, 50),
+                                new SimpleInterval("2", 51, 60)
+                        )
+                }
+        };
+    }
+
+    @Test(dataProvider = "dataNeutralSegmentMerging")
+    public void testNeutralSegmentMerging(final List<ModeledSegment> segments,
+                                          final List<SimpleInterval> expectedMergedSegments) {
+        final List<SimpleInterval> resultMergedSegments =
+                SegmentMergeUtils.mergeNeutralSegments(segments);
+        Assert.assertEquals(resultMergedSegments, expectedMergedSegments);
+    }
+
     /**
      * Tests for small-segment merging, along with methods for constructing test data.
      */

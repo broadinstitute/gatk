@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Detects copy-number events using allelic-count data and GATK CNV output.
@@ -20,7 +21,7 @@ import java.util.List;
         summary = "Detect copy-number events in a tumor sample using allelic-count data and GATK CNV output. " +
                 "Allelic-count data (reference/alternate counts from the GetHetCoverage tool) is segmented using " +
                 "circular binary segmentation; the result is combined with the target coverages " +
-                "and segments found by the GATK CNV tool. Bayesian parameter estimation of models for the " +
+                "and called segments found by the GATK CNV tool. Bayesian parameter estimation of models for the " +
                 "copy ratios and minor allele fractions in each segment is performed using Markov chain Monte Carlo.",
         oneLineSummary = "Detect copy-number events using allelic-count data and GATK CNV output.",
         programGroup = CopyNumberProgramGroup.class
@@ -56,6 +57,9 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected static final String INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME = "intervalThresholdAlleleFraction";
     protected static final String INTERVAL_THRESHOLD_ALLELE_FRACTION_SHORT_NAME = "simThAF";
 
+    protected static final String USE_ALL_COPY_RATIO_SEGMENTS_LONG_NAME = "useAllCopyRatioSegments";
+    protected static final String USE_ALL_COPY_RATIO_SEGMENTS_SHORT_NAME = "useAllCRSeg";
+
     @Argument(
             doc = "Input file for tumor-sample ref/alt read counts at normal-sample heterozygous-SNP sites (output of GetHetCoverage tool).",
             fullName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME,
@@ -65,7 +69,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected File snpCountsFile;
 
     @Argument(
-            doc = "Input file for tumor-sample target coverages (output of GATK CNV tool).",
+            doc = "Input file for tumor-sample tangent-normalized target coverages (.tn.tsv output of GATK CNV tool).",
             fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME,
             optional = false
@@ -73,7 +77,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected File targetCoveragesFile;
 
     @Argument(
-            doc = "Input file for tumor-sample target-coverage segments (output of GATK CNV tool).",
+            doc = "Input file for tumor-sample target-coverage segments with calls (output of GATK CNV tool).",
             fullName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME,
             optional = false
@@ -127,7 +131,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = NUM_SAMPLES_ALLELE_FRACTION_SHORT_NAME,
             optional = true
     )
-    protected int numSamplesAlleleFraction = 100;
+    protected int numSamplesAlleleFraction = 200;
 
     @Argument(
             doc = "Number of burn-in samples to discard for allele-fraction model.",
@@ -135,7 +139,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = NUM_BURN_IN_ALLELE_FRACTION_SHORT_NAME,
             optional = true
     )
-    protected int numBurnInAlleleFraction = 50;
+    protected int numBurnInAlleleFraction = 100;
 
     @Argument(
             doc = "Number of 95% credible-interval widths to use for copy-ratio similar-segment merging.",
@@ -143,7 +147,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = INTERVAL_THRESHOLD_COPY_RATIO_SHORT_NAME,
             optional = true
     )
-    protected double intervalThresholdCopyRatio = 1;
+    protected double intervalThresholdCopyRatio = 2;
 
     @Argument(
             doc = "Number of 95% credible-interval widths to use for allele-fraction similar-segment merging.",
@@ -151,7 +155,17 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = INTERVAL_THRESHOLD_ALLELE_FRACTION_SHORT_NAME,
             optional = true
     )
-    protected double intervalThresholdAlleleFraction = 1;
+    protected double intervalThresholdAlleleFraction = 2;
+
+    @Argument(
+            doc = "Enable use of all copy-ratio--segment breakpoints. " +
+                    "(Default behavior uses only breakpoints from segments not called copy neutral, " +
+                    "if calls are available in output of GATK CNV provided, and none otherwise.)",
+            fullName = USE_ALL_COPY_RATIO_SEGMENTS_LONG_NAME,
+            shortName = USE_ALL_COPY_RATIO_SEGMENTS_SHORT_NAME,
+            optional = true
+    )
+    protected boolean useAllCopyRatioSegments = false;
 
     @Override
     protected void runPipeline(final JavaSparkContext ctx) {
@@ -165,12 +179,27 @@ public class AllelicCNV extends SparkCommandLineProgram {
 
         logger.info("Starting workflow for sample " + sampleName + "...");
 
-        logger.info("Loading input files...");
         //make Genome from input target coverages and SNP counts
+        logger.info("Loading input files...");
         final Genome genome = new Genome(targetCoveragesFile, snpCountsFile, sampleName);
-        //load target-coverage segments from input file and fix up start breakpoints
-        final List<SimpleInterval> targetSegmentsUnfixed =
-                SegmentUtils.readIntervalsFromSegmentFile(targetSegmentsFile);
+
+        //load target-coverage segments from input file
+        final List<ModeledSegment> targetSegmentsWithCalls =
+                SegmentUtils.readModeledSegmentsFromSegmentFile(targetSegmentsFile);
+        logger.info("Number of copy-ratio segments from CNV output: " + targetSegmentsWithCalls.size());
+
+        //merge copy-neutral and uncalled segments (unless disabled)
+        final List<SimpleInterval> targetSegmentsUnfixed;
+        if (!useAllCopyRatioSegments) {
+            logger.info("Merging copy-neutral and uncalled segments...");
+            targetSegmentsUnfixed = SegmentMergeUtils.mergeNeutralSegments(targetSegmentsWithCalls);
+            logger.info("Number of segments after copy-neutral merging: " + targetSegmentsUnfixed.size());
+        } else {
+            targetSegmentsUnfixed = targetSegmentsWithCalls.stream().map(ModeledSegment::getSimpleInterval)
+                    .collect(Collectors.toList());
+        }
+
+        //fix up target-segment start breakpoints (convert from target-end--target-end to target-start--target-end)
         final List<SimpleInterval> targetSegments =
                 SegmentUtils.fixTargetSegmentStarts(targetSegmentsUnfixed, genome.getTargets());
 
@@ -180,6 +209,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
         SNPSegmenter.writeSegmentFile(genome.getSNPs(), sampleName, snpSegmentFile);
         final List<SimpleInterval> snpSegments =
                 SegmentUtils.readIntervalsFromSegmentFile(snpSegmentFile);
+        logger.info("Number of SNP segments: " + snpSegments.size());
 
         //combine SNP and target-coverage segments
         logger.info("Combining SNP and target-coverage segments...");
@@ -205,8 +235,6 @@ public class AllelicCNV extends SparkCommandLineProgram {
         logger.info("Merging similar segments...");
         modeller.mergeSimilarSegments(intervalThresholdCopyRatio, intervalThresholdAlleleFraction,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
-
-        //TODO model-parameter output and plotting
 
         ctx.setLogLevel(originalLogLevel);
         logger.info("SUCCESS: Allelic CNV run complete for sample " + sampleName + ".");
