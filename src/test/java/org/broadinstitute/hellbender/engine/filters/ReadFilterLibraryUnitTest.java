@@ -2,10 +2,11 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -324,6 +325,24 @@ public final class ReadFilterLibraryUnitTest {
     public void testReadCigarLengthMismatch() {
         GATKRead read = ReadClipperTestUtils.makeReadFromCigar("4M", 1);
         Assert.assertFalse(READLENGTH_EQUALS_CIGARLENGTH.test(read), read.getCigar().toString());
+    }
+
+    @Test
+    public void testReadCigarLengthMismatch_wellFormed() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+        final GATKRead read = simpleGoodRead(header);
+
+        //The read passes the filter here
+        Assert.assertTrue(new WellformedReadFilter(header).test(read), read.getCigar().toString());
+
+        //now we mess up the read by adding some bases and quals
+        final int len = read.getLength();
+        read.setBases(Utils.dupBytes((byte)'A', len + 1));
+        read.setBaseQualities(Utils.dupBytes((byte)60, len + 1));
+
+        //And now the read fails the filter
+        Assert.assertNotEquals(read.getCigar().getReadLength(), read.getLength());
+        Assert.assertFalse(new WellformedReadFilter(header).test(read), read.getCigar().toString());
     }
 
     @Test
