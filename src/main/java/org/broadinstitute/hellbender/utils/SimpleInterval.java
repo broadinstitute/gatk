@@ -47,22 +47,29 @@ public final class SimpleInterval implements Locatable, Serializable {
     }
 
     /**
-     * Test that these are valid values for constructing a SimpleInterval
+     * Test that these are valid values for constructing a SimpleInterval:
+     *    contig cannot be null
+     *    start must be >= 1
+     *    end must be >= start
      * @throws IllegalArgumentException if it is invalid
      */
     private static void validatePositions(final String contig, final int start, final int end) {
-        if ( contig == null ) {
-            throw new IllegalArgumentException("contig cannot be null");
-        }
-        if ( start <= 0 ) {
-            throw new IllegalArgumentException(String.format("SimpleInterval is 1 based, so start must be >= 1, start: %d", start));
-        }
-        if ( end < start ) {
-            throw new IllegalArgumentException(String.format("end must be >= start. start:%d end:%d", start, end));
+        if (! isValid(contig, start, end)){
+            throw new IllegalArgumentException("Invalid interval. Contig:" + contig + " start:"+start + " end:" + end);
         }
     }
 
-    /**
+     /**
+      * Test that these are valid values for constructing a SimpleInterval:
+      *    contig cannot be null
+      *    start must be >= 1
+      *    end must be >= start
+      */
+     public static boolean isValid(final String contig, final int start, final int end) {
+         return contig != null && start > 0 && end >= start;
+     }
+
+     /**
      * Makes an interval by parsing the string.
      *
      * @warning this method does not fill in the true contig end values

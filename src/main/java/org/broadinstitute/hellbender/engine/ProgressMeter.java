@@ -152,7 +152,7 @@ public final class ProgressMeter {
      * Signal to the progress meter that an additional record has been processed. Will output
      * statistics to the logger roughly every {@link #secondsBetweenUpdates} seconds.
      *
-     * @param currentLocus the genomic location of the record just processed
+     * @param currentLocus the genomic location of the record just processed or null if the most recent record had no location.
      */
     public void update( final Locatable currentLocus ) {
         ++numRecordsProcessed;

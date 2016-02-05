@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -56,5 +55,21 @@ public class RevertBaseQualityScoresIntegrationTest extends CommandLineProgramTe
                 "--output", outputBam.getAbsolutePath()
         };
         runCommandLine(args);
+    }
+
+    //Regression test for https://github.com/broadinstitute/gatk/issues/1473
+    @Test
+    public void testReadThatsEntirelyInsertion() throws IOException {
+        final File inputBam = new File(getTestDataDir(), "badRead.sam");
+        Assert.assertFalse(hasOriginalQualScores(inputBam));
+
+        final File outputBam = createTempFile("testRevertQualityScores", ".bam");
+        final String[] args = new String[] {
+                "--input" , inputBam.getAbsolutePath(),
+                "--output", outputBam.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        Assert.assertTrue(hasOriginalQualScores(outputBam));
     }
 }
