@@ -69,15 +69,14 @@ public abstract class ReadWalker extends GATKTool {
     public void traverse() {
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        CountingReadFilter countedFilter = disable_all_read_filters ?
+        final CountingReadFilter countedFilter = disable_all_read_filters ?
                                                     new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
                                                     makeReadFilter();
 
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(countedFilter)
                 .forEach(read -> {
-                    final SimpleInterval readInterval = read.isUnmapped() ? null :
-                                                                            new SimpleInterval(read);
+                    final SimpleInterval readInterval = getReadInterval(read);
                     apply(read,
                           new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
                           new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null
@@ -88,6 +87,14 @@ public abstract class ReadWalker extends GATKTool {
         logger.info(countedFilter.getSummaryLine());
     }
 
+    /**
+     * Returns an interval for the read.
+     * Note: some walkers must be able to work on any read, including those whose coordinates do not form a valid SimpleInterval.
+     * So here we check this condition and create null intervals for such reads.
+     */
+    private SimpleInterval getReadInterval(final GATKRead read) {
+        return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
+    }
 
     /**
      * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
