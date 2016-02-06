@@ -21,13 +21,13 @@ public final class WellformedReadFilter implements ReadFilter {
                              .and(alignmentAgreesWithHeader)
                              .and(ReadFilterLibrary.HAS_READ_GROUP)
                              .and(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS)
+                             .and(ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH)
                              .and(ReadFilterLibrary.SEQ_IS_STORED)
                              .and(ReadFilterLibrary.CIGAR_IS_SUPPORTED);
     }
 
-
     @Override
-    public boolean test( GATKRead read ) {
+    public boolean test(final GATKRead read ) {
         return wellFormedFilter.test(read);
     }
 }
