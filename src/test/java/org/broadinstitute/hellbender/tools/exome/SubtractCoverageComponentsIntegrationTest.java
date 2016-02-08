@@ -63,11 +63,48 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(outputFile.canWrite());
         Assert.assertTrue(outputFile.isFile());
-        assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE);
+        assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, Integer.MAX_VALUE);
         outputFile.delete();
     }
 
-    private void assertCanObtainOriginalValuesByReversingSubtraction(final File outputFile, final File inputFile) throws IOException {
+    @Test
+    public void testRunWithoutAllComponent() throws IOException {
+        for (final int numComponentsToUse : new int[] {0, 1, 2, 5, 10000}) {
+            final File outputFile = createTempFile("out-file", ".tab");
+            outputFile.delete();
+
+            final String[] arguments = new String[]{
+                    "-" + SubtractCoverageComponents.PCA_INPUT_SHORT_NAME, TEST_PCA_FILE.getPath(),
+                    "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, TEST_PCA_INPUT_FILE.getPath(),
+                    "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                    "-" + SubtractCoverageComponents.NUM_COMPONENTS_SHORT_NAME, Integer.toString(numComponentsToUse),
+            };
+            runCommandLine(arguments);
+            Assert.assertTrue(outputFile.exists());
+            Assert.assertTrue(outputFile.canWrite());
+            Assert.assertTrue(outputFile.isFile());
+            assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, numComponentsToUse);
+            outputFile.delete();
+        }
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNegativeComponents() throws Exception {
+        final File outputFile = createTempFile("out-file", ".tab");
+        outputFile.delete();
+
+        final String[] arguments = new String[]{
+                "-" + SubtractCoverageComponents.PCA_INPUT_SHORT_NAME, TEST_PCA_FILE.getPath(),
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, TEST_PCA_INPUT_FILE.getPath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                "-" + SubtractCoverageComponents.NUM_COMPONENTS_SHORT_NAME, "-1",
+        };
+        runCommandLine(arguments);
+        outputFile.delete();
+    }
+
+    private void assertCanObtainOriginalValuesByReversingSubtraction(final File outputFile, final File inputFile,
+            final int numComponentsUsed) throws IOException {
 
         final PCA pca;
         try (final HDF5File pcaFile = new HDF5File(TEST_PCA_FILE, HDF5File.OpenMode.READ_ONLY)) {
@@ -95,7 +132,7 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
             final double[] outputSampleValues = outputCounts.counts().getColumn(outputIndex);
             final double[] expectedSampleValues = centeredSampleValues.clone();
             final double[] revertedSampleValues = outputSampleValues.clone();
-            for (int k = 0; k < eigenVectors.getColumnDimension(); k++) {
+            for (int k = 0; k < Math.min(eigenVectors.getColumnDimension(), numComponentsUsed); k++) {
                 final double loading = new ArrayRealVector(eigenVectors.getColumn(k)).dotProduct(new ArrayRealVector(centeredSampleValues));
                 final RealVector projection = new ArrayRealVector(eigenVectors.getColumn(k)).mapMultiply(loading);
                 final RealVector updatedCenteredSampleValues = new ArrayRealVector(centeredSampleValues).subtract(projection);
