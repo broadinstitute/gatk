@@ -23,7 +23,7 @@ public final class ReadGroupCovariate implements Covariate {
     private final Map<String, Integer> readGroupLookupTable;
 
     /*
-     * Stores the revese mapping, from number to read group id.
+     * Stores the reverse mapping, from number to read group id.
      */
     private final Map<Integer, String> readGroupReverseLookupTable;
 

@@ -7,10 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Stack;
-import java.util.Vector;
+import java.util.*;
 
 import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
 
@@ -42,105 +39,100 @@ public final class ClippingOp {
      * @param originalRead the read to be clipped
      */
     public GATKRead apply(final ClippingRepresentation algorithm, final GATKRead originalRead) {
-        GATKRead read = originalRead.copy();
-        final byte[] quals = read.getBaseQualities();
-        final byte[] bases = read.getBases();
-        final byte[] newBases = new byte[bases.length];
-        final byte[] newQuals = new byte[quals.length];
-
         switch (algorithm) {
             // important note:
             //   it's not safe to call read.getBases()[i] = 'N' or read.getBaseQualities()[i] = 0
             //   because you're not guaranteed to get a pointer to the actual array of bytes in the GATKRead
-            case WRITE_NS:
-                for (int i = 0; i < bases.length; i++) {
-                    if (i >= start && i <= stop) {
-                        newBases[i] = 'N';
-                    }
-                    else {
-                        newBases[i] = bases[i];
-                    }
-                }
-                read.setBases(newBases);
-                break;
-            case WRITE_Q0S:
-                for (int i = 0; i < quals.length; i++) {
-                    if (i >= start && i <= stop) {
-                        newQuals[i] = 0;
-                    }
-                    else {
-                        newQuals[i] = quals[i];
-                    }
-                }
-                read.setBaseQualities(newQuals);
-                break;
-            case WRITE_NS_Q0S:
-                for (int i = 0; i < bases.length; i++) {
-                    if (i >= start && i <= stop) {
-                        newQuals[i] = 0;
-                        newBases[i] = 'N';
-                    }
-                    else {
-                        newQuals[i] = quals[i];
-                        newBases[i] = bases[i];
-                    }
-                }
-                read.setBaseQualities(newBases);
-                read.setBases(newBases);
-                break;
-            case HARDCLIP_BASES:
-                read = hardClip(read, start, stop);
-                break;
+            case WRITE_NS: {
+                final GATKRead readCopied = originalRead.copy();
+                applyWRITE_NS(readCopied);
+                return readCopied;
+            }
 
-            case SOFTCLIP_BASES:
-                if (read.isUnmapped()) {
-                    // we can't process unmapped reads
-                    throw new UserException("Read Clipper cannot soft clip unmapped reads");
-                }
+            case WRITE_Q0S: {
+                final GATKRead readCopied = originalRead.copy();
+                applyWRITE_Q0S(readCopied);
+                return readCopied;
+            }
 
-                //System.out.printf("%d %d %d%n", stop, start, read.getLength());
-                int myStop = stop;
-                if ((stop + 1 - start) == read.getLength()) {
-                    // BAM representation issue -- we can't SOFTCLIP away all bases in a read, just leave it alone
-                    //Walker.logger.info(String.format("Warning, read %s has all bases clip but this can't be represented with SOFTCLIP_BASES, just leaving it alone", read.getName()));
-                    //break;
-                    myStop--; // just decrement stop
-                }
+            case WRITE_NS_Q0S: {
+                final GATKRead readCopied = originalRead.copy();
+                applyWRITE_NS(readCopied);
+                applyWRITE_Q0S(readCopied);
+                return readCopied;
+            }
 
-                if (start > 0 && myStop != read.getLength() - 1) {
-                    throw new RuntimeException(String.format("Cannot apply soft clipping operator to the middle of a read: %s to be clipped at %d-%d", read.getName(), start, myStop));
-                }
+            case HARDCLIP_BASES: {
+                //Note: passing the original read here because the read is copied right away inside the method
+                return applyHARDCLIP_BASES(originalRead, start, stop);
+            }
 
-                final Cigar oldCigar = read.getCigar();
+            case SOFTCLIP_BASES: {
+                return applySOFTCLIP_BASES(originalRead.copy());
+            }
 
-                int scLeft = 0, scRight = read.getLength();
-                if (start == 0) {
-                    scLeft = myStop + 1;
-                } else {
-                    scRight = start;
-                }
+            case REVERT_SOFTCLIPPED_BASES: {
+                return applyREVERT_SOFTCLIPPED_BASES(originalRead.copy());
+            }
 
-                final Cigar newCigar = softClip(oldCigar, scLeft, scRight);
-                read.setCigar(newCigar);
-
-                final int newClippedStart = getNewAlignmentStartOffset(newCigar, oldCigar);
-                final int newStart = read.getStart() + newClippedStart;
-                read.setPosition(read.getContig(), newStart);
-
-                break;
-
-            case REVERT_SOFTCLIPPED_BASES:
-                read = revertSoftClippedBases(read);
-                break;
-
-            default:
+            default: {
                 throw new IllegalStateException("Unexpected Clipping operator type " + algorithm);
+            }
         }
-
-        return read;
     }
 
-    private GATKRead revertSoftClippedBases(final GATKRead read) {
+    private GATKRead applySOFTCLIP_BASES(final GATKRead readCopied) {
+        if (readCopied.isUnmapped()) {
+            // we can't process unmapped reads
+            throw new UserException("Read Clipper cannot soft clip unmapped reads");
+        }
+
+        int myStop = stop;
+        if ((stop + 1 - start) == readCopied.getLength()) {
+            // BAM representation issue -- we can't SOFTCLIP away all bases in a read, just leave it alone
+            myStop--; // just decrement stop
+        }
+
+        if (start > 0 && myStop != readCopied.getLength() - 1) {
+            throw new GATKException(String.format("Cannot apply soft clipping operator to the middle of a read: %s to be clipped at %d-%d", readCopied.getName(), start, myStop));
+        }
+
+        final Cigar oldCigar = readCopied.getCigar();
+
+        int scLeft = 0;
+        int scRight = readCopied.getLength();
+        if (start == 0) {
+            scLeft = myStop + 1;
+        } else {
+            scRight = start;
+        }
+
+        final Cigar newCigar = softClip(oldCigar, scLeft, scRight);
+        readCopied.setCigar(newCigar);
+
+        final int newClippedStart = getNewAlignmentStartOffset(newCigar, oldCigar);
+        final int newStart = readCopied.getStart() + newClippedStart;
+        readCopied.setPosition(readCopied.getContig(), newStart);
+        return readCopied;
+    }
+
+    private void applyWRITE_Q0S(final GATKRead readCopied) {
+        final byte[] newQuals = readCopied.getBaseQualities(); //this makes a copy so we can modify in place
+        overwriteFromStartToStop(newQuals, (byte)0);
+        readCopied.setBaseQualities(newQuals);
+    }
+
+    private void applyWRITE_NS(final GATKRead readCopied) {
+        final byte[] newBases = readCopied.getBases();       //this makes a copy so we can modify in place
+        overwriteFromStartToStop(newBases, (byte)'N');
+        readCopied.setBases(newBases);
+    }
+
+    private void overwriteFromStartToStop(final byte[] arr, final byte newVal){
+        Arrays.fill(arr, start, Math.min(arr.length, stop+1), newVal);
+    }
+
+    private GATKRead applyREVERT_SOFTCLIPPED_BASES(final GATKRead read) {
         GATKRead unclipped = read.copy();
 
         final Cigar unclippedCigar = new Cigar();
@@ -174,7 +166,7 @@ public final class ClippingOp {
             // once before the hard clip (to reset the alignment stop / read length in read implementations
             // that cache these values, such as SAMRecord), and again after the hard clip.
             unclipped.setPosition(unclipped.getContig(), 1);
-            unclipped = hardClip(unclipped, 0, - newStart);
+            unclipped = applyHARDCLIP_BASES(unclipped, 0, - newStart);
             unclipped.setPosition(unclipped.getContig(), 1);
             return unclipped;
         } else {
@@ -332,14 +324,19 @@ public final class ClippingOp {
      *
      * Works properly with reduced reads and insertion/deletion base qualities
      *
+     * Note: this method does not assume that the read is directly modifiable
+     * and makes a copy of it.
+     *
      * @param read a non-null read
      * @param start a start >= 0 and < read.length
      * @param stop a stop >= 0 and < read.length.
      * @return a cloned version of read that has been properly trimmed down
      */
-    private GATKRead hardClip(final GATKRead read, final int start, final int stop) {
+    private GATKRead applyHARDCLIP_BASES(final GATKRead read, final int start, final int stop) {
         // If the read is unmapped there is no Cigar string and neither should we create a new cigar string
-        final CigarShift cigarShift = (read.isUnmapped()) ? new CigarShift(new Cigar(), 0, 0) : hardClipCigar(read.getCigar(), start, stop);
+
+        final Cigar cigar = read.getCigar();//Get the cigar once to avoid multiple calls because each makes a copy of the cigar
+        final CigarShift cigarShift = read.isUnmapped() ? new CigarShift(new Cigar(), 0, 0) : hardClipCigar(cigar, start, stop);
 
         // the cigar may force a shift left or right (or both) in case we are left with insertions
         // starting or ending the read after applying the hard clip on start/stop.
@@ -357,7 +354,7 @@ public final class ClippingOp {
         hardClippedRead.setBases(newBases);
         hardClippedRead.setCigar(cigarShift.cigar);
         if (start == 0) {
-            hardClippedRead.setPosition(read.getContig(), read.getStart() + calculateAlignmentStartShift(read.getCigar(), cigarShift.cigar));
+            hardClippedRead.setPosition(read.getContig(), read.getStart() + calculateAlignmentStartShift(cigar, cigarShift.cigar));
         }
 
         if (hasBaseIndelQualities(read)) {
@@ -373,7 +370,7 @@ public final class ClippingOp {
 
     }
 
-    private CigarShift hardClipCigar(final Cigar cigar, final int start, final int stop) {
+    private CigarShift  hardClipCigar(final Cigar cigar, final int start, final int stop) {
         final Cigar newCigar = new Cigar();
         int index = 0;
         int totalHardClipCount = stop - start + 1;
@@ -596,7 +593,7 @@ public final class ClippingOp {
         return 0;
     }
 
-    private static class CigarShift {
+    private static final class CigarShift {
         private final Cigar cigar;
         private final int shiftFromStart;
         private final int shiftFromEnd;
