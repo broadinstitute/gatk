@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
 import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
@@ -321,17 +322,20 @@ public final class BaseRecalibrationEngine implements Serializable {
     protected boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
+        final int softStart = ReadUtils.getSoftStart(read);
+        final int softEnd = ReadUtils.getSoftEnd(read);
+        final Cigar cigar = read.getCigar();
         for ( final Locatable knownSite : knownSites ) {
-            if (knownSite.getEnd() <  ReadUtils.getSoftStart(read) || knownSite.getStart() > ReadUtils.getSoftEnd(read)) {
+            if (knownSite.getEnd() < softStart || knownSite.getStart() > softEnd) {
                 // knownSite is outside clipping window for the read, ignore
                 continue;
             }
-            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), knownSite.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
+            int featureStartOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getStart(), ReadUtils.ClippingTail.LEFT_TAIL, true);
             if( featureStartOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureStartOnRead = 0;
             }
 
-            int featureEndOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), knownSite.getEnd(), ReadUtils.ClippingTail.LEFT_TAIL, true);
+            int featureEndOnRead = ReadUtils.getReadCoordinateForReferenceCoordinate(softStart, cigar, knownSite.getEnd(), ReadUtils.ClippingTail.LEFT_TAIL, true);
             if( featureEndOnRead == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
                 featureEndOnRead = readLength;
             }
