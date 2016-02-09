@@ -137,7 +137,7 @@ public final class ClippingOp {
 
         final Cigar unclippedCigar = new Cigar();
         int matchesCount = 0;
-        for (final CigarElement element : read.getCigar().getCigarElements()) {
+        for (final CigarElement element : read.getCigarElements()) {
             if (element.getOperator() == CigarOperator.SOFT_CLIP || element.getOperator() == CigarOperator.MATCH_OR_MISMATCH) {
                 matchesCount += element.getLength();
             } else if (matchesCount > 0) {

@@ -289,7 +289,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         final List<Integer> convertedBaseQualities = new ArrayList<>(baseQualities.length);
         for ( byte b : baseQualities ) {
             if ( b < 0 ) {
-                throw new GATKException("Base quality score " + b + " is invalid");
+                throw new IllegalArgumentException("Base quality score " + b + " is invalid");
             }
 
             convertedBaseQualities.add((int)b);
