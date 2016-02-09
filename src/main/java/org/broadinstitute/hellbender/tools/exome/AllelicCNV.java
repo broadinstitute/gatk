@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,10 +29,18 @@ import java.util.List;
 public class AllelicCNV extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1l;
 
+    //filename tags for output
     protected static final String SNP_MAF_SEG_FILE_TAG = "MAF";
     protected static final String UNION_SEG_FILE_TAG = "union";
     protected static final String SMALL_MERGED_SEG_FILE_TAG = "no-small";
+    protected static final String INITIAL_SEG_FILE_TAG = "sim-0";
+    protected static final String INTERMEDIATE_SEG_FILE_TAG = "sim";
+    protected static final String FINAL_SEG_FILE_TAG = "sim-final";
+    protected static final String GATK_SEG_FILE_TAG = "cnv";
 
+    private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
+
+    //CLI arguments
     protected static final String OUTPUT_PREFIX_LONG_NAME = "outputPrefix";
     protected static final String OUTPUT_PREFIX_SHORT_NAME = "pre";
 
@@ -196,15 +205,35 @@ public class AllelicCNV extends SparkCommandLineProgram {
         final File segmentedModelFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + ".seg");
         segmentedModel.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedModelFile);
 
-        //initial model fitting
-        logger.info("Fitting initial model...");
-        final ACNVModeller modeller = new ACNVModeller(segmentedModel, outputPrefix,
+        //initial MCMC model fitting performed by ACNVModeller constructor
+        final ACNVModeller modeller = new ACNVModeller(segmentedModel,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
+        final File initialModeledSegmentsFile = new File(outputPrefix + "-" + INITIAL_SEG_FILE_TAG + ".seg");
+        modeller.writeACNVModeledSegmentFile(initialModeledSegmentsFile);
 
         //similar-segment merging (segment files are output for each merge iteration)
         logger.info("Merging similar segments...");
-        modeller.mergeSimilarSegments(intervalThresholdCopyRatio, intervalThresholdAlleleFraction,
-                numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction);
+        logger.info("Initial number of segments before similar-segment merging: " + modeller.getACNVModeledSegments().size());
+        List<ACNVModeledSegment> mergedSegments = new ArrayList<>(modeller.getACNVModeledSegments());
+        //perform iterations of similar-segment merging until all similar segments are merged
+        int prevNumSegments;
+        for (int numIterations = 1; numIterations <= MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS; numIterations++) {
+            logger.info("Similar-segment merging iteration: " + numIterations);
+            prevNumSegments = modeller.getACNVModeledSegments().size();
+            modeller.performSimilarSegmentMergingIteration(intervalThresholdCopyRatio, intervalThresholdAlleleFraction);
+            if (modeller.getACNVModeledSegments().size() == prevNumSegments) {
+                break;
+            }
+            final File modeledSegmentsFile = new File(outputPrefix + "-" + INTERMEDIATE_SEG_FILE_TAG + "-" + numIterations + ".seg");
+            modeller.writeACNVModeledSegmentFile(modeledSegmentsFile);
+        }
+        logger.info("Final number of segments after similar-segment merging: " + modeller.getACNVModeledSegments().size());
+        //write final model fit to file
+        final File finalModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + ".seg");
+        modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
+        //write file for GATK CNV formatted seg file
+        final File finalModeledSegmentsFileAsGatkCNV = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + "." + GATK_SEG_FILE_TAG + ".seg");
+        modeller.writeModeledSegmentFile(finalModeledSegmentsFileAsGatkCNV);
 
         //TODO model-parameter output and plotting
 

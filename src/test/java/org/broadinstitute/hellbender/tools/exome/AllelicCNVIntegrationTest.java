@@ -46,9 +46,9 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final File snpSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SNP_MAF_SEG_FILE_TAG + ".seg");
         final File unionedSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.UNION_SEG_FILE_TAG + ".seg");
         final File noSmallSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SMALL_MERGED_SEG_FILE_TAG + ".seg");
-        final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + ACNVModeller.INITIAL_SEG_FILE_TAG + ".seg");
-        final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg");
-        final File finalSimilarSegmentsFileAsGATKCNV = new File(outputPrefix + "-" + ACNVModeller.FINAL_SEG_FILE_TAG + "." +  ACNVModeller.GATK_SEG_FILE_TAG + ".seg");
+        final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.INITIAL_SEG_FILE_TAG + ".seg");
+        final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + ".seg");
+        final File finalSimilarSegmentsFileAsGATKCNV = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + "." + AllelicCNV.GATK_SEG_FILE_TAG + ".seg");
 
         final List<File> outputFileList = new ArrayList<>();
         outputFileList.add(snpSegmentsFile);
