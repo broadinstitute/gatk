@@ -3,30 +3,48 @@ package org.broadinstitute.hellbender.tools.exome;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
 public final class TargetCoverageUtils {
     //TODO: these columns disagree with our standard uppercase ones
     //TODO: this is necessary to match gatk-public, but it's really awful and must be fixed
+    //TODO: Would like better support for ReadCountCollection here, since that is more useful.
     public static final String TARGET_NAME_COLUMN = "name";
     public static final String CONTIG_COLUMN = "contig";
     public static final String START_COLUMN = "start";
     public static final String END_COLUMN = "stop";
+
+    public static final List<String> TARGET_COVERAGE_COLUMN_SET = new ArrayList<>(Arrays.asList(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN));
+
+    /**
+     * Function to read target coverage.
+     */
+    private static final BiFunction<TableColumnCollection, Function<String, RuntimeException>, Function<DataLine, TargetCoverage>> tableColumnCollectionFunctionFunctionBiFunction = (columns, formatExceptionFactory) -> {
+        if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN) || (columns.columnCount() < 5))
+            throw formatExceptionFactory.apply("Bad header");
+        if (columns.columnCount() > 5)
+            throw formatExceptionFactory.apply("Bad header -- more than one sample included in the input file.");
+
+        //return the lambda to translate dataLines into targets
+        return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
+                new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.getDouble(4));
+    };
 
     private TargetCoverageUtils() {}
 
@@ -41,18 +59,29 @@ public final class TargetCoverageUtils {
      */
     public static List<TargetCoverage> readTargetsWithCoverage(final File targetsFile) {
         try (final TableReader<TargetCoverage> reader = TableUtils.reader(targetsFile,
-                (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN) || (columns.columnCount() < 5))
-                        throw formatExceptionFactory.apply("Bad header");
-                    if (columns.columnCount() > 5)
-                        throw formatExceptionFactory.apply("Bad header -- more than one sample included in the input file.");
-
-                    //return the lambda to translate dataLines into targets
-                    return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
-                            new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.getDouble(4));
-                })) {
+                tableColumnCollectionFunctionFunctionBiFunction)) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(targetsFile, e);
+        }
+    }
+
+    /**
+     * Retrieve the sample names from a TargetCoverage file (e.g. TangentNormalization file)
+     * @param targetsFile targets and coverage
+     * @return list of strings that contain the sample names.  I.e. returns list of all columns that do not describe the
+     * targets themselves.
+     */
+    public static List<String> retrieveSampleNamesFromTargetCoverageFile(final File targetsFile) {
+        try (final TableReader<TargetCoverage> reader = TableUtils.reader(targetsFile,
+                tableColumnCollectionFunctionFunctionBiFunction)) {
+
+            // Create a copy of the column list that is mutable.
+            final List<String> result = new ArrayList<>(reader.columns().names());
+            result.removeAll(TARGET_COVERAGE_COLUMN_SET);
+            return result;
+
+        } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(targetsFile, e);
         }
     }
@@ -203,4 +232,25 @@ public final class TargetCoverageUtils {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
     }
+
+    /** Extract the sample name from a target coverage file.
+     *
+     * Throws an exception if there is not exactly one sample in the file.
+     *
+     * @param targetCoverageFile Never {@code null}
+     * @return a single sample name.
+     */
+    public static String getSampleNameForCLIsFromTargetCoverageFile(final File targetCoverageFile) {
+        String sampleName;
+        final List<String> sampleNames = SampleNameFinder.determineSampleNamesFromTargetCoverageFile(targetCoverageFile);
+        if (sampleNames.size() == 1) {
+            sampleName = sampleNames.get(0);
+        } else if (sampleNames.size() > 1) {
+            throw new UserException.BadInput("Input file must contain data for only one sample.  Found samples: " + StringUtils.join(sampleNames, ", "));
+        } else {
+            throw new UserException.BadInput("Input file must contain data for only one sample.  Could not find any sample information.");
+        }
+        return sampleName;
+    }
+
 }

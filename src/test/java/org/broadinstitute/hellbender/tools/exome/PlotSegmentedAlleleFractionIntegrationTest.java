@@ -13,13 +13,12 @@ public class PlotSegmentedAlleleFractionIntegrationTest extends CommandLineProgr
 
     private static final File SNP_COUNTS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/snps.tsv");
     private static final File SEGMENTS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/allelic.seg");
-    private static final String sampleName = "HCC1143";
+    private static final String sampleName = "test"; // This is what is in allelic.seg test file
 
     @Test
     public void testAlleleFractionPlotting() {
         File tDir = IOUtils.tempDir("Test", "Plotting");
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEGMENTS_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath()
@@ -33,7 +32,6 @@ public class PlotSegmentedAlleleFractionIntegrationTest extends CommandLineProgr
     public void testAlleleFractionPlottingSexChrs() {
         File tDir = IOUtils.tempDir("Test", "Plotting");
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEGMENTS_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
