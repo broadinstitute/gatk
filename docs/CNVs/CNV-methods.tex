@@ -7,9 +7,6 @@
 \usepackage{graphicx}
 \usepackage{color}
 
-\newcommand{\RCS}{\texttt{ReCapSeg}}
-\newcommand{\ACS}{\texttt{AllelicCapSeg}}
-
 %Put an averaged random variable between brackets
 \newcommand{\ave}[1]{\left\langle #1 \right\rangle}
 
@@ -22,24 +19,21 @@
 \begin{document}
 
 \title{Notes on CNV Methods}
-\author{Samuel K. Lee}
-\email{slee@broadinstitute.org}
-\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
-
-
 \author{David Benjamin}
 \email{davidben@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+\author{Samuel K. Lee}
+\email{slee@broadinstitute.org}
 \affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
 
 \date{\today}
 
 \begin{abstract}
-Some notes on current and proposed methods used in the GATK CNV workflow.
+Some notes on current and proposed methods used in the GATK CNV and ACNV workflows.
 \end{abstract}
 
 \maketitle
-
-
 
 \section{Introduction}\label{introduction}
 
@@ -94,31 +88,33 @@ We cannot simply divide the coverage of each target by the average sequencing de
 
 The output is: a $N \times k$ matrix $P$, the columns of which are the the retained right eigenvectors (eigensamples), and its pseudoinverse $P^+$; and the target medians (before any transformations).  Here $N$ denotes the number of targets.
 
-\subsection{Normalizing case samples}
+\subsection{Segmentation by tangent-normalized coverage}
 We first divide the integer coverage of the case sample at each target by the corresponding target median from the PoN and take the $\log_2$ transformation to obtain an $N \times 1$ column matrix ${\bf x}$.  We then calculate the ``tangent-normalized'' coverage: ${\bf x} - PP^+ {\bf x}$.  The meaning of this is as follows: $PP^+$ is an operator that projects onto the column space of $P$.  That is, it projects onto the space spanned by the $k$ most significant eigensamples representing the (non-CNV-related) variability of the coverage.  Subtracting the projection $PP^+ {\bf x}$ therefore isolates the CNV signal and removes noise due to fluctuations in sequencing bias.
 
 Finally, the tangent-normalized coverage vector is passed to CBS to obtain coverage segments.
 
-\subsection{Segmentation by Minor Allele Fraction}
-Given a large database of common SNPs, we search the normal case sample for heterozygous sites.  To determine whether a site with $r$ ref reads and $a$ alt reads is heterozygous, we calculate the two-sided $p$-value under the null hypothesis that the number of alt reads follows a binomial distribution: $a \sim {\rm Binom}(a + r, 1/2)$.  If the $p$-value is not too small we consider the site heterozygous.
+\subsection{Het coverage and segmentation by minor allele fraction}
+Given a large database of common SNPs, we search the normal control sample for heterozygous sites.  To determine whether a site with $r$ ref reads and $a$ alt reads is heterozygous, we calculate the two-sided $p$-value under the null hypothesis that the number of alt reads follows a binomial distribution: $a \sim {\rm Binom}(a + r, 1/2)$.  If the $p$-value is not too small we consider the site heterozygous.
 
-To obtain allele fraction segments, we estimate the minor allele fraction of a het site as ${\rm min}(a,r)/(a + r)$, where $a$ and $r$ are counts for the tumor case sample, and pass the resulting list to CBS.
+Ref and alt counts are then obtained at these sites in the tumor case sample.  To obtain initial minor-allele-fraction segments, we estimate the minor allele fraction for each het site by taking the maximum-likelihood estimate given by Equation~\ref{likelihood} with allelic bias ignored (i.e., $\lambda_j = 1$) and pass the resulting list to CBS.
 
 \subsection{Target/SNP segment union} \label{targetsnp-segment-union}
 
-\SL{DB can fill this in.}
+\SL{SL will fill this in.}
 
 \subsection{Small-segment merging} \label{small-segment-merging}
 
 \SL{SL to update this to the new method.}
 
-Using CBS to segment the targets in $\RCS$ results in segments that are \SL{always?} larger than $\sim$2--3 targets.  However, after taking the union of target and SNP segments, small segments with less than $\sim$2--3 targets may be introduced.  To be consistent with CBS and $\RCS$, $\ACS$ treats these small segments as spurious, and removes them by merging them with adjacent segments.
+Using CBS to segment the targets in GATK CNV results in segments that are larger than a specified minimum number of targets $n_t$ (by default, $n_t = 2$).  However, after taking the union of target and SNP segments, small segments with less than $n_t$ targets may be introduced.  To be consistent with CBS and CNV, ACNV treats these small segments as spurious, and removes them by merging them with adjacent segments.
 
-A segment is considered to be small if the number of targets it contains is strictly less than a threshold number of targets $n_t$; we take $n_t = 3$.  The small-segment merging algorithm checks each $i$th segment in turn, starting with the first, leftmost segment.  If the segment is small, it is repeatedly merged with the adjacent segment that is closer in the $L_1$ distance $|\tau_i - \tau_{i \pm 1}| + |f_i - f_{i \pm 1}|$ in copy-ratio--allele-fraction space until it is no longer small.\footnote{To be explicit, segments are reindexed after each merge, so that the new segment formed by merging segment $i$ and segment $i \pm 1$ retains the index $i$.}  Exceptions occur for adjacent segments on different chromosomes, which are never merged; in practice, this is enforced by setting the $L_1$ distance between segments on different chromosomes to be infinite.  After all segments have been checked and merged, any remaining small segments (which will be present if any chromosome contains less than $n_t$ targets) are dropped.
+\section{GATK CNV/ACNV Models} \label{models}
 
-\section{Current Hellbender $\ACS$ Workflow} \label{current-alleliccapseg-workflow}
+\subsection{Copy-ratio model} \label{copy-ratio-model}
 
-\subsection{Segmented model} \label{segmented-model}
+\SL{SL will fill this in.}
+
+\subsection{Allelic model} \label{allelic-model}
 We want a generative model for allelic fractions that infers its parameters from the data.  We observe alt and ref read counts for each het site and wish to infer the minor allelic fraction of every segment.  Let's consider what other hidden variables belong in the model.  Read counts obey an overdispersed binomial distribution in which the probability of an alt read is a site-dependent random variable.  Letting $\theta_j$ be the probability that a mapped read at het $j$ is an alt we have
 %
 \begin{equation}
@@ -171,11 +167,11 @@ The Bayesian network corresponding to this model is shown in Figure \ref{graphic
 \begin{figure}
 $
 \begin{array}{c}
-\includegraphics[width=0.8\linewidth]{ACS_model.png} 
+\includegraphics[width=0.8\linewidth]{ACNV_model.png} 
 \end{array}
 $
 \label{graphical_model}
-\caption{Graphical model for \ACS} 
+\caption{Graphical model for ACNV allelic model} 
 \end{figure}
 
 As with the other parameters, we put a flat prior on ${\rm \pi}$.  Putting all the pieces together the likelihood is
@@ -212,7 +208,7 @@ p(f,\alpha, \beta, \pi) \propto \prod_j
  \label{collapsed}
 \end{equation}
 %
-Integrating out the latent variables removes the strongest correlations from the model -- intuitively, $f$ should not be too sensitive to $\alpha$ and $\beta$, for example -- and significantly improves mixing.  The exception is $\alpha$ and $\beta$, since adjusting one with the other fixed changes the mean of the prior on $\lambda$.  Thus we reparameterize in terms of $\mu$ and $\sigma^2$, the mean and variance of the common gamma distribution of biases, where $\alpha = \mu^2 / \sigma^2$ and $\beta = \mu / \sigma^2$.  Due to the weak correlations our MCMC method does not need to be very sophisticated.  We choose to sample each variable with one-dimensional adaptive Metropolis, tuning the proposal step size to achieve some reasonable acceptance rate like $0.4$ or so.  Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACS_MCMC}:
+Integrating out the latent variables removes the strongest correlations from the model -- intuitively, $f$ should not be too sensitive to $\alpha$ and $\beta$, for example -- and significantly improves mixing.  The exception is $\alpha$ and $\beta$, since adjusting one with the other fixed changes the mean of the prior on $\lambda$.  Thus we reparameterize in terms of $\mu$ and $\sigma^2$, the mean and variance of the common gamma distribution of biases, where $\alpha = \mu^2 / \sigma^2$ and $\beta = \mu / \sigma^2$.  Due to the weak correlations our MCMC method does not need to be very sophisticated.  We choose to sample each variable with one-dimensional adaptive Metropolis, tuning the proposal step size to achieve some reasonable acceptance rate like $0.4$ or so.  Thus we have completely specified an MCMC scheme for this model, given by Algorithm \ref{ACNV_MCMC}:
 
 \begin{algorithm}
 \begin{algorithmic}[1]
@@ -224,8 +220,8 @@ Integrating out the latent variables removes the strongest correlations from the
 	\State Sample $\beta$ with adaptive Metropolis
 \Until{convergence}
 \end{algorithmic}
-\caption{MCMC algorithm for \ACS}
-\label{ACS_MCMC}
+\caption{MCMC algorithm for ACNV allelic model}
+\label{ACNV_MCMC}
 \end{algorithm}
 
 We initialize the model by finding the mode of likelihood.  This significantly reduces burn-in time of our MCMC sampling.  Also, it allows us to give the adaptive Metropolis samplers better initial guesses for their step sizes.  Since in practice there is a single global maximum of the likelihood it is easy to find.  After initializing the initialization with rough guesses for the parameters, we successively find one-dimensional maxima adjusting one parameter at a time until the likelihood converges.  One could use multidimensional optimization to obtain faster convergence, but after marginalizing out latent parameters the remaining correlations are weak and thus this simple approach performs quite well.  Since we may delegate one-dimensional maximization to mathematical libraries, the only thing left to describe is our initial coarse guess.
@@ -242,16 +238,11 @@ For this coarse guess we ignore the possibility of outliers, so that $P(z_{ja} =
 P(z_{ja} = 1) \approx I(1/2, a_j + 1, r_j + 1), \quad P(z_{jr} = 1) = 1 - P(z_{ja} = 1).
 \end{equation}
 
-\subsection{Target/SNP segment union} \label{targetsnp-segment-union}
-
-\subsection{Similar-segment merging} \label{similar-segment-merging}
-
-
-\section{Proposed Methods for $\texttt{hellbender}$} \label{proposed-methods-for-texttthellbender}
+\section{Proposed Methods} \label{proposed-methods}
 
 \subsection{Using Panel of Normals for Allelic Fraction Model} \label{allelic-PoN}
 
-The \ACS~model learns a global distribution on allelic biases and uses it as a shared prior for the allelic biases of SNPs.  While better than nothing, it would be much more powerful to use prior knowledge of the allelic bias at each SNP individually.  We can learn these per-SNP biases from a panel of normals using the \ACS~model, but with two simplifications.  First, minor allele fractions are always $1/2$ since normal samples are diploid and do not exhibit subclonality.  Second, we do not account for outliers; that is, we set the outlier probability $\pi = 0$.  The reason for this is that the panel of normals reflects typical distributions of allelic biases and censoring data via an outlier classification could render these distributions artificially tight.  If the allelic bias at some SNP site varies a lot we want to know about it. The overall likelihood is
+The GATK ACNV allelic model learns a global distribution on allelic biases and uses it as a shared prior for the allelic biases of SNPs.  While better than nothing, it would be much more powerful to use prior knowledge of the allelic bias at each SNP individually.  We can learn these per-SNP biases from a panel of normals using the allelic model, but with two simplifications.  First, minor allele fractions are always $1/2$ since normal samples are diploid and do not exhibit subclonality.  Second, we do not account for outliers; that is, we set the outlier probability $\pi = 0$.  The reason for this is that the panel of normals reflects typical distributions of allelic biases and censoring data via an outlier classification could render these distributions artificially tight.  If the allelic bias at some SNP site varies a lot we want to know about it. The overall likelihood is
 %
 \begin{align}
 & \prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_j^{\alpha - 1} e^{-\beta \lambda_j}
@@ -259,10 +250,10 @@ The \ACS~model learns a global distribution on allelic biases and uses it as a s
  \frac{  \lambda_j^{r_{sj}}}{ \left( 1 + \lambda_j \right)^{n_{sj}}}  \\
  = & \prod_j \frac{\beta^\alpha}{\Gamma(\alpha)} e^{-\beta \lambda_j}
  \frac{  \lambda_j^{\alpha + r_{ \cdot j} - 1}}{ \left( 1 + \lambda_j \right)^{n_{\cdot j}}} 
- \label{ACSponlikelihood}
+ \label{ACNVponlikelihood}
 \end{align}
 %
-where $\lambda_j$ is the allelic bias ratio of SNP $j$ (for samples sequenced and mapped using the same technology as the panel of normals), $\mathcal{H}_j$ is the set of samples in the panel of normals that are heterozygous at SNP $j$, $r_{\cdot j} = \sum_{s \in \mathcal{H}_j} r_{sj}$, and $n_{\cdot j} = \sum_{s \in \mathcal{H}_j} n_{sj}$.  As before, the biases are assumed to come from a common distribution ${\rm Gamma}(\alpha, \beta)$, but due to the large number of samples in the panel of normals the data will yield a posterior distribution on each $\lambda_j$ that may be quite different from the global prior.  It is these posteriors that we will use as input to \ACS.  Although they are the object of interest, however, we will first marginalize them out of the likelihood in order to obtain maximum likelihood estimates of $\alpha$ and $\beta$.  We have in fact already performed this marginalization -- Equation \ref{ACSponlikelihood} is the special case $f = 1/2$, $\pi = 0$ of the \ACS~likelihood, Equation \ref{likelihood}, and thus its marginalization over latent variables is obtained by substituting $f = 1/2$, $\pi = 0$ into Equation \ref{collapsed}, which yields
+where $\lambda_j$ is the allelic bias ratio of SNP $j$ (for samples sequenced and mapped using the same technology as the panel of normals), $\mathcal{H}_j$ is the set of samples in the panel of normals that are heterozygous at SNP $j$, $r_{\cdot j} = \sum_{s \in \mathcal{H}_j} r_{sj}$, and $n_{\cdot j} = \sum_{s \in \mathcal{H}_j} n_{sj}$.  As before, the biases are assumed to come from a common distribution ${\rm Gamma}(\alpha, \beta)$, but due to the large number of samples in the panel of normals the data will yield a posterior distribution on each $\lambda_j$ that may be quite different from the global prior.  It is these posteriors that we will use as input to ACNV.  Although they are the object of interest, however, we will first marginalize them out of the likelihood in order to obtain maximum likelihood estimates of $\alpha$ and $\beta$.  We have in fact already performed this marginalization -- Equation \ref{ACNVponlikelihood} is the special case $f = 1/2$, $\pi = 0$ of the allelic-model likelihood, Equation \ref{likelihood}, and thus its marginalization over latent variables is obtained by substituting $f = 1/2$, $\pi = 0$ into Equation \ref{collapsed}, which yields
 %
 \begin{equation}
 p(\alpha, \beta) = \prod_j \phi(\alpha, \beta, f = 1/2, n_{\cdot j} - r_{\cdot j}, r_{\cdot j}).
@@ -270,7 +261,7 @@ p(\alpha, \beta) = \prod_j \phi(\alpha, \beta, f = 1/2, n_{\cdot j} - r_{\cdot j
 %
 This likelihood is easily maximized numerically to obtain MLE values of $\alpha$ and $\beta$.  Having done this, we can then approximate the posterior on each $\lambda_j$ as a gamma distribution using the method of Appendix \ref{marginalizing}.  As shown there, the posterior on $\lambda_j$ is ${\rm Gamma}(\rho_j, \tau_j)$ where $\rho_j$ and $\tau_j$ are computed in Algorithm \ref{phi_calculation}, with $a \rightarrow n_{\cdot j} - r_{\cdot j}$ and $r \rightarrow r_{\cdot j}$.
 
-Once we have the posteriors on each $\lambda_j$ from the panel of normals, they are used as priors for $\lambda_j$ in the \ACS~model.  This obviates the hyperparameters $\alpha$ and $\beta$, and Equation \ref{collapsed} becomes
+Once we have the posteriors on each $\lambda_j$ from the panel of normals, they are used as priors for $\lambda_j$ in the ACNV allelic model.  This obviates the hyperparameters $\alpha$ and $\beta$, and Equation \ref{collapsed} becomes
 %
 \begin{equation}
 p(f, \pi) \propto \prod_j 
@@ -281,112 +272,10 @@ p(f, \pi) \propto \prod_j
 \end{equation}
 %
 where $f$ and $\pi$ may once again be sampled via adaptive Metropolis.
-
-
-\subsection{Bayesian het pulldown} \label{bayesian-het-pulldown}
-
-We are given a large data set of ref and alt read counts over many potential SNP sites and we wish to infer which sites are hets and with what probabilities.  This problem is naturally represented as a mixture model in which the hidden labels are genotypes -- hom ref, het, and hom alt.  Since the observed data are ref and alt counts is seems natural to use a binomial mixture model in which the binomial parameters are the probability of an alt read.  Then the binomial parameters are the error rate for hom ref genotypes, $1/2$ times the allelic bias for het genotypes, and $1$ minus the error rate for hom alt genotypes.  However, actual data are overdispersed because the error rate and allelic bias are random variables, not single parameters.  For example, sequencing error rates and allelic bias (for concreteness, consider mapping bias) depend on context.  Thus a beta-binomial mixture model is more appropriate.  A maximum-likelihood (MLE) approach will yield posterior probabilities on the genotypes at each locus, in particular the het probability.  It also gives the parameters of a beta distribution of allelic bias, which is useful downstream in ACS.
-
-For generality and at no cost in complexity, consider a Dirichlet-multinomial mixture (DMM) with $K$ mixture components and $M$ classes of observed data.  For our purposes there are $K = 3$ genotypes and $M = 2$ types of read, ref and alt.  The beta-binomial distribution is the $M = 2$ case of the Dirichlet-multinomial.  The observed data are counts $n_{jm}$, the number of times class m was seen in observation $j$.  For us, each potential SNP site is a datum $j$.  Let $N_j = \sum_m n_{jm}$ denote the total read count at site $j$.  For our purposes, $\{ N_j \}$ are constants -- we are not trying to model depth of coverage here, just the proportions of the coverage allotted to ref and alt reads.
-
-We represent hidden labels via the 1-of-$K$ encoding ${\bf z}_j = (0, 0, \ldots 1, 0, 0 \ldots)$, so $z_{jk} = 1$ when datum j comes from component $k$.  The hidden labels are multinomially distributed as $P({\bf z}_j) = {\rm Mult}({\bf z}_j | {\bf \pi})$, where $\pi_k$ is the probability of component $k$ and $\sum_k \pi_k = 1$.  Finally, the observed counts for mixture component $k$ are drawn from a Dirichlet-multinomial distribution with parameter ${\bf \alpha}_k$:
-
-\begin{equation}
-P({\bf n}_j \mid z_{jk} = 1, {\bf \alpha}_k ) = \frac{ \Gamma (A_k) }{ \Gamma (A_k + N_j) } \prod_m \frac{ \Gamma (\alpha_{km} + n_{jm}) }{ \Gamma (\alpha_{km}) },
-\end{equation}
-where $A_k = \sum_m \alpha_{km}$.
-
-The EM algorithm for MLE estimates of $\{ \pi_k \}$ and $\{ \alpha_{km} \}$ requires the complete-data likelihood (CDL), that is, the joint likelihood of the observed data and hidden labels given the parameters.  In contrast, a direct approach maximizes the likelihood marginalized over the hidden variables.  The CDL of of the DMM is
-\begin{align}
-P({\bf z}, {\bf n} \mid {\bf \pi}, {\bf \alpha}) = & P({\bf z} \mid {\bf \pi}) P({\bf n} \mid {\bf z}, {\bf \alpha}) \\
-= & \prod_{jk}  \left[ \pi_k \frac{ \Gamma (A_k) }{ \Gamma (A_k + N_j) } \prod_m \frac{ \Gamma (\alpha_{km} + n_{jm}) }{ \Gamma (\alpha_{km}) } \right]^{z_{jk}} \label{CDL}
-\end{align}
-
-In the E step of the EM algorithm, we obtain the posterior distribution on $P({\bf z} \mid {\bf n}, {\bf \pi}, {\bf \alpha})$ from Eq. (\ref{CDL}).  By inspection the posterior is a product of independent multinomials
-\begin{equation}
-\label{DMM_E_step}
-\bar{z}_{jk} \equiv P(z_{jk} = 1 \mid {\bf n}, {\bf \pi}, {\bf \alpha})  \propto \pi_k \frac{ \Gamma (A_k) }{ \Gamma (A_k + N_j) } \prod_m \frac{ \Gamma (\alpha_{km} + n_{jm}) }{ \Gamma (\alpha_{km}) },
-\end{equation}
-with a normalization constant determined by the condition $\sum_k \bar{z}_{jk} = 1$.
-
-In the M step of the EM algorithm we take the expectation of the log-CDL with respect to the posterior on ${\bf z}$ and maximize with respect to ${\bf \pi}$ and ${\bf \alpha}$.  That is, we maximize
-\begin{equation}
-\sum_{jk}  \bar{z}_{jk} \left\{ \log \pi_k + \log \frac{\Gamma (A_k)}{ \Gamma (A_k + N_j)}  + \sum_m \log \frac{ \Gamma (\alpha_{km} + n_{jm})}{\Gamma (\alpha_{km})}  \right\}.
-\end{equation}
-
-Maximizing with respect to $\pi_k$ with a Lagrange multiplier for the constraint $\sum_k \pi_k = 1$
-\begin{equation}
-\label{DMM_M_step_pi}
-\pi_k = \frac{ \sum_j \bar{z}_{jk} }{\sum_{j \ell} \bar{z}_{j \ell}}
-\end{equation}
-
-To maximize with respect to ${\bf \alpha}$ we use the fact that if we are trying to maximize $f({\bf x})$ and have a current guess of ${{\bf x}_0}$, then an improved guess may be obtained by maximizing $g({\bf x})$, where $g({\bf x}_0) = f({\bf x}_0)$ and $g({\bf x}) \le f({\bf x})$ for all ${\bf x}$.  Furthermore, repeating this gives an iterative optimization that converges to a local maximum.  Using bounds (\ref{bound1}) and (\ref{bound2}) and dropping additive constants, we find that the iterative step is to maximize the lower bound
-\begin{equation}
-\sum_{jk}  \bar{z}_{jk} \left\{ - \left( \psi(\hat{A}_k + N_j) - \psi(\hat{A}_k) \right) A_k + \sum_m \hat{\alpha}_{km}  \left( \psi(\hat{\alpha}_{km}  + n_{jm}) - \psi(\hat{\alpha}_{km}) \right)  \log(\alpha_{km} )   \right\}.
-\end{equation}
-with respect to $\alpha_{km}$ treating the ``old'' guesses $\hat{\alpha}_{km}$ as constants.  This maximization is a straightforward matter of setting the derivative to zero and gives the fixed-point iteration
-\begin{equation}
-\label{DMMiteration}
-\alpha_{km} = \hat{\alpha}_{km} \frac{\sum_j \bar{z}_{jk}  \left( \psi(\hat{\alpha}_{km}  + n_{jm}) - \psi(\hat{\alpha}_{km}) \right)} {\sum_j \bar{z}_{jk} \left( \psi(\hat{A}_k + N_j) - \psi(\hat{A}_k) \right)}
-\end{equation}
-
-As is often the case with mixture models, we risk converging to a bad local maximum if parameters are initialized poorly.  Following the approach used by Thomas Minka in his FastFit software, we obtain a good initial guess by fitting a Dirichlet mixture model (as opposed to a Dirichlet-multinomial model) on effective multinomial pseudodata.  That is, instead of working with \textit{counts} $n_{jm}$, work with \textit{proportions} $p_{jm} = n_{jm} / N_j$.  Since $\sum_m p_{jm} = 1$, ${\bf p}_j$ can be interpreted as a multinomial distribution drawn from a Dirichlet mixture.  This preprocessing step maps the original count data onto the $(M-1)$-dimensional simplex, and we can then assign the pseudo-multinomials $\{ {\bf p}_j \}$ to $K$ clusters via the $K$-means algorithm.  Define the indicator variable $\chi_{jk} = 1$ if pseudo-multinomial ${\bf p}_j$ is assigned to cluster $k$ and let $\chi_{jk} = 0$ otherwise.
-
-We initialize $\pi_k$ as the empirical proportion of mixture component $k$ in the clustering step.  That is
-\begin{equation}
-\label{DMM_initialize_pi}
-\pi_k = \frac{\sum_j \chi_{jk}}{N} = \frac{N_k}{N}
-\end{equation}
-where $N_k$ is the number of pseudo-multinomials assigned to cluster $k$.
-
-Then for each component $k$ we initialize the Dirichlet parameter vector ${\bf \alpha_k}$ via moment matching.  Parameterize ${\bf \alpha_k}$ as ${\bf \alpha}_k = s_k {\bf \theta}_k$, where $\sum_m \theta_{km} = 1$ is the mean of the Dirichlet distribution and $s$ is its concentration.  Since multinomials $S_k = \{ {\bf p}_j \, : \, \chi_{jk} = 1 \}$ are presumed drawn from Dirichlet distribution with parameter ${\bf \alpha}_k$, we set the theoretical mean ${\bf \theta}_k$ to the empirical mean of $S_k$:
-\begin{equation}
-\theta_{km} = \left\langle   {\bf p}_j \in S_k \right\rangle = \frac{1}{N_k} \sum_j \chi_{jk} p_{jm}
-\label{1st_moment_matching}
-\end{equation}
-
-Moment matching of the $m$-th diagonal component of the covariance gives
-\begin{align}
-\frac{ \alpha_{km} \left( \sum_\ell \alpha_{k \ell} - \alpha_{km} \right) }{\left( \sum_\ell \alpha_{k \ell}\right)^2 \left( \sum_\ell \alpha_{k \ell} + 1 \right) }=& {\rm cov}(S_k)_{mm} =  \left\langle   p_{jm}^2 \in S_k \right\rangle - \left\langle   p_{jm} \in S_k \right\rangle^2 \\
-%
-\frac{ \theta_{km} (1 - \theta_{km})} {s_k + 1} =& \frac{1}{N_k} \sum_j \chi_{jk} p^2_{jm} \\
-s_k = & \frac{  \theta_{km} - \frac{1}{N_k} \sum_j \chi_{jk} p^2_{jm}}{\frac{1}{N_k} \sum_j \chi_{jk} p^2_{jm} - \theta_{km}^2 }
-\label{2nd_moment_matching}
-\end{align}
-
-Since these $M$ estimates $s_k$ do not need to agree, we simply take their average.
-
-
-The EM algorithm for DMM inference is summarized in Algorithm \ref{DMM}.
-
-\begin{algorithm}
-\begin{algorithmic}[1]
-\State Form pseudo-multinomial data $p_{jm} = n_{jm} / N_j$
-\State Find $K$ clusters of this pseudodata via the $K$-means algorithm.
-\State Initialize ${\bf \pi}$ via Eq. \ref{DMM_initialize_pi}
-\State Initialize $\{ \alpha_{km} \}$ via Eqs. \ref{1st_moment_matching} and \ref{2nd_moment_matching}
-\Repeat
-	\State Update $\bar{z}_{jk}$ via Eq. \ref{DMM_E_step}
-	\State Update ${ \bf \pi}$ via Eq. \ref{DMM_M_step_pi}
-		\Repeat
-		\State update $ \{ \alpha_{km} \}$ via Eq. \ref{DMMiteration}
-	\Until{convergence}
-\Until{convergence}
-\end{algorithmic}
-\caption{EM algorithm for Dirichlet-multinomial mixture model}
-\label{DMM}
-\end{algorithm}
-
-Returning to our original task, we obtain three mixture components with Dirichlet parameters $(\alpha_{k1}, \alpha_{k2})$.  The mean proportion of alt reads (WLOG we choose $m = 1$ to be alt and $m=2$ to be ref) are $\alpha_{k1}/(\alpha_{k1} + \alpha_{k2})$, so we can assign mixture labels $k = 1, 2, 3$ to genotypes by comparing these proportions to $0$ (hom ref), $1/2$ (het) and $1$ (hom alt). The posterior probability $\bar{z}_{jk}$ is the probability that site $j$ has genotype $k$, which is exactly what we need for a probabilistic het pulldown.
-
-\subsection{Model-comparison test for segment merging} \label{likelihood-based-segment-merging}
-
-\SL{I'll fill this in once it's worked out.}
-
 %%%APPENDICES
 \appendix
 
-\section{Marginalizing out latent variables of the \ACS model} \label{marginalizing}
+\section{Marginalizing out latent variables of the allelic model} \label{marginalizing}
 We wish to evaluate
 %
 \begin{equation}
@@ -456,61 +345,4 @@ Algorithm \ref{phi_calculation} shows the entire computation.
 \label{phi_calculation}
 \end{algorithm}
 
-\section{Finding Tight Lower Bounds on Convex and Non-convex Functions} \label{bounds}
-
-Given a function $f(x)$ and an arbitrary value $x_0$, we seek a lower bound $g(x) \le f(x)$ that is tight at $x_0$, that is, $g(x_0) = f(x_0)$.  If $f(x)$ is convex, that is, if $f^\prime(x)$ is non-decreasing, the linearization $g(x) = f(x_0) + f^\prime(x_0)(x-x_0)$ is such a bound.  More generally, suppose $h(x) f^\prime(x)$ is non-decreasing.  Instead of approximating $f^\prime(x) \approx f^\prime(x_0)$, perhaps we can approximate $h(x) f^\prime(x) \approx h(x_0) f^\prime(x_0)$ via a candidate lower bound $g(x)$ for which
-
-\begin{align}
-g^\prime(x) =& \frac{ h(x_0) f^\prime(x_0) } {h(x)} \\
-g(x) =& f(x_0) + h(x_0) f^\prime(x_0)  \int_{x_0}^x \frac{d t}{h(t)}
-\end{align}
-
-\begin{lemma}
-Such a function $g(x)$ is a tight lower bound on $f(x)$ if $h(x) f^\prime(x)$ is non-decreasing for some non-negative function $h(x)$.
-\end{lemma}
-
-\begin{proof}
-By the Fundamental Theorem of Calculus,
-
-\begin{align}
-f(x) - g(x) =& \int_{x_0}^{x} \left( f^\prime(t) - g^\prime(t) \right) \, dt \\
-=&  \int_{x_0}^{x} \frac{ h(t) f^\prime(t) - h(x_0) f^\prime(x_0) } {h(t)} \, dt
-\end{align}
-
-By the monotonicity of $h(x)$, the integral is non-positive for $x > x_0$ and non-negative for $x < x_0$.  Either way, the resulting integral is negative, so $g(x) \le f(x)$.
-\end{proof}
-
-For Dirichlet-multinomial inference, we use the special case $h(x) = x$.
-
-\begin{corollary} 
-If $x f^\prime(x)$ is non-decreasing for $x > 0$ then for any $x_0 > 0$
-\begin{equation}
-f(x) \ge f(x_0) + x_0 f^\prime(x_0) \left( \log(x) - \log(x_0) \right)
-\end{equation}
-\end{corollary}
-
-
-Two important cases are $f_1(x) = \log \Gamma(x) / \Gamma(x + n)$ and $f_2(x) = \log \Gamma(x + n) / \Gamma(x) = -f_1(x)$, where $n$ is a whole number.  Using the recursive identity $\Gamma(n+1) = n \Gamma(n)$ we have
-
-\begin{equation}
-f_1(x) = -\sum_{k=0}^{n-1} \log(x + k), \quad f^\prime_1(x) = -\sum_{k=0}^{n-1} \frac{1}{x+k}, \quad f_1^{\prime \prime}(x) = \sum_{k=0}^{n-1} \frac{1}{(x+k)^2}
-\end{equation}
-
-from which we see that $f_1(x)$ is convex and the usual linearization bound holds
-
-\begin{align} \label{bound1}
-\log \frac{ \Gamma(x) }{ \Gamma(x + n) } \ge & \log \frac{ \Gamma(x_0) }{ \Gamma(x_0 + n) } - \left( \psi(x_0 + n) - \psi(x_0) \right) (x - x_0)
-\end{align}
-
-where $\psi(x) = \frac{d}{dx} \log \Gamma(x)$ is the digamma function.  As for $f_2(x) = - f_1(x)$, it is not convex, but
-
-\begin{equation}
-x f_2^\prime(x) = \sum_{k=0}^{n-1} \frac{x}{x+k} = \sum_{k=0}^{n-1} \frac{1}{1+k/x},
-\end{equation}
-
-which is increasing since each denominator is decreasing.  Thus we apply the above corollary to obtain
-
-\begin{equation} \label{bound2}
-\log \frac{ \Gamma(x + n) }{ \Gamma(x) } \ge \log \frac{ \Gamma(x_0 + n) }{ \Gamma(x_0) } + x_0 \left( \psi(x_0 + n) - \psi(x_0) \right)  \left( \log(x) - \log(x_0) \right)
-\end{equation}
 \end{document}
