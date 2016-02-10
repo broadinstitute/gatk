@@ -20,6 +20,7 @@ import java.util.List;
  */
 public final class ACNVModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String FINAL_SEG_FILE_TAG = "sim-final";
 
     private static final String SAMPLE_NAME = "test";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
@@ -35,6 +36,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
     private static final int NUM_BURN_IN = 50;
 
     private static final double INTERVAL_THRESHOLD = 1.; //merge when parameter modes are within 95% HPD interval
+    private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
 
     /**
      * Test of similar-segment merging using only copy-ratio data (simulated coverages and segments).
@@ -56,19 +58,25 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final Genome genome = new Genome(targetCoverages, snpCountsDummy, SAMPLE_NAME);
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
-        //run MCMC
-        final ACNVModeller modeller =
-                new ACNVModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
-                        NUM_SAMPLES, NUM_BURN_IN, 10, 0, ctx);
-        modeller.mergeSimilarSegments(INTERVAL_THRESHOLD, Double.POSITIVE_INFINITY,
-                NUM_SAMPLES, NUM_BURN_IN, 10, 0);
+        //initial MCMC model fitting performed by ACNVModeller constructor
+        final ACNVModeller modeller = new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, 10, 0, ctx);
+        //perform iterations of similar-segment merging until all similar segments are merged
+        int prevNumSegments;
+        for (int numIterations = 1; numIterations <= MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS; numIterations++) {
+            prevNumSegments = modeller.getACNVModeledSegments().size();
+            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, Double.POSITIVE_INFINITY);
+            if (modeller.getACNVModeledSegments().size() == prevNumSegments) {
+                break;
+            }
+        }
+        //write final model fit to file
+        final File finalModeledSegmentsFile =
+                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
+        modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
 
         //check equality of segments
-        final List<SimpleInterval> segmentsResult =
-                SegmentUtils.readIntervalsFromSegmentFile(new File(tempDirFile.getAbsolutePath() +
-                        "/test-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg"));
-        final List<SimpleInterval> segmentsTruth =
-                SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
+        final List<SimpleInterval> segmentsResult = SegmentUtils.readIntervalsFromSegmentFile(finalModeledSegmentsFile);
+        final List<SimpleInterval> segmentsTruth = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
         Assert.assertEquals(segmentsResult, segmentsTruth);
     }
 
@@ -89,19 +97,26 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final Genome genome = new Genome(COVERAGES_FILE, SNP_COUNTS_FILE, SAMPLE_NAME);
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
-        //run MCMC
+        //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller =
-                new ACNVModeller(segmentedModel, tempDirFile.getAbsolutePath() + "/test",
-                        NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
-        modeller.mergeSimilarSegments(INTERVAL_THRESHOLD, INTERVAL_THRESHOLD,
-                NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN);
+                new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
+        //perform iterations of similar-segment merging until all similar segments are merged
+        int prevNumSegments;
+        for (int numIterations = 1; numIterations <= MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS; numIterations++) {
+            prevNumSegments = modeller.getACNVModeledSegments().size();
+            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, INTERVAL_THRESHOLD);
+            if (modeller.getACNVModeledSegments().size() == prevNumSegments) {
+                break;
+            }
+        }
+        //write final model fit to file
+        final File finalModeledSegmentsFile =
+                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
+        modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
 
         //check equality of segments
-        final List<SimpleInterval> segmentsResult =
-                SegmentUtils.readIntervalsFromSegmentFile(new File(tempDirFile.getAbsolutePath() +
-                        "/test-" + ACNVModeller.FINAL_SEG_FILE_TAG + ".seg"));
-        final List<SimpleInterval> segmentsTruth =
-                SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
+        final List<SimpleInterval> segmentsResult = SegmentUtils.readIntervalsFromSegmentFile(finalModeledSegmentsFile);
+        final List<SimpleInterval> segmentsTruth = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
         Assert.assertEquals(segmentsResult, segmentsTruth);
     }
 }
