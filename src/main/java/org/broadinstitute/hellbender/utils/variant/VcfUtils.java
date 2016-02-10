@@ -12,6 +12,9 @@ import java.util.stream.Collectors;
  */
 public final class VcfUtils {
 
+    public static final String VCF_FILE_EXTENSION = "vcf";
+    public static final String BCF_FILE_EXTENSION = "bcf";
+
     // as determined experimentally Nov-Dec 2013
     public final static GATKVCFIndexType DEFAULT_GVCF_INDEX_TYPE = GATKVCFIndexType.LINEAR;
     public final static Integer DEFAULT_GVCF_INDEX_PARAMETER = 128000;

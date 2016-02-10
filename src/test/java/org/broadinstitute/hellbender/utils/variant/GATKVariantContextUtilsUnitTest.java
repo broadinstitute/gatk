@@ -1,11 +1,19 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
+import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -1754,30 +1762,193 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
 
     @Test
     public void testCreateVariantContextWriterNoOptions() {
-        final File outFile = createTempFile("testVCFWriter", ".vcf");
-        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile, null, true);
+        final File tmpDir = createTempDir("createVCFTest");
+        final File outFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + ".vcf");
+
+        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile, null, false);
         vcw.close();
+
         final File outFileIndex = new File(outFile.getAbsolutePath() + ".idx");
-        Assert.assertTrue(outFile.exists());
-        Assert.assertFalse(outFileIndex.exists());
+        final File outFileMD5 = new File(outFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outFile.exists(), "No output file was not created");
+        Assert.assertFalse(outFileIndex.exists(), "The createIndex argument was not honored");
+        Assert.assertFalse(outFileMD5.exists(), "The createMD5 argument was not honored");
     }
 
-    @Test
-    public void testCreateVariantContextWriterWithOptions() {
-        final File outFile = createTempFile("testVCFWriter", ".vcf");
-        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(
-                outFile, new SAMSequenceDictionary(), true, Options.INDEX_ON_THE_FLY, Options.ALLOW_MISSING_FIELDS_IN_HEADER);
-        vcw.close();
-        Assert.assertTrue(outFile.exists());
-        final File outFileIndex = new File(outFile.getAbsolutePath() + ".idx");
-        Assert.assertTrue(outFile.exists());
-        Assert.assertTrue(outFileIndex.exists());
+    @DataProvider(name="createVCFWriterData")
+    public Object[][] createVCFWriterData() {
+        return new Object[][]{
+                {".vcf", ".idx", true, true},
+                {".vcf", ".idx", false, true},
+                {".vcf", ".idx", true, false},
+
+                {".bcf", ".idx", true, true},
+                {".bcf", ".idx", false, true},
+                {".bcf", ".idx", true, false},
+
+                {".vcf.bgz", ".tbi", true, true},
+                // AbstractFeatureReader fails to recognize this as block compressed unless it has an accompanying index
+                // Is that correct behavior ?
+                //".vcf.bgz", ".tbi", false, true},
+                {".vcf.gz", ".tbi", false, true},
+                {".vcf.bgz", ".tbi", true, false},
+
+                // defaults to .vcf
+                {".tmp", ".idx", false, true},
+        };
+    }
+    @Test(dataProvider = "createVCFWriterData")
+    public void testCreateVCFWriterWithOptions(
+            final String outputExtension,
+            final String indexExtension,
+            final boolean createIndex,
+            final boolean createMD5) throws IOException {
+
+        final File tmpDir = createTempDir("createVCFTest");
+        final File outputFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + outputExtension);
+
+        Options options[] = createIndex ?
+                new Options[] {Options.INDEX_ON_THE_FLY} :
+                new Options[] {};
+        try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
+                outputFile,
+                makeSimpleSequenceDictionary(),
+                createMD5,
+                options)) {
+            writeHeader(writer);
+        }
+
+        final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
+        final File outFileMD5 = new File(outputFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outputFile.exists(), "No output file was not created");
+        Assert.assertEquals(outFileIndex.exists(), createIndex, "The createIndex argument was not honored");
+        Assert.assertEquals(outFileMD5.exists(), createMD5, "The createMD5 argument was not honored");
+
+        verifyFileType(outputFile, outputExtension);
+    }
+
+    // just make sure we can read the file with the corresponding codec
+    private void verifyFileType(
+            final File resultVCFFile,
+            final String outputExtension) {
+        final FeatureCodec<? extends Feature, ?> featureCodec = FeatureManager.getCodecForFile(resultVCFFile);
+
+        if (outputExtension.equals(".vcf") ||
+            outputExtension.equals(".vcf.bgz") ||
+            outputExtension.equals(".vcf.gz") ||
+            outputExtension.equals(".tmp"))
+        {
+            Assert.assertEquals(featureCodec.getClass(), VCFCodec.class,
+                    "Wrong codec selected for file " + resultVCFFile.getAbsolutePath());
+        }
+        else if (outputExtension.equals(".bcf")) {
+            Assert.assertEquals(featureCodec.getClass(), BCF2Codec.class,
+                    "Wrong codec selected for file " + resultVCFFile.getAbsolutePath());
+        }
+        else {
+            throw new IllegalArgumentException("Unknown file extension in createVCFWriter test validation");
+        }
+    }
+
+    @DataProvider(name="createVCFWriterLenientData")
+    public Object[][] createVCFWriterLenientData() {
+        return new Object[][]{
+                {".vcf", ".idx", true, true},
+                {".vcf", ".idx", false, true},
+                {".vcf", ".idx", true, false}
+        };
+    }
+
+    @Test(dataProvider = "createVCFWriterLenientData")
+    public void testCreateVCFWriterLenientTrue(
+            final String outputExtension,
+            final String indexExtension,
+            final boolean createIndex,
+            final boolean createMD5) throws IOException {
+
+        final File tmpDir = createTempDir("createVCFTest");
+        final File outputFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + outputExtension);
+
+        Options options[] = createIndex ?
+                new Options[] {Options.ALLOW_MISSING_FIELDS_IN_HEADER, Options.INDEX_ON_THE_FLY} :
+                new Options[] {Options.ALLOW_MISSING_FIELDS_IN_HEADER};
+        try (final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(
+                outputFile,
+                makeSimpleSequenceDictionary(),
+                createMD5,
+                options)) {
+            writeHeader(vcw);
+            writeBadVariant(vcw);  // verify leniency by writing a bogus attribute
+        }
+
+        final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
+        final File outFileMD5 = new File(outputFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outputFile.exists(), "No output file was not created");
+        Assert.assertEquals(outFileIndex.exists(), createIndex, "The createIndex argument was not honored");
+        Assert.assertEquals(outFileMD5.exists(), createMD5, "The createMD5 argument was not honored");
+    }
+
+    @Test(dataProvider = "createVCFWriterLenientData", expectedExceptions = IllegalStateException.class)
+    public void testCreateVCFWriterLenientFalse(
+            final String outputExtension,
+            final String indexExtension, // unused
+            final boolean createIndex,
+            final boolean createMD5) throws IOException {
+
+        final File tmpDir = createTempDir("createVCFTest");
+        final File outputFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + outputExtension);
+
+        Options options[] = createIndex ?
+                new Options[] {Options.INDEX_ON_THE_FLY} :
+                new Options[] {};
+        try (final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(
+                outputFile,
+                makeSimpleSequenceDictionary(),
+                createMD5,
+                options)) {
+            writeHeader(vcw);
+            writeBadVariant(vcw); // write a bad attribute and throw...
+        }
     }
 
     @Test(expectedExceptions=IllegalArgumentException.class)
-    public void testNegativeCreateVariantContextWriter() {
+    public void testCreateVariantContextWriterNoReference() {
         // should throw due to lack of reference
         final File outFile = createTempFile("testVCFWriter", ".vcf");
-        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile, null, true, Options.INDEX_ON_THE_FLY);
+        final VariantContextWriter vcw =
+                     GATKVariantContextUtils.createVCFWriter(
+                             outFile,
+                             null,
+                             true,
+                             Options.INDEX_ON_THE_FLY);
+        vcw.close();
     }
+
+    private void writeHeader(final VariantContextWriter writer) {
+        final Set<VCFHeaderLine> metaData = new HashSet<>();
+        metaData.add(new VCFHeaderLine(
+                VCFHeaderVersion.VCF4_2.getFormatString(),
+                VCFHeaderVersion.VCF4_2.getVersionString()));
+        final VCFHeader vcfHeader = new VCFHeader(metaData, Collections.emptyList());
+        vcfHeader.setSequenceDictionary(makeSimpleSequenceDictionary());
+        writer.writeHeader(vcfHeader);
+    }
+
+    private void writeBadVariant(final VariantContextWriter writer) {
+        //write a variant with a (bad) attribute that doesn't appear in the header to the output
+        final VariantContextBuilder vcBuilder = new VariantContextBuilder("","chr1", 1, 1, Arrays.asList(Aref));
+        vcBuilder.attribute("fake", new Object());
+        final VariantContext vc = vcBuilder.make();
+        writer.add(vc);
+    }
+
+    private SAMSequenceDictionary makeSimpleSequenceDictionary() {
+        final SAMSequenceDictionary seqDictionary = new SAMSequenceDictionary();
+        seqDictionary.addSequence(new SAMSequenceRecord("chr1", 10));
+        return seqDictionary;
+    }
+
 }

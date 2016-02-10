@@ -2,7 +2,17 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.SAMFormatException;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.tribble.Feature;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -13,13 +23,18 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.io.IOException;
+import java.util.List;
 
 public final class GATKToolUnitTest extends BaseTest{
 
@@ -93,6 +108,32 @@ public final class GATKToolUnitTest extends BaseTest{
             programGroup = TestProgramGroup.class
     )
     private static final class TestGATKToolWithNothing extends GATKTool{
+
+        @Override
+        public void traverse() {
+            //no op
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithVariants",
+            oneLineSummary = "TestGATKToolWithVariants",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithVariants extends GATKTool{
+
+        @Argument(fullName="output", shortName="out", doc="Input variants", optional=true)
+        public File out;
+
+        @Override
+        public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+            return new SAMSequenceDictionary();
+        }
+
+        @Override
+        public boolean requiresFeatures() {
+            return true;
+        }
 
         @Override
         public void traverse() {
@@ -292,4 +333,208 @@ public final class GATKToolUnitTest extends BaseTest{
         final SAMSequenceDictionary toolDict = tool.getBestAvailableSequenceDictionary();
         Assert.assertNull(toolDict);
     }
+
+    @DataProvider(name="createVCFWriterData")
+    public Object[][] createVCFWriterData() {
+        return new Object[][]{
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", false, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, false},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", true, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", false, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".bcf", ".idx", true, false},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.bgz", ".tbi", true, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.gz", ".tbi", false, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf.bgz", ".tbi", true, false}
+        };
+    }
+
+    @Test(dataProvider = "createVCFWriterData")
+    public void testCreateVCFWriterDefaults(
+            final File inputFile,           // unused
+            final String outputExtension,
+            final String indexExtension,
+            final boolean createIndex,      // unused
+            final boolean createMD5         // unused
+    ) throws IOException {
+
+        // create a writer and make sure the default index/md5 params are honored
+        final TestGATKToolWithVariants tool = createTestVariantTool(null);
+
+        final File tmpDir = createTempDir("createVCFTest");
+        final File outputFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + outputExtension);
+
+        final VariantContextWriter writer = tool.createVCFWriter(outputFile);
+        writer.close();
+
+        final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
+        final File outFileMD5 = new File(outputFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outputFile.exists(), "No output file was not created");
+        Assert.assertTrue(outFileIndex.exists(), "The index file was not created");
+        Assert.assertFalse(outFileMD5.exists(), "An md5 file was created and should not have been");
+    }
+
+    private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
+        final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
+        if (null != args) {
+            final CommandLineParser clp = new CommandLineParser(tool);
+            clp.parseArguments(System.out, args);
+        }
+        return tool;
+    }
+
+    @Test(dataProvider = "createVCFWriterData")
+    public void testCreateVCFWriterWithOptions(
+            final File inputFile,
+            final String outputExtension,
+            final String indexExtension,
+            final boolean createIndex,
+            final boolean createMD5) throws IOException {
+
+        // create a writer and make sure the requested index/md5 params are honored
+        final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
+
+        final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, false);
+
+        final VariantContextWriter writer = tool.createVCFWriter(outputFile);
+        writer.close();
+
+        final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
+        final File outFileMD5 = new File(outputFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outputFile.exists(), "No output file was not created");
+        Assert.assertEquals(outFileIndex.exists(), createIndex, "The createIndex argument was not honored");
+        Assert.assertEquals(outFileMD5.exists(), createMD5, "The createMD5 argument was not honored");
+    }
+
+    @DataProvider(name="createVCFWriterLenientData")
+    public Object[][] createVCFWriterLenientData() {
+        return new Object[][]{
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", false, true},
+                {new File(publicTestDir, "org/broadinstitute/hellbender/engine/example_variants.vcf"), ".vcf", ".idx", true, false}
+        };
+    }
+
+    @Test(dataProvider = "createVCFWriterLenientData")
+    public void testCreateVCFWriterLenientTrue(
+            final File inputFile,
+            final String outputExtension,
+            final String indexExtension,
+            final boolean createIndex,
+            final boolean createMD5) throws IOException {
+        final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
+
+        // verify lenient==true is honored by writing a bad attribute
+        final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, true);
+
+        try (VariantContextWriter writer = tool.createVCFWriter(outputFile)) {
+            writeHeaderAndBadVariant(writer); // write bad attribute succeed with lenient set
+        }
+
+        final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
+        final File outFileMD5 = new File(outputFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outputFile.exists(), "No output file was not created");
+        Assert.assertEquals(outFileIndex.exists(), createIndex, "The createIndex argument was not honored");
+        Assert.assertEquals(outFileMD5.exists(), createMD5, "The createMD5 argument was not honored");
+    }
+
+    @Test(dataProvider = "createVCFWriterLenientData", expectedExceptions = IllegalStateException.class)
+    public void testCreateVCFWriterLenientFalse(
+            final File inputFile,
+            final String outputExtension,
+            final String indexExtension, // unused
+            final boolean createIndex,
+            final boolean createMD5) throws IOException {
+
+        // verify lenient==false is honored by writing a bad attribute
+        final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
+        final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, false);
+
+        try (VariantContextWriter writer = tool.createVCFWriter(outputFile)) {
+            writeHeaderAndBadVariant(writer); // throws due to bad attribute
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKVariantToolWithNoSequenceDictionary",
+            oneLineSummary = "TestGATKVariantToolWithNoSequenceDictionary",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKVariantToolWithNoSequenceDictionary extends GATKTool{
+        @Argument(fullName="output", shortName="out", doc="Input variants", optional=true)
+        public File out;
+
+        @Override
+        public SAMSequenceDictionary getBestAvailableSequenceDictionary() {return null;}
+
+        @Override
+        public boolean requiresFeatures() {return true;}
+
+        @Override
+        public void traverse() {}
+    }
+
+    @Test(dataProvider = "createVCFWriterData")
+    public void testCreateVCFWriterWithNoSequenceDictionary(
+            final File inputFile,
+            final String outputExtension,
+            final String indexExtension,
+            final boolean createIndex,
+            final boolean createMD5) throws IOException
+    {
+        // verify that a null sequence dictionary still results in a file, but with no index
+        final TestGATKVariantToolWithNoSequenceDictionary tool = new TestGATKVariantToolWithNoSequenceDictionary();
+        final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, false);
+
+        final VariantContextWriter writer = tool.createVCFWriter(outputFile);
+        writer.close();
+
+        final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
+        final File outFileMD5 = new File(outputFile.getAbsolutePath() + ".md5");
+
+        Assert.assertTrue(outputFile.exists(), "No output file was not created");
+        Assert.assertEquals(outFileIndex.exists(), false, "An index file should not have been created"); // always false with no seq dictionary
+        Assert.assertEquals(outFileMD5.exists(), createMD5, "The createMD5 argument was not honored");
+    }
+
+    private File setupVCFWriter(
+            final File inputFile,
+            final String outputExtension,
+            final GATKTool tool,
+            final boolean createIndex,
+            final boolean createMD5,
+            final boolean lenient) throws IOException
+    {
+        final File tmpDir = createTempDir("createVCFTest");
+        final File outputFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + outputExtension);
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addInput(inputFile);
+        args.addOutput(outputFile);
+        args.add("--createOutputVariantIndex"); args.add(Boolean.toString(createIndex));
+        args.add("--createOutputVariantMD5"); args.add(Boolean.toString(createMD5));
+        if (lenient) {
+            args.add("--lenient");
+        }
+
+        final CommandLineParser clp = new CommandLineParser(tool);
+        clp.parseArguments(System.out, args.getArgsArray());
+
+        return outputFile;
+    }
+
+    private void writeHeaderAndBadVariant(final VariantContextWriter writer) {
+        final VariantContextBuilder vcBuilder = new VariantContextBuilder(
+                "chr1","1", 1, 1, Arrays.asList(Allele.create("A", true)));
+        vcBuilder.attribute("fake", new Object());
+        final VariantContext vc = vcBuilder.make();
+        final VCFHeader vcfHeader = new VCFHeader();
+        writer.writeHeader(vcfHeader);
+        writer.add(vc);
+    }
+
 }
