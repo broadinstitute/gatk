@@ -25,9 +25,6 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected static final ReferenceInputArgumentCollection REF_ARGUMENTS =
             new RequiredReferenceInputArgumentCollection();
 
-    protected static final String HET_ALLELE_FRACTION_FULL_NAME = "hetAlleleFraction";
-    protected static final String HET_ALLELE_FRACTION_SHORT_NAME = "AF";
-
     protected static final String PVALUE_THRESHOLD_FULL_NAME = "pvalueThreshold";
     protected static final String PVALUE_THRESHOLD_SHORT_NAME = "p";
 
@@ -72,14 +69,6 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected File tumorHetOutputFile;
 
     @Argument(
-            doc = "Heterozygous allele fraction.",
-            fullName = HET_ALLELE_FRACTION_FULL_NAME,
-            shortName = HET_ALLELE_FRACTION_SHORT_NAME,
-            optional = false
-    )
-    protected double hetAlleleFraction = 0.5;
-
-    @Argument(
             doc = "p-value threshold for binomial test for heterozygous SNPs in normal sample.",
             fullName = PVALUE_THRESHOLD_FULL_NAME,
             shortName = PVALUE_THRESHOLD_SHORT_NAME,
@@ -98,7 +87,7 @@ public final class GetHetCoverage extends CommandLineProgram {
         final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REF_ARGUMENTS.getReferenceFile(), snpFile);
 
         logger.info("Getting normal het pulldown...");
-        final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, hetAlleleFraction, pvalThreshold);
+        final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, pvalThreshold);
         normalHetPulldown.write(normalHetOutputFile);
         logger.info("Normal het pulldown written to " + normalHetOutputFile.toString());
 

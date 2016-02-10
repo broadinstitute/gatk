@@ -59,7 +59,6 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         final Pulldown tumorOutputPulldownCLP = new Pulldown(tumorOutputFile, tumorHeader);
 
         Pulldown normalHetPulldown = new Pulldown(normalHeader);
-        normalHetPulldown.add(new SimpleInterval("1", 10736, 10736), 9, 2);
         normalHetPulldown.add(new SimpleInterval("1", 11522, 11522), 7, 4);
         normalHetPulldown.add(new SimpleInterval("1", 12098, 12098), 8, 6);
         normalHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
