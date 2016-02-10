@@ -22,7 +22,7 @@ If you are looking for the codebase of the current production version of GATK, p
 * Java 8
 * Git 2.5 or greater
 * Optional, but recommended:
-    * Gradle 2.7 or greater (needed for building the GATK, but can use the bundled `./gradlew` script instead which will
+    * Gradle 2.11 or greater (needed for building the GATK, but can use the bundled `./gradlew` script instead which will
       download an appropriate gradle version for you automatically: just replace `gradle` with `./gradlew` in the commands below)
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
