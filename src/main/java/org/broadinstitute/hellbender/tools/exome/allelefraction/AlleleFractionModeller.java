@@ -62,7 +62,7 @@ public final class AlleleFractionModeller {
     // INNER SAMPLER CLASSES -------------------------------------------------------------------------------------------
     // sample mean bias
     @VisibleForTesting
-    protected static final class  MeanBiasSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
+    protected static final class MeanBiasSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
         private final AdaptiveMetropolisSampler sampler;
 
         public MeanBiasSampler(final double initialMeanBias, final double initialStepSize) {
@@ -76,7 +76,7 @@ public final class AlleleFractionModeller {
 
     // sample bias variance
     @VisibleForTesting
-    protected static final class  BiasVarianceSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
+    protected static final class BiasVarianceSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
         private final AdaptiveMetropolisSampler sampler;
 
         public BiasVarianceSampler(final double initialBiasVariance, final double initialStepSize) {
@@ -90,7 +90,7 @@ public final class AlleleFractionModeller {
 
     // sample outlier probability
     @VisibleForTesting
-    protected static final class  OutlierProbabilitySampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
+    protected static final class OutlierProbabilitySampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
         private final AdaptiveMetropolisSampler sampler;
 
         public OutlierProbabilitySampler(final double initialOutlierProbability, final double initialStepSize) {
@@ -232,13 +232,13 @@ public final class AlleleFractionModeller {
             final double f = indicator == AlleleFractionIndicator.ALT_MINOR ? minorFraction : 1 - minorFraction;
             final int n = a + r;
             final double w = (1 - f) * (a - alpha + 1) + beta * f;
-            final double lambda0 = (sqrt(w * w + 4 * beta * f * (1 - f) * (r + alpha  - 1)) - w) / (2 * beta * (1 - f));
+            final double lambda0 = (sqrt(w * w + 4 * beta * f * (1 - f) * (r + alpha - 1)) - w) / (2 * beta * (1 - f));
             final double y = (1 - f)/(f + (1 - f) * lambda0);
             final double kappa = n * y * y - (r + alpha - 1) / (lambda0 * lambda0);
             final double rho = 1 - kappa * lambda0 * lambda0;
             final double tau = -kappa * lambda0;
             final double logc = alpha*log(beta) - Gamma.logGamma(alpha) + a * log(f) + r * log(1 - f)
-                    + (r + alpha  - rho) * log(lambda0) + (tau - beta) * lambda0 - n * log(f + (1 - f) * lambda0);
+                    + (r + alpha - rho) * log(lambda0) + (tau - beta) * lambda0 - n * log(f + (1 - f) * lambda0);
 
             return log((1 - pi) / 2) + logc + Gamma.logGamma(rho) - rho * log(tau);
         }

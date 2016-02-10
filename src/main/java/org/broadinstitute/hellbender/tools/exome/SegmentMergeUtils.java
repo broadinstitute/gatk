@@ -68,6 +68,42 @@ public final class SegmentMergeUtils {
     }
 
     /**
+     * Given a list of {@link ModeledSegment}, returns a new, modifiable list of {@link SimpleInterval} with neutral
+     * and uncalled segments merged.  Note that a list of {@link SimpleInterval} is returned
+     * (rather than a list of {@link ModeledSegment}) since {@link ModeledSegment} may store its mean in either
+     * log2 or non-log2 space; hence, we do not know ahead of time how to merge these means, which are currently unused.
+     * TODO refactor Segment class/subclasses (issue 344)
+     * @param segments  list of {@link ModeledSegment} in which to merge neutral and uncalled segments
+     * @return          list of {@link SimpleInterval} with neutral and uncalled segments merged, never {@code null}
+     */
+    public static List<SimpleInterval> mergeNeutralSegments(final List<ModeledSegment> segments) {
+        Utils.nonNull(segments, "The list of segments cannot be null.");
+
+        final List<ModeledSegment> mergedSegments = new ArrayList<>(segments);
+        int index = 0;
+        while (index < mergedSegments.size() - 1) {
+            final ModeledSegment segment1 = mergedSegments.get(index);
+            final ModeledSegment segment2 = mergedSegments.get(index + 1);
+            //if both segments are on same contig and are neutral or uncalled, merge
+            if (segment1.getContig().equals(segment2.getContig()) &&
+                    (segment1.getCall().equals(ReCapSegCaller.NEUTRAL_CALL) ||
+                            segment1.getCall().equals(ModeledSegment.NO_CALL)) &&
+                    (segment2.getCall().equals(ReCapSegCaller.NEUTRAL_CALL) ||
+                            segment2.getCall().equals(ModeledSegment.NO_CALL))) {
+
+                final SimpleInterval mergedInterval =
+                        SegmentMergeUtils.mergeSegments(segment1.getSimpleInterval(), segment2.getSimpleInterval());
+                //use dummy values for targetCount and segmentMean; these will not be used
+                mergedSegments.set(index, new ModeledSegment(mergedInterval, ModeledSegment.NO_CALL, 0, 0));
+                mergedSegments.remove(index + 1);
+                index--; //if merge performed, stay on current segment during next iteration
+            }
+            index++; //if no merge performed, go to next segment during next iteration
+        }
+        return mergedSegments.stream().map(ModeledSegment::getSimpleInterval).collect(Collectors.toList());
+    }
+
+    /**
      * Identifies spurious segments (i.e., segments containing only targets that are created by
      * SNP-segment breakpoints and are not present in the original set of target segments)
      * introduced into the middle of original target-coverage segments
