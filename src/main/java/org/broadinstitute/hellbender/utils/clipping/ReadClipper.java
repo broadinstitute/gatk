@@ -326,7 +326,7 @@ public class ReadClipper {
         return clipRead(ClippingRepresentation.HARDCLIP_BASES);
     }
     public static GATKRead hardClipSoftClippedBases (final GATKRead read) {
-        return (new ReadClipper(read)).hardClipSoftClippedBases();
+        return new ReadClipper(read).hardClipSoftClippedBases();
     }
 
     /**
@@ -440,7 +440,7 @@ public class ReadClipper {
      * @return the read with all soft-clipped bases turned into matches
      */
     public static GATKRead revertSoftClippedBases(final GATKRead read) {
-        return (new ReadClipper(read)).revertSoftClippedBases();
+        return new ReadClipper(read).revertSoftClippedBases();
     }
 
     /**

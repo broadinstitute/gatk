@@ -4,8 +4,8 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.cram.build.CramIO;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -469,12 +469,20 @@ public final class ReadUtils {
      * Calculates the reference coordinate for the beginning of the read taking into account soft clips but not hard clips.
      *
      * Note: getUnclippedStart() adds soft and hard clips, this function only adds soft clips.
+     * @param read   the read
+     * @param cigar  the read's cigar
+     *
+     * Note: this overload of the function takes the cigar as input for speed because getCigar
+     * is an expensive operation. Most callers should use the overload that does not take the cigar.
      *
      * @return the unclipped start of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftStart(final GATKRead read) {
+    public static int getSoftStart(final GATKRead read, final Cigar cigar) {
+        Utils.nonNull(read, "read");
+        Utils.nonNull(cigar, "cigar");
+
         int softStart = read.getStart();
-        for (final CigarElement cig : read.getCigar().getCigarElements()) {
+        for (final CigarElement cig : cigar.getCigarElements()) {
             final CigarOperator op = cig.getOperator();
 
             if (op == CigarOperator.SOFT_CLIP) {
@@ -487,22 +495,42 @@ public final class ReadUtils {
     }
 
     /**
+     * Calculates the reference coordinate for the beginning of the read taking into account soft clips but not hard clips.
+     *
+     * Note: getUnclippedStart() adds soft and hard clips, this function only adds soft clips.
+     *
+     * @return the unclipped start of the read taking soft clips (but not hard clips) into account
+     */
+    public static int getSoftStart(final GATKRead read) {
+        Utils.nonNull(read);
+        return getSoftStart(read, read.getCigar());
+    }
+
+    /**
      * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
      *
      * Note: getUnclippedEnd() adds soft and hard clips, this function only adds soft clips.
      *
+     * @param read   the read
+     * @param cigar  the read's cigar
+     *
+     * Note: this overload of the function takes the cigar as input for speed because getCigar
+     * is an expensive operation. Most callers should use the overload that does not take the cigar.
+     *
      * @return the unclipped end of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftEnd(final GATKRead read) {
+    public static int getSoftEnd(final GATKRead read, final Cigar cigar) {
+        Utils.nonNull(read, "read");
+        Utils.nonNull(cigar, "cigar");
+
         boolean foundAlignedBase = false;
         int softEnd = read.getEnd();
-        final List<CigarElement> cigs = read.getCigar().getCigarElements();
+        final List<CigarElement> cigs = cigar.getCigarElements();
         for (int i = cigs.size() - 1; i >= 0; --i) {
             final CigarElement cig = cigs.get(i);
             final CigarOperator op = cig.getOperator();
 
-            if (op == CigarOperator.SOFT_CLIP) // assumes the soft clip that we found is at the end of the aligned read
-            {
+            if (op == CigarOperator.SOFT_CLIP){ // assumes the soft clip that we found is at the end of the aligned read
                 softEnd += cig.getLength();
             } else if (op != CigarOperator.HARD_CLIP) {
                 foundAlignedBase = true;
@@ -513,6 +541,17 @@ public final class ReadUtils {
             softEnd = read.getEnd();
         }
         return softEnd;
+    }
+
+    /**
+     * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
+     *
+     * Note: getUnclippedEnd() adds soft and hard clips, this function only adds soft clips.
+     *
+     * @return the unclipped end of the read taking soft clips (but not hard clips) into account
+     */
+    public static int getSoftEnd(final GATKRead read) {
+        return getSoftEnd(read, read.getCigar());
     }
 
     public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {

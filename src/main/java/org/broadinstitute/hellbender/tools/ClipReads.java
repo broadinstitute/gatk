@@ -478,7 +478,7 @@ public final class ClipReads extends ReadWalker {
     //
     // --------------------------------------------------------------------------------------------------------------
 
-    private static class SeqToClip {
+    private static final class SeqToClip {
         String name;
         String seq, revSeq;
         Pattern fwdPat, revPat;
@@ -492,7 +492,7 @@ public final class ClipReads extends ReadWalker {
         }
     }
 
-    public static class ClippingData {
+    public static final class ClippingData {
         public long nTotalReads = 0;
         public long nTotalBases = 0;
         public long nClippedReads = 0;
@@ -565,7 +565,7 @@ public final class ClipReads extends ReadWalker {
         }
     }
 
-    public static class ReadClipperWithData extends ReadClipper {
+    public static final class ReadClipperWithData extends ReadClipper {
         private ClippingData data;
 
         public ReadClipperWithData(GATKRead read, List<SeqToClip> clipSeqs) {

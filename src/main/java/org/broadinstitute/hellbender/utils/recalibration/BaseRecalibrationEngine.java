@@ -35,6 +35,13 @@ public final class BaseRecalibrationEngine implements Serializable {
     protected static final Logger logger = LogManager.getLogger(BaseRecalibrationEngine.class);
     private final CovariateKeyCache keyCache;
 
+    /*
+     * Every call to EventType.values() (or any enum type) creates a new array instance but they are all equal (ie contain identical elements).
+     * This is very expensive and wasteful when this array is created billions of times as in the case of BQSR.
+     * The solution is to cache this array here.
+     */
+    private final EventType[] cachedEventTypes;
+
     /**
      * Reference window function for BQSR. For each read, returns an interval representing the span of
      * reference bases required by the BQSR algorithm for that read.
@@ -86,6 +93,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         }
         recalTables = new RecalibrationTables(covariates, numReadGroups);
         keyCache = new CovariateKeyCache();
+        cachedEventTypes = EventType.values();
     }
 
     public void logCovariatesUsed() {
@@ -100,7 +108,7 @@ public final class BaseRecalibrationEngine implements Serializable {
      * whether or not the base matches the reference at this particular location
      */
     public void processRead( final GATKRead originalRead, final ReferenceDataSource refDS, final Iterable<? extends Locatable> knownSites ) {
-        ReadTransformer transform = makeReadTransform();
+        final ReadTransformer transform = makeReadTransform();
         final GATKRead read = transform.apply(originalRead);
 
         if( read.isEmpty() ) {
@@ -244,7 +252,8 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int readLength = read.getLength();
         for( int offset = 0; offset < readLength; offset++ ) {
             if( ! recalInfo.skip(offset) ) {
-                for (final EventType eventType : EventType.values()) {
+                for (int idx = 0; idx < cachedEventTypes.length; idx++) { //Note: we loop explicitly over cached values for speed
+                    final EventType eventType = cachedEventTypes[idx];
                     final int[] keys = readCovariates.getKeySet(offset, eventType);
                     final int eventIndex = eventType.ordinal();
                     final byte qual = recalInfo.getQual(eventType, offset);
@@ -322,9 +331,9 @@ public final class BaseRecalibrationEngine implements Serializable {
     protected boolean[] calculateKnownSites( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
-        final int softStart = ReadUtils.getSoftStart(read);
-        final int softEnd = ReadUtils.getSoftEnd(read);
         final Cigar cigar = read.getCigar();
+        final int softStart = ReadUtils.getSoftStart(read, cigar);
+        final int softEnd = ReadUtils.getSoftEnd(read, cigar);
         for ( final Locatable knownSite : knownSites ) {
             if (knownSite.getEnd() < softStart || knownSite.getStart() > softEnd) {
                 // knownSite is outside clipping window for the read, ignore
