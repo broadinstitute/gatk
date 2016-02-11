@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -50,6 +51,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
         };
         runCommandLine(args);
 
+        SamAssertionUtils.assertCRAMContentsIfCRAM(outputFile);
         checkReadNames(outputFile, reference, expectedReadNames);
     }
 
@@ -88,6 +90,7 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest{
 
         runCommandLine(args);
 
+        SamAssertionUtils.assertCRAMContentsIfCRAM(outputFile);
         checkReadNames(outputFile, reference, expectedReadNames);
     }
 

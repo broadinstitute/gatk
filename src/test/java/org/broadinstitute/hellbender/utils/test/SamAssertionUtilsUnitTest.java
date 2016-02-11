@@ -41,4 +41,56 @@ public final class SamAssertionUtilsUnitTest extends BaseTest{
         final File actualF= new File(TEST_DATA_DIR, actualFile);
         Assert.assertEquals(expectedEqual, null == SamAssertionUtils.samsEqualStringent(actualF, expectedF, ValidationStringency.LENIENT, null));
     }
+
+    @DataProvider(name="testCRAMContentsSucceed")
+    public Object[][] testCRAMContentsSucceedData() {
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "valid.cram")},
+        };
+    }
+
+    @DataProvider(name="testCRAMContentsFail")
+    public Object[][] testCRAMContentsFailData() {
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "file1.sam") },
+                {new File(TEST_DATA_DIR, "file1.bam") },
+                {new File(TEST_DATA_DIR, "fake_cram_with_bam_contents.cram") }
+        };
+    }
+
+    @Test(dataProvider = "testCRAMContentsSucceed")
+    public void testAssertCRAMContentsSucceed(File putativeCRAMFile) {
+        SamAssertionUtils.assertCRAMContents(putativeCRAMFile);
+    }
+
+    @Test(dataProvider = "testCRAMContentsFail", expectedExceptions=AssertionError.class)
+    public void testAssertCRAMContentsFail(File putativeCRAMFile) {
+        SamAssertionUtils.assertCRAMContents(putativeCRAMFile);
+    }
+
+    @DataProvider(name="testCRAMContentsIfCRAMSucceed")
+    public Object[][] testCRAMContentsIfCRAMSucceedData() {
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "file1.sam") },
+                {new File(TEST_DATA_DIR, "file1.bam") },
+                {new File(TEST_DATA_DIR, "valid.cram") },
+        };
+    }
+
+    @DataProvider(name="testCRAMContentsIfCRAMFail")
+    public Object[][] testCRAMContentsIfCRAMFailData() {
+        return new Object[][] {
+                {new File(TEST_DATA_DIR, "fake_cram_with_bam_contents.cram") }
+        };
+    }
+
+    @Test(dataProvider = "testCRAMContentsIfCRAMSucceed")
+    public void testAssertCRAMContentsIfCRAMSucceed(File putativeCRAMFile) {
+        SamAssertionUtils.assertCRAMContentsIfCRAM(putativeCRAMFile);
+    }
+
+    @Test(dataProvider = "testCRAMContentsIfCRAMFail", expectedExceptions = AssertionError.class)
+    public void testAssertCRAMContentsIfCRAM(File putativeCRAMFile) {
+        SamAssertionUtils.assertCRAMContentsIfCRAM(putativeCRAMFile);
+    }
 }

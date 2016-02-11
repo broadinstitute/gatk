@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.test;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
 import org.testng.Assert;
@@ -97,6 +99,7 @@ public final class SamAssertionUtils {
      * @param reference is allowed to be null
      */
     public static void assertSamValid(final File sam, final ValidationStringency validationStringency, final File reference) throws IOException {
+        assertCRAMContentsIfCRAM(sam);
         try (final SamReader samReader = getReader(sam, validationStringency, reference)) {
             final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
             validator.setIgnoreWarnings(true);
@@ -138,6 +141,8 @@ public final class SamAssertionUtils {
      * looking only at basic alignment info.
      */
     public static String samsEqualLenient(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
+        assertCRAMContentsIfCRAM(actualSam);
+        assertCRAMContentsIfCRAM(expectedSam);
         try(final SamReader reader1 = getReader(actualSam, validation, reference);
             final SamReader reader2 = getReader(expectedSam, validation, reference)) {
 
@@ -159,6 +164,10 @@ public final class SamAssertionUtils {
         if (sameMD5s(actualSam, expectedSam)) {
             return null;
         }
+
+        //  verify that CRAM files have CRAM contents
+        assertCRAMContentsIfCRAM(actualSam);
+        assertCRAMContentsIfCRAM(expectedSam);
 
         String msg = equalHeadersIgnoreCOandPG(actualSam, expectedSam, validation, reference);
         if (msg != null) { return msg; }
@@ -361,6 +370,22 @@ public final class SamAssertionUtils {
         } else {
             assertSamsEqual(resultFile, expectedFile, stringency);
         }
+    }
+
+    /**
+     * Validate/assert that the contents are CRAM if the extension is .cram
+     */
+    public static void assertCRAMContentsIfCRAM(final File putativeCRAMFile) {
+        if (IOUtils.isCramFile(putativeCRAMFile)) {
+            assertCRAMContents(putativeCRAMFile);
+        }
+    }
+
+    /**
+     * Unconditionally validate/assert that the contents are CRAM
+     */
+    public static void assertCRAMContents(final File putativeCRAMFile) {
+        Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile));
     }
 
     private static void sortSam(final File input, final File output, final ValidationStringency stringency) {

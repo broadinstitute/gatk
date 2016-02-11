@@ -61,7 +61,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
             };
         }
         runCommandLine(args);
-        SamAssertionUtils.assertSamsEqual(originalFile, outFile, refFile);
+        SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
     @DataProvider(name="testingDataWriteCram")
@@ -97,7 +97,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
             };
         }
         runCommandLine(args);
-        SamAssertionUtils.assertSamsEqual(originalFile, outFile, refFile);
+        SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
     @Test
@@ -187,7 +187,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
             };
         }
         runCommandLine(args);
-        SamAssertionUtils.assertSamsEqual(originalFile, outFile, refFile);
+        SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
     @Test(expectedExceptions = UserException.class)

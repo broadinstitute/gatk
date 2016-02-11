@@ -148,6 +148,8 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
                 SamPairUtil.PairOrientation.FR, null, null, null
         );
 
+        SamAssertionUtils.assertCRAMContentsIfCRAM(output);
+
         SamReader result = SamReaderFactory.makeDefault().referenceSequence(fasta).open(output);
         Assert.assertEquals(result.getFileHeader().getSequenceDictionary().getSequences().size(), 8,
                 "Number of sequences did not match");

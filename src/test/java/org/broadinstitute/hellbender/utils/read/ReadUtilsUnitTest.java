@@ -437,4 +437,20 @@ public final class ReadUtilsUnitTest extends BaseTest {
         Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputFile));
         Assert.assertEquals(createMD5, md5File.exists());
     }
+
+    @DataProvider(name="hasCRAMFileContents")
+    public Object[][] createHasCRAMFileContentsData() {
+        return new Object[][] {
+                {new File(getToolTestDataDir(), "valid.sam"), false},
+                {new File(getToolTestDataDir(), "coordinate_sorted.bam"), false},
+                {new File(getToolTestDataDir(), "valid.cram"), true},
+                {new File(getToolTestDataDir(), "fake_cram_with_bam_contents.cram"), false}
+        };
+    }
+
+    @Test(dataProvider = "hasCRAMFileContents")
+    public void testHasCRAMFileContents(final File testFile, final boolean expected) {
+        Assert.assertEquals(ReadUtils.hasCRAMFileContents(testFile), expected);
+    }
+
 }
