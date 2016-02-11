@@ -35,7 +35,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
 
     private final int TEST_TOTAL_COUNT = 10000;
 
-    private final String[] TEST_CHR = new String[] { "1", "2", "3"};
+    private final String[] TEST_CHR = new String[] { "1", "2", "10", "X"};
 
     private final int[] TEST_CHR_LEN = new int[] {10000000, 10000000, 10000000};
     private final int TEST_GENOME_LEN = IntStream.of(TEST_CHR_LEN).sum();
@@ -84,8 +84,8 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(dataProvider = "testData", expectedExceptions = UserException.BadInput.class)
-    public void testOutOfOrderTargets(final List<Target> targets, final List<String> sampleNames, final double[][] counts) throws IOException {
+    @Test(dataProvider = "testData")
+    public void testArbitraryTargetOrder(final List<Target> targets, final List<String> sampleNames, final double[][] counts) throws IOException {
         final List<Target> finalTargets = new ArrayList<>(targets);
         Collections.shuffle(finalTargets, new Random(13));
         final List<File> inputFiles = createInputCountFiles(finalTargets, sampleNames, counts, true, true);
@@ -101,7 +101,6 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "testData", expectedExceptions = UserException.BadInput.class)
     public void testRepeatedInputSamples(final List<Target> targets, final List<String> sampleNames, final double[][] counts) throws IOException {
-
         final List<File> inputFiles = createInputCountFiles(targets, sampleNames, counts, true, true);
         inputFiles.add(inputFiles.get(inputFiles.size() >> 1));
         final File targetFile = createTargetFile(targets);
