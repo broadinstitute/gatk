@@ -3,30 +3,23 @@ buildscript {
         mavenCentral()
         jcenter() // for shadow plugin
      }
-
-    dependencies {
-        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.4.0'
-        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.2'
-        classpath 'com.github.ben-manes:gradle-versions-plugin:0.11.3'  //used for identifying dependencies that need updating
-    }
 }
 
 plugins {
-    id "de.undercouch.download" version "1.2"
+    id "java"
+    id "application"
+    id 'maven'
+    id 'signing'
+    id "jacoco"
+    id "de.undercouch.download" version "1.2" //used for downloading GSA lib
+    id "com.github.johnrengelman.shadow" version "1.2.3"
+    id "com.github.kt3k.coveralls" version "2.6.3"
+    id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
+
 }
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
-
-apply plugin: 'java'
-apply plugin: 'idea'
-apply plugin: 'application'
-apply plugin: "jacoco"
-apply plugin: 'com.github.kt3k.coveralls'
-apply plugin: 'maven'
-apply plugin: 'signing'
-apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'com.github.ben-manes.versions'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -40,10 +33,6 @@ task downloadGsaLibFile(type: Download) {
 repositories {
     mavenCentral()
     jcenter()
-
-    maven {
-        url "https://oss.sonatype.org/content/repositories/snapshots/" // for http-client
-    }
 
     maven {
         url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
@@ -73,7 +62,7 @@ jacocoTestReport {
 }
 
 jacoco {
-    toolVersion = "0.7.1.201405082137"
+    toolVersion = "0.7.5.201505241946"
 }
 
 //NOTE: we ignore contracts for now
@@ -85,18 +74,10 @@ compileTestJava {
 }
 
 dependencies {
-    compile files("${System.properties['java.home']}/../lib/tools.jar")
-
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:2.0.1'
-    compile ('com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15') {
-        // an upstream dependency includes guava-jdk5, but we want the newer version instead.
-        exclude module: 'guava-jdk5'
-        exclude group:  'guava-jdk5'
-    }
-    compile ('com.google.cloud.genomics:gatk-tools-java:1.1') {
-        exclude module: 'guava-jdk5'
-    }
+    compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
+    compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
     compile 'org.apache.commons:commons-lang3:3.4'
@@ -108,12 +89,8 @@ dependencies {
     compile 'net.sf.jopt-simple:jopt-simple:4.9'
     compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150727'
     compile 'it.unimi.dsi:fastutil:7.0.6'
-    compile ('com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0') {
-        exclude module: 'guava-jdk5'
-    }
-    compile ('com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30') {
-        exclude module: 'guava-jdk5'
-    }
+    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0'
+    compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
     compile('org.bdgenomics.adam:adam-core_2.10:0.18.0') {
@@ -267,7 +244,7 @@ test {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.7'
+    gradleVersion = '2.11'
 }
 
 tasks.withType(ShadowJar) {
@@ -303,6 +280,8 @@ shadowJar {
 }
 
 task sparkJar(type: ShadowJar) {
+    group = "Shadow"
+    description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
     classifier = 'spark'
 }
